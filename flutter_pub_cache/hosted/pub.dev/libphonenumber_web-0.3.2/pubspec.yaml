@@ -1,0 +1,31 @@
+name: libphonenumber_web
+description: The web implementation of libphonenumber that uses libphonenumber_platform_interface
+version: 0.3.2
+homepage: https://github.com/natintosh/plugin_libphonenumber.git
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=1.20.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+
+  js: ^0.6.7
+  libphonenumber_platform_interface: ^0.4.2
+
+dev_dependencies:
+  flutter_lints: ^3.0.1
+  integration_test:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      web:
+        pluginClass: LibPhoneNumberPlugin
+        fileName: libphonenumber_web.dart

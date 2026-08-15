@@ -1,0 +1,480 @@
+// lib/ekranlar/kullanici/kullanici_ekle_ekrani.dart
+// Kullanıcı ekleme + ekran kısıtlama yetki sistemi
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sqflite/sqflite.dart';
+import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../depolar/kullanici_deposu.dart';
+import '../../modeller/kullanici_model.dart';
+import '../../cekirdek/utils/sifre_hash.dart';
+import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/bulut/bulut_manager.dart';
+import '../../veri/database/veritabani.dart';
+import 'package:uuid/uuid.dart';
+
+// Tanımlı ekran/işlem yetkileri
+class YetkiTanimlari {
+  static const Map<String, Map<String, String>> yetkiler = {
+    'satis': {'label': 'Hızlı Satış', 'grup': 'Satış'},
+    'satis_liste': {'label': 'Satış Listesi', 'grup': 'Satış'},
+    'satis_sil': {'label': 'Satış Sil/İptal', 'grup': 'Satış'},
+    'satis_iade': {'label': 'İade İşlemi', 'grup': 'Satış'},
+    'urun': {'label': 'Ürün Listesi', 'grup': 'Ürün'},
+    'urun_ekle': {'label': 'Ürün Ekle/Düzenle', 'grup': 'Ürün'},
+    'urun_sil': {'label': 'Ürün Sil', 'grup': 'Ürün'},
+    'stok': {'label': 'Stok Listesi', 'grup': 'Stok'},
+    'stok_sayim': {'label': 'Stok Sayım', 'grup': 'Stok'},
+    'cari': {'label': 'Cari Listesi', 'grup': 'Cari'},
+    'cari_ekle': {'label': 'Cari Ekle/Düzenle', 'grup': 'Cari'},
+    'cari_hareket': {'label': 'Cari Hareket', 'grup': 'Cari'},
+    'cari_hareket_sil': {'label': 'Cari Hareket Sil', 'grup': 'Cari'},
+    'promosyon': {'label': 'Promosyon', 'grup': 'Diğer'},
+    'fatura': {'label': 'Faturalar', 'grup': 'Diğer'},
+    'gider': {'label': 'Gider Yönetimi', 'grup': 'Diğer'},
+    'kasa': {'label': 'Kasa', 'grup': 'Diğer'},
+    'rapor': {'label': 'Raporlar', 'grup': 'Rapor'},
+    'rapor_kar': {'label': 'Kâr/Zarar Raporu', 'grup': 'Rapor'},
+    'excel_export': {'label': 'Excel Dışa Aktarma', 'grup': 'Diğer'},
+    'ayarlar': {'label': 'Ayarlar', 'grup': 'Sistem'},
+    'kullanici': {'label': 'Kullanıcı Yönetimi', 'grup': 'Sistem'},
+    'fiyat_degistir': {'label': 'Fiyat Değiştirme', 'grup': 'Ürün'},
+    'iskonto_ver': {'label': 'İskonto Verme', 'grup': 'Satış'},
+    'tedarik': {'label': 'Tedarik/Alım', 'grup': 'Stok'},
+  };
+
+  // Rol bazlı varsayılan yetkiler
+  static Set<String> rolVarsayilanlari(String rol) {
+    switch (rol) {
+      case 'admin':
+        return yetkiler.keys.toSet();
+      case 'mudur':
+        return yetkiler.keys.where((k) => !['kullanici', 'ayarlar'].contains(k)).toSet();
+      case 'kasiyer':
+        return {'satis', 'satis_liste', 'satis_iade', 'urun', 'cari', 'cari_hareket', 'stok', 'promosyon'};
+      case 'personel':
+        return {'satis', 'urun', 'cari', 'stok'};
+      case 'depocu':
+        return {'urun', 'stok', 'stok_sayim', 'tedarik'};
+      default:
+        return {'satis', 'urun'};
+    }
+  }
+}
+
+class KullaniciEkleEkrani extends ConsumerStatefulWidget {
+  final KullaniciModel? duzenlenecek;
+  const KullaniciEkleEkrani({super.key, this.duzenlenecek});
+  @override
+  ConsumerState<KullaniciEkleEkrani> createState() => _KullaniciEkleEkraniState();
+}
+
+class _KullaniciEkleEkraniState extends ConsumerState<KullaniciEkleEkrani>
+    with SingleTickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final _depo = KullaniciDeposu();
+  final _db = Veritabani();
+  late final TabController _tab;
+
+  final _adCtrl = TextEditingController();
+  final _uAdCtrl = TextEditingController();
+  final _sifreCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _telCtrl = TextEditingController();
+
+  String _rol = 'kasiyer';
+  bool _aktif = true;
+  bool _sifreGoster = false;
+  bool _kayit = false;
+  Set<String> _yetkiler = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
+    if (widget.duzenlenecek != null) {
+      _doldur(widget.duzenlenecek!);
+      _mevcutYetkileriYukle(widget.duzenlenecek!.id!);
+    } else {
+      _yetkiler = YetkiTanimlari.rolVarsayilanlari('kasiyer');
+    }
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    _adCtrl.dispose();
+    _uAdCtrl.dispose();
+    _sifreCtrl.dispose();
+    _emailCtrl.dispose();
+    _telCtrl.dispose();
+    super.dispose();
+  }
+
+  void _doldur(KullaniciModel k) {
+    _adCtrl.text = k.adSoyad;
+    _uAdCtrl.text = k.kullaniciAdi;
+    _emailCtrl.text = k.email ?? '';
+    _telCtrl.text = k.telefon ?? '';
+    _rol = k.rol;
+    _aktif = k.aktif;
+  }
+
+  Future<void> _mevcutYetkileriYukle(int kullaniciId) async {
+    try {
+      final db = await _db.db;
+      final rows = await db.query('roller_yetki',
+          where: 'kullanici_id = ?', whereArgs: [kullaniciId]);
+      if (!mounted) return;
+      setState(() => _yetkiler = rows.map((r) => r['yetki_kodu'] as String).toSet());
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _yetkiler = YetkiTanimlari.rolVarsayilanlari(_rol));
+    }
+  }
+
+  Future<void> _yetkileriKaydet(int kullaniciId) async {
+    final db = await _db.db;
+    final now = DateTime.now().toIso8601String();
+    final gidler = <String>[];
+    // Transaction: delete+insert atomik — yarım kayıt olmaz
+    await db.transaction((txn) async {
+      await txn.delete('roller_yetki',
+          where: 'kullanici_id = ?', whereArgs: [kullaniciId]);
+      for (final yetki in _yetkiler) {
+        final gid = const Uuid().v4();
+        gidler.add(gid);
+        await txn.insert(
+          'roller_yetki',
+          {
+            'kullanici_id': kullaniciId,
+            'yetki_kodu': yetki,
+            'created_at': now,
+            'global_id': gid,
+            'last_updated': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+    // 🔴🔴 Derin analizde bulundu: 'roller_yetki' (kullanıcıya özel
+    // yetki override'ları) senkron sisteminde HİÇ yoktu — bir
+    // yöneticinin bir çalışana verdiği özel yetki, o çalışan başka bir
+    // terminalden giriş yaptığında hiç görünmüyordu. Artık her satır
+    // için BulutManager çağrılıyor.
+    try {
+      for (final gid in gidler) {
+        final satir = await db.query('roller_yetki', where: 'global_id = ?', whereArgs: [gid], limit: 1);
+        if (satir.isNotEmpty) BulutManager().upsert('roller_yetki', Map<String, dynamic>.from(satir.first));
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('Yetki bulut bildirimi hatası: $e');
+    }
+    if (kDebugMode) debugPrint('✅ ${_yetkiler.length} yetki kaydedildi: kullanici=$kullaniciId');
+  }
+
+  Future<void> _kaydet() async {
+    // Tab 1'e geçerek form validate edilmeli
+    _tab.animateTo(0);
+    await Future.delayed(const Duration(milliseconds: 150));
+    if (!mounted) return;
+    if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
+      BildirimServisi.uyari(context, 'Lütfen zorunlu alanları doldurun');
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _kayit = true);
+    try {
+      int kullaniciId;
+
+      if (widget.duzenlenecek == null) {
+        // YENİ KULLANICI
+        final yeniTuz = SifreHash.tuzUret();
+        final sifreHash = SifreHash.hashleTuzlu(_sifreCtrl.text.trim(), yeniTuz);
+        final model = KullaniciModel(
+          kullaniciAdi: _uAdCtrl.text.trim(),
+          sifreHash: sifreHash,
+          tuz: yeniTuz,
+          adSoyad: _adCtrl.text.trim(),
+          rol: _rol,
+          aktif: _aktif,
+          email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+          telefon: _telCtrl.text.trim().isEmpty ? null : _telCtrl.text.trim(),
+        );
+        kullaniciId = await _depo.ekle(model);
+      } else {
+        // KULLANICI GÜNCELLE
+        String yeniSifreHash;
+        String? yeniTuz;
+        if (_sifreCtrl.text.trim().isNotEmpty) {
+          yeniTuz = SifreHash.tuzUret();
+          yeniSifreHash = SifreHash.hashleTuzlu(_sifreCtrl.text.trim(), yeniTuz);
+        } else {
+          yeniSifreHash = widget.duzenlenecek!.sifreHash;
+          yeniTuz = widget.duzenlenecek!.tuz;
+        }
+
+        final model = KullaniciModel(
+          id: widget.duzenlenecek!.id,
+          kullaniciAdi: _uAdCtrl.text.trim(),
+          sifreHash: yeniSifreHash,
+          tuz: yeniTuz,
+          adSoyad: _adCtrl.text.trim(),
+          rol: _rol,
+          aktif: _aktif,
+          email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+          telefon: _telCtrl.text.trim().isEmpty ? null : _telCtrl.text.trim(),
+        );
+        await _depo.guncelle(model);
+        kullaniciId = widget.duzenlenecek!.id!;
+      }
+
+      // Yetkileri kaydet
+      await _yetkileriKaydet(kullaniciId);
+
+      if (mounted) {
+        BildirimServisi.basari(
+          context,
+          widget.duzenlenecek == null ? 'Kullanıcı eklendi' : 'Kullanıcı güncellendi',
+        );
+        Navigator.pop(context, true);
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        final msg = e.toString().contains('UNIQUE') 
+            ? 'Bu kullanıcı adı zaten kayıtlı!'
+            : 'Kayıt hatası: $e';
+        BildirimServisi.hata(context, msg);
+      }
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Beklenmeyen hata: $e');
+    } finally {
+      if (mounted) setState(() => _kayit = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gruplar = YetkiTanimlari.yetkiler.values
+        .map((v) => v['grup']!)
+        .toSet()
+        .toList()
+      ..sort();
+
+    return Scaffold(
+      backgroundColor: TsRenk.arkaplan(context),
+      appBar: TsAppBar(
+        baslikWidget: Text(widget.duzenlenecek == null ? 'Kullanıcı Ekle' : 'Kullanıcı Düzenle'),
+        aksiyonlar: [
+          IconButton(
+            icon: const Icon(Icons.save, color: Colors.white),
+            onPressed: _kayit ? null : _kaydet,
+            tooltip: 'Kaydet',
+          )
+        ],
+        alt: TabBar(
+          controller: _tab,
+          tabs: const [
+            Tab(icon: Icon(Icons.person), text: 'Bilgiler'),
+            Tab(icon: Icon(Icons.security), text: 'Yetkiler'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tab,
+        children: [
+          // ── TAB 1: Temel Bilgiler ──────────────────────────────────────
+          Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _alan(_adCtrl, 'Ad Soyad *', Icons.person, zorunlu: true),
+                const SizedBox(height: TsBosluk.md),
+                _alan(_uAdCtrl, 'Kullanıcı Adı *', Icons.account_circle, zorunlu: true),
+                const SizedBox(height: TsBosluk.md),
+                TextFormField(
+                  controller: _sifreCtrl,
+                  obscureText: !_sifreGoster,
+                  decoration: InputDecoration(
+                    labelText: widget.duzenlenecek == null
+                        ? 'Şifre *'
+                        : 'Yeni Şifre (boş = değiştirme)',
+                    prefixIcon: const Icon(Icons.lock),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    suffixIcon: IconButton(
+                      icon: Icon(_sifreGoster ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () => setState(() => _sifreGoster = !_sifreGoster),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                  ),
+                  validator: widget.duzenlenecek == null
+                      ? (v) => (v == null || v.length < 4) ? 'En az 4 karakter' : null
+                      : null,
+                ),
+                const SizedBox(height: TsBosluk.md),
+                _alan(_emailCtrl, 'E-posta', Icons.email),
+                const SizedBox(height: TsBosluk.md),
+                _alan(_telCtrl, 'Telefon', Icons.phone),
+                const SizedBox(height: TsBosluk.lg),
+                DropdownButtonFormField<String>(
+                  value: _rol,
+                  decoration: InputDecoration(
+                    labelText: 'Rol',
+                    prefixIcon: const Icon(Icons.security),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: TsRenk.arkaplan(context),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'admin', child: Text('Admin (Tüm Yetkiler)')),
+                    DropdownMenuItem(value: 'mudur', child: Text('Müdür')),
+                    DropdownMenuItem(value: 'kasiyer', child: Text('Kasiyer')),
+                    DropdownMenuItem(value: 'personel', child: Text('Personel')),
+                    DropdownMenuItem(value: 'depocu', child: Text('Depocu')),
+                  ],
+                  onChanged: (v) => setState(() {
+                    _rol = v!;
+                    _yetkiler = YetkiTanimlari.rolVarsayilanlari(v);
+                  }),
+                ),
+                const SizedBox(height: TsBosluk.lg),
+                TsKart(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Hesap Aktif',
+                        style: TextStyle(fontWeight: FontWeight.w600, color: TsRenk.metinBirincil(context))),
+                    subtitle: Text('Pasif kullanıcılar giriş yapamaz',
+                        style: TextStyle(color: TsRenk.metinIkincil(context))),
+                    value: _aktif,
+                    onChanged: (v) => setState(() => _aktif = v),
+                  ),
+                ),
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
+
+          // ── TAB 2: Yetki Kısıtlama ──────────────────────────────────────
+          ListView(
+            padding: const EdgeInsets.all(12),
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: TsKart(
+                  padding: const EdgeInsets.all(12),
+                  vurguRenk: TsRenk.bilgi,
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: TsRenk.bilgi, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'İşaretli ekranlar bu kullanıcı için erişilebilir olacak. '
+                          'İşaretsiz ekranlara erişim engellenecektir.',
+                          style: TextStyle(fontSize: 12, color: TsRenk.bilgi),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () =>
+                        setState(() => _yetkiler = YetkiTanimlari.yetkiler.keys.toSet()),
+                    child: const Text('Tümünü Seç'),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => _yetkiler.clear()),
+                    child: const Text('Tümünü Kaldır'),
+                  ),
+                ],
+              ),
+              ...gruplar.map((grup) {
+                final grupYetkiler = YetkiTanimlari.yetkiler.entries
+                    .where((e) => e.value['grup'] == grup)
+                    .toList();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: TsRenk.primaryKoyu,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            grup,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: TsRenk.primaryKoyu,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ...grupYetkiler.map((e) => CheckboxListTile(
+                      dense: true,
+                      title: Text(e.value['label']!, style: const TextStyle(fontSize: 13)),
+                      value: _yetkiler.contains(e.key),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (v) => setState(() {
+                        if (v!) {
+                          _yetkiler.add(e.key);
+                        } else {
+                          _yetkiler.remove(e.key);
+                        }
+                      }),
+                    )),
+                  ],
+                );
+              }),
+              const SizedBox(height: 80),
+            ],
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: TsRenk.primary,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        onPressed: _kayit ? null : _kaydet,
+        icon: _kayit
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.save),
+        label: const Text('Kaydet'),
+      ),
+    );
+  }
+
+  Widget _alan(
+    TextEditingController ctrl,
+    String label,
+    IconData icon, {
+    bool zorunlu = false,
+  }) {
+    return TsInput(
+      etiket: label,
+      controller: ctrl,
+      oncilIkon: icon,
+      dogrula: zorunlu ? (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null : null,
+    );
+  }
+}

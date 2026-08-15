@@ -1,0 +1,67 @@
+lib/
+├── ana.dart
+├── app.dart
+├── rotalar.dart
+├── yardimci/
+│   ├── sabitler.dart
+│   └── yardimci_fonksiyonlar.dart
+├── ekranlar/
+│   ├── ana_ekran.dart
+│   ├── ayarlar_ekrani.dart
+│   ├── giris_ekrani.dart
+│   ├── sifre_degistir_ekrani.dart
+│   ├── yazici_ayar_ekrani.dart
+│   ├── urun/
+│   │   ├── urun_liste_ekrani.dart
+│   │   ├── urun_detay_ekrani.dart
+│   │   └── urun_arama_ekrani.dart
+│   ├── stok/
+│   │   ├── stok_liste_ekrani.dart
+│   │   └── stok_hareket_ekrani.dart
+│   ├── satis/
+│   │   ├── hizli_satis_ekrani.dart
+│   │   ├── sepet_ekrani.dart
+│   │   └── pos_ekrani.dart
+│   ├── raporlar/
+│   │   ├── gunluk_rapor_ekrani.dart
+│   │   ├── stok_rapor_ekrani.dart
+│   │   └── gun_sonu_rapor_ekrani.dart
+│   └── ayarlar/
+│       ├── fiyat_guncelle_ekrani.dart
+│       └── veri_yedekleme_ekrani.dart
+├── modeller/
+│   ├── urun.dart
+│   ├── stok_hareket.dart
+│   ├── fiyat_gecmis.dart
+│   ├── promosyon.dart
+│   ├── satis.dart
+│   ├── satis_kalem.dart
+│   ├── musteri.dart
+│   └── kullanici.dart
+├── repozitory/
+│   ├── urun_repo.dart
+│   ├── stok_repo.dart
+│   ├── fiyat_repo.dart
+│   ├── satis_repo.dart
+│   ├── rapor_repo.dart
+│   ├── musteri_repo.dart
+│   ├── promosyon_repo.dart
+│   └── kullanici_repo.dart
+├── servisler/
+│   ├── urun_servisi.dart
+│   ├── fiyat_yonetimi.dart
+│   ├── stok_servisi.dart
+│   ├── rapor_servisi.dart
+│   ├── barkod_servisi.dart
+│   ├── excel_servisi.dart
+│   ├── senkronizasyon_servisi.dart
+│   ├── veritabani_yardimcisi.dart
+│   ├── uygulama_ayarlari.dart
+│   ├── kimlik_dogrulama.dart
+│   └── satis_servisi.dart
+└── widgetlar/
+    ├── urun_kart.dart
+    ├── fiyat_etiket.dart
+    ├── stok_uyari.dart
+    ├── barkod_tarayici.dart
+    └── tarih_secici.dart

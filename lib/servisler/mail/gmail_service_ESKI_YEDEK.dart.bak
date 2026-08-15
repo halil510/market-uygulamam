@@ -1,0 +1,44 @@
+// lib/servisler/mail/gmail_service.dart
+import 'mail_service.dart';
+
+class GmailService implements MailService {
+  String? _accessToken;
+  String? _refreshToken;
+  String? _email;
+  bool _bagli = false;
+
+  @override
+  bool get bagli => _bagli;
+
+  @override
+  String get hesapAdi => _email ?? '';
+
+  @override
+  Future<bool> baglan() async {
+    // TODO: Gerçek Gmail OAuth2 entegrasyonu
+    _bagli = true;
+    _email = 'ornek@gmail.com';
+    return true;
+  }
+
+  @override
+  Future<void> cikis() async {
+    _bagli = false;
+    _accessToken = null;
+    _refreshToken = null;
+  }
+
+  @override
+  Future<List<Mail>> oku({int limit = 50, String? etiket}) async {
+    if (!_bagli) return [];
+    // TODO: Gmail API'den mail çek
+    return [];
+  }
+
+  @override
+  Future<bool> gonder({required String to, required String subject, required String body}) async {
+    if (!_bagli) return false;
+    // TODO: Gmail API ile mail gönder
+    return true;
+  }
+}

@@ -1,0 +1,43 @@
+group 'net.nfet.flutter.printing'
+version '1.0'
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        // Gradle Plugin sürümünü güncel tutmak önemli, 7.0.0 ve sonrası namespace zorunlu
+        classpath 'com.android.tools.build:gradle:7.4.2'
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'net.nfet.flutter.printing'  // Buraya namespace ekledik
+
+    compileSdkVersion 33  // Güncel SDK versiyonu
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 33  // Hedef SDK sürümünü de eklemek iyi olur
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lintOptions {
+        disable 'InvalidPackage'
+    }
+}

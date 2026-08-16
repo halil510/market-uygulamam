@@ -1,0 +1,26 @@
+name: libphonenumber_example
+description: Demonstrates how to use the libphonenumber plugin.
+
+publish_to: 'none' 
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  libphonenumber_plugin:
+    path: ../
+
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_lints: ^3.0.1
+  integration_test:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

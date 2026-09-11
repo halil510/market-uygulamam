@@ -23,6 +23,7 @@ import "../../modeller/banka_hesap_model.dart";
 import "../../modeller/kredi_karti_model.dart";
 import "../../servisler/auth_servisi.dart";
 import "../../servisler/bildirim_servisi.dart";
+import "../../servisler/bulut/bulut_manager.dart";
 import "../../cekirdek/utils/para_utils.dart";
 
 class TahsilatOdemeEkrani extends ConsumerStatefulWidget {
@@ -207,46 +208,87 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
       // ══════════════════════════════════════════════════════════════════
       final oncekiBakiye = _cari?.bakiye ?? 0;
 
-      await _depo.hareketEkle(CariHareketModel(
-        cariId: widget.cariId,
-        tarih: DateTime.now(),
-        fisTipi: _islemTipi,
-        aciklama: _aciklamaCtrl.text.trim().isEmpty ? '$_islemTipi - $_odemeTuru' : _aciklamaCtrl.text.trim(),
-        borc: _islemTipi == 'Odeme' ? tutar : 0,
-        alacak: _islemTipi == 'Tahsilat' ? tutar : 0,
-        odemeTuru: _odemeTuru,
-        kullanici: kasiyer,
-      ));
-      // 🔴 DÜZELTME (kullanıcı bulgusu): "Banka"/"Kredi Kartı" seçilse
-      // bile önceden HİÇBİR gerçek hareket oluşturulmuyordu — sadece
-      // cari bakiyesi değişiyor, şirketin gerçek banka bakiyesi/kart
-      // limiti hiç etkilenmiyordu. Artık BorcOdemeIslemServisi'ndeki
-      // AYNI, doğru desen uygulanıyor. "Borç Ekle" (tedarikçi, veresiye
-      // kayıt) için hiçbir para hareketi oluşturulmaz — bu doğru,
-      // çünkü henüz gerçek bir ödeme yapılmamıştır.
-      if (_paraHareketEdiyor) {
-        if (_odemeTuru == 'Nakit') {
-          await KasaDeposu().hareketEkle(KasaHareketModel(
-            hareketTipi: _islemTipi == 'Tahsilat' ? 'Tahsilat' : 'Ödeme',
-            tutar: tutar,
-            tarih: DateTime.now(),
-            aciklama: '${_cari?.unvan ?? 'Cari'} - $_islemTipi',
-          ));
-        } else if (_odemeTuru == 'Banka' || _odemeTuru == 'Havale') {
-          await BankaHareketDeposu().ekle(BankaHareketModel(
-            bankaHesapId: _secilenHesap!.id!,
-            islemTipi: _paraCikiyor ? 'Giden' : 'Gelen',
-            tutar: tutar,
-            aciklama: '${_cari?.unvan ?? 'Cari'} - $_islemTipi',
-            tarih: DateTime.now(),
-          ));
-        } else if (_odemeTuru == 'Kredi Kartı') {
-          // Kredi kartı sadece PARA ÇIKIŞI (ödeme) senaryosunda anlamlıdır
-          // — bir müşteriden kredi kartıyla "tahsilat" bu ekranın kapsamı
-          // dışında (o zaten Satış ekranından yapılır).
-          await KrediKartiDeposu().limitDegistir(_secilenKart!.id!, tutar,
-              aciklama: '${_cari?.unvan ?? 'Cari'} - $_islemTipi');
+      // 🔴🔴 DÜZELTME (derin analizde bulundu): Cari hareket ve gerçek para
+      // hareketi (kasa/banka/kart) önceden İKİ AYRI, transaction'sız çağrı
+      // idi — ikincisi herhangi bir nedenle başarısız olursa cari bakiyesi
+      // güncellenmiş ama kasaya/bankaya hiç para girmemiş/çıkmamış gibi
+      // görünüyordu (kasa sayımı ile sistem bakiyesi tutmaz hale gelirdi).
+      // Artık BorcOdemeIslemServisi'ndeki desenle aynı şekilde TEK bir
+      // db.transaction() içinde atomik olarak yürütülüyor.
+      final db = await Veritabani().db;
+      String? cariHareketGlobalId;
+      int? kasaHareketId;
+      int? bankaHareketId;
+      int? krediHareketId;
+
+      await db.transaction((txn) async {
+        cariHareketGlobalId = await _depo.hareketEkleTxn(txn, CariHareketModel(
+          cariId: widget.cariId,
+          tarih: DateTime.now(),
+          fisTipi: _islemTipi,
+          aciklama: _aciklamaCtrl.text.trim().isEmpty ? '$_islemTipi - $_odemeTuru' : _aciklamaCtrl.text.trim(),
+          borc: _islemTipi == 'Odeme' ? tutar : 0,
+          alacak: _islemTipi == 'Tahsilat' ? tutar : 0,
+          odemeTuru: _odemeTuru,
+          kullanici: kasiyer,
+        ));
+        // 🔴 DÜZELTME (kullanıcı bulgusu): "Banka"/"Kredi Kartı" seçilse
+        // bile önceden HİÇBİR gerçek hareket oluşturulmuyordu — sadece
+        // cari bakiyesi değişiyor, şirketin gerçek banka bakiyesi/kart
+        // limiti hiç etkilenmiyordu. Artık BorcOdemeIslemServisi'ndeki
+        // AYNI, doğru desen uygulanıyor. "Borç Ekle" (tedarikçi, veresiye
+        // kayıt) için hiçbir para hareketi oluşturulmaz — bu doğru,
+        // çünkü henüz gerçek bir ödeme yapılmamıştır.
+        if (_paraHareketEdiyor) {
+          if (_odemeTuru == 'Nakit') {
+            kasaHareketId = await KasaDeposu().hareketEkleTxn(txn, KasaHareketModel(
+              hareketTipi: _islemTipi == 'Tahsilat' ? 'Tahsilat' : 'Ödeme',
+              tutar: tutar,
+              tarih: DateTime.now(),
+              aciklama: '${_cari?.unvan ?? 'Cari'} - $_islemTipi',
+            ));
+          } else if (_odemeTuru == 'Banka' || _odemeTuru == 'Havale') {
+            bankaHareketId = await BankaHareketDeposu().ekleTxn(txn, BankaHareketModel(
+              bankaHesapId: _secilenHesap!.id!,
+              islemTipi: _paraCikiyor ? 'Giden' : 'Gelen',
+              tutar: tutar,
+              aciklama: '${_cari?.unvan ?? 'Cari'} - $_islemTipi',
+              tarih: DateTime.now(),
+            ));
+          } else if (_odemeTuru == 'Kredi Kartı') {
+            // Kredi kartı sadece PARA ÇIKIŞI (ödeme) senaryosunda anlamlıdır
+            // — bir müşteriden kredi kartıyla "tahsilat" bu ekranın kapsamı
+            // dışında (o zaten Satış ekranından yapılır).
+            krediHareketId = await KrediKartiDeposu().limitDegistirTxn(txn, _secilenKart!.id!, tutar,
+                aciklama: '${_cari?.unvan ?? 'Cari'} - $_islemTipi');
+          }
         }
+      });
+
+      // Transaction kalıcı oldu — bulut senkronunu şimdi tetikle (bkz.
+      // KasaDeposu.hareketEkleTxn'deki aynı gerekçe: commit'ten önce
+      // senkronlamak, geri alınırsa buluta var olmayan satır gönderirdi).
+      Future<void> sync(String tablo, dynamic id) async {
+        if (id == null) return;
+        final satir = await db.query(tablo, where: 'id = ?', whereArgs: [id], limit: 1);
+        if (satir.isNotEmpty) BulutManager().upsert(tablo, Map<String, dynamic>.from(satir.first));
+      }
+      if (cariHareketGlobalId != null) {
+        final satir = await db.query('cari_hareket', where: 'global_id = ?', whereArgs: [cariHareketGlobalId], limit: 1);
+        if (satir.isNotEmpty) BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(satir.first));
+      }
+      final cariSatir = await db.query('cari', where: 'id = ?', whereArgs: [widget.cariId], limit: 1);
+      if (cariSatir.isNotEmpty) BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
+      await sync('kasa_hareketleri', kasaHareketId);
+      if (bankaHareketId != null) {
+        await sync('banka_hareketler', bankaHareketId);
+        final hesapSatir = await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [_secilenHesap!.id], limit: 1);
+        if (hesapSatir.isNotEmpty) BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
+      }
+      if (krediHareketId != null) {
+        await sync('kredi_karti_hareket', krediHareketId);
+        final kartSatir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [_secilenKart!.id], limit: 1);
+        if (kartSatir.isNotEmpty) BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
       }
       // ══════════════════════════════════════════════════════════════════
       // 🆕 TAHSİLAT / TEDİYE MAKBUZU YAZDIRMA

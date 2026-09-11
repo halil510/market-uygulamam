@@ -73,73 +73,123 @@ class BorcOdemeIslemServisi {
       throw Exception('Kredi kartı seçilmedi');
     }
 
-    // 1. Borcun ödenen tutarını güncelle (mevcut, doğru çalışan metod)
-    await _borcDepo.odemeYap(borc.id!, tutar);
+    // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): Önceden bu akışın
+    // adım 1'i (_borcDepo.odemeYap) KENDİ İÇİNDE 'Nakit' etiketiyle bir
+    // borc_odemeler kaydı oluşturuyordu, adım 2 de AYRICA (doğru ödeme
+    // yöntemiyle) kendi kaydını oluşturuyordu — yani TEK bir ödeme için
+    // borc_odemeler tablosuna İKİ satır giriyordu (biri hep 'Nakit'
+    // etiketli, gerçek yöntem ne olursa olsun). Bu hem ödeme geçmişini
+    // bozuyor hem de BorcDeposu.odemeMutabakatYap() borc_odemeler
+    // toplamından odenen_tutar'ı yeniden hesapladığında borcu OLDUĞUNDAN
+    // FAZLA ödenmiş gösterebiliyordu. Ayrıca hiçbiri ortak bir transaction
+    // içinde değildi — adım 3 (gerçek para hareketi) başarısız olursa borç
+    // "ödendi" görünüp kasada/bankada hiç hareket olmayabiliyordu.
+    //
+    // Artık TÜM adımlar TEK bir db.transaction() içinde, atomik olarak
+    // yürütülüyor; borç güncellemesi kendi ödeme geçmişi kaydını OLUŞTURMUYOR
+    // (gecmisKaydet: false) — tek kayıt, doğru yöntemle, adım 2'de oluşuyor.
+    final db = await Veritabani().db;
 
-    // 2. Ödeme geçmişi kaydı (Borç Detayı'nda görünür)
-    await _odemeDepo.ekle(BorcOdemeModel(
-      borcId: borc.id!,
-      tutar: tutar,
-      tarih: DateTime.now(),
-      odemeYontemi: odemeYontemi,
-      bankaHesapId: bankaGerekli ? bankaHesapId : null,
-      krediKartiId: kartGerekli ? krediKartiId : null,
-      aciklama: aciklama,
-      referansNo: referansNo,
-    ));
+    int? odemeGecmisId;
+    int? bankaHareketId;
+    int? krediHareketId;
+    int? kasaHareketId;
+    int? giderId;
+    bool kategoriYeniOlusturuldu = false;
+    late int kategoriId;
 
-    // 3. Ödeme yöntemine göre gerçek para hareketi
-    if (bankaGerekli) {
-      await _bankaHareketDepo.ekle(BankaHareketModel(
-        bankaHesapId: bankaHesapId!,
-        islemTipi: 'Giden',
+    await db.transaction((txn) async {
+      // 1. Borcun ödenen tutarını güncelle — kendi ödeme geçmişi kaydını
+      // OLUŞTURMAZ, onu adım 2 (doğru ödeme yöntemiyle) oluşturur.
+      await _borcDepo.odemeYapTxn(txn, borc.id!, tutar, gecmisKaydet: false);
+
+      // 2. Ödeme geçmişi kaydı (Borç Detayı'nda görünür)
+      odemeGecmisId = await _odemeDepo.ekleTxn(txn, BorcOdemeModel(
+        borcId: borc.id!,
         tutar: tutar,
-        aciklama: '${borc.baslik} - Borç Ödemesi',
         tarih: DateTime.now(),
+        odemeYontemi: odemeYontemi,
+        bankaHesapId: bankaGerekli ? bankaHesapId : null,
+        krediKartiId: kartGerekli ? krediKartiId : null,
+        aciklama: aciklama,
         referansNo: referansNo,
       ));
-    } else if (kartGerekli) {
-      final kart = await _krediKartiDepo.idileGetir(krediKartiId!);
-      if (kart != null) {
-        await _krediKartiDepo.limitDegistir(krediKartiId, tutar,
+
+      // 3. Ödeme yöntemine göre gerçek para hareketi
+      if (bankaGerekli) {
+        bankaHareketId = await _bankaHareketDepo.ekleTxn(txn, BankaHareketModel(
+          bankaHesapId: bankaHesapId!,
+          islemTipi: 'Giden',
+          tutar: tutar,
+          aciklama: '${borc.baslik} - Borç Ödemesi',
+          tarih: DateTime.now(),
+          referansNo: referansNo,
+        ));
+      } else if (kartGerekli) {
+        krediHareketId = await _krediKartiDepo.limitDegistirTxn(txn, krediKartiId!, tutar,
             aciklama: '${borc.baslik} - Borç Ödemesi');
+      } else if (odemeYontemi == 'Nakit') {
+        kasaHareketId = await _kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
+          hareketTipi: 'Borç Ödemesi',
+          tutar: tutar,
+          referansId: borc.id,
+          referansTuru: 'borc_odeme',
+          aciklama: '${borc.baslik} - Borç Ödemesi',
+          tarih: DateTime.now(),
+        ));
       }
-    } else if (odemeYontemi == 'Nakit') {
-      await _kasaDepo.hareketEkle(KasaHareketModel(
-        hareketTipi: 'Borç Ödemesi',
+
+      // 4. Gerçek masraf kaydı — Giderler ekranında görünür (borç EKLENİRKEN
+      // değil, ÖDENİRKEN oluşur; aksi halde aynı tutar iki kez sayılırdı).
+      final kategoriSonuc = await _borcOdemeKategoriIdGetirTxn(txn);
+      kategoriId = kategoriSonuc.$1;
+      kategoriYeniOlusturuldu = kategoriSonuc.$2;
+      giderId = await _giderDepo.ekleTxn(txn, GiderModel(
+        kategoriId: kategoriId,
+        kategoriAdi: kBorcOdemeGiderKategoriAdi,
         tutar: tutar,
-        referansId: borc.id,
-        referansTuru: 'borc_odeme',
-        aciklama: '${borc.baslik} - Borç Ödemesi',
+        aciklama: '${borc.baslik}${aciklama != null ? ' — $aciklama' : ''}',
         tarih: DateTime.now(),
+        odemeYontemi: odemeYontemi,
       ));
+    });
+
+    // Transaction başarıyla kapandı (kalıcı oldu) — şimdi bulut senkronunu
+    // tetikle. KasaDeposu.hareketEkleTxn ile aynı gerekçe: commit'ten önce
+    // senkron göndermek, transaction geri alınırsa buluta var olmayan bir
+    // satır göndermiş olurdu.
+    Future<void> sync(String tablo, int? id) async {
+      if (id == null) return;
+      final satir = await db.query(tablo, where: 'id = ?', whereArgs: [id], limit: 1);
+      if (satir.isNotEmpty) BulutManager().upsert(tablo, Map<String, dynamic>.from(satir.first));
     }
 
-    // 4. Gerçek masraf kaydı — Giderler ekranında görünür (borç EKLENİRKEN
-    // değil, ÖDENİRKEN oluşur; aksi halde aynı tutar iki kez sayılırdı).
-    final kategoriId = await _borcOdemeKategoriIdGetir();
-    await _giderDepo.ekle(GiderModel(
-      kategoriId: kategoriId,
-      kategoriAdi: kBorcOdemeGiderKategoriAdi,
-      tutar: tutar,
-      aciklama: '${borc.baslik}${aciklama != null ? ' — $aciklama' : ''}',
-      tarih: DateTime.now(),
-      odemeYontemi: odemeYontemi,
-    ));
+    final borcSatir = await db.query('borclar', where: 'id = ?', whereArgs: [borc.id], limit: 1);
+    if (borcSatir.isNotEmpty) BulutManager().upsert('borclar', Map<String, dynamic>.from(borcSatir.first));
+    await sync('borc_odemeler', odemeGecmisId);
+    if (bankaGerekli) {
+      await sync('banka_hareketler', bankaHareketId);
+      final hesapSatir = await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [bankaHesapId], limit: 1);
+      if (hesapSatir.isNotEmpty) BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
+    } else if (kartGerekli) {
+      await sync('kredi_karti_hareket', krediHareketId);
+      final kartSatir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [krediKartiId], limit: 1);
+      if (kartSatir.isNotEmpty) BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
+    } else if (odemeYontemi == 'Nakit') {
+      await sync('kasa_hareketleri', kasaHareketId);
+    }
+    if (kategoriYeniOlusturuldu) await sync('gider_kategoriler', kategoriId);
+    await sync('giderler', giderId);
   }
 
   /// "Borç Ödemeleri" gider kategorisini bulur, yoksa oluşturur.
-  Future<int> _borcOdemeKategoriIdGetir() async {
-    final db = await Veritabani().db;
-    final mevcut = await db.query('gider_kategoriler',
+  /// Döndürülen kayıt: (kategoriId, yeniOlusturulduMu).
+  Future<(int, bool)> _borcOdemeKategoriIdGetirTxn(dynamic txn) async {
+    final mevcut = await txn.query('gider_kategoriler',
         where: 'ad = ?', whereArgs: [kBorcOdemeGiderKategoriAdi], limit: 1);
-    if (mevcut.isNotEmpty) return mevcut.first['id'] as int;
+    if (mevcut.isNotEmpty) return (mevcut.first['id'] as int, false);
     final now = DateTime.now().toIso8601String();
-    final id = await db.insert('gider_kategoriler', {'ad': kBorcOdemeGiderKategoriAdi, 'last_updated': now});
-    // 🔴 Derin analizde bulundu: last_updated hiç ayarlanmıyordu,
-    // BulutManager hiç çağrılmıyordu.
-    final satir = await db.query('gider_kategoriler', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('gider_kategoriler', Map<String, dynamic>.from(satir.first));
-    return id;
+    final id = await txn.insert('gider_kategoriler', {'ad': kBorcOdemeGiderKategoriAdi, 'last_updated': now}) as int;
+    return (id, true);
   }
 }

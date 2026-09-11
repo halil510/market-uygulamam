@@ -14,28 +14,33 @@ class GiderDeposu {
   Future<int> ekle(GiderModel g) async {
     try {
       final db = await _d;
-      final now = DateTime.now().toIso8601String();
-      final m = g.toMap();
-      m.remove('id');
-      // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): 'giderler'
-      // tablosu global_id ile senkron sisteminde kayıtlı olduğu halde
-      // (_uniqueAlan haritası) buraya HİÇ global_id atanmıyordu — her
-      // yeni gider, senkron için gerekli çakışma anahtarı olmadan
-      // buluta gönderiliyordu.
-      m['global_id'] ??= const Uuid().v4();
-      m['last_updated'] = now;
-      // Kâr-Zarar raporunda giderler artık şubeye göre filtreleniyor —
-      // yeni giderin de o filtrede görünmesi için boşsa aktif şubeden
-      // otomatik dolduruluyor.
-      m['sube_id'] ??= AktifSubeServisi().subeId;
-      final _gid = await db.insert('giderler', m);
-      final satir = await db.query('giderler', where: 'id = ?', whereArgs: [_gid], limit: 1);
+      final gid = await db.transaction((txn) => ekleTxn(txn, g));
+      final satir = await db.query('giderler', where: 'id = ?', whereArgs: [gid], limit: 1);
       if (satir.isNotEmpty) BulutManager().upsert('giderler', Map<String, dynamic>.from(satir.first));
-      return _gid;
+      return gid;
     } catch (e, st) {
       LogServisi().hata('Gider.ekle', hata: e, yigin: st);
       rethrow;
     }
+  }
+
+  /// [ekle] ile aynı mantık, VERİLEN transaction içinde çalışır.
+  Future<int> ekleTxn(dynamic txn, GiderModel g) async {
+    final now = DateTime.now().toIso8601String();
+    final m = g.toMap();
+    m.remove('id');
+    // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): 'giderler'
+    // tablosu global_id ile senkron sisteminde kayıtlı olduğu halde
+    // (_uniqueAlan haritası) buraya HİÇ global_id atanmıyordu — her
+    // yeni gider, senkron için gerekli çakışma anahtarı olmadan
+    // buluta gönderiliyordu.
+    m['global_id'] ??= const Uuid().v4();
+    m['last_updated'] = now;
+    // Kâr-Zarar raporunda giderler artık şubeye göre filtreleniyor —
+    // yeni giderin de o filtrede görünmesi için boşsa aktif şubeden
+    // otomatik dolduruluyor.
+    m['sube_id'] ??= AktifSubeServisi().subeId;
+    return await txn.insert('giderler', m);
   }
 
   // 🔴 DÜZELTME (derin analizde bulundu): Bu depoda hiç guncelle()

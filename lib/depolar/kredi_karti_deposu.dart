@@ -126,29 +126,11 @@ class KrediKartiDeposu {
   Future<void> limitDegistir(int id, double delta, {String aciklama = ''}) async {
     try {
       final db = await _d;
-      final kart = await idileGetir(id);
-      if (kart == null) return;
-
-      final hareketId = await db.insert('kredi_karti_hareket', {
-        // 🔴 Derin analizde bulundu: global_id hiç ayarlanmıyordu —
-        // bu tablo senkron sisteminde olduğu için her kayıt kimliksiz
-        // kalıyordu.
-        'global_id': const Uuid().v4(),
-        'kredi_karti_id': id,
-        'tutar': delta.abs(),
-        'yon': delta >= 0 ? 'harcama' : 'odeme',
-        'aciklama': aciklama,
-        'tarih': DateTime.now().toIso8601String(),
-        'last_updated': DateTime.now().toIso8601String(),
+      int? hareketId;
+      await db.transaction((txn) async {
+        hareketId = await limitDegistirTxn(txn, id, delta, aciklama: aciklama);
       });
-
-      final yeniKullanilan = await _kullanilanLimitHesapla(id);
-      final kalan = (kart.kartLimit - yeniKullanilan).clamp(0, double.infinity);
-      await db.update('kredi_kartlari', {
-        'kullanilan_limit': yeniKullanilan,
-        'kalan_limit': kalan,
-        'last_updated': DateTime.now().toIso8601String(),
-      }, where: 'id = ?', whereArgs: [id]);
+      if (hareketId == null) return; // kart bulunamadı
 
       // 🔴 Derin analizde bulundu: bu fonksiyon hiçbir zaman BulutManager
       // çağırmıyordu — kredi kartı hareketleri ve limit güncellemeleri
@@ -165,6 +147,38 @@ class KrediKartiDeposu {
       LogServisi().hata('KrediKartiDeposu.limitDegistir', hata: e, yigin: st);
       rethrow;
     }
+  }
+
+  /// [limitDegistir] ile aynı mantık, VERİLEN transaction içinde çalışır.
+  /// Kart bulunamazsa null döner (sessizce atlar — önceki davranışla aynı).
+  Future<int?> limitDegistirTxn(dynamic txn, int id, double delta, {String aciklama = ''}) async {
+    final kartRows = await txn.query('kredi_kartlari', where: 'id = ? AND aktif = 1', whereArgs: [id]);
+    if (kartRows.isEmpty) return null;
+    final kart = KrediKartiModel.fromMap(kartRows.first);
+
+    final hareketId = await txn.insert('kredi_karti_hareket', {
+      'global_id': const Uuid().v4(),
+      'kredi_karti_id': id,
+      'tutar': delta.abs(),
+      'yon': delta >= 0 ? 'harcama' : 'odeme',
+      'aciklama': aciklama,
+      'tarih': DateTime.now().toIso8601String(),
+      'last_updated': DateTime.now().toIso8601String(),
+    });
+
+    final toplamRows = await txn.rawQuery('''
+      SELECT COALESCE(SUM(CASE WHEN yon = 'harcama' THEN tutar ELSE -tutar END), 0) as toplam
+      FROM kredi_karti_hareket WHERE kredi_karti_id = ? AND is_deleted = 0
+    ''', [id]);
+    final yeniKullanilan = (toplamRows.first['toplam'] as num?)?.toDouble() ?? 0;
+    final kalan = (kart.kartLimit - yeniKullanilan).clamp(0, double.infinity);
+    await txn.update('kredi_kartlari', {
+      'kullanilan_limit': yeniKullanilan,
+      'kalan_limit': kalan,
+      'last_updated': DateTime.now().toIso8601String(),
+    }, where: 'id = ?', whereArgs: [id]);
+
+    return hareketId;
   }
 
   Future<double> _kullanilanLimitHesapla(int kartId) async {

@@ -125,30 +125,7 @@ class BorcDeposu {
   Future<void> odemeYap(int borcId, double tutar) async {
     try {
       final db = await _d;
-      final rows = await db.query('borclar', where: 'id = ?', whereArgs: [borcId]);
-      if (rows.isEmpty) return;
-      final tutarToplam = (rows.first['tutar'] as num).toDouble();
-      final eskiOdenen  = (rows.first['odenen_tutar'] as num?)?.toDouble() ?? 0;
-      final yeniOdenen  = eskiOdenen + tutar;
-      final odendiMi    = yeniOdenen >= tutarToplam;
-
-      await _odemeDeposu.ekle(BorcOdemeModel(
-        borcId: borcId,
-        tutar: tutar,
-        tarih: DateTime.now(),
-        odemeYontemi: 'Nakit',
-      ));
-
-      await db.update(
-        'borclar',
-        {
-          'odenen_tutar': yeniOdenen,
-          'odendi': odendiMi ? 1 : 0,
-          'last_updated': DateTime.now().toIso8601String(),
-        },
-        where: 'id = ?',
-        whereArgs: [borcId],
-      );
+      await db.transaction((txn) => odemeYapTxn(txn, borcId, tutar));
       final guncelSatir = await db.query('borclar', where: 'id = ?', whereArgs: [borcId], limit: 1);
       if (guncelSatir.isNotEmpty) {
         BulutManager().upsert('borclar', Map<String, dynamic>.from(guncelSatir.first));
@@ -157,6 +134,46 @@ class BorcDeposu {
       LogServisi().hata('BorcDeposu.odemeYap', hata: e, yigin: st);
       rethrow;
     }
+  }
+
+  /// [odemeYap] ile aynı mantık, VERİLEN transaction içinde çalışır —
+  /// kendi transaction'ını açmaz. Birden çok tabloyu (kasa/banka/kart +
+  /// gider gibi) TEK atomik transaction'da güncellemek isteyen çağıranlar
+  /// için (bkz. BorcOdemeIslemServisi).
+  ///
+  /// [gecmisKaydet]: true ise bu metot kendi `borc_odemeler` kaydını da
+  /// oluşturur (ödeme yöntemi her zaman 'Nakit' varsayılır — bu metodun
+  /// kendisi yöntem bilmiyor). Çağıran taraf zaten kendi (doğru ödeme
+  /// yöntemiyle) ödeme geçmişi kaydını oluşturuyorsa `false` geçilmeli,
+  /// aksi halde AYNI ödeme için borc_odemeler'e İKİ KAYIT girer — bu tam
+  /// olarak BorcOdemeIslemServisi.odemeYap()'ta bulunan bir hataydı.
+  Future<void> odemeYapTxn(dynamic txn, int borcId, double tutar, {bool gecmisKaydet = true}) async {
+    final rows = await txn.query('borclar', where: 'id = ?', whereArgs: [borcId]);
+    if (rows.isEmpty) return;
+    final tutarToplam = (rows.first['tutar'] as num).toDouble();
+    final eskiOdenen  = (rows.first['odenen_tutar'] as num?)?.toDouble() ?? 0;
+    final yeniOdenen  = eskiOdenen + tutar;
+    final odendiMi    = yeniOdenen >= tutarToplam;
+
+    if (gecmisKaydet) {
+      await _odemeDeposu.ekleTxn(txn, BorcOdemeModel(
+        borcId: borcId,
+        tutar: tutar,
+        tarih: DateTime.now(),
+        odemeYontemi: 'Nakit',
+      ));
+    }
+
+    await txn.update(
+      'borclar',
+      {
+        'odenen_tutar': yeniOdenen,
+        'odendi': odendiMi ? 1 : 0,
+        'last_updated': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [borcId],
+    );
   }
 
   Future<int> odemeMutabakatYap() async {

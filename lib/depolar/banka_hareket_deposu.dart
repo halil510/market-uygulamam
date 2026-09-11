@@ -21,35 +21,7 @@ class BankaHareketDeposu {
   Future<int> ekle(BankaHareketModel hareket) async {
     final db = await _d;
     try {
-      int? id;
-      await db.transaction((txn) async {
-        final sonBakiye = await _sonBakiyeTxn(txn, hareket.bankaHesapId);
-        final yeniBakiye = sonBakiye +
-            (hareket.islemTipi == 'Gelen' ? hareket.tutar : -hareket.tutar);
-
-        final m = hareket.toMap();
-        m.remove('id');
-        m['global_id'] ??= const Uuid().v4();
-        m['onceki_bakiye'] = sonBakiye;
-        m['sonraki_bakiye'] = yeniBakiye;
-
-        id = await txn.insert('banka_hareketler', m);
-
-        await txn.update(
-          'banka_hesaplar',
-          {
-            'bakiye': yeniBakiye,
-            // Bu uygulamada "bloke/rezerve tutar" kavramı henüz yok — bu
-            // yüzden kullanılabilir bakiye her zaman gerçek bakiyeyle
-            // aynı tutulur. Önceden bu alan HİÇ güncellenmiyordu, hesap
-            // oluşturulduğu andaki (genelde 0) değerde donup kalıyordu.
-            'kullanilabilir_bakiye': yeniBakiye,
-            'last_updated': DateTime.now().toIso8601String(),
-          },
-          where: 'id = ?',
-          whereArgs: [hareket.bankaHesapId],
-        );
-      });
+      final id = await db.transaction((txn) => ekleTxn(txn, hareket));
       // 🔴 Derin analizde bulundu: bu dosyada TEK BİR BulutManager
       // çağrısı bile yoktu — banka hareketleri ve bakiye güncellemeleri
       // sadece manuel "Buluta Gönder" ile gidiyordu, otomatik/anlık
@@ -63,11 +35,45 @@ class BankaHareketDeposu {
       if (hesapSatir.isNotEmpty) {
         BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
       }
-      return id!;
+      return id;
     } catch (e, st) {
       LogServisi().hata('BankaHareketDeposu.ekle', hata: e, yigin: st);
       rethrow;
     }
+  }
+
+  /// [ekle] ile aynı mantık, VERİLEN transaction içinde çalışır — kendi
+  /// transaction'ını açmaz. BulutManager bildirimini BURADA YAPMAZ (bkz.
+  /// KasaDeposu.hareketEkleTxn'deki aynı gerekçe): çağıranın transaction'ı
+  /// kapandıktan sonra kendi sorumluluğundadır.
+  Future<int> ekleTxn(Transaction txn, BankaHareketModel hareket) async {
+    final sonBakiye = await _sonBakiyeTxn(txn, hareket.bankaHesapId);
+    final yeniBakiye = sonBakiye +
+        (hareket.islemTipi == 'Gelen' ? hareket.tutar : -hareket.tutar);
+
+    final m = hareket.toMap();
+    m.remove('id');
+    m['global_id'] ??= const Uuid().v4();
+    m['onceki_bakiye'] = sonBakiye;
+    m['sonraki_bakiye'] = yeniBakiye;
+
+    final id = await txn.insert('banka_hareketler', m);
+
+    await txn.update(
+      'banka_hesaplar',
+      {
+        'bakiye': yeniBakiye,
+        // Bu uygulamada "bloke/rezerve tutar" kavramı henüz yok — bu
+        // yüzden kullanılabilir bakiye her zaman gerçek bakiyeyle
+        // aynı tutulur. Önceden bu alan HİÇ güncellenmiyordu, hesap
+        // oluşturulduğu andaki (genelde 0) değerde donup kalıyordu.
+        'kullanilabilir_bakiye': yeniBakiye,
+        'last_updated': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [hareket.bankaHesapId],
+    );
+    return id;
   }
 
   Future<double> _sonBakiyeTxn(Transaction txn, int hesapId) async {

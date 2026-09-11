@@ -13,13 +13,7 @@ class BorcOdemeDeposu {
   Future<int> ekle(BorcOdemeModel odeme) async {
     try {
       final db = await _d;
-      final m = odeme.toMap();
-      m.remove('id');
-      m['global_id'] ??= const Uuid().v4();
-      // 🔴 DÜZELTME: last_updated hiç bümlenmiyordu ve borc_odemeler
-      // senkron sistemine dahil edilmiş kayıt için bu şart.
-      m['last_updated'] ??= DateTime.now().toIso8601String();
-      final yeniId = await db.insert('borc_odemeler', m);
+      final yeniId = await db.transaction((txn) => ekleTxn(txn, odeme));
       final guncelSatir = await db.query('borc_odemeler', where: 'id = ?', whereArgs: [yeniId], limit: 1);
       if (guncelSatir.isNotEmpty) {
         BulutManager().upsert('borc_odemeler', Map<String, dynamic>.from(guncelSatir.first));
@@ -29,6 +23,15 @@ class BorcOdemeDeposu {
       LogServisi().hata('BorcOdemeDeposu.ekle', hata: e, yigin: st);
       rethrow;
     }
+  }
+
+  /// [ekle] ile aynı mantık, VERİLEN transaction içinde çalışır.
+  Future<int> ekleTxn(dynamic txn, BorcOdemeModel odeme) async {
+    final m = odeme.toMap();
+    m.remove('id');
+    m['global_id'] ??= const Uuid().v4();
+    m['last_updated'] ??= DateTime.now().toIso8601String();
+    return await txn.insert('borc_odemeler', m);
   }
 
   Future<List<BorcOdemeModel>> odemeleriGetir({int? borcId, int limit = 20}) async {

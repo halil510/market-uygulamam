@@ -138,6 +138,9 @@ class MigrasyonYonetici {
 
     // v52'den v53'e
     if (eskiVersiyon < 53) await _v52denV53e(db);
+
+    // v53'ten v54'e — Sync Çakışmaları tablosu (protokol §12)
+    if (eskiVersiyon < 54) await _v53denV54e(db);
   }
 
   // ==================== v1 -> v2 ====================
@@ -1939,4 +1942,33 @@ static Future<void> _v18denV19a(Database db) async {
     await _calistir(db, "ALTER TABLE urunler ADD COLUMN asgari_siparis_miktari REAL NOT NULL DEFAULT 0");
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  // v54: Sync Çakışmaları — iki cihaz aynı kaydı bağımsız değiştirdiğinde
+  // (ör. Cihaz A fiyatı 125, Cihaz B aynı anda 129 yapmışsa), senkron
+  // pull akışı önceden bunu SESSİZCE "son-yazan-kazanır" ile çözüyordu —
+  // kaybeden değişiklik hiçbir iz bırakmadan kayboluyordu. Artık üzerine
+  // yazmadan ÖNCE bu tabloya bir çakışma kaydı düşülüyor (Ayarlar → Sync
+  // Çakışmaları ekranından görülüp A/B/manuel çözülebiliyor); senkron
+  // DAVRANIŞI (hangi değerin kazanacağı) DEĞİŞMEDİ — sadece artık
+  // görünür ve denetlenebilir.
+  // ══════════════════════════════════════════════════════════════════════
+  static Future<void> _v53denV54e(Database db) async {
+    await _calistir(db, '''
+      CREATE TABLE IF NOT EXISTS sync_cakismalar (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tablo TEXT NOT NULL,
+        kayit_global_id TEXT,
+        alan_farklari TEXT,
+        yerel_kayit TEXT,
+        gelen_kayit TEXT,
+        tarih DATETIME NOT NULL,
+        cozuldu INTEGER NOT NULL DEFAULT 0,
+        cozum_tipi TEXT,
+        cozen_kullanici TEXT,
+        cozum_tarihi DATETIME
+      )
+    ''');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_sync_cakisma_cozuldu ON sync_cakismalar(cozuldu)');
+  }
 }

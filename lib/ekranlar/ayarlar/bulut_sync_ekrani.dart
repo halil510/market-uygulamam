@@ -16,7 +16,9 @@ import '../../servisler/puan_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../depolar/sync_cakisma_deposu.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 
 class BulutSyncEkrani extends ConsumerStatefulWidget {
   const BulutSyncEkrani({super.key});
@@ -41,11 +43,18 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
 
   final List<String> _loglar = [];
   SyncSonuc? _sonSonuc;
+  int _cozulmemisCakisma = 0;
 
   @override
   void initState() {
     super.initState();
     _ayarlariYukle();
+    _cakismaSayisiniYukle();
+  }
+
+  Future<void> _cakismaSayisiniYukle() async {
+    final sayi = await SyncCakismaDeposu().cozulmemisSayisi();
+    if (mounted) setState(() => _cozulmemisCakisma = sayi);
   }
 
   @override
@@ -235,6 +244,7 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
     }
     if (mounted) setState(() { _yukleniyor = false; _sonSonuc = sonuc; });
     _log('✅ BULUTTAN ALMA TAMAMLANDI: ${sonuc.ozet}');
+    _cakismaSayisiniYukle(); // yeni sync çakışması oluşmuş olabilir
   } catch (e) {
     // 🔴 DÜZELTME: Bu fonksiyonda (buluttan alma + 6 ayrı mutabakat
     // adımı) hiç try-catch yoktu — herhangi bir adımda hata olursa
@@ -437,6 +447,39 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
               ),
             ),
             const SizedBox(height: 12),
+
+            // SYNC ÇAKIŞMALARI (protokol §12) — iki cihaz aynı kaydı
+            // bağımsız değiştirdiğinde artık sessizce ezilmiyor, burada
+            // görünür ve çözülebiliyor (bkz. sync_cakismalari_ekrani.dart).
+            if (_cozulmemisCakisma > 0) ...[
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () async {
+                  await context.push('/ayarlar/sync-cakismalari');
+                  _cakismaSayisiniYukle();
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade300),
+                  ),
+                  child: Row(children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '$_cozulmemisCakisma çözülmemiş senkron çakışması var',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.orange.shade900),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: Colors.orange.shade800),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
 
             // SYNC BUTONLARI
             if (_bagliMi == true) ...[

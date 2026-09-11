@@ -10,6 +10,7 @@ import '../../cekirdek/utils/sifre_hash.dart';
 import '../../cekirdek/sabitler/uygulama_sabitleri.dart';
 import 'migrasyon_yonetici.dart';
 import 'tablolar/tablo_olusturucu.dart';
+import 'sync_cakisma_tespit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Veritabani {
@@ -426,6 +427,39 @@ class Veritabani {
     }
   }
 
+  /// Bir kaydın gelen (buluttan) sürümüyle üzerine yazılmadan HEMEN önce
+  /// çağrılır. Yerel ve gelen satır arasında metadata dışı gerçek bir alan
+  /// farkı varsa 'sync_cakismalar' tablosuna kalıcı bir kayıt düşer —
+  /// kaybedecek olan yerel değer(ler) böylece kaybolmadan önce arşivlenmiş
+  /// olur. Bu fonksiyon LWW SONUCUNU DEĞİŞTİRMEZ, sadece görünürlük ekler.
+  /// Fark tespiti saf/test edilebilir SyncCakismaTespit'te (bkz. o dosya).
+  Future<void> _cakismaKaydetGerekirse(
+    Database database,
+    String tablo,
+    Map<String, dynamic> yerelSatir,
+    Map<String, dynamic> gelenSatir,
+  ) async {
+    try {
+      final farklar = SyncCakismaTespit.farklariBul(yerelSatir, gelenSatir);
+      if (farklar.isEmpty) return; // gerçek bir fark yok, çakışma sayılmaz
+
+      final now = DateTime.now().toIso8601String();
+      await database.insert(DbSabitler.syncCakismalar, {
+        'tablo': tablo,
+        'kayit_global_id': gelenSatir['global_id']?.toString(),
+        'alan_farklari': jsonEncode(farklar),
+        'yerel_kayit': jsonEncode(yerelSatir),
+        'gelen_kayit': jsonEncode(gelenSatir),
+        'tarih': now,
+        'cozuldu': 0,
+      });
+    } catch (e, st) {
+      // Çakışma kaydı BEST-EFFORT'tur — burada bir hata olsa bile asıl
+      // senkron akışını (gelen değerin uygulanmasını) DURDURMAMALI.
+      LogServisi().hata('Veritabani._cakismaKaydetGerekirse', hata: e, yigin: st);
+    }
+  }
+
   Future<void> supaKayitlariEkle(
     String tablo,
     List<Map<String, dynamic>> kayitlar,
@@ -508,10 +542,10 @@ class Veritabani {
           // kaydından DAHA YENİYSE, o kayıt TAMAMEN ATLANIYOR (yerel,
           // henüz gönderilmemiş değişiklik korunuyor).
           final mevcut = await database.query(tablo,
-              columns: ['last_updated'],
               where: 'global_id = ?', whereArgs: [temiz['global_id']], limit: 1);
           if (mevcut.isNotEmpty) {
-            final yerelStr = mevcut.first['last_updated']?.toString();
+            final yerelSatir = mevcut.first;
+            final yerelStr = yerelSatir['last_updated']?.toString();
             final gelenStr = temiz['last_updated']?.toString();
             final yerelZaman = yerelStr != null ? DateTime.tryParse(yerelStr) : null;
             final gelenZaman = gelenStr != null ? DateTime.tryParse(gelenStr) : null;
@@ -520,6 +554,12 @@ class Veritabani {
               atlanan++;
               continue;
             }
+            // 🆕 SYNC ÇAKIŞMASI KAYDI (protokol §12): Üzerine yazmadan ÖNCE,
+            // yerel ve gelen satır arasında (metadata dışı) gerçek bir alan
+            // farkı varsa çakışma tablosuna düşülüyor. Senkron DAVRANIŞI
+            // (LWW ile gelen kazanır) DEĞİŞMİYOR — sadece artık görünür ve
+            // "Sync Çakışmaları" ekranından denetlenebilir/geri alınabilir.
+            await _cakismaKaydetGerekirse(database, tablo, yerelSatir, temiz);
           }
           await database.update(
             tablo,

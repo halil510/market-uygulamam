@@ -27,6 +27,27 @@ class SyncSemasi {
         son_id INTEGER, deleted_records TEXT
       )
     ''');
-  
+
+    // Sync Çakışmaları — iki cihaz aynı kaydı bağımsız değiştirdiğinde
+    // (protokol §12), sessiz "son-yazan-kazanır" overwrite'tan ÖNCE burada
+    // bir kayıt tutulur; kaybeden taraf denetlenebilir/manuel çözülebilir
+    // olsun diye. Bkz. SupabaseSyncServisi._cakismaKaydet.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${DbSabitler.syncCakismalar} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tablo TEXT NOT NULL,
+        kayit_global_id TEXT,
+        alan_farklari TEXT,
+        yerel_kayit TEXT,
+        gelen_kayit TEXT,
+        tarih DATETIME NOT NULL,
+        cozuldu INTEGER NOT NULL DEFAULT 0,
+        cozum_tipi TEXT,
+        cozen_kullanici TEXT,
+        cozum_tarihi DATETIME
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sync_cakisma_cozuldu ON ${DbSabitler.syncCakismalar}(cozuldu)');
   }
 }

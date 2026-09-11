@@ -17,6 +17,7 @@ import '../../../ekranlar/ayarlar/sync_ekrani.dart';
 import '../../../ekranlar/ayarlar/bulut_sync_ekrani.dart';
 import '../../../ekranlar/ayarlar/site_fotograflari_ekrani.dart';
 import '../../../ekranlar/ayarlar/audit_log_ekrani.dart';
+import '../../../ekranlar/ayarlar/sync_cakismalari_ekrani.dart';
 import '../../../ekranlar/toptan/fiyat_gruplari_ekrani.dart';
 import '../../../ekranlar/ayarlar/gib_ayar_ekrani.dart';
 import '../../../ekranlar/ayarlar/log_ekrani.dart';
@@ -33,6 +34,7 @@ List<GoRoute> ayarlarRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
         GoRoute(path: '/ayarlar/bulut-sync', name: 'ayarlar_bulut_sync', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const BulutSyncEkrani()),
         GoRoute(path: '/ayarlar/site-fotograflari', name: 'ayarlar_site_fotograflari', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const SiteFotograflariEkrani()),
         GoRoute(path: '/ayarlar/audit-log', name: 'ayarlar_audit_log', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const AuditLogEkrani()),
+        GoRoute(path: '/ayarlar/sync-cakismalari', name: 'ayarlar_sync_cakismalari', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const SyncCakismalariEkrani()),
         GoRoute(path: '/toptan/fiyat-gruplari', name: 'fiyat_gruplari', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const FiyatGruplariEkrani()),
         GoRoute(path: '/ayarlar/gib', name: 'ayarlar_gib', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const GibAyarEkrani()),
         GoRoute(path: '/ayarlar/log', name: 'ayarlar_log', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const LogEkrani()),

@@ -30,6 +30,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../widgetlar/ortak/yukleniyor_widget.dart';
 import '../../widgetlar/ortak/onay_dialog.dart';
 import '../../saglayicilar/riverpod/tema_provider.dart';
+import '../../servisler/bulut/supabase_ayarlari.dart';
 
 class AyarlarEkrani extends ConsumerStatefulWidget {
   const AyarlarEkrani({super.key});
@@ -354,8 +355,11 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
     // "Buluttan Al" yaptığı an TÜM eski veriler (borçlar dahil) buluttan
     // geri iniyordu — "temizlik" kalıcı olmuyordu. Artık Supabase
     // yapılandırılmışsa kullanıcı AÇIKÇA uyarılıyor.
-    final prefs = await SharedPreferences.getInstance();
-    final bulutUrl = prefs.getString('mp_supa_url') ?? '';
+    // 🔴 DÜZELTME: Burada 'mp_supa_url' (eski/kullanılmayan anahtar adı)
+    // okunuyordu — gerçek bağlantı bilgisi SupabaseAyarlari üzerinden
+    // (artık güvenli depoda) tutuluyor. Bu yüzden bu uyarı, Supabase
+    // gerçekten yapılandırılmış olsa bile HİÇBİR ZAMAN tetiklenmiyordu.
+    final bulutUrl = await SupabaseAyarlari.urlOku() ?? '';
     final bulutYapilandirilmis = bulutUrl.isNotEmpty;
 
     // await SharedPreferences sonrası — ekran kapanmış olabilir

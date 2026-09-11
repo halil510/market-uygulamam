@@ -13,7 +13,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import '../bulut/supabase_ayarlari.dart';
 
 class SiteIcerikServisi {
   static final SiteIcerikServisi _instance = SiteIcerikServisi._();
@@ -24,9 +24,8 @@ class SiteIcerikServisi {
   static const String _anahtar = 'isyeri_gorselleri';
 
   Future<(String, String)?> _ayar() async {
-    final prefs = await SharedPreferences.getInstance();
-    final url = prefs.getString('mp_supabase_url');
-    final key = prefs.getString('mp_supabase_key');
+    final url = await SupabaseAyarlari.urlOku();
+    final key = await SupabaseAyarlari.keyOku();
     if (url == null || key == null || url.isEmpty || key.isEmpty) return null;
     return (url, key);
   }

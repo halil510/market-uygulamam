@@ -1,9 +1,9 @@
 // lib/servisler/bulut/supabase_saglayici.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'bulut_saglayici.dart';
+import 'supabase_ayarlari.dart';
 import '../kolon_haritalama.dart';
 import '../../veri/database/veritabani.dart';
 
@@ -369,18 +369,16 @@ class SupabaseSaglayici implements IBulutSaglayici {
 
   @override
   Future<void> ayarlariKaydet(Map<String,String> ayarlar) async {
-    final p = await SharedPreferences.getInstance();
-    for (final e in ayarlar.entries) {
-      await p.setString('mp_supa_${e.key}', e.value);
-    }
+    final mevcutUrl = ayarlar['url'] ?? await SupabaseAyarlari.urlOku() ?? '';
+    final mevcutKey = ayarlar['key'] ?? await SupabaseAyarlari.keyOku() ?? '';
+    await SupabaseAyarlari.kaydet(url: mevcutUrl, key: mevcutKey);
   }
 
   @override
   Future<Map<String,String>> ayarlariYukle() async {
-    final p = await SharedPreferences.getInstance();
     return {
-      'url': p.getString('mp_supa_url') ?? '',
-      'key': p.getString('mp_supa_key') ?? '',
+      'url': await SupabaseAyarlari.urlOku() ?? '',
+      'key': await SupabaseAyarlari.keyOku() ?? '',
     };
   }
 }

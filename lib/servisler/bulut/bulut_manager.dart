@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'bulut_saglayici.dart';
 import 'supabase_saglayici.dart';
+import 'supabase_ayarlari.dart';
 import '../kolon_haritalama.dart';
 import '../../veri/database/veritabani.dart';
 import '../audit_log_servisi.dart';
@@ -79,17 +80,13 @@ class BulutManager {
       // 'mp_supa_key' okunuyordu — ama o anahtarları yazan fonksiyon
       // (SupabaseSaglayici.ayarlariKaydet) uygulamanın HİÇBİR yerinden
       // çağrılmıyordu! Ayarlar ekranı bağlantı bilgilerini
-      // 'mp_supabase_url' / 'mp_supabase_key' anahtarlarına kaydediyor
-      // (SupabaseSyncServisi.ayarlariKaydet). Sonuç: baslat() her
-      // açılışta boş değer bulup "yapılandırılmamış" durumuna
-      // düşüyordu → OTOMATİK (kuyruk) SENKRON HİÇ ÇALIŞMIYORDU;
-      // yalnızca manuel "Buluta Gönder/Al" çalışıyordu. Artık önce
-      // ekranın gerçekten kaydettiği anahtarlar okunuyor; eski
-      // anahtarlar geriye dönük uyumluluk için yedek.
-      final url = p.getString('mp_supabase_url') ??
-          p.getString('mp_supa_url') ?? '';
-      final key = p.getString('mp_supabase_key') ??
-          p.getString('mp_supa_key') ?? '';
+      // SupabaseAyarlari üzerinden (artık güvenli depoda) kaydediyor.
+      // Sonuç önceden: baslat() her açılışta boş değer bulup
+      // "yapılandırılmamış" durumuna düşüyordu → OTOMATİK (kuyruk)
+      // SENKRON HİÇ ÇALIŞMIYORDU. SupabaseAyarlari eski düz metin
+      // anahtarları da (varsa) otomatik geriye dönük taşır.
+      final url = await SupabaseAyarlari.urlOku() ?? '';
+      final key = await SupabaseAyarlari.keyOku() ?? '';
       if (url.isNotEmpty && key.isNotEmpty) {
         await saglayiciAyarla(SupabaseSaglayici(url: url, key: key));
         return;

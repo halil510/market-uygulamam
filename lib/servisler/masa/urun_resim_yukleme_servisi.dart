@@ -10,7 +10,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import '../bulut/supabase_ayarlari.dart';
 
 class UrunResimYuklemeServisi {
   static final UrunResimYuklemeServisi _instance = UrunResimYuklemeServisi._();
@@ -29,9 +29,8 @@ class UrunResimYuklemeServisi {
       final dosya = File(yerelDosyaYolu);
       if (!await dosya.exists()) return null;
 
-      final prefs = await SharedPreferences.getInstance();
-      final url = prefs.getString('mp_supabase_url');
-      final key = prefs.getString('mp_supabase_key');
+      final url = await SupabaseAyarlari.urlOku();
+      final key = await SupabaseAyarlari.keyOku();
       if (url == null || key == null || url.isEmpty || key.isEmpty) return null;
 
       final uzanti = yerelDosyaYolu.split('.').last.toLowerCase();

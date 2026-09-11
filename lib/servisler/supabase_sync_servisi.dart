@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../veri/database/veritabani.dart';
+import 'bulut/supabase_ayarlari.dart';
 
 class _Ayar {
   final String url, key;
@@ -42,8 +43,6 @@ class SyncSonuc {
 }
 
 class SupabaseSyncServisi {
-  static const _prefUrl   = 'mp_supabase_url';
-  static const _prefKey   = 'mp_supabase_key';
   static const _prefCihaz = 'mp_cihaz_id';
 
   static const _tabloSirasi = [
@@ -391,20 +390,17 @@ class SupabaseSyncServisi {
   // YARDIMCI METODLAR
   // --------------------------------------------------------------
   static Future<_Ayar?> _ayarGetir() async {
-    final p = await SharedPreferences.getInstance();
-    final url = p.getString(_prefUrl);
-    final key = p.getString(_prefKey);
+    final url = await SupabaseAyarlari.urlOku();
+    final key = await SupabaseAyarlari.keyOku();
     if (url == null || url.isEmpty || key == null || key.isEmpty) return null;
     return _Ayar(url: url.trim(), key: key.trim());
   }
 
   static Future<void> ayarlariKaydet(String url, String key) async {
-    final p = await SharedPreferences.getInstance();
     final temiz = url.trim()
         .replaceAll(RegExp(r'/rest/v1/?$'), '')
         .replaceAll(RegExp(r'/$'), '');
-    await p.setString(_prefUrl, temiz);
-    await p.setString(_prefKey, key.trim());
+    await SupabaseAyarlari.kaydet(url: temiz, key: key.trim());
   }
 
   static Future<String> cihazId() async {

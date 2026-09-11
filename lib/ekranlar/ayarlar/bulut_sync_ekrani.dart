@@ -17,6 +17,7 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/sync_cakisma_deposu.dart';
+import '../../servisler/bulut/supabase_ayarlari.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 
@@ -67,8 +68,8 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
 
  Future<void> _ayarlariYukle() async {
   final prefs = await SharedPreferences.getInstance();
-  final url = prefs.getString('mp_supabase_url');
-  final key = prefs.getString('mp_supabase_key');
+  final url = await SupabaseAyarlari.urlOku();
+  final key = await SupabaseAyarlari.keyOku();
   final cId = await SupabaseSyncServisi.cihazId();
   if (mounted) {
     setState(() {

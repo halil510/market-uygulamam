@@ -14,8 +14,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../saglayicilar/riverpod/masa_provider.dart';
+import '../bulut/supabase_ayarlari.dart';
 import 'qr_menu_servisi.dart';
 
 class QrSiparisCekiciServisi {
@@ -68,9 +68,8 @@ class QrSiparisCekiciServisi {
     if (_isleniyor) return;
     _isleniyor = true;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final url = prefs.getString('mp_supabase_url');
-      final key = prefs.getString('mp_supabase_key');
+      final url = await SupabaseAyarlari.urlOku();
+      final key = await SupabaseAyarlari.keyOku();
       if (url == null || key == null || url.isEmpty || key.isEmpty) return;
 
       final yanit = await http.get(

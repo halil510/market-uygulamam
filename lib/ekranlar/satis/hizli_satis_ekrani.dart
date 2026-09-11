@@ -33,15 +33,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
 import '../../modeller/satis_model.dart';
-import '../../modeller/satis_kalem_model.dart';
 import '../../modeller/sepet_model.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../depolar/satis_deposu.dart';
-import '../../depolar/stok_deposu.dart';
-import '../../depolar/kasa_deposu.dart';
-import '../../modeller/kasa_hareket_model.dart';
-import '../../modeller/cari_hareket_model.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/satis_tamamlama_servisi.dart';
@@ -83,8 +78,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   //         içeriği olur (SatisDeposu.fisiGuncelle).
   // ══════════════════════════════════════════════════════════════════════
   SatisModel? _guncellenenSatis;
-  final _stokDepo  = StokDeposu();
-  final _kasaDepo  = KasaDeposu();
 
   final _araCtrl  = TextEditingController();
   final _araFocus = FocusNode();
@@ -957,82 +950,17 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       final kullanici = await AuthServisi().mevcutKullanici();
       if (!mounted) return;
 
-      final eskiToplam = satis.genelToplam;
-      final yeniToplam = sepet.genelToplam;
-      final tutarFarki = yeniToplam - eskiToplam;
-
-      final yeniKalemler = kalemler.map((k) => SatisKalemModel(
-        satisId:      satis.id!,
-        urunId:       k.urun.id!,
-        urunAdi:      k.urun.urunAdi,
-        barkod:       k.urun.barkod,
-        miktar:       k.miktar,
-        birimFiyat:   k.birimFiyat,
-        toplamTutar:  k.toplamTutar,
-        iskontoOran:  0,
-        iskontoTutar: 0,
-        kdvOran:      double.tryParse(k.urun.kdvOran) ?? 18,
-        kdvTutar:     k.kdvTutar,
-        netFiyat:     k.netFiyat,
-        alisFiyat:    k.urun.alisFiyat,
-        alisFiyatKdv: k.urun.alisFiyatKdvDahil,
-      )).toList();
-
-      final stokFarklari = await _satisDepo.fisiGuncelle(
-        satisId:              satis.id!,
-        yeniKalemler:         yeniKalemler,
-        yeniGenelToplam:      yeniToplam,
-        yeniOdenenTutar:      yeniToplam,
-        guncelleyenKullanici: kullanici?.adSoyad,
+      // Kalemler + stok farkı + cari/kasa hareketi — hepsi
+      // SatisTamamlamaServisi.fisiGuncelle()'de TEK transaction'da atomik
+      // (protokol §6/§35 — önceden bu ekranda 4 ayrı, transaction'sız
+      // çağrıydı; davranış birebir korunarak servise taşındı).
+      final sonuc = await _satisTamamlamaServisi.fisiGuncelle(
+        satis: satis,
+        yeniKalemler: kalemler,
+        yeniGenelToplam: sepet.genelToplam,
+        kullanici: kullanici,
       );
-
-      for (final girdi in stokFarklari.entries) {
-        final urunId = girdi.key;
-        final fark   = girdi.value;
-        if (fark > 0) {
-          await _stokDepo.stokDus(
-            urunId:       urunId,
-            miktar:       fark,
-            kullaniciId:  kullanici?.id,
-            referansId:   satis.id,
-            referansTuru: 'fis_guncelleme',
-            aciklama:     'Fiş güncelleme (artış): ${satis.fisNo}',
-          );
-        } else {
-          await _stokDepo.stokGir(
-            urunId:       urunId,
-            miktar:       -fark,
-            kullaniciId:  kullanici?.id,
-            referansId:   satis.id,
-            referansTuru: 'fis_guncelleme',
-            aciklama:     'Fiş güncelleme (iade): ${satis.fisNo}',
-          );
-        }
-      }
-
-      if (tutarFarki.abs() > 0.005) {
-        if (satis.cariId != null) {
-          await _cariDepo.hareketEkle(CariHareketModel(
-            cariId:    satis.cariId!,
-            tarih:     DateTime.now(),
-            fisTipi:   'Satış',
-            fisId:     satis.id,
-            fisNo:     satis.fisNo,
-            aciklama:  'Fiş güncelleme: ${satis.fisNo}',
-            borc:      tutarFarki > 0 ? tutarFarki : 0,
-            alacak:    tutarFarki < 0 ? -tutarFarki : 0,
-            odemeTuru: satis.odemeYontemi,
-            kullanici: kullanici?.adSoyad,
-          ));
-        } else if (satis.odemeYontemi == 'Nakit') {
-          await _kasaDepo.hareketEkle(KasaHareketModel(
-            hareketTipi: tutarFarki > 0 ? 'Satış' : 'İade',
-            tutar:       tutarFarki.abs(),
-            tarih:       DateTime.now(),
-            aciklama:    'Fiş güncelleme: ${satis.fisNo}',
-          ));
-        }
-      }
+      final tutarFarki = sonuc.tutarFarki;
 
       if (satis.cariId != null && mounted) {
         ProviderScope.containerOf(context, listen: false)
@@ -1044,12 +972,9 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       ref.read(dashboardProvider.notifier).yenile();
 
       // Güncellenmiş fiş bilgisini _sonSatis'e ata (manuel yazdırma için)
-      final guncelSatis = await _satisDepo.idileGetir(satis.id!);
-      if (guncelSatis != null) {
-        setState(() {
-          _sonSatis = guncelSatis;
-        });
-      }
+      setState(() {
+        _sonSatis = sonuc.guncelSatis;
+      });
 
       setState(() => _guncellenenSatis = null);
 

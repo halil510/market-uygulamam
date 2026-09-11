@@ -151,4 +151,83 @@ void main() {
           reason: 'Stok değişmemiş olmalı');
     });
   });
+
+  group('SatisTamamlamaServisi.fisiGuncelle mantığı', () {
+    test('miktar artışı: stok ekstra düşer, kasaya ek tutar yazılır (nakit fiş)', () async {
+      final urunId = await TestVeritabani.ornekUrunEkle(db, stok: 100, satisFiyati: 10);
+      // Önce 2 adetlik bir satış oluştur (stok 100 -> 98).
+      final satisId = await _satisiSimuleEt(db,
+          urunId: urunId, miktar: 2, birimFiyat: 10, odemeYontemi: 'Nakit', odenenTutar: 20);
+
+      // Fişi 5 adede çıkar (miktar farkı: +3) — fisiGuncelle mantığını simüle et.
+      final satisDepo = SatisDeposu();
+      final stokDepo = StokDeposu();
+      final kasaDepo = KasaDeposu();
+      late Map<int, double> stokFarklari;
+      await db.transaction((txn) async {
+        stokFarklari = await satisDepo.fisiGuncelleTxn(txn,
+            satisId: satisId,
+            yeniKalemler: [SatisKalemModel(
+              satisId: satisId, urunId: urunId, urunAdi: 'Test Ürün',
+              miktar: 5, birimFiyat: 10, toplamTutar: 50,
+            )],
+            yeniGenelToplam: 50, yeniOdenenTutar: 50);
+
+        for (final girdi in stokFarklari.entries) {
+          final gid = const Uuid().v4();
+          if (girdi.value > 0) {
+            await stokDepo.stokDusTxn(txn, gid, urunId: girdi.key, miktar: girdi.value,
+                referansId: satisId, referansTuru: 'fis_guncelleme');
+          } else {
+            await stokDepo.stokGirTxn(txn, gid, urunId: girdi.key, miktar: -girdi.value,
+                referansId: satisId, referansTuru: 'fis_guncelleme');
+          }
+        }
+        await kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
+          hareketTipi: 'Satış', tutar: 30, tarih: DateTime.now(),
+          aciklama: 'Fiş güncelleme',
+        ));
+      });
+
+      expect(stokFarklari[urunId], equals(3.0), reason: '5 - 2 = 3 adet fazladan düşülmeli');
+
+      final urun = (await db.query('urunler', where: 'id = ?', whereArgs: [urunId])).first;
+      expect((urun['stok'] as num).toDouble(), equals(95.0), reason: '100 - 2 - 3 = 95');
+
+      final satis = (await db.query('satislar', where: 'id = ?', whereArgs: [satisId])).first;
+      expect((satis['genel_toplam'] as num).toDouble(), equals(50.0));
+
+      final kalemler = await db.query('satis_kalem', where: 'satis_id = ?', whereArgs: [satisId]);
+      expect(kalemler, hasLength(1));
+      expect((kalemler.first['miktar'] as num).toDouble(), equals(5.0));
+    });
+
+    test('adımlardan biri hata fırlatırsa fiş güncellemesi TAMAMEN geri alınır', () async {
+      final urunId = await TestVeritabani.ornekUrunEkle(db, stok: 100, satisFiyati: 10);
+      final satisId = await _satisiSimuleEt(db,
+          urunId: urunId, miktar: 2, birimFiyat: 10, odemeYontemi: 'Nakit', odenenTutar: 20);
+
+      final satisDepo = SatisDeposu();
+      await expectLater(
+        db.transaction((txn) async {
+          await satisDepo.fisiGuncelleTxn(txn,
+              satisId: satisId,
+              yeniKalemler: [SatisKalemModel(
+                satisId: satisId, urunId: urunId, urunAdi: 'Test Ürün',
+                miktar: 9, birimFiyat: 10, toplamTutar: 90,
+              )],
+              yeniGenelToplam: 90, yeniOdenenTutar: 90);
+          throw Exception('Simüle edilmiş hata — kasa adımında');
+        }),
+        throwsException,
+      );
+
+      // Rollback sonrası hem satış başlığı hem kalemler ESKİ haliyle kalmalı.
+      final satis = (await db.query('satislar', where: 'id = ?', whereArgs: [satisId])).first;
+      expect((satis['genel_toplam'] as num).toDouble(), equals(20.0),
+          reason: 'Rollback sonrası eski toplam (20) korunmalı, 90 olmamalı');
+      final kalemler = await db.query('satis_kalem', where: 'satis_id = ?', whereArgs: [satisId]);
+      expect((kalemler.first['miktar'] as num).toDouble(), equals(2.0));
+    });
+  });
 }

@@ -222,6 +222,64 @@ class StokDeposu {
     }
   }
 
+  /// [stokGir] ile AYNI mantık, VERİLEN transaction içinde çalışır —
+  /// kendi transaction'ını açmaz. BulutManager bildirimini ve sube_urun
+  /// güncellemesini YAPMAZ (bkz. stokDusTxn'deki aynı not). Çağıran, dış
+  /// transaction kapandıktan sonra [hareketGid] ile 'stok_hareket'
+  /// satırını sorgulayıp buluta bildirebilir, ve isterse
+  /// [subeStokPayiUygula] ile şube payını güncelleyebilir.
+  Future<void> stokGirTxn(dynamic txn, String hareketGid, {
+    required int urunId,
+    required double miktar,
+    double birimMaliyet = 0,
+    int? kullaniciId,
+    String? aciklama,
+    int? referansId,
+    String? referansTuru,
+  }) async {
+    final now = DateTime.now().toIso8601String();
+    final rows = await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
+    if (rows.isEmpty) return;
+    final onceki = (rows.first['stok'] as num).toDouble();
+    final sonraki = onceki + miktar;
+
+    await txn.update('urunler', {'stok': sonraki, 'last_updated': now}, where: 'id = ?', whereArgs: [urunId]);
+    await txn.insert('stok_hareket', {
+      'global_id': hareketGid,
+      'urun_id': urunId,
+      'hareket_turu': 'Giriş',
+      'miktar': miktar,
+      'onceki_stok': onceki,
+      'sonraki_stok': sonraki,
+      'birim_maliyet': birimMaliyet,
+      'tarih': now,
+      'last_updated': now,
+      if (kullaniciId != null) 'kullanici_id': kullaniciId,
+      if (aciklama != null) 'aciklama': aciklama,
+      if (referansId != null) 'referans_id': referansId,
+      if (referansTuru != null) 'referans_turu': referansTuru,
+    });
+  }
+
+  /// [stokDusTxn]/[stokGirTxn] sonrası şube bazlı stok payını günceller.
+  /// Best-effort: ana stok işlemi zaten kalıcı olduğu için bu adım
+  /// başarısız olsa bile geri alınmaz (mevcut stokDus()/stokGir()
+  /// davranışıyla aynı — bkz. oradaki try-catch).
+  /// [fark] > 0 ise azalma (stokDus yönü), < 0 ise artış (stokGir yönü).
+  Future<void> subeStokPayiUygula(int urunId, double fark) async {
+    try {
+      final subeId = AktifSubeServisi().subeId;
+      if (subeId == null || fark == 0) return;
+      if (fark > 0) {
+        await _subeUrunDeposu.stokDus(urunId, subeId, fark);
+      } else {
+        await _subeUrunDeposu.stokGir(urunId, subeId, -fark);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
+    }
+  }
+
   Future<void> stokDuzelt(int urunId, double yeniMiktar, int kullaniciId) async {
     // 🔴 Not: 'onceki' burada (transaction dışında) tanımlanıyor ki
     // fonksiyonun SONUNDA (sube_urun güncellemesi için) da kullanılabilsin

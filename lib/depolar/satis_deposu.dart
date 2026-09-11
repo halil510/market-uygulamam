@@ -192,62 +192,13 @@ class SatisDeposu {
   }) async {
     try {
       final db  = await _d;
-      final now = DateTime.now().toIso8601String();
+      final Map<int, double> stokFarklari = await db.transaction((txn) => fisiGuncelleTxn(
+        txn, satisId: satisId, yeniKalemler: yeniKalemler,
+        yeniGenelToplam: yeniGenelToplam, yeniOdenenTutar: yeniOdenenTutar,
+        guncelleyenKullanici: guncelleyenKullanici,
+      ));
 
-      // ── 1) ESKİ kalemleri oku (stok farkı için şart)
-      final eskiRows = await db.query('satis_kalem',
-          where: 'satis_id = ?', whereArgs: [satisId]);
-      final eskiMiktarlar = <int, double>{};
-      for (final r in eskiRows) {
-        final uid = r['urun_id'] as int?;
-        if (uid == null) continue;
-        eskiMiktarlar[uid] =
-            (eskiMiktarlar[uid] ?? 0) + ((r['miktar'] as num?)?.toDouble() ?? 0);
-      }
-
-      // ── 2) YENİ miktarlar
-      final yeniMiktarlar = <int, double>{};
-      for (final k in yeniKalemler) {
-        yeniMiktarlar[k.urunId] = (yeniMiktarlar[k.urunId] ?? 0) + k.miktar;
-      }
-
-      // ── 3) NET fark (her iki tarafta geçen tüm ürünler)
-      final stokFarklari = <int, double>{};
-      for (final uid in {...eskiMiktarlar.keys, ...yeniMiktarlar.keys}) {
-        final fark = (yeniMiktarlar[uid] ?? 0) - (eskiMiktarlar[uid] ?? 0);
-        if (fark.abs() > 0.0001) stokFarklari[uid] = fark;
-      }
-
-      // ── 4) Kalemleri değiştir + başlığı güncelle (TEK transaction)
-      await db.transaction((txn) async {
-        await txn.delete('satis_kalem',
-            where: 'satis_id = ?', whereArgs: [satisId]);
-
-        for (final k in yeniKalemler) {
-          final km = k.copyWith(satisId: satisId).toMap();
-          km.remove('id');
-          km['global_id'] ??= const Uuid().v4();
-          await txn.insert('satis_kalem', km);
-        }
-
-        final mevcut = await txn.query('satislar',
-            where: 'id = ?', whereArgs: [satisId], limit: 1);
-        final eskiAciklama = mevcut.isNotEmpty
-            ? (mevcut.first['aciklama'] as String? ?? '')
-            : '';
-        final not = '[Guncellendi ${now.substring(0, 16)}'
-            '${guncelleyenKullanici != null ? " / $guncelleyenKullanici" : ""}]';
-
-        await txn.update('satislar', {
-          'genel_toplam': yeniGenelToplam,
-          'toplam_tutar': yeniGenelToplam,
-          'odenen_tutar': yeniOdenenTutar,
-          'aciklama': eskiAciklama.isEmpty ? not : '$eskiAciklama $not',
-          'last_updated': now,
-        }, where: 'id = ?', whereArgs: [satisId]);
-      });
-
-      // ── 5) Buluta gönder (transaction DIŞINDA — ağ kilidi tutmasın)
+      // Buluta gönder (transaction DIŞINDA — ağ kilidi tutmasın)
       final basSatir = await db.query('satislar',
           where: 'id = ?', whereArgs: [satisId], limit: 1);
       if (basSatir.isNotEmpty) {
@@ -265,6 +216,77 @@ class SatisDeposu {
       LogServisi().hata('SatisDeposu.fisiGuncelle', hata: e, yigin: st);
       rethrow;
     }
+  }
+
+  /// [fisiGuncelle] ile AYNI mantık, VERİLEN transaction içinde çalışır —
+  /// kendi transaction'ını açmaz, BulutManager bildirmez (bkz.
+  /// KasaDeposu.hareketEkleTxn'deki aynı gerekçe). Çağıran, dönen
+  /// stok farklarını AYNI dış transaction'da stokDusTxn/stokGirTxn ile
+  /// uygulayarak tüm fiş güncellemesini (kalemler + stok + cari/kasa)
+  /// tek atomik işlemde tamamlayabilir (bkz. SatisTamamlamaServisi
+  /// .fisiGuncelle).
+  Future<Map<int, double>> fisiGuncelleTxn(
+    dynamic txn, {
+    required int satisId,
+    required List<SatisKalemModel> yeniKalemler,
+    required double yeniGenelToplam,
+    required double yeniOdenenTutar,
+    String? guncelleyenKullanici,
+  }) async {
+    final now = DateTime.now().toIso8601String();
+
+    // ── 1) ESKİ kalemleri oku (stok farkı için şart)
+    final eskiRows = await txn.query('satis_kalem',
+        where: 'satis_id = ?', whereArgs: [satisId]);
+    final eskiMiktarlar = <int, double>{};
+    for (final r in eskiRows) {
+      final uid = r['urun_id'] as int?;
+      if (uid == null) continue;
+      eskiMiktarlar[uid] =
+          (eskiMiktarlar[uid] ?? 0) + ((r['miktar'] as num?)?.toDouble() ?? 0);
+    }
+
+    // ── 2) YENİ miktarlar
+    final yeniMiktarlar = <int, double>{};
+    for (final k in yeniKalemler) {
+      yeniMiktarlar[k.urunId] = (yeniMiktarlar[k.urunId] ?? 0) + k.miktar;
+    }
+
+    // ── 3) NET fark (her iki tarafta geçen tüm ürünler)
+    final stokFarklari = <int, double>{};
+    for (final uid in {...eskiMiktarlar.keys, ...yeniMiktarlar.keys}) {
+      final fark = (yeniMiktarlar[uid] ?? 0) - (eskiMiktarlar[uid] ?? 0);
+      if (fark.abs() > 0.0001) stokFarklari[uid] = fark;
+    }
+
+    // ── 4) Kalemleri değiştir + başlığı güncelle
+    await txn.delete('satis_kalem',
+        where: 'satis_id = ?', whereArgs: [satisId]);
+
+    for (final k in yeniKalemler) {
+      final km = k.copyWith(satisId: satisId).toMap();
+      km.remove('id');
+      km['global_id'] ??= const Uuid().v4();
+      await txn.insert('satis_kalem', km);
+    }
+
+    final mevcut = await txn.query('satislar',
+        where: 'id = ?', whereArgs: [satisId], limit: 1);
+    final eskiAciklama = mevcut.isNotEmpty
+        ? (mevcut.first['aciklama'] as String? ?? '')
+        : '';
+    final not = '[Guncellendi ${now.substring(0, 16)}'
+        '${guncelleyenKullanici != null ? " / $guncelleyenKullanici" : ""}]';
+
+    await txn.update('satislar', {
+      'genel_toplam': yeniGenelToplam,
+      'toplam_tutar': yeniGenelToplam,
+      'odenen_tutar': yeniOdenenTutar,
+      'aciklama': eskiAciklama.isEmpty ? not : '$eskiAciklama $not',
+      'last_updated': now,
+    }, where: 'id = ?', whereArgs: [satisId]);
+
+    return stokFarklari;
   }
 
   /// Birden fazla satışın kalemlerini tek sorguda yükle (Excel export için)

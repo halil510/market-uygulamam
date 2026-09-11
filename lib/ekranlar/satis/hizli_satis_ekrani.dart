@@ -5,6 +5,7 @@
 //   - Consumer<HizliSatisNotifier> → ref.watch(sepetProvider)
 //   - context.read<HizliSatisNotifier>() → ref.read(sepetProvider.notifier)
 //   - Tüm "final n = context.read<HizliSatisNotifier>()" → ref.read(sepetProvider.notifier)
+//   - Otomatik yazdırma kaldırıldı, manuel yazdırma ikonu appBar'a eklendi.
 
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -93,6 +94,9 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   late AnimationController _laserAnim;
   final AudioPlayer _player = AudioPlayer();
   Future<int>? _bekleyenSayiFuture;
+
+  // ── Son satış bilgisi (manuel yazdırma için) ──
+  SatisModel? _sonSatis;
 
   // Barkod kontrol
   final Queue<String> _barkodKuyrugu = Queue<String>();
@@ -205,11 +209,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
     try {
       await _barkodIleEkle(barkod);
     } catch (e) {
-      // ÖNCEDEN BURADA sadece debugPrint vardı — bu SADECE debug modda
-      // görünür, canlı/release uygulamada TAMAMEN GÖRÜNMEZDİ. Kasiyer
-      // barkodu okutup ürün sepete eklenmezse, neden olduğunu asla
-      // bilemezdi (hiçbir hata mesajı görmeden). Artık kullanıcıya
-      // açıkça bildiriliyor.
       if (kDebugMode) debugPrint('Barkod işleme hatası: $e');
       if (mounted) {
         BildirimServisi.hata(context, 'Ürün eklenemedi: $barkod bulunamadı veya bir hata oluştu');
@@ -257,31 +256,17 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
           },
         ),
       );
-        } catch (e) {
+    } catch (e) {
       if (kDebugMode) if (mounted) debugPrint('Hata: $e');
     }
   }
 
   // ── 🆕 HIZLI TUŞ (FAVORİ ÜRÜN) PANELİ ────────────────────────────────────────
-  //
-  // Barkodu olmayan / sürekli satılan ürünler (ekmek, poşet, çay, su,
-  // gazete) için tek dokunuşla sepete ekleme. `favori_urunler` tablosu
-  // projede zaten vardı ama hiçbir arayüzü yoktu.
-  //
-  // ÖNEMLİ: Sepete ekleme burada YAPILMIYOR — mevcut `_urunSepeteEkle`
-  // mantığına devrediliyor ki kg'lı ürün için miktar sorma, promosyon,
-  // stok uyarısı gibi kurallar TEK YERDE kalsın (kopyalanmasın).
   Future<void> _hizliTusAc() async {
-    // Özyineleme YOK: "düzenle"ye basılınca panel kapanır, yönetim
-    // ekranı açılır, dönüşte döngü paneli TEKRAR açar. Böylece kasiyer
-    // birden çok kez düzenlese bile çağrı yığını büyümez.
     var tekrarAc = true;
     while (tekrarAc && mounted) {
       tekrarAc = false;
       try {
-        // Döngünün 2. turunda (düzenleme ekranından dönüşte) buraya bir
-        // await'ten sonra geliniyor. `while (... && mounted)` koşulu
-        // analizörün akış çözümlemesini tatmin etmediği için açık kontrol.
         if (!mounted) return;
         _araFocus.unfocus();
         final sonuc = await showModalBottomSheet<String>(
@@ -293,7 +278,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
             onUrunSec: (urun) async {
               Navigator.pop(sheetCtx, 'secildi');
               if (!mounted) return;
-              // kg/lt gibi birimlerde miktar sorulur — barkod akışıyla aynı
               if (_kgBirimMi(urun.birimAdi)) {
                 await _kgIleEkle(urun);
               } else {
@@ -312,7 +296,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
             context,
             MaterialPageRoute(builder: (_) => const HizliTusYonetimEkrani()),
           );
-          // Düzenleme bitti — paneli güncel listeyle tekrar aç.
           tekrarAc = true;
         }
       } catch (e) {
@@ -323,42 +306,11 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
 
   // ══════════════════════════════════════════════════════════════════════
   // 🆕 FİŞ BARKODU TANIMA
-  //
-  // Fiş numarası GİB standardında: 3 HARF + 4 yıl + 9 sıra = 16 karakter
-  //   Örnek: MKP2026000000001
-  //
-  // Ürün barkodlarından kesin ayrılır çünkü onlar TAMAMEN RAKAM
-  // (EAN-13 = 13 hane, EAN-8 = 8 hane). Bu yüzden "3 harfle başlıyor +
-  // 16 karakter" kontrolü yanlış eşleşme yapamaz.
-  //
-  // Sadece SATIŞ fişleri kabul edilir (MKP/CRI/MSA). Fatura (FAT),
-  // irsaliye (IRS), alım (ALM), iade (IAD) fişleri bu ekrandan
-  // güncellenmemeli — onların kendi ekranları ve muhasebe kuralları var.
-  // ══════════════════════════════════════════════════════════════════════
   static final _fisNoDeseni = RegExp(r'^(MKP|CRI|MSA)\d{13}$');
-
   bool _fisBarkoduMu(String b) => _fisNoDeseni.hasMatch(b.toUpperCase());
 
   // ══════════════════════════════════════════════════════════════════════
   // 🆕 FİŞ GERİ ÇAĞIRMA
-  //
-  // Kasiyer fişin altındaki barkodu okuttuğunda:
-  //   1. Fiş bulunur (iptal/silinmiş fişler kabul edilmez)
-  //   2. Sepet DOLUYSA kullanıcı uyarılır — mevcut sepet kaybolacak
-  //   3. Fiş özeti + AÇIK UYARI gösterilir ("fiş güncellenecek")
-  //   4. Onaylanırsa fiş "güncelleme modu"na alınır: kalemler sepete
-  //      yüklenir, ekranda kalıcı bir uyarı şeridi görünür
-  //   5. Fişin kalemleri SEPETE YÜKLENİR — kasiyer miktar değiştirebilir,
-  //      kalem silebilir, yeni ürün ekleyebilir
-  //   6. "Tamamla"da sepetin son hali fişin yeni içeriği olur; stok ve
-  //      para farkları ürün bazında hesaplanır
-  //      (bkz. SatisDeposu.fisiGuncelle)
-  //
-  // NEDEN ONAY ŞART: Bu işlem KAPATILMIŞ bir mali belgeyi değiştirir.
-  // Müşterinin elindeki basılı fiş ile sistemdeki kayıt farklılaşır.
-  // Kasiyer bunu bilerek yapmalı; yanlışlıkla barkod okutup fiş
-  // bozmamalı.
-  // ══════════════════════════════════════════════════════════════════════
   Future<void> _fisGeriCagir(String fisNo) async {
     try {
       final satis = await _satisDepo.fisNoIleGetir(fisNo);
@@ -370,7 +322,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
         return;
       }
 
-      // Sepette ürün varsa önce onu uyar — kaybolacak
       final mevcutSepet = ref.read(sepetProvider).kalemler;
       if (mevcutSepet.isNotEmpty) {
         final devam = await showDialog<bool>(
@@ -403,7 +354,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
         if (devam != true || !mounted) return;
       }
 
-      // Fiş özeti + güncelleme uyarısı
       final onay = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -464,25 +414,12 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       );
       if (onay != true || !mounted) return;
 
-      // ══════════════════════════════════════════════════════════════
-      // FİŞİN ÜRÜNLERİNİ SEPETE YÜKLE
-      //
-      // Kasiyer fişteki ürünleri GÖRÜR, üzerinde düzeltme yapabilir
-      // (miktar değiştirme, kalem silme) ve yeni ürün ekleyebilir.
-      // "Tamamla"ya basınca sepetin SON HALİ fişin yeni içeriği olur.
-      //
-      // Fiyatlar `fiyatOverride` ile ORİJİNAL fişten alınıyor —
-      // güncel fiyat listesinden DEĞİL. Aksi halde aradan geçen zamanda
-      // zam yapılmışsa, müşterinin ödediği fiş kendiliğinden değişirdi.
-      // ══════════════════════════════════════════════════════════════
       ref.read(sepetProvider.notifier).temizle();
 
       final bulunamayan = <String>[];
       for (final k in satis.kalemler) {
         final urun = await _urunDepo.idileGetir(k.urunId);
         if (urun == null) {
-          // Ürün silinmişse sepete eklenemez — kasiyer uyarılır,
-          // sessizce kaybolmasın.
           bulunamayan.add(k.urunAdi);
           continue;
         }
@@ -534,8 +471,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
     if (!mounted) return;
     final b = barkod.trim();
 
-    // 🆕 Önce fiş barkodu mu diye bak — ürün aramasından ÖNCE, çünkü
-    // fiş no formatı hiçbir ürün barkoduyla çakışmaz.
     if (_fisBarkoduMu(b)) {
       await _fisGeriCagir(b.toUpperCase());
       return;
@@ -570,7 +505,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       return;
     }
     if (!mounted) return;
-    // Barkod bulunamadı — ürün kaydı teklif et
     final kayitYap = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -595,15 +529,12 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       ),
     );
     if (kayitYap != true || !mounted) return;
-    // Ürün ekle ekranına git — barkodu ve kodu önceden doldur
-    // extra: {'barkod': b, 'kaynak': 'hizli_satis'}
     final eklendi = await context.push<bool>(
       '/urun/ekle',
       extra: {'barkod': b, 'kaynak': 'hizli_satis'},
     );
     if (!mounted) return;
     if (eklendi == true) {
-      // Yeni kaydedilen ürünü bul ve sepete ekle
       final yeniUrun = await _urunDepo.barkodlaGetir(b);
       if (!mounted) return;
       if (yeniUrun != null) {
@@ -641,8 +572,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, ss) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(children: [
             const Icon(Icons.scale_rounded, color: Colors.orange),
             const SizedBox(width: 8),
@@ -707,7 +637,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
               icon: const Icon(Icons.add_shopping_cart_rounded),
               label: const Text('Ekle'),
               style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.orange),
+                  backgroundColor: Colors.orange),
             ),
           ],
         ),
@@ -743,13 +673,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   }
 
   Future<void> _urunSepeteEkleAkilli(UrunModel urun) async {
-    // ÖNCEDEN BU FONKSİYONDA HİÇ try-catch YOKTU. Ürün arama sonucuna
-    // dokunma (satır ~1310) gibi bazı çağrı noktalarında da HİÇBİR
-    // koruma yoktu — bir hata oluşursa (örn. veritabanı hatası),
-    // istisna tamamen YAKALANMADAN yukarı fırlıyordu. Kullanıcı
-    // açısından bu, "dokundum ama hiçbir şey olmadı" hissi yaratıyordu
-    // (Flutter'ın varsayılan hata işleyicisi sessizce konsola yazıp
-    // geçiyordu). Artık hata YAKALANIYOR ve kullanıcıya bildiriliyor.
     try {
       if (_kgBirimMi(urun.birimAdi)) {
         _kgIleEkle(urun);
@@ -758,8 +681,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       }
       _araCtrl.clear();
       setState(() => _aramaSonuclari = []);
-      // Sepet listesini en üste scroll et
-      // Hemen scroll et
       Future.microtask(() {
         if (_sepetScroll.hasClients && _sepetScroll.position.pixels > 0) {
           _sepetScroll.jumpTo(0);
@@ -822,8 +743,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
           ss(() {});
         }
         return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(k.urun.urunAdi,
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -867,17 +787,9 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
 
   // ── Müşteri Seç ──────────────────────────────────────────────────────────────
   Future<void> _musteriSec() async {
-    // ÖNCEDEN BURADA try-finally YOKTU — bir hata oluşursa (örn.
-    // _cariDepo.tumunuGetir() başarısız olursa), _islemBitti() HİÇ
-    // ÇAĞRILMIYORDU. Bu, _islemAktif bayrağının SONSUZA KADAR "true"
-    // takılı kalmasına yol açabilirdi — bu bayrak kamera tarama gibi
-    // BAŞKA işlemleri de engellediği için, kullanıcı "hiçbir şey
-    // olmuyor" hissini SADECE bu ekranda değil, sonraki taramalarda da
-    // yaşayabilirdi. Artık try-finally ile _islemBitti() HER ZAMAN
-    // çağrılıyor, hata da kullanıcıya bildiriliyor.
     _islemBasladi();
     try {
-      final cariler = await _cariDepo.tumunuGetir(); // tüm cariler — Müşteri + Tedarikçi
+      final cariler = await _cariDepo.tumunuGetir();
       if (!mounted) return;
       final secilen = await showModalBottomSheet<CariModel>(
         context: context,
@@ -889,8 +801,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
 
       final tedarikciMi = secilen.cariTipi.contains('edarik');
       if (tedarikciMi) {
-        // Seçilen cari bir Tedarikçi — bu bir SATIŞ değil ALIM'dır.
-        // Borç/Alacak doğru taraftan işlensin diye sepet Alım ekranına aktarılır.
         if (ref.read(sepetProvider).bos) {
           BildirimServisi.bilgi(context,
               '${secilen.unvan} bir Tedarikçi. Sepet boş olduğu için doğrudan Alım ekranına yönlendiriliyorsunuz.');
@@ -916,10 +826,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
     if (sepet.bos) return;
     _islemBasladi();
 
-    // ÖNCEDEN bu fonksiyon try-finally İLE SARILI DEĞİLDİ — beklenmedik
-    // bir hata (örn. dialog render hatası) _islemBitti()'nin hiç
-    // çağrılmamasına, dolayısıyla _islemAktif bayrağının takılı
-    // kalmasına yol açabilirdi. Artık dışarıdan bir güvenlik ağı var.
     try {
       final yontem = await showModalBottomSheet<String>(
         context: context,
@@ -975,8 +881,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
         canPop: true,
         onPopInvokedWithResult: (didPop, result) { _dialogAcik = false; _islemAktif = false; },
         child: AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Nakit Ödeme'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             Text('Toplam: ${ParaUtils.formatla(toplam)}',
@@ -995,9 +900,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
               ),
             ),
             const SizedBox(height: 10),
-            // 🆕 Hazır banknot butonlu para üstü hesaplayıcı.
-            // ParaUstuEkrani projede yazılmıştı ama hiçbir yerden
-            // çağrılmıyordu (ölü ekran) — nakit akışına bağlandı.
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -1040,22 +942,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   }
 
   // ── Satış Tamamla ────────────────────────────────────────────────────────────
-  // ══════════════════════════════════════════════════════════════════════
-  // 🆕 FİŞ GÜNCELLEMEYİ TAMAMLA
-  //
-  // Sepetin SON HALİ fişin yeni içeriği olur. Kasiyer kalem silmiş,
-  // miktar değiştirmiş ya da yeni ürün eklemiş olabilir — hepsi
-  // desteklenir.
-  //
-  // MUHASEBE: stok farkları ürün bazında SatisDeposu.fisiGuncelle()
-  // tarafından hesaplanır (ekran katmanı muhasebe kuralı bilmez).
-  // Burada sadece dönen farklar uygulanır:
-  //   fark > 0 → stoktan düş     (miktar arttı / yeni ürün)
-  //   fark < 0 → stoğa geri ver  (miktar azaldı / kalem silindi)
-  //
-  // Kasa/cari ise TUTAR FARKI kadar düzeltilir; fark negatifse
-  // (fiş küçüldüyse) ters yönde kayıt atılır.
-  // ══════════════════════════════════════════════════════════════════════
   Future<void> _fisiGuncelle() async {
     final satis = _guncellenenSatis;
     if (satis == null || satis.id == null) return;
@@ -1094,7 +980,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
         alisFiyatKdv: k.urun.alisFiyatKdvDahil,
       )).toList();
 
-      // 1) Fişi güncelle → ürün bazında stok farkları döner
       final stokFarklari = await _satisDepo.fisiGuncelle(
         satisId:              satis.id!,
         yeniKalemler:         yeniKalemler,
@@ -1103,7 +988,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
         guncelleyenKullanici: kullanici?.adSoyad,
       );
 
-      // 2) Stok farklarını uygula
       for (final girdi in stokFarklari.entries) {
         final urunId = girdi.key;
         final fark   = girdi.value;
@@ -1119,7 +1003,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
         } else {
           await _stokDepo.stokGir(
             urunId:       urunId,
-            miktar:       -fark,   // negatifi pozitife çevir
+            miktar:       -fark,
             kullaniciId:  kullanici?.id,
             referansId:   satis.id,
             referansTuru: 'fis_guncelleme',
@@ -1128,10 +1012,8 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
         }
       }
 
-      // 3) Para tarafı — SADECE tutar farkı kadar
       if (tutarFarki.abs() > 0.005) {
         if (satis.cariId != null) {
-          // Veresiye: fark pozitifse borç, negatifse alacak
           await _cariDepo.hareketEkle(CariHareketModel(
             cariId:    satis.cariId!,
             tarih:     DateTime.now(),
@@ -1154,7 +1036,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
         }
       }
 
-      // 4) Cari önbelleğini tazele
       if (satis.cariId != null && mounted) {
         ProviderScope.containerOf(context, listen: false)
             .invalidate(cariDetayProvider(satis.cariId!));
@@ -1163,6 +1044,15 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       if (!mounted) return;
       ref.read(sepetProvider.notifier).temizle();
       ref.read(dashboardProvider.notifier).yenile();
+
+      // Güncellenmiş fiş bilgisini _sonSatis'e ata (manuel yazdırma için)
+      final guncelSatis = await _satisDepo.idileGetir(satis.id!);
+      if (guncelSatis != null) {
+        setState(() {
+          _sonSatis = guncelSatis;
+        });
+      }
+
       setState(() => _guncellenenSatis = null);
 
       final ozet = tutarFarki > 0
@@ -1172,36 +1062,8 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
               : 'tutar değişmedi';
       BildirimServisi.basari(context, 'Fiş ${satis.fisNo} güncellendi ($ozet)');
 
-      // 5) Güncellenmiş fişi yeniden yazdırmayı teklif et
-      final yazdir = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Fiş Güncellendi', style: TextStyle(fontSize: 15)),
-          content: const Text(
-            'Güncellenmiş fişi yeniden yazdırmak ister misiniz?\n\n'
-            'Müşterideki eski fiş artık geçersizdir.',
-            style: TextStyle(fontSize: 13),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Hayır')),
-            FilledButton.icon(
-              icon: const Icon(Icons.print_rounded, size: 18),
-              onPressed: () => Navigator.pop(ctx, true),
-              label: const Text('Yazdır'),
-            ),
-          ],
-        ),
-      );
-      if (yazdir == true) {
-        try {
-          final guncel = await _satisDepo.idileGetir(satis.id!);
-          if (guncel != null) await YazdirmaServisi().fisYazdir(guncel);
-        } catch (e) {
-          if (mounted) BildirimServisi.hata(context, 'Yazdırılamadı: $e');
-        }
-      }
+      // YAZDIRMA DİALOGU KALDIRILDI — manuel yazdırma butonu ile yapılacak.
+
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Fiş güncellenemedi: $e');
     } finally {
@@ -1214,9 +1076,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       {List<Map<String, dynamic>>? karmaKalemler}) async {
     if (!mounted) return;
 
-    // 🆕 FİŞ GÜNCELLEME MODU: yeni fiş kesme, mevcut fişe ekle.
-    // En başta ayrılıyor ki normal satış akışının hiçbir adımı
-    // (fiş no üretme, kasa/cari kaydı, vb.) yanlışlıkla çalışmasın.
     if (_guncellenenSatis != null) {
       await _fisiGuncelle();
       return;
@@ -1234,10 +1093,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       final tarih    = DateTime.now();
       final kullanici = await AuthServisi().mevcutKullanici();
       if (!mounted) return;
-      // ÖNCEDEN cariye bağlı (veresiye) satışlar da anonim/perakende
-      // satışlarla AYNI "satis" (MKP) sayacını kullanıyordu — kullanıcı
-      // isteği: bir müşteriye bağlı satışların kendi ayrı, farklı
-      // ön ekli (CRI) fiş numarası serisi olsun.
       final fisNo    = await Veritabani().fisNoUret(musteri != null ? 'cari_satis' : 'satis', subeId: AktifSubeServisi().subeId ?? 1);
       if (!mounted) return;
 
@@ -1272,33 +1127,10 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
         kullaniciId:  kullanici?.id,
       );
 
-      // ══════════════════════════════════════════════════════════════
-      // 🔴 KRİTİK DÜZELTME — SATIŞ AKIŞI ORTASINDA KESİLİYORDU
-      //
-      // Buradan itibaren 9 ayrı veritabanı yazması var:
-      //   satış → stok düşme → kasa → cari → puan
-      //
-      // ÖNCEDEN her ikisinin ARASINDA `if (!mounted) return;` vardı, o
-      // kaldırıldı (bkz. eski not). AMA daha da önemlisi: satış, stok,
-      // kasa ve cari yazmaları AYRI transaction'larda yapılıyordu — bu
-      // fonksiyonun kendi yorumunda "Yapılacaklar listesinde" diye not
-      // edilmiş, bilinen bir eksikti. Artık depoların *Txn varyantları
-      // (SatisDeposu.satisEkleTxn, StokDeposu.stokDusTxn, KasaDeposu
-      // .hareketEkleTxn, CariDeposu.hareketEkleTxn) kullanılarak hepsi
-      // TEK transaction'da: ya satış + stok + kasa + cari birlikte
-      // kalıcı olur, ya da hiçbiri (uygulama ortada kapanırsa kısmi
-      // yazma kalmaz). Puan sistemi bilerek DIŞARIDA — zaten kendi
-      // try/catch'iyle "en iyi çaba" (best-effort) olarak tasarlanmış,
-      // puan verilemezse satış iptal olmamalı.
-      //
-      // Bu blokta HİÇBİR arayüz işlemi yok — mounted kontrolü artık
-      // YALNIZCA gerçek arayüz işlemlerinden (setState / SnackBar /
-      // yazdırma) hemen önce.
-      // ══════════════════════════════════════════════════════════════
       final db = await Veritabani().db;
       late final int satisId;
-      final stokHareketGidleri = <int, String>{}; // urunId -> global_id
-      String? kasaGlobalIdIzleyici; // sadece "eklendi mi" kontrolü için
+      final stokHareketGidleri = <int, String>{};
+      String? kasaGlobalIdIzleyici;
       final cariGlobalIdleri = <String>[];
 
       await db.transaction((txn) async {
@@ -1366,14 +1198,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
               kullanici: kullanici?.adSoyad,
             )));
           }
-          // Kullanıcı isteği: "nakit ödedi veya kredi kartı ödedi bunu
-          // cariye yazmıyor, cariye yazacak lakin nakit ve kredi kartı
-          // olduğu için bakiye değişmeyecek şekilde." Karma ödemenin
-          // Nakit/Kredi Kartı kısımları da (Cari kısmı hariç) artık
-          // cari harekete yazılıyor — ama borc VE alacak AYNI tutarda
-          // olduğu için (net sıfır etki), bakiye HİÇ değişmiyor. Bu,
-          // müşterinin geçmiş alışverişlerinin (nasıl ödediğine
-          // bakılmaksızın) cari hareket listesinde görünmesini sağlıyor.
           final digerTutar = karmaKalemler
               .where((k) => k['yontem'] != 'Cari')
               .fold(0.0, (s, k) => s + (k['tutar'] as num).toDouble());
@@ -1409,11 +1233,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
             kullanici: kullanici?.adSoyad,
           )));
         } else if (musteri != null && genelTop > 0.005) {
-          // Kullanıcı isteği: Nakit/Kredi Kartı ile ödense bile, seçili
-          // bir müşteri varsa bu satış onun cari hareket geçmişinde
-          // görünsün — ama borc VE alacak AYNI tutarda yazıldığı için
-          // (net sıfır etki), müşterinin bakiyesi (borcu/alacağı) HİÇ
-          // DEĞİŞMİYOR. Sadece kayıt/geçmiş amaçlı.
           cariGlobalIdleri.add(await _cariDepo.hareketEkleTxn(txn, CariHareketModel(
             cariId:    musteri.id!,
             tarih:     tarih,
@@ -1427,9 +1246,9 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
             kullanici: kullanici?.adSoyad,
           )));
         }
-      }); // transaction sonu — satış + stok + kasa + cari artık kalıcı
+      });
 
-      // Transaction kalıcı olduktan sonra buluta bildir.
+      // Bulut bildirimi (değişmedi)
       try {
         BulutManager().upsert('satislar',
             {...satis.toMap(), 'id': satisId, 'global_id': satis.globalId});
@@ -1475,14 +1294,25 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
         } catch (e) { /* ignore */ }
       }
 
-      // ── Buradan sonrası ARAYÜZ işi. Tüm veritabanı yazmaları bitti,
-      // artık ekran kapanmışsa güvenle çıkabiliriz. (Koruma buraya
-      // taşındı; önceden yazmaların ARASINDAYDI ve satışı yarıda
-      // kesiyordu.)
       if (!mounted) return;
 
+      // ── Son satış bilgisini sakla (manuel yazdırma için) ──
+      setState(() {
+        _sonSatis = SatisModel(
+          id: satisId,
+          fisNo: fisNo,
+          tarih: tarih,
+          odemeYontemi: odemeYontemi,
+          genelToplam: genelTop,
+          odenenTutar: odenenTutar,
+          kalemler: satisKalemler,
+          cariId: musteri?.id,
+          cariAdi: musteri?.unvan,
+        );
+      });
+
       ref.read(sepetProvider.notifier).temizle();
-      ref.read(dashboardProvider.notifier).yenile(); // Satış sonrası dashboard güncelle
+      ref.read(dashboardProvider.notifier).yenile();
       setState(() {
         _bekleyenSayiFuture = BekleyenFislerEkrani.bekleyenSayi();
       });
@@ -1518,65 +1348,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
         ));
       }
 
-      try {
-        // 🔴 YENİ (kullanıcı bulgusu): Cariye yapılan satışlarda fişte
-        // önceki/yeni bakiyeyi gösterebilmek için, satış TAMAMLANDIKTAN
-        // sonra cari'nin GÜNCEL (yeni) bakiyesini çekiyoruz — 'musteri'
-        // nesnesi satıştan ÖNCE yüklendiği için onun .bakiye alanı zaten
-        // "önceki bakiye"yi doğru şekilde temsil ediyor.
-        double? oncekiBakiye, sonBakiye;
-        if (musteri != null && musteri.id != null) {
-          try {
-            final guncelCari = await CariDeposu().idileGetir(musteri.id!);
-            if (guncelCari != null) {
-              oncekiBakiye = musteri.bakiye;
-              sonBakiye = guncelCari.bakiye;
-            }
-          } catch (_) { /* bakiye çekilemezse fişte gösterilmez, satışı etkilemez */ }
-        }
-        // 🔴 DÜZELTME (kullanıcı bulgusu — "cari adı fişte gözükmüyor"):
-        // Bu SatisModel `cariId`/`cariAdi` ALMIYORDU. Cari seçilerek
-        // satış yapılsa bile fişe giden nesne bu bilgiyi taşımıyordu,
-        // dolayısıyla yazdirma_servisi'ndeki `satis.cariAdi` geri
-        // düşüşü boş değere düşüyor ve "Cari:" satırı hiç basılmıyordu.
-        // `musteri` nesnesi zaten burada elimizde — sadece geçirilmiyordu.
-        await YazdirmaServisi().fisYazdir(SatisModel(
-          id: satisId, fisNo: fisNo, tarih: tarih,
-          odemeYontemi: odemeYontemi, genelToplam: genelTop,
-          odenenTutar: odenenTutar, kalemler: satisKalemler,
-          cariId: musteri?.id, cariAdi: musteri?.unvan,
-        ), cariOncekiBakiye: oncekiBakiye, cariSonBakiye: sonBakiye);
-      } catch (e) {
-        // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu — "satış bitince
-        // yazdırmıyor"): Bu hata ÖNCEDEN tamamen sessizce yutuluyordu
-        // — yazıcı bağlı değilse/yeniden bağlanma başarısız olsa bile
-        // kullanıcı HİÇBİR ŞEY görmüyordu, sadece "neden yazdırmadı?"
-        // diye düşünüyordu. Artık satış YİNE DE tamamlanıyor (yazdırma
-        // hatası satışı iptal etmemeli) ama kullanıcı görünür bir
-        // uyarıyla bilgilendiriliyor.
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('⚠️ Fiş yazdırılamadı: $e'),
-            backgroundColor: Colors.orange.shade800,
-            duration: const Duration(seconds: 6),
-            action: SnackBarAction(
-              label: 'Tekrar Dene',
-              textColor: Colors.white,
-              onPressed: () async {
-                try {
-                  await YazdirmaServisi().fisYazdir(SatisModel(
-                    id: satisId, fisNo: fisNo, tarih: tarih,
-                    odemeYontemi: odemeYontemi, genelToplam: genelTop,
-                    odenenTutar: odenenTutar, kalemler: satisKalemler,
-                  ));
-                } catch (e2) {
-                  if (mounted) BildirimServisi.hata(context, 'Yine başarısız: $e2');
-                }
-              },
-            ),
-          ));
-        }
-      }
+      // Yazdırma işlemi tamamen kaldırıldı. Kullanıcı appBar'daki yazıcı ikonu ile manuel olarak yazdıracak.
 
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Satış hatası: $e');
@@ -1598,8 +1370,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(k.urun.urunAdi,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
         content: TextField(
@@ -1640,10 +1411,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   }
 
   // ── Askıya Al ────────────────────────────────────────────────────────────────
-  // ── Tedarikçi Alımı ────────────────────────────────────────────────────────
-  /// Sepetteki kalemleri seçilen tedarikçi ile Alım ekranına aktarır.
-  /// Hem "Tedarikçiye Aktar" butonundan, hem de "Müşteri/Tedarikçi Seç"
-  /// panelinde tedarikçi türünde bir cari seçildiğinde çağrılır.
   Future<void> _sepetiAlimaAktar(CariModel tedarikci) async {
     final sepet = ref.read(sepetProvider);
     if (sepet.bos || !mounted) return;
@@ -1655,7 +1422,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       'alisFiyat': k.urun.alisFiyat > 0 ? k.urun.alisFiyat : k.urun.satisFiyati,
     }).toList();
 
-    // Sepeti temizle — bu işlem bir SATIŞ değil, ALIM olacak
     ref.read(sepetProvider.notifier).temizle();
     if (!mounted) return;
 
@@ -1675,8 +1441,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       final tedarikci = await showDialog<CariModel>(
         context: context,
         builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(children: [
             Icon(Icons.shopping_basket_outlined, color: Colors.teal),
             const SizedBox(width: 8),
@@ -1728,7 +1493,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
     _islemBasladi();
 
     try {
-      // BekleyenFislerEkrani.askiyaAl kullan - JSON yapısı tutarlı olsun
       await BekleyenFislerEkrani.askiyaAl(
         sepet:   sepet.kalemler,
         musteri: sepet.musteri,
@@ -1801,12 +1565,11 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                     );
                     if (!mounted) { _islemBitti(); return; }
                     if (secilen != null) {
-                      // Mevcut sepet doluysa onay al
                       if (sepet.kalemler.isNotEmpty) {
                         final onay = await showDialog<bool>(
                           context: context,
                           builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                             title: const Text('Dikkat'),
                             content: const Text(
                                 'Mevcut sepette ürün var. Yüklemek için temizlenmeli. Devam edilsin mi?'),
@@ -1816,7 +1579,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                                   child: const Text('İptal')),
                               FilledButton(
                                 style: FilledButton.styleFrom(
-          backgroundColor: Colors.orange),
+                                    backgroundColor: Colors.orange),
                                 onPressed: () => Navigator.pop(ctx, true),
                                 child: const Text('Evet, Yükle'),
                               ),
@@ -1825,7 +1588,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                         );
                         if (onay != true) { _islemBitti(); return; }
                       }
-                      // Fişi SharedPrefs'ten kaldır
                       final prefs2 = await SharedPreferences.getInstance();
                       final json2  = prefs2.getString('askidaki_satislar');
                       if (json2 != null) {
@@ -1835,12 +1597,10 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                         await prefs2.setString(
                             'askidaki_satislar', jsonEncode(list2));
                       }
-                      // Sepete yükle
                       ref.read(sepetProvider.notifier).temizle();
                       for (final k in (secilen.kalemler as List)) {
                         final urun = await _urunDepo.idileGetir(k['urunId'] as int);
                         if (urun != null) {
-                          // 'birimFiyat' yeni format, 'fiyat' eski format
                           final fiyat = (k['birimFiyat'] ?? k['fiyat'] ?? urun.satisFiyati) as num;
                           ref.read(sepetProvider.notifier).ekle(
                               urun,
@@ -1860,31 +1620,43 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
             },
           ),
           if (sepet.musteri != null)
-  Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-    child: Chip(
-      avatar: const Icon(Icons.person, size: 14, color: AppRenkler.primary),
-      label: Text(
-        sepet.musteri!.unvan,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          // ÖNCEDEN: AppRenkler.textPrimary/textSecondary sabit (sadece
-          // açık mod) renklerdi — karanlık modda bu çip beyaz arkaplanla
-          // birlikte uygulamanın geri kalanından kopuk/tutarsız
-          // görünüyordu. Artık context'e duyarlı tokenlar kullanılıyor.
-          color: TsRenk.metinBirincil(context),
-        ),
-        overflow: TextOverflow.ellipsis,
-      ),
-      deleteIcon: Icon(Icons.close, size: 14, color: TsRenk.metinIkincil(context)),
-      backgroundColor: TsRenk.kart(context),
-      side: BorderSide(color: AppRenkler.primary.withAlpha(76)),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      onDeleted: () => ref.read(sepetProvider.notifier).musteriSec(null),
-    ),
-  ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              child: Chip(
+                avatar: const Icon(Icons.person, size: 14, color: AppRenkler.primary),
+                label: Text(
+                  sepet.musteri!.unvan,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: TsRenk.metinBirincil(context),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                deleteIcon: Icon(Icons.close, size: 14, color: TsRenk.metinIkincil(context)),
+                backgroundColor: TsRenk.kart(context),
+                side: BorderSide(color: AppRenkler.primary.withAlpha(76)),
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                onDeleted: () => ref.read(sepetProvider.notifier).musteriSec(null),
+              ),
+            ),
+          // ── YAZICI BUTONU (manuel yazdırma) ──
+          _AppBarButon(
+            icon: Icons.print_rounded,
+            renk: _sonSatis != null ? Colors.white : Colors.grey,
+            tooltip: _sonSatis != null ? 'Fişi Yazdır' : 'Henüz satış yok',
+            onTap: _sonSatis != null
+                ? () async {
+                    try {
+                      await YazdirmaServisi().fisYazdir(_sonSatis!);
+                      BildirimServisi.basari(context, 'Fiş yazdırılıyor…');
+                    } catch (e) {
+                      BildirimServisi.hata(context, 'Yazdırılamadı: $e');
+                    }
+                  }
+                : null,
+          ),
           _AppBarButon(
             icon: _kameraAcik ? Icons.search_rounded : Icons.qr_code_scanner_rounded,
             renk: _kameraAcik ? Colors.green : Colors.white,
@@ -1899,12 +1671,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
           ),
         ],
       ),
-      // 🆕 FİŞ GÜNCELLEME MODU ŞERİDİ
-      //
-      // Kasiyer normal satış yaptığını sanıp yanlışlıkla bir fişi
-      // bozmasın diye, güncelleme modunda ekranın en üstünde KALICI
-      // ve dikkat çekici bir uyarı durur. İptal butonu da burada —
-      // moddan çıkmak için ayrı bir yer aramasın.
       body: Column(children: [
         if (_guncellenenSatis != null)
           Material(
@@ -2088,11 +1854,9 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
     sepet: sepet,
     onOdeme: _odemeYontemiSec,
   );
-
 }
 
 // ── Ödeme Seçim Sheet ────────────────────────────────────────────────────────
-
 class _OdemeSecimSheet extends StatelessWidget {
   final double toplam;
   final bool musteriSecili;
@@ -2174,7 +1938,6 @@ class _OdemeSecimSheet extends StatelessWidget {
     );
   }
 }
-
 
 class _MusteriSecimPaneli extends ConsumerStatefulWidget {
   final List<CariModel> cariler;
@@ -2285,38 +2048,40 @@ class _MusteriSecimPaneliState extends ConsumerState<_MusteriSecimPaneli> {
   );
 }
 
-// ── Modern AppBar İkon Butonu ──────────────────────────────────────────────
+// ── Modern AppBar İkon Butonu (nullable onTap desteği) ──────────────────────
 class _AppBarButon extends StatelessWidget {
   final IconData icon;
   final Color renk;
   final String tooltip;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _AppBarButon({
     required this.icon,
     required this.renk,
     required this.tooltip,
-    required this.onTap,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) => Tooltip(
     message: tooltip,
-    child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38, height: 38,
-        margin: const EdgeInsets.only(right: 4),
-        decoration: BoxDecoration(
-          color: renk == Colors.white
-              ? Colors.white.withAlpha(25)
-              : Colors.white.withAlpha(40),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withAlpha(50)),
+    child: Opacity(
+      opacity: onTap == null ? 0.4 : 1.0,
+      child: GestureDetector(
+        onTap: onTap, // null ise tıklama olmaz
+        child: Container(
+          width: 38, height: 38,
+          margin: const EdgeInsets.only(right: 4),
+          decoration: BoxDecoration(
+            color: renk == Colors.white
+                ? Colors.white.withAlpha(25)
+                : Colors.white.withAlpha(40),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white.withAlpha(50)),
+          ),
+          child: Icon(icon, size: 20, color: onTap == null ? Colors.grey : Colors.white),
         ),
-        child: Icon(icon, size: 20, color: Colors.white),
       ),
     ),
   );
 }
-

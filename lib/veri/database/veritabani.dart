@@ -283,6 +283,149 @@ class Veritabani {
   }
 
   /// Yeni kayıtları ekle (Supabase'den gelen)
+  /// 🔴🔴🔴 KULLANICI TARAFINDAN BULUNAN, GERÇEK VERİ KAYBI HATASI:
+  /// 'cari' tablosunda cari_kodu, 'satislar'/'faturalar'da fiş/fatura
+  /// no UNIQUE — 2 cihaz FARKLI global_id'li ama AYNI kod/numaralı
+  /// kayıt oluşturduğunda, bu kayıt senkronize edilirken UNIQUE
+  /// ihlaliyle patlıyordu (INSERT'te ConflictAlgorithm.replace bunu
+  /// "çakışma" sayıp var olan kaydı SİLİP üzerine yazma riski
+  /// taşıyordu; UPDATE'te ise SQL doğrudan hata fırlatıp o kaydı hiç
+  /// güncellemiyordu — kullanıcının bildirdiği hata TAM OLARAK bu).
+  ///
+  /// 🔴 BU FONKSİYON ÖNCEDEN SADECE supaKayitlariEkle (INSERT) İÇİNDE
+  /// VARDI — supaKayitlariGuncelle (UPDATE) hiç çağırmıyordu. Aynı
+  /// çakışma sınıfı, kaydın zaten yerelde var olduğu (dolayısıyla
+  /// UPDATE yoluna düştüğü) durumda korumasız kalıyordu. Artık HER
+  /// İKİ yoldan da (ekleme VE güncelleme) önce bu uygulanıyor.
+  Future<void> _cakismaKorumasiUygula(
+      Database database, String tablo, List<Map<String, dynamic>> kayitlar) async {
+    if (tablo == 'cari') {
+      for (final kayit in kayitlar) {
+        final gelenKod = kayit['cari_kodu'];
+        final gelenGlobalId = kayit['global_id'];
+        if (gelenKod == null || gelenGlobalId == null) continue;
+        final cakisan = await database.query('cari',
+            columns: ['global_id'],
+            where: 'cari_kodu = ? AND global_id != ?',
+            whereArgs: [gelenKod, gelenGlobalId]);
+        if (cakisan.isNotEmpty) {
+          final maxRows = await database.rawQuery(
+              "SELECT cari_kodu FROM cari WHERE cari_kodu LIKE 'CARIO-%' "
+              "ORDER BY CAST(SUBSTR(cari_kodu, 7) AS INTEGER) DESC LIMIT 1");
+          var sonNo = 0;
+          if (maxRows.isNotEmpty) {
+            final kod = maxRows.first['cari_kodu'] as String?;
+            sonNo = int.tryParse(kod?.replaceFirst('CARIO-', '') ?? '') ?? 0;
+          }
+          kayit['cari_kodu'] = 'CARIO-${sonNo + 1}';
+          LogServisi().bilgi(
+              'Senkronizasyon çakışması önlendi: gelen cari ($gelenGlobalId) '
+              'yeni kod aldı (${kayit["cari_kodu"]}), yerel kayıt korundu.');
+        }
+      }
+    }
+
+    if (tablo == 'satislar' || tablo == 'faturalar') {
+      final alanAdi = tablo == 'satislar' ? 'fis_no' : 'fatura_no';
+      for (final kayit in kayitlar) {
+        final gelenNo = kayit[alanAdi];
+        final gelenGlobalId = kayit['global_id'];
+        if (gelenNo == null || gelenGlobalId == null) continue;
+        final cakisan = await database.query(tablo,
+            columns: ['global_id'],
+            where: '$alanAdi = ? AND global_id != ?',
+            whereArgs: [gelenNo, gelenGlobalId]);
+        if (cakisan.isNotEmpty) {
+          final kisaId = gelenGlobalId.toString().substring(0, 6);
+          kayit[alanAdi] = '$gelenNo-SYNC$kisaId';
+          LogServisi().bilgi(
+              'Senkronizasyon çakışması önlendi: $tablo ($gelenGlobalId) '
+              'yeni numara aldı, yerel kayıt korundu.');
+        }
+      }
+    }
+
+    if (tablo == 'urunler') {
+      for (final kayit in kayitlar) {
+        final gelenGlobalId = kayit['global_id'];
+        if (gelenGlobalId == null) continue;
+        for (final alan in ['kod', 'barkod']) {
+          final gelenDeger = kayit[alan];
+          if (gelenDeger == null) continue;
+          final cakisan = await database.query('urunler',
+              columns: ['global_id'],
+              where: '$alan = ? AND global_id != ?',
+              whereArgs: [gelenDeger, gelenGlobalId]);
+          if (cakisan.isNotEmpty) {
+            kayit[alan] = null; // çakışan alanı temizle, ürünü kaybetme
+            LogServisi().bilgi(
+                'Senkronizasyon çakışması önlendi: urunler.$alan '
+                '($gelenGlobalId) temizlendi, yerel kayıt korundu.');
+          }
+        }
+      }
+    }
+
+    // 🔴 Aynı çakışma sınıfının şemadaki DİĞER örnekleri — cari/satislar
+    // hatası bildirilince şemadaki TÜM UNIQUE sütunlar tek tek tarandı.
+    // Numara/kod alanları: çakışırsa yeniden numaralanır (veri kaybı yok).
+    const numaraAlanlari = {
+      'irsaliyeler': 'irsaliye_no',
+      'tedarikci_siparisler': 'siparis_no',
+      'subeler': 'sube_kodu',
+    };
+    if (numaraAlanlari.containsKey(tablo)) {
+      final alanAdi = numaraAlanlari[tablo]!;
+      for (final kayit in kayitlar) {
+        final gelenNo = kayit[alanAdi];
+        final gelenGlobalId = kayit['global_id'];
+        if (gelenNo == null || gelenGlobalId == null) continue;
+        final cakisan = await database.query(tablo,
+            columns: ['global_id'],
+            where: '$alanAdi = ? AND global_id != ?',
+            whereArgs: [gelenNo, gelenGlobalId]);
+        if (cakisan.isNotEmpty) {
+          final kisaId = gelenGlobalId.toString().substring(0, 6);
+          kayit[alanAdi] = '$gelenNo-SYNC$kisaId';
+          LogServisi().bilgi(
+              'Senkronizasyon çakışması önlendi: $tablo ($gelenGlobalId) '
+              'yeni numara aldı, yerel kayıt korundu.');
+        }
+      }
+    }
+
+    // İsim alanları: rastgele numara yerine okunabilir bir ek uygun —
+    // ör. "İçecek" çakışırsa "İçecek (SYNC)".
+    // 🔴 KULLANICI TARAFINDAN BULUNAN HATA: 'masalar' bu listede hiç
+    // yoktu — masa isimleri (ad) hiçbir çakışma koruması olmadan
+    // senkronlanıyordu. Sonuç: "Masa 1" adında, farklı global_id'li
+    // ikinci bir kayıt (başka bir cihazda oluşmuş / bir önceki kurulum
+    // artığı vb.) buluttan gelince, aynı isimle SESSİZCE ikinci bir
+    // satır olarak ekleniyordu — kullanıcı "Masa 1'den iki tane oluyor"
+    // diye bildirdi. Artık masalar da bu korumaya dahil; çakışan gelen
+    // kayıt "Masa 1 (SYNC)" gibi görünür bir adla eklenir, üzerine
+    // yazma/veri kaybı olmaz ve kullanıcı ekranda ikisini görüp elle
+    // birleştirip silebilir.
+    const isimTablolari = {'kategoriler', 'birimler', 'markalar', 'masalar'};
+    if (isimTablolari.contains(tablo)) {
+      for (final kayit in kayitlar) {
+        final gelenAd = kayit['ad'];
+        final gelenGlobalId = kayit['global_id'];
+        if (gelenAd == null || gelenGlobalId == null) continue;
+        final cakisan = await database.query(tablo,
+            columns: ['global_id'],
+            where: 'ad = ? COLLATE NOCASE AND global_id != ?',
+            whereArgs: [gelenAd, gelenGlobalId]);
+        if (cakisan.isNotEmpty) {
+          kayit['ad'] = '$gelenAd (SYNC)';
+          LogServisi().bilgi(
+              'Senkronizasyon çakışması önlendi: $tablo ($gelenGlobalId) '
+              'yeni ad aldı, yerel kayıt korundu.');
+        }
+      }
+    }
+  }
+
   Future<void> supaKayitlariEkle(
     String tablo,
     List<Map<String, dynamic>> kayitlar,
@@ -319,98 +462,7 @@ class Veritabani {
         ? ConflictAlgorithm.replace 
         : ConflictAlgorithm.ignore;
 
-    // 🔴🔴🔴 KULLANICI TARAFINDAN BULUNAN, GERÇEK VERİ KAYBI HATASI:
-    // 'cari' tablosunda cari_kodu UNIQUE — 2 cihaz, FARKLI global_id'li
-    // ama AYNI cari_kodu'lu (ör. "CARIO-1") iki AYRI müşteri
-    // oluşturduğunda (Cihaz A: Serkan, Cihaz B: Ahmet), bu kayıt Cihaz
-    // A'ya senkronize edildiğinde ConflictAlgorithm.replace, cari_kodu
-    // UNIQUE ihlalini "çakışma" sayıp Serkan'ın TÜM KAYDINI SİLİP
-    // Ahmet'in kaydıyla DEĞİŞTİRİYORDU — sessizce, hiçbir hata
-    // vermeden. Önceki turdaki "mükerrer kod düzeltme" fonksiyonu bunu
-    // KURTARAMAZ çünkü o SENKRONİZASYONDAN SONRA çalışıyor, ama Serkan
-    // o ana kadar zaten silinmiş oluyor. Doğru çözüm: eklemeden ÖNCE,
-    // gelen kaydın cari_kodu'su yerelde BAŞKA bir global_id'ye aitse,
-    // gelen kayda YENİ bir kod ver — hiçbir zaman mevcut bir kaydı
-    // silme riskine girme.
-    if (tablo == 'cari') {
-      for (final kayit in kayitlar) {
-        final gelenKod = kayit['cari_kodu'];
-        final gelenGlobalId = kayit['global_id'];
-        if (gelenKod == null || gelenGlobalId == null) continue;
-        final cakisan = await database.query('cari',
-            columns: ['global_id'],
-            where: 'cari_kodu = ? AND global_id != ?',
-            whereArgs: [gelenKod, gelenGlobalId]);
-        if (cakisan.isNotEmpty) {
-          final maxRows = await database.rawQuery(
-              "SELECT cari_kodu FROM cari WHERE cari_kodu LIKE 'CARIO-%' "
-              "ORDER BY CAST(SUBSTR(cari_kodu, 7) AS INTEGER) DESC LIMIT 1");
-          var sonNo = 0;
-          if (maxRows.isNotEmpty) {
-            final kod = maxRows.first['cari_kodu'] as String?;
-            sonNo = int.tryParse(kod?.replaceFirst('CARIO-', '') ?? '') ?? 0;
-          }
-          kayit['cari_kodu'] = 'CARIO-${sonNo + 1}';
-          LogServisi().bilgi(
-              'Senkronizasyon çakışması önlendi: gelen cari ($gelenGlobalId) '
-              'yeni kod aldı (${kayit["cari_kodu"]}), yerel kayıt korundu.');
-        }
-      }
-    }
-
-    // Aynı sınıf koruma: 'satislar.fis_no' ve 'faturalar.fatura_no' de
-    // UNIQUE — 2 cihaz farklı global_id'li ama aynı fiş/fatura
-    // numaralı kayıt oluşturmuşsa (nadiren de olsa mümkün), gelen
-    // kayıt YENİDEN NUMARALANIR, yerel kayıt ASLA silinmez.
-    if (tablo == 'satislar' || tablo == 'faturalar') {
-      final alanAdi = tablo == 'satislar' ? 'fis_no' : 'fatura_no';
-      for (final kayit in kayitlar) {
-        final gelenNo = kayit[alanAdi];
-        final gelenGlobalId = kayit['global_id'];
-        if (gelenNo == null || gelenGlobalId == null) continue;
-        final cakisan = await database.query(tablo,
-            columns: ['global_id'],
-            where: '$alanAdi = ? AND global_id != ?',
-            whereArgs: [gelenNo, gelenGlobalId]);
-        if (cakisan.isNotEmpty) {
-          // Çakışma varsa, gelen kaydın numarasına -SYNC ve kısa bir
-          // global_id parçası ekleyerek benzersiz hale getir (var olan
-          // sayaç mantığını burada tekrar çağırmak yerine basit,
-          // garantili bir yöntem).
-          final kisaId = gelenGlobalId.toString().substring(0, 6);
-          kayit[alanAdi] = '$gelenNo-SYNC$kisaId';
-          LogServisi().bilgi(
-              'Senkronizasyon çakışması önlendi: $tablo ($gelenGlobalId) '
-              'yeni numara aldı, yerel kayıt korundu.');
-        }
-      }
-    }
-
-    // Aynı sınıf koruma: 'urunler.kod' ve 'urunler.barkod' — genelde
-    // GERÇEK ürün barkodu olduğu için otomatik yeniden numaralama
-    // yerine, çakışan alanı sadece TEMİZLEYİP (null) ürünün kendisinin
-    // kaybolmasını önlüyoruz — kullanıcı barkod çakışmasını fark edip
-    // elle çözebilir, ama hiçbir ürün SİLİNMEZ.
-    if (tablo == 'urunler') {
-      for (final kayit in kayitlar) {
-        final gelenGlobalId = kayit['global_id'];
-        if (gelenGlobalId == null) continue;
-        for (final alan in ['kod', 'barkod']) {
-          final gelenDeger = kayit[alan];
-          if (gelenDeger == null) continue;
-          final cakisan = await database.query('urunler',
-              columns: ['global_id'],
-              where: '$alan = ? AND global_id != ?',
-              whereArgs: [gelenDeger, gelenGlobalId]);
-          if (cakisan.isNotEmpty) {
-            kayit[alan] = null; // çakışan alanı temizle, ürünü kaybetme
-            LogServisi().bilgi(
-                'Senkronizasyon çakışması önlendi: urunler.$alan '
-                '($gelenGlobalId) temizlendi, yerel kayıt korundu.');
-          }
-        }
-      }
-    }
+    await _cakismaKorumasiUygula(database, tablo, kayitlar);
 
     await database.execute('PRAGMA foreign_keys = OFF');
     try {
@@ -437,6 +489,7 @@ class Veritabani {
   ) async {
     if (kayitlar.isEmpty) return;
     final database = await db;
+    await _cakismaKorumasiUygula(database, tablo, kayitlar);
     await database.execute('PRAGMA foreign_keys = OFF');
     int atlanan = 0;
     try {

@@ -12,12 +12,25 @@ import '../cekirdek/enumlar/kullanici_rolu.dart';
 import '../cekirdek/utils/sifre_hash.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
+import '../cekirdek/sabitler/uygulama_sabitleri.dart';
 import '../depolar/kullanici_deposu.dart';
 import '../modeller/kullanici_model.dart';
 import '../veri/database/veritabani.dart';
+import 'giris_deneme_sayaci.dart';
 
 /// Oturum süresi (dakika). Bu süre geçince tekrar giriş istenir.
 const int _oturumSureDk = 480; // 8 saat
+
+/// Bir kullanıcı adı için giriş kilitli olduğunda fırlatılır.
+/// (Buradan taşındı: önceden sadece auth_provider.dart'ta tanımlıydı ama
+/// hiçbir yerde fırlatılmıyordu — deneme sınırlaması UI katmanında
+/// (giris_ekrani.dart/kullanici_degistir_ekrani.dart) widget state'i
+/// olarak vardı, bu da uygulama yeniden başlatılınca sıfırlanıyordu.
+/// Artık gerçek kilit burada, kalıcı depoda tutuluyor.)
+class AuthKilitliException implements Exception {
+  final String mesaj;
+  const AuthKilitliException(this.mesaj);
+}
 
 class AuthServisi {
   /// Kullanıcı isteği: "Play Store'a çıkmadan önce dikkatli incele" —
@@ -77,14 +90,36 @@ class AuthServisi {
   // KullaniciDeposu ile dairesel import olmaması için ayrı dosyada.
   static String hashle(String sifre) => SifreHash.eskiHashle(sifre);
 
+  // ── Brute-force koruması ─────────────────────────────────────────────
+  // 🔴 Derin analizde bulundu: giris_ekrani.dart/kullanici_degistir_ekrani
+  // .dart'ta "5 hatalı denemede 30 sn kilit" mantığı VARDI ama sadece
+  // widget state'inde (bellekte) tutuluyordu — uygulama kapatılıp tekrar
+  // açılınca (POS cihazında fiziksel erişimi olan biri için tek adım)
+  // sayaç sıfırlanıyor, kilit hiç uygulanmamış oluyordu. Artık sayaç ve
+  // kilit bitiş zamanı SharedPreferences'ta (kullanıcı adı başına) kalıcı
+  // tutuluyor (GirisDenemeSayaci) — uygulama yeniden başlatılsa da kilit
+  // geçerli kalır.
+  final _denemeSayaci = const GirisDenemeSayaci(
+    maxDeneme: UygSabitler.maxHataliGiris,
+    kilitSuresi: Duration(seconds: UygSabitler.kilitSureSaniye),
+  );
+
   // ── Giriş ─────────────────────────────────────────────────────────────
   Future<bool> girisYap(String kullaniciAdi, String sifre) async {
+    final kalanKilitSn = await _denemeSayaci.kalanKilitSaniyesi(kullaniciAdi);
+    if (kalanKilitSn != null) {
+      throw AuthKilitliException('Çok fazla hatalı deneme — $kalanKilitSn saniye bekleyin');
+    }
     try {
       // Düz şifre gönderiliyor — tuz her kullanıcıda FARKLI olduğu için
       // hash'i burada önceden hesaplamak mümkün değil, KullaniciDeposu
       // önce kullanıcının kendi tuzunu bulup ONUNLA hashliyor.
       final kullanici = await _depo.girisKontrol(kullaniciAdi, sifre);
-      if (kullanici == null) return false;
+      if (kullanici == null) {
+        await _denemeSayaci.basarisizDenemeKaydet(kullaniciAdi);
+        return false;
+      }
+      await _denemeSayaci.temizle(kullaniciAdi);
 
       _aktifKullanici = kullanici;
       _oturumAktif = true;

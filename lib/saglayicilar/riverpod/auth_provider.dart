@@ -9,10 +9,9 @@ part 'auth_provider.g.dart';
 enum AuthDurum { yukleniyor, girisYapildi, cikisYapildi }
 enum GirisSonucu { basarili, hataliSifre, kilitli, hata }
 
-class AuthKilitliException implements Exception {
-  final String mesaj;
-  const AuthKilitliException(this.mesaj);
-}
+// AuthKilitliException artık auth_servisi.dart'ta tanımlı (kalıcı
+// brute-force kilidini fırlatan yer orası) — bu dosya onu zaten yukarıda
+// import ediyor.
 
 class AuthState {
   final AuthDurum durum;

@@ -13,8 +13,14 @@ import 'package:flutter/services.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../veri/database/veritabani.dart';
 import '../../depolar/cari_deposu.dart';
+import '../../depolar/kasa_deposu.dart';
+import '../../depolar/banka_hesap_deposu.dart';
+import '../../depolar/banka_hareket_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
+import '../../modeller/kasa_hareket_model.dart';
+import '../../modeller/banka_hareket_model.dart';
+import '../../modeller/banka_hesap_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
@@ -53,6 +59,8 @@ class AlimEkrani extends ConsumerStatefulWidget {
 class _AlimEkraniState extends ConsumerState<AlimEkrani> {
   final _urunDepo  = UrunDeposu();
   final _barkodSrv = BarkodServisi();
+  final _kasaDepo  = KasaDeposu();
+  final _bankaDepo = BankaHareketDeposu();
 
   List<_AlimKalem> _kalemler       = [];
   List<UrunModel>  _aramaSonuclari = [];
@@ -61,6 +69,10 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
   bool   _isleniyor    = false;
   String _odemeYontemi = 'Nakit';
   int    _aramaId      = 0;
+
+  // Havale seçilince gerçek para çıkışının hangi hesaptan yapılacağı.
+  List<BankaHesapModel> _bankaHesaplari = [];
+  BankaHesapModel?      _secilenHesap;
 
   final _araCtrl    = TextEditingController();
   Timer? _aramaDebounce;
@@ -74,6 +86,7 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
     super.initState();
     _tedarikci = widget.tedarikci;
     _tedarikciListesiYukle();
+    _bankaHesaplariYukle();
     // Hızlı satıştan gelen kalemler
     if (widget.baslangicKalemler != null) {
       _baslangicKalemYukle();
@@ -163,6 +176,18 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
       });
         } catch (e) {
       if (kDebugMode) if (mounted) debugPrint('Hata: $e');
+    }
+  }
+
+  Future<void> _bankaHesaplariYukle() async {
+    try {
+      final hesaplar = await BankaHesapDeposu().tumunuGetir();
+      if (mounted) setState(() {
+        _bankaHesaplari = hesaplar;
+        if (hesaplar.isNotEmpty) _secilenHesap = hesaplar.first;
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('Banka hesapları yüklenemedi: $e');
     }
   }
 
@@ -271,6 +296,19 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
       BildirimServisi.uyari(context, 'Kalem eklenmemiş');
       return;
     }
+    if (_odemeYontemi == 'Havale' && _secilenHesap == null) {
+      BildirimServisi.uyari(context, 'Havale için önce bir banka hesabı seçin');
+      return;
+    }
+    if (_tedarikci == null) {
+      // 🔴 Derin analizde bulundu: 'tedarikci_siparisler.cari_id' şemada
+      // NOT NULL — ama bu ekran tedarikçi seçilmeden de kayıt yapmaya
+      // İZİN VERİYORDU (aciklama'daki "Manuel" varsayılanı bunu ima
+      // ediyordu). Sonuç: tedarikçisiz bir alım kaydetmeye çalışıldığında
+      // ham bir SQL "NOT NULL constraint failed" hatasıyla çöküyordu.
+      BildirimServisi.uyari(context, 'Alım için önce bir tedarikçi seçin');
+      return;
+    }
     if (!mounted) return;
     _isleniyor = true;
     if (mounted) setState(() {});
@@ -287,8 +325,10 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
       final stokHareketGidler = <String>[];
       final etkilenenUrunIdler = <int>{};
       String? cariHareketGid;
+      int? kasaHareketId;
+      int? bankaHareketId;
 
-      // ── TEK TRANSACTION: fiş + kalemler + stok + cari ───────────────────
+      // ── TEK TRANSACTION: fiş + kalemler + stok + kasa/banka + cari ──────
       await db.transaction((txn) async {
 
         // 1. Alım fişi
@@ -348,7 +388,35 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
           }
         }
 
-        // 3. Cari hareket
+        // 3. Gerçek para hareketi
+        // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): "Nakit"/"Havale"
+        // ile yapılan alışlarda ÖNCEDEN gerçek bir kasa/banka hareketi
+        // HİÇ oluşturulmuyordu — stok artıyor ama kasadan/bankadan hiç
+        // para çıkmamış gibi görünüyordu (kasa sayımı ile sistem
+        // bakiyesi, protokol §10, tutmaz hale gelirdi). Bu, borç ödeme/
+        // tahsilat akışlarında bulunup düzeltilen AYNI hatanın alış
+        // tarafındaki karşılığıydı.
+        if (_odemeYontemi == 'Nakit' && _genelToplam > 0.005) {
+          kasaHareketId = await _kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
+            hareketTipi: 'Alım',
+            tutar:       _genelToplam,
+            referansId:  alimId,
+            referansTuru: 'alim',
+            tarih:       DateTime.now(),
+            aciklama:    'Mal Alımı: $alimNo',
+            kullaniciId: kullanici?.id,
+          ));
+        } else if (_odemeYontemi == 'Havale' && _genelToplam > 0.005) {
+          bankaHareketId = await _bankaDepo.ekleTxn(txn, BankaHareketModel(
+            bankaHesapId: _secilenHesap!.id!,
+            islemTipi:    'Giden',
+            tutar:        _genelToplam,
+            aciklama:     'Mal Alımı: $alimNo',
+            tarih:        DateTime.now(),
+          ));
+        }
+
+        // 4. Cari hareket
         if (_tedarikci != null && _odemeYontemi == 'Cari') {
           cariHareketGid = const Uuid().v4();
           await txn.insert('cari_hareket', {
@@ -397,7 +465,7 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
       }); // transaction sonu
 
       // 🔴🔴 Derin analizde bulundu: bu transaction (alım fişi, kalemler,
-      // stok, stok hareketi, cari hareket — 5 tablo) hiçbir yerde
+      // stok, stok hareketi, cari/kasa/banka hareketi) hiçbir yerde
       // global_id atamıyordu ve BulutManager'ı HİÇ çağırmıyordu — her
       // alım/mal kabul işlemi sadece manuel senkronla buluta gidiyordu.
       // Transaction kapandıktan (veri kalıcı olduktan) SONRA bildiriliyor.
@@ -423,6 +491,16 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
             final cariSatir = await db.query('cari', where: 'id = ?', whereArgs: [_tedarikci!.id], limit: 1);
             if (cariSatir.isNotEmpty) BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
           }
+        }
+        if (kasaHareketId != null) {
+          final s = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
+          if (s.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(s.first));
+        }
+        if (bankaHareketId != null) {
+          final s = await db.query('banka_hareketler', where: 'id = ?', whereArgs: [bankaHareketId], limit: 1);
+          if (s.isNotEmpty) BulutManager().upsert('banka_hareketler', Map<String, dynamic>.from(s.first));
+          final hesapSatir = await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [_secilenHesap!.id], limit: 1);
+          if (hesapSatir.isNotEmpty) BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
         }
       } catch (e) {
         // Bulut bildirimi hatası asıl işlemi engellemez
@@ -721,6 +799,27 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
                   onChanged: (v) =>
                       setState(() => _odemeYontemi = v!),
                 ),
+                if (_odemeYontemi == 'Havale') ...[
+                  const SizedBox(height: 8),
+                  if (_bankaHesaplari.isNotEmpty)
+                    DropdownButtonFormField<BankaHesapModel>(
+                      value: _secilenHesap,
+                      decoration: const InputDecoration(
+                          labelText: 'Hangi Hesaptan?', isDense: true,
+                          border: OutlineInputBorder()),
+                      items: _bankaHesaplari
+                          .map((h) => DropdownMenuItem(value: h, child: Text(h.hesapAdi, overflow: TextOverflow.ellipsis)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _secilenHesap = v),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(10)),
+                      child: Text('Banka hesabı bulunamadı. Önce bir hesap ekleyin veya "Nakit" seçin.',
+                          style: TextStyle(fontSize: 11, color: Colors.orange.shade800)),
+                    ),
+                ],
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,

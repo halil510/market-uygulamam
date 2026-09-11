@@ -99,6 +99,15 @@ class SubeUrunDeposu {
 
   /// Bir şubeden diğerine stok transferi (Depo Transfer ekranı için).
   /// Tek bir mantıksal işlem olarak hem kaynağı düşürür hem hedefi artırır.
+  ///
+  /// 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): Önceden bu fonksiyon
+  /// stokDus() + stokGir() çağırıyordu — ikisi de KENDİ AYRI
+  /// transaction'ını açıyordu. Kaynağı düşüren işlem başarılı olup
+  /// hedefi artıran işlem başarısız olursa (uygulama çökmesi, DB hatası
+  /// vb.) ürün miktarı KAYNAKTA AZALMIŞ, HEDEFTE HİÇ ARTMAMIŞ — yani
+  /// TAMAMEN KAYBOLMUŞ oluyordu. Protokol §9'un "stok hareketinden
+  /// hesaplanan miktar ile gerçek miktar uyuşmalı" ilkesini doğrudan
+  /// ihlal ediyordu. Artık her iki güncelleme TEK transaction'da.
   Future<void> transferEt({
     required int urunId,
     required int kaynakSubeId,
@@ -106,11 +115,52 @@ class SubeUrunDeposu {
     required double miktar,
   }) async {
     if (miktar <= 0) throw Exception('Transfer miktarı sıfırdan büyük olmalı');
-    final kaynakStok = await stokGetir(urunId, kaynakSubeId);
-    if (kaynakStok < miktar) {
-      throw Exception('Kaynak şubede yeterli stok yok (mevcut: $kaynakStok)');
+    final db = await _d;
+    final now = DateTime.now().toIso8601String();
+
+    Future<void> satirUpsertTxn(dynamic txn, int subeId, double yeniStok) async {
+      final rows = await txn.query('sube_urun',
+          where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, subeId], limit: 1);
+      if (rows.isEmpty) {
+        await txn.insert('sube_urun', {
+          'global_id': const Uuid().v4(),
+          'urun_id': urunId, 'sube_id': subeId,
+          'stok': yeniStok, 'son_guncelleme': now, 'last_updated': now,
+        });
+      } else {
+        await txn.update('sube_urun',
+            {'stok': yeniStok, 'son_guncelleme': now, 'last_updated': now},
+            where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, subeId]);
+      }
     }
-    await stokDus(urunId, kaynakSubeId, miktar);
-    await stokGir(urunId, hedefSubeId, miktar);
+
+    await db.transaction((txn) async {
+      final kaynakRows = await txn.query('sube_urun',
+          where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, kaynakSubeId], limit: 1);
+      final kaynakStok = kaynakRows.isEmpty
+          ? 0.0 : (kaynakRows.first['stok'] as num?)?.toDouble() ?? 0.0;
+      if (kaynakStok < miktar) {
+        throw Exception('Kaynak şubede yeterli stok yok (mevcut: $kaynakStok)');
+      }
+
+      final hedefRows = await txn.query('sube_urun',
+          where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, hedefSubeId], limit: 1);
+      final hedefStok = hedefRows.isEmpty
+          ? 0.0 : (hedefRows.first['stok'] as num?)?.toDouble() ?? 0.0;
+
+      await satirUpsertTxn(txn, kaynakSubeId, kaynakStok - miktar);
+      await satirUpsertTxn(txn, hedefSubeId, hedefStok + miktar);
+    });
+
+    // Bulut senkronu — transaction commit olduktan SONRA (bkz.
+    // KasaDeposu.hareketEkleTxn'deki aynı gerekçe).
+    try {
+      final kaynakSatir = await satirGetir(urunId, kaynakSubeId);
+      if (kaynakSatir != null) BulutManager().upsert('sube_urun', Map<String, dynamic>.from(kaynakSatir));
+      final hedefSatir = await satirGetir(urunId, hedefSubeId);
+      if (hedefSatir != null) BulutManager().upsert('sube_urun', Map<String, dynamic>.from(hedefSatir));
+    } catch (e, st) {
+      LogServisi().hata('SubeUrun.transferEt (bulut bildirimi)', hata: e, yigin: st);
+    }
   }
 }

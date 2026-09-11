@@ -127,7 +127,12 @@ class Sepet extends _$Sepet {
     final adet  = miktar ?? 1.0;
     final fiyat = fiyatOverride ?? _fiyatHesapla(urun, adet);
     final liste = List<SepetKalem>.from(state.kalemler);
-    final idx   = liste.indexWhere((k) => k.urun.id == urun.id);
+    // id'si olmayan (kaydedilmemiş/serbest) ürünlerde eşleşmeyi id yerine
+    // aynı referansa bakarak yapıyoruz — aksi halde id'si null olan farklı
+    // ürünler yanlışlıkla aynı sepet kalemine birleşir.
+    final idx   = urun.id != null
+        ? liste.indexWhere((k) => k.urun.id == urun.id)
+        : liste.indexWhere((k) => identical(k.urun, urun));
     if (idx >= 0) {
       final yeniMiktar = liste[idx].miktar + adet;
       final yeniFiyat  = _fiyatHesapla(urun, yeniMiktar);

@@ -253,7 +253,8 @@ class UrunModel {
       if (v is int) return v.toDouble();
       return double.tryParse(v.toString()) ?? 0.0;
     }
-    bool toBool(dynamic v) => v == 1 || v == true;
+    bool toBool(dynamic v, {bool varsayilan = false}) =>
+        v == null ? varsayilan : (v == 1 || v == true);
 
     return UrunModel(
       id: m['id'] as int?,
@@ -277,7 +278,7 @@ class UrunModel {
       kategoriId: m['kategori_id'] as int?,
       anaGrup: m['ana_grup'] as String?,
       altGrup: m['alt_grup'] as String?,
-      aktif: toBool(m['aktif']),
+      aktif: toBool(m['aktif'], varsayilan: true),
       seriNoTakibi: toBool(m['seri_no_takibi']),
       lotTakibi: toBool(m['lot_takibi']),
       lotNo: m['lot_no'] as String?,

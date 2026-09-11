@@ -37,7 +37,7 @@ class BankaModel {
     adres: m['adres'] as String?,
     logo: m['logo'] as String?,
     yetkili: m['yetkili'] as String?,
-    aktif: (m['aktif'] as int?) == 1,
+    aktif: ((m['aktif'] as int?) ?? 1) == 1,
   );
 
   Map<String, dynamic> toMap() => {

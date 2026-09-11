@@ -38,6 +38,8 @@ Future<Database> _testDbOlustur() async {
           cari_id INTEGER,
           kasiyer_id INTEGER,
           iptal INTEGER DEFAULT 0,
+          iptal_tarihi DATETIME,
+          iptal_nedeni TEXT,
           is_deleted INTEGER DEFAULT 0
         )
       ''');
@@ -170,6 +172,11 @@ void main() {
       });
     });
 
+    tearDown(() async {
+      await db.delete('urunler', where: 'id = ?', whereArgs: [urunId]);
+      await db.delete('stok_hareket', where: 'urun_id = ?', whereArgs: [urunId]);
+    });
+
     test('Satış sonrası stok doğru düşer', () async {
       await _stokDus(db, urunId: urunId, miktar: 30, referansId: 1);
 
@@ -241,6 +248,13 @@ void main() {
         'referans_turu': 'satis',
         'tarih': DateTime.now().toIso8601String(),
       });
+    });
+
+    tearDown(() async {
+      await db.delete('kasa_hareketleri', where: 'referans_id = ?', whereArgs: [satisId]);
+      await db.delete('satis_kalem', where: 'satis_id = ?', whereArgs: [satisId]);
+      await db.delete('satislar', where: 'id = ?', whereArgs: [satisId]);
+      await db.delete('urunler', where: 'id = ?', whereArgs: [urunId]);
     });
 
     test('Silince satış soft-delete olur', () async {

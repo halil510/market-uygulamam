@@ -76,7 +76,7 @@ class CariModel {
       temsilci: m['temsilci'] as String?,
       notlar: m['notlar'] as String?,
       webSitesi: m['web_sitesi'] as String?,
-      aktif: (m['aktif'] as int?) == 1,
+      aktif: ((m['aktif'] as int?) ?? 1) == 1,
       olusturmaTarihi: m['olusturma_tarihi'] as String?,
       guncelleyen: m['guncelleyen'] as String?,
       subeId: m['sube_id'] as int?,

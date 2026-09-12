@@ -57,17 +57,21 @@ class DigerSemasi {
 
   /// Ürün/fiyat/cari bakiye tetikleyicileri (orijinal dosyada _diger()'in
   /// hemen yanında ayrı bir static metottu; buraya birebir taşındı).
+  //
+  // 🔴🔴 KRİTİK SENKRON HATASI (derin analizde bulundu — protokol v54→v55
+  // migration notuna bkz.): 'trg_urun_guncelle' HER UPDATE sonrası
+  // last_updated/guncelleme_tarihi'ni datetime('now') (saat dilimsiz,
+  // UTC) ile YENİDEN yazıyordu — uygulama kodunun (UrunDeposu.guncelle())
+  // AYNI satırda zaten doğru (yerel saat) set ettiği değerin üzerine.
+  // Dart'ın DateTime.tryParse()'ı saat dilimi işareti olmayan bir
+  // string'i YEREL saat sayar; Türkiye (UTC+3) için bu, her ürün
+  // güncellemesinin last_updated'ının GERÇEKTEN OLDUĞUNDAN ~3 SAAT ESKİ
+  // görünmesine yol açıyordu — last-write-wins senkron çakışma çözümünü
+  // bozan, sessiz ve sistemik bir hataydı. Uygulama kodu bu alanları
+  // zaten her yazma yolunda doğru set ettiği için tetikleyici tamamen
+  // kaldırıldı (yükseltilen kurulumlar için bkz. migrasyon_yonetici.dart
+  // v54→v55 — aynı tetikleyiciyi ve eşdeğerini DROP eder).
   static Future<void> _triggerlar(Database db) async {
-    await db.execute('''
-      CREATE TRIGGER IF NOT EXISTS trg_urun_guncelle
-      AFTER UPDATE ON ${DbSabitler.urunler}
-      BEGIN
-        UPDATE ${DbSabitler.urunler}
-        SET last_updated = datetime('now'), guncelleme_tarihi = datetime('now')
-        WHERE id = NEW.id;
-      END
-    ''');
-
     await db.execute('''
       CREATE TRIGGER IF NOT EXISTS trg_fiyat_gecmis
       AFTER UPDATE OF alis_fiyat, satis_fiyati ON ${DbSabitler.urunler}

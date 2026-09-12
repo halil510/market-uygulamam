@@ -141,6 +141,9 @@ class MigrasyonYonetici {
 
     // v53'ten v54'e — Sync Çakışmaları tablosu (protokol §12)
     if (eskiVersiyon < 54) await _v53denV54e(db);
+
+    // v54'ten v55'e — bozuk 'last_updated' tetikleyicileri kaldırıldı
+    if (eskiVersiyon < 55) await _v54denV55e(db);
   }
 
   // ==================== v1 -> v2 ====================
@@ -1979,5 +1982,29 @@ static Future<void> _v18denV19a(Database db) async {
     ''');
     await _calistir(db,
         'CREATE INDEX IF NOT EXISTS idx_sync_cakisma_cozuldu ON sync_cakismalar(cozuldu)');
+  }
+
+  // ==================== v54 -> v55 ====================
+  // 🔴🔴 KRİTİK SENKRON HATASI (derin analizde bulundu): 'urunler'
+  // tablosunda İKİ ayrı tetikleyici (trg_urun_updated — yükseltilen
+  // kurulumlarda, trg_urun_guncelle — yeni kurulumlarda) her UPDATE
+  // sonrası last_updated'ı datetime('now') ile YENİDEN yazıyordu.
+  // SQLite'ın datetime('now') fonksiyonu VARSAYILAN OLARAK UTC döner ve
+  // saat dilimi işareti (Z/±hh:mm) İÇERMEZ — ama uygulama kodu (ör.
+  // UrunDeposu.guncelle()) last_updated'ı zaten DOĞRU şekilde
+  // DateTime.now().toIso8601String() (YEREL saat) ile set ediyordu.
+  // Tetikleyici bu doğru değerin üzerine, saat dilimsiz UTC bir değer
+  // yazıyordu — Dart'ın DateTime.tryParse()'ı saat dilimi işareti
+  // olmayan bir string'i YEREL saat olarak yorumlar, yani Türkiye
+  // (UTC+3) için her ürün güncellemesinin last_updated'ı GERÇEKTEN
+  // OLDUĞUNDAN ~3 SAAT ESKİ görünüyordu. Bu, last_updated'a dayanan TÜM
+  // senkron çakışma çözümünü (last-write-wins) etkiliyordu: yerelde
+  // yapılan gerçekten daha YENİ bir değişiklik, buluttaki daha ESKİ bir
+  // sürüme karşı yanlışlıkla "kaybedebiliyordu". Uygulama kodu
+  // last_updated'ı zaten her yazma yolunda doğru şekilde set ettiği
+  // için bu tetikleyiciler gereksizdi (ve zararlıydı) — kaldırıldı.
+  static Future<void> _v54denV55e(Database db) async {
+    await _calistir(db, 'DROP TRIGGER IF EXISTS trg_urun_updated');
+    await _calistir(db, 'DROP TRIGGER IF EXISTS trg_urun_guncelle');
   }
 }

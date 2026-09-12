@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class UygSabitler {
   static const String uygulamaAdi      = 'MarketPlus';
   static const String versiyon         = '2.3.0';
-  static const int    dbVersiyon       = 54;  // v54: sync_cakismalar tablosu
+  static const int    dbVersiyon       = 55;  // v55: bozuk urunler.last_updated tetikleyicileri kaldırıldı
   static const int    maxHataliGiris   = 5;
   static const int    kilitSureSaniye  = 30;
   static const int    cacheEnUzunSure  = 5;

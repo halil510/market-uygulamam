@@ -217,6 +217,12 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
       ),
     );
     if (ok != true) return;
+    // 🔴 Derin analizde bulundu: DB yazması başarısız olursa (kilitli
+    // veritabanı, disk hatası vb.) burada hiçbir geri alma/kullanıcı
+    // bildirimi yoktu — birim listeden kalıcı olarak (ekran yeniden
+    // yüklenene kadar) kaybolurdu ama SQLite'ta hâlâ aktif=1 olarak
+    // kalırdı, kullanıcı silmenin başarılı olduğunu sanırdı.
+    final oncekiIndex = _birimler.indexOf(birim);
     setState(() => _birimler.remove(birim));
     try {
       final db = await Veritabani().db;
@@ -227,6 +233,14 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
       if (satir.isNotEmpty) BulutManager().upsert('birimler', Map<String, dynamic>.from(satir.first));
     } catch (e) {
       if (kDebugMode) debugPrint('Hata: $e');
+      if (mounted) {
+        setState(() {
+          final eklemeIndex = oncekiIndex >= 0 && oncekiIndex <= _birimler.length
+              ? oncekiIndex : _birimler.length;
+          _birimler.insert(eklemeIndex, birim);
+        });
+        hataMesaji(context, 'Birim silinemedi: $e');
+      }
     }
   }
 

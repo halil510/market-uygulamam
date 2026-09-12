@@ -5,18 +5,59 @@ import 'package:uuid/uuid.dart';
 import '../servisler/log_servisi.dart';
 import '../veri/database/veritabani.dart';
 import '../modeller/gider_model.dart';
+import '../modeller/kasa_hareket_model.dart';
 import '../servisler/aktif_sube_servisi.dart';
+import 'kasa_deposu.dart';
 
 class GiderDeposu {
   final Veritabani _db = Veritabani();
   Future<Database> get _d async => _db.db;
+  final KasaDeposu _kasaDepo = KasaDeposu();
 
+  // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): Bu depo (ve onu
+  // kullanan gider_ekle_ekrani.dart) 'Nakit' ödeme yöntemiyle girilen
+  // bir gideri SADECE 'giderler' tablosuna yazıyordu — kasa_hareketleri
+  // HİÇ oluşturulmuyordu. KasaDeposu.gunlukOzet()/aralikOzet() SQL'i
+  // ZATEN 'Gider' hareket_tipi'ni bir çıkış kalemi olarak SAYMAYA HAZIRDI
+  // (bkz. o dosyadaki CASE WHEN hareket_tipi IN ('Gider',...)) — yani
+  // sistem bu bağlantının var olmasını bekliyordu, ama hiçbir kod bunu
+  // hiç kurmamıştı. Sonuç: nakit gider girildikçe kasa bakiyesi hiç
+  // düşmüyor, gerçek kasadaki nakit ile sistemdeki bakiye kalıcı olarak
+  // sapıyordu. Aşağıdaki üç fonksiyon (ekle/guncelle/sil) artık 'Nakit'
+  // giderler için kasa_hareketleri kaydını da atomik olarak oluşturup
+  // güncelliyor/tersine çeviriyor.
+  //
+  // NOT: Bu mantık BİLEREK ekleTxn()'e DEĞİL sadece ekle()'ye eklendi —
+  // ekleTxn() ayrıca BorcOdemeIslemServisi.odemeYap() tarafından KENDİ
+  // transaction'ı içinde çağrılıyor; o akış kasa/banka/kart hareketini
+  // ZATEN kendisi oluşturuyor (gider kaydı orada sadece raporlama
+  // amaçlı). ekleTxn()'e de kasa mantığı eklemek borç ödemelerinde
+  // parayı İKİ KEZ kasadan düşerdi.
   Future<int> ekle(GiderModel g) async {
     try {
       final db = await _d;
-      final gid = await db.transaction((txn) => ekleTxn(txn, g));
+      late int gid;
+      int? kasaHareketId;
+      await db.transaction((txn) async {
+        gid = await ekleTxn(txn, g);
+        if (g.odemeYontemi == 'Nakit') {
+          kasaHareketId = await _kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
+            hareketTipi: 'Gider',
+            tutar: g.tutar,
+            referansId: gid,
+            referansTuru: 'gider',
+            tarih: g.tarih,
+            aciklama: 'Gider: ${g.kategoriAdi.isNotEmpty ? g.kategoriAdi : (g.aciklama ?? '')}',
+            kullaniciId: g.kullaniciId,
+          ));
+        }
+      });
       final satir = await db.query('giderler', where: 'id = ?', whereArgs: [gid], limit: 1);
       if (satir.isNotEmpty) BulutManager().upsert('giderler', Map<String, dynamic>.from(satir.first));
+      if (kasaHareketId != null) {
+        final kasaSatir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
+        if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+      }
       return gid;
     } catch (e, st) {
       LogServisi().hata('Gider.ekle', hata: e, yigin: st);
@@ -43,10 +84,39 @@ class GiderDeposu {
     return await txn.insert('giderler', m);
   }
 
+  /// Bu gidere bağlı (referans_id=giderId, referans_turu='gider'), henüz
+  /// silinmemiş kasa_hareketleri satırlarının NET etkisini (giriş-çıkış)
+  /// döner — yani "şu anda bu gider yüzünden kasadan gerçekten ne kadar
+  /// çıkmış" tutarı. Orijinal işlem + varsa düzeltme/iptal kayıtlarının
+  /// toplamı. Hiç kasa hareketi yoksa (gider hiç Nakit olmadıysa VEYA bu
+  /// düzeltmeden ÖNCE eklenmiş eski bir kayıtsa) 0 döner — eski veri için
+  /// var olmayan bir hareketi UYDURMAZ, sadece bundan sonraki
+  /// değişikliklerde doğru tutara "yakalar".
+  Future<double> _kasaNetHesapla(dynamic dbVeyaTxn, int giderId) async {
+    final rows = await dbVeyaTxn.query('kasa_hareketleri',
+        where: 'referans_id = ? AND referans_turu = ? AND deleted_at IS NULL',
+        whereArgs: [giderId, 'gider']);
+    double net = 0;
+    for (final r in rows) {
+      final tip = r['hareket_tipi'] as String? ?? '';
+      final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+      net += KasaHareketModel.girisMi(tip) ? -tutar : tutar;
+    }
+    return net; // pozitif = kasadan net çıkmış tutar
+  }
+
   // 🔴 DÜZELTME (derin analizde bulundu): Bu depoda hiç guncelle()
   // fonksiyonu YOKTU — kullanıcı yanlış girdiği bir gideri (tutar,
   // kategori, açıklama vb.) asla düzeltemiyordu; tek çare silip yeniden
   // eklemekti (ki bu da orijinal kaydın oluşturulma bilgisini kaybeder).
+  //
+  // 🔴🔴 Derin analizde AYRICA bulundu: tutar veya ödeme yöntemi
+  // değiştirildiğinde kasa hiç düzeltilmiyordu (ekle()'deki aynı kök
+  // sorun). Artık: bu gidere bağlı kasa hareketlerinin NET tutarı ile
+  // "olması gereken" tutar (Nakit ise yeni tutar, değilse 0) arasındaki
+  // FARK için tek bir telafi kaydı (Gider/Gider İptali) ekleniyor —
+  // orijinal kayıtlar asla değiştirilmiyor (projenin geri kalanındaki
+  // event-sourcing deseniyle tutarlı).
   Future<void> guncelle(GiderModel g) async {
     try {
       if (g.id == null) throw Exception('guncelle() için id gerekli');
@@ -56,9 +126,30 @@ class GiderDeposu {
       m.remove('id');
       m.remove('global_id'); // global_id oluşturulduktan sonra değişmez
       m['last_updated'] = now;
-      await db.update('giderler', m, where: 'id = ?', whereArgs: [g.id]);
+      int? kasaHareketId;
+      await db.transaction((txn) async {
+        await txn.update('giderler', m, where: 'id = ?', whereArgs: [g.id]);
+        final mevcutNet = await _kasaNetHesapla(txn, g.id!);
+        final hedefNet = g.odemeYontemi == 'Nakit' ? g.tutar : 0.0;
+        final fark = hedefNet - mevcutNet;
+        if (fark.abs() > 0.005) {
+          kasaHareketId = await _kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
+            hareketTipi: fark > 0 ? 'Gider' : 'Gider İptali',
+            tutar: fark.abs(),
+            referansId: g.id,
+            referansTuru: 'gider',
+            tarih: DateTime.now(),
+            aciklama: 'Gider düzeltmesi: ${g.kategoriAdi.isNotEmpty ? g.kategoriAdi : (g.aciklama ?? '')}',
+            kullaniciId: g.kullaniciId,
+          ));
+        }
+      });
       final satir = await db.query('giderler', where: 'id = ?', whereArgs: [g.id], limit: 1);
       if (satir.isNotEmpty) BulutManager().upsert('giderler', Map<String, dynamic>.from(satir.first));
+      if (kasaHareketId != null) {
+        final kasaSatir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
+        if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+      }
     } catch (e, st) {
       LogServisi().hata('Gider.guncelle', hata: e, yigin: st);
       rethrow;
@@ -69,14 +160,37 @@ class GiderDeposu {
     try {
       final db = await _d;
       final now = DateTime.now().toIso8601String();
-      // 🔴 DÜZELTME: Gerçek HARD DELETE yapılıyordu — tabloda zaten
-      // 'deleted_at' sütunu vardı ama hiç kullanılmıyordu. Hard delete,
-      // silmenin buluta hiç bildirilememesine ve bulut→yerel çekişte
-      // silinen giderin "dirilmesine" yol açıyordu.
-      await db.update('giderler', {'deleted_at': now, 'last_updated': now},
-          where: 'id = ?', whereArgs: [id]);
+      int? kasaHareketId;
+      await db.transaction((txn) async {
+        // 🔴 DÜZELTME: Gerçek HARD DELETE yapılıyordu — tabloda zaten
+        // 'deleted_at' sütunu vardı ama hiç kullanılmıyordu. Hard delete,
+        // silmenin buluta hiç bildirilememesine ve bulut→yerel çekişte
+        // silinen giderin "dirilmesine" yol açıyordu.
+        await txn.update('giderler', {'deleted_at': now, 'last_updated': now},
+            where: 'id = ?', whereArgs: [id]);
+        // 🔴 Derin analizde bulundu: bu gidere bağlı bir kasa hareketi
+        // (bkz. ekle()/guncelle()'deki düzeltme) varsa, gider silinince
+        // o hareket hiç tersine çevrilmiyordu — kasadan çıkmış para
+        // kayıtlarda "çıkmış" olarak kalıp gerçek kasa bakiyesinden
+        // kalıcı olarak sapıyordu.
+        final mevcutNet = await _kasaNetHesapla(txn, id);
+        if (mevcutNet.abs() > 0.005) {
+          kasaHareketId = await _kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
+            hareketTipi: mevcutNet > 0 ? 'Gider İptali' : 'Gider',
+            tutar: mevcutNet.abs(),
+            referansId: id,
+            referansTuru: 'gider',
+            tarih: DateTime.now(),
+            aciklama: 'Gider silindi (kasa düzeltmesi)',
+          ));
+        }
+      });
       final satir = await db.query('giderler', where: 'id = ?', whereArgs: [id], limit: 1);
       if (satir.isNotEmpty) BulutManager().upsert('giderler', Map<String, dynamic>.from(satir.first));
+      if (kasaHareketId != null) {
+        final kasaSatir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
+        if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+      }
     } catch (e, st) {
       LogServisi().hata('Gider.sil', hata: e, yigin: st);
       rethrow;

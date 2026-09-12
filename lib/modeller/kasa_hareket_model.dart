@@ -8,7 +8,7 @@ class KasaHareketModel {
   // hangi ekran/servis kullanırsa kullansın buradan referans alınmalı.
   static const Set<String> girisTipleri = {
     'Satış', 'Tahsilat', 'AçılışKasa', 'Giriş', 'Virman Giriş',
-    'Iade Iptali', 'İade İptali', 'Ödeme Girişi',
+    'Iade Iptali', 'İade İptali', 'Ödeme Girişi', 'Gider İptali',
   };
   static bool girisMi(String hareketTipi) => girisTipleri.contains(hareketTipi);
 

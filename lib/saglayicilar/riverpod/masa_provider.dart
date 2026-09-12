@@ -159,8 +159,15 @@ class MasaSiparisNotifier extends StateNotifier<AsyncValue<MasaSiparisModel?>> {
   }
 }
 
-final masaSiparisProvider = StateNotifierProvider.family<
-    MasaSiparisNotifier, AsyncValue<MasaSiparisModel?>, int>(
+// 🔴 Derin analizde bulundu: bu provider .autoDispose OLMADAN
+// tanımlanmıştı — MasaSiparisNotifier kendi dispose()'unda 5 saniyelik
+// polling Timer'ını doğru şekilde iptal etse de, kullanıcı masa detay
+// ekranından çıktığında Riverpod bu notifier'ı HİÇ dispose etmiyordu
+// (family, ProviderContainer ömrü boyunca canlı kalır). Bir vardiyada
+// gezilen her masa, uygulama kapanana kadar arka planda çalışan bir
+// polling döngüsü daha ekliyordu — pil/DB yükü sürekli artıyordu.
+final masaSiparisProvider = StateNotifierProvider.family
+    .autoDispose<MasaSiparisNotifier, AsyncValue<MasaSiparisModel?>, int>(
   (ref, masaId) => MasaSiparisNotifier(ref.watch(masaDeposuProvider), masaId),
 );
 

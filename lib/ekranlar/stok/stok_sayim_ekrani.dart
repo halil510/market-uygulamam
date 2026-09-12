@@ -55,6 +55,31 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
         type: FileType.custom, allowedExtensions: ['xlsx']);
     if (result == null || result.files.first.bytes == null) return;
     if (!mounted) return;
+    // 🔴 Derin analizde bulundu: dosya seçilir seçilmez, hiçbir önizleme
+    // veya onay olmadan doğrudan uygulanıyordu — manuel sayım akışının
+    // aksine ("Sayımı Uygula" açık onay istiyor). Yanlış/eski bir
+    // dosyanın seçilmesi, canlı stoğu anında ve geri dönüşsüz şekilde
+    // (manuel düzeltme dışında) değiştirebiliyordu.
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Excel İçe Al'),
+        content: Text(
+          '"${result.files.first.name}" dosyasındaki miktarlara göre stok '
+          'güncellenecek.\nBu işlem geri alınamaz. Devam etmek istiyor musunuz?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(foregroundColor: Colors.white, backgroundColor: AppRenkler.primary),
+            child: const Text('Uygula'),
+          ),
+        ],
+      ),
+    );
+    if (onay != true || !mounted) return;
     showDialog(context: context, barrierDismissible: false,
       builder: (_) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

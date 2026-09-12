@@ -115,7 +115,15 @@ class CariDeposu {
         final no = await sonrakiCariNo();
         m['cari_kodu'] = 'CARIO-$no';
       }
-      return await db.insert('cari', m);
+      final id = await db.insert('cari', m);
+      // 🔴 Derin analizde bulundu: bu fonksiyon dosyadaki TEK yazma
+      // metoduydu ve yeni kaydı buluta hiç bildirmiyordu — bir işlem
+      // görmeden önce bir cari asla diğer cihazlara/Supabase'e ulaşmıyordu.
+      final yeniSatir = await db.query('cari', where: 'id = ?', whereArgs: [id], limit: 1);
+      if (yeniSatir.isNotEmpty) {
+        BulutManager().upsert('cari', Map<String, dynamic>.from(yeniSatir.first));
+      }
+      return id;
     } catch (e, st) {
       LogServisi().hata('Cari.ekle', hata: e, yigin: st);
       rethrow;

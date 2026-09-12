@@ -466,7 +466,14 @@ class ExcelServisi {
         if (otomatikInd) indirimliKaydedilen++;
 
         final birim = birimIndex != -1 ? _getCellValue(row[birimIndex]) : '';
-        final stok = stokIndex != -1 ? _getCellDouble(row[stokIndex]) ?? 0.0 : 0.0;
+        // 🔴 Derin analizde bulundu: satisFiyat geçersizse satır
+        // reddediliyor, alisFiyat geçersizse 0'a çekiliyordu — ama stok
+        // için HİÇBİR koruma yoktu; negatif bir stok değeri (yazım
+        // hatası, bozuk export) sessizce urunler.stok'a yazılıp stok
+        // değeri raporlarını ve negatif-stok varsayımı yapan kodu
+        // bozabiliyordu. alisFiyat ile aynı desende 0'a çekiliyor.
+        final stokHam = stokIndex != -1 ? _getCellDouble(row[stokIndex]) ?? 0.0 : 0.0;
+        final stok = stokHam < 0 ? 0.0 : stokHam;
         final kategori = kategoriIndex != -1 ? _getCellValue(row[kategoriIndex]) : '';
         final aktifRaw = aktifIndex != -1 ? _getCellValue(row[aktifIndex]) : '';
         final marka = markaIndex != -1 ? _getCellValue(row[markaIndex]) : '';
@@ -722,6 +729,16 @@ class ExcelServisi {
         final kod    = _getCellValue(kodCell);
         final miktar = _getCellDouble(miktarCell) ?? 0.0;
         if (kod.isEmpty) continue;
+        // 🔴 Derin analizde bulundu: negatif bir sayım miktarı (yazım
+        // hatası, bozuk export) hiç kontrol edilmeden doğrudan
+        // urunler.stok'a yazılıyordu — fiziksel bir sayımda negatif
+        // miktar anlamsız olduğu için satır (satisFiyat'taki gibi)
+        // reddediliyor, sessizce 0'a çekilmiyor.
+        if (miktar < 0) {
+          hata++;
+          hatalar.add('$kod: negatif miktar ($miktar) — atlandı');
+          continue;
+        }
 
         // Önce barkod ile bul, yoksa kod ile
         final rows = await db.rawQuery(

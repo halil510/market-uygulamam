@@ -12,6 +12,7 @@ import '../../cekirdek/utils/sifre_hash.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
 import '../../veri/database/veritabani.dart';
+import '../../saglayicilar/riverpod/auth_provider.dart';
 import 'package:uuid/uuid.dart';
 
 // Tanımlı ekran/işlem yetkileri
@@ -184,6 +185,18 @@ class _KullaniciEkleEkraniState extends ConsumerState<KullaniciEkleEkrani>
       return;
     }
 
+    // 🔴🔴 GÜVENLİK DÜZELTMESİ (derin analizde bulundu): bu ekrana
+    // erişebilen (ör. 'kullanici' yetkisi verilmiş ama admin OLMAYAN
+    // bir müdür) HERHANGİ bir kullanıcı, rol açılır menüsünden 'admin'i
+    // seçip kendine veya başka birine tam yetki verebiliyordu — hiçbir
+    // kontrol yapan kullanıcının KENDİ rolünü aşan bir yetki atamasını
+    // engellemiyordu. Artık admin rolü sadece zaten admin olan biri
+    // tarafından atanabiliyor.
+    if (_rol == 'admin' && !ref.read(authProvider).isAdmin) {
+      BildirimServisi.hata(context, 'Sadece admin, başka bir hesaba admin rolü atayabilir');
+      return;
+    }
+
     if (!mounted) return;
     setState(() => _kayit = true);
     try {
@@ -328,12 +341,22 @@ class _KullaniciEkleEkraniState extends ConsumerState<KullaniciEkleEkrani>
                     filled: true,
                     fillColor: TsRenk.arkaplan(context),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'admin', child: Text('Admin (Tüm Yetkiler)')),
-                    DropdownMenuItem(value: 'mudur', child: Text('Müdür')),
-                    DropdownMenuItem(value: 'kasiyer', child: Text('Kasiyer')),
-                    DropdownMenuItem(value: 'personel', child: Text('Personel')),
-                    DropdownMenuItem(value: 'depocu', child: Text('Depocu')),
+                  // 🔴 Derin analizde bulundu: 'Admin' seçeneği, ekrana
+                  // erişebilen HERKESE (ör. 'kullanici' yetkisi verilmiş
+                  // bir müdüre) gösteriliyordu — kaydetme sırasında artık
+                  // engelleniyor (bkz. _kaydet()), ama kafa karıştırmamak
+                  // için sadece gerçekten admin olana gösteriliyor. Zaten
+                  // 'admin' rolündeki bir kullanıcı düzenlenirken (mevcut
+                  // _rol=='admin') öge listeden hiç düşürülmez — aksi
+                  // halde DropdownButtonFormField'ın value'su listede
+                  // bulunamayıp çökerdi.
+                  items: [
+                    if (ref.watch(authProvider).isAdmin || _rol == 'admin')
+                      const DropdownMenuItem(value: 'admin', child: Text('Admin (Tüm Yetkiler)')),
+                    const DropdownMenuItem(value: 'mudur', child: Text('Müdür')),
+                    const DropdownMenuItem(value: 'kasiyer', child: Text('Kasiyer')),
+                    const DropdownMenuItem(value: 'personel', child: Text('Personel')),
+                    const DropdownMenuItem(value: 'depocu', child: Text('Depocu')),
                   ],
                   onChanged: (v) => setState(() {
                     _rol = v!;

@@ -268,41 +268,49 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
 
   Future<void> _satisiTamamla() async {
     if (_secilenBayi == null || _sepet.isEmpty || _kaydediliyor) return;
-
-    final limitSonuc = await _cariDepo.limitKontrolEt(_secilenBayi!.id!, _genelToplam);
-    if (limitSonuc.asildi && mounted) {
-      final devam = await showDialog<bool>(
-        context: context,
-        builder: (c) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(children: [
-            Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
-            SizedBox(width: 8),
-            Text('Kredi Limiti Aşılıyor'),
-          ]),
-          content: Text(
-            '${_secilenBayi!.unvan} için tanımlı kredi limiti: '
-            '${ParaUtils.formatla(limitSonuc.limit)}\n'
-            'Mevcut bakiye: ${ParaUtils.formatla(limitSonuc.mevcutBakiye)}\n'
-            'Bu satışla birlikte: ${ParaUtils.formatla(limitSonuc.mevcutBakiye + _genelToplam)}\n\n'
-            'Limit ${ParaUtils.formatla(limitSonuc.asimTutari)} kadar aşılacak. '
-            'Yine de devam etmek istiyor musunuz?',
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Vazgeç')),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: TsRenk.uyari),
-              onPressed: () => Navigator.pop(c, true),
-              child: const Text('Yine de Devam Et'),
-            ),
-          ],
-        ),
-      );
-      if (devam != true) return;
-    }
-
+    // 🔴 Derin analizde bulundu: guard bayrağı (_kaydediliyor) önceden
+    // buradaki iki await'ten (limitKontrolEt + olası onay dialog'u)
+    // SONRA true yapılıyordu — o sırada buton hâlâ etkin kalıyordu. Hızlı
+    // bir çift dokunma, ikinci çağrının da guard'ı hâlâ false görmesine
+    // ve aynı toptan satışın STOK ve CARİ BORCU İKİ KEZ işlenerek
+    // mükerrer kaydedilmesine yol açabilirdi (diğer ekranlar — alim_ekrani,
+    // bayi_siparis_al_ekrani — bayrağı doğru şekilde ilk await'ten önce
+    // set ediyor). Artık en baştan, herhangi bir await'ten önce set
+    // ediliyor.
     setState(() => _kaydediliyor = true);
     try {
+      final limitSonuc = await _cariDepo.limitKontrolEt(_secilenBayi!.id!, _genelToplam);
+      if (limitSonuc.asildi && mounted) {
+        final devam = await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(children: [
+              Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
+              SizedBox(width: 8),
+              Text('Kredi Limiti Aşılıyor'),
+            ]),
+            content: Text(
+              '${_secilenBayi!.unvan} için tanımlı kredi limiti: '
+              '${ParaUtils.formatla(limitSonuc.limit)}\n'
+              'Mevcut bakiye: ${ParaUtils.formatla(limitSonuc.mevcutBakiye)}\n'
+              'Bu satışla birlikte: ${ParaUtils.formatla(limitSonuc.mevcutBakiye + _genelToplam)}\n\n'
+              'Limit ${ParaUtils.formatla(limitSonuc.asimTutari)} kadar aşılacak. '
+              'Yine de devam etmek istiyor musunuz?',
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Vazgeç')),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: TsRenk.uyari),
+                onPressed: () => Navigator.pop(c, true),
+                child: const Text('Yine de Devam Et'),
+              ),
+            ],
+          ),
+        );
+        if (devam != true) return;
+      }
+
       final kullanici = AuthServisi().aktifKullanici;
       final tarih = DateTime.now();
       final fisNo = await Veritabani().fisNoUret('cari_satis', subeId: AktifSubeServisi().subeId ?? 1);

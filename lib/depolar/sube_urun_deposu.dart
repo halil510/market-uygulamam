@@ -83,18 +83,59 @@ class SubeUrunDeposu {
     }
   }
 
+  /// Verilen (urun_id, sube_id) satırını TEK transaction içinde okuyup
+  /// yazar — [stokDus]/[stokGir] içindeki "oku sonra yaz" adımını atomik
+  /// yapmak için kullanılır.
+  Future<void> _farkUygulaTxn(dynamic txn, int urunId, int subeId, double fark) async {
+    final now = DateTime.now().toIso8601String();
+    final rows = await txn.query('sube_urun',
+        where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, subeId], limit: 1);
+    if (rows.isEmpty) {
+      await txn.insert('sube_urun', {
+        'global_id': const Uuid().v4(),
+        'urun_id': urunId, 'sube_id': subeId,
+        'stok': fark, 'son_guncelleme': now, 'last_updated': now,
+      });
+    } else {
+      final mevcut = (rows.first['stok'] as num?)?.toDouble() ?? 0.0;
+      await txn.update('sube_urun',
+          {'stok': mevcut + fark, 'son_guncelleme': now, 'last_updated': now},
+          where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, subeId]);
+    }
+  }
+
   /// Şubedeki stoğu belirtilen miktar kadar AZALTIR (satış, iade-çıkış vb.).
   /// Negatife düşmesini engellemez (StokDeposu tarafında zaten kontrol
   /// ediliyor) — burada sadece o şubenin payı düşülür.
+  ///
+  /// 🔴 Derin analizde bulundu: önceden "oku (stokGetir) sonra yaz
+  /// (stokAyarla)" transaction'sız yapılıyordu — aynı üründe aynı şubede
+  /// neredeyse eş zamanlı iki satış birbirinin okuduğu değeri geçersiz
+  /// kılabilir (lost update), sube_urun toplamı gerçek stoktan sapabilirdi.
+  /// Artık okuma+yazma TEK transaction içinde.
   Future<void> stokDus(int urunId, int subeId, double miktar) async {
-    final mevcut = await stokGetir(urunId, subeId);
-    await stokAyarla(urunId, subeId, mevcut - miktar);
+    try {
+      final db = await _d;
+      await db.transaction((txn) => _farkUygulaTxn(txn, urunId, subeId, -miktar));
+      final satir = await satirGetir(urunId, subeId);
+      if (satir != null) BulutManager().upsert('sube_urun', Map<String, dynamic>.from(satir));
+    } catch (e, st) {
+      LogServisi().hata('SubeUrun.stokDus', hata: e, yigin: st);
+      rethrow;
+    }
   }
 
   /// Şubedeki stoğu belirtilen miktar kadar ARTIRIR (alım, iade-giriş vb.).
   Future<void> stokGir(int urunId, int subeId, double miktar) async {
-    final mevcut = await stokGetir(urunId, subeId);
-    await stokAyarla(urunId, subeId, mevcut + miktar);
+    try {
+      final db = await _d;
+      await db.transaction((txn) => _farkUygulaTxn(txn, urunId, subeId, miktar));
+      final satir = await satirGetir(urunId, subeId);
+      if (satir != null) BulutManager().upsert('sube_urun', Map<String, dynamic>.from(satir));
+    } catch (e, st) {
+      LogServisi().hata('SubeUrun.stokGir', hata: e, yigin: st);
+      rethrow;
+    }
   }
 
   /// Bir şubeden diğerine stok transferi (Depo Transfer ekranı için).

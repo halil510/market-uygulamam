@@ -84,8 +84,14 @@ class BankaHareketSorgu {
   int get hashCode => Object.hash(hesapId, krediKartiId, baslangic, bitis, limit);
 }
 
-final bankaHareketlerProvider =
-    FutureProvider.family<List<BankaHareketModel>, BankaHareketSorgu>((ref, sorgu) async {
+// 🔴 Derin analizde bulundu: .autoDispose olmadan tanımlanmıştı — her
+// farklı BankaHareketSorgu (tarih aralığı/hesap/kart kombinasyonu)
+// uygulama ömrü boyunca önbellekte kalıcı olarak tutuluyordu. Projedeki
+// @riverpod ile üretilen provider'ların hepsi varsayılan olarak
+// autoDispose; tutarlılık ve gereksiz bellek büyümesini önlemek için
+// burada da eklendi.
+final bankaHareketlerProvider = FutureProvider.family
+    .autoDispose<List<BankaHareketModel>, BankaHareketSorgu>((ref, sorgu) async {
   try {
     return await BankaHareketDeposu().hareketleriGetir(
       hesapId: sorgu.hesapId,

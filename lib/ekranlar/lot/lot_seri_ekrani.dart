@@ -127,6 +127,16 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
       ),
     );
     if (ok != true || !mounted) return;
+    // 🔴 Derin analizde bulundu: miktar alanı ayrıştırma (parse)
+    // başarısız olursa sessizce 0'a düşüyordu — kullanıcı "12,5" yerine
+    // yanlışlıkla geçersiz bir şey yazarsa (ör. klavye hatası), lot
+    // miktarı hiç uyarı vermeden sıfırlanıp kaydediliyordu. Ayrıca
+    // negatif miktar da hiç engellenmiyordu.
+    final miktar = ParaUtils.sayiCoz(miktCtrl.text.trim());
+    if (miktar == null || miktar < 0) {
+      BildirimServisi.uyari(context, 'Geçerli bir miktar girin (0 veya üzeri)');
+      return;
+    }
     try {
       final db = await Veritabani().db;
       final skt = sktCtrl.text.trim().isNotEmpty
@@ -135,7 +145,7 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
       final data = {
         'lot_no': lotCtrl.text.trim(),
         'son_kullanma_tarihi': skt,
-        'miktar': ParaUtils.sayiCoz(miktCtrl.text.trim()) ?? 0,
+        'miktar': miktar,
         'aciklama': notCtrl.text.trim(),
       };
       int lotId;

@@ -623,6 +623,25 @@ class UrunModel {
     lastUpdated: lastUpdated ?? this.lastUpdated,
     syncStatus: syncStatus ?? this.syncStatus,
     isDeleted: isDeleted ?? this.isDeleted,
+    // 🔴🔴 KRİTİK VERİ KAYBI (derin analizde bulundu): bu 11 alan
+    // copyWith parametresi olarak TANIMLIYDI ama aşağıdaki UrunModel(...)
+    // çağrısına HİÇ AKTARILMIYORDU — her copyWith() çağrısı bu alanları
+    // sessizce varsayılana (null/0/false) sıfırlıyordu. Ör. bir dövizli
+    // toplu fiyat güncellemesinde `urun.copyWith(alisFiyat: yeni)`
+    // çağrısı, o ürünün kategorisini, promosyon ayarlarını, reçete
+    // katsayısını vb. kaybederdi. CariModel/KrediKartiModel'de aynı hata
+    // sınıfı daha önce bulunup düzeltilmişti (bkz. o dosyalardaki notlar).
+    kategoriId: kategoriId ?? this.kategoriId,
+    indirimliFiyatKayitli: indirimliFiyatKayitli ?? this.indirimliFiyatKayitli,
+    eskiFiyat: eskiFiyat ?? this.eskiFiyat,
+    eskiFiyatTarih: eskiFiyatTarih ?? this.eskiFiyatTarih,
+    promosyonGrup: promosyonGrup ?? this.promosyonGrup,
+    promosyonAktif: promosyonAktif ?? this.promosyonAktif,
+    receteKatsayi: receteKatsayi ?? this.receteKatsayi,
+    lotAciklama: lotAciklama ?? this.lotAciklama,
+    hacim: hacim ?? this.hacim,
+    evrakKontrolAktif: evrakKontrolAktif ?? this.evrakKontrolAktif,
+    netAlisFiyat: netAlisFiyat ?? this.netAlisFiyat,
   );
 
   // Excel dışa aktarma için satır oluştur

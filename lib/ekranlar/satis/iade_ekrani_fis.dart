@@ -28,9 +28,12 @@ extension _FisTabExt on _IadeEkraniState {
     _fisIadeEdilenMiktar = {};
     if (mounted) setState(() {});
     final satislar = await _satisDepo.bugunkunSatislar();
-    final satis = satislar.where((s) => s.fisNo == no || s.id?.toString() == no).firstOrNull;
+    final satis = satislar
+        .where((s) => s.fisNo == no || s.id?.toString() == no)
+        .firstOrNull;
     _bulunanSatis = satis;
-    if (satis != null) _fisIadeEdilenMiktar = await _fisIadeliMiktarlariGetir(satis.id!);
+    if (satis != null)
+      _fisIadeEdilenMiktar = await _fisIadeliMiktarlariGetir(satis.id!);
     if (mounted) setState(() {});
     if (satis == null && mounted) _msg('Fiş bulunamadı: $no', err: true);
   }
@@ -63,24 +66,74 @@ extension _FisTabExt on _IadeEkraniState {
       return;
     }
 
-    final onay = await showDialog<bool>(context: context,
-      builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('İade Onayla'),
-        content: Text('${kalem.urunAdi} ($kalanMiktar adet) iade edilecek. Emin misiniz?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: _R.orange),
-              child: const Text('İade Et')),
-        ],
-      ),
+    // 🔴🔴 FAZ 1 madde 1 (kullanıcı onayıyla): iade artık orijinal
+    // satışın ödeme yöntemini dikkate alıyor — kart/banka ile ödenmiş
+    // bir satışın iadesi kasadan nakit ÇIKARMIYOR (POS cihazından ayrıca
+    // iade edilmesi gerekiyor), sadece Nakit seçiliyse kasa hareketi
+    // oluşuyor. Varsayılan, orijinal ödeme yöntemidir; kullanıcı
+    // isterse değiştirebilir.
+    String secilenYontem =
+        _bulunanSatis!.odemeYontemi == 'Nakit' ? 'Nakit' : 'Kart/Banka';
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setS) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                title: const Text('İade Onayla'),
+                content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          '${kalem.urunAdi} ($kalanMiktar adet) iade edilecek.'),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: secilenYontem,
+                        decoration: const InputDecoration(
+                            labelText: 'İade Ödeme Yöntemi',
+                            border: OutlineInputBorder(),
+                            isDense: true),
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'Nakit', child: Text('Nakit (kasadan)')),
+                          DropdownMenuItem(
+                              value: 'Kart/Banka',
+                              child: Text('Kart/Banka (POS\'tan)')),
+                        ],
+                        onChanged: (v) =>
+                            setS(() => secilenYontem = v ?? secilenYontem),
+                      ),
+                      if (secilenYontem != 'Nakit') ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Bu seçenekte kasadan nakit çıkışı OLUŞTURULMAZ — iade '
+                          'tutarını POS cihazından ayrıca müşterinin kartına iade '
+                          'etmeniz gerekir.',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.orange.shade800),
+                        ),
+                      ],
+                    ]),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('İptal')),
+                  FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: FilledButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: _R.orange),
+                      child: const Text('İade Et')),
+                ],
+              )),
     );
     if (onay != true) return;
+    final nakitIade = secilenYontem == 'Nakit';
 
     final db = await Veritabani().db;
-    final fisNo = await Veritabani().fisNoUret('iade', subeId: AktifSubeServisi().subeId ?? 1);
+    final fisNo = await Veritabani()
+        .fisNoUret('iade', subeId: AktifSubeServisi().subeId ?? 1);
     // Kısmen daha önce iade edilmiş olabileceği için toplam, KALAN
     // miktar üzerinden hesaplanıyor (kalem.toplamTutar'ın tamamı değil).
     final oranli = kalem.miktar == 0 ? 0.0 : kalanMiktar / kalem.miktar;
@@ -101,16 +154,24 @@ extension _FisTabExt on _IadeEkraniState {
     await db.transaction((txn) async {
       iadeId = await txn.insert('iade', {
         'global_id': const Uuid().v4(),
-        'satis_id': _bulunanSatis!.id, 'cari_id': _bulunanSatis!.cariId,
-        'fis_no': fisNo, 'tarih': now,
-        'toplam_tutar': toplam, 'iade_nedeni': 'Fiş iadesi',
-        'durum': 'tamamlandi', 'kasiyer_id': kullaniciId,
+        'satis_id': _bulunanSatis!.id,
+        'cari_id': _bulunanSatis!.cariId,
+        'fis_no': fisNo,
+        'tarih': now,
+        'toplam_tutar': toplam,
+        'iade_nedeni': 'Fiş iadesi',
+        'durum': 'tamamlandi',
+        'kasiyer_id': kullaniciId,
       });
 
       await txn.insert('iade_kalem', {
         'global_id': const Uuid().v4(),
-        'iade_id': iadeId, 'urun_id': kalem.urunId, 'urun_adi': kalem.urunAdi,
-        'miktar': kalanMiktar, 'birim_fiyat': kalem.birimFiyat, 'toplam': toplam,
+        'iade_id': iadeId,
+        'urun_id': kalem.urunId,
+        'urun_adi': kalem.urunAdi,
+        'miktar': kalanMiktar,
+        'birim_fiyat': kalem.birimFiyat,
+        'toplam': toplam,
       });
 
       // Stok geri ekle
@@ -118,7 +179,8 @@ extension _FisTabExt on _IadeEkraniState {
           columns: ['stok'], where: 'id = ?', whereArgs: [kalem.urunId]);
       if (urunRows.isNotEmpty) {
         final onceki = (urunRows.first['stok'] as num).toDouble();
-        await txn.update('urunler', {'stok': onceki + kalanMiktar, 'last_updated': now},
+        await txn.update(
+            'urunler', {'stok': onceki + kalanMiktar, 'last_updated': now},
             where: 'id = ?', whereArgs: [kalem.urunId]);
         await txn.insert('stok_hareket', {
           'global_id': const Uuid().v4(),
@@ -135,21 +197,28 @@ extension _FisTabExt on _IadeEkraniState {
         });
       }
 
-      // Kasa — KasaDeposu ile aynı güvenli bakiye sorgusu (bkz. manuel
-      // sekmedeki aynı düzeltme: deleted_at IS NULL + tarih DESC).
-      final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) - toplam;
-      await txn.insert('kasa_hareketleri', {
-        'global_id': const Uuid().v4(),
-        'hareket_tipi': 'İade',
-        'tutar': toplam,
-        'bakiye_sonrasi': kasaBakiye,
-        'referans_id': iadeId,
-        'referans_turu': 'iade',
-        'tarih': now,
-        'sube_id': AktifSubeServisi().subeId,
-        'aciklama': 'Fiş iadesi: $fisNo',
-        'kullanici_id': kullaniciId,
-      });
+      // Kasa — SADECE Nakit iade seçildiyse oluşturulur. Kart/Banka
+      // iadesinde fiziksel kasadan hiç para çıkmıyor (POS'tan ayrıca
+      // iade ediliyor), bu yüzden burada kasa_hareketleri'ne HİÇ
+      // yazılmaz — aksi halde kasa gerçekte olmayan bir nakit çıkışı
+      // gösterirdi.
+      if (nakitIade) {
+        // KasaDeposu ile aynı güvenli bakiye sorgusu (bkz. manuel
+        // sekmedeki aynı düzeltme: deleted_at IS NULL + tarih DESC).
+        final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) - toplam;
+        await txn.insert('kasa_hareketleri', {
+          'global_id': const Uuid().v4(),
+          'hareket_tipi': 'İade',
+          'tutar': toplam,
+          'bakiye_sonrasi': kasaBakiye,
+          'referans_id': iadeId,
+          'referans_turu': 'iade',
+          'tarih': now,
+          'sube_id': AktifSubeServisi().subeId,
+          'aciklama': 'Fiş iadesi: $fisNo',
+          'kullanici_id': kullaniciId,
+        });
+      }
 
       // Cari
       if (_bulunanSatis!.cariId != null) {
@@ -167,8 +236,8 @@ extension _FisTabExt on _IadeEkraniState {
           'kullanici': AuthServisi().aktifAd,
         });
         await txn.rawUpdate(
-          'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=?) WHERE id=?',
-          [_bulunanSatis!.cariId, _bulunanSatis!.cariId]);
+            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=?) WHERE id=?',
+            [_bulunanSatis!.cariId, _bulunanSatis!.cariId]);
       }
     }); // transaction sonu
 
@@ -176,30 +245,53 @@ extension _FisTabExt on _IadeEkraniState {
     // sistemi projede her yerde bu şekilde: önce kalıcı yaz, sonra
     // bildir — bkz. manuel sekmedeki aynı desen).
     try {
-      final iadeSatir = await db.query('iade', where: 'id = ?', whereArgs: [iadeId], limit: 1);
-      if (iadeSatir.isNotEmpty) BulutManager().upsert('iade', Map<String, dynamic>.from(iadeSatir.first));
+      final iadeSatir = await db.query('iade',
+          where: 'id = ?', whereArgs: [iadeId], limit: 1);
+      if (iadeSatir.isNotEmpty)
+        BulutManager()
+            .upsert('iade', Map<String, dynamic>.from(iadeSatir.first));
       final kalemSatir = await db.query('iade_kalem',
-          where: 'iade_id = ? AND urun_id = ?', whereArgs: [iadeId, kalem.urunId], limit: 1);
-      if (kalemSatir.isNotEmpty) BulutManager().upsert('iade_kalem', Map<String, dynamic>.from(kalemSatir.first));
-      final urunSatir = await db.query('urunler', where: 'id = ?', whereArgs: [kalem.urunId], limit: 1);
-      if (urunSatir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
+          where: 'iade_id = ? AND urun_id = ?',
+          whereArgs: [iadeId, kalem.urunId],
+          limit: 1);
+      if (kalemSatir.isNotEmpty)
+        BulutManager()
+            .upsert('iade_kalem', Map<String, dynamic>.from(kalemSatir.first));
+      final urunSatir = await db.query('urunler',
+          where: 'id = ?', whereArgs: [kalem.urunId], limit: 1);
+      if (urunSatir.isNotEmpty)
+        BulutManager()
+            .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
       final stokSatir = await db.query('stok_hareket',
-          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [iadeId, 'iade'],
-          orderBy: 'id DESC', limit: 1);
-      if (stokSatir.isNotEmpty) BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+          where: 'referans_id = ? AND referans_turu = ?',
+          whereArgs: [iadeId, 'iade'],
+          orderBy: 'id DESC',
+          limit: 1);
+      if (stokSatir.isNotEmpty)
+        BulutManager()
+            .upsert('stok_hareket', Map<String, dynamic>.from(stokSatir.first));
       final kasaSatir = await db.query('kasa_hareketleri',
-          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [iadeId, 'iade'],
-          orderBy: 'id DESC', limit: 1);
-      if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+          where: 'referans_id = ? AND referans_turu = ?',
+          whereArgs: [iadeId, 'iade'],
+          orderBy: 'id DESC',
+          limit: 1);
+      if (kasaSatir.isNotEmpty)
+        BulutManager().upsert(
+            'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
       if (_bulunanSatis!.cariId != null) {
         final cariHareketSatir = await db.query('cari_hareket',
             where: "fis_id = ? AND cari_id = ? AND fis_tipi = 'İade'",
-            whereArgs: [iadeId, _bulunanSatis!.cariId], limit: 1);
+            whereArgs: [iadeId, _bulunanSatis!.cariId],
+            limit: 1);
         if (cariHareketSatir.isNotEmpty) {
-          BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(cariHareketSatir.first));
+          BulutManager().upsert('cari_hareket',
+              Map<String, dynamic>.from(cariHareketSatir.first));
         }
-        final cariSatir = await db.query('cari', where: 'id = ?', whereArgs: [_bulunanSatis!.cariId], limit: 1);
-        if (cariSatir.isNotEmpty) BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
+        final cariSatir = await db.query('cari',
+            where: 'id = ?', whereArgs: [_bulunanSatis!.cariId], limit: 1);
+        if (cariSatir.isNotEmpty)
+          BulutManager()
+              .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
       }
     } catch (e) {
       if (kDebugMode) debugPrint('Fiş iadesi bulut bildirimi hatası: $e');
@@ -227,101 +319,161 @@ extension _FisTabExt on _IadeEkraniState {
       'musteri_adi': _bulunanSatis!.cariAdi ?? 'Perakende',
       'aciklama': 'Fiş iadesi - ${_bulunanSatis!.fisNo ?? _bulunanSatis!.id}',
     });
-    _msg('${kalem.urunAdi} iade edildi');
+    _msg(nakitIade
+        ? '${kalem.urunAdi} iade edildi (kasadan nakit ödendi)'
+        : '${kalem.urunAdi} iade edildi — tutarı POS cihazından ayrıca müşteriye iade edin');
     setState(() {});
   }
 
   Widget _fisTab() => SingleChildScrollView(
-    padding: const EdgeInsets.all(16),
-    child: Column(children: [
-      Row(children: [
-        Expanded(child: TextField(
-          controller: _fisNoCtrl,
-          decoration: const InputDecoration(
-            hintText: 'Fiş numarası girin…',
-            prefixIcon: Icon(Icons.receipt),
-            border: OutlineInputBorder(), isDense: true),
-          onSubmitted: (_) => _fisBul(),
-        )),
-        const SizedBox(width: 8),
-        FilledButton(onPressed: _fisBul, child: const Text('Ara')),
-      ]),
-      const SizedBox(height: 16),
-      if (_bulunanSatis != null) ...[
-        Container(padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: TsRenk.ayirac(context)),
-            boxShadow: const [BoxShadow(color: Color(0x10000000), blurRadius: 6)]),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Fiş: ${_bulunanSatis!.fisNo ?? _bulunanSatis!.id}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              Chip(label: Text(_bulunanSatis!.odemeYontemi),
-                backgroundColor: Colors.blue.shade50),
-            ]),
-            if (_bulunanSatis!.cariAdi != null)
-              Text('Müşteri: ${_bulunanSatis!.cariAdi}', style: TextStyle(color: TsRenk.metinIkincil(context), fontSize: 12)),
-            Text(DateFormat('dd.MM.yyyy HH:mm').format(_bulunanSatis!.tarih),
-                style: TextStyle(color: TsRenk.metinIkincil(context), fontSize: 12)),
-            const Divider(height: 24),
-            const Text('Kalemler:', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            ...(_bulunanSatis!.kalemler.map((k) {
-              final oncekiIade = _fisIadeEdilenMiktar[k.urunId] ?? 0;
-              final kalanMiktar = k.miktar - oncekiIade;
-              final tamIadeEdildi = kalanMiktar <= 0;
-              return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: TsRenk.arkaplan(context), borderRadius: BorderRadius.circular(12)),
-              child: Row(children: [
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(k.urunAdi, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                  Text('${k.miktar} × ${ParaUtils.formatla(k.birimFiyat)}',
-                      style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
-                  if (oncekiIade > 0)
+        padding: const EdgeInsets.all(16),
+        child: Column(children: [
+          Row(children: [
+            Expanded(
+                child: TextField(
+              controller: _fisNoCtrl,
+              decoration: const InputDecoration(
+                  hintText: 'Fiş numarası girin…',
+                  prefixIcon: Icon(Icons.receipt),
+                  border: OutlineInputBorder(),
+                  isDense: true),
+              onSubmitted: (_) => _fisBul(),
+            )),
+            const SizedBox(width: 8),
+            FilledButton(onPressed: _fisBul, child: const Text('Ara')),
+          ]),
+          const SizedBox(height: 16),
+          if (_bulunanSatis != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: TsRenk.kart(context),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: TsRenk.ayirac(context)),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x10000000), blurRadius: 6)
+                  ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                              'Fiş: ${_bulunanSatis!.fisNo ?? _bulunanSatis!.id}',
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700)),
+                          Chip(
+                              label: Text(_bulunanSatis!.odemeYontemi),
+                              backgroundColor: Colors.blue.shade50),
+                        ]),
+                    if (_bulunanSatis!.cariAdi != null)
+                      Text('Müşteri: ${_bulunanSatis!.cariAdi}',
+                          style: TextStyle(
+                              color: TsRenk.metinIkincil(context),
+                              fontSize: 12)),
                     Text(
-                      tamIadeEdildi ? 'Tamamı iade edildi' : '$oncekiIade adet iade edildi',
-                      style: TextStyle(fontSize: 11, color: TsRenk.hata, fontWeight: FontWeight.w600),
-                    ),
-                ])),
-                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text(ParaUtils.formatla(k.toplamTutar),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 4),
-                  if (tamIadeEdildi)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      child: Icon(Icons.check_circle, size: 16, color: Colors.green),
-                    )
-                  else
-                    TextButton.icon(
-                      icon: const Icon(Icons.assignment_return, size: 14),
-                      label: const Text('İade', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(foregroundColor: _R.orange,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero),
-                      onPressed: () => _fisKalemIade(k),
-                    ),
-                ]),
+                        DateFormat('dd.MM.yyyy HH:mm')
+                            .format(_bulunanSatis!.tarih),
+                        style: TextStyle(
+                            color: TsRenk.metinIkincil(context), fontSize: 12)),
+                    const Divider(height: 24),
+                    const Text('Kalemler:',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    ...(_bulunanSatis!.kalemler.map((k) {
+                      final oncekiIade = _fisIadeEdilenMiktar[k.urunId] ?? 0;
+                      final kalanMiktar = k.miktar - oncekiIade;
+                      final tamIadeEdildi = kalanMiktar <= 0;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                            color: TsRenk.arkaplan(context),
+                            borderRadius: BorderRadius.circular(12)),
+                        child: Row(children: [
+                          Expanded(
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                Text(k.urunAdi,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13)),
+                                Text(
+                                    '${k.miktar} × ${ParaUtils.formatla(k.birimFiyat)}',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: TsRenk.metinIkincil(context))),
+                                if (oncekiIade > 0)
+                                  Text(
+                                    tamIadeEdildi
+                                        ? 'Tamamı iade edildi'
+                                        : '$oncekiIade adet iade edildi',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: TsRenk.hata,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                              ])),
+                          Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(ParaUtils.formatla(k.toplamTutar),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13)),
+                                const SizedBox(height: 4),
+                                if (tamIadeEdildi)
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    child: Icon(Icons.check_circle,
+                                        size: 16, color: Colors.green),
+                                  )
+                                else
+                                  TextButton.icon(
+                                    icon: const Icon(Icons.assignment_return,
+                                        size: 14),
+                                    label: const Text('İade',
+                                        style: TextStyle(fontSize: 12)),
+                                    style: TextButton.styleFrom(
+                                        foregroundColor: _R.orange,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        minimumSize: Size.zero),
+                                    onPressed: () => _fisKalemIade(k),
+                                  ),
+                              ]),
+                        ]),
+                      );
+                    })),
+                    const Divider(),
+                    Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('TOPLAM',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(ParaUtils.formatla(_bulunanSatis!.genelToplam),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: _R.primary)),
+                        ]),
+                  ]),
+            ),
+          ] else
+            Center(
+                child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: Column(children: [
+                Icon(Icons.receipt_long,
+                    size: 64, color: TsRenk.ayirac(context)),
+                const SizedBox(height: 12),
+                Text('Fiş numarasını girin ve arayın',
+                    style: TextStyle(color: context.textSecondary)),
               ]),
-            );})),
-            const Divider(),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('TOPLAM', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text(ParaUtils.formatla(_bulunanSatis!.genelToplam),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _R.primary)),
-            ]),
-          ]),
-        ),
-      ] else
-        Center(child: Padding(padding: const EdgeInsets.symmetric(vertical: 48),
-          child: Column(children: [
-            Icon(Icons.receipt_long, size: 64, color: TsRenk.ayirac(context)),
-            const SizedBox(height: 12),
-            Text('Fiş numarasını girin ve arayın', style: TextStyle(color: context.textSecondary)),
-          ]),
-        )),
-    ]),
-  );
+            )),
+        ]),
+      );
 }

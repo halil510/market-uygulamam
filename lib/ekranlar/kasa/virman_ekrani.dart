@@ -58,6 +58,14 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
       BildirimServisi.uyari(context, 'Kaynak ve hedef farklı olmalı');
       return;
     }
+    // 🔴 Derin analizde bulundu: Kasa çıkış tarafındaysa mevcut bakiyeyi
+    // aşıp aşmadığı hiç kontrol edilmiyordu — kasayı negatife düşüren bir
+    // virman hiçbir uyarı olmadan onaylanabiliyordu.
+    if (_kaynakHesap == 'Kasa' && tutar > _kasaBakiye + 0.01) {
+      BildirimServisi.uyari(context,
+          'Kasa bakiyesi (${ParaUtils.formatla(_kasaBakiye)}) yetersiz');
+      return;
+    }
 
     setState(() => _islem = true);
     try {
@@ -100,10 +108,17 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
       _tutarCtrl.clear();
       _aciklamaCtrl.clear();
       if (mounted) {
-        BildirimServisi.basari(context, '${ParaUtils.formatla(tutar)} virman yapıldı ✓');
-        if (!kasaDahil && mounted) {
+        // 🔴 Derin analizde bulundu: kasa taraf olmadığında (ör.
+        // Banka → Kredi Kartı) önce "✓ virman yapıldı" başarı mesajı
+        // gösterilip HEMEN ARDINDAN "aslında hiçbir yere kaydedilmedi"
+        // uyarısı veriliyordu — kısa süreliğine yanıltıcıydı. Artık bu
+        // durumda başarı mesajı hiç gösterilmiyor, sadece açıklayıcı
+        // uyarı gösteriliyor.
+        if (kasaDahil) {
+          BildirimServisi.basari(context, '${ParaUtils.formatla(tutar)} virman yapıldı ✓');
+        } else {
           BildirimServisi.uyari(context,
-              'Not: Kasa bu virmanda taraf olmadığı için kasa hareket '
+              'Kasa bu virmanda taraf olmadığı için kasa hareket '
               'geçmişine kaydedilmedi. Banka/kart hesapları arası hareket '
               'için ilgili hesap ekranından işlem yapın.');
         }

@@ -104,8 +104,13 @@ Future<KarZararVeri> karZarar(KarZararRef ref) async {
       LEFT JOIN gider_kategoriler gk ON g.kategori_id=gk.id
       WHERE datetime(g.tarih) BETWEEN datetime(?) AND datetime(?) AND g.deleted_at IS NULL $giderSubeKosulu
       GROUP BY g.kategori_id ORDER BY toplam DESC''', [bas, bit, ...subeArgs]),
+    // 🔴 Derin analizde bulundu: DATE('now') SQLite'ta VARSAYILAN OLARAK
+    // UTC kullanır, ama 'tarih' sütunu yerel saatle yazılıyor (bkz.
+    // kasa_deposu.dart'taki aynı hata sınıfının notu) — Türkiye UTC+3
+    // olduğu için yerel 00:00-03:00 arası pencere sınırı bir gün/ay
+    // kayabiliyordu. 'localtime' değiştiricisi eklendi.
     db.rawQuery('''SELECT strftime('%Y-%m',tarih) as ay, COALESCE(SUM(genel_toplam),0) as ciro, COUNT(*) as sayi
-      FROM satislar WHERE tarih>=date('now','-5 months','start of month')
+      FROM satislar WHERE tarih>=date('now','localtime','-5 months','start of month')
       AND iptal=0 AND is_deleted=0 $satisSubeKosuluDuzSatislar GROUP BY ay ORDER BY ay''', subeArgs),
   ]);
 

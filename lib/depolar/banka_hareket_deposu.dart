@@ -77,9 +77,14 @@ class BankaHareketDeposu {
   }
 
   Future<double> _sonBakiyeTxn(Transaction txn, int hesapId) async {
+    // 🔴 Derin analizde bulundu: KasaDeposu._sonBakiyeTxn ve tüm cari
+    // bakiye sorgularının aksine burada 'is_deleted = 0' filtresi yoktu —
+    // buluttan bir tombstone (silinmiş kayıt) senkronize olursa, yeni bir
+    // yerel işlem yanlışlıkla silinmiş bir satırın bakiyesi üzerinden
+    // zincire devam edebilirdi.
     final rows = await txn.rawQuery(
       'SELECT sonraki_bakiye FROM banka_hareketler '
-      'WHERE banka_hesap_id = ? ORDER BY tarih DESC, id DESC LIMIT 1',
+      'WHERE banka_hesap_id = ? AND is_deleted = 0 ORDER BY tarih DESC, id DESC LIMIT 1',
       [hesapId],
     );
     if (rows.isEmpty) {

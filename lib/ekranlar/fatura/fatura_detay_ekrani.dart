@@ -34,6 +34,14 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
   final _depo = FaturaDeposu();
   FaturaModel? _fatura;
   bool _yukleniyor = true;
+  // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): ne ödeme kaydetme ne
+  // de e-Fatura gönderme butonunda çift-tıklama koruması vardı. e-Fatura
+  // gönderiminde durum ('gonderildi') ancak ağ çağrısı DÖNDÜKTEN sonra
+  // güncelleniyordu — hızlı bir çift dokunma, ilk gönderim hâlâ
+  // sürerken İKİNCİ bir GİB gönderimini (yasal bağlayıcılığı olan bir
+  // e-belge için) başlatabilirdi. Tek bir bayrak, ilk await'ten ÖNCE
+  // set edilip her iki işlemi de korur.
+  bool _islemDevam = false;
 
   @override
   void initState() {
@@ -58,7 +66,8 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
 
   // ── Ödeme kaydet ────────────────────────────────────────────────────────
   Future<void> _odemeKaydet() async {
-    if (_fatura == null || !mounted) return;
+    if (_fatura == null || !mounted || _islemDevam) return;
+    setState(() => _islemDevam = true);
     final ctrl = TextEditingController();
 
     final ok = await showDialog<bool>(
@@ -91,7 +100,7 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
       ),
     );
 
-    if (ok != true || !mounted) return;
+    if (ok != true || !mounted) { setState(() => _islemDevam = false); return; }
 
     try {
       final odenen = double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 0;
@@ -124,6 +133,8 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
       if (mounted) BildirimServisi.basari(context, 'Ödeme kaydedildi');
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+    } finally {
+      if (mounted) setState(() => _islemDevam = false);
     }
   }
 
@@ -170,9 +181,21 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
   }
 
   // ── e-Fatura Gönder ──────────────────────────────────────────────────────
+  // Bu fonksiyonun içinde çok sayıda erken 'return' noktası var (ayarlar
+  // eksik, tip seçilmedi, onaylanmadı vb.) — her birini tek tek bayrakla
+  // korumak yerine, tüm gövde bir iç fonksiyona taşınıp try/finally ile
+  // sarıldı: hangi yoldan çıkarsa çıksın _islemDevam doğru sıfırlanır.
   Future<void> _efaturaGonder() async {
-    if (_fatura == null) return;
-    
+    if (_fatura == null || !mounted || _islemDevam) return;
+    setState(() => _islemDevam = true);
+    try {
+      await _efaturaGonderIc();
+    } finally {
+      if (mounted) setState(() => _islemDevam = false);
+    }
+  }
+
+  Future<void> _efaturaGonderIc() async {
     final gib = GibServisi();
     await gib.ayarlariYukle();
     
@@ -890,7 +913,7 @@ appBar: TsAppBar(
           IconButton(
               icon: const Icon(Icons.payment),
               tooltip: 'Odeme Kaydet',
-              onPressed: f.kalanTutar > 0 ? _odemeKaydet : null),
+              onPressed: (f.kalanTutar > 0 && !_islemDevam) ? _odemeKaydet : null),
           IconButton(
               icon: const Icon(Icons.refresh_outlined),
               onPressed: f.eFaturaDurum == 'gonderildi' ? _durumSorgula : null,
@@ -905,7 +928,7 @@ appBar: TsAppBar(
                     ? Colors.green : Colors.blue),
               tooltip: f.eFaturaDurum == 'gonderildi'
                   ? 'e-Fatura Gönderildi' : 'e-Fatura Gönder',
-              onPressed: f.eFaturaDurum == 'gonderildi' ? null : _efaturaGonder),
+              onPressed: (f.eFaturaDurum == 'gonderildi' || _islemDevam) ? null : _efaturaGonder),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             tooltip: 'Diğer',
@@ -1005,7 +1028,7 @@ appBar: TsAppBar(
         // Ödeme butonu
         if (f.kalanTutar > 0)
           FilledButton.icon(
-            onPressed: _odemeKaydet,
+            onPressed: _islemDevam ? null : _odemeKaydet,
             icon: const Icon(Icons.payment),
             label: Text('Odeme Kaydet (${ParaUtils.formatla(f.kalanTutar)})'),
             style: FilledButton.styleFrom(

@@ -126,9 +126,37 @@ class QrMenuSunucuServisi {
       } else if (req.method == 'POST' && yol == '/api/menu/siparis') {
         final body = await utf8.decoder.bind(req).join();
         final data = jsonDecode(body) as Map<String, dynamic>;
+        final masaId = data['masa_id'] as int?;
+        final kalemler = (data['kalemler'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        // 🔴 Derin analizde bulundu: masa_id'nin gerçekten var olan bir
+        // masaya ait olduğu hiç doğrulanmıyordu, ve kalem sayısında
+        // hiçbir üst sınır yoktu — kimlik doğrulaması olmayan bu
+        // uçnokta (bkz. fiyat güvenliği düzeltmesi — QrMenuServisi)
+        // rastgele/aşırı büyük istekler için de sertleştirildi.
+        if (masaId == null) {
+          req.response.statusCode = 400;
+          req.response.write(jsonEncode({'hata': 'masa_id gerekli'}));
+          await req.response.close();
+          return;
+        }
+        final db = await UrunDeposu().db;
+        final masaVarMi = await db.query('masalar',
+            columns: ['id'], where: 'id = ? AND is_deleted = 0', whereArgs: [masaId], limit: 1);
+        if (masaVarMi.isEmpty) {
+          req.response.statusCode = 404;
+          req.response.write(jsonEncode({'hata': 'Masa bulunamadı'}));
+          await req.response.close();
+          return;
+        }
+        if (kalemler.isEmpty || kalemler.length > 100) {
+          req.response.statusCode = 400;
+          req.response.write(jsonEncode({'hata': 'Geçersiz kalem sayısı'}));
+          await req.response.close();
+          return;
+        }
         await QrMenuServisi().musteriSiparisKaydet(
-          masaId: data['masa_id'] as int,
-          kalemler: (data['kalemler'] as List).cast<Map<String, dynamic>>(),
+          masaId: masaId,
+          kalemler: kalemler,
           musteriAdi: (data['musteri_adi'] as String?) ?? '',
           musteriTel: (data['musteri_tel'] as String?) ?? '',
           not: data['not'] as String?,

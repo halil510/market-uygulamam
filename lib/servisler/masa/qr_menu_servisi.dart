@@ -97,14 +97,41 @@ class QrMenuServisi {
           if (r.isNotEmpty) lokalUrunId = (r.first['id'] as num).toInt();
         }
 
-        if (lokalUrunId == null) {
+        // 🔴🔴 KRİTİK GÜVENLİK AÇIĞI (derin analizde bulundu): birimFiyat/
+        // kdvOran doğrudan istemcinin gönderdiği JSON'dan alınıyordu —
+        // bu sunucu (qr_menu_sunucu_servisi.dart) kimlik doğrulaması
+        // yapmıyor, aynı WiFi ağındaki HERKES doğrudan POST atabiliyor.
+        // Bir saldırgan gerçek bir ürüne 'birim_fiyat: 0.01' göndererek
+        // başka bir masanın hesabına neredeyse bedava kalem enjekte
+        // edebilirdi — bu tutar hiç değiştirilmeden ödeme/kasa/stok
+        // işlemine kadar akıyordu. Artık ürün lokalde eşleştiyse
+        // (lokalUrunId != null) fiyat/KDV HER ZAMAN yerel 'urunler'
+        // tablosundan okunuyor; istemcinin gönderdiği tutar hiç
+        // güvenilmiyor.
+        double birimFiyat;
+        double kdvOran;
+        if (lokalUrunId != null) {
+          final urunSatir = await db.query('urunler',
+              columns: ['satis_fiyati', 'kdv_oran'], where: 'id = ?', whereArgs: [lokalUrunId], limit: 1);
+          if (urunSatir.isNotEmpty) {
+            birimFiyat = (urunSatir.first['satis_fiyati'] as num?)?.toDouble() ?? 0;
+            kdvOran = double.tryParse(urunSatir.first['kdv_oran']?.toString() ?? '') ?? 18;
+          } else {
+            birimFiyat = 0;
+            kdvOran = 18;
+          }
+        } else {
           // Eşleşme yok — kalemi yine de gelen id ile ekle ki
           // müşterinin siparişi KAYBOLMASIN (ad, kalemde saklı olduğu
-          // için ekranda yine görünür; personel düzeltebilir).
+          // için ekranda yine görünür; personel düzeltebilir). Ama
+          // GÜVENLİ TARAF: fiyat, doğrulanamayan bir kaynaktan asla
+          // alınmaz — 0 olarak eklenir, personel elle düzeltir.
           lokalUrunId = (k['urun_id'] as num?)?.toInt() ?? 0;
+          birimFiyat = 0;
+          kdvOran = 18;
           if (kDebugMode) {
             debugPrint('QrMenu: "$urunAdi" lokalde eşleşmedi, '
-                'gelen id ($lokalUrunId) ile kaydedildi');
+                'gelen id ($lokalUrunId) ile (fiyat=0) kaydedildi');
           }
         }
 
@@ -113,8 +140,8 @@ class QrMenuServisi {
           siparis.id!,
           urunId:     lokalUrunId,
           urunAdi:    urunAdi,
-          birimFiyat: (k['birim_fiyat'] as num?)?.toDouble() ?? 0,
-          kdvOran:    (k['kdv_oran'] as num?)?.toDouble() ?? 18,
+          birimFiyat: birimFiyat,
+          kdvOran:    kdvOran,
           miktar:     (k['miktar'] as num?)?.toDouble() ?? 1,
           not_:       (notDeger == null || notDeger.trim().isEmpty) ? null : notDeger,
         );

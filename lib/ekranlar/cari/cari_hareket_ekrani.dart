@@ -123,12 +123,27 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
 
   Future<void> _silHareket(CariHareketModel h) async {
     if (h.id == null) return;
+    // 🔴 Derin analizde bulundu: bu silme SADECE cari_hareket'i (ve cari
+    // bakiyesini) düzeltiyor — eğer bu hareket gerçek bir tahsilat/ödeme
+    // ile birlikte oluşmuş bir kasa/banka/kredi kartı hareketiyle
+    // bağlantılıysa (tahsilat_odeme_ekrani.dart), o taraf hiç geri
+    // alınmıyor; iki taraf arasında hangi kaydın hangisine karşılık
+    // geldiğini güvenli şekilde belirleyecek bir referans bağlantısı
+    // şu an yok, bu yüzden otomatik (ve YANLIŞ kayda dokunma riski
+    // taşıyan) bir tersine çevirme eklemek yerine kullanıcı açıkça
+    // uyarılıyor.
+    final gercekParaOlabilir = h.fisTipi == 'Tahsilat' || h.fisTipi == 'Ödeme';
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Hareketi Sil'),
-        content: Text('${h.aciklama} hareketi silinecek. Devam edilsin mi?'),
+        content: Text(gercekParaOlabilir
+            ? '${h.aciklama} hareketi silinecek.\n\n'
+              'Bu bir tahsilat/ödeme kaydıysa, silme işlemi bağlı '
+              'kasa/banka/kredi kartı hareketini OTOMATİK OLARAK GERİ '
+              'ALMAZ — gerekiyorsa o tarafı elle düzeltin. Devam edilsin mi?'
+            : '${h.aciklama} hareketi silinecek. Devam edilsin mi?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:sqflite/sqflite.dart';
@@ -18,13 +19,28 @@ class SyncServisi {
   HttpServer? _server;
   bool _sunucuAktif = false;
   String? _sunucuIp;
+  // 🔴🔴 KRİTİK GÜVENLİK AÇIĞI (derin analizde bulundu): bu HTTP sunucu
+  // hiçbir kimlik doğrulama YAPMADAN aynı WiFi/LAN'daki HERKESE tüm
+  // veritabanını (satışlar, cariler, fiyatlar) indirme VE üzerine yazma
+  // izni veriyordu — market içindeki misafir WiFi'sına bağlı herhangi biri
+  // '/api/db' ile tüm veriyi çekebilir ya da sahte veri yükleyebilirdi.
+  // Artık her başlatmada rastgele bir oturum token'ı üretiliyor; bu
+  // token paylaşılan adresin (QR/kopyala) bir PARÇASI oluyor — QR'ı
+  // GÖREN/okutan cihaz dışında hiçbir istek kabul edilmiyor.
+  String? _token;
   static const int _port = 8765;
 
   bool get sunucuAktif => _sunucuAktif;
   String? get sunucuIp => _sunucuIp;
   int get port => _port;
   String get sunucuAdres =>
-      _sunucuIp != null ? 'http://$_sunucuIp:$_port' : '';
+      (_sunucuIp != null && _token != null) ? 'http://$_sunucuIp:$_port/$_token' : '';
+
+  String _yeniToken() {
+    final rnd = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rnd.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
 
   // ── IP Tespiti ────────────────────────────────────────────────────────
   Future<String?> lokalIpAl() async {
@@ -73,11 +89,12 @@ class SyncServisi {
     try {
       _sunucuIp = await lokalIpAl();
       if (_sunucuIp == null) return false;
+      _token = _yeniToken();
 
       _server = await HttpServer.bind(
           InternetAddress.anyIPv4, _port, shared: true);
       _sunucuAktif = true;
-      if (kDebugMode) debugPrint('SyncServer: http://$_sunucuIp:$_port');
+      if (kDebugMode) debugPrint('SyncServer: http://$_sunucuIp:$_port/$_token');
       _server!.listen(_istekIsle);
       return true;
     } catch (e) {
@@ -91,6 +108,7 @@ class SyncServisi {
     await _server?.close(force: true);
     _server = null;
     _sunucuAktif = false;
+    _token = null;
   }
 
   Future<void> _istekIsle(HttpRequest req) async {
@@ -106,7 +124,17 @@ class SyncServisi {
     }
 
     try {
-      final yol = req.uri.path;
+      // Token doğrulama: URL'nin ilk segmenti oturum token'ı olmalı —
+      // eşleşmezse (ya da sunucu token'sızsa) istek reddedilir. Böylece
+      // sadece paylaşılan QR/adresi GÖREN cihaz veriye erişebiliyor.
+      final segments = req.uri.pathSegments;
+      if (_token == null || segments.isEmpty || segments.first != _token) {
+        req.response.statusCode = 401;
+        _jsonYanit(req, {'hata': 'Yetkisiz erişim — geçerli bağlantıyı QR ile okutun'});
+        return;
+      }
+      final kalan = segments.skip(1).join('/');
+      final yol = kalan.isEmpty ? '/' : '/$kalan';
       final metod = req.method;
 
       // ── Ping ──
@@ -240,7 +268,7 @@ class SyncServisi {
       // ── Web Arayüzü (PC tarayıcısı için) ──
       else if (metod == 'GET' && (yol == '/' || yol == '/index.html')) {
         req.response.headers.contentType = ContentType.html;
-        req.response.write(_webArayuzu());
+        req.response.write(_webArayuzu(_token!));
         await req.response.close();
       }
 
@@ -607,7 +635,7 @@ class SyncServisi {
   }
 
   // ── PC Tarayıcısı Web Arayüzü ─────────────────────────────────────────
-  String _webArayuzu() => '''<!DOCTYPE html>
+  String _webArayuzu(String token) => '''<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
@@ -672,7 +700,7 @@ class SyncServisi {
       <div class="card-icon">📦</div>
       <h3>Veritabanını İndir</h3>
       <p>Tüm market.db dosyasını bilgisayara indirin. Yedek veya aktarım için kullanın.</p>
-      <a class="btn btn-primary" href="/api/db" download="market.db">⬇ market.db İndir</a>
+      <a class="btn btn-primary" href="/$token/api/db" download="market.db">⬇ market.db İndir</a>
     </div>
     <div class="card">
       <div class="card-icon">📋</div>
@@ -696,7 +724,7 @@ class SyncServisi {
       <div class="card-icon">🔄</div>
       <h3>Tüm Veriyi Al</h3>
       <p>Tüm tabloları tek JSON dosyasında alın. Tam yedek için.</p>
-      <a class="btn btn-outline" href="/api/export" download="marketplus_export.json">⬇ Tam Export</a>
+      <a class="btn btn-outline" href="/$token/api/export" download="marketplus_export.json">⬇ Tam Export</a>
     </div>
     <div class="card">
       <div class="card-icon">⬆</div>
@@ -714,6 +742,7 @@ class SyncServisi {
 </div>
 
 <script>
+const TOKEN = '$token';
 const log = (msg) => {
   const el = document.getElementById('logAlani');
   el.textContent += '\\n' + new Date().toLocaleTimeString() + ' > ' + msg;
@@ -727,7 +756,7 @@ const showProgress = (show) => {
 // İstatistik yükle
 async function istatistikYukle() {
   try {
-    const res = await fetch('/api/durum');
+    const res = await fetch('/' + TOKEN + '/api/durum');
     const data = await res.json();
     document.getElementById('s1').textContent = data.urun_sayisi?.toLocaleString() || '-';
     document.getElementById('s2').textContent = data.cari_sayisi?.toLocaleString() || '-';
@@ -745,7 +774,7 @@ async function tabloIndir(tablo) {
   showProgress(true);
   log('Tablo indiriliyor: ' + tablo + '...');
   try {
-    const res = await fetch('/api/tablo/' + tablo);
+    const res = await fetch('/' + TOKEN + '/api/tablo/' + tablo);
     const data = await res.json();
     const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
     const a = document.createElement('a');
@@ -770,7 +799,7 @@ async function dosyaYukle(event) {
       if (dosya.name.endsWith('.json')) {
         const data = JSON.parse(e.target.result);
         log('JSON ayrıştırıldı. Sunucuya gönderiliyor...');
-        const res = await fetch('/api/import', {
+        const res = await fetch('/' + TOKEN + '/api/import', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(data)
@@ -780,7 +809,7 @@ async function dosyaYukle(event) {
       } else if (dosya.name.endsWith('.db')) {
         const buf = e.target.result;
         log('DB dosyası gönderiliyor...');
-        const res = await fetch('/api/db', {method:'POST', body: buf});
+        const res = await fetch('/' + TOKEN + '/api/db', {method:'POST', body: buf});
         const sonuc = await res.json();
         log('✅ ' + (sonuc.mesaj || JSON.stringify(sonuc)));
       }

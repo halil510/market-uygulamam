@@ -64,6 +64,18 @@ class YedeklemeServisi {
       final kaynak = File(p.join(dbPath, 'market.db'));
       if (!await kaynak.exists()) throw Exception('Veritabanı bulunamadı');
 
+      // 🔴🔴 KRİTİK VERİ KAYBI RİSKİ (derin analizde bulundu): veritabanı
+      // WAL (Write-Ahead Log) modunda çalışıyor — son commit edilmiş
+      // satış/stok hareketleri bir süre 'market.db-wal' dosyasında bekleyip
+      // ANA market.db dosyasına HENÜZ YAZILMAMIŞ olabilir. Yedekleme
+      // önceden sadece market.db'yi zip'liyordu — bu, GEÇERLİ ama EKSİK
+      // (son işlemleri kaybetmiş) bir yedek üretebiliyordu ve hiçbir hata
+      // vermiyordu. TRUNCATE checkpoint, WAL'daki her şeyi ana dosyaya
+      // yazıp WAL'ı sıfırlar — böylece zip'lenen dosya her zaman TAM ve
+      // kendi başına tutarlı olur.
+      final db = await Veritabani().db;
+      await db.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
+
       final yedekDir = await _yedekDizini();
       final tarih    = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
       final prefix   = otomatik ? 'oto' : 'manuel';

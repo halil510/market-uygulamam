@@ -654,19 +654,17 @@ class UrunDeposu {
     }
   }
 
-  Future<void> stokGuncelle(int id, double yeniStok) async {
-    final db = await _d;
-    await db.update(
-      DbSabitler.urunler,
-      {'stok': yeniStok, 'last_updated': DateTime.now().toIso8601String()},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    final guncelSatir = await db.query(DbSabitler.urunler, where: 'id = ?', whereArgs: [id], limit: 1);
-    if (guncelSatir.isNotEmpty) {
-      BulutManager().upsert('urunler', Map<String, dynamic>.from(guncelSatir.first));
-    }
-  }
+  // 🔴 Derin analizde bulundu: stokGuncelle(id, yeniStok) burada duruyordu
+  // ama projede HİÇBİR YERDEN çağrılmıyordu (ölü kod) — ve çağrılsaydı
+  // TEHLİKELİYDİ: urunler.stok'u stok_hareket tablosuna hiç kayıt
+  // düşmeden doğrudan değiştiriyordu. Stok, StokDeposu'nda stok_hareket
+  // toplamından yeniden hesaplanan bir event-sourcing modeliyle yönetiliyor
+  // (bkz. stokMutabakatYap) — bu fonksiyonla değiştirilen bir stok, bir
+  // sonraki mutabakatta sessizce eski değere geri dönerdi. İleride birinin
+  // bu tuzağı fark etmeden kullanmasını önlemek için tamamen kaldırıldı;
+  // stok değişikliği gereken her yer StokDeposu.stokDusTxn/stokGirTxn
+  // kullanmalı.
+
   /// PLU — barkodsuz veya plu=1 işaretli aktif ürünler
   Future<List<UrunModel>> pluUrunleriGetir() async {
     try {

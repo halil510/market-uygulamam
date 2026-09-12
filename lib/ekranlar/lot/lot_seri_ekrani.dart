@@ -7,8 +7,10 @@ import 'package:intl/intl.dart';
 
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
+import '../../servisler/auth_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../veri/database/veritabani.dart';
+import '../../depolar/stok_deposu.dart';
 import 'package:uuid/uuid.dart';
 
 class LotSeriEkrani extends ConsumerStatefulWidget {
@@ -25,7 +27,13 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
   bool _yukleniyor = true;
   String _durum = 'Tümü';
 
-  static const _durumlar = ['Tümü', 'Aktif', 'Tükendi', 'SKT Yakın', 'SKT Geçti'];
+  static const _durumlar = [
+    'Tümü',
+    'Aktif',
+    'Tükendi',
+    'SKT Yakın',
+    'SKT Geçti'
+  ];
 
   @override
   void initState() {
@@ -99,30 +107,55 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
   }
 
   Future<void> _lotDialog({Map<String, dynamic>? lot}) async {
-    final lotCtrl = TextEditingController(text: lot?['lot_no']?.toString() ?? '');
-    final sktCtrl = TextEditingController(text: lot?['son_kullanma_tarihi']?.toString().split('T').first ?? '');
-    final miktCtrl = TextEditingController(text: lot?['miktar']?.toString() ?? '');
-    final notCtrl = TextEditingController(text: lot?['aciklama']?.toString() ?? '');
+    final lotCtrl =
+        TextEditingController(text: lot?['lot_no']?.toString() ?? '');
+    final sktCtrl = TextEditingController(
+        text: lot?['son_kullanma_tarihi']?.toString().split('T').first ?? '');
+    final miktCtrl =
+        TextEditingController(text: lot?['miktar']?.toString() ?? '');
+    final notCtrl =
+        TextEditingController(text: lot?['aciklama']?.toString() ?? '');
 
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(TsRadius.lg)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(TsRadius.lg)),
         title: Text(lot == null ? 'Yeni Lot/Seri' : 'Lot Düzenle'),
-        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TsInput(etiket: 'Lot/Seri No *', controller: lotCtrl, oncilIkon: Icons.tag),
+        content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TsInput(
+              etiket: 'Lot/Seri No *',
+              controller: lotCtrl,
+              oncilIkon: Icons.tag),
           const SizedBox(height: TsBosluk.md),
-          TsInput(etiket: 'Son Kullanma Tarihi (YYYY-AA-GG)', controller: sktCtrl, oncilIkon: Icons.calendar_today),
+          TsInput(
+              etiket: 'Son Kullanma Tarihi (YYYY-AA-GG)',
+              controller: sktCtrl,
+              oncilIkon: Icons.calendar_today),
           const SizedBox(height: TsBosluk.md),
-          TsInput(etiket: 'Mevcut Miktar', controller: miktCtrl, oncilIkon: Icons.inventory, klavyeTuru: TextInputType.number),
+          TsInput(
+              etiket: 'Mevcut Miktar',
+              controller: miktCtrl,
+              oncilIkon: Icons.inventory,
+              klavyeTuru: TextInputType.number),
           const SizedBox(height: TsBosluk.md),
-          TsInput(etiket: 'Not', controller: notCtrl, oncilIkon: Icons.note, maksSatir: 2),
+          TsInput(
+              etiket: 'Not',
+              controller: notCtrl,
+              oncilIkon: Icons.note,
+              maksSatir: 2),
         ])),
         actions: [
-          TsButon(tur: TsButonTuru.metin, metin: 'İptal', onPressed: () => Navigator.pop(ctx, false)),
-          TsButon(metin: 'Kaydet', onPressed: () {
-            if (lotCtrl.text.trim().isNotEmpty) Navigator.pop(ctx, true);
-          }),
+          TsButon(
+              tur: TsButonTuru.metin,
+              metin: 'İptal',
+              onPressed: () => Navigator.pop(ctx, false)),
+          TsButon(
+              metin: 'Kaydet',
+              onPressed: () {
+                if (lotCtrl.text.trim().isNotEmpty) Navigator.pop(ctx, true);
+              }),
         ],
       ),
     );
@@ -148,36 +181,88 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
         'miktar': miktar,
         'aciklama': notCtrl.text.trim(),
       };
-      int lotId;
-      if (lot == null) {
-        if (widget.urunId == null) {
-          // `Veritabani().db` await'i sonrası — yukarıdaki mounted kontrolü
-          // o await'ten ÖNCEydi, burada tekrar gerekli.
-          if (mounted) BildirimServisi.uyari(context, 'Ürün seçilmedi');
-          return;
-        }
-        final gid = const Uuid().v4();
-        lotId = await db.insert('lot_seri', {
-          ...data,
-          'global_id': gid,
-          'urun_id': widget.urunId,
-          'kayit_tarihi': DateTime.now().toIso8601String(),
-          'last_updated': DateTime.now().toIso8601String(),
-        });
-      } else {
-        lotId = lot['id'] as int;
-        data['last_updated'] = DateTime.now().toIso8601String();
-        await db.update('lot_seri', data, where: 'id=?', whereArgs: [lotId]);
+
+      // 🔴🔴 FAZ 1 madde 3 (kullanıcı onayıyla, Seçenek A): lot miktarı
+      // ARTIK bağımsız düzenlenemiyor — buradaki her miktar değişikliği
+      // StokDeposu üzerinden stok_hareket'e "Lot Düzeltme" olarak
+      // işleniyor ve urunler.stok AYNI transaction içinde güncelleniyor.
+      // Öncesinde bu ekran lot_seri.miktar'ı doğrudan yazıyordu — bu,
+      // lotların TOPLAMI ile urunler.stok'un birbirinden sessizce
+      // sapmasına yol açabiliyordu (stok mutabakatı stok_hareket'i tek
+      // doğru kaynak sayıyor, bu ekran ona hiç dokunmuyordu).
+      final urunId = lot == null ? widget.urunId : lot['urun_id'] as int;
+      if (urunId == null) {
+        if (mounted) BildirimServisi.uyari(context, 'Ürün seçilmedi');
+        return;
       }
+      final eskiMiktar =
+          lot == null ? 0.0 : (lot['miktar'] as num?)?.toDouble() ?? 0.0;
+      final fark = miktar - eskiMiktar;
+
+      late int lotId;
+      await db.transaction((txn) async {
+        if (lot == null) {
+          final gid = const Uuid().v4();
+          lotId = await txn.insert('lot_seri', {
+            ...data,
+            'global_id': gid,
+            'urun_id': urunId,
+            'kayit_tarihi': DateTime.now().toIso8601String(),
+            'last_updated': DateTime.now().toIso8601String(),
+          });
+        } else {
+          lotId = lot['id'] as int;
+          data['last_updated'] = DateTime.now().toIso8601String();
+          await txn.update('lot_seri', data, where: 'id=?', whereArgs: [lotId]);
+        }
+
+        if (fark == 0) return;
+        final hareketGid = const Uuid().v4();
+        final aciklama = 'Lot Düzeltme: ${lotCtrl.text.trim()}';
+        if (fark > 0) {
+          await StokDeposu().stokGirTxn(txn, hareketGid,
+              urunId: urunId,
+              miktar: fark,
+              kullaniciId: AuthServisi().aktifId,
+              aciklama: aciklama,
+              referansId: lotId,
+              referansTuru: 'lot_seri',
+              hareketTuru: 'Lot Düzeltme',
+              lotId: lotId);
+        } else {
+          await StokDeposu().stokDusTxn(txn, hareketGid,
+              urunId: urunId,
+              miktar: fark.abs(),
+              kullaniciId: AuthServisi().aktifId,
+              aciklama: aciklama,
+              referansId: lotId,
+              referansTuru: 'lot_seri',
+              hareketTuru: 'Lot Düzeltme',
+              lotId: lotId);
+        }
+      });
+
       // 🔴 Derin analizde bulundu: bu ekran (lot_seri senkron sisteminde
       // olduğu halde) global_id atamıyordu ve BulutManager'ı hiç
       // çağırmıyordu — lot/SKT takibi (çok şubeli işletmelerde kritik)
       // hiç senkronize olmuyordu.
-      final satir = await db.query('lot_seri', where: 'id = ?', whereArgs: [lotId], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('lot_seri', Map<String, dynamic>.from(satir.first));
+      final db2 = await Veritabani().db;
+      final satir = await db2.query('lot_seri',
+          where: 'id = ?', whereArgs: [lotId], limit: 1);
+      if (satir.isNotEmpty)
+        BulutManager()
+            .upsert('lot_seri', Map<String, dynamic>.from(satir.first));
+      if (fark != 0) {
+        final urunSatir = await db2.query('urunler',
+            where: 'id = ?', whereArgs: [urunId], limit: 1);
+        if (urunSatir.isNotEmpty)
+          BulutManager()
+              .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
+      }
       await _yukle();
       if (!mounted) return;
-      BildirimServisi.basari(context, lot == null ? 'Lot eklendi ✓' : 'Lot güncellendi ✓');
+      BildirimServisi.basari(
+          context, lot == null ? 'Lot eklendi ✓' : 'Lot güncellendi ✓');
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }
@@ -192,7 +277,10 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
         gradyanli: true,
         aksiyonlar: [
           if (widget.urunId != null)
-            IconButton(icon: const Icon(Icons.add, color: Colors.white), onPressed: () => _lotDialog(), tooltip: 'Yeni Lot'),
+            IconButton(
+                icon: const Icon(Icons.add, color: Colors.white),
+                onPressed: () => _lotDialog(),
+                tooltip: 'Yeni Lot'),
         ],
       ),
       body: Column(children: [
@@ -213,7 +301,8 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
                     .map((d) => Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: FilterChip(
-                            label: Text(d, style: const TextStyle(fontSize: 12)),
+                            label:
+                                Text(d, style: const TextStyle(fontSize: 12)),
                             selected: _durum == d,
                             onSelected: (_) {
                               setState(() => _durum = d);
@@ -241,9 +330,11 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
                 baslik: r['lot_no']?.toString() ?? '-',
                 altBaslik: [
                   if (widget.urunId == null) r['urun_adi']?.toString() ?? '',
-                  if (skt != null) 'SKT: ${_fmt.format(DateTime.tryParse(skt) ?? DateTime.now())}',
+                  if (skt != null)
+                    'SKT: ${_fmt.format(DateTime.tryParse(skt) ?? DateTime.now())}',
                 ].where((s) => s.isNotEmpty).join(' · '),
-                deger: '${miktar.toStringAsFixed(miktar % 1 == 0 ? 0 : 2)} adet',
+                deger:
+                    '${miktar.toStringAsFixed(miktar % 1 == 0 ? 0 : 2)} adet',
                 onTap: () => _lotDialog(lot: r),
               );
             },

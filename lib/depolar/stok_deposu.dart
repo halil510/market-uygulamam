@@ -51,7 +51,8 @@ class StokDeposu {
           // Doğru stok = 0 (başlangıç varsayımı) + TÜM hareketlerin net
           // etkisi. "İlk Stok" hareketi zaten 0'dan başladığı için bu
           // tutarlı.
-          final dogruStok = netDegisim < 0 ? 0.0 : netDegisim; // negatif stok olmaz
+          final dogruStok =
+              netDegisim < 0 ? 0.0 : netDegisim; // negatif stok olmaz
 
           final mevcut = await txn.query('urunler',
               columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
@@ -65,7 +66,8 @@ class StokDeposu {
             // edilmiyordu — bu, manuel "Buluta Gönder" senkronunun bile
             // bu düzeltmeleri hiç yakalayamamasına yol açıyordu (delta
             // senkron last_updated'a bakıyor).
-            await txn.update('urunler', {'stok': dogruStok, 'last_updated': now},
+            await txn.update(
+                'urunler', {'stok': dogruStok, 'last_updated': now},
                 where: 'id = ?', whereArgs: [urunId]);
             duzeltilen++;
             duzeltilenIdler.add(urunId);
@@ -74,9 +76,11 @@ class StokDeposu {
         }
       });
       for (final urunId in duzeltilenIdler) {
-        final satir = await db.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
+        final satir = await db.query('urunler',
+            where: 'id = ?', whereArgs: [urunId], limit: 1);
         if (satir.isNotEmpty) {
-          BulutManager().upsert('urunler', Map<String, dynamic>.from(satir.first));
+          BulutManager()
+              .upsert('urunler', Map<String, dynamic>.from(satir.first));
         }
       }
       if (duzeltilen > 0) {
@@ -130,8 +134,12 @@ class StokDeposu {
     final db = await _d;
     final hareketGid = const Uuid().v4();
     await db.transaction((txn) => stokDusTxn(txn, hareketGid,
-        urunId: urunId, miktar: miktar, kullaniciId: kullaniciId,
-        referansId: referansId, referansTuru: referansTuru, aciklama: aciklama));
+        urunId: urunId,
+        miktar: miktar,
+        kullaniciId: kullaniciId,
+        referansId: referansId,
+        referansTuru: referansTuru,
+        aciklama: aciklama));
     // 🔴 Derin analizde bulundu: bu fonksiyon (uygulamanın EN SIK
     // çağrılan stok fonksiyonlarından biri — her satış, iade, alım
     // buradan geçiyor) 'stok_hareket' kaydına hiç global_id atamıyordu
@@ -139,13 +147,17 @@ class StokDeposu {
     // 'urunler' güncellemesi bildiriliyordu. Stok hareket geçmişi
     // sadece manuel senkronla buluta gidiyordu.
     final db2 = await _d;
-    final guncelUrun = await db2.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
+    final guncelUrun = await db2.query('urunler',
+        where: 'id = ?', whereArgs: [urunId], limit: 1);
     if (guncelUrun.isNotEmpty) {
-      BulutManager().upsert('urunler', Map<String, dynamic>.from(guncelUrun.first));
+      BulutManager()
+          .upsert('urunler', Map<String, dynamic>.from(guncelUrun.first));
     }
-    final hareketSatir = await db2.query('stok_hareket', where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
+    final hareketSatir = await db2.query('stok_hareket',
+        where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
     if (hareketSatir.isNotEmpty) {
-      BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
+      BulutManager().upsert(
+          'stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
     }
     // 🔴 Derin analizde bulundu: 'sube_urun' (per-şube stok) tablosu
     // şemada vardı ama hiç kullanılmıyordu — urunler.stok TEK, GLOBAL
@@ -159,7 +171,8 @@ class StokDeposu {
       final subeId = AktifSubeServisi().subeId;
       if (subeId != null) await _subeUrunDeposu.stokDus(urunId, subeId, miktar);
     } catch (e) {
-      if (kDebugMode) debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
+      if (kDebugMode)
+        debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
     }
   }
 
@@ -169,25 +182,34 @@ class StokDeposu {
   /// — dış transaction commit olmadan buluta göndermek riskli). Çağıran,
   /// dış transaction kapandıktan sonra [hareketGid] ile 'stok_hareket'
   /// satırını sorgulayıp buluta bildirebilir.
-  Future<void> stokDusTxn(dynamic txn, String hareketGid, {
+  Future<void> stokDusTxn(
+    dynamic txn,
+    String hareketGid, {
     required int urunId,
     required double miktar,
     int? kullaniciId,
     int? referansId,
     String? referansTuru,
     String? aciklama,
+    // FAZ 1 madde 3 (Lot/Seri) için eklendi: varsayılan 'Çıkış' — mevcut
+    // TÜM çağıranlar davranışını korur. lot_seri_ekrani.dart bir lotun
+    // miktarını azalttığında hareketTuru:'Lot Düzeltme', lotId:<id> geçer.
+    String? hareketTuru,
+    int? lotId,
   }) async {
     final now = DateTime.now().toIso8601String();
-    final rows = await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
+    final rows =
+        await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
     if (rows.isEmpty) return;
     final onceki = (rows.first['stok'] as num).toDouble();
     final sonraki = (onceki - miktar).clamp(0, double.infinity);
 
-    await txn.update('urunler', {'stok': sonraki, 'last_updated': now}, where: 'id = ?', whereArgs: [urunId]);
+    await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
+        where: 'id = ?', whereArgs: [urunId]);
     await txn.insert('stok_hareket', {
       'global_id': hareketGid,
       'urun_id': urunId,
-      'hareket_turu': 'Çıkış',
+      'hareket_turu': hareketTuru ?? 'Çıkış',
       'miktar': miktar,
       'onceki_stok': onceki,
       'sonraki_stok': sonraki,
@@ -197,6 +219,7 @@ class StokDeposu {
       if (referansTuru != null) 'referans_turu': referansTuru,
       if (kullaniciId != null) 'kullanici_id': kullaniciId,
       if (aciklama != null) 'aciklama': aciklama,
+      if (lotId != null) 'lot_id': lotId,
     });
   }
 
@@ -213,12 +236,14 @@ class StokDeposu {
     final now = DateTime.now().toIso8601String();
     final hareketGid = const Uuid().v4();
     await db.transaction((txn) async {
-      final rows = await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
+      final rows =
+          await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
       if (rows.isEmpty) return;
       final onceki = (rows.first['stok'] as num).toDouble();
       final sonraki = onceki + miktar;
 
-      await txn.update('urunler', {'stok': sonraki, 'last_updated': now}, where: 'id = ?', whereArgs: [urunId]);
+      await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
+          where: 'id = ?', whereArgs: [urunId]);
       await txn.insert('stok_hareket', {
         'global_id': hareketGid,
         'urun_id': urunId,
@@ -236,19 +261,24 @@ class StokDeposu {
       });
     });
     final db2 = await _d;
-    final guncelUrun = await db2.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
+    final guncelUrun = await db2.query('urunler',
+        where: 'id = ?', whereArgs: [urunId], limit: 1);
     if (guncelUrun.isNotEmpty) {
-      BulutManager().upsert('urunler', Map<String, dynamic>.from(guncelUrun.first));
+      BulutManager()
+          .upsert('urunler', Map<String, dynamic>.from(guncelUrun.first));
     }
-    final hareketSatir = await db2.query('stok_hareket', where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
+    final hareketSatir = await db2.query('stok_hareket',
+        where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
     if (hareketSatir.isNotEmpty) {
-      BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
+      BulutManager().upsert(
+          'stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
     }
     try {
       final subeId = AktifSubeServisi().subeId;
       if (subeId != null) await _subeUrunDeposu.stokGir(urunId, subeId, miktar);
     } catch (e) {
-      if (kDebugMode) debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
+      if (kDebugMode)
+        debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
     }
   }
 
@@ -258,7 +288,9 @@ class StokDeposu {
   /// transaction kapandıktan sonra [hareketGid] ile 'stok_hareket'
   /// satırını sorgulayıp buluta bildirebilir, ve isterse
   /// [subeStokPayiUygula] ile şube payını güncelleyebilir.
-  Future<void> stokGirTxn(dynamic txn, String hareketGid, {
+  Future<void> stokGirTxn(
+    dynamic txn,
+    String hareketGid, {
     required int urunId,
     required double miktar,
     double birimMaliyet = 0,
@@ -266,18 +298,25 @@ class StokDeposu {
     String? aciklama,
     int? referansId,
     String? referansTuru,
+    // FAZ 1 madde 3 (Lot/Seri) için eklendi: varsayılan 'Giriş' — mevcut
+    // TÜM çağıranlar davranışını korur. lot_seri_ekrani.dart bir lotun
+    // miktarını artırdığında hareketTuru:'Lot Düzeltme', lotId:<id> geçer.
+    String? hareketTuru,
+    int? lotId,
   }) async {
     final now = DateTime.now().toIso8601String();
-    final rows = await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
+    final rows =
+        await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
     if (rows.isEmpty) return;
     final onceki = (rows.first['stok'] as num).toDouble();
     final sonraki = onceki + miktar;
 
-    await txn.update('urunler', {'stok': sonraki, 'last_updated': now}, where: 'id = ?', whereArgs: [urunId]);
+    await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
+        where: 'id = ?', whereArgs: [urunId]);
     await txn.insert('stok_hareket', {
       'global_id': hareketGid,
       'urun_id': urunId,
-      'hareket_turu': 'Giriş',
+      'hareket_turu': hareketTuru ?? 'Giriş',
       'miktar': miktar,
       'onceki_stok': onceki,
       'sonraki_stok': sonraki,
@@ -288,6 +327,7 @@ class StokDeposu {
       if (aciklama != null) 'aciklama': aciklama,
       if (referansId != null) 'referans_id': referansId,
       if (referansTuru != null) 'referans_turu': referansTuru,
+      if (lotId != null) 'lot_id': lotId,
     });
   }
 
@@ -306,11 +346,13 @@ class StokDeposu {
         await _subeUrunDeposu.stokGir(urunId, subeId, -fark);
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
+      if (kDebugMode)
+        debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
     }
   }
 
-  Future<void> stokDuzelt(int urunId, double yeniMiktar, int kullaniciId) async {
+  Future<void> stokDuzelt(
+      int urunId, double yeniMiktar, int kullaniciId) async {
     // 🔴 Not: 'onceki' burada (transaction dışında) tanımlanıyor ki
     // fonksiyonun SONUNDA (sube_urun güncellemesi için) da kullanılabilsin
     // — bu oturumda satis_deposu.dart'ta bulduğum "transaction içinde
@@ -322,11 +364,13 @@ class StokDeposu {
       final now = DateTime.now().toIso8601String();
       final hareketGid = const Uuid().v4();
       await db.transaction((txn) async {
-        final rows = await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
+        final rows =
+            await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
         if (rows.isEmpty) return;
         onceki = (rows.first['stok'] as num).toDouble();
 
-        await txn.update('urunler', {'stok': yeniMiktar, 'last_updated': now}, where: 'id = ?', whereArgs: [urunId]);
+        await txn.update('urunler', {'stok': yeniMiktar, 'last_updated': now},
+            where: 'id = ?', whereArgs: [urunId]);
         await txn.insert('stok_hareket', {
           'global_id': hareketGid,
           'urun_id': urunId,
@@ -340,22 +384,28 @@ class StokDeposu {
           'aciklama': 'Stok sayım düzeltme',
         });
       });
-      final guncelUrun = await db.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
+      final guncelUrun = await db.query('urunler',
+          where: 'id = ?', whereArgs: [urunId], limit: 1);
       if (guncelUrun.isNotEmpty) {
-        BulutManager().upsert('urunler', Map<String, dynamic>.from(guncelUrun.first));
+        BulutManager()
+            .upsert('urunler', Map<String, dynamic>.from(guncelUrun.first));
       }
-      final hareketSatir = await db.query('stok_hareket', where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
+      final hareketSatir = await db.query('stok_hareket',
+          where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
       if (hareketSatir.isNotEmpty) {
-        BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
+        BulutManager().upsert(
+            'stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
       }
       // Sayım fiziksel olarak TEK bir konumda yapıldığı için fark
       // (yeni-eski) aktif şubenin payına uygulanır.
       try {
         final subeId = AktifSubeServisi().subeId;
         final fark = yeniMiktar - onceki;
-        if (subeId != null && fark != 0) await _subeUrunDeposu.stokGir(urunId, subeId, fark);
+        if (subeId != null && fark != 0)
+          await _subeUrunDeposu.stokGir(urunId, subeId, fark);
       } catch (e) {
-        if (kDebugMode) debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
+        if (kDebugMode)
+          debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
       }
     } catch (e, st) {
       LogServisi().hata('Stok.stokDuzelt', hata: e, yigin: st);
@@ -363,7 +413,8 @@ class StokDeposu {
     }
   }
 
-  Future<List<StokHareketModel>> hareketleriGetir(int urunId, {int limit = 50}) async {
+  Future<List<StokHareketModel>> hareketleriGetir(int urunId,
+      {int limit = 50}) async {
     try {
       final db = await _d;
       final rows = await db.rawQuery(
@@ -393,14 +444,18 @@ class StokDeposu {
     }
   }
 
-  Future<void> geciciSayimEkleGuncelle(int urunId, double mevcutStok, double yeniStok) async {
+  Future<void> geciciSayimEkleGuncelle(
+      int urunId, double mevcutStok, double yeniStok) async {
     try {
       final db = await _d;
-      await db.insert('gecici_sayim', {
-        'urun_id': urunId,
-        'mevcut_stok': mevcutStok,
-        'yeni_stok': yeniStok,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert(
+          'gecici_sayim',
+          {
+            'urun_id': urunId,
+            'mevcut_stok': mevcutStok,
+            'yeni_stok': yeniStok,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace);
     } catch (e, st) {
       LogServisi().hata('Stok.geciciSayimEkleGuncelle', hata: e, yigin: st);
       rethrow;
@@ -423,7 +478,8 @@ class StokDeposu {
     try {
       final liste = await geciciSayimListesi();
       for (final row in liste) {
-        await stokDuzelt(row['urun_id'] as int, (row['yeni_stok'] as num).toDouble(), kullaniciId);
+        await stokDuzelt(row['urun_id'] as int,
+            (row['yeni_stok'] as num).toDouble(), kullaniciId);
       }
       await geciciSayimTemizle();
     } catch (e, st) {

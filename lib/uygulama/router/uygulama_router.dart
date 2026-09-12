@@ -228,6 +228,15 @@ class UygulamaRouter {
   }
 
   // ✅ YETKİ HARİTASI (Güncellendi)
+  // 🔴🔴 KRİTİK GÜVENLİK AÇIĞI (derin analizde bulundu): 'kasa', 'gider',
+  // 'fatura' ve 'tedarik' — kullanıcı ekleme ekranındaki YetkiTanimlari
+  // içinde TANIMLI ve atanabilir yetki kodlarıydı (ör. bir kasiyerden bu
+  // kutucuklar kaldırılabiliyordu) ama bu haritada karşılık gelen rota
+  // önekleri HİÇ YOKTU. Sonuç: 'Kasa' yetkisi verilmemiş bir personel bile
+  // '/kasa' rotasına (deep-link, geri/ileri gezinme, adres çubuğu vb. ile)
+  // doğrudan gidip kasayı, gider yönetimini, faturaları ve tedarik/alım
+  // ekranını tamamen kullanabiliyordu — yetki kutucuğunun hiçbir pratik
+  // etkisi yoktu. Artık bu dört rota da haritada.
   static const _routeYetkiler = <String, String>{
     '/satis': 'satis',
     '/satis/liste': 'satis_liste',
@@ -247,6 +256,10 @@ class UygulamaRouter {
     '/kredi-karti': 'cari',
     '/mail-baglanti': 'cari',
     '/banka-hareket': 'cari',
+    '/kasa': 'kasa',
+    '/gider': 'gider',
+    '/fatura': 'fatura',
+    '/tedarik': 'tedarik',
   };
 
   static String? _redirect(WidgetRef ref, GoRouterState state) {

@@ -61,6 +61,15 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
   List<_EtiketKalem> _sepet        = [];
   Timer?            _araDebounce;
   bool              _kameraAcik    = false;
+  // 🔴 Derin analizde bulundu: kamera barkod tarayıcısında hiç debounce
+  // yoktu — MobileScanner.onDetect, bir barkod kamerada göründüğü
+  // sürece SANİYEDE BİRÇOK KEZ tetiklenir. Kullanıcı bir ürünü kararsız
+  // tutarken (bir sonrakine geçmeden önce), her tetiklenme adedi 1
+  // artırıyordu — kullanıcı fark etmeden yazdırma kuyruğuna istenenden
+  // çok daha fazla etiket ekleniyordu.
+  String? _sonTaranan;
+  DateTime? _sonTaramaZamani;
+  static const _ayniBarkodMinAralik = Duration(milliseconds: 1200);
   bool              _btBagliMi     = false;
 
   // Etiket ayarları
@@ -175,6 +184,13 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
   Future<void> _barkodIleEkle(String barkod) async {
     final b = barkod.trim();
     if (b.isEmpty) return;
+    final simdi = DateTime.now();
+    if (b == _sonTaranan && _sonTaramaZamani != null &&
+        simdi.difference(_sonTaramaZamani!) < _ayniBarkodMinAralik) {
+      return;
+    }
+    _sonTaranan = b;
+    _sonTaramaZamani = simdi;
     final urun = await _depo.barkodlaGetir(b);
     if (!mounted) return;
     if (urun == null) {

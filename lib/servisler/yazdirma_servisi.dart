@@ -39,18 +39,26 @@ class YaziciBaglanti {
   // Bluetooth
   BluetoothDevice? _btCihaz;
   BluetoothCharacteristic? _btKaraktar;
+  // 🔴 Derin analizde bulundu: btBaglan()'daki connectionState.listen()
+  // aboneliği hiç saklanmıyor/iptal edilmiyordu — bu bağlantı kapatılınca
+  // (kapat() ile) dinleyici canlı kalmaya devam ediyordu. Kararsız bir
+  // Bluetooth yazıcıyla uzun bir oturumda, her otomatik yeniden bağlanma
+  // denemesi kalıcı bir dinleyici daha ekleyip sınırsız birikiyordu.
+  StreamSubscription<dynamic>? _btBaglantiAbonelik;
   // USB
   UsbPort? _usbPort;
 
   YaziciBaglanti({required this.yazici, required this.tur, this.bagliMi = false});
 
   Future<void> kapat() async {
+    try { await _btBaglantiAbonelik?.cancel(); } catch (e) { /* ignore */ }
     try { await _tcpSocket?.close(); } catch (e) { /* ignore */ }
     try { await _btCihaz?.disconnect(); } catch (e) { /* ignore */ }
     try { await _usbPort?.close(); } catch (e) { /* ignore */ }
     _tcpSocket = null;
     _btCihaz = null;
     _btKaraktar = null;
+    _btBaglantiAbonelik = null;
     _usbPort = null;
     bagliMi = false;
   }
@@ -586,7 +594,7 @@ class YazdirmaServisi {
       _aktif = baglanti;
 
       // Bağlantı kopunca güncelle
-      cihaz.connectionState.listen((state) {
+      baglanti._btBaglantiAbonelik = cihaz.connectionState.listen((state) {
         if (state == BluetoothConnectionState.disconnected &&
             _aktif?.yazici.id == yazici.id) {
           _aktif?.bagliMi = false;

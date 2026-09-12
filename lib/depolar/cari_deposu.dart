@@ -341,6 +341,50 @@ class CariDeposu {
     }
   }
 
+  /// Veri Sağlığı Merkezi (protokol §13/§8) için: HER carinin bakiyesini
+  /// cari_hareket'ten yeniden hesaplayıp gerçekte tutmayanları düzeltir.
+  /// stokMutabakatYap() ile aynı desen — hangi sırayla senkron olursa
+  /// olsun sonuç her zaman doğru olur.
+  Future<int> bakiyeMutabakatYap() async {
+    try {
+      final db = await _d;
+      final uyumsuzlar = await db.rawQuery('''
+        SELECT c.id FROM cari c
+        WHERE c.is_deleted = 0 AND ABS(c.bakiye - (
+          SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
+          FROM cari_hareket WHERE cari_id = c.id AND is_deleted = 0
+        )) > 0.01
+      ''');
+      for (final r in uyumsuzlar) {
+        await bakiyeYenidenHesapla(r['id'] as int);
+      }
+      return uyumsuzlar.length;
+    } catch (e, st) {
+      LogServisi().hata('Cari.bakiyeMutabakatYap', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
+  /// Yalnızca SAYIYI döner, düzeltme yapmaz — Veri Sağlığı Merkezi'nde
+  /// "kontrol et" adımında (henüz düzeltme onayı almadan) durumu
+  /// göstermek için.
+  Future<int> bakiyeUyumsuzlukSayisi() async {
+    try {
+      final db = await _d;
+      final rows = await db.rawQuery('''
+        SELECT COUNT(*) as n FROM cari c
+        WHERE c.is_deleted = 0 AND ABS(c.bakiye - (
+          SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
+          FROM cari_hareket WHERE cari_id = c.id AND is_deleted = 0
+        )) > 0.01
+      ''');
+      return (rows.first['n'] as int?) ?? 0;
+    } catch (e, st) {
+      LogServisi().hata('Cari.bakiyeUyumsuzlukSayisi', hata: e, yigin: st);
+      return 0;
+    }
+  }
+
   Future<List<CariHareketModel>> hareketleriniGetir(int cariId,
       {DateTime? basTarih, DateTime? bitTarih, String? fisTipi, int limit = 100}) async {
     final db = await _d;

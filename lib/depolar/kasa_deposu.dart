@@ -250,4 +250,66 @@ class KasaDeposu {
       rethrow;
     }
   }
+
+  /// Veri Sağlığı Merkezi (protokol §10/§13): 'bakiye_sonrasi' sütununu
+  /// baştan yeniden hesaplayıp gerçek değerden sapan varsa düzeltir —
+  /// hareketSil()'deki aynı, kanıtlanmış yeniden-hesaplama algoritması.
+  Future<int> bakiyeMutabakatYap() async {
+    try {
+      final db = await _d;
+      final now = DateTime.now().toIso8601String();
+      var duzeltilen = 0;
+      final duzeltilenIdler = <int>[];
+      await db.transaction((txn) async {
+        final rows = await txn.query('kasa_hareketleri',
+            where: 'deleted_at IS NULL', orderBy: 'tarih ASC, id ASC');
+        double bakiye = 0;
+        final girisler = KasaHareketModel.girisTipleri;
+        for (final r in rows) {
+          final tip = r['hareket_tipi'] as String? ?? '';
+          final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+          bakiye = girisler.contains(tip) ? bakiye + tutar : bakiye - tutar;
+          final mevcut = (r['bakiye_sonrasi'] as num?)?.toDouble();
+          if (mevcut == null || (mevcut - bakiye).abs() > 0.01) {
+            await txn.update('kasa_hareketleri',
+                {'bakiye_sonrasi': bakiye, 'last_updated': now},
+                where: 'id = ?', whereArgs: [r['id']]);
+            duzeltilen++;
+            duzeltilenIdler.add(r['id'] as int);
+          }
+        }
+      });
+      for (final id in duzeltilenIdler) {
+        final satir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [id], limit: 1);
+        if (satir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(satir.first));
+      }
+      return duzeltilen;
+    } catch (e, st) {
+      LogServisi().hata('Kasa.bakiyeMutabakatYap', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
+  /// Sadece SAYIYI döner, düzeltme yapmaz (bkz. [bakiyeMutabakatYap]).
+  Future<int> bakiyeUyumsuzlukSayisi() async {
+    try {
+      final db = await _d;
+      final rows = await db.query('kasa_hareketleri',
+          where: 'deleted_at IS NULL', orderBy: 'tarih ASC, id ASC');
+      double bakiye = 0;
+      var uyumsuz = 0;
+      final girisler = KasaHareketModel.girisTipleri;
+      for (final r in rows) {
+        final tip = r['hareket_tipi'] as String? ?? '';
+        final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+        bakiye = girisler.contains(tip) ? bakiye + tutar : bakiye - tutar;
+        final mevcut = (r['bakiye_sonrasi'] as num?)?.toDouble();
+        if (mevcut == null || (mevcut - bakiye).abs() > 0.01) uyumsuz++;
+      }
+      return uyumsuz;
+    } catch (e, st) {
+      LogServisi().hata('Kasa.bakiyeUyumsuzlukSayisi', hata: e, yigin: st);
+      return 0;
+    }
+  }
 }

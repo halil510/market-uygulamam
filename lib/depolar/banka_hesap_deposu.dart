@@ -94,4 +94,57 @@ class BankaHesapDeposu {
       rethrow;
     }
   }
+
+  /// Veri Sağlığı Merkezi (protokol §13): hesabın 'bakiye' alanı, KENDİ
+  /// hareket geçmişinin son 'sonraki_bakiye' değeriyle uyumlu mu?
+  ///
+  /// NOT: Cari/stok mutabakatının aksine banka için SIFIRDAN toplam
+  /// (SUM) hesaplamıyoruz — çünkü hesap açılışındaki başlangıç bakiyesi
+  /// ayrı bir sütunda saklanmıyor (mevcut tasarım). Bunun yerine daha
+  /// dar ama güvenli bir kontrol yapıyoruz: normal akışta her hareket
+  /// (BankaHareketDeposu.ekleTxn) 'bakiye'yi kendi 'sonraki_bakiye'siyle
+  /// EŞ ZAMANLI günceller — ikisi arasında bir sapma varsa, hesap
+  /// hareketleri atlanarak (ör. elle düzenleme) değiştirilmiş demektir.
+  Future<int> bakiyeUyumsuzlukSayisi() async {
+    try {
+      final db = await _d;
+      final rows = await db.rawQuery(_uyumsuzHesaplarSql);
+      return rows.length;
+    } catch (e, st) {
+      LogServisi().hata('BankaHesapDeposu.bakiyeUyumsuzlukSayisi', hata: e, yigin: st);
+      return 0;
+    }
+  }
+
+  Future<int> bakiyeMutabakatYap() async {
+    try {
+      final db = await _d;
+      final uyumsuzlar = await db.rawQuery(_uyumsuzHesaplarSql);
+      final now = DateTime.now().toIso8601String();
+      for (final r in uyumsuzlar) {
+        final dogru = (r['dogru_bakiye'] as num?)?.toDouble() ?? 0;
+        await db.update('banka_hesaplar',
+            {'bakiye': dogru, 'kullanilabilir_bakiye': dogru, 'last_updated': now},
+            where: 'id = ?', whereArgs: [r['id']]);
+      }
+      return uyumsuzlar.length;
+    } catch (e, st) {
+      LogServisi().hata('BankaHesapDeposu.bakiyeMutabakatYap', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
+  static const _uyumsuzHesaplarSql = '''
+    SELECT h.id, (
+      SELECT bh2.sonraki_bakiye FROM banka_hareketler bh2
+      WHERE bh2.banka_hesap_id = h.id ORDER BY bh2.tarih DESC, bh2.id DESC LIMIT 1
+    ) as dogru_bakiye
+    FROM banka_hesaplar h
+    WHERE h.aktif = 1
+      AND EXISTS (SELECT 1 FROM banka_hareketler bh WHERE bh.banka_hesap_id = h.id)
+      AND ABS(h.bakiye - (
+        SELECT bh2.sonraki_bakiye FROM banka_hareketler bh2
+        WHERE bh2.banka_hesap_id = h.id ORDER BY bh2.tarih DESC, bh2.id DESC LIMIT 1
+      )) > 0.01
+  ''';
 }

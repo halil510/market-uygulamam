@@ -89,6 +89,36 @@ class StokDeposu {
     }
   }
 
+  /// [stokMutabakatYap] ile AYNI mantık ama HİÇBİR ŞEY YAZMAZ — Veri
+  /// Sağlığı Merkezi'nde "kontrol et" adımında (düzeltme onayı almadan)
+  /// kaç ürünün uyumsuz olduğunu göstermek için.
+  Future<int> mutabakatUyumsuzlukSayisi() async {
+    try {
+      final db = await _d;
+      final sonuclar = await db.rawQuery('''
+        SELECT urun_id, SUM(sonraki_stok - onceki_stok) as net_degisim
+        FROM stok_hareket
+        GROUP BY urun_id
+      ''');
+      var uyumsuz = 0;
+      for (final r in sonuclar) {
+        final urunId = r['urun_id'] as int?;
+        if (urunId == null) continue;
+        final netDegisim = (r['net_degisim'] as num?)?.toDouble() ?? 0;
+        final dogruStok = netDegisim < 0 ? 0.0 : netDegisim;
+        final mevcut = await db.query('urunler',
+            columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
+        if (mevcut.isEmpty) continue;
+        final suankiStok = (mevcut.first['stok'] as num?)?.toDouble() ?? 0;
+        if ((suankiStok - dogruStok).abs() > 0.001) uyumsuz++;
+      }
+      return uyumsuz;
+    } catch (e, st) {
+      LogServisi().hata('Stok.mutabakatUyumsuzlukSayisi', hata: e, yigin: st);
+      return 0;
+    }
+  }
+
   Future<void> stokDus({
     required int urunId,
     required double miktar,

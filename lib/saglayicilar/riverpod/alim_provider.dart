@@ -50,7 +50,16 @@ class Alim extends _$Alim {
   Timer? _debounce;
 
   @override
-  AlimDurum build() => const AlimDurum();
+  AlimDurum build() {
+    // 🔴 Derin analizde bulundu: bu Timer hiçbir yerde iptal edilmiyordu
+    // — bu provider @riverpod (autoDispose) olduğu için, kullanıcı arama
+    // kutusuna yazıp hemen ekrandan çıkarsa, 300ms sonra timer notifier
+    // ZATEN dispose OLMUŞKEN 'state = ...' atamaya çalışıyor ve Riverpod
+    // "Bad state: Cannot use a StateNotifier/Notifier after dispose"
+    // hatası fırlatıyordu.
+    ref.onDispose(() => _debounce?.cancel());
+    return const AlimDurum();
+  }
 
   void araDebounce(String q) {
     _debounce?.cancel();

@@ -69,7 +69,12 @@ class Irsaliye extends _$Irsaliye {
   Timer? _debounce;
 
   @override
-  IrsaliyeDurum build() => const IrsaliyeDurum();
+  IrsaliyeDurum build() {
+    // 🔴 Derin analizde bulundu: Timer hiç iptal edilmiyordu — bkz.
+    // AlimProvider'daki aynı düzeltme/gerekçe.
+    ref.onDispose(() => _debounce?.cancel());
+    return const IrsaliyeDurum();
+  }
 
   void araDebounce(String q) {
     _debounce?.cancel();

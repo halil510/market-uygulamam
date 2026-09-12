@@ -302,8 +302,18 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
     }
   }
 
+  // 🔴🔴 FAZ 1 madde 4 (kullanıcı onayıyla): bu dialog eskiden 'Tahsilat' ve
+  // 'Ödeme' seçeneklerini de içeriyordu — ama bunlar tahsilat_odeme_ekrani.dart'ın
+  // yaptığı gibi kasa/banka/kredi kartı hareketi OLUŞTURMUYORDU, sadece
+  // cari_hareket ekliyordu. Yani biri buradan "Tahsilat" seçip para tahsil
+  // ettiğini kaydettiğinde, cari bakiyesi düşüyor ama kasa/banka'ya hiç para
+  // girmiyordu — mutabakatı bozan sessiz bir tutarsızlık. O yüzden bu iki
+  // seçenek kaldırıldı; gerçek para hareketi için Tahsilat/Ödeme ekranı
+  // kullanılmalı. Kalan üç seçenek (İskonto/İade/Düzeltme) hiçbir zaman
+  // kasa/banka hareketi yaratmıyordu — bunlar kasadan/bankadan bağımsız, saf
+  // cari bakiye düzeltmeleri olduğu için (meşru kullanım) korundu.
   Future<void> _hareketEkle() async {
-    String tipi = 'Tahsilat';
+    String tipi = 'İskonto';
     final ctrl = TextEditingController();
     final acCtrl = TextEditingController();
     final ok = await showDialog<bool>(
@@ -312,17 +322,29 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
         builder: (ctx, ss) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Hareket Ekle'),
+          title: const Text('Manuel Cari Düzeltme'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Bu ekran sadece cari bakiyesinde para hareketi '
+                    'yaratmayan düzeltmeler içindir. Nakit/kart/banka '
+                    'tahsilat veya ödeme için Tahsilat/Ödeme ekranını kullanın.',
+                    style: TextStyle(fontSize: 11, color: Colors.orange),
+                  ),
+                ),
+              ),
               DropdownButtonFormField<String>(
-                value: tipi,
+                initialValue: tipi,
                 decoration: const InputDecoration(
-                  labelText: 'Hareket Tipi',
+                  labelText: 'Düzeltme Tipi',
                   border: OutlineInputBorder(),
                 ),
-                items: ['Tahsilat', 'Ödeme', 'İskonto', 'İade', 'Düzeltme']
+                items: ['İskonto', 'İade', 'Düzeltme']
                     .map((v) => DropdownMenuItem(value: v, child: Text(v)))
                     .toList(),
                 onChanged: (v) => ss(() => tipi = v!),
@@ -365,7 +387,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       return;
     }
 
-    final isTahsilat = tipi == 'Tahsilat' || tipi == 'İskonto';
+    final isTahsilat = tipi == 'İskonto';
     if (!mounted) return;
     await _depo.hareketEkle(CariHareketModel(
       cariId: widget.cariId,

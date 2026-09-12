@@ -23,9 +23,11 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
   double _bakiye = 0;
   Map<String, double> _gunlukOzet = {'giris': 0, 'cikis': 0};
 
-  
-@override
-  void initState() { super.initState(); WidgetsBinding.instance.addPostFrameCallback((_) => _yukle()); }
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _yukle());
+  }
 
   Future<void> _yukle() async {
     _yukleniyor = true;
@@ -38,50 +40,96 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
         _depo.gunlukOzet(),
       ]);
       if (!mounted) return;
-        _bakiye        = results[0] as double;
-        _hareketler    = results[1] as List<KasaHareketModel>;
-        _gunlukOzet    = results[2] as Map<String, double>;
-        _yukleniyor    = false;
+      _bakiye = results[0] as double;
+      _hareketler = results[1] as List<KasaHareketModel>;
+      _gunlukOzet = results[2] as Map<String, double>;
+      _yukleniyor = false;
       if (mounted) setState(() {});
     } catch (e) {
       if (mounted) setState(() => _yukleniyor = false);
     }
   }
 
+  // 🔴🔴 FAZ 1 madde 4 (kullanıcı onayıyla): 'Tahsilat', 'Ödeme', 'Gider' ve
+  // 'Banka Ödemesi' seçenekleri kaldırıldı — her biri, doğru şekilde
+  // yapıldığında BAŞKA bir kaydı da güncellemesi gereken bir işlemi tek
+  // taraflı (sadece kasa_hareketleri'ne yazarak) yapıyordu:
+  //  - Tahsilat/Ödeme: cari_hareket'i hiç etkilemiyordu (tahsilat_odeme_ekrani.dart
+  //    ikisini birlikte, tek transaction'da yapıyor).
+  //  - Gider: gider tablosuna hiç kayıt açmıyordu (bkz. gider_deposu.dart —
+  //    gider raporları bu tablodan besleniyor, buradan eklenen 'Gider' hareketi
+  //    hiçbir gider raporunda görünmüyordu).
+  //  - Banka Ödemesi: banka_hareketler'e karşılık gelen kaydı hiç açmıyordu
+  //    (virman_ekrani.dart Kasa→Banka virmanını doğru şekilde iki taraflı yapıyor).
+  // 'Kasa Sayım', 'AçılışKasa', 'KapanışKasa' bu üçünün aksine başka hiçbir
+  // tabloya bağlı değil ve bu ekran dışında oluşturulan bir karşılıkları yok
+  // (vardiya sistemi henüz bu hareketleri otomatik yaratmıyor — bkz. FAZ 1
+  // madde 2, vardiya/kasa mutabakatı ayrı bir analiz gerektiriyor ve BURADA
+  // DOKUNULMADI) — bu yüzden korundu.
   Future<void> _hareketEkle() async {
-    String tip = 'Tahsilat';
-    final ctrl  = TextEditingController();
+    String tip = 'Kasa Sayım';
+    final ctrl = TextEditingController();
     final acCtrl = TextEditingController();
-    final ok = await showDialog<bool>(context: context,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, ss) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Kasa Hareketi'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          DropdownButtonFormField<String>(
-            value: tip,
-            decoration: const InputDecoration(labelText: 'Hareket Tipi', border: OutlineInputBorder()),
-            items: ['Tahsilat', 'Ödeme', 'Gider', 'Banka Ödemesi', 'Kasa Sayım', 'AçılışKasa', 'KapanışKasa']
-                .map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-            onChanged: (v) => ss(() => tip = v!),
-          ),
-          const SizedBox(height: 10),
-          TextField(controller: ctrl, autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Tutar (₺)', border: OutlineInputBorder())),
-          const SizedBox(height: 10),
-          TextField(controller: acCtrl, decoration: const InputDecoration(labelText: 'Açıklama', border: OutlineInputBorder())),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Kaydet')),
-        ],
-      )),
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+          builder: (ctx, ss) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                title: const Text('Kasa Manuel Düzeltme'),
+                content: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        'Tahsilat/Ödeme için Cari ekranını, Gider için Gider '
+                        'ekranını, Banka transferi için Virman ekranını kullanın.',
+                        style: TextStyle(fontSize: 11, color: Colors.orange),
+                      ),
+                    ),
+                  ),
+                  DropdownButtonFormField<String>(
+                    initialValue: tip,
+                    decoration: const InputDecoration(
+                        labelText: 'Hareket Tipi',
+                        border: OutlineInputBorder()),
+                    items: ['Kasa Sayım', 'AçılışKasa', 'KapanışKasa']
+                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                        .toList(),
+                    onChanged: (v) => ss(() => tip = v!),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                      controller: ctrl,
+                      autofocus: true,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                          labelText: 'Tutar (₺)',
+                          border: OutlineInputBorder())),
+                  const SizedBox(height: 10),
+                  TextField(
+                      controller: acCtrl,
+                      decoration: const InputDecoration(
+                          labelText: 'Açıklama', border: OutlineInputBorder())),
+                ]),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('İptal')),
+                  FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Kaydet')),
+                ],
+              )),
     );
     if (ok != true) return;
     final tutar = double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 0;
     if (tutar <= 0) return;
     await _depo.hareketEkle(KasaHareketModel(
-      hareketTipi: tip, tutar: tutar,
+      hareketTipi: tip,
+      tutar: tutar,
       tarih: DateTime.now(),
       aciklama: acCtrl.text.trim().isEmpty ? tip : acCtrl.text.trim(),
     ));
@@ -94,15 +142,18 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
   @override
   Widget build(BuildContext context) {
     final fmt = DateFormat('dd.MM.yyyy HH:mm');
-    final girisToplam  = _gunlukOzet['giris'] ?? 0;
-    final cikisToplam  = _gunlukOzet['cikis'] ?? 0;
+    final girisToplam = _gunlukOzet['giris'] ?? 0;
+    final cikisToplam = _gunlukOzet['cikis'] ?? 0;
 
     return Scaffold(
       backgroundColor: context.scaffoldBg,
       appBar: TsAppBar(
         baslik: 'Kasa Hareketleri',
         aksiyonlar: [
-          IconButton(icon: const Icon(Icons.add), tooltip: 'Hareket Ekle', onPressed: _hareketEkle),
+          IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'Hareket Ekle',
+              onPressed: _hareketEkle),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _yukle),
         ],
         geriTusu: false,
@@ -114,60 +165,102 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
           margin: const EdgeInsets.all(12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [TsRenk.primaryKoyu, TsRenk.primary],
-                begin: Alignment.topLeft, end: Alignment.bottomRight),
-            borderRadius: BorderRadius.circular(16)),
+              gradient: const LinearGradient(
+                  colors: [TsRenk.primaryKoyu, TsRenk.primary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(16)),
           child: Column(children: [
-            const Text('Güncel Bakiye', style: TextStyle(color: Colors.white60, fontSize: 13)),
+            const Text('Güncel Bakiye',
+                style: TextStyle(color: Colors.white60, fontSize: 13)),
             const SizedBox(height: 4),
             Text(ParaUtils.formatla(_bakiye),
-                style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800)),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
             Row(children: [
-              Expanded(child: _ozetKart('Bugün Giriş', girisToplam, Colors.greenAccent)),
+              Expanded(
+                  child: _ozetKart(
+                      'Bugün Giriş', girisToplam, Colors.greenAccent)),
               const SizedBox(width: 12),
-              Expanded(child: _ozetKart('Bugün Çıkış', cikisToplam, Colors.redAccent)),
+              Expanded(
+                  child:
+                      _ozetKart('Bugün Çıkış', cikisToplam, Colors.redAccent)),
               const SizedBox(width: 12),
-              Expanded(child: _ozetKart('Net', girisToplam - cikisToplam,
-                  girisToplam >= cikisToplam ? Colors.lightGreenAccent : Colors.orangeAccent)),
+              Expanded(
+                  child: _ozetKart(
+                      'Net',
+                      girisToplam - cikisToplam,
+                      girisToplam >= cikisToplam
+                          ? Colors.lightGreenAccent
+                          : Colors.orangeAccent)),
             ]),
           ]),
         ),
-        Expanded(child: _yukleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: TsRenk.primary))
-          : _hareketler.isEmpty
-              ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.account_balance_wallet_outlined, size: 56, color: context.textHint),
-                  const SizedBox(height: 12),
-                  Text('Henüz hareket yok', style: TextStyle(color: context.textSecondary)),
-                ]))
-              : RefreshIndicator(onRefresh: _yukle,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: _hareketler.length,
-                    itemBuilder: (_, i) {
-                      final h = _hareketler[i];
-                      final giris = KasaHareketModel.girisMi(h.hareketTipi);
-                      final renk = giris ? Colors.green : Colors.red;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: TsKart.liste(
-                          ikon: Icon(giris ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, color: renk),
-                          baslik: h.aciklama ?? h.hareketTipi,
-                          altBaslik: fmt.format(h.tarih),
-                          etiketler: [TsBadge(metin: h.hareketTipi, tur: giris ? TsBadgeTuru.basarili : TsBadgeTuru.hata)],
-                          sagAksiyon: Column(mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end, children: [
-                            Text('${giris ? '+' : '-'}${ParaUtils.formatla(h.tutar)}',
-                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: renk)),
-                            if (h.bakiyeSonrasi != null)
-                              Text(ParaUtils.formatla(h.bakiyeSonrasi!),
-                                  style: TextStyle(fontSize: 10, color: context.textSecondary)),
-                          ]),
-                        ),
-                      );
-                    },
-                  )),
+        Expanded(
+          child: _yukleniyor
+              ? const Center(
+                  child: CircularProgressIndicator(
+                      strokeWidth: 3, color: TsRenk.primary))
+              : _hareketler.isEmpty
+                  ? Center(
+                      child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                          Icon(Icons.account_balance_wallet_outlined,
+                              size: 56, color: context.textHint),
+                          const SizedBox(height: 12),
+                          Text('Henüz hareket yok',
+                              style: TextStyle(color: context.textSecondary)),
+                        ]))
+                  : RefreshIndicator(
+                      onRefresh: _yukle,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        itemCount: _hareketler.length,
+                        itemBuilder: (_, i) {
+                          final h = _hareketler[i];
+                          final giris = KasaHareketModel.girisMi(h.hareketTipi);
+                          final renk = giris ? Colors.green : Colors.red;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: TsKart.liste(
+                              ikon: Icon(
+                                  giris
+                                      ? Icons.arrow_downward_rounded
+                                      : Icons.arrow_upward_rounded,
+                                  color: renk),
+                              baslik: h.aciklama ?? h.hareketTipi,
+                              altBaslik: fmt.format(h.tarih),
+                              etiketler: [
+                                TsBadge(
+                                    metin: h.hareketTipi,
+                                    tur: giris
+                                        ? TsBadgeTuru.basarili
+                                        : TsBadgeTuru.hata)
+                              ],
+                              sagAksiyon: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                        '${giris ? '+' : '-'}${ParaUtils.formatla(h.tutar)}',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 15,
+                                            color: renk)),
+                                    if (h.bakiyeSonrasi != null)
+                                      Text(ParaUtils.formatla(h.bakiyeSonrasi!),
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              color: context.textSecondary)),
+                                  ]),
+                            ),
+                          );
+                        },
+                      )),
         ),
       ]),
       floatingActionButton: FloatingActionButton.extended(
@@ -182,9 +275,11 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
   }
 
   Widget _ozetKart(String label, double val, Color renk) => Column(children: [
-    Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
-    const SizedBox(height: 2),
-    Text(ParaUtils.formatla(val),
-        style: TextStyle(color: renk, fontSize: 13, fontWeight: FontWeight.w700)),
-  ]);
+        Text(label,
+            style: const TextStyle(color: Colors.white54, fontSize: 10)),
+        const SizedBox(height: 2),
+        Text(ParaUtils.formatla(val),
+            style: TextStyle(
+                color: renk, fontSize: 13, fontWeight: FontWeight.w700)),
+      ]);
 }

@@ -9,7 +9,8 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../depolar/borc_deposu.dart';
+import '../../saglayicilar/riverpod/banka_provider.dart';
+import 'widgets/borc_odeme_bottom_sheet.dart';
 
 class BorcTakipEkrani extends ConsumerStatefulWidget {
   const BorcTakipEkrani({super.key});
@@ -208,13 +209,22 @@ class _BorcTakipEkraniState extends ConsumerState<BorcTakipEkrani> {
   );
 }
 
-// _BorcKarti widget'ı aynen kalabilir.
-class _BorcKarti extends StatelessWidget {
+// 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): bu kart, borç ödemesini
+// BorcDeposu().odemeYap() ile DOĞRUDAN yapıyordu — bu, sadece borcun
+// 'odenen_tutar'ını günceleyip sabit 'Nakit' etiketli bir geçmiş kaydı
+// ekleyen ilkel bir katmandır; kasa/banka/kredi kartı hareketi ve Gider
+// kaydı OLUŞTURMAZ (bkz. BorcOdemeIslemServisi — projedeki TEK doğru,
+// eksiksiz akış). Ayrıca girilen tutarın kalan borcu AŞIP AŞMADIĞI HİÇ
+// kontrol edilmiyordu. Sonuç: bu ekrandan yapılan HER ödeme kasa/banka
+// bakiyesini kalıcı olarak yanlış bırakıyordu. Artık dashboard/detay
+// ekranlarıyla AYNI paylaşılan, doğrulanmış BorcOdemeBottomSheet
+// kullanılıyor — bu yüzden ConsumerWidget'a çevrildi (ref gerekiyor).
+class _BorcKarti extends ConsumerWidget {
   final BorcModel borc;
   const _BorcKarti({required this.borc});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final renk = _turRenk(context, borc.tur);
     final vadesiGecti = borc.vadesiGecti;
     final kalanGun = borc.kalanGun;
@@ -350,7 +360,7 @@ class _BorcKarti extends StatelessWidget {
             // Aksiyon butonları
             if (!odendi)
               FilledButton.icon(
-                onPressed: () => _odemeYap(context),
+                onPressed: () => _odemeYap(context, ref),
                 icon: const Icon(Icons.payments_outlined, size: 16),
                 label: const Text('Ödeme'),
                 style: FilledButton.styleFrom(
@@ -366,51 +376,25 @@ class _BorcKarti extends StatelessWidget {
     );
   }
 
-  Future<void> _odemeYap(BuildContext context) async {
-    final ctrl = TextEditingController(text: borc.kalanTutar.toStringAsFixed(2));
-    final sonuc = await showDialog<double>(
+  Future<void> _odemeYap(BuildContext context, WidgetRef ref) async {
+    final bankaHesaplari = await ref.read(bankaHesaplarProvider(null).future);
+    final krediKartlari = await ref.read(krediKartlariProvider(null).future);
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Ödeme Yap - ${borc.baslik}'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('Kalan: ${ParaUtils.formatla(borc.kalanTutar)}',
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          const SizedBox(height: 12),
-          TextField(
-            controller: ctrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Ödeme Tutarı',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.attach_money),
-            ),
-            autofocus: true,
-          ),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
-          FilledButton(
-            onPressed: () {
-              final tutar = double.tryParse(ctrl.text.replaceAll(',', '.'));
-              if (tutar != null && tutar > 0) Navigator.pop(ctx, tutar);
-            },
-            child: const Text('Ödeme Yap'),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => BorcOdemeBottomSheet(
+        borc: borc,
+        bankaHesaplari: bankaHesaplari,
+        krediKartlari: krediKartlari,
+        onOdemeYapildi: () {
+          ref.invalidate(tumBorclarProvider);
+          BildirimServisi.basari(context, '${borc.baslik} için ödeme kaydedildi');
+        },
       ),
     );
-    if (sonuc == null || !context.mounted) return;
-
-    try {
-      await BorcDeposu().odemeYap(borc.id!, sonuc);
-      if (context.mounted) {
-        BildirimServisi.basari(context, 'Ödeme kaydedildi');
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (context.mounted) BildirimServisi.hata(context, 'Hata: $e');
-    }
   }
 
   // context parametresi eklendi — _BorcKarti bir StatelessWidget;

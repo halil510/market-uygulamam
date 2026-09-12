@@ -163,6 +163,27 @@ class GibServisi {
   // ── UUID (ETTN) üret ───────────────────────────────────────────────────
   String ettnUret() => _uuid.v4().toUpperCase();
 
+  // 🔴 Derin analizde bulundu (mükerrer e-belge gönderim riski): gonder()
+  // her çağrıda ettnUret() ile TAMAMEN YENİ, rastgele bir ETTN
+  // üretiyordu. İstek entegratöre ULAŞTIKTAN SONRA bağlantı koparsa
+  // (istemci başarı yanıtını hiç görmez), kullanıcının "Gönder"e tekrar
+  // basması FARKLI bir ETTN ile ayrı, yasal bağlayıcılığı olan bir
+  // e-belge gönderimi daha yapıyordu — entegratörün bunu aynı faturanın
+  // tekrar denemesi olarak tanıyabileceği hiçbir ortak kimlik yoktu.
+  // Bu sabit (namespace UUID'si sadece bir tuz, herhangi bir dış anlamı
+  // yok) ile UUID v5 (isim tabanlı, DETERMİNİSTİK) üretimi kullanılıyor:
+  // aynı fatura (global_id) için HER ZAMAN aynı ETTN üretilir — uygulama
+  // yeniden başlatılsa, farklı bir cihazdan denense bile. Böylece bir
+  // entegratör ETTN'ye göre tekilleştirme yapıyorsa mükerrer gönderim
+  // artık otomatik olarak engellenir; yapmıyorsa bile durum kötüleşmez.
+  static const String _ettnNamespace = '2f6a8c1e-4b3d-4e7a-9c2f-1a5b7d9e3c6f';
+
+  String _ettnFaturaIcin(FaturaModel fatura) {
+    final ad = fatura.globalId ?? fatura.faturaNo ?? fatura.id?.toString() ??
+        DateTime.now().toIso8601String();
+    return _uuid.v5(_ettnNamespace, ad).toUpperCase();
+  }
+
   /// Türkçe ödeme şeklini UBL/UNCL4461 standart koduna çevirir — UBL-TR
   /// XML'inde PaymentMeans bölümü için.
   String _odemeSekliKodu(String? odemeSekli) => switch (odemeSekli) {
@@ -467,7 +488,7 @@ $satirlar
       );
     }
 
-    final ettn = ettnUret();
+    final ettn = _ettnFaturaIcin(fatura);
     final xml  = await ublXmlOlustur(fatura: fatura, ettn: ettn, tip: tip);
 
     try {

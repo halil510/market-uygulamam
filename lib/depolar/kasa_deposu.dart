@@ -21,8 +21,11 @@ class KasaDeposu {
       // fonksiyonun kullanıldığı HER YER (tahsilat, ödeme, vardiya
       // açma/kapama, uygulamadaki neredeyse tüm kasa hareketi giriş
       // noktası) o zamandan beri buluta hiç senkron olmuyordu.
-      final satir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kid], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(satir.first));
+      final satir = await db.query('kasa_hareketleri',
+          where: 'id = ?', whereArgs: [kid], limit: 1);
+      if (satir.isNotEmpty)
+        BulutManager()
+            .upsert('kasa_hareketleri', Map<String, dynamic>.from(satir.first));
       return kid;
     } catch (e, st) {
       LogServisi().hata('Kasa.hareketEkle', hata: e, yigin: st);
@@ -80,6 +83,32 @@ class KasaDeposu {
       return _sonBakiyeTxn(db);
     } catch (e, st) {
       LogServisi().hata('Kasa.guncelBakiye', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
+  /// FAZ 1 madde 2 (Vardiya/Kasa mutabakatı): [guncelBakiye]'nin okuduğu
+  /// `bakiye_sonrasi` zinciri Nakit+Kart karışımı olduğu için (bkz. rapor),
+  /// bu metod SADECE fiziksel nakit karşılığı olan hareketleri toplar —
+  /// `odeme_yontemi` NULL (Satış-dışı, zaten hep nakit bazlı: Tahsilat,
+  /// Ödeme, Gider, AçılışKasa/KapanışKasa, Kasa Sayım, Virman, Iade) veya
+  /// 'Nakit' olan satırlar. Kart/Banka etiketli 'Satış' hareketleri hariç
+  /// tutulur. [guncelBakiye] DOKUNULMADI — mevcut hiçbir çağıran etkilenmez.
+  Future<double> guncelBakiyeNakit() async {
+    try {
+      final db = await _d;
+      final girisler = KasaHareketModel.girisTipleri;
+      final icYer = List.filled(girisler.length, '?').join(',');
+      final rows = await db.rawQuery('''
+        SELECT COALESCE(SUM(
+          CASE WHEN hareket_tipi IN ($icYer) THEN tutar ELSE -tutar END
+        ), 0) as bakiye
+        FROM kasa_hareketleri
+        WHERE deleted_at IS NULL AND (odeme_yontemi IS NULL OR odeme_yontemi = 'Nakit')
+      ''', girisler.toList());
+      return (rows.first['bakiye'] as num?)?.toDouble() ?? 0;
+    } catch (e, st) {
+      LogServisi().hata('Kasa.guncelBakiyeNakit', hata: e, yigin: st);
       rethrow;
     }
   }
@@ -215,8 +244,8 @@ class KasaDeposu {
         // kullanılıyordu — diğer tüm tablolardaki soft-delete
         // deseninin aksine. Artık tablonun zaten sahip olduğu
         // 'deleted_at' sütunuyla soft-delete yapılıyor.
-        await txn.update('kasa_hareketleri',
-            {'deleted_at': now, 'last_updated': now},
+        await txn.update(
+            'kasa_hareketleri', {'deleted_at': now, 'last_updated': now},
             where: 'id = ?', whereArgs: [id]);
         etkilenenIdler.add(id);
 
@@ -240,9 +269,11 @@ class KasaDeposu {
         }
       });
       for (final eid in etkilenenIdler) {
-        final satir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [eid], limit: 1);
+        final satir = await db.query('kasa_hareketleri',
+            where: 'id = ?', whereArgs: [eid], limit: 1);
         if (satir.isNotEmpty) {
-          BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(satir.first));
+          BulutManager().upsert(
+              'kasa_hareketleri', Map<String, dynamic>.from(satir.first));
         }
       }
     } catch (e, st) {
@@ -280,8 +311,11 @@ class KasaDeposu {
         }
       });
       for (final id in duzeltilenIdler) {
-        final satir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [id], limit: 1);
-        if (satir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(satir.first));
+        final satir = await db.query('kasa_hareketleri',
+            where: 'id = ?', whereArgs: [id], limit: 1);
+        if (satir.isNotEmpty)
+          BulutManager().upsert(
+              'kasa_hareketleri', Map<String, dynamic>.from(satir.first));
       }
       return duzeltilen;
     } catch (e, st) {

@@ -11,43 +11,43 @@ class MigrasyonYonetici {
       Database db, int eskiVersiyon, int yeniVersiyon) async {
     // v1'den v2'ye
     if (eskiVersiyon < 2) await _v1denV2ye(db);
-    
+
     // v2'den v3'e
     if (eskiVersiyon < 3) await _v2denV3e(db);
-    
+
     // v3'ten v4'e
     if (eskiVersiyon < 4) await _v3denV4e(db);
-    
+
     // v4'ten v5'e
     if (eskiVersiyon < 5) await _v4denV5e(db);
-    
+
     // v5'ten v6'ya
     if (eskiVersiyon < 6) await _v5denV6ya(db);
-    
+
     // v6'dan v7'ye
     if (eskiVersiyon < 7) await _v6denV7ye(db);
-    
+
     // v7'den v8'e (İade Faturası)
     if (eskiVersiyon < 8) await _v7denV8e(db);
-    
+
     // v8'den v9'a (Masa/Restoran)
     if (eskiVersiyon < 9) await _v8denV9a(db);
-    
+
     // v9'dan v10'a (PLU)
     if (eskiVersiyon < 10) await _v9denV10a(db);
-    
+
     // v10'dan v11'e (Rezervasyon + Garson Çağrı)
     if (eskiVersiyon < 11) await _v10denV11e(db);
-    
+
     // v11'den v12'ye (Masa rapor indexleri)
     if (eskiVersiyon < 12) await _v11denV12e(db);
-    
+
     // v12'den v13'e (Masa Detay + Adisyon log)
     if (eskiVersiyon < 13) await _v12denV13e(db);
-    
+
     //  YENİ: v13'ten v14'e (Tüm eksik sütunlar)
     if (eskiVersiyon < 14) await _v13denV14e(db);
-    
+
     //  YENİ: v14'ten v15'e (Tüm eksik sütunlar)
     if (eskiVersiyon < 15) await _v14denV15e(db);
 
@@ -144,21 +144,28 @@ class MigrasyonYonetici {
 
     // v54'ten v55'e — bozuk 'last_updated' tetikleyicileri kaldırıldı
     if (eskiVersiyon < 55) await _v54denV55e(db);
+
+    // v55'ten v56'ya — kasa_hareketleri.odeme_yontemi eklendi (Vardiya/Kasa mutabakatı)
+    if (eskiVersiyon < 56) await _v55denV56ya(db);
   }
 
   // ==================== v1 -> v2 ====================
   static Future<void> _v1denV2ye(Database db) async {
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN kdv_dahil INTEGER NOT NULL DEFAULT 1');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN barkod_tipi TEXT NOT NULL DEFAULT "CODE128"');
-    await _calistir(db, 'ALTER TABLE satislar ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN kdv_dahil INTEGER NOT NULL DEFAULT 1');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN barkod_tipi TEXT NOT NULL DEFAULT "CODE128"');
+    await _calistir(db,
+        'ALTER TABLE satislar ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
   }
 
   // ==================== v2 -> v3 ====================
   static Future<void> _v2denV3e(Database db) async {
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN indirimli_fiyat REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN indirimli_fiyat REAL NOT NULL DEFAULT 0');
     await _calistir(db, 'ALTER TABLE satislar ADD COLUMN cari_id INTEGER');
     await _calistir(db, 'ALTER TABLE cari ADD COLUMN global_id TEXT UNIQUE');
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS promosyonlar (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -176,24 +183,34 @@ class MigrasyonYonetici {
 
   // ==================== v3 -> v4 ====================
   static Future<void> _v3denV4e(Database db) async {
-    await _calistir(db, 'ALTER TABLE satis_kalem ADD COLUMN alis_fiyat REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE satis_kalem ADD COLUMN alis_fiyat_kdv REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE satis_kalem ADD COLUMN alis_fiyat REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE satis_kalem ADD COLUMN alis_fiyat_kdv REAL NOT NULL DEFAULT 0');
     await _calistir(db, 'ALTER TABLE satislar ADD COLUMN efatura_uuid TEXT');
-    await _calistir(db, 'ALTER TABLE satislar ADD COLUMN efatura_durum TEXT DEFAULT NULL');
-    await _calistir(db, 'ALTER TABLE satislar ADD COLUMN efatura_gonderim_tarihi TEXT DEFAULT NULL');
-    await _calistir(db, 'ALTER TABLE satislar ADD COLUMN efatura_yanit TEXT DEFAULT NULL');
+    await _calistir(
+        db, 'ALTER TABLE satislar ADD COLUMN efatura_durum TEXT DEFAULT NULL');
+    await _calistir(db,
+        'ALTER TABLE satislar ADD COLUMN efatura_gonderim_tarihi TEXT DEFAULT NULL');
+    await _calistir(
+        db, 'ALTER TABLE satislar ADD COLUMN efatura_yanit TEXT DEFAULT NULL');
     await _calistir(db, 'ALTER TABLE cari ADD COLUMN vergi_no TEXT');
     await _calistir(db, 'ALTER TABLE cari ADD COLUMN vergi_dairesi TEXT');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN efatura_uuid TEXT');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN efatura_durum TEXT DEFAULT NULL');
+    await _calistir(
+        db, 'ALTER TABLE faturalar ADD COLUMN efatura_durum TEXT DEFAULT NULL');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN efatura_tipi TEXT');
     await _calistir(db, 'ALTER TABLE roller_yetki ADD COLUMN created_at TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN eski_fiyat REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN eski_fiyat_tarih DATETIME');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN eski_fiyat REAL NOT NULL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN eski_fiyat_tarih DATETIME');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN promosyon_grup TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN promosyon_aktif INTEGER NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN net_alis_fiyat REAL NOT NULL DEFAULT 0');
-    
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN promosyon_aktif INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN net_alis_fiyat REAL NOT NULL DEFAULT 0');
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS app_log (
         id      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -205,7 +222,7 @@ class MigrasyonYonetici {
         zaman   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS irsaliyeler (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -219,7 +236,7 @@ class MigrasyonYonetici {
         created_at    TEXT DEFAULT CURRENT_TIMESTAMP
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS irsaliye_kalem (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -231,7 +248,7 @@ class MigrasyonYonetici {
         toplam_tutar  REAL    NOT NULL DEFAULT 0
       )
     """);
-    
+
     await _calistir(db, """
       UPDATE satis_kalem
       SET alis_fiyat = COALESCE(
@@ -255,15 +272,24 @@ class MigrasyonYonetici {
         FOREIGN KEY(kullanici_id) REFERENCES kullanicilar(id)
       )
     """);
-    
-    final olaylar = ['kritik_stok', 'gunluk_rapor', 'kasa_kapanisi', 'vadesi_gelen_cari', 'yedekleme_hatirlatma'];
+
+    final olaylar = [
+      'kritik_stok',
+      'gunluk_rapor',
+      'kasa_kapanisi',
+      'vadesi_gelen_cari',
+      'yedekleme_hatirlatma'
+    ];
     for (final olay in olaylar) {
-      await _calistir(db, "INSERT OR IGNORE INTO bildirim_tercihleri(olay_turu, aktif) VALUES('$olay', 1)");
+      await _calistir(db,
+          "INSERT OR IGNORE INTO bildirim_tercihleri(olay_turu, aktif) VALUES('$olay', 1)");
     }
-    
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN max_stok REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE satislar ADD COLUMN servis_ucreti REAL NOT NULL DEFAULT 0');
-    
+
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN max_stok REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE satislar ADD COLUMN servis_ucreti REAL NOT NULL DEFAULT 0');
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS vardiya_detay (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -276,12 +302,15 @@ class MigrasyonYonetici {
         FOREIGN KEY(vardiya_id) REFERENCES vardiyalar(id)
       )
     """);
-    
-    await _calistir(db, 'ALTER TABLE personel ADD COLUMN maas REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE personel ADD COLUMN calisma_saati REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE personel ADD COLUMN ise_baslama_tarihi TEXT');
+
+    await _calistir(
+        db, 'ALTER TABLE personel ADD COLUMN maas REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE personel ADD COLUMN calisma_saati REAL NOT NULL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE personel ADD COLUMN ise_baslama_tarihi TEXT');
     await _calistir(db, 'ALTER TABLE personel ADD COLUMN departman TEXT');
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS favori_urunler (
         id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -294,9 +323,9 @@ class MigrasyonYonetici {
         FOREIGN KEY(urun_id)      REFERENCES urunler(id)
       )
     """);
-    
+
     await _v5Ek(db);
-    
+
     // Indexler
     final indexler = [
       'CREATE INDEX IF NOT EXISTS idx_satislar_tarih       ON satislar(tarih)',
@@ -317,46 +346,69 @@ class MigrasyonYonetici {
       'CREATE INDEX IF NOT EXISTS idx_faturalar_cari       ON faturalar(cari_id)',
     ];
     for (final idx in indexler) {
-      try { await _calistir(db, idx); } catch (e) { }
+      try {
+        await _calistir(db, idx);
+      } catch (e) {}
     }
-    
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_app_log_zaman ON app_log(zaman)');
-    await _calistir(db, "UPDATE stok_hareket SET tarih = CURRENT_TIMESTAMP WHERE tarih IS NULL OR tarih = ''");
+
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_app_log_zaman ON app_log(zaman)');
+    await _calistir(db,
+        "UPDATE stok_hareket SET tarih = CURRENT_TIMESTAMP WHERE tarih IS NULL OR tarih = ''");
   }
 
   static Future<void> _v5Ek(Database db) async {
     await _calistir(db, 'ALTER TABLE personel ADD COLUMN ise_baslama DATE');
-    await _calistir(db, "ALTER TABLE bildirimler ADD COLUMN tip TEXT DEFAULT 'bilgi'");
+    await _calistir(
+        db, "ALTER TABLE bildirimler ADD COLUMN tip TEXT DEFAULT 'bilgi'");
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN kategori_id INTEGER');
     await _calistir(db, 'ALTER TABLE satislar ADD COLUMN kullanici_id INTEGER');
-    await _calistir(db, "ALTER TABLE faturalar ADD COLUMN e_fatura_durum TEXT DEFAULT 'hazir'");
+    await _calistir(db,
+        "ALTER TABLE faturalar ADD COLUMN e_fatura_durum TEXT DEFAULT 'hazir'");
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN e_fatura_uuid TEXT');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN e_fatura_html TEXT');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN e_fatura_xml TEXT');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN gonderim_tarihi TEXT');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN uygulama_yaniti TEXT');
+    await _calistir(
+        db, 'ALTER TABLE faturalar ADD COLUMN gonderim_tarihi TEXT');
+    await _calistir(
+        db, 'ALTER TABLE faturalar ADD COLUMN uygulama_yaniti TEXT');
   }
 
   // ==================== v5 -> v6 ====================
   static Future<void> _v5denV6ya(Database db) async {
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN alis_fiyat_kdv_dahil REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN barkod_olcu_birimi TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN en REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN boy REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN yukseklik REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN agirlik REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN alis_fiyat_kdv_dahil REAL NOT NULL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN barkod_olcu_birimi TEXT');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN en REAL NOT NULL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN boy REAL NOT NULL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN yukseklik REAL NOT NULL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN agirlik REAL NOT NULL DEFAULT 0');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN eski_kodu TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN kart_tipi TEXT DEFAULT "Standart"');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN kart_tipi TEXT DEFAULT "Standart"');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN seri_numarasi TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN fiyat_guncelleme_tarih TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN fiyat_guncelleyen_kullanici TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN barkod_yazdirma_tarih TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN barkod_yazdiran_kullanici TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN maliyet_guncelleme_tarih TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN maliyet_guncelleyen_kullanici TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN guncelleyen_kullanici TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN kaydeden_kullanici TEXT');
-    
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN fiyat_guncelleme_tarih TEXT');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN fiyat_guncelleyen_kullanici TEXT');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN barkod_yazdirma_tarih TEXT');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN barkod_yazdiran_kullanici TEXT');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN maliyet_guncelleme_tarih TEXT');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN maliyet_guncelleyen_kullanici TEXT');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN guncelleyen_kullanici TEXT');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN kaydeden_kullanici TEXT');
+
     await _calistir(db, '''
       CREATE TABLE IF NOT EXISTS efatura_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -371,37 +423,53 @@ class MigrasyonYonetici {
         yanit_json TEXT
       )
     ''');
-    
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_satislar_cari    ON satislar(cari_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_satislar_fis_no  ON satislar(fis_no)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_cari_unvan       ON cari(unvan)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_urunler_ana_grup ON urunler(ana_grup)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_urunler_aktif    ON urunler(aktif, stok)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_faturalar_cari   ON faturalar(cari_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_efatura_log      ON efatura_log(fatura_id)');
+
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_satislar_cari    ON satislar(cari_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_satislar_fis_no  ON satislar(fis_no)');
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_cari_unvan       ON cari(unvan)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_urunler_ana_grup ON urunler(ana_grup)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_urunler_aktif    ON urunler(aktif, stok)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_faturalar_cari   ON faturalar(cari_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_efatura_log      ON efatura_log(fatura_id)');
   }
 
   // ==================== v6 -> v7 ====================
   static Future<void> _v6denV7ye(Database db) async {
     // Kategoriler
-    await _calistir(db, 'ALTER TABLE kategoriler ADD COLUMN last_updated DATETIME');
-    await _calistir(db, "UPDATE kategoriler SET last_updated = datetime('now') WHERE last_updated IS NULL");
-    await _calistir(db, 'ALTER TABLE birimler ADD COLUMN last_updated DATETIME');
-    await _calistir(db, "UPDATE birimler SET last_updated = datetime('now') WHERE last_updated IS NULL");
-    await _calistir(db, 'ALTER TABLE gider_kategoriler ADD COLUMN last_updated DATETIME');
-    await _calistir(db, "UPDATE gider_kategoriler SET last_updated = datetime('now') WHERE last_updated IS NULL");
-    await _calistir(db, 'ALTER TABLE stok_hareket ADD COLUMN last_updated DATETIME');
-    await _calistir(db, "UPDATE stok_hareket SET last_updated = datetime('now') WHERE last_updated IS NULL");
-    
+    await _calistir(
+        db, 'ALTER TABLE kategoriler ADD COLUMN last_updated DATETIME');
+    await _calistir(db,
+        "UPDATE kategoriler SET last_updated = datetime('now') WHERE last_updated IS NULL");
+    await _calistir(
+        db, 'ALTER TABLE birimler ADD COLUMN last_updated DATETIME');
+    await _calistir(db,
+        "UPDATE birimler SET last_updated = datetime('now') WHERE last_updated IS NULL");
+    await _calistir(
+        db, 'ALTER TABLE gider_kategoriler ADD COLUMN last_updated DATETIME');
+    await _calistir(db,
+        "UPDATE gider_kategoriler SET last_updated = datetime('now') WHERE last_updated IS NULL");
+    await _calistir(
+        db, 'ALTER TABLE stok_hareket ADD COLUMN last_updated DATETIME');
+    await _calistir(db,
+        "UPDATE stok_hareket SET last_updated = datetime('now') WHERE last_updated IS NULL");
+
     // Global ID'ler
     await _calistir(db, 'ALTER TABLE giderler ADD COLUMN global_id TEXT');
-    await _calistir(db, 'ALTER TABLE kasa_hareketleri ADD COLUMN global_id TEXT');
+    await _calistir(
+        db, 'ALTER TABLE kasa_hareketleri ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE promosyonlar ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE vardiyalar ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE personel ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE musteri_puan ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE iade ADD COLUMN global_id TEXT');
-    
+
     // Sync tabloları
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS sync_queue (
@@ -417,7 +485,7 @@ class MigrasyonYonetici {
         created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS sync_meta (
         tablo_adi   TEXT PRIMARY KEY,
@@ -426,7 +494,7 @@ class MigrasyonYonetici {
         deleted_records TEXT
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS stok_fifo (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -435,7 +503,7 @@ class MigrasyonYonetici {
         kullanilan_miktar REAL NOT NULL
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS sube_fiyat_gecmis (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -447,33 +515,42 @@ class MigrasyonYonetici {
         degistiren  TEXT
       )
     """);
-    
+
     // Urunler ekstralar
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN last_updated DATETIME');
-    await _calistir(db, "UPDATE urunler SET last_updated = datetime('now') WHERE last_updated IS NULL");
+    await _calistir(db,
+        "UPDATE urunler SET last_updated = datetime('now') WHERE last_updated IS NULL");
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN deleted_at DATETIME');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN cihaz_id TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN zaman_fiyat_id INTEGER');
-    
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN zaman_fiyat_id INTEGER');
+
     // Satislar ekstralar
-    await _calistir(db, 'ALTER TABLE satislar ADD COLUMN last_updated DATETIME');
-    await _calistir(db, "UPDATE satislar SET last_updated = datetime('now') WHERE last_updated IS NULL");
+    await _calistir(
+        db, 'ALTER TABLE satislar ADD COLUMN last_updated DATETIME');
+    await _calistir(db,
+        "UPDATE satislar SET last_updated = datetime('now') WHERE last_updated IS NULL");
     await _calistir(db, 'ALTER TABLE satislar ADD COLUMN deleted_at DATETIME');
     await _calistir(db, 'ALTER TABLE satislar ADD COLUMN cihaz_id TEXT');
     await _calistir(db, 'ALTER TABLE satislar ADD COLUMN sube_id INTEGER');
-    await _calistir(db, 'ALTER TABLE satislar ADD COLUMN kargo_ucreti REAL NOT NULL DEFAULT 0');
-    
+    await _calistir(db,
+        'ALTER TABLE satislar ADD COLUMN kargo_ucreti REAL NOT NULL DEFAULT 0');
+
     // Satis kalem ekstralar
     await _calistir(db, 'ALTER TABLE satis_kalem ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE satis_kalem ADD COLUMN cihaz_id TEXT');
-    await _calistir(db, 'ALTER TABLE satis_kalem ADD COLUMN last_updated DATETIME');
-    
+    await _calistir(
+        db, 'ALTER TABLE satis_kalem ADD COLUMN last_updated DATETIME');
+
     // Cari ekstralar
     await _calistir(db, 'ALTER TABLE cari ADD COLUMN last_updated DATETIME');
-    await _calistir(db, "UPDATE cari SET last_updated = datetime('now') WHERE last_updated IS NULL");
-    await _calistir(db, 'ALTER TABLE cari ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        "UPDATE cari SET last_updated = datetime('now') WHERE last_updated IS NULL");
+    await _calistir(db,
+        'ALTER TABLE cari ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
     await _calistir(db, 'ALTER TABLE cari ADD COLUMN deleted_at DATETIME');
     await _calistir(db, 'ALTER TABLE cari ADD COLUMN cihaz_id TEXT');
     await _calistir(db, 'ALTER TABLE cari ADD COLUMN telefon2 TEXT');
@@ -484,96 +561,132 @@ class MigrasyonYonetici {
     await _calistir(db, 'ALTER TABLE cari ADD COLUMN web_sitesi TEXT');
     await _calistir(db, 'ALTER TABLE cari ADD COLUMN guncelleyen TEXT');
     await _calistir(db, 'ALTER TABLE cari ADD COLUMN sube_id INTEGER');
-    
+
     // Cari hareket ekstralar
-    await _calistir(db, 'ALTER TABLE cari_hareket ADD COLUMN last_updated DATETIME');
+    await _calistir(
+        db, 'ALTER TABLE cari_hareket ADD COLUMN last_updated DATETIME');
     await _calistir(db, 'ALTER TABLE cari_hareket ADD COLUMN cihaz_id TEXT');
-    await _calistir(db, 'ALTER TABLE cari_hareket ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
-    
+    await _calistir(db,
+        'ALTER TABLE cari_hareket ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
+
     // Stok hareket ekstralar
     await _calistir(db, 'ALTER TABLE stok_hareket ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE stok_hareket ADD COLUMN cihaz_id TEXT');
-    
+
     // Kasa hareketleri ekstralar
-    await _calistir(db, 'ALTER TABLE kasa_hareketleri ADD COLUMN last_updated DATETIME');
-    await _calistir(db, 'ALTER TABLE kasa_hareketleri ADD COLUMN deleted_at DATETIME');
-    await _calistir(db, 'ALTER TABLE kasa_hareketleri ADD COLUMN bakiye_sonrasi REAL');
-    
+    await _calistir(
+        db, 'ALTER TABLE kasa_hareketleri ADD COLUMN last_updated DATETIME');
+    await _calistir(
+        db, 'ALTER TABLE kasa_hareketleri ADD COLUMN deleted_at DATETIME');
+    await _calistir(
+        db, 'ALTER TABLE kasa_hareketleri ADD COLUMN bakiye_sonrasi REAL');
+
     // Giderler ekstralar
-    await _calistir(db, 'ALTER TABLE giderler ADD COLUMN last_updated DATETIME');
+    await _calistir(
+        db, 'ALTER TABLE giderler ADD COLUMN last_updated DATETIME');
     await _calistir(db, 'ALTER TABLE giderler ADD COLUMN deleted_at DATETIME');
-    
+
     // Faturalar ekstralar
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN last_updated DATETIME');
+    await _calistir(
+        db, 'ALTER TABLE faturalar ADD COLUMN last_updated DATETIME');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN deleted_at DATETIME');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN global_id TEXT');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN duzenlenme_tarihi TEXT');
+    await _calistir(
+        db, 'ALTER TABLE faturalar ADD COLUMN duzenlenme_tarihi TEXT');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN sevk_tarihi TEXT');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN vade_tarihi TEXT');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN malin_nereye TEXT');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN teslim_eden TEXT');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN teslim_alan TEXT');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN toplam_ara_toplam REAL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN toplam_iskonto REAL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN toplam_kdv REAL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN genel_toplam REAL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN odenen_tutar REAL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN kalan_tutar REAL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN odeme_durumu TEXT DEFAULT "beklemede"');
+    await _calistir(db,
+        'ALTER TABLE faturalar ADD COLUMN toplam_ara_toplam REAL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE faturalar ADD COLUMN toplam_iskonto REAL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE faturalar ADD COLUMN toplam_kdv REAL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE faturalar ADD COLUMN genel_toplam REAL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE faturalar ADD COLUMN odenen_tutar REAL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE faturalar ADD COLUMN kalan_tutar REAL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE faturalar ADD COLUMN odeme_durumu TEXT DEFAULT "beklemede"');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN html_icerik TEXT');
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN xml_icerik TEXT');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN durum TEXT DEFAULT "aktif"');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP');
-    await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP');
-    
+    await _calistir(
+        db, 'ALTER TABLE faturalar ADD COLUMN durum TEXT DEFAULT "aktif"');
+    await _calistir(db,
+        'ALTER TABLE faturalar ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP');
+    await _calistir(db,
+        'ALTER TABLE faturalar ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP');
+
     // Fatura detaylari ekstralar
-    await _calistir(db, 'ALTER TABLE fatura_detaylari ADD COLUMN last_updated DATETIME');
-    await _calistir(db, 'ALTER TABLE fatura_detaylari ADD COLUMN cihaz_id TEXT');
-    
+    await _calistir(
+        db, 'ALTER TABLE fatura_detaylari ADD COLUMN last_updated DATETIME');
+    await _calistir(
+        db, 'ALTER TABLE fatura_detaylari ADD COLUMN cihaz_id TEXT');
+
     // Iade ekstralar
     await _calistir(db, 'ALTER TABLE iade ADD COLUMN last_updated DATETIME');
     await _calistir(db, 'ALTER TABLE iade ADD COLUMN deleted_at DATETIME');
     await _calistir(db, 'ALTER TABLE iade ADD COLUMN cihaz_id TEXT');
-    
+
     // Irsaliyeler ekstralar
-    await _calistir(db, 'ALTER TABLE irsaliyeler ADD COLUMN deleted_at DATETIME');
+    await _calistir(
+        db, 'ALTER TABLE irsaliyeler ADD COLUMN deleted_at DATETIME');
     await _calistir(db, 'ALTER TABLE irsaliyeler ADD COLUMN global_id TEXT');
-    
+
     // Promosyonlar ekstralar
-    await _calistir(db, 'ALTER TABLE promosyonlar ADD COLUMN last_updated DATETIME');
-    await _calistir(db, 'ALTER TABLE promosyonlar ADD COLUMN deleted_at DATETIME');
-    
+    await _calistir(
+        db, 'ALTER TABLE promosyonlar ADD COLUMN last_updated DATETIME');
+    await _calistir(
+        db, 'ALTER TABLE promosyonlar ADD COLUMN deleted_at DATETIME');
+
     // Tedarikci siparisler ekstralar
-    await _calistir(db, 'ALTER TABLE tedarikci_siparisler ADD COLUMN last_updated DATETIME');
-    await _calistir(db, 'ALTER TABLE tedarikci_siparisler ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE tedarikci_siparis_kalem ADD COLUMN last_updated DATETIME');
-    
+    await _calistir(db,
+        'ALTER TABLE tedarikci_siparisler ADD COLUMN last_updated DATETIME');
+    await _calistir(db,
+        'ALTER TABLE tedarikci_siparisler ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE tedarikci_siparis_kalem ADD COLUMN last_updated DATETIME');
+
     // Lot seri ekstralar
-    await _calistir(db, 'ALTER TABLE lot_seri ADD COLUMN last_updated DATETIME');
+    await _calistir(
+        db, 'ALTER TABLE lot_seri ADD COLUMN last_updated DATETIME');
     await _calistir(db, 'ALTER TABLE lot_seri ADD COLUMN cihaz_id TEXT');
-    
+
     // Vardiyalar ekstralar
-    await _calistir(db, 'ALTER TABLE vardiyalar ADD COLUMN last_updated DATETIME');
-    
+    await _calistir(
+        db, 'ALTER TABLE vardiyalar ADD COLUMN last_updated DATETIME');
+
     // Musteri puan ekstralar
-    await _calistir(db, 'ALTER TABLE musteri_puan ADD COLUMN last_updated DATETIME');
-    await _calistir(db, 'ALTER TABLE puan_hareket ADD COLUMN last_updated DATETIME');
-    
+    await _calistir(
+        db, 'ALTER TABLE musteri_puan ADD COLUMN last_updated DATETIME');
+    await _calistir(
+        db, 'ALTER TABLE puan_hareket ADD COLUMN last_updated DATETIME');
+
     // Personel ekstralar
-    await _calistir(db, 'ALTER TABLE personel ADD COLUMN last_updated DATETIME');
-    await _calistir(db, 'ALTER TABLE personel ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE personel ADD COLUMN last_updated DATETIME');
+    await _calistir(db,
+        'ALTER TABLE personel ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
     await _calistir(db, 'ALTER TABLE personel ADD COLUMN kullanici_id INTEGER');
     await _calistir(db, 'ALTER TABLE personel ADD COLUMN tc_kimlik TEXT');
     await _calistir(db, 'ALTER TABLE personel ADD COLUMN pozisyon TEXT');
     await _calistir(db, 'ALTER TABLE personel ADD COLUMN isten_cikis DATE');
     await _calistir(db, 'ALTER TABLE personel ADD COLUMN notlar TEXT');
-    
+
     // Kullanicilar ekstralar
-    await _calistir(db, 'ALTER TABLE kullanicilar ADD COLUMN plu INTEGER NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE kullanicilar ADD COLUMN plu_kart_boyut INTEGER NOT NULL DEFAULT 2');
-    await _calistir(db, 'ALTER TABLE kullanicilar ADD COLUMN last_updated DATETIME');
-    await _calistir(db, "UPDATE kullanicilar SET last_updated = datetime('now') WHERE last_updated IS NULL");
-    
+    await _calistir(db,
+        'ALTER TABLE kullanicilar ADD COLUMN plu INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE kullanicilar ADD COLUMN plu_kart_boyut INTEGER NOT NULL DEFAULT 2');
+    await _calistir(
+        db, 'ALTER TABLE kullanicilar ADD COLUMN last_updated DATETIME');
+    await _calistir(db,
+        "UPDATE kullanicilar SET last_updated = datetime('now') WHERE last_updated IS NULL");
+
     // Yeni tablolar
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS fiyat_gecmis (
@@ -584,7 +697,7 @@ class MigrasyonYonetici {
         FOREIGN KEY(urun_id) REFERENCES urunler(id) ON DELETE CASCADE
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS zaman_fiyat (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -597,7 +710,7 @@ class MigrasyonYonetici {
         aciklama TEXT, olusturma DATETIME, guncelleme DATETIME
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS cari_adres (
         id INTEGER PRIMARY KEY AUTOINCREMENT, global_id TEXT UNIQUE,
@@ -607,7 +720,7 @@ class MigrasyonYonetici {
         FOREIGN KEY(cari_id) REFERENCES cari(id) ON DELETE CASCADE
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS promosyon_tanim (
         id INTEGER PRIMARY KEY AUTOINCREMENT, global_id TEXT,
@@ -617,7 +730,7 @@ class MigrasyonYonetici {
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS promosyon_kosul (
         id INTEGER PRIMARY KEY AUTOINCREMENT, tanim_id INTEGER NOT NULL,
@@ -625,7 +738,7 @@ class MigrasyonYonetici {
         FOREIGN KEY(tanim_id) REFERENCES promosyon_tanim(id) ON DELETE CASCADE
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS promosyon_aksiyon (
         id INTEGER PRIMARY KEY AUTOINCREMENT, tanim_id INTEGER NOT NULL,
@@ -633,7 +746,7 @@ class MigrasyonYonetici {
         FOREIGN KEY(tanim_id) REFERENCES promosyon_tanim(id) ON DELETE CASCADE
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS sube_urun (
         urun_id INTEGER NOT NULL, sube_id INTEGER NOT NULL,
@@ -643,7 +756,7 @@ class MigrasyonYonetici {
         PRIMARY KEY (urun_id, sube_id)
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS rol_yetkileri (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -651,43 +764,60 @@ class MigrasyonYonetici {
         UNIQUE(rol, yetki_kodu)
       )
     """);
-    
+
     // Indexler
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_urunler_barkod ON urunler(barkod)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_urunler_updated ON urunler(last_updated)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_satislar_tarih ON satislar(tarih)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_satislar_cari ON satislar(cari_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_satislar_deleted ON satislar(is_deleted, tarih)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_satis_kalem_satis ON satis_kalem(satis_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_satis_kalem_urun ON satis_kalem(urun_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_cari_unvan ON cari(unvan)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_carih_cari ON cari_hareket(cari_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_stokh_urun ON stok_hareket(urun_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_stokh_tarih ON stok_hareket(tarih)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_kasa_tarih ON kasa_hareketleri(tarih)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_gider_tarih ON giderler(tarih)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_fatura_cari ON faturalar(cari_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_promo_urun ON promosyonlar(urun_id, aktif)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_zaman_fiyat_urun ON zaman_fiyat(urun_id, aktif)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_sync_durum ON sync_queue(durum)');
-    
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_urunler_barkod ON urunler(barkod)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_urunler_updated ON urunler(last_updated)');
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_satislar_tarih ON satislar(tarih)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_satislar_cari ON satislar(cari_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_satislar_deleted ON satislar(is_deleted, tarih)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_satis_kalem_satis ON satis_kalem(satis_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_satis_kalem_urun ON satis_kalem(urun_id)');
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_cari_unvan ON cari(unvan)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_carih_cari ON cari_hareket(cari_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_stokh_urun ON stok_hareket(urun_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_stokh_tarih ON stok_hareket(tarih)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_kasa_tarih ON kasa_hareketleri(tarih)');
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_gider_tarih ON giderler(tarih)');
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_fatura_cari ON faturalar(cari_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_promo_urun ON promosyonlar(urun_id, aktif)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_zaman_fiyat_urun ON zaman_fiyat(urun_id, aktif)');
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_sync_durum ON sync_queue(durum)');
+
     // Triggerlar
     await _calistir(db, """CREATE TRIGGER IF NOT EXISTS trg_urun_fiyat_gecmis
       AFTER UPDATE OF alis_fiyat, satis_fiyati ON urunler BEGIN
       INSERT INTO fiyat_gecmis(urun_id, eski_alis, yeni_alis, eski_satis, yeni_satis)
       SELECT NEW.id, OLD.alis_fiyat, NEW.alis_fiyat, OLD.satis_fiyati, NEW.satis_fiyati
       WHERE OLD.alis_fiyat != NEW.alis_fiyat OR OLD.satis_fiyati != NEW.satis_fiyati; END""");
-    
+
     await _calistir(db, """CREATE TRIGGER IF NOT EXISTS trg_urun_updated
       AFTER UPDATE ON urunler BEGIN
       UPDATE urunler SET last_updated = datetime('now') WHERE id = NEW.id; END""");
-    
+
     await _calistir(db, """CREATE TRIGGER IF NOT EXISTS trg_cari_bakiye_ins
       AFTER INSERT ON cari_hareket BEGIN
       UPDATE cari SET bakiye = (
         SELECT COALESCE(SUM(borc - alacak), 0) FROM cari_hareket WHERE cari_id = NEW.cari_id
       ) WHERE id = NEW.cari_id; END""");
-    
+
     await _calistir(db, """CREATE TRIGGER IF NOT EXISTS trg_soft_delete_satis
       AFTER UPDATE OF is_deleted ON satislar BEGIN
       UPDATE satislar SET deleted_at = CASE WHEN NEW.is_deleted=1 THEN datetime('now') ELSE NULL END
@@ -697,7 +827,8 @@ class MigrasyonYonetici {
   // ==================== v7 -> v8 (İade Faturası) ====================
   static Future<void> _v7denV8e(Database db) async {
     await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN iade_id INTEGER');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_faturalar_iade ON faturalar(iade_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_faturalar_iade ON faturalar(iade_id)');
   }
 
   // ==================== v8 -> v9 (Masa/Restoran) ====================
@@ -707,8 +838,10 @@ class MigrasyonYonetici {
 
   // ==================== v9 -> v10 (PLU) ====================
   static Future<void> _v9denV10a(Database db) async {
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN plu INTEGER NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN plu_kart_boyut INTEGER NOT NULL DEFAULT 2');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN plu INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN plu_kart_boyut INTEGER NOT NULL DEFAULT 2');
   }
 
   // ==================== v10 -> v11 (Rezervasyon + Garson Çağrı) ====================
@@ -731,14 +864,19 @@ class MigrasyonYonetici {
         FOREIGN KEY(masa_id) REFERENCES masalar(id) ON DELETE CASCADE
       )
     """);
-    
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_rezervasyon_tarih ON masa_rezervasyon(tarih, saat)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_rezervasyon_masa ON masa_rezervasyon(masa_id, durum)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_rezervasyon_musteri ON masa_rezervasyon(musteri_adi)');
-    
-    await _calistir(db, 'ALTER TABLE masa_siparisleri ADD COLUMN garson_id INTEGER');
-    await _calistir(db, 'ALTER TABLE masa_siparisleri ADD COLUMN garson_adi TEXT');
-    
+
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_rezervasyon_tarih ON masa_rezervasyon(tarih, saat)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_rezervasyon_masa ON masa_rezervasyon(masa_id, durum)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_rezervasyon_musteri ON masa_rezervasyon(musteri_adi)');
+
+    await _calistir(
+        db, 'ALTER TABLE masa_siparisleri ADD COLUMN garson_id INTEGER');
+    await _calistir(
+        db, 'ALTER TABLE masa_siparisleri ADD COLUMN garson_adi TEXT');
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS garson_cagri_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -751,16 +889,21 @@ class MigrasyonYonetici {
         FOREIGN KEY(masa_id) REFERENCES masalar(id)
       )
     """);
-    
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_garson_cagri_durum ON garson_cagri_log(durum)');
+
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_garson_cagri_durum ON garson_cagri_log(durum)');
   }
 
   // ==================== v11 -> v12 (Masa rapor indexleri) ====================
   static Future<void> _v11denV12e(Database db) async {
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_masa_siparis_durum_acilis ON masa_siparisleri(durum, acilis_zamani)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_masa_kalem_durum ON masa_siparis_kalem(durum)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_masa_siparis_kapanis ON masa_siparisleri(kapanis_zamani)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_rezervasyon_durum_saat ON masa_rezervasyon(durum, saat)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_masa_siparis_durum_acilis ON masa_siparisleri(durum, acilis_zamani)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_masa_kalem_durum ON masa_siparis_kalem(durum)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_masa_siparis_kapanis ON masa_siparisleri(kapanis_zamani)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_rezervasyon_durum_saat ON masa_rezervasyon(durum, saat)');
   }
 
   // ==================== v12 -> v13 (Masa Detay + Adisyon log) ====================
@@ -776,7 +919,7 @@ class MigrasyonYonetici {
         FOREIGN KEY(siparis_id) REFERENCES masa_siparisleri(id) ON DELETE CASCADE
       )
     """);
-    
+
     await _calistir(db, """
       CREATE TABLE IF NOT EXISTS masa_hareket_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -790,95 +933,141 @@ class MigrasyonYonetici {
         FOREIGN KEY(hedef_masa_id) REFERENCES masalar(id)
       )
     """);
-    
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_adisyon_siparis ON adisyon_log(siparis_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_masa_hareket_zamani ON masa_hareket_log(islem_zamani)');
-    
+
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_adisyon_siparis ON adisyon_log(siparis_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_masa_hareket_zamani ON masa_hareket_log(islem_zamani)');
+
     // Masa tablosuna eksik sütunları ekle
-    await _calistir(db, 'ALTER TABLE masalar ADD COLUMN kategori TEXT NOT NULL DEFAULT "Salon"');
-    await _calistir(db, 'ALTER TABLE masalar ADD COLUMN kapasite INTEGER NOT NULL DEFAULT 4');
-    await _calistir(db, 'ALTER TABLE masalar ADD COLUMN sira INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE masalar ADD COLUMN kategori TEXT NOT NULL DEFAULT "Salon"');
+    await _calistir(db,
+        'ALTER TABLE masalar ADD COLUMN kapasite INTEGER NOT NULL DEFAULT 4');
+    await _calistir(
+        db, 'ALTER TABLE masalar ADD COLUMN sira INTEGER NOT NULL DEFAULT 0');
   }
 
   //  YENİ: v13 -> v14 (Tüm eksik sütunlar)
   static Future<void> _v13denV14e(Database db) async {
     // ==================== URUNLER EKSİK SÜTUNLAR ====================
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN kod TEXT UNIQUE COLLATE NOCASE');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN kod TEXT UNIQUE COLLATE NOCASE');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN barkodlar TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN alternatif_urun_adi TEXT COLLATE NOCASE');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN toplam_maliyet REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN toplam_stok REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN alis_kdv_oran REAL NOT NULL DEFAULT 18');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN ana_grup TEXT COLLATE NOCASE');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN alt_grup TEXT COLLATE NOCASE');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN marka TEXT COLLATE NOCASE');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN alternatif_urun_adi TEXT COLLATE NOCASE');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN toplam_maliyet REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN toplam_stok REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN alis_kdv_oran REAL NOT NULL DEFAULT 18');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN ana_grup TEXT COLLATE NOCASE');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN alt_grup TEXT COLLATE NOCASE');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN marka TEXT COLLATE NOCASE');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN resim_yolu TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN para_birimi TEXT NOT NULL DEFAULT "TRY"');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN guncelleme_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN kayit_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN seri_no_takibi INTEGER NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN lot_takibi INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN para_birimi TEXT NOT NULL DEFAULT "TRY"');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN guncelleme_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN kayit_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN seri_no_takibi INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN lot_takibi INTEGER NOT NULL DEFAULT 0');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN lot_no TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN son_kullanma_tarihi DATE');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN son_kullanma_tarihi DATE');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN alan1 TEXT');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN alan2 TEXT');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN alan3 TEXT');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN alan4 TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN otomatik_indirim INTEGER NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN son_alim_indirim_oran REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN minimum_stok REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN maksimum_stok REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN maksimum_satir_miktari REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN otomatik_indirim INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN son_alim_indirim_oran REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN minimum_stok REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN maksimum_stok REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN maksimum_satir_miktari REAL NOT NULL DEFAULT 0');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN renk TEXT');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN beden TEXT');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN sube TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN uretici TEXT COLLATE NOCASE');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN uretici TEXT COLLATE NOCASE');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN model TEXT');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN grup_sorumlusu TEXT');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN mensei TEXT');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN raf_numarasi TEXT');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN raf_omru INTEGER');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN plu_numarasi TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN puan_orani REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN puan_orani REAL NOT NULL DEFAULT 0');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN muhasebe_kodu TEXT');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN muafiyet_kodu TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN resmi_bakiye REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN hacim REAL NOT NULL DEFAULT 0');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN evrak_kontrol_aktif INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN resmi_bakiye REAL NOT NULL DEFAULT 0');
+    await _calistir(
+        db, 'ALTER TABLE urunler ADD COLUMN hacim REAL NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN evrak_kontrol_aktif INTEGER NOT NULL DEFAULT 0');
     await _calistir(db, 'ALTER TABLE urunler ADD COLUMN lot_aciklama TEXT');
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN recete_katsayi REAL NOT NULL DEFAULT 1');
-    
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN recete_katsayi REAL NOT NULL DEFAULT 1');
+
     // ==================== INDEXLER ====================
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_urunler_kod ON urunler(kod)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_urunler_ana_grup ON urunler(ana_grup)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_urunler_marka ON urunler(marka)');
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_urunler_kod ON urunler(kod)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_urunler_ana_grup ON urunler(ana_grup)');
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_urunler_marka ON urunler(marka)');
 
     // ==================== EKSİK GLOBAL ID'LER ====================
     await _calistir(db, 'ALTER TABLE iade_kalem ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE irsaliye_kalem ADD COLUMN global_id TEXT');
-    await _calistir(db, 'ALTER TABLE promosyon_kosul ADD COLUMN global_id TEXT');
-    await _calistir(db, 'ALTER TABLE promosyon_aksiyon ADD COLUMN global_id TEXT');
-    await _calistir(db, 'ALTER TABLE garson_cagri_log ADD COLUMN global_id TEXT');
+    await _calistir(
+        db, 'ALTER TABLE promosyon_kosul ADD COLUMN global_id TEXT');
+    await _calistir(
+        db, 'ALTER TABLE promosyon_aksiyon ADD COLUMN global_id TEXT');
+    await _calistir(
+        db, 'ALTER TABLE garson_cagri_log ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE adisyon_log ADD COLUMN global_id TEXT');
-    await _calistir(db, 'ALTER TABLE masa_hareket_log ADD COLUMN global_id TEXT');
-    await _calistir(db, 'ALTER TABLE bildirim_tercihleri ADD COLUMN global_id TEXT');
+    await _calistir(
+        db, 'ALTER TABLE masa_hareket_log ADD COLUMN global_id TEXT');
+    await _calistir(
+        db, 'ALTER TABLE bildirim_tercihleri ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE favori_urunler ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE gecici_sayim ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE stok_fifo ADD COLUMN global_id TEXT');
-    await _calistir(db, 'ALTER TABLE sube_fiyat_gecmis ADD COLUMN global_id TEXT');
+    await _calistir(
+        db, 'ALTER TABLE sube_fiyat_gecmis ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE fiyat_gecmis ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE zaman_fiyat ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE rol_yetkileri ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE efatura_log ADD COLUMN global_id TEXT');
-    
+
     // Global ID index'leri
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_iade_kalem_global ON iade_kalem(global_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_irsaliye_kalem_global ON irsaliye_kalem(global_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_promosyon_kosul_global ON promosyon_kosul(global_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_promosyon_aksiyon_global ON promosyon_aksiyon(global_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_garson_cagri_global ON garson_cagri_log(global_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_adisyon_log_global ON adisyon_log(global_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_masa_hareket_global ON masa_hareket_log(global_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_iade_kalem_global ON iade_kalem(global_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_irsaliye_kalem_global ON irsaliye_kalem(global_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_promosyon_kosul_global ON promosyon_kosul(global_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_promosyon_aksiyon_global ON promosyon_aksiyon(global_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_garson_cagri_global ON garson_cagri_log(global_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_adisyon_log_global ON adisyon_log(global_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_masa_hareket_global ON masa_hareket_log(global_id)');
   }
 
   //  YENİ: v14 -> v15
@@ -886,10 +1075,13 @@ class MigrasyonYonetici {
     await _calistir(db, 'ALTER TABLE cari_hareket ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE puan_hareket ADD COLUMN global_id TEXT');
     await _calistir(db, 'ALTER TABLE sube_urun ADD COLUMN global_id TEXT');
-    await _calistir(db, 'ALTER TABLE tedarikci_siparis_kalem ADD COLUMN global_id TEXT');
-    
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_cari_hareket_global ON cari_hareket(global_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_puan_hareket_global ON puan_hareket(global_id)');
+    await _calistir(
+        db, 'ALTER TABLE tedarikci_siparis_kalem ADD COLUMN global_id TEXT');
+
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_cari_hareket_global ON cari_hareket(global_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_puan_hareket_global ON puan_hareket(global_id)');
   }
 
   //  YENİ: v15 -> v16 (Borc Takip)
@@ -919,12 +1111,16 @@ class MigrasyonYonetici {
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     ''');
-    
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_borc_tarih ON borclar(son_odeme_tarihi)');
+
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_borc_tarih ON borclar(son_odeme_tarihi)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_borc_tur ON borclar(tur)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_borc_durum ON borclar(odendi)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_borc_son_odeme ON borclar(son_odeme_tarihi, odendi)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_borc_global ON borclar(global_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_borc_durum ON borclar(odendi)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_borc_son_odeme ON borclar(son_odeme_tarihi, odendi)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_borc_global ON borclar(global_id)');
   }
 
   // ==================== v16 -> v17 (Banka, Kredi Kartı, Mail) ====================
@@ -1026,20 +1222,33 @@ class MigrasyonYonetici {
       )
     ''');
 
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_banka_aktif ON bankalar(aktif)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_banka_hesap_banka ON banka_hesaplar(banka_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_banka_hesap_aktif ON banka_hesaplar(aktif)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_kredi_karti_banka ON kredi_kartlari(banka_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_kredi_karti_aktif ON kredi_kartlari(aktif)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_banka_hareket_hesap ON banka_hareketler(banka_hesap_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_banka_hareket_tarih ON banka_hareketler(tarih)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_banka_hareket_kart ON banka_hareketler(kredi_karti_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_borc_odeme_borc ON borc_odemeler(borc_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_borc_odeme_tarih ON borc_odemeler(tarih)');
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_banka_aktif ON bankalar(aktif)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_banka_hesap_banka ON banka_hesaplar(banka_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_banka_hesap_aktif ON banka_hesaplar(aktif)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_kredi_karti_banka ON kredi_kartlari(banka_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_kredi_karti_aktif ON kredi_kartlari(aktif)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_banka_hareket_hesap ON banka_hareketler(banka_hesap_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_banka_hareket_tarih ON banka_hareketler(tarih)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_banka_hareket_kart ON banka_hareketler(kredi_karti_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_borc_odeme_borc ON borc_odemeler(borc_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_borc_odeme_tarih ON borc_odemeler(tarih)');
 
-    await _calistir(db, 'ALTER TABLE bankalar ADD COLUMN aktif INTEGER NOT NULL DEFAULT 1');
-    await _calistir(db, 'ALTER TABLE banka_hesaplar ADD COLUMN aktif INTEGER NOT NULL DEFAULT 1');
-    await _calistir(db, 'ALTER TABLE kredi_kartlari ADD COLUMN aktif INTEGER NOT NULL DEFAULT 1');
+    await _calistir(
+        db, 'ALTER TABLE bankalar ADD COLUMN aktif INTEGER NOT NULL DEFAULT 1');
+    await _calistir(db,
+        'ALTER TABLE banka_hesaplar ADD COLUMN aktif INTEGER NOT NULL DEFAULT 1');
+    await _calistir(db,
+        'ALTER TABLE kredi_kartlari ADD COLUMN aktif INTEGER NOT NULL DEFAULT 1');
   }
 
   // ==================== v17 -> v18 (düzeltme) ====================
@@ -1069,10 +1278,10 @@ class MigrasyonYonetici {
     ''');
   }
 
-           // ==================== v18 -> v19 (Eksik Banka/Kredi Kartı tabloları) ====================
-static Future<void> _v18denV19a(Database db) async {
-  // Banka tabloları (zaten varsa atla)
-  await _calistir(db, '''
+  // ==================== v18 -> v19 (Eksik Banka/Kredi Kartı tabloları) ====================
+  static Future<void> _v18denV19a(Database db) async {
+    // Banka tabloları (zaten varsa atla)
+    await _calistir(db, '''
     CREATE TABLE IF NOT EXISTS bankalar (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       global_id TEXT UNIQUE,
@@ -1089,7 +1298,7 @@ static Future<void> _v18denV19a(Database db) async {
     )
   ''');
 
-  await _calistir(db, '''
+    await _calistir(db, '''
     CREATE TABLE IF NOT EXISTS banka_hesaplar (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       global_id TEXT UNIQUE,
@@ -1109,7 +1318,7 @@ static Future<void> _v18denV19a(Database db) async {
     )
   ''');
 
-  await _calistir(db, '''
+    await _calistir(db, '''
     CREATE TABLE IF NOT EXISTS kredi_kartlari (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       global_id TEXT UNIQUE,
@@ -1132,7 +1341,7 @@ static Future<void> _v18denV19a(Database db) async {
     )
   ''');
 
-  await _calistir(db, '''
+    await _calistir(db, '''
     CREATE TABLE IF NOT EXISTS banka_hareketler (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       global_id TEXT UNIQUE,
@@ -1151,7 +1360,7 @@ static Future<void> _v18denV19a(Database db) async {
     )
   ''');
 
-  await _calistir(db, '''
+    await _calistir(db, '''
     CREATE TABLE IF NOT EXISTS borc_odemeler (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       global_id TEXT UNIQUE,
@@ -1169,18 +1378,20 @@ static Future<void> _v18denV19a(Database db) async {
     )
   ''');
 
-  // Indexler (zaten varsa atla)
-  await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_banka_aktif ON bankalar(aktif)');
-  await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_banka_hesap_banka ON banka_hesaplar(banka_id)');
-  await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_kredi_karti_banka ON kredi_kartlari(banka_id)');
-  await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_banka_hareket_hesap ON banka_hareketler(banka_hesap_id)');
-  await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_banka_hareket_tarih ON banka_hareketler(tarih)');
-  await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_borc_odeme_borc ON borc_odemeler(borc_id)');
-}
-
-
-
-
+    // Indexler (zaten varsa atla)
+    await _calistir(
+        db, 'CREATE INDEX IF NOT EXISTS idx_banka_aktif ON bankalar(aktif)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_banka_hesap_banka ON banka_hesaplar(banka_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_kredi_karti_banka ON kredi_kartlari(banka_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_banka_hareket_hesap ON banka_hareketler(banka_hesap_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_banka_hareket_tarih ON banka_hareketler(tarih)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_borc_odeme_borc ON borc_odemeler(borc_id)');
+  }
 
   // ==================== YARDIMCI METOD ====================
   // ==================== GÜVENLİK: v19 -> v20 ====================
@@ -1188,7 +1399,8 @@ static Future<void> _v18denV19a(Database db) async {
   // saklanıyor; CVC hiçbir zaman saklanmamalı — mevcut kayıtlar temizlenir.
   static Future<void> _v19denV20ye(Database db) async {
     // 1) Yeni maskeli kolon ekle (varsa atla)
-    await _calistir(db, "ALTER TABLE kredi_kartlari ADD COLUMN kart_no_maskeli TEXT NOT NULL DEFAULT ''");
+    await _calistir(db,
+        "ALTER TABLE kredi_kartlari ADD COLUMN kart_no_maskeli TEXT NOT NULL DEFAULT ''");
 
     // 2) Mevcut kart_no varsa, son 4 haneyi maskeli kolona taşı
     try {
@@ -1196,8 +1408,10 @@ static Future<void> _v18denV19a(Database db) async {
       for (final k in kartlar) {
         final eskiNo = (k['kart_no'] as String?) ?? '';
         final temiz = eskiNo.replaceAll(RegExp(r'\s'), '');
-        final son4 = temiz.length >= 4 ? temiz.substring(temiz.length - 4) : temiz;
-        final maskeli = son4.isEmpty ? '**** **** **** ????' : '**** **** **** $son4';
+        final son4 =
+            temiz.length >= 4 ? temiz.substring(temiz.length - 4) : temiz;
+        final maskeli =
+            son4.isEmpty ? '**** **** **** ????' : '**** **** **** $son4';
         await db.update('kredi_kartlari', {'kart_no_maskeli': maskeli},
             where: 'id = ?', whereArgs: [k['id']]);
       }
@@ -1223,7 +1437,8 @@ static Future<void> _v18denV19a(Database db) async {
 
   // ==================== v21 -> v22 (PLU sıralama kalıcılığı) ====================
   static Future<void> _v21denV22ye(Database db) async {
-    await _calistir(db, 'ALTER TABLE urunler ADD COLUMN plu_sira INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db,
+        'ALTER TABLE urunler ADD COLUMN plu_sira INTEGER NOT NULL DEFAULT 0');
   }
 
   // ==================== v22 -> v23 (Personel iletişim bilgileri) ====================
@@ -1235,7 +1450,8 @@ static Future<void> _v18denV19a(Database db) async {
   // ==================== v23 -> v24 (Cari: e-Fatura mükellefi durumu) ====================
   static Future<void> _v23denV24e(Database db) async {
     await _calistir(db, "ALTER TABLE cari ADD COLUMN mukellef_durumu TEXT");
-    await _calistir(db, "ALTER TABLE cari ADD COLUMN mukellef_sorgu_tarihi TEXT");
+    await _calistir(
+        db, "ALTER TABLE cari ADD COLUMN mukellef_sorgu_tarihi TEXT");
   }
 
   // ==================== v24 -> v25 (Fatura: ödeme şekli) ====================
@@ -1296,7 +1512,9 @@ static Future<void> _v18denV19a(Database db) async {
     // çakışma korumasını (diğer tüm tablolarla tutarlı) alabilmesi için.
     try {
       await _calistir(db, "ALTER TABLE borclar ADD COLUMN last_updated TEXT");
-    } catch (_) { /* kolon zaten eklenmişse SQLite hata verir — migrasyon devam etmeli */ }
+    } catch (_) {
+      /* kolon zaten eklenmişse SQLite hata verir — migrasyon devam etmeli */
+    }
   }
 
   // ==================== v29 -> v30 (Kredi kartı limiti hareket-bazlı oldu) ====================
@@ -1315,14 +1533,16 @@ static Future<void> _v18denV19a(Database db) async {
         FOREIGN KEY(kredi_karti_id) REFERENCES kredi_kartlari(id) ON DELETE CASCADE
       )
     ''');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_kk_hareket_kart ON kredi_karti_hareket(kredi_karti_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_kk_hareket_kart ON kredi_karti_hareket(kredi_karti_id)');
 
     // Mevcut kartlarda zaten girilmiş "kullanilan_limit" varsa, geriye
     // dönük bir "İlk Kullanım" hareketi oluştur — yeni hareket-bazlı
     // sistem eski veriyle de tutarlı başlasın (stokta "İlk Stok"
     // hareketiyle aynı mantık).
     try {
-      final kartlar = await db.query('kredi_kartlari', where: 'kullanilan_limit > 0');
+      final kartlar =
+          await db.query('kredi_kartlari', where: 'kullanilan_limit > 0');
       for (final k in kartlar) {
         final kartId = k['id'] as int;
         final kullanilan = (k['kullanilan_limit'] as num).toDouble();
@@ -1347,14 +1567,19 @@ static Future<void> _v18denV19a(Database db) async {
   static Future<void> _v30danV31e(Database db) async {
     try {
       await _calistir(db, "ALTER TABLE urunler ADD COLUMN resim_url TEXT");
-    } catch (_) { /* kolon zaten eklenmişse SQLite hata verir — migrasyon devam etmeli */ }
+    } catch (_) {
+      /* kolon zaten eklenmişse SQLite hata verir — migrasyon devam etmeli */
+    }
   }
 
   // ==================== v31 -> v32 (QR menü ürün seçimi) ====================
   static Future<void> _v31denV32ye(Database db) async {
     try {
-      await _calistir(db, "ALTER TABLE urunler ADD COLUMN qr_menude INTEGER NOT NULL DEFAULT 0");
-    } catch (_) { /* kolon zaten eklenmişse SQLite hata verir — migrasyon devam etmeli */ }
+      await _calistir(db,
+          "ALTER TABLE urunler ADD COLUMN qr_menude INTEGER NOT NULL DEFAULT 0");
+    } catch (_) {
+      /* kolon zaten eklenmişse SQLite hata verir — migrasyon devam etmeli */
+    }
   }
 
   // ==================== v32 -> v33 (Banka hareketleri çoklu cihaz senkronu) ====================
@@ -1367,9 +1592,13 @@ static Future<void> _v18denV19a(Database db) async {
   // eklenemezdi.
   static Future<void> _v32denV33e(Database db) async {
     try {
-      await _calistir(db, "ALTER TABLE banka_hareketler ADD COLUMN last_updated TEXT");
-      await _calistir(db, "ALTER TABLE banka_hareketler ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
-    } catch (_) { /* kolon zaten eklenmişse SQLite hata verir — migrasyon devam etmeli */ }
+      await _calistir(
+          db, "ALTER TABLE banka_hareketler ADD COLUMN last_updated TEXT");
+      await _calistir(db,
+          "ALTER TABLE banka_hareketler ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
+    } catch (_) {
+      /* kolon zaten eklenmişse SQLite hata verir — migrasyon devam etmeli */
+    }
   }
 
   // ==================== v33 -> v34 ====================
@@ -1383,10 +1612,15 @@ static Future<void> _v18denV19a(Database db) async {
   // tablolarda da düzgün çalışacak.
   static Future<void> _v33denV34e(Database db) async {
     for (final tablo in [
-      'fiyat_gecmis', 'iade_kalem', 'irsaliye_kalem',
-      'promosyon_kosul', 'promosyon_aksiyon', 'rol_yetkileri',
+      'fiyat_gecmis',
+      'iade_kalem',
+      'irsaliye_kalem',
+      'promosyon_kosul',
+      'promosyon_aksiyon',
+      'rol_yetkileri',
     ]) {
-      await _calistir(db, "ALTER TABLE $tablo ADD COLUMN last_updated DATETIME");
+      await _calistir(
+          db, "ALTER TABLE $tablo ADD COLUMN last_updated DATETIME");
     }
   }
 
@@ -1398,8 +1632,10 @@ static Future<void> _v18denV19a(Database db) async {
   //    bu yüzden kimlik atama (backfill) kodu yazamayıp tabloyu her
   //    turda atlıyordu ("kimlik ataması LOKALE YAZILAMADI" hatası).
   static Future<void> _v34denV35e(Database db) async {
-    await _calistir(db, "ALTER TABLE borc_odemeler ADD COLUMN last_updated DATETIME");
-    await _calistir(db, "ALTER TABLE adisyon_log ADD COLUMN last_updated DATETIME");
+    await _calistir(
+        db, "ALTER TABLE borc_odemeler ADD COLUMN last_updated DATETIME");
+    await _calistir(
+        db, "ALTER TABLE adisyon_log ADD COLUMN last_updated DATETIME");
   }
 
   // ==================== v35 -> v36 ====================
@@ -1422,8 +1658,10 @@ static Future<void> _v18denV19a(Database db) async {
         last_updated DATETIME
       )
     """);
-    await _calistir(db, "CREATE INDEX IF NOT EXISTS idx_audit_log_tarih ON audit_log(tarih DESC)");
-    await _calistir(db, "CREATE INDEX IF NOT EXISTS idx_audit_log_tablo ON audit_log(tablo_adi)");
+    await _calistir(db,
+        "CREATE INDEX IF NOT EXISTS idx_audit_log_tarih ON audit_log(tarih DESC)");
+    await _calistir(db,
+        "CREATE INDEX IF NOT EXISTS idx_audit_log_tablo ON audit_log(tablo_adi)");
 
     // Bildirim merkezi: kullanıcının "okundu/gizlendi" işaretlediği
     // bildirimleri hatırlamak için (aynı uyarı her açılışta tekrar
@@ -1470,7 +1708,8 @@ static Future<void> _v18denV19a(Database db) async {
         UNIQUE(urun_id, fiyat_grubu_id)
       )
     """);
-    await _calistir(db, "CREATE INDEX IF NOT EXISTS idx_ufg_urun ON urun_fiyat_gruplari(urun_id)");
+    await _calistir(db,
+        "CREATE INDEX IF NOT EXISTS idx_ufg_urun ON urun_fiyat_gruplari(urun_id)");
 
     // 3) Miktar bazlı kademeli fiyat (10+ adet X, 50+ adet Y gibi).
     //    fiyat_grubu_id NULL ise TÜM toptan/bayi müşterileri için geçerli.
@@ -1486,17 +1725,23 @@ static Future<void> _v18denV19a(Database db) async {
         last_updated DATETIME
       )
     """);
-    await _calistir(db, "CREATE INDEX IF NOT EXISTS idx_fk_urun ON fiyat_kademeleri(urun_id)");
+    await _calistir(db,
+        "CREATE INDEX IF NOT EXISTS idx_fk_urun ON fiyat_kademeleri(urun_id)");
 
     // 4) Ürün kartına toptan satış alanları
-    await _calistir(db, "ALTER TABLE urunler ADD COLUMN toptan_fiyat REAL NOT NULL DEFAULT 0");
-    await _calistir(db, "ALTER TABLE urunler ADD COLUMN koli_ici_miktar REAL NOT NULL DEFAULT 0");
-    await _calistir(db, "ALTER TABLE urunler ADD COLUMN koli_birim_adi TEXT NOT NULL DEFAULT 'Koli'");
-    await _calistir(db, "ALTER TABLE urunler ADD COLUMN satis_birimi_tipi TEXT NOT NULL DEFAULT 'adet'");
+    await _calistir(db,
+        "ALTER TABLE urunler ADD COLUMN toptan_fiyat REAL NOT NULL DEFAULT 0");
+    await _calistir(db,
+        "ALTER TABLE urunler ADD COLUMN koli_ici_miktar REAL NOT NULL DEFAULT 0");
+    await _calistir(db,
+        "ALTER TABLE urunler ADD COLUMN koli_birim_adi TEXT NOT NULL DEFAULT 'Koli'");
+    await _calistir(db,
+        "ALTER TABLE urunler ADD COLUMN satis_birimi_tipi TEXT NOT NULL DEFAULT 'adet'");
 
     // 5) Cari karta bayi/fiyat grubu bağlantısı
     await _calistir(db, "ALTER TABLE cari ADD COLUMN fiyat_grubu_id INTEGER");
-    await _calistir(db, "ALTER TABLE cari ADD COLUMN musteri_tipi TEXT NOT NULL DEFAULT 'Perakende'");
+    await _calistir(db,
+        "ALTER TABLE cari ADD COLUMN musteri_tipi TEXT NOT NULL DEFAULT 'Perakende'");
     // NOT: kredi limiti (limit_tutari) ve vade (vade_gun) ZATEN vardı —
     // bu migrasyon onları eklemiyor, sadece artık AKTİF OLARAK
     // (satış sırasında) kontrol edilecekler (kod tarafında).
@@ -1507,8 +1752,10 @@ static Future<void> _v18denV19a(Database db) async {
   // tıkladık, o listede gözüksün, diğerleri gözükmesin." QR Menü'deki
   // 'qr_menude' desenine BİREBİR benzer bir alan.
   static Future<void> _v37denV38e(Database db) async {
-    await _calistir(db, "ALTER TABLE urunler ADD COLUMN toptan_satista INTEGER NOT NULL DEFAULT 0");
-    await _calistir(db, "CREATE INDEX IF NOT EXISTS idx_urunler_toptan_satista ON urunler(toptan_satista)");
+    await _calistir(db,
+        "ALTER TABLE urunler ADD COLUMN toptan_satista INTEGER NOT NULL DEFAULT 0");
+    await _calistir(db,
+        "CREATE INDEX IF NOT EXISTS idx_urunler_toptan_satista ON urunler(toptan_satista)");
   }
 
   // ==================== v38 -> v39 ====================
@@ -1614,8 +1861,10 @@ static Future<void> _v18denV19a(Database db) async {
   // SatisDeposu.satisIptal()'daki cari_hareket eklemeleri global_id
   // atamıyordu ve BulutManager'ı hiç çağırmıyordu.
   static Future<void> _v39danV40a(Database db) async {
-    await _calistir(db, "ALTER TABLE cari_hareket ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
-    await _calistir(db, "CREATE INDEX IF NOT EXISTS idx_cari_hareket_deleted ON cari_hareket(is_deleted)");
+    await _calistir(db,
+        "ALTER TABLE cari_hareket ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
+    await _calistir(db,
+        "CREATE INDEX IF NOT EXISTS idx_cari_hareket_deleted ON cari_hareket(is_deleted)");
   }
 
   // ==================== v40 -> v41 ====================
@@ -1625,8 +1874,10 @@ static Future<void> _v18denV19a(Database db) async {
   // last_updated sütunu HİÇ yoktu — bu tablo senkron sisteminde olduğu
   // halde değişiklikler asla algılanamıyordu.
   static Future<void> _v40danV41a(Database db) async {
-    await _calistir(db, "ALTER TABLE kategoriler ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
-    await _calistir(db, "ALTER TABLE markalar ADD COLUMN last_updated DATETIME");
+    await _calistir(db,
+        "ALTER TABLE kategoriler ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
+    await _calistir(
+        db, "ALTER TABLE markalar ADD COLUMN last_updated DATETIME");
   }
 
   // ==================== v41 -> v42 ====================
@@ -1639,7 +1890,8 @@ static Future<void> _v18denV19a(Database db) async {
   // değerleri ilk migrasyonda kopyalanıyor (veri kaybı olmasın diye).
   static Future<void> _v41denV42e(Database db) async {
     await _calistir(db, "ALTER TABLE ayarlar ADD COLUMN last_updated DATETIME");
-    await _calistir(db, "UPDATE ayarlar SET last_updated = guncelleme WHERE last_updated IS NULL");
+    await _calistir(db,
+        "UPDATE ayarlar SET last_updated = guncelleme WHERE last_updated IS NULL");
   }
 
   // ==================== v42 -> v43 ====================
@@ -1653,7 +1905,8 @@ static Future<void> _v18denV19a(Database db) async {
   // rol) yetkilerle karşılaşabiliyordu.
   static Future<void> _v42denV43e(Database db) async {
     await _calistir(db, "ALTER TABLE roller_yetki ADD COLUMN global_id TEXT");
-    await _calistir(db, "ALTER TABLE roller_yetki ADD COLUMN last_updated DATETIME");
+    await _calistir(
+        db, "ALTER TABLE roller_yetki ADD COLUMN last_updated DATETIME");
   }
 
   // ==================== v43 -> v44 ====================
@@ -1665,9 +1918,12 @@ static Future<void> _v18denV19a(Database db) async {
   // diğer cihazlara hiç yansımıyordu.
   static Future<void> _v43denV44e(Database db) async {
     await _calistir(db, "ALTER TABLE subeler ADD COLUMN last_updated DATETIME");
-    await _calistir(db, "ALTER TABLE subeler ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
-    await _calistir(db, "UPDATE subeler SET last_updated = updated_at WHERE last_updated IS NULL");
-    await _calistir(db, "UPDATE subeler SET is_deleted = deleted WHERE deleted IS NOT NULL");
+    await _calistir(db,
+        "ALTER TABLE subeler ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
+    await _calistir(db,
+        "UPDATE subeler SET last_updated = updated_at WHERE last_updated IS NULL");
+    await _calistir(db,
+        "UPDATE subeler SET is_deleted = deleted WHERE deleted IS NOT NULL");
   }
 
   // ==================== v44 -> v45 ====================
@@ -1677,7 +1933,8 @@ static Future<void> _v18denV19a(Database db) async {
   // fonksiyon BulutManager çağırmıyordu. Restoran rezervasyonları
   // birden fazla terminal arasında hiç senkronize olmuyordu.
   static Future<void> _v44denV45e(Database db) async {
-    await _calistir(db, "ALTER TABLE masa_rezervasyon ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
+    await _calistir(db,
+        "ALTER TABLE masa_rezervasyon ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
   }
 
   // ==================== v45 -> v46 (şube bazlı stok) ====================
@@ -1694,16 +1951,23 @@ static Future<void> _v18denV19a(Database db) async {
   // verilir; bu sadece bir BAŞLANGIÇ noktasıdır, gerçek dağılımı
   // kullanıcı Stok Sayımı ile düzeltmelidir).
   static Future<void> _v45denV46e(Database db) async {
-    await _calistir(db, "ALTER TABLE sube_urun ADD COLUMN last_updated DATETIME");
-    await _calistir(db, "UPDATE sube_urun SET last_updated = son_guncelleme WHERE last_updated IS NULL");
-    await _calistir(db, "CREATE INDEX IF NOT EXISTS idx_sube_urun_urun ON sube_urun(urun_id)");
-    await _calistir(db, "CREATE INDEX IF NOT EXISTS idx_sube_urun_sube ON sube_urun(sube_id)");
+    await _calistir(
+        db, "ALTER TABLE sube_urun ADD COLUMN last_updated DATETIME");
+    await _calistir(db,
+        "UPDATE sube_urun SET last_updated = son_guncelleme WHERE last_updated IS NULL");
+    await _calistir(db,
+        "CREATE INDEX IF NOT EXISTS idx_sube_urun_urun ON sube_urun(urun_id)");
+    await _calistir(db,
+        "CREATE INDEX IF NOT EXISTS idx_sube_urun_sube ON sube_urun(sube_id)");
 
     try {
-      final subeler = await db.query('subeler', columns: ['id'], where: 'is_deleted = 0 AND aktif = 1');
-      if (subeler.isEmpty) return; // Tek şubeli / şube hiç kurulmamış kurulumlarda gerek yok
+      final subeler = await db.query('subeler',
+          columns: ['id'], where: 'is_deleted = 0 AND aktif = 1');
+      if (subeler.isEmpty)
+        return; // Tek şubeli / şube hiç kurulmamış kurulumlarda gerek yok
       final ilkSubeId = subeler.first['id'] as int;
-      final urunler = await db.query('urunler', columns: ['id', 'stok'], where: 'is_deleted = 0');
+      final urunler = await db.query('urunler',
+          columns: ['id', 'stok'], where: 'is_deleted = 0');
       final now = DateTime.now().toIso8601String();
       for (final u in urunler) {
         final urunId = u['id'] as int;
@@ -1711,12 +1975,16 @@ static Future<void> _v18denV19a(Database db) async {
         for (final s in subeler) {
           final subeId = s['id'] as int;
           final mevcut = await db.query('sube_urun',
-              where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, subeId], limit: 1);
+              where: 'urun_id = ? AND sube_id = ?',
+              whereArgs: [urunId, subeId],
+              limit: 1);
           if (mevcut.isNotEmpty) continue; // Zaten satırı varsa dokunma
           await db.insert('sube_urun', {
-            'urun_id': urunId, 'sube_id': subeId,
+            'urun_id': urunId,
+            'sube_id': subeId,
             'stok': subeId == ilkSubeId ? toplamStok : 0,
-            'last_updated': now, 'son_guncelleme': now,
+            'last_updated': now,
+            'son_guncelleme': now,
           });
         }
       }
@@ -1736,7 +2004,8 @@ static Future<void> _v18denV19a(Database db) async {
   // sürekli başarısız oluyordu. Bu migrasyon, NULL kalan tüm
   // kayıtları güvenli bir yer tutucuyla dolduruyor.
   static Future<void> _v46denV47e(Database db) async {
-    await _calistir(db,
+    await _calistir(
+        db,
         "UPDATE kredi_kartlari SET kart_no_maskeli = '**** **** **** ????', last_updated = datetime('now') "
         "WHERE kart_no_maskeli IS NULL OR kart_no_maskeli = ''");
   }
@@ -1773,7 +2042,8 @@ static Future<void> _v18denV19a(Database db) async {
   // tablo için delta (sadece değişenler) senkronu hiç çalışmıyor,
   // her "Hızlı Sync"te TÜM irsaliyeler baştan indiriliyordu.
   static Future<void> _v48denV49a(Database db) async {
-    await _calistir(db, 'ALTER TABLE irsaliyeler ADD COLUMN last_updated DATETIME');
+    await _calistir(
+        db, 'ALTER TABLE irsaliyeler ADD COLUMN last_updated DATETIME');
   }
 
   // ==================== v49 -> v50 ====================
@@ -1809,8 +2079,12 @@ static Future<void> _v18denV19a(Database db) async {
   // bir kimlik atıyor.
   static Future<void> _v49danV50ye(Database db) async {
     const tablolar = [
-      'bankalar', 'banka_hesaplar', 'kredi_kartlari',
-      'borclar', 'fiyat_gruplari', 'promosyon_tanim',
+      'bankalar',
+      'banka_hesaplar',
+      'kredi_kartlari',
+      'borclar',
+      'fiyat_gruplari',
+      'promosyon_tanim',
     ];
     for (final tablo in tablolar) {
       try {
@@ -1848,7 +2122,8 @@ static Future<void> _v18denV19a(Database db) async {
     // 1) Ölçü Birimleri: her birime (Adet, Koli, Paket, Kutu...) kendi
     // çarpanı — "1 Paket = 24 Adet" gibi — tanımlanabilsin. Ana birim
     // (ör. Adet) çarpanı 1 kalır.
-    await _calistir(db, 'ALTER TABLE birimler ADD COLUMN carpan REAL NOT NULL DEFAULT 1');
+    await _calistir(
+        db, 'ALTER TABLE birimler ADD COLUMN carpan REAL NOT NULL DEFAULT 1');
 
     // 2) Bekleyen sipariş başlığı
     await _calistir(db, '''
@@ -1898,8 +2173,10 @@ static Future<void> _v18denV19a(Database db) async {
       )
     ''');
 
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_bekleyen_sip_kalem ON bekleyen_siparis_kalem(siparis_id)');
-    await _calistir(db, 'CREATE INDEX IF NOT EXISTS idx_bekleyen_sip_cari ON bekleyen_siparisler(cari_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_bekleyen_sip_kalem ON bekleyen_siparis_kalem(siparis_id)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_bekleyen_sip_cari ON bekleyen_siparisler(cari_id)');
   }
 
   static Future<void> _calistir(Database db, String sql) async {
@@ -1918,13 +2195,14 @@ static Future<void> _v18denV19a(Database db) async {
       // bir "no such column" çökmesi olarak ve çok daha zor teşhis
       // edilebilir şekilde ortaya çıkardı.
       final bilinen = mesaj.contains('duplicate column') ||
-          mesaj.contains('already exists')  ||
-          mesaj.contains('table already')   ||
-          mesaj.contains('no such column')  ||
+          mesaj.contains('already exists') ||
+          mesaj.contains('table already') ||
+          mesaj.contains('no such column') ||
           mesaj.contains('no such table');
       if (!bilinen) rethrow;
     }
   }
+
   // ══════════════════════════════════════════════════════════════════════
   // v51 → v52  (26.07.2026)
   //
@@ -1951,7 +2229,8 @@ static Future<void> _v18denV19a(Database db) async {
   // altında sipariş veremez. 0 = sınır yok (mevcut ürünler etkilenmez).
   // ══════════════════════════════════════════════════════════════════════
   static Future<void> _v52denV53e(Database db) async {
-    await _calistir(db, "ALTER TABLE urunler ADD COLUMN asgari_siparis_miktari REAL NOT NULL DEFAULT 0");
+    await _calistir(db,
+        "ALTER TABLE urunler ADD COLUMN asgari_siparis_miktari REAL NOT NULL DEFAULT 0");
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -2006,5 +2285,21 @@ static Future<void> _v18denV19a(Database db) async {
   static Future<void> _v54denV55e(Database db) async {
     await _calistir(db, 'DROP TRIGGER IF EXISTS trg_urun_updated');
     await _calistir(db, 'DROP TRIGGER IF EXISTS trg_urun_guncelle');
+  }
+
+  // v55'ten v56'ya — FAZ 1 madde 2 (Vardiya/Kasa Mutabakatı, kullanıcı
+  // onayıyla): kasa_hareketleri'nde ödeme yöntemi ayrımı YOKTU — bir satış
+  // Nakit mi Kart mı ödenmiş fark etmeksizin (Cari hariç) aynı 'Satış'
+  // hareketine, aynı zincire yazılıyordu. Bu, "kasa bakiyesi" olarak
+  // gösterilen değerin aslında Nakit+Kart karışımı olmasına yol açıyordu
+  // (fiziksel kasadaki gerçek nakit değil). Nullable, default'suz TEK
+  // sütun — mevcut hiçbir sorgu/rapor bu sütunu okumadığı için sessizce
+  // NULL kalır, davranış değişmez. Eski kayıtlar KASITLI OLARAK NULL
+  // bırakıldı (geriye dönük "tahmin" yapılmadı — bkz. rapor: karma
+  // ödemeli eski satışlarda hangi kasa hareketinin hangi ödeme parçasına
+  // ait olduğu bilgisi kayıp, yanlış backfill'den kaçınıldı).
+  static Future<void> _v55denV56ya(Database db) async {
+    await _calistir(
+        db, 'ALTER TABLE kasa_hareketleri ADD COLUMN odeme_yontemi TEXT');
   }
 }

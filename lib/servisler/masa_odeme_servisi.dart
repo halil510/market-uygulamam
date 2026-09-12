@@ -24,7 +24,6 @@ import '../modeller/kasa_hareket_model.dart';
 import '../modeller/cari_hareket_model.dart';
 import '../modeller/masa_siparis_model.dart';
 import '../servisler/auth_servisi.dart';
-import '../cekirdek/utils/para_utils.dart';
 import '../servisler/aktif_sube_servisi.dart';
 
 class MasaOdemeSonuc {
@@ -36,17 +35,21 @@ class MasaOdemeSonuc {
   final double paraUstu;
   final String odemeYontemi;
   MasaOdemeSonuc({
-    required this.satisId, required this.fisNo, required this.kalemler,
-    required this.genelToplam, required this.odenenTutar,
-    required this.paraUstu, required this.odemeYontemi,
+    required this.satisId,
+    required this.fisNo,
+    required this.kalemler,
+    required this.genelToplam,
+    required this.odenenTutar,
+    required this.paraUstu,
+    required this.odemeYontemi,
   });
 }
 
 class MasaOdemeServisi {
   final _satisDepo = SatisDeposu();
-  final _stokDepo  = StokDeposu();
-  final _kasaDepo  = KasaDeposu();
-  final _cariDepo  = CariDeposu();
+  final _stokDepo = StokDeposu();
+  final _kasaDepo = KasaDeposu();
+  final _cariDepo = CariDeposu();
 
   /// [odemeKalemleri]: [{'yontem': 'Nakit'|'Kredi Kartı'|'Havale/EFT'|'Cari', 'tutar': double}, ...]
   /// Çoklu Ödeme (karma) ekranından gelen formatla aynı.
@@ -66,26 +69,31 @@ class MasaOdemeServisi {
     // ÖNCEDEN masa satışları da normal satışlarla AYNI "satis" (MKP)
     // sayacını kullanıyordu — kullanıcı isteği: masa satışlarının kendi
     // ayrı, farklı ön ekli (MSA) fiş numarası serisi olsun.
-    final fisNo = await Veritabani().fisNoUret('masa', subeId: AktifSubeServisi().subeId ?? 1);
+    final fisNo = await Veritabani()
+        .fisNoUret('masa', subeId: AktifSubeServisi().subeId ?? 1);
     final genelTop = siparis.hesaplananToplam;
 
-    final satisKalemler = siparis.kalemler.map((k) => SatisKalemModel(
-      satisId: 0,
-      urunId: k.urunId,
-      urunAdi: k.urunAdi,
-      barkod: null,
-      miktar: k.miktar,
-      birimFiyat: k.birimFiyat,
-      toplamTutar: k.toplam,
-      iskontoOran: 0, iskontoTutar: 0,
-      kdvOran: k.kdvOran,
-      kdvTutar: k.toplam - (k.toplam / (1 + k.kdvOran / 100)),
-      netFiyat: k.toplam / (1 + k.kdvOran / 100),
-      alisFiyat: 0, alisFiyatKdv: 0,
-    )).toList();
+    final satisKalemler = siparis.kalemler
+        .map((k) => SatisKalemModel(
+              satisId: 0,
+              urunId: k.urunId,
+              urunAdi: k.urunAdi,
+              barkod: null,
+              miktar: k.miktar,
+              birimFiyat: k.birimFiyat,
+              toplamTutar: k.toplam,
+              iskontoOran: 0,
+              iskontoTutar: 0,
+              kdvOran: k.kdvOran,
+              kdvTutar: k.toplam - (k.toplam / (1 + k.kdvOran / 100)),
+              netFiyat: k.toplam / (1 + k.kdvOran / 100),
+              alisFiyat: 0,
+              alisFiyatKdv: 0,
+            ))
+        .toList();
 
-    final toplamOdenen = odemeKalemleri.fold(0.0,
-        (s, k) => s + (k['tutar'] as num).toDouble());
+    final toplamOdenen =
+        odemeKalemleri.fold(0.0, (s, k) => s + (k['tutar'] as num).toDouble());
     final odemeYontemi = odemeKalemleri.length == 1
         ? odemeKalemleri.first['yontem'] as String
         : 'Karma';
@@ -118,14 +126,13 @@ class MasaOdemeServisi {
     final db = await Veritabani().db;
     late final int satisId;
     final stokHareketGidleri = <int, String>{};
-    String? kasaGlobalId;
+    // 🔴🔴 FAZ 1 madde 2 (kullanıcı onayıyla, Vardiya/Kasa mutabakatı):
+    // satis_tamamlama_servisi.dart'taki AYNI düzeltme — karma ödemede
+    // her yöntem için AYRI, odeme_yontemi etiketli kasa hareketi.
+    final kasaGlobalIdleri = <String>[];
     String? cariGlobalId;
     final now = tarih.toIso8601String();
 
-    // Kasa hareketi — Cari hariç tüm kalemler
-    final nakitToplam = odemeKalemleri
-        .where((k) => k['yontem'] != 'Cari')
-        .fold(0.0, (s, k) => s + (k['tutar'] as num).toDouble());
     // Cari hareketi — veresiye kısmı
     final cariTutar = odemeKalemleri
         .where((k) => k['yontem'] == 'Cari')
@@ -138,7 +145,9 @@ class MasaOdemeServisi {
       for (final k in siparis.kalemler) {
         final gid = const Uuid().v4();
         stokHareketGidleri[k.urunId] = gid;
-        await _stokDepo.stokDusTxn(txn, gid,
+        await _stokDepo.stokDusTxn(
+          txn,
+          gid,
           urunId: k.urunId,
           miktar: k.miktar,
           kullaniciId: kullanici?.id,
@@ -148,90 +157,130 @@ class MasaOdemeServisi {
         );
       }
 
-      if (nakitToplam > 0.005) {
-        final detay = odemeKalemleri.where((k) => k['yontem'] != 'Cari')
-            .map((k) => '${k['yontem']}: ${ParaUtils.formatla((k['tutar'] as num).toDouble())}')
-            .join(', ');
+      final digerYontemler = odemeKalemleri.where((k) => k['yontem'] != 'Cari');
+      final gruplar = <String, double>{};
+      for (final k in digerYontemler) {
+        final y = k['yontem'] as String;
+        gruplar[y] = (gruplar[y] ?? 0) + (k['tutar'] as num).toDouble();
+      }
+      for (final girdi in gruplar.entries) {
+        if (girdi.value <= 0.005) continue;
         final kid = const Uuid().v4();
-        kasaGlobalId = kid;
-        await _kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
-          globalId: kid,
-          hareketTipi: 'Satış',
-          tutar: nakitToplam,
-          referansId: satisId,
-          referansTuru: 'satis',
-          tarih: tarih,
-          aciklama: 'Masa Satış: $masaAdi — $fisNo ($detay)',
-          kullaniciId: kullanici?.id,
-        ));
+        kasaGlobalIdleri.add(kid);
+        await _kasaDepo.hareketEkleTxn(
+            txn,
+            KasaHareketModel(
+              globalId: kid,
+              hareketTipi: 'Satış',
+              tutar: girdi.value,
+              referansId: satisId,
+              referansTuru: 'satis',
+              tarih: tarih,
+              aciklama: 'Masa Satış: $masaAdi — $fisNo (${girdi.key})',
+              kullaniciId: kullanici?.id,
+              odemeYontemi: girdi.key,
+            ));
       }
 
       if (efektifCariId != null && cariTutar > 0.005) {
-        cariGlobalId = await _cariDepo.hareketEkleTxn(txn, CariHareketModel(
-          cariId: efektifCariId,
-          tarih: tarih,
-          fisTipi: 'Satış',
-          fisId: satisId,
-          fisNo: fisNo,
-          aciklama: 'Masa Veresiye: $masaAdi ($fisNo)',
-          borc: cariTutar,
-          alacak: 0,
-          odemeTuru: 'Cari',
-          kullanici: kullanici?.adSoyad,
-        ));
+        cariGlobalId = await _cariDepo.hareketEkleTxn(
+            txn,
+            CariHareketModel(
+              cariId: efektifCariId,
+              tarih: tarih,
+              fisTipi: 'Satış',
+              fisId: satisId,
+              fisNo: fisNo,
+              aciklama: 'Masa Veresiye: $masaAdi ($fisNo)',
+              borc: cariTutar,
+              alacak: 0,
+              odemeTuru: 'Cari',
+              kullanici: kullanici?.adSoyad,
+            ));
       }
 
       // Masayı kapat — aynı transaction içinde, siparisKapat()'ın
       // yaptığının birebir aynısı (masa_siparisleri + masalar).
-      await txn.update('masa_siparisleri', {
-        'durum': 'odendi',
-        'kapanis_zamani': now,
-        'satis_id': satisId,
-        'last_updated': now,
-      }, where: 'id = ?', whereArgs: [siparis.id]);
+      await txn.update(
+          'masa_siparisleri',
+          {
+            'durum': 'odendi',
+            'kapanis_zamani': now,
+            'satis_id': satisId,
+            'last_updated': now,
+          },
+          where: 'id = ?',
+          whereArgs: [siparis.id]);
       await txn.update('masalar', {'durum': 'bos', 'last_updated': now},
           where: 'id = ?', whereArgs: [siparis.masaId]);
     }); // transaction sonu
 
     // Transaction kalıcı olduktan sonra buluta bildir.
     try {
-      final satisSatir = await db.query('satislar', where: 'id = ?', whereArgs: [satisId], limit: 1);
-      if (satisSatir.isNotEmpty) BulutManager().upsert('satislar', Map<String, dynamic>.from(satisSatir.first));
+      final satisSatir = await db.query('satislar',
+          where: 'id = ?', whereArgs: [satisId], limit: 1);
+      if (satisSatir.isNotEmpty)
+        BulutManager()
+            .upsert('satislar', Map<String, dynamic>.from(satisSatir.first));
       for (final k in satisKalemler) {
         BulutManager().upsert('satis_kalem', k.toMap());
       }
       for (final k in siparis.kalemler) {
         final gid = stokHareketGidleri[k.urunId];
         if (gid == null) continue;
-        final urunSatir = await db.query('urunler', where: 'id = ?', whereArgs: [k.urunId], limit: 1);
-        if (urunSatir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-        final stokSatir = await db.query('stok_hareket', where: 'global_id = ?', whereArgs: [gid], limit: 1);
-        if (stokSatir.isNotEmpty) BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+        final urunSatir = await db.query('urunler',
+            where: 'id = ?', whereArgs: [k.urunId], limit: 1);
+        if (urunSatir.isNotEmpty)
+          BulutManager()
+              .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
+        final stokSatir = await db.query('stok_hareket',
+            where: 'global_id = ?', whereArgs: [gid], limit: 1);
+        if (stokSatir.isNotEmpty)
+          BulutManager().upsert(
+              'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
       }
-      if (kasaGlobalId != null) {
-        final kasaSatir = await db.query('kasa_hareketleri', where: 'global_id = ?', whereArgs: [kasaGlobalId], limit: 1);
-        if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+      for (final gid in kasaGlobalIdleri) {
+        final kasaSatir = await db.query('kasa_hareketleri',
+            where: 'global_id = ?', whereArgs: [gid], limit: 1);
+        if (kasaSatir.isNotEmpty)
+          BulutManager().upsert(
+              'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
       }
       if (cariGlobalId != null) {
-        final cariHareketSatir = await db.query('cari_hareket', where: 'global_id = ?', whereArgs: [cariGlobalId], limit: 1);
+        final cariHareketSatir = await db.query('cari_hareket',
+            where: 'global_id = ?', whereArgs: [cariGlobalId], limit: 1);
         if (cariHareketSatir.isNotEmpty) {
-          BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(cariHareketSatir.first));
+          BulutManager().upsert('cari_hareket',
+              Map<String, dynamic>.from(cariHareketSatir.first));
         }
-        final cariSatir = await db.query('cari', where: 'id = ?', whereArgs: [efektifCariId], limit: 1);
-        if (cariSatir.isNotEmpty) BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
+        final cariSatir = await db.query('cari',
+            where: 'id = ?', whereArgs: [efektifCariId], limit: 1);
+        if (cariSatir.isNotEmpty)
+          BulutManager()
+              .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
       }
-      final siparisSatir = await db.query('masa_siparisleri', where: 'id = ?', whereArgs: [siparis.id], limit: 1);
-      if (siparisSatir.isNotEmpty) BulutManager().upsert('masa_siparisleri', Map<String, dynamic>.from(siparisSatir.first));
-      final masaSatir = await db.query('masalar', where: 'id = ?', whereArgs: [siparis.masaId], limit: 1);
-      if (masaSatir.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(masaSatir.first));
+      final siparisSatir = await db.query('masa_siparisleri',
+          where: 'id = ?', whereArgs: [siparis.id], limit: 1);
+      if (siparisSatir.isNotEmpty)
+        BulutManager().upsert(
+            'masa_siparisleri', Map<String, dynamic>.from(siparisSatir.first));
+      final masaSatir = await db.query('masalar',
+          where: 'id = ?', whereArgs: [siparis.masaId], limit: 1);
+      if (masaSatir.isNotEmpty)
+        BulutManager()
+            .upsert('masalar', Map<String, dynamic>.from(masaSatir.first));
     } catch (e) {
       if (kDebugMode) debugPrint('Masa ödemesi bulut bildirimi hatası: $e');
     }
 
     return MasaOdemeSonuc(
-      satisId: satisId, fisNo: fisNo, kalemler: satisKalemler,
-      genelToplam: genelTop, odenenTutar: toplamOdenen,
-      paraUstu: paraUstu, odemeYontemi: odemeYontemi,
+      satisId: satisId,
+      fisNo: fisNo,
+      kalemler: satisKalemler,
+      genelToplam: genelTop,
+      odenenTutar: toplamOdenen,
+      paraUstu: paraUstu,
+      odemeYontemi: odemeYontemi,
     );
   }
 }

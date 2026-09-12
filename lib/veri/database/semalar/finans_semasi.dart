@@ -9,7 +9,6 @@ import '../../../cekirdek/sabitler/db_sabitleri.dart';
 
 class FinansSemasi {
   static Future<void> olustur(Database db) async {
-
     await db.execute('''
       CREATE TABLE IF NOT EXISTS ${DbSabitler.giderKategoriler} (
         id INTEGER PRIMARY KEY AUTOINCREMENT, ad TEXT NOT NULL UNIQUE,
@@ -36,7 +35,8 @@ class FinansSemasi {
         bakiye_sonrasi REAL, referans_id INTEGER, referans_turu TEXT,
         tarih DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         aciklama TEXT, kullanici_id INTEGER, sube_id INTEGER,
-        last_updated DATETIME, deleted_at DATETIME
+        last_updated DATETIME, deleted_at DATETIME,
+        odeme_yontemi TEXT
       )
     ''');
 
@@ -121,6 +121,5 @@ class FinansSemasi {
         olusturma_zamani DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     ''');
-  
   }
 }

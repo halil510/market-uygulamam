@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../../depolar/urun_deposu.dart';
+import '../../depolar/stok_deposu.dart';
+import '../../servisler/auth_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
 import '../../modeller/urun_model.dart';
 import '../../servisler/bildirim_servisi.dart';
@@ -168,6 +171,52 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
     try {
       for (final id in _secili) {
         final u = _tum.firstWhere((x) => x.id == id);
+
+        // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): 'stok' alanı
+        // burada diğer alanlar gibi doğrudan 'urunler.stok' sütununa
+        // yazılıyordu — hiçbir stok_hareket kaydı oluşturulmadan. Stok
+        // StokDeposu'nda event-sourcing ile (stok_hareket toplamından)
+        // yönetiliyor; bu yolla değiştirilen bir stok, bir sonraki
+        // stokMutabakatYap() turunda (senkron sonrası veya Veri Sağlığı
+        // Merkezi'nden tetiklenebiliyor) sessizce ESKİ değerine geri
+        // dönüyordu — kullanıcı "düzelttim" sanıp aslında kalıcı hiçbir
+        // şey olmuyordu. Artık StokDeposu.stokDusTxn/stokGirTxn ile
+        // (UrunDeposu.guncelle()'deki "Manuel Düzeltme" deseniyle aynı)
+        // düzgün bir stok_hareket kaydı da oluşturuluyor.
+        if (_alan!.id == 'stok') {
+          try {
+            final yeni = _hesapla(u.stok, sayisalDeger!).clamp(0, double.infinity);
+            final fark = yeni - u.stok;
+            if (fark.abs() > 0.0001) {
+              final db = await _depo.db;
+              final hareketGid = const Uuid().v4();
+              await db.transaction((txn) async {
+                if (fark > 0) {
+                  await StokDeposu().stokGirTxn(txn, hareketGid,
+                      urunId: id, miktar: fark,
+                      kullaniciId: AuthServisi().aktifId,
+                      referansTuru: 'toplu_islem',
+                      aciklama: 'Toplu işlem: stok düzeltmesi');
+                } else {
+                  await StokDeposu().stokDusTxn(txn, hareketGid,
+                      urunId: id, miktar: fark.abs(),
+                      kullaniciId: AuthServisi().aktifId,
+                      referansTuru: 'toplu_islem',
+                      aciklama: 'Toplu işlem: stok düzeltmesi');
+                }
+              });
+              final urunSatir = await db.query('urunler', where: 'id = ?', whereArgs: [id], limit: 1);
+              if (urunSatir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
+              final hareketSatir = await db.query('stok_hareket', where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
+              if (hareketSatir.isNotEmpty) BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
+            }
+            basarili++;
+          } catch (e) {
+            if (kDebugMode) debugPrint('Toplu stok güncelleme satır hatası (id=$id): $e');
+          }
+          continue;
+        }
+
         final Map<String, dynamic> data = {};
         if (_alan!.sayisal) {
           final yeni = _hesapla(

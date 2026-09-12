@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../modeller/kullanici_model.dart';
+import 'sepet_provider.dart';
 
 part 'auth_provider.g.dart';
 
@@ -58,7 +59,21 @@ class Auth extends _$Auth {
       final basarili = await _servis.girisYap(kullaniciAdi, sifre);
       if (basarili) {
         final k = _servis.aktifKullanici;
-        if (k != null) { state = AuthState.girisYapildi(k); return GirisSonucu.basarili; }
+        if (k != null) {
+          state = AuthState.girisYapildi(k);
+          // 🔴🔴 Derin analizde bulundu: sepetProvider @Riverpod(keepAlive:
+          // true) — uygulama ömrü boyunca canlı kalır ve hiçbir yerde
+          // temizlenmiyordu. Bu cihaz PAYLAŞIMLI bir terminal olduğu ve
+          // "Kullanıcı Değiştir" (PIN ile, uygulamayı kapatmadan) akışı
+          // desteklendiği için: Kasiyer A sepete ürün ekleyip cihazı
+          // Kasiyer B'ye bırakırsa, B PIN ile giriş yaptığında A'nın
+          // doldurduğu sepeti (ürünler + bağlı müşteri) GÖRÜR ve
+          // tamamlarsa satış YANLIŞLIKLA B'nin kasiyerId'siyle kaydedilir
+          // — hem veri sızıntısı hem yanlış audit/kasiyer ataması. Her
+          // başarılı giriş/kullanıcı değişiminde sepet artık temizleniyor.
+          ref.read(sepetProvider.notifier).temizle();
+          return GirisSonucu.basarili;
+        }
       }
       state = const AuthState.cikisYapildi();
       return GirisSonucu.hataliSifre;
@@ -70,7 +85,14 @@ class Auth extends _$Auth {
   }
 
   Future<void> cikisYap() async {
-    try { await _servis.cikisYap(); } finally { state = const AuthState.cikisYapildi(); }
+    try {
+      await _servis.cikisYap();
+    } finally {
+      state = const AuthState.cikisYapildi();
+      // Bkz. girisYap()'taki aynı not — çıkışta da paylaşımlı cihazda
+      // bir sonraki kullanıcının önceki sepeti görmemesi için temizleniyor.
+      ref.read(sepetProvider.notifier).temizle();
+    }
   }
 
   bool yetkiVarSync(String k) => _servis.yetkiVarSync(k);

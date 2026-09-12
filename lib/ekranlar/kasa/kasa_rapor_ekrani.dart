@@ -12,19 +12,30 @@ import 'package:intl/intl.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
-import '../../depolar/kasa_deposu.dart';
 import '../../modeller/kasa_hareket_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../saglayicilar/riverpod/kasa_rapor_provider.dart' as merkezi;
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
+// 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): bu dosya kendi YEREL
+// 'kasaRaporProvider' adında bir FutureProvider.family tanımlıyordu —
+// aynı isimde ama TAMAMEN AYRI bir 'kasaRaporProvider'
+// (saglayicilar/riverpod/kasa_rapor_provider.dart, @riverpod ile
+// üretilmiş) zaten vardı ve virman_ekrani.dart, kasa_hareket_ekrani.dart,
+// iade ekranları, masa_detay_ekrani.dart gibi TÜM para hareketi yazan
+// ekranlar kasa değiştiğinde O paylaşılan provider'ı invalidate
+// ediyordu. Bu ekran hiçbirinden haberdar olmuyor, kullanıcı elle
+// yenileyene ya da tarih aralığını değiştirene kadar eski rakamları
+// göstermeye devam ediyordu. Artık bu ekran KENDİ hesaplamasını (günlük
+// grafik verisi için) paylaşılan provider'ın üzerine inşa ediyor — o
+// invalidate edildiğinde bu da otomatik yeniden hesaplanıyor.
 final kasaRaporProvider = FutureProvider.family
     .autoDispose<_KasaRaporVeri, DateTimeRange>((ref, aralik) async {
-  final depo       = KasaDeposu();
-  final hareketler = await depo.hareketleriniGetir(baslangic: aralik.start, bitis: aralik.end);
-  final bakiye     = await depo.guncelBakiye();
+  final ozet       = await ref.watch(merkezi.kasaRaporProvider(aralik).future);
+  final hareketler = ozet.hareketler;
 
   double giris = 0, cikis = 0;
   final gunlukMap = <String, double>{};
@@ -54,7 +65,7 @@ final kasaRaporProvider = FutureProvider.family
     toplamGiris: giris,
     toplamCikis: cikis,
     netHareket:  giris - cikis,
-    guncelBakiye: bakiye,
+    guncelBakiye: ozet.guncelBakiye,
     gunlukData:  gunlukMap,
   );
 });

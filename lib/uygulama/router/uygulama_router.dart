@@ -157,8 +157,14 @@ class UygulamaRouter {
             }
             return AlimEkrani(tedarikci: extra as CariModel?);
           }),
+        // 🔴 Derin analizde bulundu: bu rotanın hiç YetkiKoruma sarmalayıcısı
+        // yoktu — kardeş rota '/kullanici' (liste) sarmalıyken bu (yeni
+        // kullanıcı ekleme/rol atama) sarmalanmamıştı. '/kullanici' önekiyle
+        // rota-seviyesi yönlendirme koruması zaten kapsıyordu, ama
+        // tutarlılık ve savunma derinliği için widget seviyesi de eklendi.
         GoRoute(path: '/kullanici/ekle', name: 'kullanici_ekle', parentNavigatorKey: rootNavigatorKey,
-          builder: (c, s) => KullaniciEkleEkrani(duzenlenecek: s.extra as KullaniciModel?)),
+          builder: (c, s) => YetkiKoruma(yetkiKodu: 'kullanici', ekranAdi: 'Kullanıcı Ekle',
+              child: KullaniciEkleEkrani(duzenlenecek: s.extra as KullaniciModel?))),
         GoRoute(path: '/kullanici-degistir', name: 'kullanici_degistir', parentNavigatorKey: rootNavigatorKey,
           builder: (_, __) => const KullaniciDegistirEkrani()),
         GoRoute(path: '/gider/ekle', name: 'gider_ekle', parentNavigatorKey: rootNavigatorKey,
@@ -272,7 +278,14 @@ class UygulamaRouter {
     if (!auth.girisYapildi && gidilen != '/giris') return '/giris';
     if (auth.girisYapildi && gidilen == '/giris') return '/';
 
-    if (auth.girisYapildi && !auth.isAdmin && !auth.isMudur) {
+    // 🔴🔴 GÜVENLİK DÜZELTMESİ (derin analizde bulundu): bu blok müdür
+    // rolünü de admin gibi TÜM rota yetki kontrollerinden koşulsuz
+    // muaf tutuyordu — yetkiVarSync()'teki aynı köke sahip açık (bkz. o
+    // dosyadaki not). Bir adminin bir müdürden 'kullanici'/'ayarlar' vb.
+    // yetkisini kaldırması bu yüzden hiçbir pratik etkisi olmuyordu.
+    // Artık sadece admin muaf; müdür de diğer roller gibi
+    // _routeYetkiler haritasına göre kontrol ediliyor.
+    if (auth.girisYapildi && !auth.isAdmin) {
       for (final e in _routeYetkiler.entries) {
         if (gidilen.startsWith(e.key) && !ref.read(authProvider.notifier).yetkiVarSync(e.value)) {
           return '/';

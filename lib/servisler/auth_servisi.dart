@@ -210,6 +210,17 @@ class AuthServisi {
         return;
       }
       _aktifKullanici = kullanici;
+      // 🔴 Derin analizde bulundu: yetkiCacheYenile() hiçbir yerden
+      // çağrılmıyordu — bir yönetici başka bir cihazda oturum açmış bir
+      // kullanıcının yetkisini değiştirdiğinde, o kullanıcı çıkış/giriş
+      // yapmadan bu değişiklik hiç yansımıyordu (yetkiVarSync artık
+      // müdür için de gerçek önbelleğe bakıyor — bkz. o fonksiyondaki
+      // düzeltme — bu yüzden önbelleğin güncel kalması daha da önemli
+      // hale geldi). Oturum her yenilendiğinde (uygulama ön plana
+      // geldiğinde/yeniden başladığında) artık burada da tazeleniyor.
+      if (kullanici.rol != KullaniciRolu.admin.label) {
+        _yetkiCache = await _depo.yetkileriniGetir(kullanici.id!);
+      }
       // Aktif kalındığını DB'ye işle
       await _depo.sonGirisGuncelle(kullanici.id!);
     } catch (e) {
@@ -221,10 +232,23 @@ class AuthServisi {
   Future<void> oturumKontrol() => oturumuYenile();
 
   // ── Yetki kontrolü — SYNC (önbellekten) ──────────────────────────────
+  // 🔴🔴 KRİTİK GÜVENLİK AÇIĞI (derin analizde bulundu): müdür rolü de
+  // admin gibi koşulsuz true dönüyordu — oysa kullanici_ekle_ekrani.dart
+  // müdür için 'kullanici'/'ayarlar' HARİÇ tüm yetkileri varsayılan
+  // yapıp, adminin bunları (ve başka herhangi bir yetkiyi) müdürden
+  // TEK TEK KALDIRABİLECEĞİ bir kutucuk arayüzü sunuyor — yani ürünün
+  // KENDİ tasarımı müdür yetkilerinin kısıtlanabilir olmasını
+  // öngörüyor. Bu fonksiyon (ve aşağıdaki async yetkiVar) bu kısıtlamayı
+  // tamamen etkisiz kılıyordu: adminin bir müdürden 'kullanici' iznini
+  // kaldırması hiçbir şey değiştirmiyordu, o müdür yine de kullanıcı
+  // yönetimi ekranına (ve oradan yeni admin hesabı oluşturmaya kadar)
+  // erişebiliyordu. Artık sadece admin koşulsuz geçiyor; müdür de
+  // normal yetki önbelleğine göre kontrol ediliyor (roller_yetki'de
+  // zaten doğru varsayılanlarla kayıtlı — davranış, sadece gerçekten
+  // KISITLANMIŞ müdürler için değişir).
   bool yetkiVarSync(String yetkiKodu) {
     if (_aktifKullanici == null) return false;
     if (_aktifKullanici!.rol == KullaniciRolu.admin.label) return true;
-    if (_aktifKullanici!.rol == KullaniciRolu.mudur.label) return true;
     return _yetkiCache.contains(yetkiKodu);
   }
 
@@ -244,15 +268,13 @@ class AuthServisi {
 
   Future<bool> yetkiVar(String yetkiKodu) async {
     if (_aktifKullanici == null) return false;
-    // 🔴 DÜZELTME: Bu (async, DB tabanlı) fonksiyon sadece admin'i
-    // atlıyordu — 'mudur' rolü için ise gerçekten roller_yetki
-    // tablosunda bir kayıt aranıyordu. Oysa yetkiVarSync() (önbellek
-    // tabanlı) HEM admin HEM müdürü otomatik olarak atlıyor. Bu
-    // tutarsızlık, hangi kontrolün (senkron önbellek mi, taze DB
-    // sorgusu mu) kullanıldığına bağlı olarak bir müdürün FARKLI
-    // yetki sonuçları almasına yol açabilirdi.
+    // 🔴🔴 GÜVENLİK DÜZELTMESİ (derin analizde bulundu): bu fonksiyon
+    // ÖNCEDEN "tutarlılık" adına müdür için de koşulsuz true döndürecek
+    // şekilde değiştirilmişti — ama bu, sync sürümdeki gerçek güvenlik
+    // açığını (bkz. yetkiVarSync'teki not) buraya da taşımıştı. Artık
+    // ikisi de aynı DOĞRU davranışta: sadece admin koşulsuz geçer,
+    // müdür gerçek yetki kaydına göre kontrol edilir.
     if (_aktifKullanici!.rol == KullaniciRolu.admin.label) return true;
-    if (_aktifKullanici!.rol == KullaniciRolu.mudur.label) return true;
     try {
       final db = await Veritabani().db;
       final rows = await db.query(

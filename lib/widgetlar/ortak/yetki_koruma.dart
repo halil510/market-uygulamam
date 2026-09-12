@@ -35,8 +35,13 @@ class YetkiKoruma extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
 
-    // Admin veya müdür — her şeye erişebilir
-    if (auth.isAdmin || auth.isMudur) return child;
+    // 🔴🔴 GÜVENLİK DÜZELTMESİ (derin analizde bulundu): müdür de admin
+    // gibi koşulsuz geçiriliyordu — kullanici_ekle_ekrani.dart'ın müdür
+    // için tek tek kaldırılabilir yetki kutucukları sunmasıyla
+    // ÇELİŞİYORDU (aynı kök neden yetkiVarSync/uygulama_router.dart'ta
+    // da bulunup düzeltildi). Adminin bir müdürden bu ekranın yetkisini
+    // kaldırması hiçbir şey değiştirmiyordu. Artık sadece admin muaf.
+    if (auth.isAdmin) return child;
 
     // Yetki kontrolü
     final yetkiVar = ref.watch(authProvider.notifier).yetkiVarSync(yetkiKodu);

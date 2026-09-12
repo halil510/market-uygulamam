@@ -7,7 +7,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../cekirdek/enumlar/kullanici_rolu.dart';
 import 'package:go_router/go_router.dart';
 import '../../depolar/kullanici_deposu.dart';
 import '../../servisler/auth_servisi.dart';
@@ -29,10 +28,14 @@ class _AyarlarGirisEkraniState extends ConsumerState<AyarlarGirisEkrani> {
   bool _kilitli = false;
   DateTime? _kilitBitis;
 
-  // Aktif kullanıcının 'ayarlar' yetkisi var mı?
+  // 🔴 Derin analizde bulundu: yorum "'ayarlar' yetkisi var mı?" diyordu
+  // ama gerçek kontrol sadece admin/müdür ROLÜNE bakıyordu — granüler
+  // yetkiVarSync('ayarlar') hiç kullanılmıyordu (uygulama_router.dart'taki
+  // aynı kök hata — bkz. o dosyadaki düzeltme notu). Sonuç: 'ayarlar'
+  // yetkisi AÇIKÇA verilmiş ama müdür OLMAYAN bir personel bile buraya
+  // "admin şifresi gerekiyor" akışına yanlışlıkla yönlendiriliyordu.
   bool get _yetkiVar =>
-      AuthServisi().isAdmin ||
-      AuthServisi().aktifRol == KullaniciRolu.mudur.label;
+      AuthServisi().isAdmin || AuthServisi().yetkiVarSync('ayarlar');
 
   String get _aciklama => _yetkiVar
       ? 'Kendi şifrenizi girin'

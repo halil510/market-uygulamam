@@ -42,7 +42,13 @@ class Dashboard extends _$Dashboard {
     final results = await Future.wait([
       UrunDeposu().istatistikler(),
       UrunDeposu().kritikStoklar(),
-      CariDeposu().tumunuGetir(limit: 200),
+      // 🔴 Derin analizde bulundu: limit: 200 ile çağrılıyordu — 200'den
+      // fazla aktif cariye sahip bir işletmede "Toplam Müşteri" sayısı
+      // ve toplam cari bakiyesi (mustBakiye) sessizce eksik (sadece
+      // unvana göre alfabetik ilk 200 kayıt) gösteriliyordu, hiçbir
+      // hata/uyarı olmadan. Gerçekçi bir üst sınırla (pratikte hiçbir
+      // küçük/orta işletmenin aşmayacağı) sınırlama kaldırıldı.
+      CariDeposu().tumunuGetir(limit: 100000),
       SatisDeposu().gunlukIstatistik(),
       SatisDeposu().haftaGrafikVerisi(),
       SatisDeposu().tariheGoreGetir(

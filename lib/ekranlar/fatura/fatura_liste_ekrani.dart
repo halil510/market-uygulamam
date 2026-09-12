@@ -339,7 +339,8 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
 
     return Dismissible(
       key: ValueKey('fatura_${f.id}'),
-      direction: ref.read(authProvider).isMudur ? DismissDirection.endToStart : DismissDirection.none,
+      direction: ref.watch(authProvider.select((s) => s.isMudur))
+          ? DismissDirection.endToStart : DismissDirection.none,
       confirmDismiss: (_) async {
         final onay = await showDialog<bool>(
           context: context,

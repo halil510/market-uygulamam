@@ -1391,8 +1391,10 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                 ? () async {
                     try {
                       await YazdirmaServisi().fisYazdir(_sonSatis!);
+                      if (!mounted) return;
                       BildirimServisi.basari(context, 'Fiş yazdırılıyor…');
                     } catch (e) {
+                      if (!mounted) return;
                       BildirimServisi.hata(context, 'Yazdırılamadı: $e');
                     }
                   }

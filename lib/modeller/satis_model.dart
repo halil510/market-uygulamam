@@ -140,6 +140,11 @@ class SatisModel {
     aciklama: aciklama ?? this.aciklama,
     kargoUcreti: kargoUcreti ?? this.kargoUcreti,
     kasiyerId: kasiyerId ?? this.kasiyerId,
+    // 🔴 Derin analizde bulundu: kullaniciId parametre olarak tanımlıydı
+    // ama constructor çağrısına hiç aktarılmıyordu — her copyWith() bu
+    // alanı sessizce null'a sıfırlardı (UrunModel'de bulunan aynı hata
+    // sınıfı, bkz. o dosyadaki not).
+    kullaniciId: kullaniciId ?? this.kullaniciId,
     vardiyaId: vardiyaId ?? this.vardiyaId,
     iptal: iptal ?? this.iptal,
     iptalNedeni: iptalNedeni ?? this.iptalNedeni,

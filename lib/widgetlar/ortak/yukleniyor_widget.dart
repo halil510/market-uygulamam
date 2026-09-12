@@ -28,13 +28,15 @@ class SatirYukleniyorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark ? context.textSecondary : context.borderColor;
-    final highlightColor = isDark ? context.textSecondary : context.borderColor;
-
+    // 🔴 Derin analizde bulundu: baseColor ve highlightColor AYNI ifadeydi
+    // — Shimmer.fromColors iki renk arasında geçiş yaparak "parlama"
+    // efekti üretir; ikisi eşit olunca hareket hiç görünmüyor, sadece
+    // statik gri bir blok gibi duruyordu. TsYukleniyor/ShimmerKart'ın
+    // zaten kullandığı context.shimmerBase/shimmerHighlight token'larına
+    // geçildi (tutarlılık + gerçek animasyon).
     return Shimmer.fromColors(
-      baseColor: baseColor,
-      highlightColor: highlightColor,
+      baseColor: context.shimmerBase,
+      highlightColor: context.shimmerHighlight,
       child: kart ? _kartSkeleton() : _listeSkeleton(),
     );
   }
@@ -103,10 +105,11 @@ class SayfaYukleniyorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // 🔴 Derin analizde bulundu: bkz. SatirYukleniyorWidget'taki aynı not
+    // — aynı renk iki kez verildiği için animasyon hiç görünmüyordu.
     return Shimmer.fromColors(
-      baseColor: isDark ? context.textSecondary : context.borderColor,
-      highlightColor: isDark ? context.textSecondary : context.borderColor,
+      baseColor: context.shimmerBase,
+      highlightColor: context.shimmerHighlight,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         physics: const NeverScrollableScrollPhysics(),

@@ -1904,12 +1904,21 @@ static Future<void> _v18denV19a(Database db) async {
       await db.execute(sql);
     } catch (e) {
       final mesaj = e.toString().toLowerCase();
+      // 🔴 Derin analizde bulundu: 'syntax error' bu "zararsız/beklenen"
+      // listesindeydi — ama bir ALTER/CREATE ifadesindeki gerçek bir SQL
+      // yazım hatası HİÇBİR ZAMAN zararsız/idempotent bir durum değildir
+      // (aksine 'duplicate column'/'already exists'/'no such column'/
+      // 'no such table' — bunlar hep "bu değişiklik zaten uygulanmış"
+      // anlamına gelir). 'syntax error'ı burada yutmak, gelecekteki
+      // gerçekten bozuk bir migration ifadesini sessizce no-op'a
+      // çevirip şemayı eksik bırakabilir — hata çok daha sonra, ilgisiz
+      // bir "no such column" çökmesi olarak ve çok daha zor teşhis
+      // edilebilir şekilde ortaya çıkardı.
       final bilinen = mesaj.contains('duplicate column') ||
           mesaj.contains('already exists')  ||
           mesaj.contains('table already')   ||
           mesaj.contains('no such column')  ||
-          mesaj.contains('no such table')   ||
-          mesaj.contains('syntax error');
+          mesaj.contains('no such table');
       if (!bilinen) rethrow;
     }
   }

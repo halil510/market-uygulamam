@@ -297,8 +297,14 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       );
 
       if (!mounted) return;
-      setState(() => _islemAktif = false);
-
+      // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): _islemAktif burada,
+      // GERÇEK ödeme çağrısından (MasaOdemeServisi().odemeYap — satış +
+      // stok düş + kasa/cari hareket) ÖNCE false'a çevriliyordu. O await
+      // sürerken "Ödeme Al" butonu yeniden etkinleşiyordu — hızlı bir
+      // çift dokunma (veya yavaş bir cihazda ilk çağrı hâlâ sürerken)
+      // aynı siparişin İKİNCİ KEZ ödenmesine (mükerrer satış + stok
+      // düşümü + kasa/cari kaydı) yol açabilirdi. Bayrak artık fonksiyon
+      // gerçekten bitene kadar (aşağıdaki finally) true kalıyor.
       if (sonuc == null) return;
 
       final kalemler = (sonuc['kalemler'] as List).cast<Map<String, dynamic>>();

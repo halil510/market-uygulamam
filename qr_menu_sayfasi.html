@@ -265,11 +265,7 @@
   <div class="sayfa" id="sayfa-hakkimizda">
     <div class="hero kucuk"><h1>Hakkımızda</h1><div class="cizgi"></div></div>
     <div class="icerik-blok">
-      <div class="istatistikler">
-        <div class="ist-kart"><div class="ist-sayi">1993</div><div class="ist-etiket">'ten Beri Hizmetinizde</div></div>
-        <div class="ist-kart"><div class="ist-sayi">200 m²</div><div class="ist-etiket">Kapalı Alan</div></div>
-        <div class="ist-kart"><div class="ist-sayi">800 m²</div><div class="ist-etiket">Yeşil Bahçe</div></div>
-      </div>
+      <div class="istatistikler" id="istatistiklerAlani"></div>
       <p id="hakkimizdaMetin"></p>
       <div class="galeri-baslik">İşyerimizden Kareler</div>
       <div class="galeri" id="galeriAlani"></div>
@@ -353,8 +349,14 @@ const ILETISIM = {
   calismaSaatleri: "Her gün 07:00 – 24:00"
 };
 
+const ISTATISTIKLER = [
+  { sayi: "1993", etiket: "'ten Beri Hizmetinizde" },
+  { sayi: "200 m²", etiket: "Kapalı Alan" },
+  { sayi: "800 m²", etiket: "Yeşil Bahçe" }
+];
+
 // ★★★ KOORDİNATLAR (Enlem, Boylam) ★★★
-const KONUM_ENLEM_BOYLAM = "37.45626835149525,28.860172033309937";
+let KONUM_ENLEM_BOYLAM = "37.45626835149525,28.860172033309937";
 
 // ═══════════════════════════════════════════════════════════════
 // SUPABASE BAĞLANTI BİLGİLERİ
@@ -371,23 +373,63 @@ const SUPABASE_ANON_KEY = "sb_publishable_6MqDIwTRaeuKdP6uo5mWew_AInoVbSY";
 // fazladan "/" varsa temizler — siz yanlış girseniz bile çalışır.
 SUPABASE_URL = SUPABASE_URL.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 
-document.title = ISLETME_ADI + " — Menü";
-document.getElementById('ustBarBaslik').textContent = ISLETME_ADI;
-document.getElementById('navBaslik').textContent = ISLETME_ADI;
-document.getElementById('heroBaslik').textContent = ISLETME_ADI;
-document.getElementById('heroAltYazi').textContent = ALT_YAZI;
-// \n\n paragraf araları korunarak gösteriliyor
-document.getElementById('hakkimizdaMetin').innerHTML =
-  HAKKIMIZDA_METNI.replace(/\n/g, '<br>');
-
-// Galeri: fotoğraflar artık UYGULAMADAN yönetiliyor (Ayarlar →
-// İşyeri Fotoğrafları). Site açılışta buluttan güncel listeyi çeker;
-// bulutta liste yoksa/boşsa ISYERI_GORSELLERI yedeği kullanılır.
+// ── Render fonksiyonları — hem sayfa açılışında hardcoded yedekle, hem de
+// buluttan (site_icerik) gelen güncel değerlerle YENİDEN çağrılabilir.
+// Bu, işyeri fotoğrafları galerisiyle AYNI kanıtlanmış desen: uygulamadan
+// (Ayarlar → Site İçeriği) düzenlenen değerler burada HTML'e dokunmadan
+// devreye girer; bulutta değer yoksa hardcoded yedek zaten görünür durumda.
+function genelRender(isletmeAdi, altYazi) {
+  document.title = isletmeAdi + " — Menü";
+  document.getElementById('ustBarBaslik').textContent = isletmeAdi;
+  document.getElementById('navBaslik').textContent = isletmeAdi;
+  document.getElementById('heroBaslik').textContent = isletmeAdi;
+  document.getElementById('heroAltYazi').textContent = altYazi;
+}
+function hakkimizdaRender(metin) {
+  // \n\n paragraf araları korunarak gösteriliyor
+  document.getElementById('hakkimizdaMetin').innerHTML = metin.replace(/\n/g, '<br>');
+}
+function istatistikRender(liste) {
+  document.getElementById('istatistiklerAlani').innerHTML = liste.map(i =>
+    '<div class="ist-kart"><div class="ist-sayi">' + i.sayi + '</div>' +
+    '<div class="ist-etiket">' + i.etiket + '</div></div>').join('');
+}
 function galeriKur(liste) {
   document.getElementById('galeriAlani').innerHTML =
     liste.map(src => '<img src="' + src + '" alt="İşyeri fotoğrafı" loading="lazy" onclick="resmiBuyut(\'' + src + '\')">').join('');
 }
+function iletisimRender(iletisim) {
+  document.getElementById('iletisimKartlari').innerHTML =
+    '<div class="bilgi-karti"><span class="ikon">📞</span><div><div class="altbaslik">Telefon</div>' +
+    '<a href="tel:' + iletisim.telefon.replace(/\s/g,'') + '">' + iletisim.telefon + '</a></div></div>' +
+    '<div class="bilgi-karti"><span class="ikon">✉️</span><div><div class="altbaslik">E-posta</div>' +
+    '<a href="mailto:' + iletisim.eposta + '">' + iletisim.eposta + '</a></div></div>' +
+    '<div class="bilgi-karti"><span class="ikon">🕒</span><div><div class="altbaslik">Çalışma Saatleri</div>' +
+    '<span>' + iletisim.calismaSaatleri + '</span></div></div>' +
+    '<div class="bilgi-karti"><span class="ikon">📷</span><div><div class="altbaslik">Instagram</div>' +
+    '<a href="https://instagram.com/' + iletisim.instagram + '" target="_blank">@' + iletisim.instagram + '</a></div></div>' +
+    '<div class="bilgi-karti"><span class="ikon">👍</span><div><div class="altbaslik">Facebook</div>' +
+    '<a href="https://facebook.com/' + iletisim.facebook + '" target="_blank">' + iletisim.facebook + '</a></div></div>';
+
+  document.getElementById('konumAdres').textContent = iletisim.adres;
+  const haritaSorgu = KONUM_ENLEM_BOYLAM || encodeURIComponent(iletisim.adres);
+  document.getElementById('haritaCerceve').src = 'https://maps.google.com/maps?q=' + haritaSorgu + '&z=16&output=embed';
+  document.getElementById('yolTarifiBtn').href = 'https://www.google.com/maps/dir/?api=1&destination=' + haritaSorgu;
+  // Değerlendirme: Google Haritalar'da işletme sayfasını açar —
+  // müşteri oradan yıldız verip yorum yazabilir.
+  document.getElementById('degerlendirBtn').href =
+    'https://www.google.com/maps/search/?api=1&query=' + haritaSorgu;
+}
+
+// ── İlk render: hardcoded yedek değerlerle (internet yoksa bile çalışır) ──
+genelRender(ISLETME_ADI, ALT_YAZI);
+hakkimizdaRender(HAKKIMIZDA_METNI);
+istatistikRender(ISTATISTIKLER);
 galeriKur(ISYERI_GORSELLERI);
+iletisimRender(ILETISIM);
+
+// ── Buluttan güncel içerik: site_icerik tablosundaki iki anahtarı çeker,
+// varsa yukarıdaki render'ları güncel değerlerle tekrar çağırır.
 (async () => {
   try {
     const r = await fetch(SUPABASE_URL + '/rest/v1/site_icerik?anahtar=eq.isyeri_gorselleri&select=deger', {
@@ -403,26 +445,23 @@ galeriKur(ISYERI_GORSELLERI);
   } catch (e) { /* yedek galeri zaten görünüyor */ }
 })();
 
-document.getElementById('iletisimKartlari').innerHTML =
-  '<div class="bilgi-karti"><span class="ikon">📞</span><div><div class="altbaslik">Telefon</div>' +
-  '<a href="tel:' + ILETISIM.telefon.replace(/\s/g,'') + '">' + ILETISIM.telefon + '</a></div></div>' +
-  '<div class="bilgi-karti"><span class="ikon">✉️</span><div><div class="altbaslik">E-posta</div>' +
-  '<a href="mailto:' + ILETISIM.eposta + '">' + ILETISIM.eposta + '</a></div></div>' +
-  '<div class="bilgi-karti"><span class="ikon">🕒</span><div><div class="altbaslik">Çalışma Saatleri</div>' +
-  '<span>' + ILETISIM.calismaSaatleri + '</span></div></div>' +
-  '<div class="bilgi-karti"><span class="ikon">📷</span><div><div class="altbaslik">Instagram</div>' +
-  '<a href="https://instagram.com/' + ILETISIM.instagram + '" target="_blank">@' + ILETISIM.instagram + '</a></div></div>' +
-  '<div class="bilgi-karti"><span class="ikon">👍</span><div><div class="altbaslik">Facebook</div>' +
-  '<a href="https://facebook.com/' + ILETISIM.facebook + '" target="_blank">' + ILETISIM.facebook + '</a></div></div>';
-
-document.getElementById('konumAdres').textContent = ILETISIM.adres;
-const haritaSorgu = KONUM_ENLEM_BOYLAM || encodeURIComponent(ILETISIM.adres);
-document.getElementById('haritaCerceve').src = 'https://maps.google.com/maps?q=' + haritaSorgu + '&z=16&output=embed';
-document.getElementById('yolTarifiBtn').href = 'https://www.google.com/maps/dir/?api=1&destination=' + haritaSorgu;
-// Değerlendirme: Google Haritalar'da işletme sayfasını açar —
-// müşteri oradan yıldız verip yorum yazabilir.
-document.getElementById('degerlendirBtn').href =
-  'https://www.google.com/maps/search/?api=1&query=' + haritaSorgu;
+(async () => {
+  try {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/site_icerik?anahtar=eq.isletme_bilgileri&select=deger', {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    if (!r.ok) return;
+    const rows = await r.json();
+    if (!rows.length || !rows[0].deger) return;
+    const b = JSON.parse(rows[0].deger);
+    if (b.isletmeAdi || b.altYazi) genelRender(b.isletmeAdi || ISLETME_ADI, b.altYazi || ALT_YAZI);
+    if (b.hakkimizda) hakkimizdaRender(b.hakkimizda);
+    if (Array.isArray(b.istatistikler) && b.istatistikler.length) istatistikRender(b.istatistikler);
+    if (b.konum) KONUM_ENLEM_BOYLAM = b.konum;
+    if (b.iletisim) iletisimRender({ ...ILETISIM, ...b.iletisim });
+    else if (b.konum) iletisimRender(ILETISIM); // sadece konum değiştiyse harita/yol tarifi tazelensin
+  } catch (e) { /* yedek içerik zaten görünüyor */ }
+})();
 
 // ── Ürünler Vitrini (sadece ad + büyük görsel) ──
 function vitrinRender() {

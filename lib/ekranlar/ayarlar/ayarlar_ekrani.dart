@@ -56,8 +56,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
       if (mounted) {
         setState(() {
           _ayarlar = {
-            for (final r in rows)
-              r['anahtar'] as String: r['deger'] as String
+            for (final r in rows) r['anahtar'] as String: r['deger'] as String
           };
           _yukleniyor = false;
         });
@@ -81,8 +80,11 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
       // 🔴 Derin analizde bulundu: bu genel ayar güncelleme fonksiyonu
       // (uygulama genelinde birçok ayar için kullanılıyor) last_updated
       // hiç ayarlamıyordu, BulutManager hiç çağrılmıyordu.
-      final satir = await db.query('ayarlar', where: 'anahtar = ?', whereArgs: [anahtar], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('ayarlar', Map<String, dynamic>.from(satir.first));
+      final satir = await db.query('ayarlar',
+          where: 'anahtar = ?', whereArgs: [anahtar], limit: 1);
+      if (satir.isNotEmpty)
+        BulutManager()
+            .upsert('ayarlar', Map<String, dynamic>.from(satir.first));
       if (mounted) setState(() => _ayarlar[anahtar] = deger);
     } catch (e) {
       if (kDebugMode) debugPrint('Ayar kaydetme hatası: $e');
@@ -124,9 +126,11 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
   Future<void> _gibAyarlariDuzenle() async {
     final db = await Veritabani().db;
     Future<String> oku(String k) async {
-      final rows = await db.query('ayarlar', where: 'anahtar = ?', whereArgs: [k]);
+      final rows =
+          await db.query('ayarlar', where: 'anahtar = ?', whereArgs: [k]);
       return rows.isNotEmpty ? rows.first['deger'] as String : '';
     }
+
     // ÖNCEDEN BURADA CİDDİ BİR TUTARSIZLIK VARDI: bu dialog VKN/Vergi
     // Dairesi'ni 'gib_vkn'/'gib_vergi_dairesi' anahtarlarıyla kaydediyordu
     // — ama AYNI DOSYADAKİ "Firma Bilgileri" dialogu VE ayrı GİB Ayarları
@@ -134,38 +138,72 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
     // hepsi 'firma_vergi_no'/'firma_vergi_dairesi' kullanıyordu. Kullanıcı
     // birinde girdiği VKN'yi diğerinde HİÇ GÖREMİYORDU. Artık tek, ortak
     // anahtar seti kullanılıyor.
-    final vknCtrl    = TextEditingController(text: await oku('firma_vergi_no'));
-    final vdCtrl     = TextEditingController(text: await oku('firma_vergi_dairesi'));
+    final vknCtrl = TextEditingController(text: await oku('firma_vergi_no'));
+    final vdCtrl =
+        TextEditingController(text: await oku('firma_vergi_dairesi'));
     final apiUrlCtrl = TextEditingController(text: await oku('gib_api_url'));
     final apiKeyCtrl = TextEditingController(text: await oku('gib_api_key'));
-    final ilCtrl     = TextEditingController(text: await oku('firma_il'));
-    final ilceCtrl   = TextEditingController(text: await oku('firma_ilce'));
+    final ilCtrl = TextEditingController(text: await oku('firma_il'));
+    final ilceCtrl = TextEditingController(text: await oku('firma_ilce'));
     if (!mounted) return;
     await showDialog(
       context: context,
       builder: (dCtx1) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(children: [Icon(Icons.receipt, color: Colors.red), const SizedBox(width: 8), Text('GIB E-Fatura')]),
-        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('GIB onaylı bir Özel Entegratör firmadan aldığınız API bilgilerini girin.', style: TextStyle(fontSize: 12, color: context.textSecondary)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.receipt, color: Colors.red),
+          const SizedBox(width: 8),
+          Text('GIB E-Fatura')
+        ]),
+        content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(
+              'GIB onaylı bir Özel Entegratör firmadan aldığınız API bilgilerini girin.',
+              style: TextStyle(fontSize: 12, color: context.textSecondary)),
           const SizedBox(height: 12),
-          TextField(controller: vknCtrl, decoration: const InputDecoration(labelText: 'VKN / TCKN', border: OutlineInputBorder(), prefixIcon: Icon(Icons.numbers))),
+          TextField(
+              controller: vknCtrl,
+              decoration: const InputDecoration(
+                  labelText: 'VKN / TCKN',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.numbers))),
           const SizedBox(height: 8),
-          TextField(controller: vdCtrl, decoration: const InputDecoration(labelText: 'Vergi Dairesi', border: OutlineInputBorder())),
+          TextField(
+              controller: vdCtrl,
+              decoration: const InputDecoration(
+                  labelText: 'Vergi Dairesi', border: OutlineInputBorder())),
           const SizedBox(height: 8),
-          TextField(controller: ilCtrl, decoration: const InputDecoration(labelText: 'İl', border: OutlineInputBorder())),
+          TextField(
+              controller: ilCtrl,
+              decoration: const InputDecoration(
+                  labelText: 'İl', border: OutlineInputBorder())),
           const SizedBox(height: 8),
-          TextField(controller: ilceCtrl, decoration: const InputDecoration(labelText: 'İlçe', border: OutlineInputBorder())),
+          TextField(
+              controller: ilceCtrl,
+              decoration: const InputDecoration(
+                  labelText: 'İlçe', border: OutlineInputBorder())),
           const SizedBox(height: 12),
           const Divider(),
-          const Text('Özel Entegratör API', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+          const Text('Özel Entegratör API',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
           const SizedBox(height: 8),
-          TextField(controller: apiUrlCtrl, decoration: const InputDecoration(labelText: 'API URL', border: OutlineInputBorder(), hintText: 'https://api.entegrator.com')),
+          TextField(
+              controller: apiUrlCtrl,
+              decoration: const InputDecoration(
+                  labelText: 'API URL',
+                  border: OutlineInputBorder(),
+                  hintText: 'https://api.entegrator.com')),
           const SizedBox(height: 8),
-          TextField(controller: apiKeyCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'API Key', border: OutlineInputBorder())),
+          TextField(
+              controller: apiKeyCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(
+                  labelText: 'API Key', border: OutlineInputBorder())),
         ])),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dCtx1), child: const Text('İptal')),
+          TextButton(
+              onPressed: () => Navigator.pop(dCtx1),
+              child: const Text('İptal')),
           FilledButton(
             onPressed: () async {
               await _ayarGuncelle('firma_vergi_no', vknCtrl.text);
@@ -175,7 +213,8 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
               await _ayarGuncelle('firma_il', ilCtrl.text);
               await _ayarGuncelle('firma_ilce', ilceCtrl.text);
               if (mounted) Navigator.pop(dCtx1);
-              if (mounted) BildirimServisi.basari(context, 'GIB ayarları kaydedildi');
+              if (mounted)
+                BildirimServisi.basari(context, 'GIB ayarları kaydedildi');
             },
             child: const Text('Kaydet'),
           ),
@@ -191,39 +230,52 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
   }
 
   Future<void> _firmaBilgisiDuzenle() async {
-    final adCtrl  = TextEditingController(text: _ayarlar['firma_adi'] ?? '');
+    final adCtrl = TextEditingController(text: _ayarlar['firma_adi'] ?? '');
     final adrCtrl = TextEditingController(text: _ayarlar['firma_adres'] ?? '');
-    final telCtrl = TextEditingController(text: _ayarlar['firma_telefon'] ?? '');
-    final verCtrl = TextEditingController(text: _ayarlar['firma_vergi_no'] ?? '');
+    final telCtrl =
+        TextEditingController(text: _ayarlar['firma_telefon'] ?? '');
+    final verCtrl =
+        TextEditingController(text: _ayarlar['firma_vergi_no'] ?? '');
 
     await showDialog(
       context: context,
       builder: (dCtx1) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Firma Bilgileri'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: adCtrl,
-                decoration: const InputDecoration(labelText: 'Firma Adı', border: OutlineInputBorder())),
+            TextField(
+                controller: adCtrl,
+                decoration: const InputDecoration(
+                    labelText: 'Firma Adı', border: OutlineInputBorder())),
             const SizedBox(height: 8),
-            TextField(controller: adrCtrl, maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Adres', border: OutlineInputBorder())),
+            TextField(
+                controller: adrCtrl,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                    labelText: 'Adres', border: OutlineInputBorder())),
             const SizedBox(height: 8),
-            TextField(controller: telCtrl,
-                decoration: const InputDecoration(labelText: 'Telefon', border: OutlineInputBorder())),
+            TextField(
+                controller: telCtrl,
+                decoration: const InputDecoration(
+                    labelText: 'Telefon', border: OutlineInputBorder())),
             const SizedBox(height: 8),
-            TextField(controller: verCtrl,
-                decoration: const InputDecoration(labelText: 'Vergi No', border: OutlineInputBorder())),
+            TextField(
+                controller: verCtrl,
+                decoration: const InputDecoration(
+                    labelText: 'Vergi No', border: OutlineInputBorder())),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dCtx1), child: const Text('İptal')),
+          TextButton(
+              onPressed: () => Navigator.pop(dCtx1),
+              child: const Text('İptal')),
           FilledButton(
             onPressed: () async {
               try {
-                await _ayarGuncelle('firma_adi',      adCtrl.text.trim());
-                await _ayarGuncelle('firma_adres',    adrCtrl.text.trim());
-                await _ayarGuncelle('firma_telefon',  telCtrl.text.trim());
+                await _ayarGuncelle('firma_adi', adCtrl.text.trim());
+                await _ayarGuncelle('firma_adres', adrCtrl.text.trim());
+                await _ayarGuncelle('firma_telefon', telCtrl.text.trim());
                 await _ayarGuncelle('firma_vergi_no', verCtrl.text.trim());
                 if (!mounted) return;
                 Navigator.pop(dCtx1);
@@ -249,7 +301,8 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
     final onay = await OnayDialog.goster(
       context,
       baslik: 'Veritabanını İçe Aktar',
-      icerik: 'Mevcut veritabanının üzerine yazılacak. Bu işlem geri alınamaz.\n\nDevam etmek istediğinize emin misiniz?',
+      icerik:
+          'Mevcut veritabanının üzerine yazılacak. Bu işlem geri alınamaz.\n\nDevam etmek istediğinize emin misiniz?',
       onayYazi: 'Devam Et',
       onayRengi: Colors.orange,
     );
@@ -261,7 +314,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         withData: true,
       );
       if (result == null || result.files.isEmpty) return;
-      
+
       final dosya = result.files.single;
       if (dosya.path == null) {
         if (mounted) BildirimServisi.hata(context, 'Dosya yolu alınamadı');
@@ -270,7 +323,8 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
 
       final uzanti = dosya.extension?.toLowerCase();
       if (uzanti != 'db') {
-        if (mounted) BildirimServisi.hata(context, 'Lütfen .db uzantılı dosya seçin');
+        if (mounted)
+          BildirimServisi.hata(context, 'Lütfen .db uzantılı dosya seçin');
         return;
       }
 
@@ -279,7 +333,8 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => const ProgressDialog(mesaj: 'Veritabanı içe aktarılıyor...'),
+        builder: (ctx) =>
+            const ProgressDialog(mesaj: 'Veritabanı içe aktarılıyor...'),
       );
 
       try {
@@ -288,7 +343,9 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         if (bytes.length < 16 ||
             String.fromCharCodes(bytes.sublist(0, 15)) != 'SQLite format 3') {
           if (mounted) Navigator.of(context).pop();
-          if (mounted) BildirimServisi.hata(context, 'Geçerli bir SQLite veritabanı dosyası değil');
+          if (mounted)
+            BildirimServisi.hata(
+                context, 'Geçerli bir SQLite veritabanı dosyası değil');
           return;
         }
 
@@ -311,7 +368,8 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         //    önce bulup düzelttiğim aynı hata sınıfı).
         final walFile = File(p.join(dbPath, '${DbSabitler.dbAdi}-wal'));
         final shmFile = File(p.join(dbPath, '${DbSabitler.dbAdi}-shm'));
-        final guvenlikYedegi = '${dbFile.path}.import_oncesi_${DateTime.now().millisecondsSinceEpoch}.bak';
+        final guvenlikYedegi =
+            '${dbFile.path}.import_oncesi_${DateTime.now().millisecondsSinceEpoch}.bak';
         if (await dbFile.exists()) await dbFile.copy(guvenlikYedegi);
 
         if (await dbFile.exists()) await dbFile.delete();
@@ -327,9 +385,10 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         }
 
         if (mounted) Navigator.of(context).pop();
-        
+
         if (mounted) {
-          BildirimServisi.basari(context, 'Veritabanı içe aktarıldı. Uygulama yeniden başlatılıyor...');
+          BildirimServisi.basari(context,
+              'Veritabanı içe aktarıldı. Uygulama yeniden başlatılıyor...');
           Future.delayed(const Duration(seconds: 1), () => exit(0));
         }
       } catch (e) {
@@ -406,7 +465,8 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setStateDialog) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Şifrenizi Doğrulayın'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             const Text('Devam etmek için mevcut şifrenizi girin.',
@@ -420,15 +480,19 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 labelText: 'Şifre',
                 border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
-                  icon: Icon(sifreGizli ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setStateDialog(() => sifreGizli = !sifreGizli),
+                  icon: Icon(
+                      sifreGizli ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () =>
+                      setStateDialog(() => sifreGizli = !sifreGizli),
                 ),
               ),
               onSubmitted: (_) => Navigator.pop(ctx, true),
             ),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('İptal')),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: TsRenk.hata),
               onPressed: () => Navigator.pop(ctx, true),
@@ -443,11 +507,12 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
       return;
     }
 
-    final girisSonucu = await KullaniciDeposu().girisKontrol(
-        aktifKullanici.kullaniciAdi, sifreCtrl.text);
+    final girisSonucu = await KullaniciDeposu()
+        .girisKontrol(aktifKullanici.kullaniciAdi, sifreCtrl.text);
     sifreCtrl.dispose();
     if (girisSonucu == null) {
-      if (mounted) BildirimServisi.hata(context, 'Şifre yanlış. Temizleme iptal edildi.');
+      if (mounted)
+        BildirimServisi.hata(context, 'Şifre yanlış. Temizleme iptal edildi.');
       return;
     }
 
@@ -456,7 +521,8 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const ProgressDialog(mesaj: 'Veritabanı temizleniyor...'),
+      builder: (ctx) =>
+          const ProgressDialog(mesaj: 'Veritabanı temizleniyor...'),
     );
 
     try {
@@ -511,41 +577,55 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Text('Bulut Verisi Hâlâ Duruyor'),
             content: SingleChildScrollView(
-              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Bu cihaz temizlendi, ama Supabase projenizdeki '
-                    'veri hâlâ duruyor. Buluta tekrar bağlanırsanız eski '
-                    'veriler (borçlar dahil) geri gelir.\n\n'
-                    'Buluttaki veriyi de silmek isterseniz, Supabase '
-                    'projenizin SQL Editor\'ünde aşağıdaki komutu '
-                    'ÇALIŞTIRMANIZ gerekir (uygulama güvenlik nedeniyle '
-                    'bunu otomatik yapamaz):'),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
-                  child: const SelectableText(
-                    "-- DİKKAT: Bu, TÜM iş verisini kalıcı olarak siler!\n"
-                    "-- Sadece emin olduğunuzda çalıştırın.\n"
-                    "DO \$\$\nDECLARE r RECORD;\nBEGIN\n"
-                    "  FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname='public') LOOP\n"
-                    "    EXECUTE 'TRUNCATE TABLE public.' || quote_ident(r.tablename) || ' CASCADE';\n"
-                    "  END LOOP;\nEND \$\$;",
-                    style: TextStyle(color: Colors.greenAccent, fontSize: 11, fontFamily: 'monospace'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text('Not: RLS politikaları anon anahtarla silmeye izin '
-                    'vermez (bilinçli güvenlik önlemi) — bu yüzden bu komut '
-                    'Supabase panelinden, projenizin sahibi olarak '
-                    'çalıştırılmalıdır.', style: TextStyle(fontSize: 11, color: context.textSecondary)),
-              ]),
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Bu cihaz temizlendi, ama Supabase projenizdeki '
+                        'veri hâlâ duruyor. Buluta tekrar bağlanırsanız eski '
+                        'veriler (borçlar dahil) geri gelir.\n\n'
+                        'Buluttaki veriyi de silmek isterseniz, Supabase '
+                        'projenizin SQL Editor\'ünde aşağıdaki komutu '
+                        'ÇALIŞTIRMANIZ gerekir (uygulama güvenlik nedeniyle '
+                        'bunu otomatik yapamaz):'),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(8)),
+                      child: const SelectableText(
+                        "-- DİKKAT: Bu, TÜM iş verisini kalıcı olarak siler!\n"
+                        "-- Sadece emin olduğunuzda çalıştırın.\n"
+                        "DO \$\$\nDECLARE r RECORD;\nBEGIN\n"
+                        "  FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname='public') LOOP\n"
+                        "    EXECUTE 'TRUNCATE TABLE public.' || quote_ident(r.tablename) || ' CASCADE';\n"
+                        "  END LOOP;\nEND \$\$;",
+                        style: TextStyle(
+                            color: Colors.greenAccent,
+                            fontSize: 11,
+                            fontFamily: 'monospace'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                        'Not: RLS politikaları anon anahtarla silmeye izin '
+                        'vermez (bilinçli güvenlik önlemi) — bu yüzden bu komut '
+                        'Supabase panelinden, projenizin sahibi olarak '
+                        'çalıştırılmalıdır.',
+                        style: TextStyle(
+                            fontSize: 11, color: context.textSecondary)),
+                  ]),
             ),
             actions: [
-              FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Anladım')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Anladım')),
             ],
           ),
         );
@@ -553,7 +633,8 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
 
       // 7. Kullanıcıyı bilgilendir ve uygulamayı kapat
       if (mounted) {
-        BildirimServisi.basari(context, 'Veritabanı temizlendi. Uygulama yeniden başlatılıyor...');
+        BildirimServisi.basari(
+            context, 'Veritabanı temizlendi. Uygulama yeniden başlatılıyor...');
         // Uygulamayı kapat
         Future.delayed(const Duration(seconds: 2), () {
           exit(0);
@@ -565,7 +646,6 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
       if (mounted) BildirimServisi.hata(context, 'Temizleme hatası: $e');
     }
   }
-
 
   // ── EXCEL DIŞA AKTAR ───────────────────────────────────────────────────
   Future<void> _urunleriExcelEAktar() async {
@@ -592,10 +672,10 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         withData: true,
       );
       if (result == null || result.files.isEmpty) return;
-      
+
       final dosya = result.files.single;
       // bytes veya path ile oku
-      final Uint8List? fileBytes = dosya.bytes ?? 
+      final Uint8List? fileBytes = dosya.bytes ??
           (dosya.path != null ? await File(dosya.path!).readAsBytes() : null);
       if (fileBytes == null) {
         if (mounted) BildirimServisi.hata(context, 'Dosya okunamadı');
@@ -610,7 +690,8 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         context: progressCtx,
         barrierDismissible: false,
         useRootNavigator: true,
-        builder: (ctx) => const ProgressDialog(mesaj: 'Excel dosyası işleniyor...'),
+        builder: (ctx) =>
+            const ProgressDialog(mesaj: 'Excel dosyası işleniyor...'),
       );
 
       IceriAktarSonuc? sonuc;
@@ -634,7 +715,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
     } catch (e) {
       try {
         if (mounted) Navigator.of(context).pop();
-      } catch (e) { /* ignore */ }
+      } catch (e) {/* ignore */}
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }
   }
@@ -643,14 +724,20 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(children: [Icon(Icons.check_circle, color: Colors.green), const SizedBox(width: 8), Text('İçe Aktarma Tamamlandı')]),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.check_circle, color: Colors.green),
+          const SizedBox(width: 8),
+          Text('İçe Aktarma Tamamlandı')
+        ]),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           _SonucSatiri('Eklenen Ürün', sonuc.eklenen, Colors.green),
           _SonucSatiri('Güncellenen Ürün', sonuc.guncellenen, Colors.blue),
-          if (sonuc.indirimliKaydedilen > 0) _SonucSatiri(
-            'Otomatik İndirimli', sonuc.indirimliKaydedilen, Colors.orange),
-          if (sonuc.hatali > 0) _SonucSatiri('Hatalı Satır', sonuc.hatali, Colors.red),
+          if (sonuc.indirimliKaydedilen > 0)
+            _SonucSatiri(
+                'Otomatik İndirimli', sonuc.indirimliKaydedilen, Colors.orange),
+          if (sonuc.hatali > 0)
+            _SonucSatiri('Hatalı Satır', sonuc.hatali, Colors.red),
           const SizedBox(height: 8),
           Text('Toplam ${sonuc.toplam} satır işlendi'),
           if (sonuc.indirimliKaydedilen > 0)
@@ -665,7 +752,8 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
               child: Row(children: [
                 const Icon(Icons.local_offer, color: Colors.orange, size: 16),
                 const SizedBox(width: 8),
-                Expanded(child: Text(
+                Expanded(
+                    child: Text(
                   '${sonuc.indirimliKaydedilen} üründe otomatik indirim aktif edildi. '
                   'Hızlı satışta barkod okutunca indirimli fiyat uygulanır.',
                   style: const TextStyle(fontSize: 11),
@@ -673,7 +761,10 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
               ]),
             ),
         ]),
-        actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam'))],
+        actions: [
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Tamam'))
+        ],
       ),
     );
   }
@@ -682,37 +773,52 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(children: [Icon(Icons.error_outline, color: Colors.red), const SizedBox(width: 8), Text('İçe Aktarma Başarısız')]),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.error_outline, color: Colors.red),
+          const SizedBox(width: 8),
+          Text('İçe Aktarma Başarısız')
+        ]),
         content: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.5),
-          child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Hiç ürün eklenemedi.'),
-            if (sonuc != null && sonuc.hatalar.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              const Text('Hatalar:', style: TextStyle(fontWeight: FontWeight.bold)),
-              ...sonuc.hatalar.take(5).map((h) => Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text('• ${h.length > 200 ? '${h.substring(0, 200)}…' : h}',
-                    style: const TextStyle(fontSize: 12)),
-              )),
-            ],
-          ])),
+          constraints:
+              BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.5),
+          child: SingleChildScrollView(
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                const Text('Hiç ürün eklenemedi.'),
+                if (sonuc != null && sonuc.hatalar.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Text('Hatalar:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  ...sonuc.hatalar.take(5).map((h) => Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                            '• ${h.length > 200 ? '${h.substring(0, 200)}…' : h}',
+                            style: const TextStyle(fontSize: 12)),
+                      )),
+                ],
+              ])),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Kapat'))],
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Kapat'))
+        ],
       ),
     );
   }
 
   Future<void> _pasifleriAktifYap() async {
-    try {  
+    try {
       final db = await Veritabani().db;
-      final sonuc = await db.rawUpdate('UPDATE ${DbSabitler.urunler} SET aktif = 1 WHERE aktif = 0 AND is_deleted = 0');
+      final sonuc = await db.rawUpdate(
+          'UPDATE ${DbSabitler.urunler} SET aktif = 1 WHERE aktif = 0 AND is_deleted = 0');
       if (mounted) {
         BildirimServisi.basari(context, '$sonuc ürün aktif yapıldı');
         await _yukle();
       }
-        } catch (e) {
+    } catch (e) {
       if (kDebugMode) if (mounted) debugPrint('Hata: $e');
     }
   }
@@ -752,34 +858,46 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
     final aktif = AuthServisi().aktifKullanici;
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) async { if (!didPop) await _onWillPop(); },
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) await _onWillPop();
+      },
       child: Scaffold(
         appBar: TsAppBar(
-        baslik: 'Ayarlar',
-        lider: BackButton(onPressed: () => context.go('/')),
-      ),
+          baslik: 'Ayarlar',
+          lider: BackButton(onPressed: () => context.go('/')),
+        ),
         body: _yukleniyor
             ? const AppYukleniyor()
             : ListView(children: [
                 _AyarBaslik('Hesap'),
                 ListTile(
                   leading: Container(
-              width: 40, height: 40,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF4361EE), Color(0xFF3A0CA3)]),
-                shape: BoxShape.circle),
-              child: Center(child: Text(aktif?.adSoyad.isNotEmpty == true ? aktif!.adSoyad[0] : 'K',
-                style: const TextStyle(color: Colors.white,
-                    fontWeight: FontWeight.w700, fontSize: 14)))),
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                              colors: [Color(0xFF4361EE), Color(0xFF3A0CA3)]),
+                          shape: BoxShape.circle),
+                      child: Center(
+                          child: Text(
+                              aktif?.adSoyad.isNotEmpty == true
+                                  ? aktif!.adSoyad[0]
+                                  : 'K',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14)))),
                   title: Text(aktif?.adSoyad ?? ''),
                   subtitle: Text(aktif?.rol ?? ''),
-                  trailing: TextButton(onPressed: () => context.push('/sifre'), child: const Text('Şifre Değiştir')),
+                  trailing: TextButton(
+                      onPressed: () => context.push('/sifre'),
+                      child: const Text('Şifre Değiştir')),
                 ),
                 const Divider(),
                 _AyarBaslik('Firma'),
                 ListTile(
-                  leading: const Icon(Icons.business, color: AppRenkler.primary),
+                  leading:
+                      const Icon(Icons.business, color: AppRenkler.primary),
                   title: Text(_ayarlar['firma_adi'] ?? 'MarketPlus'),
                   subtitle: Text(_ayarlar['firma_adres'] ?? 'Adres girilmemiş'),
                   trailing: const Icon(Icons.edit_outlined),
@@ -787,15 +905,24 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 ),
                 const Divider(),
                 _AyarBaslik('Görünüm'),
-                RadioListTile<String>(title: const Text('Açık Tema'), value: 'light', groupValue: _ayarlar['tema'] ?? 'light', onChanged: (v) => _temaDegistir(v!)),
-                RadioListTile<String>(title: const Text('Koyu Tema'), value: 'dark', groupValue: _ayarlar['tema'] ?? 'light', onChanged: (v) => _temaDegistir(v!)),
+                RadioListTile<String>(
+                    title: const Text('Açık Tema'),
+                    value: 'light',
+                    groupValue: _ayarlar['tema'] ?? 'light',
+                    onChanged: (v) => _temaDegistir(v!)),
+                RadioListTile<String>(
+                    title: const Text('Koyu Tema'),
+                    value: 'dark',
+                    groupValue: _ayarlar['tema'] ?? 'light',
+                    onChanged: (v) => _temaDegistir(v!)),
                 const Divider(),
                 // 🆕 Hızlı tuş yönetimi — kasadaki favori ürün panelini
                 // buradan da düzenlenebilir yaptık (birincil giriş yolu
                 // Hızlı Satış ekranındaki şimşek butonu).
                 _AyarBaslik('Satış'),
                 ListTile(
-                  leading: const Icon(Icons.bolt_rounded, color: Color(0xFF4361EE)),
+                  leading:
+                      const Icon(Icons.bolt_rounded, color: Color(0xFF4361EE)),
                   title: const Text('Hızlı Tuşlar'),
                   subtitle: const Text(
                       'Barkodsuz/sık satılan ürünler için kasa tuşları '
@@ -806,47 +933,163 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 const Divider(),
                 _AyarBaslik('Sistem'),
                 SwitchListTile(
-                  secondary: const Icon(Icons.table_restaurant, color: Color(0xFF6D4C41)),
+                  secondary: const Icon(Icons.table_restaurant,
+                      color: Color(0xFF6D4C41)),
                   title: const Text('Masa / Restoran Modülü'),
-                  subtitle: const Text('Sadece kafe/lokanta hizmeti olan şubelerde açın. '
+                  subtitle: const Text(
+                      'Sadece kafe/lokanta hizmeti olan şubelerde açın. '
                       'Kapatırsanız "Masalar" ve "Mutfak/Bar" ana ekrandan gizlenir.'),
                   value: ref.watch(masaModuProvider),
-                  onChanged: (v) => ref.read(masaModuProvider.notifier).degistir(v),
+                  onChanged: (v) =>
+                      ref.read(masaModuProvider.notifier).degistir(v),
                 ),
-                ListTile(leading: const Icon(Icons.print, color: AppRenkler.primary), title: const Text('Yazdırma Merkezi'), subtitle: const Text('Yazıcılar · Fiş Tasarımı · Fatura Ayarları — tek sayfa'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/ayarlar/yazdirma')),
-                ListTile(leading: const Icon(Icons.store, color: Colors.indigo), title: const Text('Şube Yönetimi'), subtitle: const Text('Çoklu şube ekle ve yönet'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/sube')),
-                ListTile(leading: const Icon(Icons.local_shipping, color: Colors.teal), title: const Text('İrsaliye / Sevkiyat'), subtitle: const Text('Sevk irsaliyeleri yönetimi'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/irsaliye')),
-                ListTile(leading: const Icon(Icons.inventory_2, color: Colors.brown), title: const Text('Lot / Seri No Takibi'), subtitle: const Text('SKT ve lot takibi'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/lot')),
-                ListTile(leading: const Icon(Icons.auto_graph, color: Colors.purple), title: const Text('Akıllı Analiz'), subtitle: const Text('Yapay zeka destekli satış analizleri'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/ai')),
-                ListTile(leading: const Icon(Icons.receipt_long, color: Colors.red), title: const Text('GIB e-Fatura Entegrasyonu'), subtitle: const Text('e-Fatura / e-Arşiv yapılandırması'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/ayarlar/gib')),
-                ListTile(leading: const Icon(Icons.backup, color: AppRenkler.primary), title: const Text('Yedekleme'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/ayarlar/yedek')),
-                ListTile(leading: const Icon(Icons.people, color: AppRenkler.primary), title: const Text('Kullanıcı Yönetimi'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/kullanici')),
-                ListTile(leading: const Icon(Icons.bar_chart, color: AppRenkler.primary), title: const Text('Günlük Rapor'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/rapor/gunluk')),
+                ListTile(
+                    leading: const Icon(Icons.print, color: AppRenkler.primary),
+                    title: const Text('Yazdırma Merkezi'),
+                    subtitle: const Text(
+                        'Yazıcılar · Fiş Tasarımı · Fatura Ayarları — tek sayfa'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/ayarlar/yazdirma')),
+                ListTile(
+                    leading: const Icon(Icons.store, color: Colors.indigo),
+                    title: const Text('Şube Yönetimi'),
+                    subtitle: const Text('Çoklu şube ekle ve yönet'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/sube')),
+                ListTile(
+                    leading:
+                        const Icon(Icons.local_shipping, color: Colors.teal),
+                    title: const Text('İrsaliye / Sevkiyat'),
+                    subtitle: const Text('Sevk irsaliyeleri yönetimi'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/irsaliye')),
+                ListTile(
+                    leading: const Icon(Icons.inventory_2, color: Colors.brown),
+                    title: const Text('Lot / Seri No Takibi'),
+                    subtitle: const Text('SKT ve lot takibi'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/lot')),
+                ListTile(
+                    leading: const Icon(Icons.auto_graph, color: Colors.purple),
+                    title: const Text('Akıllı Analiz'),
+                    subtitle:
+                        const Text('Yapay zeka destekli satış analizleri'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/ai')),
+                ListTile(
+                    leading: const Icon(Icons.receipt_long, color: Colors.red),
+                    title: const Text('GIB e-Fatura Entegrasyonu'),
+                    subtitle: const Text('e-Fatura / e-Arşiv yapılandırması'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/ayarlar/gib')),
+                ListTile(
+                    leading:
+                        const Icon(Icons.backup, color: AppRenkler.primary),
+                    title: const Text('Yedekleme'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/ayarlar/yedek')),
+                ListTile(
+                    leading:
+                        const Icon(Icons.people, color: AppRenkler.primary),
+                    title: const Text('Kullanıcı Yönetimi'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/kullanici')),
+                ListTile(
+                    leading:
+                        const Icon(Icons.bar_chart, color: AppRenkler.primary),
+                    title: const Text('Günlük Rapor'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/rapor/gunluk')),
                 const Divider(),
                 _AyarBaslik('Kategoriler & Diğer'),
-                ListTile(leading: const Icon(Icons.category, color: AppRenkler.primary), title: const Text('Kategoriler'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/urun/kategori')),
-                ListTile(leading: const Icon(Icons.branding_watermark, color: AppRenkler.primary), title: const Text('Markalar'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/urun/marka')),
-                ListTile(leading: const Icon(Icons.label, color: AppRenkler.primary), title: const Text('Etiket Yazdır'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/barkod/etiket')),
-                ListTile(leading: const Icon(Icons.qr_code_2, color: Colors.deepPurple), title: const Text('Barkod Üreteci'), subtitle: const Text('EAN-13, QR, Code128 üret ve kaydet'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/barkod/uret')),
-                ListTile(leading: const Icon(Icons.local_offer, color: AppRenkler.primary), title: const Text('Promosyonlar'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/promosyon')),
-                ListTile(leading: const Icon(Icons.local_shipping, color: AppRenkler.primary), title: const Text('Tedarikçi Siparişleri'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/tedarik')),
-                ListTile(leading: const Icon(Icons.straighten, color: Colors.brown), title: const Text('Birim Yönetimi'), subtitle: const Text('Adet, kg, lt gibi birimler'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/birim')),
-                ListTile(leading: Icon(Icons.history, color: context.textSecondary), title: const Text('Sistem Logları'), subtitle: const Text('Hata ve işlem kayıtları'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/ayarlar/log')),
-                ListTile(leading: Icon(Icons.currency_exchange, color: context.textSecondary), title: const Text('Döviz Kurları'), subtitle: const Text('USD, EUR, GBP karşılıkları'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/ayarlar/doviz')),
-                ListTile(leading: Icon(Icons.smart_toy_outlined, color: context.textSecondary), title: const Text('AI Asistan Ayarları'), subtitle: const Text('Gemini API anahtarı, akıllı sohbet ve foto doldurma'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/ayarlar/ai-asistan')),
+                ListTile(
+                    leading:
+                        const Icon(Icons.category, color: AppRenkler.primary),
+                    title: const Text('Kategoriler'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/urun/kategori')),
+                ListTile(
+                    leading: const Icon(Icons.branding_watermark,
+                        color: AppRenkler.primary),
+                    title: const Text('Markalar'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/urun/marka')),
+                ListTile(
+                    leading: const Icon(Icons.label, color: AppRenkler.primary),
+                    title: const Text('Etiket Yazdır'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/barkod/etiket')),
+                ListTile(
+                    leading:
+                        const Icon(Icons.qr_code_2, color: Colors.deepPurple),
+                    title: const Text('Barkod Üreteci'),
+                    subtitle: const Text('EAN-13, QR, Code128 üret ve kaydet'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/barkod/uret')),
+                ListTile(
+                    leading: const Icon(Icons.local_offer,
+                        color: AppRenkler.primary),
+                    title: const Text('Promosyonlar'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/promosyon')),
+                ListTile(
+                    leading: const Icon(Icons.local_shipping,
+                        color: AppRenkler.primary),
+                    title: const Text('Tedarikçi Siparişleri'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/tedarik')),
+                ListTile(
+                    leading: const Icon(Icons.straighten, color: Colors.brown),
+                    title: const Text('Birim Yönetimi'),
+                    subtitle: const Text('Adet, kg, lt gibi birimler'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/birim')),
+                ListTile(
+                    leading: Icon(Icons.history, color: context.textSecondary),
+                    title: const Text('Sistem Logları'),
+                    subtitle: const Text('Hata ve işlem kayıtları'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/ayarlar/log')),
+                ListTile(
+                    leading: Icon(Icons.currency_exchange,
+                        color: context.textSecondary),
+                    title: const Text('Döviz Kurları'),
+                    subtitle: const Text('USD, EUR, GBP karşılıkları'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/ayarlar/doviz')),
+                ListTile(
+                    leading: Icon(Icons.smart_toy_outlined,
+                        color: context.textSecondary),
+                    title: const Text('AI Asistan Ayarları'),
+                    subtitle: const Text(
+                        'Gemini API anahtarı, akıllı sohbet ve foto doldurma'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/ayarlar/ai-asistan')),
                 ListTile(
                   leading: const Icon(Icons.cloud_sync, color: Colors.blue),
                   title: const Text('Bulut Senkronizasyon'),
-                  subtitle: const Text('Supabase ile bulut veri senkronizasyonu'),
+                  subtitle:
+                      const Text('Supabase ile bulut veri senkronizasyonu'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/ayarlar/bulut-sync'),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.photo_library_outlined, color: Colors.teal),
+                  leading: const Icon(Icons.photo_library_outlined,
+                      color: Colors.teal),
                   title: const Text('İşyeri Fotoğrafları (Web Sitesi)'),
-                  subtitle: const Text('QR menü sitesindeki fotoğrafları buradan yönetin'),
+                  subtitle: const Text(
+                      'QR menü sitesindeki fotoğrafları buradan yönetin'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/ayarlar/site-fotograflari'),
+                ),
+                ListTile(
+                  leading:
+                      const Icon(Icons.edit_note_outlined, color: Colors.teal),
+                  title: const Text('Site İçeriği (Web Sitesi)'),
+                  subtitle: const Text(
+                      'İşletme adı, hakkımızda, iletişim ve konum bilgilerini buradan düzenleyin'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/ayarlar/site-icerik'),
                 ),
                 ListTile(
                   leading: const Icon(Icons.history, color: Colors.deepPurple),
@@ -856,40 +1099,112 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                   onTap: () => context.push('/ayarlar/audit-log'),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.health_and_safety_outlined, color: Colors.green),
+                  leading: const Icon(Icons.health_and_safety_outlined,
+                      color: Colors.green),
                   title: const Text('Veri Sağlığı Merkezi'),
-                  subtitle: const Text('Mutabakat, negatif stok, mükerrer barkod, sync durumu'),
+                  subtitle: const Text(
+                      'Mutabakat, negatif stok, mükerrer barkod, sync durumu'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/ayarlar/veri-sagligi'),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.storefront_outlined, color: Colors.brown),
+                  leading: const Icon(Icons.storefront_outlined,
+                      color: Colors.brown),
                   title: const Text('Fiyat Grupları (Bayi/Toptan)'),
                   subtitle: const Text('Bayi tipleri ve toptan fiyatlandırma'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/toptan/fiyat-gruplari'),
                 ),
-                ListTile(leading: const Icon(Icons.sync_alt, color: AppRenkler.primary), title: const Text('Veri Aktarımı WiFi'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/ayarlar/sync')),
-                ListTile(leading: const Icon(Icons.receipt, color: Colors.red), title: const Text('GIB E-Fatura Ayarları'), subtitle: const Text('VKN, vergi dairesi, API bilgileri'), trailing: const Icon(Icons.chevron_right), onTap: () => _gibAyarlariDuzenle()),
+                ListTile(
+                    leading:
+                        const Icon(Icons.sync_alt, color: AppRenkler.primary),
+                    title: const Text('Veri Aktarımı WiFi'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/ayarlar/sync')),
+                ListTile(
+                    leading: const Icon(Icons.receipt, color: Colors.red),
+                    title: const Text('GIB E-Fatura Ayarları'),
+                    subtitle: const Text('VKN, vergi dairesi, API bilgileri'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _gibAyarlariDuzenle()),
                 const Divider(),
                 _AyarBaslik('Veri İşlemleri'),
-                ListTile(leading: const Icon(Icons.bolt_outlined, color: Colors.deepPurple), title: const Text('Toplu Ürün İşlemi'), subtitle: const Text('Fiyat, grup, KDV toplu güncelleme'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/urun/toplu-islem')),
-                ListTile(leading: const Icon(Icons.price_change_outlined, color: Colors.orange), title: const Text('Toplu Fiyat Güncelleme'), subtitle: const Text('Kategori/marka bazlı zam/indirim'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/urun/toplu-fiyat')),
-                ListTile(leading: const Icon(Icons.trending_up, color: Colors.green), title: const Text('Kar / Zarar Raporu'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/rapor/kar')),
-                ListTile(leading: const Icon(Icons.visibility, color: Colors.green), title: const Text('Pasif Ürünleri Aktif Yap'), subtitle: const Text('Listede görünmeyen ürünleri aktif hale getir'), trailing: const Icon(Icons.chevron_right), onTap: _pasifleriAktifYap),
-                ListTile(leading: const Icon(Icons.upload_file, color: Colors.green), title: const Text('Ürünleri Excel\'e Aktar'), subtitle: const Text('Tüm ürünleri xlsx olarak paylaş'), trailing: const Icon(Icons.chevron_right), onTap: _urunleriExcelEAktar),
-                ListTile(leading: const Icon(Icons.download_for_offline, color: Colors.blue), title: const Text('Excel\'den Ürün Al'), subtitle: const Text('Xlsx dosyasından toplu yükle/güncelle'), trailing: const Icon(Icons.chevron_right), onTap: _exceldenUrunIceAl),
-                ListTile(leading: const Icon(Icons.download, color: Colors.purple), title: const Text('Veritabanını İçe Aktar'), subtitle: const Text('.db dosyasından geri yükleme yap'), trailing: const Icon(Icons.chevron_right), onTap: _veritabaniniIceriAl),
-                ListTile(leading: const Icon(Icons.upload_file, color: Colors.orange), title: const Text('Veritabanını Dışa Aktar'), subtitle: const Text('${DbSabitler.dbAdi} dosyasını kaydet/paylaş'), trailing: const Icon(Icons.chevron_right), onTap: _dbDisariAktar),
-                ListTile(leading: const Icon(Icons.delete_sweep, color: Colors.red), title: const Text('Veritabanını Temizle', style: TextStyle(color: Colors.red)), subtitle: const Text('Tüm verileri kalıcı olarak siler'), trailing: const Icon(Icons.warning_amber, color: Colors.red), onTap: _veritabaniniTemizle),
+                ListTile(
+                    leading: const Icon(Icons.bolt_outlined,
+                        color: Colors.deepPurple),
+                    title: const Text('Toplu Ürün İşlemi'),
+                    subtitle: const Text('Fiyat, grup, KDV toplu güncelleme'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/urun/toplu-islem')),
+                ListTile(
+                    leading: const Icon(Icons.price_change_outlined,
+                        color: Colors.orange),
+                    title: const Text('Toplu Fiyat Güncelleme'),
+                    subtitle: const Text('Kategori/marka bazlı zam/indirim'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/urun/toplu-fiyat')),
+                ListTile(
+                    leading: const Icon(Icons.trending_up, color: Colors.green),
+                    title: const Text('Kar / Zarar Raporu'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/rapor/kar')),
+                ListTile(
+                    leading: const Icon(Icons.visibility, color: Colors.green),
+                    title: const Text('Pasif Ürünleri Aktif Yap'),
+                    subtitle: const Text(
+                        'Listede görünmeyen ürünleri aktif hale getir'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _pasifleriAktifYap),
+                ListTile(
+                    leading: const Icon(Icons.upload_file, color: Colors.green),
+                    title: const Text('Ürünleri Excel\'e Aktar'),
+                    subtitle: const Text('Tüm ürünleri xlsx olarak paylaş'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _urunleriExcelEAktar),
+                ListTile(
+                    leading: const Icon(Icons.download_for_offline,
+                        color: Colors.blue),
+                    title: const Text('Excel\'den Ürün Al'),
+                    subtitle:
+                        const Text('Xlsx dosyasından toplu yükle/güncelle'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _exceldenUrunIceAl),
+                ListTile(
+                    leading: const Icon(Icons.download, color: Colors.purple),
+                    title: const Text('Veritabanını İçe Aktar'),
+                    subtitle: const Text('.db dosyasından geri yükleme yap'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _veritabaniniIceriAl),
+                ListTile(
+                    leading:
+                        const Icon(Icons.upload_file, color: Colors.orange),
+                    title: const Text('Veritabanını Dışa Aktar'),
+                    subtitle: const Text(
+                        '${DbSabitler.dbAdi} dosyasını kaydet/paylaş'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _dbDisariAktar),
+                ListTile(
+                    leading: const Icon(Icons.delete_sweep, color: Colors.red),
+                    title: const Text('Veritabanını Temizle',
+                        style: TextStyle(color: Colors.red)),
+                    subtitle: const Text('Tüm verileri kalıcı olarak siler'),
+                    trailing:
+                        const Icon(Icons.warning_amber, color: Colors.red),
+                    onTap: _veritabaniniTemizle),
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.logout, color: Colors.red),
-                  title: const Text('Çıkış Yap', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                  title: const Text('Çıkış Yap',
+                      style: TextStyle(
+                          color: Colors.red, fontWeight: FontWeight.w600)),
                   onTap: _cikisYap,
                 ),
                 const SizedBox(height: 8),
-                Center(child: Text('MarketPlus v${UygSabitler.versiyon}', style: TextStyle(color: TsRenk.metinIkincil(context), fontSize: 12))),
+                Center(
+                    child: Text('MarketPlus v${UygSabitler.versiyon}',
+                        style: TextStyle(
+                            color: TsRenk.metinIkincil(context),
+                            fontSize: 12))),
                 const SizedBox(height: 16),
               ]),
       ),
@@ -907,9 +1222,16 @@ class _SonucSatiri extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        child:
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text(etiket, style: const TextStyle(fontSize: 14)),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2), decoration: BoxDecoration(color: Color.fromARGB(26, renk.red, renk.green, renk.blue), borderRadius: BorderRadius.circular(12)), child: Text('$sayi', style: TextStyle(fontWeight: FontWeight.w700, color: renk))),
+          Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+              decoration: BoxDecoration(
+                  color: Color.fromARGB(26, renk.red, renk.green, renk.blue),
+                  borderRadius: BorderRadius.circular(12)),
+              child: Text('$sayi',
+                  style: TextStyle(fontWeight: FontWeight.w700, color: renk))),
         ]),
       );
 }
@@ -920,6 +1242,10 @@ class _AyarBaslik extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-        child: Text(baslik, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Theme.of(context).colorScheme.primary)),
+        child: Text(baslik,
+            style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.primary)),
       );
 }

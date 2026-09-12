@@ -22,6 +22,12 @@ class SiteIcerikServisi {
 
   static const String _bucket = 'isyeri-fotograflari';
   static const String _anahtar = 'isyeri_gorselleri';
+  // FAZ 1 UI/UX: qr_menu_sayfasi.html'deki işletme adı/alt yazı/hakkımızda
+  // metni/iletişim/konum/istatistik bilgileri ÖNCEDEN sadece HTML dosyasının
+  // içine sabit yazılıydı — her değişiklikte dosyayı elden düzenleyip
+  // yeniden yüklemek gerekiyordu. Fotoğraf galerisiyle AYNI kanıtlanmış
+  // desen (site_icerik key-value tablosu) kullanılarak buraya taşındı.
+  static const String _icerikAnahtari = 'isletme_bilgileri';
 
   Future<(String, String)?> _ayar() async {
     final url = await SupabaseAyarlari.urlOku();
@@ -42,10 +48,13 @@ class SiteIcerikServisi {
       final a = await _ayar();
       if (a == null) return [];
       final (url, key) = a;
-      final r = await http.get(
-        Uri.parse('$url/rest/v1/site_icerik?anahtar=eq.$_anahtar&select=deger'),
-        headers: _h(key),
-      ).timeout(const Duration(seconds: 15));
+      final r = await http
+          .get(
+            Uri.parse(
+                '$url/rest/v1/site_icerik?anahtar=eq.$_anahtar&select=deger'),
+            headers: _h(key),
+          )
+          .timeout(const Duration(seconds: 15));
       if (r.statusCode != 200) return [];
       final rows = jsonDecode(r.body) as List;
       if (rows.isEmpty || rows.first['deger'] == null) return [];
@@ -64,21 +73,74 @@ class SiteIcerikServisi {
       final a = await _ayar();
       if (a == null) return false;
       final (url, key) = a;
-      final r = await http.post(
-        Uri.parse('$url/rest/v1/site_icerik?on_conflict=anahtar'),
-        headers: {
-          ..._h(key, contentType: 'application/json'),
-          'Prefer': 'resolution=merge-duplicates,return=minimal',
-        },
-        body: jsonEncode({
-          'anahtar': _anahtar,
-          'deger': jsonEncode(adresler),
-          'last_updated': DateTime.now().toUtc().toIso8601String(),
-        }),
-      ).timeout(const Duration(seconds: 15));
+      final r = await http
+          .post(
+            Uri.parse('$url/rest/v1/site_icerik?on_conflict=anahtar'),
+            headers: {
+              ..._h(key, contentType: 'application/json'),
+              'Prefer': 'resolution=merge-duplicates,return=minimal',
+            },
+            body: jsonEncode({
+              'anahtar': _anahtar,
+              'deger': jsonEncode(adresler),
+              'last_updated': DateTime.now().toUtc().toIso8601String(),
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
       return r.statusCode >= 200 && r.statusCode < 300;
     } catch (e) {
       if (kDebugMode) debugPrint('SiteIcerik kaydet hatası: $e');
+      return false;
+    }
+  }
+
+  /// Buluttaki güncel işletme bilgilerini getirir (yoksa null — site
+  /// kendi hardcoded yedeğini kullanır, hiçbir şey bozulmaz).
+  Future<Map<String, dynamic>?> isletmeBilgileriGetir() async {
+    try {
+      final a = await _ayar();
+      if (a == null) return null;
+      final (url, key) = a;
+      final r = await http
+          .get(
+            Uri.parse(
+                '$url/rest/v1/site_icerik?anahtar=eq.$_icerikAnahtari&select=deger'),
+            headers: _h(key),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (r.statusCode != 200) return null;
+      final rows = jsonDecode(r.body) as List;
+      if (rows.isEmpty || rows.first['deger'] == null) return null;
+      return jsonDecode(rows.first['deger'] as String) as Map<String, dynamic>;
+    } catch (e) {
+      if (kDebugMode) debugPrint('İşletme bilgileri getir hatası: $e');
+      return null;
+    }
+  }
+
+  /// İşletme bilgilerini buluta kaydeder (site_icerik upsert).
+  Future<bool> isletmeBilgileriKaydet(Map<String, dynamic> veri) async {
+    try {
+      final a = await _ayar();
+      if (a == null) return false;
+      final (url, key) = a;
+      final r = await http
+          .post(
+            Uri.parse('$url/rest/v1/site_icerik?on_conflict=anahtar'),
+            headers: {
+              ..._h(key, contentType: 'application/json'),
+              'Prefer': 'resolution=merge-duplicates,return=minimal',
+            },
+            body: jsonEncode({
+              'anahtar': _icerikAnahtari,
+              'deger': jsonEncode(veri),
+              'last_updated': DateTime.now().toUtc().toIso8601String(),
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+      return r.statusCode >= 200 && r.statusCode < 300;
+    } catch (e) {
+      if (kDebugMode) debugPrint('İşletme bilgileri kaydet hatası: $e');
       return false;
     }
   }
@@ -93,27 +155,31 @@ class SiteIcerikServisi {
       final (url, key) = a;
 
       final uzanti = yerelYol.split('.').last.toLowerCase();
-      final dosyaAdi = 'isyeri_${DateTime.now().millisecondsSinceEpoch}.$uzanti';
+      final dosyaAdi =
+          'isyeri_${DateTime.now().millisecondsSinceEpoch}.$uzanti';
       final bytes = await dosya.readAsBytes();
 
-      final r = await http.post(
-        Uri.parse('$url/storage/v1/object/$_bucket/$dosyaAdi'),
-        headers: {
-          ..._h(key),
-          'Content-Type': switch (uzanti) {
-            'png' => 'image/png',
-            'webp' => 'image/webp',
-            _ => 'image/jpeg',
-          },
-          'x-upsert': 'true',
-        },
-        body: bytes,
-      ).timeout(const Duration(seconds: 30));
+      final r = await http
+          .post(
+            Uri.parse('$url/storage/v1/object/$_bucket/$dosyaAdi'),
+            headers: {
+              ..._h(key),
+              'Content-Type': switch (uzanti) {
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+                _ => 'image/jpeg',
+              },
+              'x-upsert': 'true',
+            },
+            body: bytes,
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (r.statusCode == 200 || r.statusCode == 201) {
         return '$url/storage/v1/object/public/$_bucket/$dosyaAdi';
       }
-      if (kDebugMode) debugPrint('Foto yükleme başarısız (${r.statusCode}): ${r.body}');
+      if (kDebugMode)
+        debugPrint('Foto yükleme başarısız (${r.statusCode}): ${r.body}');
       return null;
     } catch (e) {
       if (kDebugMode) debugPrint('Foto yükleme hatası: $e');
@@ -130,10 +196,12 @@ class SiteIcerikServisi {
       final parca = '/storage/v1/object/public/$_bucket/';
       if (!adres.contains(parca)) return;
       final dosyaAdi = adres.split(parca).last;
-      await http.delete(
-        Uri.parse('$url/storage/v1/object/$_bucket/$dosyaAdi'),
-        headers: _h(key),
-      ).timeout(const Duration(seconds: 15));
+      await http
+          .delete(
+            Uri.parse('$url/storage/v1/object/$_bucket/$dosyaAdi'),
+            headers: _h(key),
+          )
+          .timeout(const Duration(seconds: 15));
     } catch (e) {
       if (kDebugMode) debugPrint('Foto silme hatası: $e');
     }

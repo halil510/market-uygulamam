@@ -30,6 +30,11 @@ class _MikrofonButonuState extends State<MikrofonButonu> with SingleTickerProvid
 
   @override
   void dispose() {
+    // 🔴 Derin analizde bulundu: kullanıcı mikrofonu açıp dinleme devam
+    // ederken bu widget'tan uzaklaşırsa (ör. ekranı kapatırsa), konuşma
+    // tanıma oturumu ve alttaki platform mikrofon akışı hiç durdurulmadan
+    // arka planda çalışmaya devam ediyordu.
+    if (_dinliyor) _ses.durdur();
     _pulseCtrl.dispose();
     super.dispose();
   }

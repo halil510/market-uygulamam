@@ -36,9 +36,11 @@ const List<_AnaButon> _anaButonlar = [
   _AnaButon('Hızlı Satış', Icons.point_of_sale, Color(0xFF4361EE), '/satis'),
   _AnaButon('Ürün Listesi', Icons.inventory_2, Color(0xFF3F51B5), '/urun'),
   _AnaButon('Cariler', Icons.people, Color(0xFF0097A7), '/cari'),
-  _AnaButon('Satış Listesi', Icons.receipt_long, Color(0xFF00BCD4), '/satis/liste'),
+  _AnaButon(
+      'Satış Listesi', Icons.receipt_long, Color(0xFF00BCD4), '/satis/liste'),
   _AnaButon('Masalar', Icons.table_restaurant, Color(0xFF6D4C41), '/masa'),
-  _AnaButon('Mutfak/Bar', Icons.soup_kitchen_outlined, Color(0xFFE64A19), '/mutfak'),
+  _AnaButon(
+      'Mutfak/Bar', Icons.soup_kitchen_outlined, Color(0xFFE64A19), '/mutfak'),
   _AnaButon('İadeler', Icons.undo, Color(0xFFF57F17), '/satis/iade'),
   _AnaButon('Promosyon', Icons.local_offer, Color(0xFFE65100), '/promosyon'),
   _AnaButon('Raporlar', Icons.bar_chart, Color(0xFF1565C0), '/rapor/satis'),
@@ -66,107 +68,169 @@ class _Kategori {
 
 const List<_Kategori> _tumKategoriler = [
   _Kategori('Satış', Icons.point_of_sale, [
-    _UygulamaItem('Hızlı Satış', Icons.point_of_sale, Color(0xFF2196F3), '/satis'),
-    _UygulamaItem('Satış Listesi', Icons.receipt_long, Color(0xFF00BCD4), '/satis/liste'),
+    _UygulamaItem(
+        'Hızlı Satış', Icons.point_of_sale, Color(0xFF2196F3), '/satis'),
+    _UygulamaItem(
+        'Satış Listesi', Icons.receipt_long, Color(0xFF00BCD4), '/satis/liste'),
     _UygulamaItem('İadeler', Icons.undo, Color(0xFFF57F17), '/satis/iade'),
-    _UygulamaItem('Sıcak Satış', Icons.local_fire_department, Color(0xFFB71C1C), '/satis/sicak'),
-    _UygulamaItem('Soğuk Satış', Icons.ac_unit, Color(0xFF1A237E), '/satis/soguk'),
-    _UygulamaItem('Fiş Önizleme', Icons.receipt_outlined, Color(0xFF4CAF50), '/satis/fis-onizleme'),
-    _UygulamaItem('Toptan Satış', Icons.local_shipping_outlined, Color(0xFF6D4C41), '/toptan/dashboard'),
-    _UygulamaItem('Fiyat Grupları', Icons.storefront_outlined, Color(0xFF8D6E63), '/toptan/fiyat-gruplari'),
+    _UygulamaItem('Sıcak Satış', Icons.local_fire_department, Color(0xFFB71C1C),
+        '/satis/sicak'),
+    _UygulamaItem(
+        'Soğuk Satış', Icons.ac_unit, Color(0xFF1A237E), '/satis/soguk'),
+    _UygulamaItem('Fiş Önizleme', Icons.receipt_outlined, Color(0xFF4CAF50),
+        '/satis/fis-onizleme'),
+    _UygulamaItem('Toptan Satış', Icons.local_shipping_outlined,
+        Color(0xFF6D4C41), '/toptan/dashboard'),
+    _UygulamaItem('Fiyat Grupları', Icons.storefront_outlined,
+        Color(0xFF8D6E63), '/toptan/fiyat-gruplari'),
   ]),
   _Kategori('Ürün & Stok', Icons.inventory_2, [
-    _UygulamaItem('Ürün Listesi', Icons.inventory_2, Color(0xFF3F51B5), '/urun'),
+    _UygulamaItem(
+        'Ürün Listesi', Icons.inventory_2, Color(0xFF3F51B5), '/urun'),
     _UygulamaItem('Ürün Ekle', Icons.add_box, Color(0xFF4CAF50), '/urun/ekle'),
-    _UygulamaItem('Fiyat Gör', Icons.price_check_rounded, Color(0xFF00ACC1), '/fiyat-gor'),
+    _UygulamaItem('Fiyat Gör', Icons.price_check_rounded, Color(0xFF00ACC1),
+        '/fiyat-gor'),
     _UygulamaItem('Stok Listesi', Icons.warehouse, Color(0xFF673AB7), '/stok'),
-    _UygulamaItem('Stok Sayım', Icons.calculate, Color(0xFF1976D2), '/stok/sayim'),
-    _UygulamaItem('Stok Hareket', Icons.swap_vert, Color(0xFF283593), '/stok/hareket'),
-    _UygulamaItem('Depo Transfer', Icons.local_shipping, Color(0xFFE65100), '/stok/transfer'),
-    _UygulamaItem('Kritik Stok', Icons.warning_amber, Color(0xFFE65100), '/stok'),
-    _UygulamaItem('Toplu İşlem', Icons.bolt_outlined, Color(0xFF1B5E20), '/urun/toplu-islem'),
-    _UygulamaItem('Toplu Fiyat', Icons.price_change_outlined, Color(0xFF4E342E), '/urun/toplu-fiyat'),
-    _UygulamaItem('Kategoriler', Icons.category, Color(0xFF9C27B0), '/urun/kategori'),
-    _UygulamaItem('Markalar', Icons.branding_watermark, Color(0xFF3F51B5), '/urun/marka'),
+    _UygulamaItem(
+        'Stok Sayım', Icons.calculate, Color(0xFF1976D2), '/stok/sayim'),
+    _UygulamaItem(
+        'Stok Hareket', Icons.swap_vert, Color(0xFF283593), '/stok/hareket'),
+    _UygulamaItem('Depo Transfer', Icons.local_shipping, Color(0xFFE65100),
+        '/stok/transfer'),
+    _UygulamaItem(
+        'Kritik Stok', Icons.warning_amber, Color(0xFFE65100), '/stok'),
+    _UygulamaItem('Toplu İşlem', Icons.bolt_outlined, Color(0xFF1B5E20),
+        '/urun/toplu-islem'),
+    _UygulamaItem('Toplu Fiyat', Icons.price_change_outlined, Color(0xFF4E342E),
+        '/urun/toplu-fiyat'),
+    _UygulamaItem(
+        'Kategoriler', Icons.category, Color(0xFF9C27B0), '/urun/kategori'),
+    _UygulamaItem(
+        'Markalar', Icons.branding_watermark, Color(0xFF3F51B5), '/urun/marka'),
     _UygulamaItem('Birimler', Icons.straighten, Color(0xFF795548), '/birim'),
-    _UygulamaItem('Lot/Seri Takibi', Icons.qr_code_2, Color(0xFF607D8B), '/lot'),
-    _UygulamaItem('PLU Yönetimi', Icons.grid_view_rounded, Color(0xFF2E7D32), '/urun/plu'),
+    _UygulamaItem(
+        'Lot/Seri Takibi', Icons.qr_code_2, Color(0xFF607D8B), '/lot'),
+    _UygulamaItem('PLU Yönetimi', Icons.grid_view_rounded, Color(0xFF2E7D32),
+        '/urun/plu'),
   ]),
   _Kategori('Masa & Restoran', Icons.table_restaurant, [
-    _UygulamaItem('Masalar', Icons.table_restaurant, Color(0xFF6D4C41), '/masa'),
-    _UygulamaItem('Mutfak/Bar', Icons.soup_kitchen_outlined, Color(0xFFE64A19), '/mutfak'),
-    _UygulamaItem('Rezervasyon', Icons.event_available, Color(0xFF6D4C41), '/rezervasyon'),
-    _UygulamaItem('Masa Raporu', Icons.assessment, Color(0xFF1565C0), '/masa-rapor'),
+    _UygulamaItem(
+        'Masalar', Icons.table_restaurant, Color(0xFF6D4C41), '/masa'),
+    _UygulamaItem('Mutfak/Bar', Icons.soup_kitchen_outlined, Color(0xFFE64A19),
+        '/mutfak'),
+    _UygulamaItem('Rezervasyon', Icons.event_available, Color(0xFF6D4C41),
+        '/rezervasyon'),
+    _UygulamaItem(
+        'Masa Raporu', Icons.assessment, Color(0xFF1565C0), '/masa-rapor'),
     _UygulamaItem('QR Menü', Icons.qr_code_2, Color(0xFF6D4C41), '/masa'),
   ]),
   _Kategori('Cari & Fatura', Icons.people, [
     _UygulamaItem('Cariler', Icons.people, Color(0xFF0097A7), '/cari'),
-    _UygulamaItem('Cari Ekle', Icons.person_add, Color(0xFF4CAF50), '/cari/ekle'),
-    _UygulamaItem('Cari Hareket', Icons.history, Color(0xFF607D8B), '/cari/hareket'),
+    _UygulamaItem(
+        'Cari Ekle', Icons.person_add, Color(0xFF4CAF50), '/cari/ekle'),
+    _UygulamaItem(
+        'Cari Hareket', Icons.history, Color(0xFF607D8B), '/cari/hareket'),
     _UygulamaItem('Faturalar', Icons.receipt, Color(0xFF4E342E), '/fatura'),
-    _UygulamaItem('Fatura Oluştur', Icons.add, Color(0xFF4CAF50), '/fatura/yeni'),
-    _UygulamaItem('İrsaliye', Icons.local_shipping, Color(0xFF00695C), '/irsaliye'),
+    _UygulamaItem(
+        'Fatura Oluştur', Icons.add, Color(0xFF4CAF50), '/fatura/yeni'),
+    _UygulamaItem(
+        'İrsaliye', Icons.local_shipping, Color(0xFF00695C), '/irsaliye'),
   ]),
   _Kategori('Promosyon', Icons.local_offer, [
-    _UygulamaItem('Promosyonlar', Icons.local_offer, Color(0xFFE65100), '/promosyon'),
+    _UygulamaItem(
+        'Promosyonlar', Icons.local_offer, Color(0xFFE65100), '/promosyon'),
     _UygulamaItem('Promosyon Ekle', Icons.add, Color(0xFF4CAF50), '/promosyon'),
   ]),
   _Kategori('Finans', Icons.account_balance, [
-    _UygulamaItem('Banka Yönetimi', Icons.business, Color(0xFF1565C0), '/banka'),
-    _UygulamaItem('Kredi Kartları', Icons.credit_card, Color(0xFFE65100), '/kredi-karti'),
-    _UygulamaItem('Borç Dashboard', Icons.payment, Color(0xFFD32F2F), '/borc-dashboard'),
-    _UygulamaItem('Mail Bağlantısı', Icons.email_outlined, Color(0xFF1976D2), '/mail-baglanti'),
-    _UygulamaItem('Banka Hareketleri', Icons.history, Color(0xFF6A1B9A), '/banka-hareket'),
+    _UygulamaItem(
+        'Banka Yönetimi', Icons.business, Color(0xFF1565C0), '/banka'),
+    _UygulamaItem(
+        'Kredi Kartları', Icons.credit_card, Color(0xFFE65100), '/kredi-karti'),
+    _UygulamaItem(
+        'Borç Dashboard', Icons.payment, Color(0xFFD32F2F), '/borc-dashboard'),
+    _UygulamaItem('Mail Bağlantısı', Icons.email_outlined, Color(0xFF1976D2),
+        '/mail-baglanti'),
+    _UygulamaItem('Banka Hareketleri', Icons.history, Color(0xFF6A1B9A),
+        '/banka-hareket'),
     _UygulamaItem('Kasa', Icons.account_balance, Color(0xFF2E7D32), '/kasa'),
-    _UygulamaItem('Kasa Raporu', Icons.account_balance_wallet, Color(0xFF1B5E20), '/kasa/rapor'),
-    _UygulamaItem('Kasa Hareket', Icons.history, Color(0xFF607D8B), '/kasa/hareket'),
-    _UygulamaItem('Virman', Icons.swap_horiz, Color(0xFF4527A0), '/kasa/virman'),
+    _UygulamaItem('Kasa Raporu', Icons.account_balance_wallet,
+        Color(0xFF1B5E20), '/kasa/rapor'),
+    _UygulamaItem(
+        'Kasa Hareket', Icons.history, Color(0xFF607D8B), '/kasa/hareket'),
+    _UygulamaItem(
+        'Virman', Icons.swap_horiz, Color(0xFF4527A0), '/kasa/virman'),
     _UygulamaItem('Giderler', Icons.money_off, Color(0xFFC62828), '/gider'),
     _UygulamaItem('Gider Ekle', Icons.add, Color(0xFF4CAF50), '/gider/ekle'),
-    _UygulamaItem('Tahsilat/Ödeme', Icons.payments, Color(0xFF2E7D32), '/cari/tahsilat'),
+    _UygulamaItem(
+        'Tahsilat/Ödeme', Icons.payments, Color(0xFF2E7D32), '/cari/tahsilat'),
     _UygulamaItem('Borç Ekle', Icons.add_card, Color(0xFF4CAF50), '/borc-ekle'),
   ]),
   _Kategori('Raporlar', Icons.bar_chart, [
-    _UygulamaItem('Günlük Rapor', Icons.assessment, Color(0xFF6A1B9A), '/rapor/gunluk'),
-    _UygulamaItem('Satış Raporu', Icons.timeline, Color(0xFF1565C0), '/rapor/satis'),
-    _UygulamaItem('Kar / Zarar', Icons.trending_up, Color(0xFF006064), '/rapor/kar'),
-    _UygulamaItem('Kasa Raporu', Icons.account_balance_wallet, Color(0xFF1B5E20), '/kasa/rapor'),
-    _UygulamaItem('Stok Raporu', Icons.inventory_2, Color(0xFF3F51B5), '/rapor/stok'),
-    _UygulamaItem('Cari Raporu', Icons.people, Color(0xFF0097A7), '/rapor/cari'),
+    _UygulamaItem(
+        'Günlük Rapor', Icons.assessment, Color(0xFF6A1B9A), '/rapor/gunluk'),
+    _UygulamaItem(
+        'Satış Raporu', Icons.timeline, Color(0xFF1565C0), '/rapor/satis'),
+    _UygulamaItem(
+        'Kar / Zarar', Icons.trending_up, Color(0xFF006064), '/rapor/kar'),
+    _UygulamaItem('Kasa Raporu', Icons.account_balance_wallet,
+        Color(0xFF1B5E20), '/kasa/rapor'),
+    _UygulamaItem(
+        'Stok Raporu', Icons.inventory_2, Color(0xFF3F51B5), '/rapor/stok'),
+    _UygulamaItem(
+        'Cari Raporu', Icons.people, Color(0xFF0097A7), '/rapor/cari'),
     _UygulamaItem('AI Analiz', Icons.auto_graph, Color(0xFF4527A0), '/ai'),
   ]),
   _Kategori('Tedarik & Alım', Icons.shopping_cart, [
-    _UygulamaItem('Tedarikçi Sipariş', Icons.shopping_cart_outlined, Color(0xFF558B2F), '/tedarik'),
-    _UygulamaItem('Mal Alımı', Icons.shopping_cart, Color(0xFF558B2F), '/tedarik/alim'),
+    _UygulamaItem('Tedarikçi Sipariş', Icons.shopping_cart_outlined,
+        Color(0xFF558B2F), '/tedarik'),
+    _UygulamaItem(
+        'Mal Alımı', Icons.shopping_cart, Color(0xFF558B2F), '/tedarik/alim'),
   ]),
   _Kategori('Barkod & Etiket', Icons.qr_code_2, [
-    _UygulamaItem('Etiket Yazdır', Icons.qr_code_2, Color(0xFF4E342E), '/barkod/etiket'),
-    _UygulamaItem('Barkod Üreteci', Icons.qr_code, Color(0xFF2196F3), '/barkod/uret'),
+    _UygulamaItem(
+        'Etiket Yazdır', Icons.qr_code_2, Color(0xFF4E342E), '/barkod/etiket'),
+    _UygulamaItem(
+        'Barkod Üreteci', Icons.qr_code, Color(0xFF2196F3), '/barkod/uret'),
   ]),
   _Kategori('Sistem', Icons.settings, [
     _UygulamaItem('Ayarlar', Icons.settings, Color(0xFF546E7A), '/ayarlar'),
-    _UygulamaItem('Yazıcı Ayarları', Icons.print, Color(0xFF546E7A), '/ayarlar/yazici'),
-    _UygulamaItem('Yedekleme', Icons.backup, Color(0xFF2E7D32), '/ayarlar/yedek'),
-    _UygulamaItem('Kullanıcılar', Icons.people, Color(0xFFAD1457), '/kullanici'),
-    _UygulamaItem('Personel', Icons.badge_outlined, Color(0xFF7B1FA2), '/personel'),
+    _UygulamaItem(
+        'Yazıcı Ayarları', Icons.print, Color(0xFF546E7A), '/ayarlar/yazici'),
+    _UygulamaItem(
+        'Yedekleme', Icons.backup, Color(0xFF2E7D32), '/ayarlar/yedek'),
+    _UygulamaItem(
+        'Kullanıcılar', Icons.people, Color(0xFFAD1457), '/kullanici'),
+    _UygulamaItem(
+        'Personel', Icons.badge_outlined, Color(0xFF7B1FA2), '/personel'),
     _UygulamaItem('Şubeler', Icons.store, Color(0xFF1A237E), '/sube'),
     _UygulamaItem('Vardiya', Icons.access_time, Color(0xFF37474F), '/vardiya'),
-    _UygulamaItem('Bildirimler', Icons.notifications, Color(0xFFE91E63), '/bildirimler'),
-    _UygulamaItem('Sistem Logları', Icons.history, Color(0xFF607D8B), '/ayarlar/log'),
-    _UygulamaItem('GIB e-Fatura', Icons.receipt, Color(0xFFC62828), '/ayarlar/gib'),
-    _UygulamaItem('Fatura Ayarları', Icons.description, Color(0xFF3E2723), '/ayarlar/fatura'),
-    _UygulamaItem('Fiş Tasarımı', Icons.receipt_outlined, Color(0xFF263238), '/ayarlar/fis'),
-    _UygulamaItem('Bulut Senkronizasyon', Icons.cloud_sync, Color(0xFF4361EE), '/ayarlar/bulut-sync'),
-    _UygulamaItem('Veri Aktarımı WiFi', Icons.sync_alt, Color(0xFF1565C0), '/ayarlar/sync'),
-    _UygulamaItem('Kullanıcı Değiştir', Icons.swap_horiz, Color(0xFF4361EE), '/kullanici-degistir'),
+    _UygulamaItem(
+        'Bildirimler', Icons.notifications, Color(0xFFE91E63), '/bildirimler'),
+    _UygulamaItem(
+        'Sistem Logları', Icons.history, Color(0xFF607D8B), '/ayarlar/log'),
+    _UygulamaItem(
+        'GIB e-Fatura', Icons.receipt, Color(0xFFC62828), '/ayarlar/gib'),
+    _UygulamaItem('Fatura Ayarları', Icons.description, Color(0xFF3E2723),
+        '/ayarlar/fatura'),
+    _UygulamaItem('Fiş Tasarımı', Icons.receipt_outlined, Color(0xFF263238),
+        '/ayarlar/fis'),
+    _UygulamaItem('Bulut Senkronizasyon', Icons.cloud_sync, Color(0xFF4361EE),
+        '/ayarlar/bulut-sync'),
+    _UygulamaItem('Veri Aktarımı WiFi', Icons.sync_alt, Color(0xFF1565C0),
+        '/ayarlar/sync'),
+    _UygulamaItem('Kullanıcı Değiştir', Icons.swap_horiz, Color(0xFF4361EE),
+        '/kullanici-degistir'),
   ]),
 ];
 
 /// Masa/Restoran modülüne ait bir rota mı? — Masa Modu kapalıyken
 /// bu rotalar dashboard'dan gizlenir.
 bool _masaModulOgesi(String rota) =>
-    rota == '/masa' || rota == '/mutfak' || rota == '/rezervasyon' ||
-    rota == '/masa-rapor' || rota == '/qr-menu';
+    rota == '/masa' ||
+    rota == '/mutfak' ||
+    rota == '/rezervasyon' ||
+    rota == '/masa-rapor' ||
+    rota == '/qr-menu';
 
 /// Saate göre selamlama metni.
 String _selamlama() {
@@ -190,7 +254,6 @@ class DashboardEkrani extends ConsumerStatefulWidget {
 
 class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
     with SingleTickerProviderStateMixin {
-
   final _yazdirma = YazdirmaServisi();
   bool _btBagliMi = false;
   bool _varsayilanSifreUyarisi = false;
@@ -206,13 +269,13 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
   void initState() {
     super.initState();
     _animCtrl = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 600));
+        vsync: this, duration: const Duration(milliseconds: 600));
     _btDurumKontrol();
     // Yedek başlatma: splash'te zamanlama sorunu olursa (auth durumu
     // henüz hazır değilse) Dashboard açıldığında kesin olarak başlatılır.
     if (!AktifSubeServisi().hazir) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => AktifSubeServisi().baslat());
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => AktifSubeServisi().baslat());
     }
     _aramaCtrl.addListener(() {
       setState(() => _aramaMetni = _aramaCtrl.text.toLowerCase());
@@ -245,19 +308,26 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
           border: Border.all(color: Colors.red.shade200),
         ),
         child: Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 22),
+          Icon(Icons.warning_amber_rounded,
+              color: Colors.red.shade700, size: 22),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Güvenlik Uyarısı',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.red.shade800)),
-              Text('Admin şifreniz hâlâ varsayılan ("1234") — lütfen değiştirin.',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      color: Colors.red.shade800)),
+              Text(
+                  'Admin şifreniz hâlâ varsayılan ("1234") — lütfen değiştirin.',
                   style: TextStyle(fontSize: 11.5, color: Colors.red.shade700)),
             ]),
           ),
           TextButton(
             onPressed: () => context.push('/sifre'),
-            child: const Text('Değiştir', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: const Text('Değiştir',
+                style: TextStyle(fontWeight: FontWeight.w700)),
           ),
           IconButton(
             icon: Icon(Icons.close, size: 18, color: Colors.red.shade400),
@@ -279,7 +349,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
   /// "Tüm Şubeler" görünümünü seçmesini sağlayan dialog.
   Future<void> _subeSecDialogGoster() async {
     final db = await Veritabani().db;
-    final subeler = await db.query('subeler', where: 'aktif = 1', orderBy: 'sube_adi ASC');
+    final subeler =
+        await db.query('subeler', where: 'aktif = 1', orderBy: 'sube_adi ASC');
     if (!mounted) return;
 
     final secilen = await showDialog<({int? id, String ad})>(
@@ -301,7 +372,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                   leading: const Icon(Icons.store_outlined),
                   title: Text(s['sube_adi'] as String),
                   selected: AktifSubeServisi().subeId == s['id'],
-                  onTap: () => Navigator.pop(ctx, (id: s['id'] as int, ad: s['sube_adi'] as String)),
+                  onTap: () => Navigator.pop(
+                      ctx, (id: s['id'] as int, ad: s['sube_adi'] as String)),
                 )),
           ]),
         ),
@@ -309,7 +381,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
     );
     if (secilen == null || !mounted) return;
     await AktifSubeServisi().subeDegistir(secilen.id, yeniSubeAdi: secilen.ad);
-    if (mounted) setState(() {}); // dashboard verilerini yeni şubeye göre yenile
+    if (mounted)
+      setState(() {}); // dashboard verilerini yeni şubeye göre yenile
   }
 
   Future<void> _cikisYap() async {
@@ -324,7 +397,9 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
         ]),
         content: const Text('Oturumu kapatmak istediğinize emin misiniz?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hayır')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Hayır')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: TsRenk.hata),
@@ -339,17 +414,20 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
   }
 
   void _kullaniciDegistirAc() {
-    Navigator.push(context, PageRouteBuilder(
-      opaque: false,
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 280),
-      pageBuilder: (_, __, ___) => const KullaniciDegistirEkrani(),
-      transitionsBuilder: (_, a, __, c) => SlideTransition(
-        position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
-            .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
-        child: c,
-      ),
-    ));
+    Navigator.push(
+        context,
+        PageRouteBuilder(
+          opaque: false,
+          barrierColor: Colors.black54,
+          transitionDuration: const Duration(milliseconds: 280),
+          pageBuilder: (_, __, ___) => const KullaniciDegistirEkrani(),
+          transitionsBuilder: (_, a, __, c) => SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(
+                    CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+            child: c,
+          ),
+        ));
   }
 
   @override
@@ -367,7 +445,7 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
             if (!_tumUygulamalarGoster)
               dashAsync.when(
                 loading: () => const SliverFillRemaining(
-                  child: Center(child: AppYukleniyor(mesaj: 'Yükleniyor…'))),
+                    child: Center(child: AppYukleniyor(mesaj: 'Yükleniyor…'))),
                 error: (e, _) => SliverFillRemaining(
                   child: TsBosDurum(
                     ikon: Icons.error_outline,
@@ -375,7 +453,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                     altyazi: '$e',
                     renk: TsRenk.hata,
                     aksiyonMetni: 'Tekrar Dene',
-                    aksiyon: () => ref.read(dashboardProvider.notifier).yenile(),
+                    aksiyon: () =>
+                        ref.read(dashboardProvider.notifier).yenile(),
                   ),
                 ),
                 data: (data) {
@@ -400,7 +479,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
 
   // ── Modern AppBar ──────────────────────────────────────────────────────────
   Widget _modernAppBar() {
-    final saatTarih = DateFormat('HH:mm • dd MMMM yyyy', 'tr_TR').format(DateTime.now());
+    final saatTarih =
+        DateFormat('HH:mm • dd MMMM yyyy', 'tr_TR').format(DateTime.now());
     final ad = ref.watch(authProvider).aktifAd;
     final selamlama = _selamlama();
     final masaModu = ref.watch(masaModuProvider);
@@ -434,13 +514,21 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(children: [
-                    Image.asset('assets/images/logo.png', width: 22, height: 22,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.storefront,
-                            color: Colors.white70, size: 22)),
+                    Image.asset('assets/images/logo.png',
+                        width: 22,
+                        height: 22,
+                        errorBuilder: (_, __, ___) => const Icon(
+                            Icons.storefront,
+                            color: Colors.white70,
+                            size: 22)),
                     const SizedBox(width: 6),
-                    Image.asset('assets/images/logoYazı.png', height: 18,
+                    Image.asset('assets/images/logoYazı.png',
+                        height: 18,
                         errorBuilder: (_, __, ___) => const Text('MarketPlus',
-                            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600))),
+                            style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600))),
                     const SizedBox(width: 8),
                     // 🔴 DÜZELTME: Bu 3 rozet (Tümü/Şube/Yazıcı) Expanded/Flexible
                     // olmadan diziliyordu — uzun şube adında dar ekranlarda
@@ -450,86 +538,135 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    // Tüm Uygulamalar butonu
-                    GestureDetector(
-                      onTap: () => setState(() => _tumUygulamalarGoster = !_tumUygulamalarGoster),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(20),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white.withAlpha(40), width: 1),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(_tumUygulamalarGoster ? Icons.grid_view : Icons.apps,
-                              size: 16, color: Colors.white),
-                          const SizedBox(width: 4),
-                          Text(_tumUygulamalarGoster ? 'Ana Sayfa' : 'Tümü',
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
-                        ]),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Aktif Şube göstergesi — kilitli değilse tıklanınca
-                    // şube değiştirme seçeneği sunuyor.
-                    AnimatedBuilder(
-                      animation: AktifSubeServisi(),
-                      builder: (context, _) => GestureDetector(
-                        onTap: AktifSubeServisi().kilitliMi ? null : () => _subeSecDialogGoster(),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withAlpha(20),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.white.withAlpha(40), width: 1),
-                          ),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.store_outlined, size: 14, color: Colors.white),
-                            const SizedBox(width: 4),
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 90),
-                              child: Text(AktifSubeServisi().subeAdi,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                          // Tüm Uygulamalar butonu
+                          GestureDetector(
+                            onTap: () => setState(() =>
+                                _tumUygulamalarGoster = !_tumUygulamalarGoster),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withAlpha(20),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                    color: Colors.white.withAlpha(40),
+                                    width: 1),
+                              ),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                        _tumUygulamalarGoster
+                                            ? Icons.grid_view
+                                            : Icons.apps,
+                                        size: 16,
+                                        color: Colors.white),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                        _tumUygulamalarGoster
+                                            ? 'Ana Sayfa'
+                                            : 'Tümü',
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500)),
+                                  ]),
                             ),
-                            if (!AktifSubeServisi().kilitliMi) ...[
-                              const SizedBox(width: 2),
-                              const Icon(Icons.expand_more, size: 14, color: Colors.white70),
-                            ],
-                          ]),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Yazıcı durumu
-                    GestureDetector(
-                      onTap: () => context.push('/ayarlar/yazici'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Color.fromARGB(51, (_btBagliMi ? Colors.green : Colors.red).red,
-                              (_btBagliMi ? Colors.green : Colors.red).green,
-                              (_btBagliMi ? Colors.green : Colors.red).blue),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: _btBagliMi ? Colors.greenAccent : Colors.redAccent,
-                            width: 0.5,
                           ),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(_btBagliMi ? Icons.print : Icons.print_disabled,
-                              size: 14,
-                              color: _btBagliMi ? Colors.greenAccent : Colors.redAccent),
-                          const SizedBox(width: 4),
-                          Text(_btBagliMi ? 'Yazıcı Bağlı' : 'Yazıcı Yok',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color: _btBagliMi ? Colors.greenAccent : Colors.redAccent)),
-                        ]),
-                      ),
-                    ),
+                          const SizedBox(width: 8),
+                          // Aktif Şube göstergesi — kilitli değilse tıklanınca
+                          // şube değiştirme seçeneği sunuyor.
+                          AnimatedBuilder(
+                            animation: AktifSubeServisi(),
+                            builder: (context, _) => GestureDetector(
+                              onTap: AktifSubeServisi().kilitliMi
+                                  ? null
+                                  : () => _subeSecDialogGoster(),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withAlpha(20),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                      color: Colors.white.withAlpha(40),
+                                      width: 1),
+                                ),
+                                child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.store_outlined,
+                                          size: 14, color: Colors.white),
+                                      const SizedBox(width: 4),
+                                      ConstrainedBox(
+                                        constraints:
+                                            const BoxConstraints(maxWidth: 90),
+                                        child: Text(AktifSubeServisi().subeAdi,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                      if (!AktifSubeServisi().kilitliMi) ...[
+                                        const SizedBox(width: 2),
+                                        const Icon(Icons.expand_more,
+                                            size: 14, color: Colors.white70),
+                                      ],
+                                    ]),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Yazıcı durumu
+                          GestureDetector(
+                            onTap: () => context.push('/ayarlar/yazici'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Color.fromARGB(
+                                    51,
+                                    (_btBagliMi ? Colors.green : Colors.red)
+                                        .red,
+                                    (_btBagliMi ? Colors.green : Colors.red)
+                                        .green,
+                                    (_btBagliMi ? Colors.green : Colors.red)
+                                        .blue),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: _btBagliMi
+                                      ? Colors.greenAccent
+                                      : Colors.redAccent,
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                        _btBagliMi
+                                            ? Icons.print
+                                            : Icons.print_disabled,
+                                        size: 14,
+                                        color: _btBagliMi
+                                            ? Colors.greenAccent
+                                            : Colors.redAccent),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                        _btBagliMi
+                                            ? 'Yazıcı Bağlı'
+                                            : 'Yazıcı Yok',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500,
+                                            color: _btBagliMi
+                                                ? Colors.greenAccent
+                                                : Colors.redAccent)),
+                                  ]),
+                            ),
+                          ),
                         ]),
                       ),
                     ),
@@ -551,7 +688,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                         ),
                       ),
                       const SizedBox(width: 6),
-                      const Icon(Icons.swap_horiz_rounded, size: 18, color: Colors.white70),
+                      const Icon(Icons.swap_horiz_rounded,
+                          size: 18, color: Colors.white70),
                     ]),
                   ),
                   const SizedBox(height: 2),
@@ -577,17 +715,23 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                       child: GestureDetector(
                         onTap: () => context.push('/masa'),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.white.withAlpha(30),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withAlpha(60), width: 0.5),
+                            border: Border.all(
+                                color: Colors.white.withAlpha(60), width: 0.5),
                           ),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.table_restaurant, size: 14, color: Colors.white),
+                            const Icon(Icons.table_restaurant,
+                                size: 14, color: Colors.white),
                             const SizedBox(width: 4),
                             Text('$masaDoluSayisi masa dolu',
-                                style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500)),
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500)),
                           ]),
                         ),
                       ),
@@ -603,20 +747,28 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
           final sayi = ref.watch(okunmamisSayiProvider);
           return Stack(clipBehavior: Clip.none, children: [
             IconButton(
-              icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+              icon:
+                  const Icon(Icons.notifications_outlined, color: Colors.white),
               onPressed: () => context.push('/bildirimler'),
               tooltip: 'Bildirimler',
             ),
             if (sayi > 0)
               Positioned(
-                right: 6, top: 6,
+                right: 6,
+                top: 6,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10)),
                   constraints: const BoxConstraints(minWidth: 16),
                   child: Text(sayi > 99 ? '99+' : '$sayi',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700)),
                 ),
               ),
           ]);
@@ -703,7 +855,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
               : null,
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(ikon, size: 15, color: aktif ? Colors.white : context.textSecondary),
+          Icon(ikon,
+              size: 15, color: aktif ? Colors.white : context.textSecondary),
           const SizedBox(width: 6),
           Text(etiket,
               style: TextStyle(
@@ -718,7 +871,9 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
   // ── Ana Butonlar Sayfası (12 Büyük Buton) ─────────────────────────────────
   Widget _anaButonlarSayfasi() {
     final masaModu = ref.watch(masaModuProvider);
-    final liste = _anaButonlar.where((b) => masaModu || !_masaModulOgesi(b.rota)).toList();
+    final liste = _anaButonlar
+        .where((b) => masaModu || !_masaModulOgesi(b.rota))
+        .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
@@ -726,7 +881,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: TsResponsive.izgaraKolonSayisi(context, telefon: 2, tablet: 3, genis: 4),
+          crossAxisCount: TsResponsive.izgaraKolonSayisi(context,
+              telefon: 2, tablet: 3, genis: 4),
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
           childAspectRatio: 1.2,
@@ -741,12 +897,16 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
   Widget _buyukMenuKarti(_AnaButon item) {
     final masaSayisi = item.rota == '/masa'
         ? ref.watch(masaListesiProvider).maybeWhen(
-            data: (m) => m.where((x) => x.durum != 'bos').length, orElse: () => 0)
+            data: (m) => m.where((x) => x.durum != 'bos').length,
+            orElse: () => 0)
         : 0;
     final mutfakSayisi = item.rota == '/mutfak'
         ? ref.watch(mutfakProvider).maybeWhen(
-            data: (d) => d.siparisler.expand((s) => s.kalemler)
-                .where((k) => k.durum == 'beklemede' || k.durum == 'hazirlaniyor').length,
+            data: (d) => d.siparisler
+                .expand((s) => s.kalemler)
+                .where(
+                    (k) => k.durum == 'beklemede' || k.durum == 'hazirlaniyor')
+                .length,
             orElse: () => 0)
         : 0;
     final rozetSayisi = item.rota == '/masa' ? masaSayisi : mutfakSayisi;
@@ -766,13 +926,15 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
             end: Alignment.bottomRight,
             colors: [
               item.renk,
-              Color.fromARGB(204, item.renk.red, item.renk.green, item.renk.blue),
+              Color.fromARGB(
+                  204, item.renk.red, item.renk.green, item.renk.blue),
             ],
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Color.fromARGB(76, item.renk.red, item.renk.green, item.renk.blue),
+              color: Color.fromARGB(
+                  76, item.renk.red, item.renk.green, item.renk.blue),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -823,7 +985,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
             ),
             // Masa/Mutfak badge
             if (rozetSayisi > 0)
-              Positioned(top: 8, right: 8, child: _rozet(rozetSayisi, Colors.white)),
+              Positioned(
+                  top: 8, right: 8, child: _rozet(rozetSayisi, Colors.white)),
           ],
         ),
       ),
@@ -840,8 +1003,10 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
 
     final toplamEslesme = _aramaMetni.isEmpty
         ? -1
-        : kategoriler.expand((k) => k.uygulamalar)
-            .where((u) => u.ad.toLowerCase().contains(_aramaMetni)).length;
+        : kategoriler
+            .expand((k) => k.uygulamalar)
+            .where((u) => u.ad.toLowerCase().contains(_aramaMetni))
+            .length;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -865,15 +1030,18 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
               controller: _aramaCtrl,
               decoration: InputDecoration(
                 hintText: 'Uygulama ara...',
-                prefixIcon: Icon(Icons.search, color: context.textSecondary, size: 20),
+                prefixIcon:
+                    Icon(Icons.search, color: context.textSecondary, size: 20),
                 suffixIcon: _aramaMetni.isNotEmpty
                     ? IconButton(
-                        icon: Icon(Icons.clear, color: context.textSecondary, size: 18),
+                        icon: Icon(Icons.clear,
+                            color: context.textSecondary, size: 18),
                         onPressed: () => _aramaCtrl.clear(),
                       )
                     : null,
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
             ),
           ),
@@ -890,8 +1058,11 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
 
           // Kategori listesi
           ...kategoriler.map((kategori) {
-            final filtrelenmis = kategori.uygulamalar.where((u) =>
-                _aramaMetni.isEmpty || u.ad.toLowerCase().contains(_aramaMetni)).toList();
+            final filtrelenmis = kategori.uygulamalar
+                .where((u) =>
+                    _aramaMetni.isEmpty ||
+                    u.ad.toLowerCase().contains(_aramaMetni))
+                .toList();
             if (filtrelenmis.isEmpty) return const SizedBox.shrink();
 
             return Column(
@@ -903,7 +1074,10 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                     Icon(kategori.ikon, size: 20, color: AppRenkler.primary),
                     const SizedBox(width: 8),
                     Text(kategori.ad,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.2)),
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2)),
                   ]),
                 ),
                 GridView.builder(
@@ -956,7 +1130,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Color.fromARGB(26, item.renk.red, item.renk.green, item.renk.blue),
+                color: Color.fromARGB(
+                    26, item.renk.red, item.renk.green, item.renk.blue),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(item.ikon, size: 24, color: item.renk),
@@ -1004,12 +1179,22 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                 ),
               ],
             ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Genel Bakış', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Genel Bakış',
+                  style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500)),
               const SizedBox(height: 4),
               Text(ParaUtils.formatla(data.gunlukCiro),
-                  style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
-              const Text('Bugünkü Ciro', style: TextStyle(color: Colors.white60, fontSize: 11)),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5)),
+              const Text('Bugünkü Ciro',
+                  style: TextStyle(color: Colors.white60, fontSize: 11)),
             ]),
           ),
           const SizedBox(height: 14),
@@ -1042,45 +1227,20 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
   }
 
   // ── Yardımcı Widget'lar ────────────────────────────────────────────────────
-  Widget _statKart(String baslik, String deger, IconData ikon, Color renk) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Color.fromARGB(20, renk.red, renk.green, renk.blue),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-              color: Color.fromARGB(26, renk.red, renk.green, renk.blue),
-              borderRadius: BorderRadius.circular(14)),
-          child: Icon(ikon, color: renk, size: 18),
-        ),
-        const Spacer(),
-        Text(deger,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: renk),
-            maxLines: 1, overflow: TextOverflow.ellipsis),
-        Text(baslik,
-            style: TextStyle(fontSize: 10, color: TsRenk.metinIkincil(context), fontWeight: FontWeight.w500)),
-      ]),
-    );
-  }
+  // FAZ 1 UI/UX: bu yerel widget kaldırıldı, ortak TsKpiKart component'ine
+  // taşındı (bkz. lib/tasarim_sistemi/ts_kpi_kart.dart) — aynı görünüm,
+  // artık dashboard dışındaki ekranlarda da tekrar kullanılabilir.
+  Widget _statKart(String baslik, String deger, IconData ikon, Color renk) =>
+      TsKpiKart(baslik: baslik, deger: deger, ikon: ikon, renk: renk);
 
   Widget _grafikBolumu(DashboardVeri d) {
     if (d.haftaData.isEmpty) return const SizedBox.shrink();
     const gunler = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
     final maxY = d.haftaData.fold(0.0, (mx, x) {
-      final v = (x['ciro'] as num?)?.toDouble() ?? 0;
-      return v > mx ? v : mx;
-    }) * 1.2;
+          final v = (x['ciro'] as num?)?.toDouble() ?? 0;
+          return v > mx ? v : mx;
+        }) *
+        1.2;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -1098,10 +1258,16 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Haftalık Satış', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.2)),
+          const Text('Haftalık Satış',
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2)),
           const SizedBox(height: 4),
-          Text('Grafikteki sütunlara dokunarak günlük ciro detayını görebilirsiniz',
-              style: TextStyle(fontSize: 10.5, color: TsRenk.metinIkincil(context))),
+          Text(
+              'Grafikteki sütunlara dokunarak günlük ciro detayını görebilirsiniz',
+              style: TextStyle(
+                  fontSize: 10.5, color: TsRenk.metinIkincil(context))),
           const SizedBox(height: 12),
           SizedBox(
             height: 140,
@@ -1114,26 +1280,37 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final idx = group.x.toInt();
-                      final gun = idx >= 0 && idx < gunler.length ? gunler[idx] : '';
+                      final gun =
+                          idx >= 0 && idx < gunler.length ? gunler[idx] : '';
                       return BarTooltipItem(
                         '$gun\n${ParaUtils.formatla(rod.toY)}',
-                        const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11),
+                        const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11),
                       );
                     },
                   ),
                 ),
                 titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (val, _) {
                         final idx = val.toInt();
-                        if (idx < 0 || idx >= gunler.length) return const SizedBox.shrink();
+                        if (idx < 0 || idx >= gunler.length)
+                          return const SizedBox.shrink();
                         return Text(gunler[idx],
-                            style: TextStyle(fontSize: 9, color: context.textSecondary, fontWeight: FontWeight.w500));
+                            style: TextStyle(
+                                fontSize: 9,
+                                color: context.textSecondary,
+                                fontWeight: FontWeight.w500));
                       },
                     ),
                   ),
@@ -1152,7 +1329,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                       BarChartRodData(
                         toY: ciro,
                         width: 18,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(6)),
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
@@ -1188,7 +1366,9 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
         ],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Kritik Stok', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.2)),
+        const Text('Kritik Stok',
+            style: TextStyle(
+                fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.2)),
         const SizedBox(height: 12),
         ...d.kritikUrunler.take(3).map((u) {
           final stok = u['stok'] as double;
@@ -1198,10 +1378,17 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
             padding: const EdgeInsets.only(bottom: 10),
             child: Column(children: [
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Expanded(child: Text(u['ad'] as String,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    maxLines: 1, overflow: TextOverflow.ellipsis)),
-                Text('$stok / $min', style: TextStyle(fontSize: 11, color: context.textSecondary, fontWeight: FontWeight.w500)),
+                Expanded(
+                    child: Text(u['ad'] as String,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis)),
+                Text('$stok / $min',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: context.textSecondary,
+                        fontWeight: FontWeight.w500)),
               ]),
               const SizedBox(height: 4),
               LinearProgressIndicator(
@@ -1219,7 +1406,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
         if (d.kritikUrunler.length > 3)
           TextButton(
             onPressed: () => context.push('/stok'),
-            child: const Text('Tümünü Gör →', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+            child: const Text('Tümünü Gör →',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
           ),
       ]),
     );
@@ -1229,19 +1417,26 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Row(children: [
-        Expanded(child: _sayacKart('Ürün', d.toplamUrun, Icons.inventory_2, const Color(0xFF3F51B5),
-            onTap: () => context.push('/urun'))),
+        Expanded(
+            child: _sayacKart('Ürün', d.toplamUrun, Icons.inventory_2,
+                const Color(0xFF3F51B5),
+                onTap: () => context.push('/urun'))),
         const SizedBox(width: 10),
-        Expanded(child: _sayacKart('Kritik', d.kritikStok, Icons.warning_amber, const Color(0xFFE65100),
-            onTap: () => context.push('/stok'))),
+        Expanded(
+            child: _sayacKart('Kritik', d.kritikStok, Icons.warning_amber,
+                const Color(0xFFE65100),
+                onTap: () => context.push('/stok'))),
         const SizedBox(width: 10),
-        Expanded(child: _sayacKart('Cari', d.toplamMusteri, Icons.people, const Color(0xFF00695C),
-            onTap: () => context.push('/cari'))),
+        Expanded(
+            child: _sayacKart(
+                'Cari', d.toplamMusteri, Icons.people, const Color(0xFF00695C),
+                onTap: () => context.push('/cari'))),
       ]),
     );
   }
 
-  Widget _sayacKart(String baslik, int deger, IconData ikon, Color renk, {VoidCallback? onTap}) {
+  Widget _sayacKart(String baslik, int deger, IconData ikon, Color renk,
+      {VoidCallback? onTap}) {
     return _TapScale(
       onTap: onTap,
       child: TsKart(
@@ -1253,10 +1448,14 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
             tween: IntTween(begin: 0, end: deger),
             duration: const Duration(milliseconds: 800),
             builder: (_, v, __) => Text('$v',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: renk)),
+                style: TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.w800, color: renk)),
           ),
           Text(baslik,
-              style: TextStyle(fontSize: 9, color: context.textSecondary, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                  fontSize: 9,
+                  color: context.textSecondary,
+                  fontWeight: FontWeight.w500),
               textAlign: TextAlign.center),
         ]),
       ),
@@ -1269,18 +1468,19 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
 // ──────────────────────────────────────────────────────────────────────────────
 
 Widget _rozet(int sayi, Color renk) => Container(
-  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-  decoration: BoxDecoration(
-    color: Colors.red.shade600,
-    borderRadius: BorderRadius.circular(12),
-    border: Border.all(color: Colors.white, width: 1.5),
-    boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 4)],
-  ),
-  child: Text(sayi > 99 ? '99+' : '$sayi',
-      textAlign: TextAlign.center,
-      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
-);
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+      decoration: BoxDecoration(
+        color: Colors.red.shade600,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white, width: 1.5),
+        boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 4)],
+      ),
+      child: Text(sayi > 99 ? '99+' : '$sayi',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+    );
 
 /// Dokununca hafifçe küçülen, bırakınca geri büyüyen kart sarmalayıcısı.
 /// Tüm dashboard kartlarına "dokunma hissi" kazandırır.
@@ -1300,9 +1500,12 @@ class _TapScaleState extends State<_TapScale> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: widget.onTap,
-      onTapDown: widget.onTap == null ? null : (_) => setState(() => _scale = 0.94),
-      onTapUp: widget.onTap == null ? null : (_) => setState(() => _scale = 1.0),
-      onTapCancel: widget.onTap == null ? null : () => setState(() => _scale = 1.0),
+      onTapDown:
+          widget.onTap == null ? null : (_) => setState(() => _scale = 0.94),
+      onTapUp:
+          widget.onTap == null ? null : (_) => setState(() => _scale = 1.0),
+      onTapCancel:
+          widget.onTap == null ? null : () => setState(() => _scale = 1.0),
       child: AnimatedScale(
         scale: _scale,
         duration: const Duration(milliseconds: 120),
@@ -1335,8 +1538,9 @@ class _SyncMiniButonState extends ConsumerState<_SyncMiniButon>
   @override
   void initState() {
     super.initState();
-    _dondurmeCtrl = AnimationController(
-      vsync: this, duration: const Duration(seconds: 1))..repeat();
+    _dondurmeCtrl =
+        AnimationController(vsync: this, duration: const Duration(seconds: 1))
+          ..repeat();
     _dondurmeCtrl.stop();
   }
 
@@ -1348,7 +1552,11 @@ class _SyncMiniButonState extends ConsumerState<_SyncMiniButon>
 
   Future<void> _hizliSync() async {
     if (_calisiyor) return;
-    setState(() { _calisiyor = true; _basarili = false; _hata = false; });
+    setState(() {
+      _calisiyor = true;
+      _basarili = false;
+      _hata = false;
+    });
     _dondurmeCtrl.repeat();
     try {
       final db = Veritabani();
@@ -1373,15 +1581,23 @@ class _SyncMiniButonState extends ConsumerState<_SyncMiniButon>
         _dondurmeCtrl.stop();
         // 3 saniye sonra normal ikona dön
         Future.delayed(const Duration(seconds: 3), () {
-          if (mounted) setState(() { _basarili = false; _hata = false; });
+          if (mounted)
+            setState(() {
+              _basarili = false;
+              _hata = false;
+            });
         });
         if (hatalar.isNotEmpty && mounted) {
-          hataMesaji(context, 'Sync: ${hatalar.length} hata — Ayarlar\'dan detay alın');
+          hataMesaji(context,
+              'Sync: ${hatalar.length} hata — Ayarlar\'dan detay alın');
         }
       }
     } catch (e) {
       if (mounted) {
-        setState(() { _calisiyor = false; _hata = true; });
+        setState(() {
+          _calisiyor = false;
+          _hata = true;
+        });
         _dondurmeCtrl.stop();
       }
     }

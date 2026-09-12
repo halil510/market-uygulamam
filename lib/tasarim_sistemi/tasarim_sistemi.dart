@@ -8,6 +8,7 @@
 // asla kendi kart/liste/buton sınıfını tanımlamaz.
 export 'ts_token.dart';
 export 'ts_kart.dart';
+export 'ts_kpi_kart.dart';
 export 'ts_liste.dart';
 export 'ts_bos_durum.dart';
 export 'ts_yukleniyor.dart';

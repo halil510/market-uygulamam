@@ -119,7 +119,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
       SELECT strftime('%Y-%m', tarih) AS ay, SUM(genel_toplam) AS toplam
       FROM satislar
       WHERE cari_id = ? AND iptal = 0 AND is_deleted = 0
-        AND tarih >= date('now', '-6 months')
+        AND tarih >= date('now', 'localtime', '-6 months')
       GROUP BY ay ORDER BY ay ASC
     ''', [widget.cari.id]);
     // En çok alınan ürünler (miktar bazlı, ilk 6).

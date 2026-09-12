@@ -14,32 +14,42 @@ class RezervasyonServisi {
   Future<Database> get _db async => Veritabani().db;
 
   /// Rezervasyon ekle
+  // 🔴 Derin analizde bulundu: çakışma kontrolü (SELECT COUNT) ile
+  // ekleme (INSERT) iki ayrı, transaction'sız çağrıydı — iki farklı
+  // terminalden aynı masa/saat için neredeyse eş zamanlı rezervasyon
+  // yapılırsa, ikisi de birbirinin henüz eklemediği kaydı görmeden
+  // kontrolü geçip iki çift rezervasyon oluşturabilirdi. Artık kontrol
+  // ve ekleme TEK transaction içinde (sqflite yazarları serileştirir,
+  // yarış penceresini kapatır).
   Future<int> ekle(RezervasyonModel rezervasyon) async {
     final db = await _db;
-    final check = await db.rawQuery('''
-      SELECT COUNT(*) as sayi FROM ${DbSabitler.masaRezervasyon}
-      WHERE masa_id = ? AND tarih = ? AND is_deleted = 0
-        AND durum NOT IN ('iptal', 'tamamlandi')
-        AND (saat BETWEEN ? AND ? OR ? BETWEEN saat AND datetime(saat, '+2 hours'))
-    ''', [
-      rezervasyon.masaId,
-      rezervasyon.tarih.toIso8601String(),
-      rezervasyon.saat.toIso8601String(),
-      rezervasyon.saat.add(const Duration(hours: 2)).toIso8601String(),
-      rezervasyon.saat.toIso8601String(),
-    ]);
-    
-    final varMi = (check.first['sayi'] as int) > 0;
-    if (varMi) throw Exception('Bu saat için masa dolu');
-    
-    // 🔴🔴 Derin analizde bulundu: 'masa_rezervasyon' senkron
-    // sisteminde kayıtlı olduğu halde global_id atanmıyordu ve
-    // BulutManager hiç çağrılmıyordu — restoran rezervasyonları
-    // birden fazla terminal arasında hiç senkronize olmuyordu.
-    final veri = rezervasyon.toMap();
-    veri['global_id'] ??= const Uuid().v4();
-    veri['last_updated'] = DateTime.now().toIso8601String();
-    final id = await db.insert(DbSabitler.masaRezervasyon, veri);
+    late final int id;
+    await db.transaction((txn) async {
+      final check = await txn.rawQuery('''
+        SELECT COUNT(*) as sayi FROM ${DbSabitler.masaRezervasyon}
+        WHERE masa_id = ? AND tarih = ? AND is_deleted = 0
+          AND durum NOT IN ('iptal', 'tamamlandi')
+          AND (saat BETWEEN ? AND ? OR ? BETWEEN saat AND datetime(saat, '+2 hours'))
+      ''', [
+        rezervasyon.masaId,
+        rezervasyon.tarih.toIso8601String(),
+        rezervasyon.saat.toIso8601String(),
+        rezervasyon.saat.add(const Duration(hours: 2)).toIso8601String(),
+        rezervasyon.saat.toIso8601String(),
+      ]);
+
+      final varMi = (check.first['sayi'] as int) > 0;
+      if (varMi) throw Exception('Bu saat için masa dolu');
+
+      // 🔴🔴 Derin analizde bulundu: 'masa_rezervasyon' senkron
+      // sisteminde kayıtlı olduğu halde global_id atanmıyordu ve
+      // BulutManager hiç çağrılmıyordu — restoran rezervasyonları
+      // birden fazla terminal arasında hiç senkronize olmuyordu.
+      final veri = rezervasyon.toMap();
+      veri['global_id'] ??= const Uuid().v4();
+      veri['last_updated'] = DateTime.now().toIso8601String();
+      id = await txn.insert(DbSabitler.masaRezervasyon, veri);
+    });
     final satir = await db.query(DbSabitler.masaRezervasyon, where: 'id = ?', whereArgs: [id], limit: 1);
     if (satir.isNotEmpty) BulutManager().upsert(DbSabitler.masaRezervasyon, Map<String, dynamic>.from(satir.first));
     return id;
@@ -144,7 +154,7 @@ class RezervasyonServisi {
       FROM ${DbSabitler.masaRezervasyon} r
       LEFT JOIN ${DbSabitler.masalar} m ON r.masa_id = m.id
       WHERE r.durum IN ('beklemede', 'onaylandi') AND r.is_deleted = 0
-        AND date(r.tarih) >= date('now')
+        AND date(r.tarih) >= date('now', 'localtime')
       ORDER BY r.tarih ASC, r.saat ASC
     ''');
     return rows.map(RezervasyonModel.fromMap).toList();

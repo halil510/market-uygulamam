@@ -32,10 +32,15 @@ class RaporDeposu {
   Future<List<Map<String, dynamic>>> enCokSatilanUrunler({int limit = 10}) async {
     try {
       final db = await _d;
+      // 🔴 Derin analizde bulundu: DATE('now') SQLite'ta VARSAYILAN
+      // OLARAK UTC kullanır, ama 'tarih' sütunu yerel saatle yazılıyor
+      // (bkz. kasa_deposu.dart'taki aynı hata sınıfının notu) — Türkiye
+      // UTC+3 olduğu için yerel 00:00-03:00 arası 30 günlük pencere
+      // sınırı bir gün kayabiliyordu. 'localtime' değiştiricisi eklendi.
       return await db.rawQuery(
         'SELECT sk.urun_adi, SUM(sk.miktar) as toplam_miktar, SUM(sk.toplam_tutar) as toplam_tutar '
         'FROM satis_kalem sk JOIN satislar s ON sk.satis_id = s.id '
-        'WHERE s.iptal = 0 AND s.is_deleted = 0 AND DATE(s.tarih) >= DATE("now", "-30 days") '
+        'WHERE s.iptal = 0 AND s.is_deleted = 0 AND DATE(s.tarih) >= DATE("now", "localtime", "-30 days") '
         'GROUP BY sk.urun_id ORDER BY toplam_miktar DESC LIMIT ?',
         [limit],
       );

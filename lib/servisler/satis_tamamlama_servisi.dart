@@ -111,7 +111,11 @@ class SatisTamamlamaServisi {
 
     final db = await Veritabani().db;
     late final int satisId;
-    final stokHareketGidleri = <int, String>{};
+    // FAZ 5 (Lot/SKT — kullanıcı onayıyla): lot_takibi açık bir ürün
+    // birden fazla lottan tüketilebildiği için artık ürün başına BİRDEN
+    // FAZLA stok_hareket global_id'si olabiliyor (bkz. StokDeposu.
+    // stokDusFefoTxn). Bulut senkronu buna göre her gid'i tek tek bildirir.
+    final stokHareketGidleri = <int, List<String>>{};
     // 🔴🔴 FAZ 1 madde 2 (kullanıcı onayıyla, Vardiya/Kasa mutabakatı):
     // ÖNCEDEN karma ödemede TÜM Cari-dışı yöntemler (Nakit+Kart+Banka)
     // tek bir 'Satış' kasa hareketinde toplanıyordu — bu, kasa_hareketleri
@@ -126,11 +130,8 @@ class SatisTamamlamaServisi {
       satisId = await _satisDepo.satisEkleTxn(txn, satis, satisKalemler);
 
       for (final k in kalemler) {
-        final gid = const Uuid().v4();
-        stokHareketGidleri[k.urun.id!] = gid;
-        await _stokDepo.stokDusTxn(
+        stokHareketGidleri[k.urun.id!] = await _stokDepo.stokDusFefoTxn(
           txn,
-          gid,
           urunId: k.urun.id!,
           miktar: k.miktar,
           kullaniciId: kullanici?.id,
@@ -302,7 +303,7 @@ class SatisTamamlamaServisi {
     required String fisNo,
     required List<SatisKalemModel> satisKalemler,
     required List<SepetKalem> kalemler,
-    required Map<int, String> stokHareketGidleri,
+    required Map<int, List<String>> stokHareketGidleri,
     required List<String> kasaGlobalIdleri,
     required List<String> cariGlobalIdleri,
     required CariModel? musteri,
@@ -314,18 +315,23 @@ class SatisTamamlamaServisi {
         BulutManager().upsert('satis_kalem', k.toMap());
       }
       for (final k in kalemler) {
-        final gid = stokHareketGidleri[k.urun.id!];
-        if (gid == null) continue;
+        final gidler = stokHareketGidleri[k.urun.id!];
+        if (gidler == null || gidler.isEmpty) continue;
         final urunSatir = await db.query('urunler',
             where: 'id = ?', whereArgs: [k.urun.id], limit: 1);
         if (urunSatir.isNotEmpty)
           BulutManager()
               .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-        final stokSatir = await db.query('stok_hareket',
-            where: 'global_id = ?', whereArgs: [gid], limit: 1);
-        if (stokSatir.isNotEmpty)
-          BulutManager().upsert(
-              'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+        // FAZ 5: lot_takibi açık ürünlerde BİRDEN FAZLA stok_hareket
+        // satırı oluşabiliyor (bkz. StokDeposu.stokDusFefoTxn) — her biri
+        // tek tek bildirilir.
+        for (final gid in gidler) {
+          final stokSatir = await db.query('stok_hareket',
+              where: 'global_id = ?', whereArgs: [gid], limit: 1);
+          if (stokSatir.isNotEmpty)
+            BulutManager().upsert(
+                'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+        }
       }
       // 🔴🔴 FAZ 1 madde 2: karma ödemede artık BİRDEN FAZLA kasa hareketi
       // oluşabiliyor (her ödeme yöntemi için ayrı satır) — bu yüzden

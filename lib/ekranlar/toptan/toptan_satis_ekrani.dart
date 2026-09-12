@@ -27,7 +27,6 @@ import '../../depolar/satis_deposu.dart';
 import '../../depolar/stok_deposu.dart';
 import '../../veri/database/veritabani.dart';
 import '../../servisler/bulut/bulut_manager.dart';
-import 'package:uuid/uuid.dart';
 import '../../servisler/fiyat_hesaplama_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
@@ -39,7 +38,11 @@ class _SepetKalemi {
   double miktar;
   String birim; // 'adet' | 'koli' | 'kg'
   FiyatSonucu fiyatSonucu;
-  _SepetKalemi({required this.urun, required this.miktar, required this.birim, required this.fiyatSonucu});
+  _SepetKalemi(
+      {required this.urun,
+      required this.miktar,
+      required this.birim,
+      required this.fiyatSonucu});
 
   double get kdvOran => double.tryParse(urun.kdvOran) ?? 18;
   // 🔴 DÜZELTME: Önceki hâli "birim fiyat KDV DAHİL" varsayıp ters
@@ -60,7 +63,8 @@ class ToptanSatisEkrani extends StatefulWidget {
   // Kullanıcı isteği: "cariye girip satış dedik mi o bayi seçili
   // gelsin" + "çoğalt dedik mi eski siparişin kalemleri gelsin."
   final CariModel? baslangicBayi;
-  final int? tekrarSatisId; // "Çoğalt" — bu satışın kalemleri fiyatlar TAZE hesaplanarak yeniden eklenir
+  final int?
+      tekrarSatisId; // "Çoğalt" — bu satışın kalemleri fiyatlar TAZE hesaplanarak yeniden eklenir
   const ToptanSatisEkrani({super.key, this.baslangicBayi, this.tekrarSatisId});
 
   @override
@@ -89,7 +93,8 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
     _secilenBayi = widget.baslangicBayi;
     if (widget.tekrarSatisId != null) {
       // "Çoğalt" — eski build tamamlanana kadar bekleyip sepeti doldur.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _eskiSiparisiCogalt(widget.tekrarSatisId!));
+      WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _eskiSiparisiCogalt(widget.tekrarSatisId!));
     }
   }
 
@@ -101,7 +106,8 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
   Future<void> _eskiSiparisiCogalt(int satisId) async {
     try {
       final db = await Veritabani().db;
-      final kalemler = await db.query('satis_kalem', where: 'satis_id = ?', whereArgs: [satisId]);
+      final kalemler = await db
+          .query('satis_kalem', where: 'satis_id = ?', whereArgs: [satisId]);
       for (final k in kalemler) {
         final urunId = k['urun_id'] as int?;
         if (urunId == null) continue;
@@ -109,15 +115,23 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
         if (urun == null) continue;
         final miktar = (k['miktar'] as num?)?.toDouble() ?? 1;
         final fiyatSonucu = await _fiyatServisi.hesapla(
-          urun: urun, cari: _secilenBayi, miktar: miktar, birim: 'adet',
+          urun: urun,
+          cari: _secilenBayi,
+          miktar: miktar,
+          birim: 'adet',
         );
         if (!mounted) return;
         setState(() {
-          _sepet.add(_SepetKalemi(urun: urun, miktar: miktar, birim: 'adet', fiyatSonucu: fiyatSonucu));
+          _sepet.add(_SepetKalemi(
+              urun: urun,
+              miktar: miktar,
+              birim: 'adet',
+              fiyatSonucu: fiyatSonucu));
         });
       }
       if (mounted && kalemler.isNotEmpty) {
-        BildirimServisi.basari(context, 'Önceki sipariş kalemleri güncel fiyatlarla eklendi');
+        BildirimServisi.basari(
+            context, 'Önceki sipariş kalemleri güncel fiyatlarla eklendi');
       }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Sipariş çoğaltılamadı: $e');
@@ -136,12 +150,15 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
     // mu"): Aynı düzeltme (bkz. toptan_dashboard_ekrani.dart) — saf
     // bir tedarikçi, musteriTipi yanlışlıkla "Bayi"/"Toptan" ise bu
     // satış listesinde görünmemeli.
-    final bayiler = tumCariler.where((c) =>
-        c.cariTipi.contains('Müşteri') &&
-        (c.musteriTipi == 'Bayi' || c.musteriTipi == 'Toptan')).toList();
+    final bayiler = tumCariler
+        .where((c) =>
+            c.cariTipi.contains('Müşteri') &&
+            (c.musteriTipi == 'Bayi' || c.musteriTipi == 'Toptan'))
+        .toList();
     if (!mounted) return;
     if (bayiler.isEmpty) {
-      BildirimServisi.hata(context,
+      BildirimServisi.hata(
+          context,
           'Henüz "Bayi" veya "Toptan" tipinde cari yok. Cari kartından '
           'müşteri tipini "Bayi/Toptan" yapın.');
       return;
@@ -151,33 +168,42 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (c) => DraggableScrollableSheet(
-        initialChildSize: 0.6, maxChildSize: 0.9, expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        expand: false,
         builder: (c, scrollCtrl) => Container(
           decoration: BoxDecoration(
             color: TsRenk.arkaplan(context),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(TsRadius.xl)),
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(TsRadius.xl)),
           ),
           child: Column(children: [
             Padding(
               padding: const EdgeInsets.all(TsBosluk.lg),
               child: Text('Bayi / Toptan Müşteri Seç',
-                  style: TsMetin.baslikM.copyWith(color: TsRenk.metinBirincil(context))),
+                  style: TsMetin.baslikM
+                      .copyWith(color: TsRenk.metinBirincil(context))),
             ),
             Expanded(
               child: ListView.separated(
                 controller: scrollCtrl,
                 padding: const EdgeInsets.symmetric(horizontal: TsBosluk.md),
                 itemCount: bayiler.length,
-                separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: TsBosluk.sm),
                 itemBuilder: (c, i) {
                   final b = bayiler[i];
                   return TsKart.liste(
                     baslik: b.unvan,
-                    altBaslik: '${b.musteriTipi} · Bakiye: ${ParaUtils.formatla(b.bakiye)}',
+                    altBaslik:
+                        '${b.musteriTipi} · Bakiye: ${ParaUtils.formatla(b.bakiye)}',
                     ikon: CircleAvatar(
                       backgroundColor: TsRenk.zemin(TsRenk.primary),
-                      child: Text(b.unvan.isNotEmpty ? b.unvan[0].toUpperCase() : '?',
-                          style: TextStyle(color: TsRenk.primary, fontWeight: FontWeight.w700)),
+                      child: Text(
+                          b.unvan.isNotEmpty ? b.unvan[0].toUpperCase() : '?',
+                          style: TextStyle(
+                              color: TsRenk.primary,
+                              fontWeight: FontWeight.w700)),
                     ),
                     onTap: () => Navigator.pop(c, b),
                   );
@@ -189,7 +215,10 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
       ),
     );
     if (secilen != null) {
-      setState(() { _secilenBayi = secilen; _sepet.clear(); });
+      setState(() {
+        _secilenBayi = secilen;
+        _sepet.clear();
+      });
     }
   }
 
@@ -211,7 +240,8 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
 
     final sonuc = await showDialog<(double, String)>(
       context: context,
-      builder: (c) => _MiktarBirimDialog(urun: urun, baslangicBirim: birim, baslangicMiktar: miktar),
+      builder: (c) => _MiktarBirimDialog(
+          urun: urun, baslangicBirim: birim, baslangicMiktar: miktar),
     );
     if (sonuc == null) return;
     miktar = sonuc.$1;
@@ -219,15 +249,23 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
     if (miktar <= 0) return;
 
     final fiyatSonucu = await _fiyatServisi.hesapla(
-      urun: urun, cari: _secilenBayi, miktar: miktar, birim: birim,
+      urun: urun,
+      cari: _secilenBayi,
+      miktar: miktar,
+      birim: birim,
     );
 
     setState(() {
-      final mevcutIdx = _sepet.indexWhere((k) => k.urun.id == urun.id && k.birim == birim);
+      final mevcutIdx =
+          _sepet.indexWhere((k) => k.urun.id == urun.id && k.birim == birim);
       if (mevcutIdx >= 0) {
         _sepet[mevcutIdx].miktar += miktar;
       } else {
-        _sepet.add(_SepetKalemi(urun: urun, miktar: miktar, birim: birim, fiyatSonucu: fiyatSonucu));
+        _sepet.add(_SepetKalemi(
+            urun: urun,
+            miktar: miktar,
+            birim: birim,
+            fiyatSonucu: fiyatSonucu));
       }
     });
   }
@@ -235,32 +273,51 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
   void _kalemSil(int index) => setState(() => _sepet.removeAt(index));
 
   String _birimEtiket(String birim) => switch (birim) {
-        'koli' => 'Koli', 'kg' => 'Kg', _ => 'Adet',
+        'koli' => 'Koli',
+        'kg' => 'Kg',
+        _ => 'Adet',
       };
 
   /// Fatura ızgarası başlık hücresi (ÜRÜN/MİKTAR/TUTAR gibi).
-  Widget _gridBaslikHucre(String metin, {required int flex, bool ortala = false, bool sagaYasla = false}) => Expanded(
+  Widget _gridBaslikHucre(String metin,
+          {required int flex, bool ortala = false, bool sagaYasla = false}) =>
+      Expanded(
         flex: flex,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
           child: Text(metin,
-              textAlign: ortala ? TextAlign.center : (sagaYasla ? TextAlign.right : TextAlign.left),
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.3,
+              textAlign: ortala
+                  ? TextAlign.center
+                  : (sagaYasla ? TextAlign.right : TextAlign.left),
+              style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
                   color: TsRenk.metinIkincil(context))),
         ),
       );
 
   /// Fatura ızgarası veri hücresi — rakamlar hizalı (FontFeature.tabularFigures).
-  Widget _gridHucre(String metin, {required int flex, bool ortala = false, bool sagaYasla = false, bool kalin = false, bool sonuk = false}) => Expanded(
+  Widget _gridHucre(String metin,
+          {required int flex,
+          bool ortala = false,
+          bool sagaYasla = false,
+          bool kalin = false,
+          bool sonuk = false}) =>
+      Expanded(
         flex: flex,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Text(metin,
-              textAlign: ortala ? TextAlign.center : (sagaYasla ? TextAlign.right : TextAlign.left),
+              textAlign: ortala
+                  ? TextAlign.center
+                  : (sagaYasla ? TextAlign.right : TextAlign.left),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: kalin ? FontWeight.w700 : FontWeight.w500,
-                color: sonuk ? TsRenk.metinIkincil(context) : TsRenk.metinBirincil(context),
+                color: sonuk
+                    ? TsRenk.metinIkincil(context)
+                    : TsRenk.metinBirincil(context),
                 fontFeatures: const [FontFeature.tabularFigures()],
               )),
         ),
@@ -279,12 +336,14 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
     // ediliyor.
     setState(() => _kaydediliyor = true);
     try {
-      final limitSonuc = await _cariDepo.limitKontrolEt(_secilenBayi!.id!, _genelToplam);
+      final limitSonuc =
+          await _cariDepo.limitKontrolEt(_secilenBayi!.id!, _genelToplam);
       if (limitSonuc.asildi && mounted) {
         final devam = await showDialog<bool>(
           context: context,
           builder: (c) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Row(children: [
               Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
               SizedBox(width: 8),
@@ -299,7 +358,9 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
               'Yine de devam etmek istiyor musunuz?',
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Vazgeç')),
+              TextButton(
+                  onPressed: () => Navigator.pop(c, false),
+                  child: const Text('Vazgeç')),
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: TsRenk.uyari),
                 onPressed: () => Navigator.pop(c, true),
@@ -313,7 +374,8 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
 
       final kullanici = AuthServisi().aktifKullanici;
       final tarih = DateTime.now();
-      final fisNo = await Veritabani().fisNoUret('cari_satis', subeId: AktifSubeServisi().subeId ?? 1);
+      final fisNo = await Veritabani()
+          .fisNoUret('cari_satis', subeId: AktifSubeServisi().subeId ?? 1);
 
       final satisKalemler = _sepet.map((k) {
         final kdvOran = double.tryParse(k.urun.kdvOran) ?? 18;
@@ -324,7 +386,9 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
         // ÇARPILARAK hesaplanır (ters çıkarma DEĞİL).
         final kdvTutar = k.toplamTutar * (kdvOran / 100);
         final birimFiyatStokBazli = k.fiyatSonucu.birimFiyat /
-            (k.birim == 'koli' && k.urun.koliIciMiktar > 0 ? k.urun.koliIciMiktar : 1);
+            (k.birim == 'koli' && k.urun.koliIciMiktar > 0
+                ? k.urun.koliIciMiktar
+                : 1);
         return SatisKalemModel(
           satisId: 0,
           urunId: k.urun.id!,
@@ -337,7 +401,8 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
           iskontoTutar: 0,
           kdvOran: kdvOran,
           kdvTutar: kdvTutar,
-          netFiyat: birimFiyatStokBazli, // KDV hariç net birim fiyat (iskonto yok)
+          netFiyat:
+              birimFiyatStokBazli, // KDV hariç net birim fiyat (iskonto yok)
           alisFiyat: k.urun.alisFiyat,
           alisFiyatKdv: k.urun.alisFiyatKdvDahil,
         );
@@ -365,16 +430,18 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
       // transaction içinde: ya hepsi birden kalıcı olur, ya hiçbiri.
       final db = await Veritabani().db;
       late final int satisId;
-      final stokHareketGidleri = <int, String>{};
+      // FAZ 5 (Lot/SKT — kullanıcı onayıyla): lot_takibi açık üründe
+      // birden fazla lottan tüketilebildiği için ürün başına birden
+      // fazla global_id olabiliyor (bkz. StokDeposu.stokDusFefoTxn).
+      final stokHareketGidleri = <int, List<String>>{};
       late final String cariGlobalId;
 
       await db.transaction((txn) async {
         satisId = await _satisDepo.satisEkleTxn(txn, satis, satisKalemler);
 
         for (final k in _sepet) {
-          final gid = const Uuid().v4();
-          stokHareketGidleri[k.urun.id!] = gid;
-          await _stokDepo.stokDusTxn(txn, gid,
+          stokHareketGidleri[k.urun.id!] = await _stokDepo.stokDusFefoTxn(
+            txn,
             urunId: k.urun.id!,
             miktar: k.stokMiktari,
             kullaniciId: kullanici?.id,
@@ -383,18 +450,20 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
           );
         }
 
-        cariGlobalId = await _cariDepo.hareketEkleTxn(txn, CariHareketModel(
-          cariId: _secilenBayi!.id!,
-          tarih: tarih,
-          fisTipi: 'Toptan Satış',
-          fisId: satisId,
-          fisNo: fisNo,
-          aciklama: 'Toptan satış: $fisNo',
-          borc: _genelToplam,
-          alacak: 0,
-          odemeTuru: 'Cari',
-          kullanici: kullanici?.adSoyad,
-        ));
+        cariGlobalId = await _cariDepo.hareketEkleTxn(
+            txn,
+            CariHareketModel(
+              cariId: _secilenBayi!.id!,
+              tarih: tarih,
+              fisTipi: 'Toptan Satış',
+              fisId: satisId,
+              fisNo: fisNo,
+              aciklama: 'Toptan satış: $fisNo',
+              borc: _genelToplam,
+              alacak: 0,
+              odemeTuru: 'Cari',
+              kullanici: kullanici?.adSoyad,
+            ));
       }); // transaction sonu
 
       // Transaction kalıcı olduktan sonra buluta bildir.
@@ -405,19 +474,32 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
           BulutManager().upsert('satis_kalem', k.toMap());
         }
         for (final k in _sepet) {
-          final gid = stokHareketGidleri[k.urun.id!];
-          if (gid == null) continue;
-          final urunSatir = await db.query('urunler', where: 'id = ?', whereArgs: [k.urun.id], limit: 1);
-          if (urunSatir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-          final stokSatir = await db.query('stok_hareket', where: 'global_id = ?', whereArgs: [gid], limit: 1);
-          if (stokSatir.isNotEmpty) BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+          final gidler = stokHareketGidleri[k.urun.id!];
+          if (gidler == null || gidler.isEmpty) continue;
+          final urunSatir = await db.query('urunler',
+              where: 'id = ?', whereArgs: [k.urun.id], limit: 1);
+          if (urunSatir.isNotEmpty)
+            BulutManager()
+                .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
+          for (final gid in gidler) {
+            final stokSatir = await db.query('stok_hareket',
+                where: 'global_id = ?', whereArgs: [gid], limit: 1);
+            if (stokSatir.isNotEmpty)
+              BulutManager().upsert(
+                  'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+          }
         }
-        final cariHareketSatir = await db.query('cari_hareket', where: 'global_id = ?', whereArgs: [cariGlobalId], limit: 1);
+        final cariHareketSatir = await db.query('cari_hareket',
+            where: 'global_id = ?', whereArgs: [cariGlobalId], limit: 1);
         if (cariHareketSatir.isNotEmpty) {
-          BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(cariHareketSatir.first));
+          BulutManager().upsert('cari_hareket',
+              Map<String, dynamic>.from(cariHareketSatir.first));
         }
-        final cariSatir = await db.query('cari', where: 'id = ?', whereArgs: [_secilenBayi!.id], limit: 1);
-        if (cariSatir.isNotEmpty) BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
+        final cariSatir = await db.query('cari',
+            where: 'id = ?', whereArgs: [_secilenBayi!.id], limit: 1);
+        if (cariSatir.isNotEmpty)
+          BulutManager()
+              .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
       } catch (e) {
         if (kDebugMode) debugPrint('Toptan satış bulut bildirimi hatası: $e');
       }
@@ -464,7 +546,10 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
       // ama kopya hiç alınmamıştı. Artık alınıyor.
       final bayiSnapshot = _secilenBayi;
       final bayiUnvan = bayiSnapshot!.unvan;
-      setState(() { _sepet.clear(); _secilenBayi = null; });
+      setState(() {
+        _sepet.clear();
+        _secilenBayi = null;
+      });
 
       // Kullanıcı isteği: "e-Fatura/e-Arşiv ile entegre olsun." Satış
       // tamamlanınca, mevcut (kanıtlanmış) faturalandırma zincirine
@@ -473,7 +558,8 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
       final faturaKes = await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(children: [
             Icon(Icons.check_circle, color: TsRenk.basarili),
             SizedBox(width: 8),
@@ -482,8 +568,12 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
           content: Text('$bayiUnvan için $fisNo numaralı toptan satış '
               'kaydedildi.\n\nŞimdi bu satış için fatura kesmek ister misiniz?'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Şimdi Değil')),
-            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Fatura Kes')),
+            TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: const Text('Şimdi Değil')),
+            FilledButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: const Text('Fatura Kes')),
           ],
         ),
       );
@@ -501,8 +591,8 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
 
   /// Mevcut satış → fatura zincirini (satis_detay_ekrani.dart ile AYNI,
   /// kanıtlanmış FaturalandirmaServisi akışı) kullanarak fatura oluşturur.
-  Future<void> _faturalandir(int satisId, CariModel? bayiSnapshot, DateTime tarih,
-      List<SatisKalemModel> satisKalemler) async {
+  Future<void> _faturalandir(int satisId, CariModel? bayiSnapshot,
+      DateTime tarih, List<SatisKalemModel> satisKalemler) async {
     if (bayiSnapshot?.id == null) return;
     try {
       final kontrol = await FaturalandirmaServisi.kontrolEt(bayiSnapshot!.id!);
@@ -515,48 +605,59 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
         final git = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(TsRadius.xl)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(TsRadius.xl)),
             title: Row(children: [
               Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
               const SizedBox(width: 8),
               const Text('Eksik Cari Bilgisi'),
             ]),
-            content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${kontrol.cari.unvan} için fatura kesilebilmesi için '
-                  'aşağıdaki bilgiler eksik:'),
-              const SizedBox(height: 10),
-              ...kontrol.eksikAlanlar.map((e) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(children: [
-                      Icon(Icons.circle, size: 6, color: TsRenk.uyari),
-                      const SizedBox(width: 8),
-                      Text(e),
-                    ]),
-                  )),
-            ]),
+            content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${kontrol.cari.unvan} için fatura kesilebilmesi için '
+                      'aşağıdaki bilgiler eksik:'),
+                  const SizedBox(height: 10),
+                  ...kontrol.eksikAlanlar.map((e) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(children: [
+                          Icon(Icons.circle, size: 6, color: TsRenk.uyari),
+                          const SizedBox(width: 8),
+                          Text(e),
+                        ]),
+                      )),
+                ]),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
-              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cari Düzenle')),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Vazgeç')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Cari Düzenle')),
             ],
           ),
         );
-        if (git == true && mounted) await context.push('/cari/ekle', extra: kontrol.cari);
+        if (git == true && mounted)
+          await context.push('/cari/ekle', extra: kontrol.cari);
         return;
       }
 
-      final detaylar = satisKalemler.map((k) => FaturaDetayModel(
-            urunId: k.urunId,
-            urunAdi: k.urunAdi,
-            barkod: k.barkod,
-            miktar: k.miktar,
-            birimFiyat: k.birimFiyat,
-            iskontoOrani: k.iskontoOran,
-            iskontoTutari: k.iskontoTutar,
-            kdvOrani: k.kdvOran,
-            kdvTutari: k.kdvTutar,
-            araToplam: k.miktar * k.birimFiyat,
-            toplamTutar: k.toplamTutar,
-          )).toList();
+      final detaylar = satisKalemler
+          .map((k) => FaturaDetayModel(
+                urunId: k.urunId,
+                urunAdi: k.urunAdi,
+                barkod: k.barkod,
+                miktar: k.miktar,
+                birimFiyat: k.birimFiyat,
+                iskontoOrani: k.iskontoOran,
+                iskontoTutari: k.iskontoTutar,
+                kdvOrani: k.kdvOran,
+                kdvTutari: k.kdvTutar,
+                araToplam: k.miktar * k.birimFiyat,
+                toplamTutar: k.toplamTutar,
+              ))
+          .toList();
 
       final yeniId = await FaturalandirmaServisi.faturaOlustur(
         kontrol: kontrol,
@@ -594,14 +695,22 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
             child: Container(
               padding: const EdgeInsets.all(TsBosluk.lg),
               decoration: BoxDecoration(
-                gradient: _secilenBayi == null ? null : LinearGradient(
-                  colors: [TsRenk.zemin(TsRenk.primary, opaklik: 0.10), TsRenk.zemin(TsRenk.primary, opaklik: 0.03)],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                ),
+                gradient: _secilenBayi == null
+                    ? null
+                    : LinearGradient(
+                        colors: [
+                          TsRenk.zemin(TsRenk.primary, opaklik: 0.10),
+                          TsRenk.zemin(TsRenk.primary, opaklik: 0.03)
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                 color: _secilenBayi == null ? TsRenk.kart(context) : null,
                 borderRadius: BorderRadius.circular(TsRadius.lg),
                 border: Border.all(
-                    color: _secilenBayi == null ? TsRenk.zemin(TsRenk.uyari, opaklik: 0.4) : TsRenk.primary,
+                    color: _secilenBayi == null
+                        ? TsRenk.zemin(TsRenk.uyari, opaklik: 0.4)
+                        : TsRenk.primary,
                     width: 1.5),
                 boxShadow: TsGolge.yumusak,
               ),
@@ -609,39 +718,75 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
                   ? Row(children: [
                       Icon(Icons.storefront, color: TsRenk.uyari),
                       const SizedBox(width: TsBosluk.sm),
-                      Expanded(child: Text('Bayi/Toptan Müşteri Seçin', style: TsMetin.govdeVurgu.copyWith(color: TsRenk.metinBirincil(context)))),
+                      Expanded(
+                          child: Text('Bayi/Toptan Müşteri Seçin',
+                              style: TsMetin.govdeVurgu.copyWith(
+                                  color: TsRenk.metinBirincil(context)))),
                       const Icon(Icons.chevron_right),
                     ])
-                  : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: TsRenk.primary,
-                          child: Text(_secilenBayi!.unvan.isNotEmpty ? _secilenBayi!.unvan[0].toUpperCase() : '?',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                        ),
-                        const SizedBox(width: TsBosluk.md),
-                        Expanded(
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(_secilenBayi!.unvan, style: TsMetin.baslikM.copyWith(color: TsRenk.metinBirincil(context))),
-                            Container(
-                              margin: const EdgeInsets.only(top: 2),
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.primary), borderRadius: BorderRadius.circular(TsRadius.sm)),
-                              child: Text(_secilenBayi!.musteriTipi, style: TsMetin.kucuk.copyWith(fontWeight: FontWeight.w700, color: TsRenk.primary)),
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                          Row(children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: TsRenk.primary,
+                              child: Text(
+                                  _secilenBayi!.unvan.isNotEmpty
+                                      ? _secilenBayi!.unvan[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800)),
                             ),
+                            const SizedBox(width: TsBosluk.md),
+                            Expanded(
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(_secilenBayi!.unvan,
+                                        style: TsMetin.baslikM.copyWith(
+                                            color:
+                                                TsRenk.metinBirincil(context))),
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                          color: TsRenk.zemin(TsRenk.primary),
+                                          borderRadius: BorderRadius.circular(
+                                              TsRadius.sm)),
+                                      child: Text(_secilenBayi!.musteriTipi,
+                                          style: TsMetin.kucuk.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color: TsRenk.primary)),
+                                    ),
+                                  ]),
+                            ),
+                            IconButton(
+                                icon: const Icon(Icons.swap_horiz),
+                                tooltip: 'Bayi Değiştir',
+                                onPressed: _bayiSec),
                           ]),
-                        ),
-                        IconButton(icon: const Icon(Icons.swap_horiz), tooltip: 'Bayi Değiştir', onPressed: _bayiSec),
-                      ]),
-                      const SizedBox(height: TsBosluk.sm),
-                      Row(children: [
-                        Expanded(child: _MiniIstatistik(baslik: 'Bakiye', deger: ParaUtils.formatla(_secilenBayi!.bakiye),
-                            renk: _secilenBayi!.bakiye > 0 ? TsRenk.uyari : TsRenk.basarili)),
-                        if (_secilenBayi!.limitTutari > 0)
-                          Expanded(child: _MiniIstatistik(baslik: 'Kredi Limiti', deger: ParaUtils.formatla(_secilenBayi!.limitTutari), renk: TsRenk.primary)),
-                      ]),
-                    ]),
+                          const SizedBox(height: TsBosluk.sm),
+                          Row(children: [
+                            Expanded(
+                                child: _MiniIstatistik(
+                                    baslik: 'Bakiye',
+                                    deger: ParaUtils.formatla(
+                                        _secilenBayi!.bakiye),
+                                    renk: _secilenBayi!.bakiye > 0
+                                        ? TsRenk.uyari
+                                        : TsRenk.basarili)),
+                            if (_secilenBayi!.limitTutari > 0)
+                              Expanded(
+                                  child: _MiniIstatistik(
+                                      baslik: 'Kredi Limiti',
+                                      deger: ParaUtils.formatla(
+                                          _secilenBayi!.limitTutari),
+                                      renk: TsRenk.primary)),
+                          ]),
+                        ]),
             ),
           ),
         ),
@@ -654,8 +799,11 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
               decoration: InputDecoration(
                 hintText: 'Ürün ara (ad, barkod, kod)...',
                 prefixIcon: const Icon(Icons.search),
-                filled: true, fillColor: TsRenk.zemin(TsRenk.notr, opaklik: 0.06),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(TsRadius.md), borderSide: BorderSide.none),
+                filled: true,
+                fillColor: TsRenk.zemin(TsRenk.notr, opaklik: 0.06),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(TsRadius.md),
+                    borderSide: BorderSide.none),
               ),
               onChanged: _urunAra,
             ),
@@ -664,21 +812,27 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
             Container(
               margin: const EdgeInsets.fromLTRB(TsBosluk.md, 4, TsBosluk.md, 0),
               constraints: const BoxConstraints(maxHeight: 220),
-              decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(TsRadius.lg),
-                  border: Border.all(color: TsRenk.ayirac(context)), boxShadow: TsGolge.yumusak),
+              decoration: BoxDecoration(
+                  color: TsRenk.kart(context),
+                  borderRadius: BorderRadius.circular(TsRadius.lg),
+                  border: Border.all(color: TsRenk.ayirac(context)),
+                  boxShadow: TsGolge.yumusak),
               child: ListView.separated(
                 shrinkWrap: true,
                 padding: const EdgeInsets.all(TsBosluk.sm),
                 itemCount: _aramaSonuclari.length,
-                separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.xs),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: TsBosluk.xs),
                 itemBuilder: (c, i) {
                   final u = _aramaSonuclari[i];
                   return TsKart.liste(
                     baslik: u.urunAdi,
-                    altBaslik: 'Stok: ${u.stok.toStringAsFixed(0)} ${u.birimAdi}'
+                    altBaslik:
+                        'Stok: ${u.stok.toStringAsFixed(0)} ${u.birimAdi}'
                         '${u.koliIciMiktar > 0 ? " · 1 ${u.koliBirimAdi} = ${u.koliIciMiktar.toStringAsFixed(0)} ${u.birimAdi}" : ""}',
                     ikon: const Icon(Icons.inventory_2_outlined),
-                    sagAksiyon: Icon(Icons.add_circle_rounded, color: TsRenk.basarili, size: 24),
+                    sagAksiyon: Icon(Icons.add_circle_rounded,
+                        color: TsRenk.basarili, size: 24),
                     onTap: () => _urunEkle(u),
                   );
                 },
@@ -697,7 +851,8 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
               decoration: BoxDecoration(
                 color: TsRenk.zemin(TsRenk.primary, opaklik: 0.05),
                 border: Border.all(color: TsRenk.ayirac(context)),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(TsRadius.sm)),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(TsRadius.sm)),
               ),
               child: Row(children: [
                 _gridBaslikHucre('#', flex: 1, ortala: true),
@@ -717,7 +872,8 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
                     altyazi: 'Ürün arayıp ekleyin',
                   )
                 : Container(
-                    margin: const EdgeInsets.fromLTRB(TsBosluk.md, 0, TsBosluk.md, 0),
+                    margin: const EdgeInsets.fromLTRB(
+                        TsBosluk.md, 0, TsBosluk.md, 0),
                     decoration: BoxDecoration(
                       color: TsRenk.kart(context),
                       border: Border(
@@ -736,37 +892,71 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
                         final ciftMi = i.isEven;
                         return Column(children: [
                           Container(
-                            color: ciftMi ? TsRenk.zemin(TsRenk.notr, opaklik: 0.04) : Colors.transparent,
+                            color: ciftMi
+                                ? TsRenk.zemin(TsRenk.notr, opaklik: 0.04)
+                                : Colors.transparent,
                             padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              _gridHucre('${i + 1}', flex: 1, ortala: true, sonuk: true),
-                              Expanded(
-                                flex: 6,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                    Text(k.urun.urunAdi, style: TsMetin.govdeVurgu.copyWith(fontSize: 12.5, color: TsRenk.metinBirincil(context)),
-                                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    Text(k.fiyatSonucu.aciklama, style: TsMetin.kucuk.copyWith(color: TsRenk.basarili, fontStyle: FontStyle.italic),
-                                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  ]),
-                                ),
-                              ),
-                              _gridHucre('${k.miktar.toStringAsFixed(k.miktar == k.miktar.roundToDouble() ? 0 : 1)}\n${_birimEtiket(k.birim)}',
-                                  flex: 3, ortala: true),
-                              _gridHucre(ParaUtils.formatla(k.fiyatSonucu.birimFiyat), flex: 3, sagaYasla: true),
-                              _gridHucre('%${kdvOran.toStringAsFixed(0)}', flex: 2, ortala: true, sonuk: true),
-                              _gridHucre(ParaUtils.formatla(k.toplamTutar), flex: 3, sagaYasla: true, kalin: true),
-                              SizedBox(
-                                width: 32,
-                                child: IconButton(
-                                  padding: EdgeInsets.zero, icon: Icon(Icons.close, size: 15, color: TsRenk.hata),
-                                  onPressed: () => _kalemSil(i),
-                                ),
-                              ),
-                            ]),
+                            child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _gridHucre('${i + 1}',
+                                      flex: 1, ortala: true, sonuk: true),
+                                  Expanded(
+                                    flex: 6,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4),
+                                      child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(k.urun.urunAdi,
+                                                style: TsMetin.govdeVurgu
+                                                    .copyWith(
+                                                        fontSize: 12.5,
+                                                        color: TsRenk
+                                                            .metinBirincil(
+                                                                context)),
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis),
+                                            Text(k.fiyatSonucu.aciklama,
+                                                style: TsMetin.kucuk.copyWith(
+                                                    color: TsRenk.basarili,
+                                                    fontStyle:
+                                                        FontStyle.italic),
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis),
+                                          ]),
+                                    ),
+                                  ),
+                                  _gridHucre(
+                                      '${k.miktar.toStringAsFixed(k.miktar == k.miktar.roundToDouble() ? 0 : 1)}\n${_birimEtiket(k.birim)}',
+                                      flex: 3,
+                                      ortala: true),
+                                  _gridHucre(
+                                      ParaUtils.formatla(
+                                          k.fiyatSonucu.birimFiyat),
+                                      flex: 3,
+                                      sagaYasla: true),
+                                  _gridHucre('%${kdvOran.toStringAsFixed(0)}',
+                                      flex: 2, ortala: true, sonuk: true),
+                                  _gridHucre(ParaUtils.formatla(k.toplamTutar),
+                                      flex: 3, sagaYasla: true, kalin: true),
+                                  SizedBox(
+                                    width: 32,
+                                    child: IconButton(
+                                      padding: EdgeInsets.zero,
+                                      icon: Icon(Icons.close,
+                                          size: 15, color: TsRenk.hata),
+                                      onPressed: () => _kalemSil(i),
+                                    ),
+                                  ),
+                                ]),
                           ),
-                          if (i < _sepet.length - 1) Divider(height: 1, color: TsRenk.ayirac(context)),
+                          if (i < _sepet.length - 1)
+                            Divider(height: 1, color: TsRenk.ayirac(context)),
                         ]);
                       },
                     ),
@@ -784,31 +974,53 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
               top: false,
               child: Column(children: [
                 _OzetSatiri(baslik: 'Ürün Toplamı', deger: _genelToplam),
-                _OzetSatiri(baslik: 'Fiyata Dahil KDV (bilgi amaçlı)', deger: _kdvToplam, vurgusuz: true),
+                _OzetSatiri(
+                    baslik: 'Fiyata Dahil KDV (bilgi amaçlı)',
+                    deger: _kdvToplam,
+                    vurgusuz: true),
                 const Divider(height: 16),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  const Text('GENEL TOPLAM', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                  Text(ParaUtils.formatla(_genelToplam),
-                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: TsRenk.primary)),
-                ]),
+                Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('GENEL TOPLAM',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w800)),
+                      Text(ParaUtils.formatla(_genelToplam),
+                          style: TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w800,
+                              color: TsRenk.primary)),
+                    ]),
                 const SizedBox(height: TsBosluk.md),
                 SizedBox(
-                  width: double.infinity, height: 52,
+                  width: double.infinity,
+                  height: 52,
                   child: FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: TsRenk.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(TsRadius.md))),
-                    onPressed: (_sepet.isEmpty || _kaydediliyor) ? null : _satisiTamamla,
+                    style: FilledButton.styleFrom(
+                        backgroundColor: TsRenk.primary,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(TsRadius.md))),
+                    onPressed: (_sepet.isEmpty || _kaydediliyor)
+                        ? null
+                        : _satisiTamamla,
                     icon: _kaydediliyor
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.check_circle_outline),
-                    label: Text(_kaydediliyor ? 'Kaydediliyor...' : 'Satışı Tamamla (Veresiye)'),
+                    label: Text(_kaydediliyor
+                        ? 'Kaydediliyor...'
+                        : 'Satışı Tamamla (Veresiye)'),
                   ),
                 ),
               ]),
             ),
           ),
         ] else
-          Expanded(child: TsBosDurum(
+          Expanded(
+              child: TsBosDurum(
             ikon: Icons.storefront_outlined,
             baslik: 'Bayi seçilmedi',
             altyazi: 'Devam etmek için bir bayi/toptan müşteri seçin',
@@ -823,12 +1035,21 @@ class _MiniIstatistik extends StatelessWidget {
   final String baslik;
   final String deger;
   final Color renk;
-  const _MiniIstatistik({required this.baslik, required this.deger, required this.renk});
+  const _MiniIstatistik(
+      {required this.baslik, required this.deger, required this.renk});
 
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(baslik.toUpperCase(), style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: TsRenk.metinIkincil(context), letterSpacing: 0.5)),
-        Text(deger, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: renk)),
+  Widget build(BuildContext context) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(baslik.toUpperCase(),
+            style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: TsRenk.metinIkincil(context),
+                letterSpacing: 0.5)),
+        Text(deger,
+            style: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w700, color: renk)),
       ]);
 }
 
@@ -837,18 +1058,28 @@ class _OzetSatiri extends StatelessWidget {
   final String baslik;
   final double deger;
   final bool vurgusuz; // true ise daha soluk/bilgilendirme amaçlı gösterilir
-  const _OzetSatiri({required this.baslik, required this.deger, this.vurgusuz = false});
+  const _OzetSatiri(
+      {required this.baslik, required this.deger, this.vurgusuz = false});
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(baslik, style: TextStyle(fontSize: vurgusuz ? 11.5 : 13,
-              color: vurgusuz ? TsRenk.metinIkincil(context) : TsRenk.metinIkincil(context),
-              fontStyle: vurgusuz ? FontStyle.italic : FontStyle.normal)),
-          Text(ParaUtils.formatla(deger), style: TextStyle(fontSize: vurgusuz ? 11.5 : 13,
-              fontWeight: vurgusuz ? FontWeight.w400 : FontWeight.w600,
-              color: vurgusuz ? TsRenk.metinIkincil(context) : TsRenk.metinBirincil(context))),
+        child:
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text(baslik,
+              style: TextStyle(
+                  fontSize: vurgusuz ? 11.5 : 13,
+                  color: vurgusuz
+                      ? TsRenk.metinIkincil(context)
+                      : TsRenk.metinIkincil(context),
+                  fontStyle: vurgusuz ? FontStyle.italic : FontStyle.normal)),
+          Text(ParaUtils.formatla(deger),
+              style: TextStyle(
+                  fontSize: vurgusuz ? 11.5 : 13,
+                  fontWeight: vurgusuz ? FontWeight.w400 : FontWeight.w600,
+                  color: vurgusuz
+                      ? TsRenk.metinIkincil(context)
+                      : TsRenk.metinBirincil(context))),
         ]),
       );
 }
@@ -858,7 +1089,10 @@ class _MiktarBirimDialog extends StatefulWidget {
   final UrunModel urun;
   final String baslangicBirim;
   final double baslangicMiktar;
-  const _MiktarBirimDialog({required this.urun, required this.baslangicBirim, required this.baslangicMiktar});
+  const _MiktarBirimDialog(
+      {required this.urun,
+      required this.baslangicBirim,
+      required this.baslangicMiktar});
 
   @override
   State<_MiktarBirimDialog> createState() => _MiktarBirimDialogState();
@@ -905,28 +1139,40 @@ class _MiktarBirimDialogState extends State<_MiktarBirimDialog> {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           autofocus: true,
           decoration: InputDecoration(
-            labelText: 'Miktar', border: const OutlineInputBorder(),
+            labelText: 'Miktar',
+            border: const OutlineInputBorder(),
             errorText: _hata,
           ),
-          onChanged: (_) { if (_hata != null) setState(() => _hata = null); },
+          onChanged: (_) {
+            if (_hata != null) setState(() => _hata = null);
+          },
         ),
         const SizedBox(height: 12),
         if (!kgUrunu)
           SegmentedButton<String>(
             segments: [
               const ButtonSegment(value: 'adet', label: Text('Adet')),
-              if (koliVar) ButtonSegment(value: 'koli', label: Text(widget.urun.koliBirimAdi)),
+              if (koliVar)
+                ButtonSegment(
+                    value: 'koli', label: Text(widget.urun.koliBirimAdi)),
             ],
             selected: {_birim == 'kg' ? 'adet' : _birim},
-            onSelectionChanged: (s) => setState(() { _birim = s.first; _hata = null; }),
+            onSelectionChanged: (s) => setState(() {
+              _birim = s.first;
+              _hata = null;
+            }),
           )
         else
-          Text('Bu ürün Kg bazında satılıyor', style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
+          Text('Bu ürün Kg bazında satılıyor',
+              style:
+                  TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
         if (koliVar && _birim == 'koli')
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text('1 ${widget.urun.koliBirimAdi} = ${widget.urun.koliIciMiktar.toStringAsFixed(0)} ${widget.urun.birimAdi}',
-                style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
+            child: Text(
+                '1 ${widget.urun.koliBirimAdi} = ${widget.urun.koliIciMiktar.toStringAsFixed(0)} ${widget.urun.birimAdi}',
+                style: TextStyle(
+                    fontSize: 11, color: TsRenk.metinIkincil(context))),
           ),
         // Profesyonel B2B kuralı: asgari sipariş miktarı (MOQ) tanımlıysa
         // kullanıcıya baştan göster — sürpriz hata yerine önceden bilgi.
@@ -934,18 +1180,24 @@ class _MiktarBirimDialogState extends State<_MiktarBirimDialog> {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Row(children: [
-              Icon(Icons.info_outline, size: 14, color: TsRenk.metinIkincil(context)),
+              Icon(Icons.info_outline,
+                  size: 14, color: TsRenk.metinIkincil(context)),
               const SizedBox(width: 4),
-              Text('Asgari sipariş: ${asgari.toStringAsFixed(asgari == asgari.roundToDouble() ? 0 : 1)} ${widget.urun.birimAdi}',
-                  style: TextStyle(fontSize: 11.5, color: TsRenk.metinIkincil(context))),
+              Text(
+                  'Asgari sipariş: ${asgari.toStringAsFixed(asgari == asgari.roundToDouble() ? 0 : 1)} ${widget.urun.birimAdi}',
+                  style: TextStyle(
+                      fontSize: 11.5, color: TsRenk.metinIkincil(context))),
             ]),
           ),
       ]),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Vazgeç')),
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Vazgeç')),
         FilledButton(
           onPressed: () {
-            final miktar = double.tryParse(_miktarCtrl.text.replaceAll(',', '.')) ?? 0;
+            final miktar =
+                double.tryParse(_miktarCtrl.text.replaceAll(',', '.')) ?? 0;
             if (miktar <= 0) {
               setState(() => _hata = 'Geçerli bir miktar girin');
               return;

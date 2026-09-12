@@ -223,6 +223,106 @@ class StokDeposu {
     });
   }
 
+  /// FAZ 5 (Lot/SKT — kullanıcı onayıyla): satış anında `lot_takibi=1`
+  /// olan bir üründe stok düşümünü FEFO (First-Expired-First-Out)
+  /// mantığıyla, GERÇEK lotlardan yapar — ÖNCEDEN satış hangi lotun
+  /// tükendiğini hiç bilmiyordu, lot_seri.miktar sadece elle (Lot
+  /// ekranından) değişiyordu.
+  ///
+  /// `lot_takibi=0` ürünlerde davranış BİREBİR [stokDusTxn] ile aynıdır
+  /// (tek satır, lot_id yok) — geriye dönük uyumlu, mevcut çağıranlar
+  /// etkilenmez çünkü bu YENİ bir metod, [stokDusTxn]'e dokunulmadı.
+  ///
+  /// `lot_takibi=1` ürünlerde: aktif (aktif=1, miktar>0) lotlar SKT'si en
+  /// yakın olandan başlanarak (SKT'si olmayanlar en sona) tüketilir; her
+  /// tüketilen lot için AYRI bir stok_hareket satırı açılır (lot_id dolu),
+  /// lot_seri.miktar aynı transaction'da düşülür. Lotların toplamı satılan
+  /// miktarı karşılamıyorsa (eksik lot girişi/veri tutarsızlığı) KALAN
+  /// kısım lot_id=NULL ile düşülür — satış hiçbir zaman engellenmez.
+  ///
+  /// Dönüş: oluşturulan HER stok_hareket satırının global_id'si (çağıran
+  /// bunları transaction commit sonrası tek tek buluta bildirmeli — bkz.
+  /// satis_tamamlama_servisi.dart'taki kasaGlobalIdleri ile AYNI desen).
+  Future<List<String>> stokDusFefoTxn(
+    dynamic txn, {
+    required int urunId,
+    required double miktar,
+    int? kullaniciId,
+    int? referansId,
+    String? referansTuru,
+    String? aciklama,
+  }) async {
+    final urunRows = await txn.query('urunler',
+        columns: ['lot_takibi'], where: 'id = ?', whereArgs: [urunId]);
+    final lotTakibi =
+        urunRows.isNotEmpty && (urunRows.first['lot_takibi'] as int? ?? 0) == 1;
+
+    if (!lotTakibi) {
+      final gid = const Uuid().v4();
+      await stokDusTxn(txn, gid,
+          urunId: urunId,
+          miktar: miktar,
+          kullaniciId: kullaniciId,
+          referansId: referansId,
+          referansTuru: referansTuru,
+          aciklama: aciklama);
+      return [gid];
+    }
+
+    final lotlar = await txn.query('lot_seri',
+        where: 'urun_id = ? AND aktif = 1 AND miktar > 0',
+        whereArgs: [urunId],
+        // SKT'si OLAN lotlar önce (en yakın SKT ilk), SKT'si olmayanlar en sona.
+        orderBy: 'CASE WHEN son_kullanma_tarihi IS NULL THEN 1 ELSE 0 END, '
+            'son_kullanma_tarihi ASC');
+
+    final gidler = <String>[];
+    var kalan = miktar;
+    final now = DateTime.now().toIso8601String();
+
+    for (final lot in lotlar) {
+      if (kalan <= 0.005) break;
+      final lotId = lot['id'] as int;
+      final lotMiktar = (lot['miktar'] as num?)?.toDouble() ?? 0;
+      final tuketilen = kalan < lotMiktar ? kalan : lotMiktar;
+      if (tuketilen <= 0.005) continue;
+
+      await txn.update(
+          'lot_seri', {'miktar': lotMiktar - tuketilen, 'last_updated': now},
+          where: 'id = ?', whereArgs: [lotId]);
+
+      final gid = const Uuid().v4();
+      await stokDusTxn(txn, gid,
+          urunId: urunId,
+          miktar: tuketilen,
+          kullaniciId: kullaniciId,
+          referansId: referansId,
+          referansTuru: referansTuru,
+          aciklama: aciklama,
+          lotId: lotId);
+      gidler.add(gid);
+      kalan -= tuketilen;
+    }
+
+    // Lotların toplamı yetersizse (veri tutarsızlığı) — satışı ASLA
+    // engelleme, kalan kısmı lot bilgisi olmadan düş.
+    if (kalan > 0.005) {
+      final gid = const Uuid().v4();
+      await stokDusTxn(txn, gid,
+          urunId: urunId,
+          miktar: kalan,
+          kullaniciId: kullaniciId,
+          referansId: referansId,
+          referansTuru: referansTuru,
+          aciklama: aciklama == null
+              ? 'Lot stoğu yetersiz kaldı'
+              : '$aciklama (lot stoğu yetersiz kaldı)');
+      gidler.add(gid);
+    }
+
+    return gidler;
+  }
+
   Future<void> stokGir({
     required int urunId,
     required double miktar,

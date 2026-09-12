@@ -125,7 +125,10 @@ class MasaOdemeServisi {
     // ══════════════════════════════════════════════════════════════
     final db = await Veritabani().db;
     late final int satisId;
-    final stokHareketGidleri = <int, String>{};
+    // FAZ 5 (Lot/SKT — kullanıcı onayıyla): satis_tamamlama_servisi.dart
+    // ile AYNI düzeltme — lot_takibi açık üründe birden fazla lottan
+    // tüketilebildiği için ürün başına birden fazla global_id olabiliyor.
+    final stokHareketGidleri = <int, List<String>>{};
     // 🔴🔴 FAZ 1 madde 2 (kullanıcı onayıyla, Vardiya/Kasa mutabakatı):
     // satis_tamamlama_servisi.dart'taki AYNI düzeltme — karma ödemede
     // her yöntem için AYRI, odeme_yontemi etiketli kasa hareketi.
@@ -143,11 +146,8 @@ class MasaOdemeServisi {
       satisId = await _satisDepo.satisEkleTxn(txn, satis, satisKalemler);
 
       for (final k in siparis.kalemler) {
-        final gid = const Uuid().v4();
-        stokHareketGidleri[k.urunId] = gid;
-        await _stokDepo.stokDusTxn(
+        stokHareketGidleri[k.urunId] = await _stokDepo.stokDusFefoTxn(
           txn,
-          gid,
           urunId: k.urunId,
           miktar: k.miktar,
           kullaniciId: kullanici?.id,
@@ -226,18 +226,20 @@ class MasaOdemeServisi {
         BulutManager().upsert('satis_kalem', k.toMap());
       }
       for (final k in siparis.kalemler) {
-        final gid = stokHareketGidleri[k.urunId];
-        if (gid == null) continue;
+        final gidler = stokHareketGidleri[k.urunId];
+        if (gidler == null || gidler.isEmpty) continue;
         final urunSatir = await db.query('urunler',
             where: 'id = ?', whereArgs: [k.urunId], limit: 1);
         if (urunSatir.isNotEmpty)
           BulutManager()
               .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-        final stokSatir = await db.query('stok_hareket',
-            where: 'global_id = ?', whereArgs: [gid], limit: 1);
-        if (stokSatir.isNotEmpty)
-          BulutManager().upsert(
-              'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+        for (final gid in gidler) {
+          final stokSatir = await db.query('stok_hareket',
+              where: 'global_id = ?', whereArgs: [gid], limit: 1);
+          if (stokSatir.isNotEmpty)
+            BulutManager().upsert(
+                'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+        }
       }
       for (final gid in kasaGlobalIdleri) {
         final kasaSatir = await db.query('kasa_hareketleri',

@@ -385,10 +385,19 @@ class SatisTamamlamaServisi {
             odemeTuru: satis.odemeYontemi,
             kullanici: kullanici?.adSoyad,
           ));
-        } else if (satis.odemeYontemi == 'Nakit') {
+        } else if (satis.odemeYontemi != 'Cari') {
+          // 🔴 Derin analizde bulundu: bu dal sadece 'Nakit' ödemeyi
+          // kontrol ediyordu — tamamla()'daki orijinal akış ise HER
+          // Cari-olmayan ödeme yöntemi (Kredi Kartı, Banka, Havale) için
+          // kasa hareketi oluşturuyordu. Kartla/banka ile ödenmiş bir fiş
+          // düzenlendiğinde (ürün eklenip/çıkarılıp tutar değiştiğinde)
+          // hiçbir kasa/banka düzeltmesi yazılmıyor, kasa raporu fiş
+          // tutarından kalıcı olarak sapıyordu.
           kasaHareketId = await _kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
             hareketTipi: tutarFarki > 0 ? 'Satış' : 'İade',
             tutar:       tutarFarki.abs(),
+            referansId:  satis.id,
+            referansTuru: 'fis_guncelleme',
             tarih:       DateTime.now(),
             aciklama:    'Fiş güncelleme: ${satis.fisNo}',
           ));

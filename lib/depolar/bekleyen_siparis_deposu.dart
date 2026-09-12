@@ -206,6 +206,23 @@ class BekleyenSiparisDeposu {
     final now = DateTime.now().toIso8601String();
 
     await db.transaction((txn) async {
+      // 🔴 Derin analizde bulundu: bu fonksiyon siparişin hâlâ 'bekliyor'
+      // durumunda olduğunu HİÇ kontrol etmiyordu — çift dokunma veya bir
+      // ağ/UI hatası sonrası tekrar deneme, AYNI sipariş için iki kez
+      // satış oluşturup stoktan iki kez düşüp cariye borcu iki kez
+      // yazabiliyordu. Önce durumu 'onaylandi' yapmaya çalışıyoruz;
+      // etkilenen satır sayısı 0 ise (zaten onaylanmış/iptal edilmiş)
+      // işlemi tamamen durduruyoruz.
+      final etkilenen = await txn.update(
+        'bekleyen_siparisler',
+        {'durum': 'onaylandi', 'last_updated': now},
+        where: 'id = ? AND durum = ?',
+        whereArgs: [siparisId, 'bekliyor'],
+      );
+      if (etkilenen == 0) {
+        throw Exception('Sipariş zaten onaylanmış veya iptal edilmiş.');
+      }
+
       satisId = await SatisDeposu().satisEkleTxn(txn, satis, satisKalemler);
 
       for (final k in kalemSatirlari) {
@@ -233,7 +250,7 @@ class BekleyenSiparisDeposu {
         odemeTuru: 'Cari',
       ));
 
-      await txn.update('bekleyen_siparisler', {'durum': 'onaylandi', 'satis_id': satisId, 'last_updated': now},
+      await txn.update('bekleyen_siparisler', {'satis_id': satisId, 'last_updated': now},
           where: 'id = ?', whereArgs: [siparisId]);
     }); // transaction sonu
 

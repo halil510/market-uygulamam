@@ -131,7 +131,26 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
                 child: const Text('İptal'))),
             const SizedBox(width: 10),
             Expanded(child: FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
+                onPressed: () {
+                  // 🔴🔴 Derin analizde bulundu: ekleme formunda İskonto %
+                  // alanı 0-100 aralığıyla sınırlıydı (validator: '0-100
+                  // arası') ama bu düzenleme formunda HİÇ doğrulama yoktu —
+                  // ör. yanlışlıkla '150' girilirse iskontoOran=150 olarak
+                  // kaydedilir; bu ekranın kendi önizleme hesabı bile
+                  // (satisFiyati*(1-oran/100)) negatif fiyat üretir — POS'ta
+                  // satışta müşteriye para iade eder gibi bir sonuç doğar.
+                  final oran = ParaUtils.sayiCoz(iskontoCtrl.text);
+                  if (oran == null || oran <= 0 || oran > 100) {
+                    BildirimServisi.uyari(ctx, 'İskonto oranı 0-100 arasında olmalı');
+                    return;
+                  }
+                  final minMik = ParaUtils.sayiCoz(minMiktarCtrl.text);
+                  if (minMik == null || minMik <= 0) {
+                    BildirimServisi.uyari(ctx, 'Min. miktar 0\'dan büyük olmalı');
+                    return;
+                  }
+                  Navigator.pop(ctx, true);
+                },
                 child: const Text('Güncelle'))),
           ]),
         ]),
@@ -321,6 +340,15 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
     if (!_formKey.currentState!.validate()) return;
     if (_seciliUrun == null) {
       BildirimServisi.uyari(context, 'Ürün seçin');
+      return;
+    }
+    // 🔴 Derin analizde bulundu: bitiş tarihi seçici sadece başlangıç
+    // ÖNCE seçilmişse ('firstDate: _baslangic') geçersiz aralığı
+    // engelliyordu — kullanıcı önce bitişi, sonra bitişten SONRAKİ bir
+    // başlangıcı seçerse hiçbir kontrol yoktu; ters bir tarih aralığı
+    // kaydedilip aktif/süresi-dolmuş filtrelemesini bozabiliyordu.
+    if (_baslangic != null && _bitis != null && _baslangic!.isAfter(_bitis!)) {
+      BildirimServisi.uyari(context, 'Başlangıç tarihi bitiş tarihinden sonra olamaz');
       return;
     }
     setState(() => _kayit = true);

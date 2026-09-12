@@ -1484,7 +1484,38 @@ class SupabaseSyncServisi {
     }
   }
 
+  // 🔴 Derin analizde bulundu: buluttanAl() üç ayrı yerden tetiklenebiliyor
+  // (masa siparişi 5sn'lik oto-senkron, dashboard açılışı, manuel "Tam Al"
+  // butonu). İki çağrı ÇAKIŞIRSA: her ikisi de aynı satırı "yerelde yok"
+  // (yeni) olarak sınıflandırabilir, ardından supaKayitlariEkle'nin
+  // ConflictAlgorithm.replace'i last_updated karşılaştırması YAPMADAN
+  // birinin yazdığı satırın üzerine sessizce yazabilir — supaKayitlariEkle
+  // yolunda supaKayitlariGuncelle'deki LWW/çakışma-kaydı koruması yok.
+  // En sağlam çözüm: aynı anda tek bir buluttanAl() çalışmasına izin
+  // vermek — ikinci çağrı yeni bir tarama başlatmak yerine devam eden
+  // taramanın sonucunu bekleyip paylaşır.
+  static Future<SyncSonuc>? _aktifBuluttanAl;
+
   static Future<SyncSonuc> buluttanAl({
+    required Future<void> Function(String, List<Map<String, dynamic>>) kayitEkle,
+    required Future<void> Function(String, List<Map<String, dynamic>>) kayitGuncelle,
+    bool sadeceDegisenler = true,
+    void Function(String)? log,
+  }) {
+    final devamEden = _aktifBuluttanAl;
+    if (devamEden != null) return devamEden;
+    final gelecek = _buluttanAlCalistir(
+      kayitEkle: kayitEkle,
+      kayitGuncelle: kayitGuncelle,
+      sadeceDegisenler: sadeceDegisenler,
+      log: log,
+    );
+    _aktifBuluttanAl = gelecek;
+    gelecek.whenComplete(() => _aktifBuluttanAl = null);
+    return gelecek;
+  }
+
+  static Future<SyncSonuc> _buluttanAlCalistir({
     required Future<void> Function(String, List<Map<String, dynamic>>) kayitEkle,
     required Future<void> Function(String, List<Map<String, dynamic>>) kayitGuncelle,
     bool sadeceDegisenler = true,

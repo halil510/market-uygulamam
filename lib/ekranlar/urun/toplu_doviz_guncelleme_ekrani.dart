@@ -79,7 +79,26 @@ class _TopluDovizGuncellemeEkraniState extends State<TopluDovizGuncellemeEkrani>
     return u.dovizTutari! * kur.satisKuru;
   }
 
+  // 🔴 Derin analizde bulundu: bu ekran, seçili ürünlerin alış fiyatını
+  // güncel kurla anında ve HİÇBİR onay istemeden uyguluyordu —
+  // tutarsızlık için, komşu toplu işlem ekranları (toplu_islem_ekrani.dart,
+  // toplu_fiyat_ekrani.dart) hep açık bir onay dialogu gösteriyor.
   Future<void> _uygula() async {
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Toplu Döviz Güncelleme'),
+        content: Text(
+            '${_secili.length} ürünün alış fiyatı güncel kura göre yeniden '
+            'hesaplanacak. Bu işlem geri alınamaz. Devam edilsin mi?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Uygula')),
+        ],
+      ),
+    );
+    if (onay != true || !mounted) return;
     setState(() => _guncelleniyor = true);
     var adet = 0;
     try {

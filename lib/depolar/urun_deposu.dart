@@ -220,8 +220,13 @@ class UrunDeposu {
         : 0.0;
     final yeniKdvDahil = yeniAlisFiyat * (1 + kdvOrani / 100);
     final now = DateTime.now().toIso8601String();
+    // 🔴 Derin analizde bulundu: guncelle() (tekli ürün düzenleme akışı)
+    // fiyat gerçekten değiştiğinde fiyat_guncelleme_tarih'i damgalıyordu
+    // (bkz. o fonksiyondaki not) ama bu toplu/döviz fiyat güncelleme
+    // yolu bunu hiç yapmıyordu — tutarsızlık için düzeltildi.
     await db.update(DbSabitler.urunler,
-        {'alis_fiyat': yeniAlisFiyat, 'alis_fiyat_kdv_dahil': yeniKdvDahil, 'last_updated': now},
+        {'alis_fiyat': yeniAlisFiyat, 'alis_fiyat_kdv_dahil': yeniKdvDahil,
+         'fiyat_guncelleme_tarih': now, 'last_updated': now},
         where: 'id = ?', whereArgs: [urunId]);
     final guncelSatir = await db.query(DbSabitler.urunler, where: 'id = ?', whereArgs: [urunId], limit: 1);
     if (guncelSatir.isNotEmpty) {

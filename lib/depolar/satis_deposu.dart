@@ -9,6 +9,8 @@ import '../servisler/aktif_sube_servisi.dart';
 import '../veri/database/veritabani.dart';
 import '../modeller/satis_model.dart';
 import '../modeller/satis_kalem_model.dart';
+import '../modeller/kasa_hareket_model.dart';
+import 'kasa_deposu.dart';
 
 class SatisDeposu {
   final Veritabani _db = Veritabani();
@@ -476,6 +478,7 @@ class SatisDeposu {
     // veriyordu. Artık üst kapsamda tanımlanıp transaction içinde
     // sadece atanıyor, böylece her iki yerden de erişilebiliyor.
     int? cariId;
+    int? kasaHareketId;
     await db.transaction((txn) async {
 
       // 1. Satış başlığını al
@@ -537,23 +540,22 @@ class SatisDeposu {
       }
 
       // 5. Kasa hareketini tersine çevir (nakit/kart satışlar)
+      // 🔴 Derin analizde bulundu: burada elle yazılmış bir SQL sorgusu
+      // son bakiyeyi 'WHERE deleted_at IS NULL' FİLTRESİ OLMADAN
+      // hesaplıyordu (KasaDeposu._sonBakiyeTxn'nin aksine) ve eklenen
+      // ters kayda global_id/sube_id atamıyordu — bu satır ne şubeye
+      // göre filtrelenen kasa raporlarında görünüyordu ne de buluta
+      // senkronize oluyordu. Artık standart KasaDeposu.hareketEkleTxn
+      // kullanılıyor (bkz. aşağıdaki post-transaction senkron bloğu).
       if (odenenTutar > 0 && odemeYontemi != 'Cari') {
-        final kasaRows = await txn.rawQuery(
-          'SELECT bakiye_sonrasi FROM kasa_hareketleri '
-          'ORDER BY tarih DESC, id DESC LIMIT 1');
-        final mevcutKasa = kasaRows.isEmpty
-            ? 0.0
-            : (kasaRows.first['bakiye_sonrasi'] as num?)?.toDouble() ?? 0.0;
-        await txn.insert('kasa_hareketleri', {
-          'hareket_tipi':   'Satış İptali',
-          'tutar':          -odenenTutar,
-          'bakiye_sonrasi': mevcutKasa - odenenTutar,
-          'referans_id':    id,
-          'referans_turu':  'satis_iptal',
-          'tarih':          simdi,
-          'last_updated':   simdi,
-          'aciklama':       'Satış iptali: $fisNo',
-        });
+        kasaHareketId = await KasaDeposu().hareketEkleTxn(txn, KasaHareketModel(
+          hareketTipi:  'Satış İptali',
+          tutar:        odenenTutar,
+          referansId:   id,
+          referansTuru: 'satis_iptal',
+          tarih:        DateTime.parse(simdi),
+          aciklama:     'Satış iptali: $fisNo',
+        ));
       }
 
       // 6. Cari hareketi tersine çevir
@@ -602,6 +604,10 @@ class SatisDeposu {
     final db2 = await _d;
     final satisSon = await db2.query('satislar', where: 'id = ?', whereArgs: [id], limit: 1);
     if (satisSon.isNotEmpty) BulutManager().upsert('satislar', Map<String, dynamic>.from(satisSon.first));
+    if (kasaHareketId != null) {
+      final kasaSon = await db2.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
+      if (kasaSon.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSon.first));
+    }
     // 🔴 Derin analizde bulundu: cari_hareket eklemeleri (yukarıdaki
     // Satış İptali/Tahsilat İptali kayıtları) global_id ATAMIYORDU ve
     // BulutManager'a HİÇ bildirilmiyordu — ne bu kayıtlar ne de cari

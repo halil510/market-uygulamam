@@ -33,16 +33,26 @@ class FiyatSimulasyonuSonuc {
 }
 
 /// Saf fonksiyon — DB'ye bağımlı değil, test edilebilir.
+///
+/// 🔴 DÜZELTME (derin analizde bulundu): maliyet tabanı ÖNCEDEN sadece
+/// [alisFiyat] (KDV hariç) kullanıyordu, ama ekranda gösterilen "Mevcut
+/// kâr oranı" UrunModel.karOrani'den geliyordu — o getter
+/// `alisFiyatKdvDahil > 0 ise onu, yoksa alisFiyat'ı` kullanır. KDV dahil
+/// alış fiyatı dolu olan (yaygın) ürünlerde bu, ekranda aynı anda İKİ
+/// FARKLI "kâr oranı" gösterilmesine yol açıyordu. Artık BİREBİR AYNI
+/// seçim mantığı burada da uygulanıyor.
 FiyatSimulasyonuSonuc fiyatSimulasyonuHesapla({
   required double alisFiyat,
+  double alisFiyatKdvDahil = 0,
   required double eskiFiyat,
   required double yeniFiyat,
   double? aylikSatilanMiktar,
 }) {
-  final eskiKar = eskiFiyat - alisFiyat;
-  final yeniKar = yeniFiyat - alisFiyat;
-  final eskiKarOrani = alisFiyat > 0 ? (eskiKar / alisFiyat) * 100 : 0.0;
-  final yeniKarOrani = alisFiyat > 0 ? (yeniKar / alisFiyat) * 100 : 0.0;
+  final maliyet = alisFiyatKdvDahil > 0 ? alisFiyatKdvDahil : alisFiyat;
+  final eskiKar = eskiFiyat - maliyet;
+  final yeniKar = yeniFiyat - maliyet;
+  final eskiKarOrani = maliyet > 0 ? (eskiKar / maliyet) * 100 : 0.0;
+  final yeniKarOrani = maliyet > 0 ? (yeniKar / maliyet) * 100 : 0.0;
   final aylikFark =
       aylikSatilanMiktar != null ? (yeniKar - eskiKar) * aylikSatilanMiktar : null;
   return FiyatSimulasyonuSonuc(
@@ -63,6 +73,7 @@ class FiyatSimulasyonuServisi {
   Future<FiyatSimulasyonuSonuc> hesapla({
     required int urunId,
     required double alisFiyat,
+    double alisFiyatKdvDahil = 0,
     required double eskiFiyat,
     required double yeniFiyat,
   }) async {
@@ -70,6 +81,7 @@ class FiyatSimulasyonuServisi {
     final aylikSatilan = hiz[urunId];
     return fiyatSimulasyonuHesapla(
       alisFiyat: alisFiyat,
+      alisFiyatKdvDahil: alisFiyatKdvDahil,
       eskiFiyat: eskiFiyat,
       yeniFiyat: yeniFiyat,
       aylikSatilanMiktar: aylikSatilan,

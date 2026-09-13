@@ -76,6 +76,7 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
     final sonuc = await FiyatSimulasyonuServisi().hesapla(
       urunId: u.id!,
       alisFiyat: u.alisFiyat,
+      alisFiyatKdvDahil: u.alisFiyatKdvDahil,
       eskiFiyat: u.satisFiyati,
       yeniFiyat: yeniFiyat,
     );

@@ -45,5 +45,21 @@ void main() {
           alisFiyat: 80, eskiFiyat: 100, yeniFiyat: 90, aylikSatilanMiktar: 50);
       expect(s.aylikTahminiKarFarki, -500.0);
     });
+
+    test('DÜZELTME REGRESYONU: alisFiyatKdvDahil doluysa maliyet tabanı OLARAK KULLANILIR '
+        '(UrunModel.karOrani ile AYNI seçim mantığı — ekranda gösterilen "mevcut kâr oranı" '
+        'ile simülasyon sonucu artık ÇELİŞMEZ)', () {
+      // alisFiyat=80 (KDV hariç), alisFiyatKdvDahil=94.4 (%18 KDV).
+      // Maliyet tabanı 94.4 olmalı: kâr = 100-94.4 = 5.6, oran = 5.6/94.4*100 ≈ %5.93.
+      final s = fiyatSimulasyonuHesapla(
+          alisFiyat: 80, alisFiyatKdvDahil: 94.4, eskiFiyat: 100, yeniFiyat: 100);
+      expect(s.eskiKarOrani, closeTo(5.93, 0.01));
+      expect(s.eskiKarOrani, isNot(25.0), reason: 'alisFiyat (KDV hariç) tabanlı %25 YANLIŞ olurdu');
+    });
+
+    test('alisFiyatKdvDahil verilmezse (varsayılan 0) eskisi gibi alisFiyat kullanılır', () {
+      final s = fiyatSimulasyonuHesapla(alisFiyat: 80, eskiFiyat: 100, yeniFiyat: 100);
+      expect(s.eskiKarOrani, 25.0);
+    });
   });
 }

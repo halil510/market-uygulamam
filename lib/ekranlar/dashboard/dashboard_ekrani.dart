@@ -187,6 +187,8 @@ const List<_Kategori> _tumKategoriler = [
     _UygulamaItem('AI Analiz', Icons.auto_graph, Color(0xFF4527A0), '/ai'),
     _UygulamaItem('Onay Merkezi', Icons.verified_user_outlined,
         Color(0xFFB71C1C), '/onay-merkezi'),
+    _UygulamaItem('Risk Merkezi', Icons.shield_outlined,
+        Color(0xFFD84315), '/risk-merkezi'),
   ]),
   _Kategori('Tedarik & Alım', Icons.shopping_cart, [
     _UygulamaItem('Tedarikçi Sipariş', Icons.shopping_cart_outlined,

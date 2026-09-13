@@ -11,16 +11,21 @@ class KullaniciModel {
   final bool aktif;
   final String? sonGiris;
   final int? subeId;
+  /// Doluysa bu kullanıcı bir Bayi Portalı hesabıdır (rol hâlâ 'personel'
+  /// kalabilir) — değeri, kullanıcının SADECE kendi verisini görebileceği
+  /// cari.id'dir (bkz. erp_roadmap madde 39, FAZ — Bayi Portalı).
+  final int? bayiCariId;
 
   bool get isAdmin => rol == 'admin';
   bool get isMudur => rol == 'mudur' || rol == 'admin';
+  bool get isBayi => bayiCariId != null;
 
   const KullaniciModel({
     this.id, required this.kullaniciAdi, required this.sifreHash,
     this.tuz,
     required this.adSoyad, this.rol = 'personel',
     this.email, this.telefon, this.aktif = true,
-    this.sonGiris, this.subeId,
+    this.sonGiris, this.subeId, this.bayiCariId,
   });
 
   factory KullaniciModel.fromMap(Map<String, dynamic> m) => KullaniciModel(
@@ -35,6 +40,7 @@ class KullaniciModel {
     aktif: (m['aktif'] as int?) == 1,
     sonGiris: m['son_giris'] as String?,
     subeId: m['sube_id'] as int?,
+    bayiCariId: m['bayi_cari_id'] as int?,
   );
 
 
@@ -50,6 +56,7 @@ class KullaniciModel {
     bool? aktif,
     String? sonGiris,
     int? subeId,
+    int? bayiCariId,
   }) => KullaniciModel(
       id: id ?? this.id,
       kullaniciAdi: kullaniciAdi ?? this.kullaniciAdi,
@@ -62,6 +69,7 @@ class KullaniciModel {
       aktif: aktif ?? this.aktif,
       sonGiris: sonGiris ?? this.sonGiris,
       subeId: subeId ?? this.subeId,
+      bayiCariId: bayiCariId ?? this.bayiCariId,
     );
 
   Map<String, dynamic> toMap() => {
@@ -74,5 +82,6 @@ class KullaniciModel {
     'aktif': aktif ? 1 : 0,
     if (sonGiris != null) 'son_giris': sonGiris,
     if (subeId != null) 'sube_id': subeId,
+    if (bayiCariId != null) 'bayi_cari_id': bayiCariId,
   };
 }

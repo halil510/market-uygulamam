@@ -18,6 +18,11 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/musteri_360_servisi.dart';
+import '../../depolar/kullanici_deposu.dart';
+import '../../modeller/kullanici_model.dart';
+import '../../cekirdek/utils/sifre_hash.dart';
+import '../../saglayicilar/riverpod/auth_provider.dart';
+import '../../veri/database/veritabani.dart';
 
 class CariDetayEkrani extends ConsumerWidget {
   final int cariId;
@@ -208,6 +213,106 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
     }
   }
 
+  // Bayi Portalı (erp_roadmap madde 39, kullanıcı onayıyla): bir Bayi
+  // tipi cari için self-servis giriş hesabı oluşturur/yönetir. Sadece
+  // admin/müdür görebilir/kullanabilir (route seviyesinde 'kullanici'
+  // yetkisiyle zaten korunan kullanici_ekle_ekrani.dart'tan BİLİNÇLİ
+  // OLARAK ayrı, sade bir akış — bayi hesabının rol/yetki seçimine
+  // ihtiyacı yok, erişimi tamamen bayi_cari_id ile router seviyesinde
+  // kısıtlanıyor).
+  Future<void> _bayiGirisiYonet(BuildContext context, CariModel c) async {
+    final db = await Veritabani().db;
+    final mevcut = await db.query('kullanicilar',
+        where: 'bayi_cari_id = ? AND is_deleted = 0', whereArgs: [c.id], limit: 1);
+
+    if (mevcut.isNotEmpty) {
+      final k = mevcut.first;
+      if (!context.mounted) return;
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Bayi Girişi'),
+          content: Text(
+            'Bu bayinin zaten bir portal girişi var.\n\n'
+            'Kullanıcı adı: ${k['kullanici_adi']}\n'
+            'Durum: ${(k['aktif'] as int? ?? 1) == 1 ? 'Aktif' : 'Pasif'}\n\n'
+            'Şifreyi sıfırlamak için kullanıcı yönetimi ekranından bu '
+            'kullanıcıyı düzenleyin.',
+          ),
+          actions: [
+            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam')),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final kullaniciAdiCtrl = TextEditingController(
+        text: c.unvan.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '').trim());
+    final sifreCtrl = TextEditingController();
+    if (!context.mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Bayi Girişi Oluştur'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${c.unvan} bu bilgilerle uygulamaya kendi başına giriş yapıp '
+                'ürünleri görüp sipariş verebilecek.',
+                style: const TextStyle(fontSize: 12)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: kullaniciAdiCtrl,
+              decoration: const InputDecoration(
+                  labelText: 'Kullanıcı Adı', border: OutlineInputBorder(), isDense: true),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: sifreCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(
+                  labelText: 'Şifre (en az 4 karakter)', border: OutlineInputBorder(), isDense: true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Oluştur')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final kullaniciAdi = kullaniciAdiCtrl.text.trim();
+    final sifre = sifreCtrl.text.trim();
+    if (kullaniciAdi.isEmpty || sifre.length < 4) {
+      if (context.mounted) {
+        BildirimServisi.uyari(context, 'Kullanıcı adı ve en az 4 karakterli şifre girin');
+      }
+      return;
+    }
+    try {
+      final tuz = SifreHash.tuzUret();
+      final model = KullaniciModel(
+        kullaniciAdi: kullaniciAdi,
+        sifreHash: SifreHash.hashleTuzlu(sifre, tuz),
+        tuz: tuz,
+        adSoyad: c.unvan,
+        rol: 'personel',
+        bayiCariId: c.id,
+      );
+      await KullaniciDeposu().ekle(model);
+      if (context.mounted) {
+        BildirimServisi.basari(context, 'Bayi girişi oluşturuldu: $kullaniciAdi');
+      }
+    } catch (e) {
+      if (context.mounted) BildirimServisi.hata(context, 'Oluşturulamadı: $e');
+    }
+  }
+
   Color get _bakiyeRenk {
     final c = widget.cari;
     if (c.bakiye == 0) return context.textSecondary;
@@ -242,6 +347,12 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
               tooltip: 'Puanlar',
               onPressed: () => context.push('/cari/puan/${c.id}',
                   extra: {'unvan': c.unvan}),
+            ),
+          if (c.musteriTipi == 'Bayi' && ref.read(authProvider).isMudur)
+            IconButton(
+              icon: const Icon(Icons.badge_outlined, color: Colors.white),
+              tooltip: 'Bayi Girişi',
+              onPressed: () => _bayiGirisiYonet(context, c),
             ),
           IconButton(
             icon: const Icon(Icons.edit_outlined),

@@ -66,6 +66,7 @@ import '../../ekranlar/fatura/fatura_liste_ekrani.dart';
 import '../../ekranlar/fatura/gib_gelen_kutusu_ekrani.dart';
 import '../../ekranlar/urun/toplu_doviz_guncelleme_ekrani.dart';
 import '../../ekranlar/urun/fiyat_simulasyon_ekrani.dart';
+import '../../ekranlar/bayi/bayi_ana_ekrani.dart';
 import 'rotalar/fatura_rotalari.dart';
 
 import '../../ekranlar/personel/personel_liste_ekrani.dart';
@@ -230,6 +231,7 @@ class UygulamaRouter {
             GoRoute(path: '/fatura/gelen-kutusu', name: 'gib_gelen_kutusu', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const GibGelenKutusuEkrani()),
             GoRoute(path: '/urun/doviz-guncelle', name: 'toplu_doviz_guncelle', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const TopluDovizGuncellemeEkrani()),
             GoRoute(path: '/urun/fiyat-simulasyon', name: 'fiyat_simulasyon', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const FiyatSimulasyonuEkrani()),
+            GoRoute(path: '/bayi', name: 'bayi_ana', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const BayiAnaEkrani()),
             GoRoute(path: '/tedarik', name: 'tedarik', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const TedarikSiparisEkrani()),
             GoRoute(path: '/barkod/etiket', name: 'barkod_etiket', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const EtiketTasarimEkrani()),
             GoRoute(path: '/barkod/uret', name: 'barkod_uret', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const BarkodUreteciEkrani()),
@@ -304,6 +306,17 @@ class UygulamaRouter {
     if (auth.yukleniyor) return null;
 
     if (!auth.girisYapildi && gidilen != '/giris') return '/giris';
+
+    // Bayi Portalı (erp_roadmap madde 39, kullanıcı onayıyla "aynı
+    // uygulama içinde Bayi rolü"): bir bayi hesabı ASLA normal personel
+    // ekranlarına erişememeli — sadece '/bayi' altındaki kendi
+    // kabuğunda kalır. Bu kontrol admin/müdür muafiyetinden ÖNCE
+    // çalışır (bayi hesapları admin/müdür rolünde OLAMAZ zaten, ama
+    // güvenlik için yetki listesine hiç bakılmadan en baştan kesiliyor).
+    if (auth.girisYapildi && auth.isBayi && !gidilen.startsWith('/bayi')) {
+      return '/bayi';
+    }
+
     if (auth.girisYapildi && gidilen == '/giris') return '/';
 
     // 🔴🔴 GÜVENLİK DÜZELTMESİ (derin analizde bulundu): bu blok müdür

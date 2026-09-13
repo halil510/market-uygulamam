@@ -150,6 +150,9 @@ class MigrasyonYonetici {
 
     // v56'dan v57'ye — Onay Merkezi (FAZ 9, kullanıcı onayıyla)
     if (eskiVersiyon < 57) await _v56denV57ye(db);
+
+    // v57'den v58'e — Bayi Portalı (kullanıcı onayıyla)
+    if (eskiVersiyon < 58) await _v57denV58e(db);
   }
 
   // ==================== v1 -> v2 ====================
@@ -2338,5 +2341,15 @@ class MigrasyonYonetici {
         'CREATE INDEX IF NOT EXISTS idx_onay_talepleri_goruldu ON onay_talepleri(goruldu, tarih DESC)');
     await _calistir(db,
         'CREATE INDEX IF NOT EXISTS idx_onay_talepleri_tur ON onay_talepleri(tur)');
+  }
+
+  // v58 — Bayi Portalı (erp_roadmap madde 39, kullanıcı onayıyla "aynı
+  // uygulama içinde Bayi rolü"): kullanicilar.rol'ün CHECK kısıtına
+  // dokunmadan (mevcut tabloyu yeniden oluşturmak riskli olurdu), yeni
+  // nullable bir kolon — bir kullanıcı bu alanda bir cari.id taşıyorsa
+  // "bayi" modundadır (rol hâlâ 'personel' kalabilir, CHECK ihlali yok).
+  static Future<void> _v57denV58e(Database db) async {
+    await _calistir(db,
+        'ALTER TABLE kullanicilar ADD COLUMN bayi_cari_id INTEGER REFERENCES cari(id)');
   }
 }

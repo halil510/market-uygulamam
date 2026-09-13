@@ -29,6 +29,8 @@ class AuthState {
   bool get yukleniyor   => durum == AuthDurum.yukleniyor;
   bool get isAdmin      => kullanici?.rol == 'admin';
   bool get isMudur      => kullanici?.rol == 'mudur' || isAdmin;
+  bool get isBayi       => kullanici?.isBayi ?? false;
+  int? get bayiCariId   => kullanici?.bayiCariId;
   String get aktifRol   => kullanici?.rol ?? 'misafir';
   String get aktifAd    => kullanici?.adSoyad ?? '';
 }

@@ -45,6 +45,7 @@ class TemelSemasi {
         kayit_tarihi    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         last_updated    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         is_deleted      INTEGER NOT NULL DEFAULT 0,
+        bayi_cari_id    INTEGER REFERENCES cari(id),
         FOREIGN KEY(sube_id) REFERENCES ${DbSabitler.subeler}(id)
       )
     ''');

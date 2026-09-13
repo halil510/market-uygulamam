@@ -11,6 +11,7 @@ import '../../servisler/auth_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../veri/database/veritabani.dart';
 import '../../depolar/stok_deposu.dart';
+import '../../servisler/onay_merkezi_servisi.dart';
 import 'package:uuid/uuid.dart';
 
 class LotSeriEkrani extends ConsumerStatefulWidget {
@@ -258,6 +259,19 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
         if (urunSatir.isNotEmpty)
           BulutManager()
               .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
+      }
+      // FAZ 9 — Onay Merkezi (bildirim tipi): stok düzeltmesi ENGELLENMEDİ,
+      // zaten uygulandı — sadece miktar eşiği aşılıyorsa sonradan
+      // incelenebilsin diye kayda düşülüyor.
+      if (fark != 0) {
+        OnayMerkeziServisi().kaydet(
+          tur: OnayTuru.stokDuzeltme,
+          tutar: fark.abs(),
+          esikTutar: OnayEsikleri.stokDuzeltmeMiktari,
+          referansTuru: 'lot_seri',
+          referansId: lotId,
+          aciklama: 'Lot Düzeltme: ${fark > 0 ? '+' : ''}${fark.toStringAsFixed(0)} birim',
+        );
       }
       await _yukle();
       if (!mounted) return;

@@ -60,11 +60,20 @@ class OnayEsikleri {
   static const double fiyatDegisimiOrani = 30.0; // %
   static const double yuksekGiderTutari = 1000.0; // ₺
   static const double borcSilmeTutari = 100.0; // ₺ (risk limiti eşiği zaten cari.limit_tutari'nden gelir)
+  static const double stokDuzeltmeMiktari = 50.0; // birim (adet/kg/vb.)
 }
 
 /// Saf fonksiyon: eşik <= 0 ise kontrol devre dışıdır (limitKontrolEt ile
 /// AYNI konvansiyon — bkz. CariDeposu.limitKontrolEt).
 bool onayEsikiAsildiMi(double tutar, double esik) => esik > 0 && tutar >= esik;
+
+/// Saf fonksiyon: eski fiyata göre mutlak değişim yüzdesini hesaplar.
+/// Eski fiyat <= 0 ise null (yüzde değişim tanımsız — ör. ilk fiyat
+/// girişi, bu bir "değişim" değil).
+double? fiyatDegisimOraniHesapla(double eskiFiyat, double yeniFiyat) {
+  if (eskiFiyat <= 0) return null;
+  return ((yeniFiyat - eskiFiyat).abs() / eskiFiyat) * 100;
+}
 
 class OnayMerkeziServisi {
   /// Eşik aşılmışsa 'onay_talepleri'ne bir kayıt düşer. HİÇBİR ŞEKİLDE

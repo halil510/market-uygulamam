@@ -34,6 +34,7 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../depolar/doviz_deposu.dart';
 import '../../modeller/doviz_model.dart';
 import '../../servisler/log_servisi.dart';
+import '../../servisler/onay_merkezi_servisi.dart';
 
 class UrunEkleEkrani extends ConsumerStatefulWidget {
   final UrunModel? duzenlenecekUrun;
@@ -1290,8 +1291,25 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
   await _resimBulutaYukle(yeniId, _mevcutResimYolu!);
 }
       } else {
+        // FAZ 9 — Onay Merkezi (bildirim tipi): fiyat değişimi
+        // ENGELLENMEDİ — güncelleme her zaman kaydedilir, sadece eşik
+        // aşan fiyat değişimleri sonradan incelenebilsin diye kayda
+        // düşülüyor.
+        final eskiFiyat = widget.duzenlenecekUrun!.satisFiyati;
+        final oran = fiyatDegisimOraniHesapla(eskiFiyat, urun.satisFiyati);
         await _depo.guncelle(urun);
         if (mounted) BildirimServisi.basari(context, 'Ürün güncellendi');
+        if (oran != null) {
+          OnayMerkeziServisi().kaydet(
+            tur: OnayTuru.fiyatDegisimi,
+            tutar: oran,
+            esikTutar: OnayEsikleri.fiyatDegisimiOrani,
+            referansTuru: 'urunler',
+            referansId: widget.duzenlenecekUrun!.id,
+            aciklama: '${urun.urunAdi}: ${ParaUtils.formatla(eskiFiyat)} → '
+                '${ParaUtils.formatla(urun.satisFiyati)} (%${oran.toStringAsFixed(0)})',
+          );
+        }
         if (_mevcutResimYolu != null && _mevcutResimYolu!.isNotEmpty) {
   await _resimBulutaYukle(widget.duzenlenecekUrun!.id!, _mevcutResimYolu!);
 }

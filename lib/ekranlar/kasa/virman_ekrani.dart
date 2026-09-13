@@ -6,6 +6,7 @@ import '../../depolar/kasa_deposu.dart';
 import '../../saglayicilar/riverpod/kasa_rapor_provider.dart';
 import '../../modeller/kasa_hareket_model.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/onay_merkezi_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
@@ -89,6 +90,16 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
             aciklama: '$acik (Çıkış)',
             referansTuru: 'virman',
           ));
+          // FAZ 9 — Onay Merkezi (bildirim tipi): kasa çıkışı ENGELLENMEDİ,
+          // zaten yapıldı — sadece eşik aşımı sonradan incelenebilsin
+          // diye kayda düşülüyor.
+          OnayMerkeziServisi().kaydet(
+            tur: OnayTuru.kasaCikisi,
+            tutar: tutar,
+            esikTutar: OnayEsikleri.kasaCikisiTutari,
+            referansTuru: 'virman',
+            aciklama: '$_kaynakHesap → $_hedefHesap: $acik',
+          );
         }
         if (_hedefHesap == 'Kasa') {
           await _depo.hareketEkle(KasaHareketModel(

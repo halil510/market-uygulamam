@@ -452,6 +452,9 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
     'Stok değeri',
     '7 günlük tahmin',
     'Sipariş önerileri',
+    'Kârım neden düştü',
+    'Anormal işlem var mı',
+    'Stok ne zaman tükenir',
   ];
 
   @override

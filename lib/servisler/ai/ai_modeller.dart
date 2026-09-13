@@ -14,6 +14,8 @@ enum AiIntent {
   // Diğer
   tahmin, oneri, sohbet, bilinmiyor,
   grupDetay, alan1Detay, stokGenelDurum,
+  // FAZ 10 — AI analiz derinliği (erp_roadmap madde 24)
+  karDegisimAciklama, anormalTespit, stokTukenmeTahmini,
 }
 
 class AiSoru {

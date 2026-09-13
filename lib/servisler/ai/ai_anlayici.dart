@@ -156,9 +156,27 @@ class AiAnlayici {
     if (_ic(s, ['marka rapor','markaya göre','marka bazlı'])) return AiIntent.markaRaporu;
     if (_ic(s, ['alan1 rapor','alan1','alan 1'])) return AiIntent.alan1Raporu;
 
+    // FAZ 10 — kâr değişim açıklaması: "kâr" + "neden/niye/düş/azal" birlikte
+    // geçiyorsa, salt netKar yerine dönem karşılaştırmalı açıklamaya git.
+    if (_ic(s, ['kar','kâr','kazanç','kazancım','kârım']) &&
+        _ic(s, ['neden','niye','niçin','düştü','düşüş','azaldı','azalma','geriledi'])) {
+      return AiIntent.karDegisimAciklama;
+    }
+
     // Kâr - önce kar kelimesi geçiyorsa
     if (_ic(s, ['kar','kâr','kazanç','kazancım','kârım','net kar','karlılık','brüt kar','kar marjı'])) {
       return AiIntent.netKar;
+    }
+
+    // FAZ 10 — anormal işlem tespiti
+    if (_ic(s, ['anormal','şüpheli','supheli','olağandışı','olagandisi','garip işlem','garip satış','fazla iade','sıra dışı'])) {
+      return AiIntent.anormalTespit;
+    }
+
+    // FAZ 10 — stok tükenme tahmini (mevcut "stok" intent'lerinden ÖNCE
+    // kontrol edilmeli, aksi halde genel 'stok' eşleşmesi bunu yakalar)
+    if (_ic(s, ['tükenme','tukenme','ne zaman biter','ne zaman tükenir','kaç günde biter','kac gunde biter','stok bitiş','stok tahmini'])) {
+      return AiIntent.stokTukenmeTahmini;
     }
 
     // Satış kombinasyonları

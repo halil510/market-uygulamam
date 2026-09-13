@@ -194,6 +194,9 @@ class AiSohbetServisi {
         case AiIntent.yillikSatis:
         case AiIntent.ciroRaporu:     return _satisCevap(bas, bit, periyot);
         case AiIntent.netKar:         return _netKarCevap(bas, bit, periyot);
+        case AiIntent.karDegisimAciklama: return AiRaporServisi.karDegisimAciklama();
+        case AiIntent.anormalTespit:      return AiRaporServisi.anormalIslemleriTespitEt();
+        case AiIntent.stokTukenmeTahmini: return AiRaporServisi.stokTukenmeTahmini();
         case AiIntent.kasaDurumu:     return _kasaCevap();
         case AiIntent.odemeYontemi:   return _odemeDagilimCevap(bas, bit, periyot);
         case AiIntent.kritikStok:     return _kritikStokCevap();

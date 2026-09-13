@@ -37,6 +37,7 @@ import '../../ekranlar/rapor/stok_devir_analizi_ekrani.dart';
 import '../../ekranlar/rapor/tedarikci_performans_ekrani.dart';
 import '../../ekranlar/onay/onay_merkezi_ekrani.dart';
 import '../../ekranlar/rapor/risk_merkezi_ekrani.dart';
+import '../../ekranlar/arama/global_arama_ekrani.dart';
 import '../../ekranlar/gider/gider_liste_ekrani.dart';
 import '../../ekranlar/gider/gider_ekle_ekrani.dart';
 import '../../modeller/gider_model.dart';
@@ -221,6 +222,7 @@ class UygulamaRouter {
             GoRoute(path: '/rapor/tedarikci-performans', name: 'rapor_tedarikci_performans', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const TedarikciPerformansEkrani()),
             GoRoute(path: '/onay-merkezi', name: 'onay_merkezi', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const OnayMerkeziEkrani()),
             GoRoute(path: '/risk-merkezi', name: 'risk_merkezi', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const RiskMerkeziEkrani()),
+            GoRoute(path: '/arama', name: 'global_arama', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const GlobalAramaEkrani()),
             GoRoute(path: '/gider', name: 'gider_liste', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const GiderListeEkrani()),
             GoRoute(path: '/kasa', name: 'kasa', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const KasaEkrani()),
             GoRoute(path: '/kasa/hareket', name: 'kasa_hareket', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const KasaHareketEkrani()),

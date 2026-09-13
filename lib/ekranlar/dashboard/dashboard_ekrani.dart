@@ -757,6 +757,11 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
         ),
       ),
       actions: [
+        IconButton(
+          icon: const Icon(Icons.search, color: Colors.white),
+          onPressed: () => context.push('/arama'),
+          tooltip: 'Ara',
+        ),
         Builder(builder: (context) {
           final sayi = ref.watch(okunmamisSayiProvider);
           return Stack(clipBehavior: Clip.none, children: [

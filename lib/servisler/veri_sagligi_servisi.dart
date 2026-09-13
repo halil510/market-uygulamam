@@ -173,9 +173,15 @@ class VeriSagligiServisi {
     const kategori = 'Mutabakat';
     try {
       final db = await _db;
+      // Not: önceden sadece odeme_yontemi='Nakit' kontrol ediliyordu — bu,
+      // Kredi Kartı ve Karma ödemeli satışları (satis_tamamlama_servisi.dart
+      // her Karma ödeme yöntemi için ayrı kasa hareketi açıyor) bu kontrolün
+      // tamamen dışında bırakıyordu. 'Cari' hariç TÜM ödeme yöntemleri en az
+      // bir kasa hareketine sahip olmalı (Cari'de nakit/kart hareketi hiç
+      // beklenmez, bkz. FAZ 1 madde 2).
       final rows = await db.rawQuery('''
         SELECT COUNT(*) as n FROM satislar s
-        WHERE s.is_deleted = 0 AND s.odeme_yontemi = 'Nakit' AND s.odenen_tutar > 0.005
+        WHERE s.is_deleted = 0 AND s.odeme_yontemi != 'Cari' AND s.odenen_tutar > 0.005
           AND NOT EXISTS (
             SELECT 1 FROM kasa_hareketleri k
             WHERE k.referans_id = s.id AND k.referans_turu = 'satis' AND k.deleted_at IS NULL
@@ -184,8 +190,8 @@ class VeriSagligiServisi {
       final sayi = (rows.first['n'] as int?) ?? 0;
       return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
           durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.kirmizi,
-          mesaj: sayi == 0 ? 'Her nakit satışın kasa karşılığı var.'
-              : '$sayi nakit satışın kasa hareketi eksik.',
+          mesaj: sayi == 0 ? 'Her nakit/kart/karma satışın kasa karşılığı var.'
+              : '$sayi satışın (nakit/kart/karma) kasa hareketi eksik.',
           sayi: sayi);
     } catch (e) {
       return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,

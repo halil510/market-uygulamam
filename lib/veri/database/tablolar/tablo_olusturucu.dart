@@ -88,6 +88,33 @@ class TabloOlusturucu {
       )
     """);
 
+    // FAZ 9 — Onay Merkezi (bkz. migrasyon _v56denV57ye ile AYNI tanım;
+    // fresh install migrasyon adımlarını çalıştırmıyor, bu yüzden burada
+    // tekrarlanıyor — audit_log/bildirim_okundu ile aynı desen).
+    await db.execute("""
+      CREATE TABLE IF NOT EXISTS onay_talepleri (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        global_id TEXT UNIQUE,
+        tur TEXT NOT NULL,
+        referans_turu TEXT,
+        referans_id INTEGER,
+        tutar REAL,
+        esik_tutar REAL,
+        aciklama TEXT,
+        kullanici_id INTEGER,
+        kullanici_adi TEXT,
+        sube_id INTEGER,
+        tarih DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        goruldu INTEGER NOT NULL DEFAULT 0,
+        goren_kullanici_id INTEGER,
+        goruldu_tarihi DATETIME,
+        last_updated DATETIME,
+        is_deleted INTEGER NOT NULL DEFAULT 0
+      )
+    """);
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_onay_talepleri_goruldu ON onay_talepleri(goruldu, tarih DESC)");
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_onay_talepleri_tur ON onay_talepleri(tur)");
+
     // 18. Toptan satış / bayi fiyatlandırma sistemi (kullanıcı isteği:
     // "Ülker gibi firmaların kullandığı profesyonel sistem").
     await db.execute("""

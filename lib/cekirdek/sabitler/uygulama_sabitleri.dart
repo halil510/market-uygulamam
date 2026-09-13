@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      56; // v56: kasa_hareketleri.odeme_yontemi eklendi (Vardiya/Kasa mutabakatı)
+      57; // v57: onay_talepleri eklendi (FAZ 9 — Onay Merkezi)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

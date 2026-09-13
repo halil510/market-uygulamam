@@ -32,6 +32,7 @@ import '../../servisler/faturalandirma_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/aktif_sube_servisi.dart';
+import '../../servisler/onay_merkezi_servisi.dart';
 
 class _SepetKalemi {
   final UrunModel urun;
@@ -370,6 +371,18 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
           ),
         );
         if (devam != true) return;
+        // FAZ 9 — Onay Merkezi (bildirim tipi): satış ENGELLENMEDİ,
+        // kullanıcı zaten "Yine de Devam Et" dedi — sadece sonradan
+        // incelenebilsin diye kayda düşülüyor.
+        OnayMerkeziServisi().kaydet(
+          tur: OnayTuru.riskAsimi,
+          tutar: limitSonuc.mevcutBakiye + _genelToplam,
+          esikTutar: limitSonuc.limit,
+          referansTuru: 'cari',
+          referansId: _secilenBayi!.id,
+          aciklama: '${_secilenBayi!.unvan}: limit ${ParaUtils.formatla(limitSonuc.limit)}, '
+              'aşım ${ParaUtils.formatla(limitSonuc.asimTutari)}',
+        );
       }
 
       final kullanici = AuthServisi().aktifKullanici;

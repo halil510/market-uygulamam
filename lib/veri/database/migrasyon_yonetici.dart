@@ -147,6 +147,9 @@ class MigrasyonYonetici {
 
     // v55'ten v56'ya — kasa_hareketleri.odeme_yontemi eklendi (Vardiya/Kasa mutabakatı)
     if (eskiVersiyon < 56) await _v55denV56ya(db);
+
+    // v56'dan v57'ye — Onay Merkezi (FAZ 9, kullanıcı onayıyla)
+    if (eskiVersiyon < 57) await _v56denV57ye(db);
   }
 
   // ==================== v1 -> v2 ====================
@@ -2301,5 +2304,39 @@ class MigrasyonYonetici {
   static Future<void> _v55denV56ya(Database db) async {
     await _calistir(
         db, 'ALTER TABLE kasa_hareketleri ADD COLUMN odeme_yontemi TEXT');
+  }
+
+  // v56'dan v57'ye — FAZ 9 (Onay Merkezi, kullanıcı onayıyla): sekiz
+  // riskli akışta (yüksek iskonto, yüksek iade, risk limiti aşımı, kasa
+  // çıkışı, fiyat değişimi, stok düzeltme, yüksek gider, borç silme)
+  // eşik aşıldığında işlem NORMAL TAMAMLANIR — bu tablo sadece BİLDİRİM
+  // amaçlı, hiçbir akışı ENGELLEMEZ/kesintiye uğratmaz. Mevcut hiçbir
+  // tabloya dokunmuyor, tamamen izole yeni bir tablo.
+  static Future<void> _v56denV57ye(Database db) async {
+    await _calistir(db, '''
+      CREATE TABLE IF NOT EXISTS onay_talepleri (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        global_id TEXT UNIQUE,
+        tur TEXT NOT NULL,
+        referans_turu TEXT,
+        referans_id INTEGER,
+        tutar REAL,
+        esik_tutar REAL,
+        aciklama TEXT,
+        kullanici_id INTEGER,
+        kullanici_adi TEXT,
+        sube_id INTEGER,
+        tarih DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        goruldu INTEGER NOT NULL DEFAULT 0,
+        goren_kullanici_id INTEGER,
+        goruldu_tarihi DATETIME,
+        last_updated DATETIME,
+        is_deleted INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_onay_talepleri_goruldu ON onay_talepleri(goruldu, tarih DESC)');
+    await _calistir(db,
+        'CREATE INDEX IF NOT EXISTS idx_onay_talepleri_tur ON onay_talepleri(tur)');
   }
 }

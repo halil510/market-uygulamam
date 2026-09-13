@@ -183,6 +183,8 @@ const List<_Kategori> _tumKategoriler = [
     _UygulamaItem('Stok Devir Analizi', Icons.autorenew,
         Color(0xFF5D4037), '/rapor/stok-devir'),
     _UygulamaItem('AI Analiz', Icons.auto_graph, Color(0xFF4527A0), '/ai'),
+    _UygulamaItem('Onay Merkezi', Icons.verified_user_outlined,
+        Color(0xFFB71C1C), '/onay-merkezi'),
   ]),
   _Kategori('Tedarik & Alım', Icons.shopping_cart, [
     _UygulamaItem('Tedarikçi Sipariş', Icons.shopping_cart_outlined,

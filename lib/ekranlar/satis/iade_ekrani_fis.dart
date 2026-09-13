@@ -393,6 +393,17 @@ extension _FisTabExt on _IadeEkraniState {
       'musteri_adi': _bulunanSatis!.cariAdi ?? 'Perakende',
       'aciklama': 'Fiş iadesi - ${_bulunanSatis!.fisNo ?? _bulunanSatis!.id}',
     });
+    // FAZ 9 — Onay Merkezi (bildirim tipi): iade ENGELLENMEDİ, zaten
+    // tamamlandı — sadece kalem tutarı eşiği aşıyorsa sonradan
+    // incelenebilsin diye kayda düşülüyor.
+    OnayMerkeziServisi().kaydet(
+      tur: OnayTuru.yuksekIade,
+      tutar: toplam,
+      esikTutar: OnayEsikleri.yuksekIadeTutari,
+      referansTuru: 'iade',
+      referansId: iadeId,
+      aciklama: '${kalem.urunAdi} (Fiş: ${_bulunanSatis!.fisNo ?? _bulunanSatis!.id})',
+    );
     _msg(nakitIade
         ? '${kalem.urunAdi} iade edildi (kasadan nakit ödendi)'
         : '${kalem.urunAdi} iade edildi — tutarı POS cihazından ayrıca müşteriye iade edin');

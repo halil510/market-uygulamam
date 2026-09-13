@@ -39,6 +39,7 @@ import '../../depolar/cari_deposu.dart';
 import '../../depolar/satis_deposu.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/onay_merkezi_servisi.dart';
 import '../../servisler/satis_tamamlama_servisi.dart';
 import '../../servisler/yazdirma_servisi.dart';
 import '../../saglayicilar/riverpod/sepet_provider.dart';
@@ -1034,6 +1035,18 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       final fisNo = sonuc.fisNo;
       final tarih = sonuc.tarih;
       final satisKalemler = sonuc.kalemler;
+
+      // FAZ 9 — Onay Merkezi (bildirim tipi): satış ENGELLENMEDİ, zaten
+      // tamamlandı — sadece genel iskonto oranı eşiği aşıyorsa sonradan
+      // incelenebilsin diye kayda düşülüyor.
+      OnayMerkeziServisi().kaydet(
+        tur: OnayTuru.yuksekIskonto,
+        tutar: sepet.genelIskontoYuzde,
+        esikTutar: OnayEsikleri.yuksekIskontoOrani,
+        referansTuru: 'satis',
+        referansId: satisId,
+        aciklama: 'Fiş $fisNo: %${sepet.genelIskontoYuzde.toStringAsFixed(0)} iskonto',
+      );
 
       if (!mounted) return;
 

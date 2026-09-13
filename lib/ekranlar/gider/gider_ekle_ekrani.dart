@@ -8,6 +8,7 @@ import '../../depolar/gider_deposu.dart';
 import '../../modeller/gider_model.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/onay_merkezi_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
 class GiderEkleEkrani extends ConsumerStatefulWidget {
@@ -98,7 +99,7 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
           odemeYontemi: _odemeYontemi,
         ));
       } else {
-        await _depo.ekle(GiderModel(
+        final yeniId = await _depo.ekle(GiderModel(
           kategoriId: _seciliKategori!,
           tutar: tutar,
           aciklama: _aciklamaCtrl.text.trim().isEmpty ? null : _aciklamaCtrl.text.trim(),
@@ -107,6 +108,17 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
           odemeYontemi: _odemeYontemi,
           kullaniciId: AuthServisi().aktifKullanici?.id,
         ));
+        // FAZ 9 — Onay Merkezi (bildirim tipi): gider ENGELLENMEDİ,
+        // zaten kaydedildi — sadece eşik aşımı sonradan incelenebilsin
+        // diye kayda düşülüyor.
+        OnayMerkeziServisi().kaydet(
+          tur: OnayTuru.yuksekGider,
+          tutar: tutar,
+          esikTutar: OnayEsikleri.yuksekGiderTutari,
+          referansTuru: 'gider',
+          referansId: yeniId,
+          aciklama: _aciklamaCtrl.text.trim().isEmpty ? null : _aciklamaCtrl.text.trim(),
+        );
       }
       if (mounted) {
         BildirimServisi.basari(context, duzenleniyor ? 'Gider güncellendi ✓' : 'Gider kaydedildi ✓');

@@ -63,6 +63,7 @@ class DbSabitler {
   static const String masaHareketLog      = 'masa_hareket_log';
   static const String appLog              = 'app_log';
   static const String zamanFiyat          = 'zaman_fiyat';
+  static const String onayTalepleri       = 'onay_talepleri';
 
   // Banka / Kredi Kartı / Borç modülü
   static const String bankalar            = 'bankalar';

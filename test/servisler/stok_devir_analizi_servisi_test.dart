@@ -76,25 +76,56 @@ void main() {
     setUp(() async => db = await TestVeritabani.olustur());
     tearDown(() => db.close());
 
-    test('stoğu olan ama hiç satılmayan ürün LEFT JOIN ile 0 satış olarak görünür', () async {
+    Future<List<Map<String, Object?>>> _analiz(Database db, int gunSayisi) {
+      return db.rawQuery('''
+        SELECT u.id AS urun_id, u.urun_adi AS urun_adi, u.stok AS stok,
+               COALESCE(sub.satilan, 0) AS satilan
+        FROM urunler u
+        LEFT JOIN (
+          SELECT sk.urun_id AS urun_id, SUM(sk.miktar) AS satilan
+          FROM satis_kalem sk
+          JOIN satislar s ON s.id = sk.satis_id
+          WHERE s.iptal = 0 AND s.is_deleted = 0
+            AND DATE(s.tarih) >= DATE('now', 'localtime', ?)
+          GROUP BY sk.urun_id
+        ) sub ON sub.urun_id = u.id
+        WHERE u.is_deleted = 0 AND u.aktif = 1 AND u.stok > 0
+      ''', ['-$gunSayisi days']);
+    }
+
+    test('stoğu olan ama hiç satılmayan ürün 0 satış olarak görünür', () async {
       await TestVeritabani.ornekUrunEkle(db, urunAdi: 'Tozlanan Ürün', stok: 12);
 
-      final rows = await db.rawQuery('''
-        SELECT u.id AS urun_id, u.urun_adi AS urun_adi, u.stok AS stok,
-               COALESCE(SUM(sk.miktar), 0) AS satilan
-        FROM urunler u
-        LEFT JOIN satis_kalem sk ON sk.urun_id = u.id
-        LEFT JOIN satislar s ON s.id = sk.satis_id
-          AND s.iptal = 0 AND s.is_deleted = 0
-          AND DATE(s.tarih) >= DATE('now', 'localtime', ?)
-        WHERE u.is_deleted = 0 AND u.aktif = 1 AND u.stok > 0
-        GROUP BY u.id
-      ''', ['-90 days']);
+      final rows = await _analiz(db, 90);
 
       expect(rows.length, 1);
       expect(rows.first['urun_adi'], 'Tozlanan Ürün');
       expect(rows.first['satilan'], 0);
       expect(rows.first['stok'], 12);
+    });
+
+    test('DÜZELTME REGRESYONU: pencere DIŞINDAKİ eski satış "satilan"a dahil EDİLMEZ', () async {
+      // Kök neden: eski sorgu tarih filtresini LEFT JOIN'in ON koşuluna
+      // koyuyordu — bu, sk.miktar'ı SUM'dan dışlamıyor, sadece s.*
+      // alanlarını NULL'a çeviriyordu. 200 gün önceki bir satış, "son 90
+      // gün" analizine sızıyordu.
+      final urunId =
+          await TestVeritabani.ornekUrunEkle(db, urunAdi: 'Eskiden Popüler', stok: 12);
+      final eskiSatisId = await db.insert('satislar', {
+        'fis_no': 'ESKI-1', 'genel_toplam': 500,
+        'tarih': DateTime.now().subtract(const Duration(days: 200)).toIso8601String(),
+        'iptal': 0, 'is_deleted': 0,
+      });
+      await db.insert('satis_kalem', {
+        'satis_id': eskiSatisId, 'urun_id': urunId, 'urun_adi': 'Eskiden Popüler',
+        'miktar': 500, 'birim_fiyat': 1, 'toplam_tutar': 500,
+      });
+
+      final rows = await _analiz(db, 90);
+
+      expect(rows.length, 1);
+      expect(rows.first['satilan'], 0,
+          reason: '200 gün önceki satış "son 90 gün" penceresine sızmamalı');
     });
 
     test('stoğu 0 olan pasif ürün rapora hiç girmez', () async {

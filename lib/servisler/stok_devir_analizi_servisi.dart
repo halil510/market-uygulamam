@@ -110,16 +110,30 @@ class StokDevirAnaliziServisi {
   /// (onlar "Kritik Stok" / "Satın Alma Önerileri" ekranının işi).
   Future<List<DevirSatiri>> analizGetir({int gunSayisi = 90}) async {
     final db = await Veritabani().db;
+    // 🔴 DÜZELTME (derin analizde bulundu): tarih/iptal/is_deleted filtresi
+    // ÖNCEDEN ikinci LEFT JOIN'in ON koşulundaydı — bu, sadece s.* alanlarını
+    // NULL'a çeviriyordu, sk.miktar'ı (ilk JOIN'den gelen) SUM'dan
+    // DIŞLAMIYORDU. Sonuç: pencere dışındaki (ör. 200 gün önceki) satışlar
+    // da 'satilan'a dahil oluyordu — fonksiyon fiilen "tüm zamanlar
+    // satışı" hesaplıyordu, dokümante edilen "son N gün" değil. Bu da
+    // gerçekte "Hareketsiz" (ölü stok) olan ürünlerin yanlışlıkla
+    // Yavaş/Normal/Hızlı sınıflandırılmasına yol açıyordu — ve bu servisi
+    // kullanan AI stokTukenmeTahmini'nde de tükenme gününü olduğundan
+    // erken gösteriyordu. Artık tarih filtresi bir ALT SORGUDA, JOIN'den
+    // ÖNCE uygulanıyor.
     final rows = await db.rawQuery('''
       SELECT u.id AS urun_id, u.urun_adi AS urun_adi, u.stok AS stok,
-             COALESCE(SUM(sk.miktar), 0) AS satilan
+             COALESCE(sub.satilan, 0) AS satilan
       FROM urunler u
-      LEFT JOIN satis_kalem sk ON sk.urun_id = u.id
-      LEFT JOIN satislar s ON s.id = sk.satis_id
-        AND s.iptal = 0 AND s.is_deleted = 0
-        AND DATE(s.tarih) >= DATE('now', 'localtime', ?)
+      LEFT JOIN (
+        SELECT sk.urun_id AS urun_id, SUM(sk.miktar) AS satilan
+        FROM satis_kalem sk
+        JOIN satislar s ON s.id = sk.satis_id
+        WHERE s.iptal = 0 AND s.is_deleted = 0
+          AND DATE(s.tarih) >= DATE('now', 'localtime', ?)
+        GROUP BY sk.urun_id
+      ) sub ON sub.urun_id = u.id
       WHERE u.is_deleted = 0 AND u.aktif = 1 AND u.stok > 0
-      GROUP BY u.id
     ''', ['-$gunSayisi days']);
 
     final girdiler = rows

@@ -577,6 +577,28 @@ class UrunDeposu {
     return rows.map(UrunModel.fromMap).toList();
   }
 
+  /// Verilen ürün id'leri için son [gunSayisi] gündeki toplam satılan
+  /// miktarı döner (FAZ 8 — Akıllı Satın Alma önerisine gerekçe eklemek
+  /// için: "son 30 günde X satıldı, stok ~Y günde tükenir" gibi).
+  /// Salt okunur — hiçbir tabloya yazmaz.
+  Future<Map<int, double>> satisHiziGetir(List<int> urunIdleri, {int gunSayisi = 30}) async {
+    if (urunIdleri.isEmpty) return {};
+    final db = await _d;
+    final yerTutucular = List.filled(urunIdleri.length, '?').join(',');
+    final rows = await db.rawQuery('''
+      SELECT sk.urun_id AS urun_id, SUM(sk.miktar) AS miktar
+      FROM satis_kalem sk
+      JOIN satislar s ON s.id = sk.satis_id
+      WHERE s.iptal = 0 AND s.is_deleted = 0
+        AND DATE(s.tarih) >= DATE('now', 'localtime', ?)
+        AND sk.urun_id IN ($yerTutucular)
+      GROUP BY sk.urun_id
+    ''', ['-$gunSayisi days', ...urunIdleri]);
+    return {
+      for (final r in rows) r['urun_id'] as int: (r['miktar'] as num?)?.toDouble() ?? 0,
+    };
+  }
+
   Future<Map<String, dynamic>> istatistikler() async {
     final db = await _d;
     final res = await db.rawQuery('''

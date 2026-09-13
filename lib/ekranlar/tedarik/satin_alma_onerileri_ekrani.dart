@@ -19,6 +19,29 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'siparis_olustur_ekrani.dart' show OnerilenSiparisKalemi;
 
+/// FAZ 8 — Akıllı Satın Alma gerekçesi (erp_roadmap madde 17): bu öneri
+/// NEDEN çıktı, kullanıcıya kısaca açıklar. Saf fonksiyon — DB'ye bağımlı
+/// değil, kolayca test edilebilir.
+String satinAlmaGerekceOlustur({
+  required double stok,
+  required double minimumStok,
+  required double satilan30,
+  required String birim,
+}) {
+  if (satilan30 <= 0) {
+    return 'Son 30 günde satış yok — öneri yalnızca minimum stok eşiğine göre hesaplandı.';
+  }
+  final gunlukOrtalama = satilan30 / 30;
+  final gunlukStr = gunlukOrtalama.toStringAsFixed(1);
+  if (stok <= 0) {
+    return 'Stok tükendi. Son 30 günde ${satilan30.toStringAsFixed(0)} $birim satıldı '
+        '(günde ~$gunlukStr).';
+  }
+  final tukenmeGunu = (stok / gunlukOrtalama).round();
+  return 'Son 30 günde ${satilan30.toStringAsFixed(0)} $birim satıldı (günde ~$gunlukStr) '
+      '→ mevcut stok ~$tukenmeGunu günde tükenir.';
+}
+
 class SatinAlmaOnerileriEkrani extends ConsumerStatefulWidget {
   const SatinAlmaOnerileriEkrani({super.key});
   @override
@@ -30,6 +53,7 @@ class _SatinAlmaOnerileriEkraniState extends ConsumerState<SatinAlmaOnerileriEkr
   final _cariDepo = CariDeposu();
   List<UrunModel> _urunler = [];
   final Map<int, double> _miktarlar = {};
+  final Map<int, double> _satisHizi = {};
   final Set<int> _secili = {};
   bool _yukleniyor = true;
 
@@ -56,6 +80,10 @@ class _SatinAlmaOnerileriEkraniState extends ConsumerState<SatinAlmaOnerileriEkr
       _secili
         ..clear()
         ..addAll(liste.map((u) => u.id!));
+      final hiz = await _urunDepo.satisHiziGetir(liste.map((u) => u.id!).toList());
+      _satisHizi
+        ..clear()
+        ..addAll(hiz);
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Yüklenemedi: $e');
     } finally {
@@ -166,6 +194,19 @@ class _SatinAlmaOnerileriEkraniState extends ConsumerState<SatinAlmaOnerileriEkr
                                 Text(
                                   'Stok: ${u.stok.toStringAsFixed(0)} / Min: ${u.minimumStok.toStringAsFixed(0)} ${u.birimAdi}',
                                   style: TextStyle(fontSize: 11, color: context.textSecondary),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  satinAlmaGerekceOlustur(
+                                    stok: u.stok,
+                                    minimumStok: u.minimumStok,
+                                    satilan30: _satisHizi[u.id!] ?? 0,
+                                    birim: u.birimAdi,
+                                  ),
+                                  style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontStyle: FontStyle.italic,
+                                      color: context.textSecondary),
                                 ),
                               ]),
                             ),

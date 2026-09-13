@@ -34,7 +34,7 @@ Future<int> _alimiSimuleEt(
     alimId = await txn.insert('tedarikci_siparisler', {
       'cari_id': cariId,
       'siparis_no': 'AL-TEST', 'siparis_tarihi': DateTime.now().toIso8601String(),
-      'toplam_tutar': genelToplam, 'durum': 'tamamlandi',
+      'toplam_tutar': genelToplam, 'durum': 'teslim_alindi',
     });
 
     final rows = await txn.query('urunler', columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);

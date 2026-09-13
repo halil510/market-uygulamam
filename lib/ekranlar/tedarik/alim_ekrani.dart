@@ -50,8 +50,9 @@ class _AlimKalem {
 
 class AlimEkrani extends ConsumerStatefulWidget {
   final CariModel? tedarikci;
-  final List<Map<String, dynamic>>? baslangicKalemler; // sepetten gelen kalemler
-  const AlimEkrani({super.key, this.tedarikci, this.baslangicKalemler});
+  final List<Map<String, dynamic>>? baslangicKalemler; // sepetten/siparişten gelen kalemler
+  final int? mevcutSiparisId; // dolu ise: yeni fiş açmak yerine bu bekleyen siparişi teslim alıyoruz
+  const AlimEkrani({super.key, this.tedarikci, this.baslangicKalemler, this.mevcutSiparisId});
   @override
   ConsumerState<AlimEkrani> createState() => _AlimEkraniState();
 }
@@ -154,7 +155,13 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
       if (urunId == null) continue;
       final urun = await urunDepo.idileGetir(urunId);
       if (urun == null) continue;
-      final alisF = urun.alisFiyat > 0 ? urun.alisFiyat : urun.satisFiyati;
+      // 🔴 Derin analizde bulundu: bu ekrana 'alisFiyat' anahtarıyla kalem
+      // gönderen çağıranlar (hızlı satış sepeti, sipariş teslim alma) vardı
+      // ama burada HİÇ okunmuyordu — her zaman ürünün GÜNCEL alış fiyatı
+      // kullanılıyordu, sipariş/sepetteki anlaşılan fiyat sessizce yok
+      // sayılıyordu.
+      final alisF = (k['alisFiyat'] as num?)?.toDouble() ??
+          (urun.alisFiyat > 0 ? urun.alisFiyat : urun.satisFiyati);
       if (mounted) setState(() {
         _kalemler.add(_AlimKalem(
           urun: urun,
@@ -316,10 +323,15 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
       final kullanici = AuthServisi().aktifKullanici;
       final db        = await Veritabani().db;
       final now       = DateTime.now().toIso8601String();
+      final siparisModu = widget.mevcutSiparisId != null;
 
-      // Fiş no transaction dışında (sequence ayrı transaction gerektirir)
-      final alimNo = await Veritabani().fisNoUret('alim', subeId: AktifSubeServisi().subeId ?? 1);
-      int alimId   = 0;
+      // Fiş no: mevcut bir siparişi teslim alıyorsak o siparişin KENDİ
+      // numarası kullanılır — yeni bir sıra numarası tüketmeye gerek yok.
+      var alimNo = '';
+      if (!siparisModu) {
+        alimNo = await Veritabani().fisNoUret('alim', subeId: AktifSubeServisi().subeId ?? 1);
+      }
+      int alimId   = widget.mevcutSiparisId ?? 0;
       final alimGid = const Uuid().v4();
       final kalemGidler = <String>[];
       final stokHareketGidler = <String>[];
@@ -331,34 +343,84 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
       // ── TEK TRANSACTION: fiş + kalemler + stok + kasa/banka + cari ──────
       await db.transaction((txn) async {
 
-        // 1. Alım fişi
-        alimId = await txn.insert('tedarikci_siparisler', {
-          'global_id':      alimGid,
-          'cari_id':        _tedarikci?.id,
-          'siparis_no':     alimNo,
-          'siparis_tarihi': now,
-          'toplam_tutar':   _genelToplam,
-          'durum':          'tamamlandi',
-          'notlar':         'Alım: ${_tedarikci?.unvan ?? "Manuel"}',
-          'olusturan_id':   kullanici?.id,
-          'last_updated':   now,
-        });
+        // 1. Alım fişi — YENİ alım mı, yoksa BEKLEYEN bir siparişin teslim
+        // alınması mı? İkinci durumda yeni bir tedarikci_siparisler satırı
+        // AÇILMAZ; var olan 'beklemede' kaydı 'teslim_alindi' olarak
+        // güncellenir (aksi halde her teslim alımda aynı sipariş için
+        // mükerrer, birbirinden habersiz iki fiş oluşurdu).
+        if (siparisModu) {
+          final mevcut = await txn.query('tedarikci_siparisler',
+              where: 'id = ?', whereArgs: [alimId], limit: 1);
+          alimNo = mevcut.isNotEmpty ? (mevcut.first['siparis_no'] as String? ?? alimNo) : alimNo;
+          await txn.update('tedarikci_siparisler', {
+            'durum':          'teslim_alindi',
+            'teslim_tarihi':  now,
+            'toplam_tutar':   _genelToplam,
+            'last_updated':   now,
+          }, where: 'id = ?', whereArgs: [alimId]);
+        } else {
+          alimId = await txn.insert('tedarikci_siparisler', {
+            'global_id':      alimGid,
+            'cari_id':        _tedarikci?.id,
+            'siparis_no':     alimNo,
+            'siparis_tarihi': now,
+            'toplam_tutar':   _genelToplam,
+            'durum':          'teslim_alindi',
+            'notlar':         'Alım: ${_tedarikci?.unvan ?? "Manuel"}',
+            'olusturan_id':   kullanici?.id,
+            'last_updated':   now,
+          });
+        }
 
         // 2. Kalemler + stok
         for (final k in _kalemler) {
-          final kalemGid = const Uuid().v4();
-          kalemGidler.add(kalemGid);
-          await txn.insert('tedarikci_siparis_kalem', {
-            'global_id':    kalemGid,
-            'siparis_id':   alimId,
-            'urun_id':      k.urun.id,
-            'siparis_mik':  k.miktar,
-            'teslim_mik':   k.miktar,
-            'birim_fiyat':  k.alisFiyat,
-            'kdv_oran':     0,
-            'toplam_tutar': k.miktar * k.alisFiyat,
-            'last_updated': now,
-          });
+          if (siparisModu) {
+            // Siparişteki ilgili kalemi teslim-alındı olarak güncelle;
+            // siparişte hiç olmayan bir ürün eklendiyse (kullanıcı teslim
+            // alırken ekstra ürün eklemiş) yeni kalem satırı açılır.
+            final mevcutKalem = await txn.query('tedarikci_siparis_kalem',
+                where: 'siparis_id = ? AND urun_id = ?', whereArgs: [alimId, k.urun.id], limit: 1);
+            if (mevcutKalem.isNotEmpty) {
+              final mk = mevcutKalem.first;
+              final kalemGid = (mk['global_id'] as String?) ?? const Uuid().v4();
+              kalemGidler.add(kalemGid);
+              await txn.update('tedarikci_siparis_kalem', {
+                'global_id':    kalemGid,
+                'teslim_mik':   k.miktar,
+                'birim_fiyat':  k.alisFiyat,
+                'toplam_tutar': k.miktar * k.alisFiyat,
+                'last_updated': now,
+              }, where: 'id = ?', whereArgs: [mk['id']]);
+            } else {
+              final kalemGid = const Uuid().v4();
+              kalemGidler.add(kalemGid);
+              await txn.insert('tedarikci_siparis_kalem', {
+                'global_id':    kalemGid,
+                'siparis_id':   alimId,
+                'urun_id':      k.urun.id,
+                'siparis_mik':  k.miktar,
+                'teslim_mik':   k.miktar,
+                'birim_fiyat':  k.alisFiyat,
+                'kdv_oran':     0,
+                'toplam_tutar': k.miktar * k.alisFiyat,
+                'last_updated': now,
+              });
+            }
+          } else {
+            final kalemGid = const Uuid().v4();
+            kalemGidler.add(kalemGid);
+            await txn.insert('tedarikci_siparis_kalem', {
+              'global_id':    kalemGid,
+              'siparis_id':   alimId,
+              'urun_id':      k.urun.id,
+              'siparis_mik':  k.miktar,
+              'teslim_mik':   k.miktar,
+              'birim_fiyat':  k.alisFiyat,
+              'kdv_oran':     0,
+              'toplam_tutar': k.miktar * k.alisFiyat,
+              'last_updated': now,
+            });
+          }
           // Stok güncelle
           final rows = await txn.query('urunler',
               columns: ['stok'], where: 'id = ?', whereArgs: [k.urun.id]);
@@ -527,7 +589,7 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
       backgroundColor: TsRenk.arkaplan(context),
       appBar: TsAppBar(
         baslikWidget: Text(_tedarikci != null
-            ? 'Alım: ${_tedarikci!.unvan}'
+            ? (widget.mevcutSiparisId != null ? 'Teslim Al: ${_tedarikci!.unvan}' : 'Alım: ${_tedarikci!.unvan}')
             : 'Mal Alımı'),
         aksiyonlar: [
           IconButton(

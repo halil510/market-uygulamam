@@ -75,14 +75,56 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
   }
 
   Future<void> _yeniSiparis() async {
-    try {  
+    try {
       // Tedarikçi seç
       final tedarikci = await _tedarikciSec();
       if (tedarikci == null) return;
       if (!mounted) return;
-      context.push('/tedarik/alim', extra: tedarikci);
+      final kaydedildi = await context.push<bool>('/tedarik/siparis-olustur', extra: tedarikci);
+      if (kaydedildi == true) await _yukle();
         } catch (e) {
       if (kDebugMode) if (mounted) debugPrint('Hata: $e');
+    }
+  }
+
+  // 🔴 Derin analizde bulundu: bu ekranın 'Bekleyen'/'İptal' sekmeleri
+  // hiçbir zaman dolmuyordu çünkü 'Sipariş Ver' doğrudan Alım (mal kabul)
+  // ekranına atlıyor, hiç 'beklemede' kayıt açmıyordu; ayrıca Alım ekranı
+  // durum='tamamlandi' yazıyordu ki bu üç sekmeden HİÇBİRİYLE eşleşmiyordu
+  // (tab'lar 'beklemede'/'teslim_alindi'/'iptal' bekliyor). Artık
+  // SiparisOlusturEkrani gerçek bir 'beklemede' sipariş açıyor, Alım
+  // ekranı ise durum='teslim_alindi' yazıyor — üçü de anlamlı hale geldi.
+  Future<void> _teslimAl(Map<String, dynamic> siparis) async {
+    try {
+      final db = await Veritabani().db;
+      final kalemler = await db.rawQuery(
+        'SELECT * FROM tedarikci_siparis_kalem WHERE siparis_id = ?',
+        [siparis['id']],
+      );
+      if (kalemler.isEmpty) {
+        if (mounted) BildirimServisi.uyari(context, 'Siparişte kalem yok');
+        return;
+      }
+      final tedarikci = await _cariDepo.idileGetir(siparis['cari_id'] as int);
+      if (tedarikci == null || !mounted) return;
+      final aktarilanKalemler = kalemler.map((k) {
+        final siparisMik = (k['siparis_mik'] as num?)?.toDouble() ?? 0;
+        final teslimMik  = (k['teslim_mik'] as num?)?.toDouble() ?? 0;
+        final kalanMik   = (siparisMik - teslimMik).clamp(0, double.infinity);
+        return {
+          'urunId':    k['urun_id'],
+          'miktar':    kalanMik > 0 ? kalanMik : siparisMik,
+          'alisFiyat': k['birim_fiyat'],
+        };
+      }).toList();
+      await context.push('/tedarik/alim', extra: {
+        'tedarikci': tedarikci,
+        'kalemler':  aktarilanKalemler,
+        'siparisId': siparis['id'],
+      });
+      if (mounted) await _yukle();
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }
   }
 
@@ -274,8 +316,7 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
                                     TextButton.icon(
                                       icon: const Icon(Icons.check, size: 16),
                                       label: const Text('Teslim Al'),
-                                      onPressed: () => _durumDegistir(
-                                          s, 'teslim_alindi'),
+                                      onPressed: () => _teslimAl(s),
                                       style: TextButton.styleFrom(
                                           foregroundColor: AppRenkler.success),
                                     ),

@@ -180,6 +180,8 @@ const List<_Kategori> _tumKategoriler = [
         'Cari Raporu', Icons.people, Color(0xFF0097A7), '/rapor/cari'),
     _UygulamaItem('ABC Stok Analizi', Icons.pie_chart_outline,
         Color(0xFF00838F), '/rapor/abc-analiz'),
+    _UygulamaItem('Fiyat Simülasyonu', Icons.calculate_outlined,
+        Color(0xFF6A1B9A), '/urun/fiyat-simulasyon'),
     _UygulamaItem('Stok Devir Analizi', Icons.autorenew,
         Color(0xFF5D4037), '/rapor/stok-devir'),
     _UygulamaItem('AI Analiz', Icons.auto_graph, Color(0xFF4527A0), '/ai'),

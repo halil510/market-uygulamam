@@ -64,6 +64,7 @@ import '../../ekranlar/kullanici/kullanici_ekle_ekrani.dart';
 import '../../ekranlar/fatura/fatura_liste_ekrani.dart';
 import '../../ekranlar/fatura/gib_gelen_kutusu_ekrani.dart';
 import '../../ekranlar/urun/toplu_doviz_guncelleme_ekrani.dart';
+import '../../ekranlar/urun/fiyat_simulasyon_ekrani.dart';
 import 'rotalar/fatura_rotalari.dart';
 
 import '../../ekranlar/personel/personel_liste_ekrani.dart';
@@ -226,6 +227,7 @@ class UygulamaRouter {
             GoRoute(path: '/fatura', name: 'fatura_liste', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const FaturaListeEkrani()),
             GoRoute(path: '/fatura/gelen-kutusu', name: 'gib_gelen_kutusu', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const GibGelenKutusuEkrani()),
             GoRoute(path: '/urun/doviz-guncelle', name: 'toplu_doviz_guncelle', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const TopluDovizGuncellemeEkrani()),
+            GoRoute(path: '/urun/fiyat-simulasyon', name: 'fiyat_simulasyon', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const FiyatSimulasyonuEkrani()),
             GoRoute(path: '/tedarik', name: 'tedarik', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const TedarikSiparisEkrani()),
             GoRoute(path: '/barkod/etiket', name: 'barkod_etiket', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const EtiketTasarimEkrani()),
             GoRoute(path: '/barkod/uret', name: 'barkod_uret', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const BarkodUreteciEkrani()),

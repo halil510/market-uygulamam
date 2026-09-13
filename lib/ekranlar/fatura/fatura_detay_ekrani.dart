@@ -312,6 +312,18 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
         if (mounted) BildirimServisi.basari(context,
             '${tip == EFaturaTipi.eFatura ? "e-Fatura" : "e-Arşiv"} gönderildi ✓');
       } else {
+        // 🔴 DÜZELTME (erp_roadmap madde 38 — e-Belge durum makinesi):
+        // ÖNCEDEN gönderim başarısız olduğunda DB'ye HİÇBİR ŞEY
+        // yazılmıyordu — fatura sessizce 'hazir' (Beklemede) görünmeye
+        // devam ediyordu, tek iz sadece o an gösterilen ve kapanan bir
+        // diyalogdu. Fatura listesi zaten 'hata' durumunu kırmızı
+        // "Gönderim Hatası" rozetiyle göstermeye HAZIRDI (bkz.
+        // fatura_liste_ekrani.dart) — sadece bu yazma adımı eksikti.
+        // efatura_log tablosu zaten (gib_servisi.dart içinde) bu
+        // başarısız denemeyi kaydediyordu, ama fatura kaydının kendisi
+        // hiç işaretlenmiyordu.
+        await _depo.eFaturaDurumGuncelle(_fatura!.id!, 'hata');
+        await _yukle();
         if (mounted) showDialog(context: context,
           builder: (ctx) => AlertDialog(
             title: const Row(children: [

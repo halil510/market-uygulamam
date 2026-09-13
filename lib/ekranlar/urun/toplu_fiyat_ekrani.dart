@@ -137,23 +137,56 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
     setState(() => _isleniyor = true);
     try {
       final db = await _db.db;
-      int guncellenen = 0;
       final now = DateTime.now().toIso8601String();
-      for (final u in _secili.where((u) => hedefIds.contains(u.id))) {
-        final yeni = _yeniFiyatHesapla(u);
-        if (yeni <= 0) continue;
-        // 🔴 Derin analizde bulundu: bu ekran UrunDeposu.topluFiyatGuncelle()'den
-        // TAMAMEN BAĞIMSIZ kendi ham SQL'ini kullanıyordu — last_updated
-        // hiç bump edilmiyordu, BulutManager hiç çağrılmıyordu. Toplu
-        // fiyat işlemi (yüzlerce ürünü etkileyebilir) sadece manuel
-        // senkronla buluta gidiyordu.
-        await db.update('urunler', {'satis_fiyati': yeni, 'last_updated': now}, where: 'id = ?', whereArgs: [u.id]);
-        final satir = await db.query('urunler', where: 'id = ?', whereArgs: [u.id], limit: 1);
+      final hedefUrunler = _secili.where((u) => hedefIds.contains(u.id)).toList();
+      final guncellenenIds = <int>[];
+      var atlanan = 0;
+
+      // 🔴 DÜZELTME (derin analizde bulundu): bu döngü ÖNCEDEN tek
+      // transaction'da DEĞİLDİ — her ürün ayrı db.update() ile
+      // güncelleniyordu. Kullanıcıya "Bu işlem geri alınamaz!" denip
+      // atomik bir işlem izlenimi veriliyordu, ama ortasında bir kesinti
+      // (uygulama çökmesi/güç kesintisi) olsaydı KISMİ güncelleme kalır,
+      // geri alınamazdı. Artık tek transaction'da: ya hepsi, ya hiçbiri.
+      await db.transaction((txn) async {
+        for (final u in hedefUrunler) {
+          final yeni = _yeniFiyatHesapla(u);
+          if (yeni <= 0) {
+            // 🔴 DÜZELTME (derin analizde bulundu): bu satır ÖNCEDEN
+            // kullanıcıya HİÇ bildirilmeden sessizce atlanıyordu —
+            // "$guncellenen ürün güncellendi" mesajı kaç ürünün
+            // atlandığını söylemiyordu, kullanıcı TÜM seçilenlerin
+            // güncellendiğini sanıyordu.
+            atlanan++;
+            continue;
+          }
+          await txn.update('urunler', {'satis_fiyati': yeni, 'last_updated': now},
+              where: 'id = ?', whereArgs: [u.id]);
+          guncellenenIds.add(u.id!);
+        }
+      });
+
+      // 🔴 Derin analizde bulundu: bu ekran UrunDeposu.topluFiyatGuncelle()'den
+      // TAMAMEN BAĞIMSIZ kendi ham SQL'ini kullanıyordu — last_updated
+      // hiç bump edilmiyordu, BulutManager hiç çağrılmıyordu. Toplu
+      // fiyat işlemi (yüzlerce ürünü etkileyebilir) sadece manuel
+      // senkronla buluta gidiyordu. Bulut bildirimi (transaction
+      // BAŞARIYLA bittikten sonra) korunuyor.
+      for (final id in guncellenenIds) {
+        final satir = await db.query('urunler', where: 'id = ?', whereArgs: [id], limit: 1);
         if (satir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(satir.first));
-        guncellenen++;
       }
+
       await _yukle();
-      if (mounted) BildirimServisi.basari(context, '$guncellenen ürün fiyatı güncellendi');
+      if (mounted) {
+        if (atlanan > 0) {
+          BildirimServisi.uyari(context,
+              '${guncellenenIds.length} ürün güncellendi, $atlanan ürün geçersiz '
+              'hesaplanan fiyat nedeniyle ATLANDI (0 veya altı çıktı)');
+        } else {
+          BildirimServisi.basari(context, '${guncellenenIds.length} ürün fiyatı güncellendi');
+        }
+      }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     } finally {

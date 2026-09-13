@@ -37,14 +37,24 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
     super.dispose();
   }
 
+  // 🔴 DÜZELTME (derin analizde bulundu): her tuş vuruşunda tetiklenen
+  // bu async fonksiyonların sıralama/iptal koruması yoktu — kullanıcı
+  // hızlı yazınca ("1"→"12"→"120"), yavaş tamamlanan ERKEN bir istek
+  // geç tamamlanan sonucun üzerine yazabiliyordu (ekranda o an yazılan
+  // değerle uyuşmayan bir sonuç görünebiliyordu). Basit bir sıra
+  // numarası ile bayat cevaplar yok sayılıyor.
+  int _aramaSira = 0;
+  int _simulasyonSira = 0;
+
   Future<void> _ara(String sorgu) async {
     if (sorgu.trim().length < 2) {
       setState(() => _sonuclar = []);
       return;
     }
+    final sira = ++_aramaSira;
     setState(() => _araniyor = true);
     final r = await UrunDeposu().ara(sorgu.trim(), limit: 15);
-    if (mounted) setState(() { _sonuclar = r; _araniyor = false; });
+    if (mounted && sira == _aramaSira) setState(() { _sonuclar = r; _araniyor = false; });
   }
 
   void _urunSec(UrunModel u) {
@@ -72,6 +82,7 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
     final u = _secili;
     final yeniFiyat = double.tryParse(_yeniFiyatCtrl.text.replaceAll(',', '.'));
     if (u == null || yeniFiyat == null || u.id == null) return;
+    final sira = ++_simulasyonSira;
     setState(() => _hesaplaniyor = true);
     final sonuc = await FiyatSimulasyonuServisi().hesapla(
       urunId: u.id!,
@@ -80,7 +91,9 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
       eskiFiyat: u.satisFiyati,
       yeniFiyat: yeniFiyat,
     );
-    if (mounted) setState(() { _sonuc = sonuc; _hesaplaniyor = false; });
+    if (mounted && sira == _simulasyonSira) {
+      setState(() { _sonuc = sonuc; _hesaplaniyor = false; });
+    }
   }
 
   @override

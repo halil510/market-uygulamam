@@ -17,6 +17,7 @@ import '../../depolar/cari_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../servisler/musteri_360_servisi.dart';
 
 class CariDetayEkrani extends ConsumerWidget {
   final int cariId;
@@ -60,11 +61,38 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
   bool _yukl = false;
   final _fmt = DateFormat('dd.MM.yyyy HH:mm');
 
+  MusteriIstatistik? _istatistik;
+  MusteriSegmenti? _segment;
+  bool _analizYukl = false;
+
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 2, vsync: this);
+    _tab = TabController(length: 3, vsync: this);
     _hareketYukle();
+    if (widget.cari.cariTipi.contains('Müşteri')) _analizYukle();
+  }
+
+  Future<void> _analizYukle() async {
+    if (!mounted) return;
+    setState(() => _analizYukl = true);
+    try {
+      final servis = Musteri360Servisi();
+      final c = widget.cari;
+      final istat = await servis.istatistikGetir(c.id!);
+      final segment = await servis.segmentGetir(c.id!,
+          istatistik: istat, bakiye: c.bakiye, limitTutari: c.limitTutari);
+      if (mounted) {
+        setState(() {
+          _istatistik = istat;
+          _segment = segment;
+          _analizYukl = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('CariDetay analizYukle hata: $e');
+      if (mounted) setState(() => _analizYukl = false);
+    }
   }
 
   @override
@@ -213,12 +241,17 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
-          tabs: const [Tab(text: 'Bilgi'), Tab(text: 'Hareketler')],
+          tabs: const [
+            Tab(text: 'Bilgi'),
+            Tab(text: 'Hareketler'),
+            Tab(text: '360°'),
+          ],
         ),
       ),
       body: TabBarView(controller: _tab, children: [
         _bilgiTab(context, c),
         _hareketTab(),
+        _analizTab(context, c),
       ]),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
@@ -407,6 +440,162 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
           );
         },
       ),
+    );
+  }
+
+  Widget _analizTab(BuildContext ctx, CariModel c) {
+    if (!c.cariTipi.contains('Müşteri')) {
+      return Center(
+        child: Text('360° analiz şu an sadece müşteriler için hesaplanıyor',
+            style: TextStyle(color: context.textSecondary)),
+      );
+    }
+    if (_analizYukl) return const Center(child: AppYukleniyor());
+    final istat = _istatistik;
+    if (istat == null || istat.islemSayisi == 0) {
+      return Center(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.insights_outlined, size: 48, color: context.textSecondary),
+          const SizedBox(height: 8),
+          Text('Henüz satış geçmişi yok', style: TextStyle(color: context.textSecondary)),
+        ]),
+      );
+    }
+    final riskOrani = c.limitTutari > 0 ? (c.bakiye / c.limitTutari) : 0.0;
+    return RefreshIndicator(
+      onRefresh: _analizYukle,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (_segment != null) _segmentRozeti(ctx, _segment!),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+                child: TsKart.istatistik(
+                    baslik: 'Toplam Ciro',
+                    deger: ParaUtils.formatla(istat.toplamCiro),
+                    ikon: const Icon(Icons.payments_outlined),
+                    vurguRenk: TsRenk.basarili)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: TsKart.istatistik(
+                    baslik: 'İşlem Sayısı',
+                    deger: '${istat.islemSayisi}',
+                    ikon: const Icon(Icons.receipt_long_outlined))),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+                child: TsKart.istatistik(
+                    baslik: 'Ortalama Sepet',
+                    deger: ParaUtils.formatla(istat.ortalamaSepet),
+                    ikon: const Icon(Icons.shopping_cart_outlined))),
+            const SizedBox(width: 12),
+            Expanded(
+                child: TsKart.istatistik(
+                    baslik: 'Alışveriş Sıklığı',
+                    deger: istat.ortalamaGunAraligi == null
+                        ? '—'
+                        : '${istat.ortalamaGunAraligi!.round()} günde bir',
+                    ikon: const Icon(Icons.event_repeat_outlined))),
+          ]),
+          if (c.limitTutari > 0) ...[
+            const SizedBox(height: 12),
+            _Kart(children: [
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Text('Risk Limiti Kullanımı',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: context.textSecondary)),
+                      const Spacer(),
+                      Text('%${(riskOrani * 100).clamp(0, 999).toStringAsFixed(0)}',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: riskOrani >= 0.9
+                                  ? TsRenk.hata
+                                  : riskOrani >= 0.6
+                                      ? TsRenk.uyari
+                                      : TsRenk.basarili)),
+                    ]),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                          value: riskOrani.clamp(0.0, 1.0),
+                          minHeight: 8,
+                          backgroundColor: TsRenk.ayirac(ctx),
+                          color: riskOrani >= 0.9
+                              ? TsRenk.hata
+                              : riskOrani >= 0.6
+                                  ? TsRenk.uyari
+                                  : TsRenk.basarili),
+                    ),
+                  ],
+                ),
+              ),
+            ]),
+          ],
+          if (istat.enCokAlinanUrunler.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text('En Çok Alınan Ürünler',
+                style: TsMetin.baslikM.copyWith(color: TsRenk.metinBirincil(ctx))),
+            const SizedBox(height: 8),
+            ...istat.enCokAlinanUrunler.map((u) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: TsKart.liste(
+                    baslik: u.urunAdi,
+                    altBaslik: '${_miktarStr(u.miktar)} adet/birim',
+                    deger: ParaUtils.formatla(u.tutar),
+                  ),
+                )),
+          ],
+          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
+  String _miktarStr(double m) =>
+      m == m.roundToDouble() ? m.toStringAsFixed(0) : m.toStringAsFixed(2);
+
+  Widget _segmentRozeti(BuildContext ctx, MusteriSegmenti s) {
+    final (renk, ikon) = switch (s) {
+      MusteriSegmenti.vip => (TsRenk.accent, Icons.workspace_premium_outlined),
+      MusteriSegmenti.sadik => (TsRenk.basarili, Icons.favorite_outline),
+      MusteriSegmenti.riskli => (TsRenk.hata, Icons.warning_amber_outlined),
+      MusteriSegmenti.kaybedilmekUzere => (TsRenk.uyari, Icons.trending_down_outlined),
+      MusteriSegmenti.yeni => (TsRenk.bilgi, Icons.fiber_new_outlined),
+      MusteriSegmenti.standart => (TsRenk.notr, Icons.person_outline),
+    };
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: TsRenk.zemin(renk),
+        borderRadius: BorderRadius.circular(TsRadius.lg),
+        border: Border.all(color: TsRenk.zemin(renk, opaklik: 0.4)),
+      ),
+      child: Row(children: [
+        Icon(ikon, color: renk, size: 22),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Müşteri Segmenti',
+                  style: TsMetin.kucuk.copyWith(color: TsRenk.metinIkincil(ctx))),
+              Text(s.etiket,
+                  style: TsMetin.baslikL.copyWith(color: renk)),
+            ],
+          ),
+        ),
+      ]),
     );
   }
 }

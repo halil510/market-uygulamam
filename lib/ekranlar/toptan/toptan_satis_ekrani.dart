@@ -336,6 +336,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
     // set ediyor). Artık en baştan, herhangi bir await'ten önce set
     // ediliyor.
     setState(() => _kaydediliyor = true);
+    ({double tutar, double esik, String aciklama})? riskOnayBilgisi;
     try {
       final limitSonuc =
           await _cariDepo.limitKontrolEt(_secilenBayi!.id!, _genelToplam);
@@ -372,14 +373,17 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
         );
         if (devam != true) return;
         // FAZ 9 — Onay Merkezi (bildirim tipi): satış ENGELLENMEDİ,
-        // kullanıcı zaten "Yine de Devam Et" dedi — sadece sonradan
-        // incelenebilsin diye kayda düşülüyor.
-        OnayMerkeziServisi().kaydet(
-          tur: OnayTuru.riskAsimi,
+        // kullanıcı zaten "Yine de Devam Et" dedi. Kayıt burada HEMEN
+        // düşürülMÜYOR — 🔴 DÜZELTME (derin analizde bulundu): önceden
+        // buradan düşürülüyordu, yani satış transaction'ı SONRADAN
+        // (stok yetersizliği/exception ile) başarısız olsa bile Onay
+        // Merkezi'nde hiç gerçekleşmemiş bir satış için yanlış-pozitif
+        // bir "risk aşımı" kaydı kalıyordu. Artık sadece bilgi
+        // saklanıyor; gerçek kayıt aşağıda transaction BAŞARIYLA
+        // bittikten sonra düşürülüyor (diğer 6 onay hook'uyla aynı desen).
+        riskOnayBilgisi = (
           tutar: limitSonuc.mevcutBakiye + _genelToplam,
-          esikTutar: limitSonuc.limit,
-          referansTuru: 'cari',
-          referansId: _secilenBayi!.id,
+          esik: limitSonuc.limit,
           aciklama: '${_secilenBayi!.unvan}: limit ${ParaUtils.formatla(limitSonuc.limit)}, '
               'aşım ${ParaUtils.formatla(limitSonuc.asimTutari)}',
         );
@@ -548,6 +552,19 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
       }
 
       // Tüm veritabanı yazmaları bitti — buradan sonrası arayüz.
+      // FAZ 9 — Onay Merkezi (bildirim tipi): satış artık GERÇEKTEN
+      // kalıcı olduğu için (transaction başarıyla bitti) risk aşımı
+      // kaydı burada, satisId referansıyla düşürülüyor.
+      if (riskOnayBilgisi != null) {
+        OnayMerkeziServisi().kaydet(
+          tur: OnayTuru.riskAsimi,
+          tutar: riskOnayBilgisi.tutar,
+          esikTutar: riskOnayBilgisi.esik,
+          referansTuru: 'satis',
+          referansId: satisId,
+          aciklama: riskOnayBilgisi.aciklama,
+        );
+      }
       if (!mounted) return;
 
       // 🔴 DÜZELTME: aşağıdaki setState `_secilenBayi`'yi null yapıyor,

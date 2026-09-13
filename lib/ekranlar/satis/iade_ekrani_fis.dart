@@ -141,6 +141,16 @@ extension _FisTabExt on _IadeEkraniState {
     final now = DateTime.now().toIso8601String();
     final kullaniciId = AuthServisi().aktifId;
     late final int iadeId;
+    final guncellenenLotIdleri = <int>{};
+    // FAZ: iade → lot geri ekleme. Bu ekran (diğer iki iade ekranından
+    // farklı olarak) orijinal satışa (satis_id) referans veriyor, bu
+    // yüzden SADECE burada orijinal stok_hareket kayıtlarından (FAZ 5
+    // FEFO tüketiminin bıraktığı lot_id'li satırlar) hangi lot(lar)ın
+    // tüketildiği bulunup iade miktarı aynı lotlara geri eklenebiliyor.
+    // Aşağıda oluşturulan HER stok_hareket satırının global_id'si, commit
+    // sonrası tek tek buluta bildirilmek üzere toplanıyor (bkz.
+    // satis_tamamlama_servisi.dart'taki stokHareketGidleri ile AYNI desen).
+    final stokHareketGidleri = <String>[];
 
     // ── TEK TRANSACTION: iade + kalem + stok + kasa + cari ──────────────
     // 🔴 Derin analizde bulundu: bu fonksiyon ÖNCEDEN 4 AYRI işlem
@@ -176,25 +186,81 @@ extension _FisTabExt on _IadeEkraniState {
 
       // Stok geri ekle
       final urunRows = await txn.query('urunler',
-          columns: ['stok'], where: 'id = ?', whereArgs: [kalem.urunId]);
+          columns: ['stok', 'lot_takibi'],
+          where: 'id = ?', whereArgs: [kalem.urunId]);
       if (urunRows.isNotEmpty) {
         final onceki = (urunRows.first['stok'] as num).toDouble();
-        await txn.update(
-            'urunler', {'stok': onceki + kalanMiktar, 'last_updated': now},
+        final lotTakibi =
+            (urunRows.first['lot_takibi'] as int? ?? 0) == 1;
+
+        // (lotId veya null, miktar) — lot_takibi=0 ürünlerde davranış
+        // BİREBİR eskisiyle aynı: tek satır, lot_id yok.
+        final dagilim = <MapEntry<int?, double>>[];
+        if (lotTakibi) {
+          final tuketimSatirlari = await txn.query('stok_hareket',
+              where: 'referans_id = ? AND referans_turu = ? AND urun_id = ?',
+              whereArgs: [_bulunanSatis!.id, 'satis', kalem.urunId],
+              orderBy: 'id ASC');
+          // Daha önce bu üründen kısmen iade edilmiş olabilir — ledger'da
+          // o kadarlık kısmı zaten "geri eklenmiş" sayıp atlıyoruz, aynı
+          // lota mükerrer geri ekleme yapılmasın diye.
+          var atla = oncekiIadeMiktar;
+          var kalanDagitilacak = kalanMiktar;
+          for (final satir in tuketimSatirlari) {
+            if (kalanDagitilacak <= 0.005) break;
+            var tSatirMiktar = (satir['miktar'] as num?)?.toDouble() ?? 0;
+            if (atla > 0.005) {
+              final atlanan = atla < tSatirMiktar ? atla : tSatirMiktar;
+              tSatirMiktar -= atlanan;
+              atla -= atlanan;
+              if (tSatirMiktar <= 0.005) continue;
+            }
+            final buSatirdanIadeEdilecek =
+                kalanDagitilacak < tSatirMiktar ? kalanDagitilacak : tSatirMiktar;
+            if (buSatirdanIadeEdilecek <= 0.005) continue;
+            dagilim.add(MapEntry(satir['lot_id'] as int?, buSatirdanIadeEdilecek));
+            kalanDagitilacak -= buSatirdanIadeEdilecek;
+          }
+          // Orijinal tüketim ledger'ı eksik/yetersizse (ör. satış lot
+          // özelliğinden ÖNCE yapılmış) kalanı lot bilgisi olmadan ekle —
+          // iade ASLA engellenmez.
+          if (kalanDagitilacak > 0.005) {
+            dagilim.add(MapEntry(null, kalanDagitilacak));
+          }
+        } else {
+          dagilim.add(MapEntry(null, kalanMiktar));
+        }
+
+        var su = onceki;
+        for (final girdi in dagilim) {
+          final miktar = girdi.value;
+          final yeniSu = su + miktar;
+          final gid = const Uuid().v4();
+          await txn.insert('stok_hareket', {
+            'global_id': gid,
+            'urun_id': kalem.urunId,
+            'hareket_turu': 'Iade Giris',
+            'miktar': miktar,
+            'onceki_stok': su,
+            'sonraki_stok': yeniSu,
+            'tarih': now,
+            'referans_id': iadeId,
+            'referans_turu': 'iade',
+            'kullanici_id': kullaniciId,
+            'aciklama': 'Fiş iadesi: $fisNo',
+            if (girdi.key != null) 'lot_id': girdi.key,
+          });
+          stokHareketGidleri.add(gid);
+          if (girdi.key != null) {
+            await txn.rawUpdate(
+                'UPDATE lot_seri SET miktar = miktar + ?, last_updated = ? WHERE id = ?',
+                [miktar, now, girdi.key]);
+            guncellenenLotIdleri.add(girdi.key!);
+          }
+          su = yeniSu;
+        }
+        await txn.update('urunler', {'stok': su, 'last_updated': now},
             where: 'id = ?', whereArgs: [kalem.urunId]);
-        await txn.insert('stok_hareket', {
-          'global_id': const Uuid().v4(),
-          'urun_id': kalem.urunId,
-          'hareket_turu': 'Iade Giris',
-          'miktar': kalanMiktar,
-          'onceki_stok': onceki,
-          'sonraki_stok': onceki + kalanMiktar,
-          'tarih': now,
-          'referans_id': iadeId,
-          'referans_turu': 'iade',
-          'kullanici_id': kullaniciId,
-          'aciklama': 'Fiş iadesi: $fisNo',
-        });
       }
 
       // Kasa — SADECE Nakit iade seçildiyse oluşturulur. Kart/Banka
@@ -262,14 +328,22 @@ extension _FisTabExt on _IadeEkraniState {
       if (urunSatir.isNotEmpty)
         BulutManager()
             .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-      final stokSatir = await db.query('stok_hareket',
-          where: 'referans_id = ? AND referans_turu = ?',
-          whereArgs: [iadeId, 'iade'],
-          orderBy: 'id DESC',
-          limit: 1);
-      if (stokSatir.isNotEmpty)
-        BulutManager()
-            .upsert('stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+      // Lot-farkındalıklı iadede BİRDEN FAZLA stok_hareket satırı açılmış
+      // olabilir (her tüketilen lot için ayrı) — hepsi tek tek bildirilir.
+      for (final gid in stokHareketGidleri) {
+        final s = await db.query('stok_hareket',
+            where: 'global_id = ?', whereArgs: [gid], limit: 1);
+        if (s.isNotEmpty) {
+          BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(s.first));
+        }
+      }
+      for (final lotId in guncellenenLotIdleri) {
+        final l = await db.query('lot_seri',
+            where: 'id = ?', whereArgs: [lotId], limit: 1);
+        if (l.isNotEmpty) {
+          BulutManager().upsert('lot_seri', Map<String, dynamic>.from(l.first));
+        }
+      }
       final kasaSatir = await db.query('kasa_hareketleri',
           where: 'referans_id = ? AND referans_turu = ?',
           whereArgs: [iadeId, 'iade'],

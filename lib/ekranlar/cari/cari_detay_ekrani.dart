@@ -73,6 +73,22 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
     if (widget.cari.cariTipi.contains('Müşteri')) _analizYukle();
   }
 
+  // 🔴 DÜZELTME (derin analizde bulundu): "Düzenle"/"Tahsilat-Ödeme"
+  // sonrası dışarıdan (CariDetayEkrani.build) cariDetayProvider
+  // invalidate edilip YENİ bir `cari` bu State'e widget.cari olarak
+  // geliyordu, ama _analizYukle() SADECE initState()'te çağrıldığı için
+  // (Flutter aynı State nesnesini koruyor) 360° sekmesi tahsilat/
+  // düzenleme sonrası ESKİ risk oranını/segmenti göstermeye devam
+  // ediyordu — ör. bir tahsilat müşteriyi "Riskli"den çıkarsa bile.
+  @override
+  void didUpdateWidget(covariant _CariDetayIcerik oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final degisti = oldWidget.cari.bakiye != widget.cari.bakiye ||
+        oldWidget.cari.limitTutari != widget.cari.limitTutari ||
+        oldWidget.cari.cariTipi != widget.cari.cariTipi;
+    if (degisti && widget.cari.cariTipi.contains('Müşteri')) _analizYukle();
+  }
+
   Future<void> _analizYukle() async {
     if (!mounted) return;
     setState(() => _analizYukl = true);

@@ -82,6 +82,12 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
   
   bool _hesaplamaCalisiyor = false;
   bool _dropdownlarYuklendi = false;
+  // Kullanıcı bulgusu: "satış fiyat değiştiğinde indirimli fiyat eski
+  // kalıyor, hızlı satışta o eski indirimi yansıtıyor". _doldur()'ün
+  // programatik alan doldurması sırasında satisFiyati alanı da
+  // set edildiği için (bkz. _doldur), bu bayrak o sırada indirim
+  // sıfırlama listener'ının yanlışlıkla tetiklenmesini engeller.
+  bool _dolduruluyor = false;
   bool _ilkYuklemeYapildi = false;
 
   // AI ile doldurulan alanları işaretlemek için
@@ -124,6 +130,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
     _c['alisKdvOran']?.addListener(_alisKdvOranHesapla);
     _c['alisFiyatKdvDahil']?.addListener(_alisKdvliFiyatHesapla);
     _c['satisFiyati']?.addListener(_karHesapla);
+    _c['satisFiyati']?.addListener(_satisFiyatiDegistiIndirimSifirla);
     _c['indirimOrani']?.addListener(_indirimHesapla);
     _c['indirimliFiyat']?.addListener(_indirimTersHesapla);
   }
@@ -271,6 +278,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
   }
 
   void _doldur(UrunModel u) {
+    _dolduruluyor = true;
     _c['kod']?.text           = u.kod ?? '';
     _c['barkod']?.text        = u.barkod ?? '';
     _c['barkodlar']?.text     = u.barkodlar ?? '';
@@ -317,6 +325,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
       _mevcutResimYolu = u.resimYolu;
       _secilenResim = File(u.resimYolu!);
     }
+    _dolduruluyor = false;
   }
 
   // ---- KDV HESAPLAMALARI ----
@@ -382,6 +391,30 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
     } else {
       _c['karOrani']?.text = '0';
     }
+    _hesaplamaCalisiyor = false;
+  }
+
+  // 🔴 DÜZELTME (kullanıcı bulgusu — "satış fiyat değiştiğinde indirimli
+  // fiyat eski kalıyor, hızlı satışta o eski indirimi yansıtıyor"): satış
+  // fiyatı bu üründe daha önce girilmiş bir indirimli fiyat/oranla
+  // BİRLİKTE kaydedilmişti. Satış fiyatı düzenlenirken indirim alanları
+  // hiç sıfırlanmıyordu — indirimliFiyat (mutlak, kayıtlı) satır DB'ye
+  // AYNEN kaydediliyor ve sepet_provider._fiyatHesapla() bunu satış
+  // fiyatından bağımsız, koşulsuz uyguluyordu (satış fiyatı 100→150
+  // olsa bile ürün hâlâ eski 85'ten satılabiliyordu).
+  //
+  // Artık satış fiyatı değiştiğinde indirim alanları BOŞALTILIYOR —
+  // kullanıcı yeni fiyat için indirim istiyorsa BİLİNÇLİ OLARAK yeniden
+  // girmeli. Bu, profesyonel ERP'lerin çoğunun izlediği güvenli
+  // yaklaşımdır (fiyat değişince eski indirim sessizce miras kalmaz).
+  void _satisFiyatiDegistiIndirimSifirla() {
+    if (_hesaplamaCalisiyor || _dolduruluyor) return;
+    final oranDolu = (_c['indirimOrani']?.text.trim().isNotEmpty ?? false);
+    final fiyatDolu = (_c['indirimliFiyat']?.text.trim().isNotEmpty ?? false);
+    if (!oranDolu && !fiyatDolu) return;
+    _hesaplamaCalisiyor = true;
+    _c['indirimOrani']?.text = '';
+    _c['indirimliFiyat']?.text = '';
     _hesaplamaCalisiyor = false;
   }
 

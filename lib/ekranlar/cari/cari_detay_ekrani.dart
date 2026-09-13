@@ -23,6 +23,8 @@ import '../../modeller/kullanici_model.dart';
 import '../../cekirdek/utils/sifre_hash.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../veri/database/veritabani.dart';
+import '../../servisler/onay_merkezi_servisi.dart';
+import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 
 class CariDetayEkrani extends ConsumerWidget {
   final int cariId;
@@ -338,6 +340,123 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
     }
   }
 
+  // Kullanıcı isteği (2026-09-13): "Borç Silme" — uygulamada borç sadece
+  // ödeme ile azalıyordu, tahsil edilemeyen/hatayla girilmiş bir bakiyeyi
+  // KAPATACAK bir yol hiç yoktu. Kanonik bakiye formülü
+  // (SUM(borc)-SUM(alacak), bkz. CariDeposu.bakiyeYenidenHesapla) hiç
+  // bozulmuyor — ters yönde (alacak) bir cari_hareket eklenir, hiçbir
+  // geçmiş kayıt silinmez/değiştirilmez (ORİJİNAL→REVERSAL deseni,
+  // FAZ 1 madde 5 ile aynı felsefe). Riskli/kötüye kullanılabilir bir
+  // işlem olduğu için: (1) sadece müdür/admin görebilir/çalıştırabilir,
+  // (2) hemen öncesinde kendi şifresini yeniden girmesi istenir, (3) her
+  // zaman Onay Merkezi'ne kayıt düşer (OnayTuru.borcSilme zaten
+  // onay_merkezi_servisi.dart'ta tanımlıydı ama hiçbir ekran bağlamıyordu).
+  Future<void> _borcSil(BuildContext context, CariModel c) async {
+    if (!ref.read(authProvider).isMudur) return;
+
+    final tutarCtrl = TextEditingController(text: c.bakiye.toStringAsFixed(2));
+    final sebepCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.money_off, color: Colors.red),
+          SizedBox(width: 8),
+          Text('Borç Sil'),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${c.unvan} — güncel borç: ${ParaUtils.formatla(c.bakiye)}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            const Text(
+              'Bu işlem GERİ ALINAMAZ. Hatayla girilmiş veya tahsil '
+              'edilemeyen bir borcu kapatmak için kullanın — cari hareket '
+              'geçmişinde izlenebilir kalır, hiçbir kayıt silinmez.',
+              style: TextStyle(fontSize: 11, color: Colors.orange),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: tutarCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                  labelText: 'Silinecek Tutar (₺)', border: OutlineInputBorder(), isDense: true),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: sebepCtrl,
+              decoration: const InputDecoration(
+                  labelText: 'Sebep (zorunlu)', border: OutlineInputBorder(), isDense: true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Devam Et'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    final tutar = double.tryParse(tutarCtrl.text.replaceAll(',', '.')) ?? 0;
+    final sebep = sebepCtrl.text.trim();
+    if (tutar <= 0 || tutar > c.bakiye + 0.01) {
+      if (context.mounted) {
+        BildirimServisi.uyari(context, 'Geçerli bir tutar girin (0 - ${ParaUtils.formatla(c.bakiye)} arası)');
+      }
+      return;
+    }
+    if (sebep.isEmpty) {
+      if (context.mounted) BildirimServisi.uyari(context, 'Sebep girilmesi zorunludur');
+      return;
+    }
+
+    if (!context.mounted) return;
+    final onaylandi = await yoneticiSifresiIleOnayIste(
+      context,
+      baslik: 'Borç Silme Onayı',
+      aciklama: '${c.unvan} carisinden ${ParaUtils.formatla(tutar)} tutarında '
+          'borç silinecek. Devam etmek için şifrenizi girin.',
+    );
+    if (!onaylandi) return;
+    if (!context.mounted) return;
+    if (!ref.read(authProvider).isMudur) return; // savunma: eylem anında ikinci kez doğrula
+
+    try {
+      await CariDeposu().hareketEkle(CariHareketModel(
+        cariId: c.id!,
+        fisTipi: 'Borç Silme',
+        tarih: DateTime.now(),
+        aciklama: 'Borç Silindi: $sebep',
+        borc: 0,
+        alacak: tutar,
+        kullanici: ref.read(authProvider).aktifAd,
+      ));
+      await OnayMerkeziServisi().kaydet(
+        tur: OnayTuru.borcSilme,
+        tutar: tutar,
+        esikTutar: OnayEsikleri.borcSilmeTutari,
+        referansTuru: 'cari',
+        referansId: c.id,
+        aciklama: '${c.unvan}: $sebep',
+      );
+      if (context.mounted) {
+        BildirimServisi.basari(context, 'Borç silindi: ${ParaUtils.formatla(tutar)}');
+        ref.invalidate(cariDetayProvider(c.id!));
+        ref.read(carilerProvider.notifier).yukle();
+      }
+    } catch (e) {
+      if (context.mounted) BildirimServisi.hata(context, 'Silinemedi: $e');
+    }
+  }
+
   Color get _bakiyeRenk {
     final c = widget.cari;
     if (c.bakiye == 0) return context.textSecondary;
@@ -378,6 +497,12 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
               icon: const Icon(Icons.badge_outlined, color: Colors.white),
               tooltip: 'Bayi Girişi',
               onPressed: () => _bayiGirisiYonet(context, c),
+            ),
+          if (c.cariTipi.contains('Müşteri') && c.bakiye > 0 && ref.read(authProvider).isMudur)
+            IconButton(
+              icon: const Icon(Icons.money_off, color: Colors.white),
+              tooltip: 'Borç Sil',
+              onPressed: () => _borcSil(context, c),
             ),
           IconButton(
             icon: const Icon(Icons.edit_outlined),

@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      58; // v58: kullanicilar.bayi_cari_id eklendi (Bayi Portalı)
+      59; // v59: borclar.is_deleted eklendi (migration yolunda hiç yoktu — Borç Silme özelliği için gerekliydi)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

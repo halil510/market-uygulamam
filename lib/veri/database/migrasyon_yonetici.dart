@@ -153,6 +153,7 @@ class MigrasyonYonetici {
 
     // v57'den v58'e — Bayi Portalı (kullanıcı onayıyla)
     if (eskiVersiyon < 58) await _v57denV58e(db);
+    if (eskiVersiyon < 59) await _v58denV59a(db);
   }
 
   // ==================== v1 -> v2 ====================
@@ -2351,5 +2352,22 @@ class MigrasyonYonetici {
   static Future<void> _v57denV58e(Database db) async {
     await _calistir(db,
         'ALTER TABLE kullanicilar ADD COLUMN bayi_cari_id INTEGER REFERENCES cari(id)');
+  }
+
+  // 🔴🔴 KRİTİK DÜZELTME (Borç Silme özelliği eklenirken bulundu — dosya
+  // yolları arası şema sapması): fresh-install şeması (semalar/borc_semasi
+  // .dart) 'borclar' tablosuna is_deleted sütununu baştan koyuyordu, ama
+  // BU migrasyon zincirindeki CREATE TABLE (yukarıda ~satır 1096, borç
+  // takip modülü ilk eklendiğinde) is_deleted'i HİÇ İÇERMİYORDU ve hiçbir
+  // sonraki migrasyon adımı da eklemiyordu. Sonuç: borç takip modülü bir
+  // önceki sürümden YÜKSELTİLEREK gelen (yani neredeyse tüm gerçek
+  // kullanıcı) cihazlarda is_deleted sütunu HİÇ YOKTU — BorcDeposu.sil()
+  // (ve is_deleted=0 filtresi kullanan tumunuGetir/idileGetir/
+  // vadesiGecenleriGetir/yaklasanlariGetir) bu cihazlarda "no such column:
+  // is_deleted" hatasıyla çökerdi. Borç Silme özelliği bu sütuna bağımlı
+  // olduğu için önce bu kök neden düzeltildi.
+  static Future<void> _v58denV59a(Database db) async {
+    await _calistir(db,
+        'ALTER TABLE borclar ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
   }
 }

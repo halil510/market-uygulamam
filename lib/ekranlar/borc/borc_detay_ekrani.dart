@@ -1,17 +1,22 @@
 // lib/ekranlar/borc/borc_detay_ekrani.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../modeller/borc_model.dart';
 import '../../modeller/borc_odeme_model.dart';
 import '../../depolar/borc_deposu.dart';
 import '../../depolar/borc_odeme_deposu.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/onay_merkezi_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
+import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../saglayicilar/riverpod/banka_provider.dart';
+import '../../saglayicilar/riverpod/auth_provider.dart';
+import '../../saglayicilar/riverpod/borc_provider.dart';
 import 'widgets/borc_odeme_bottom_sheet.dart';
 
 class BorcDetayEkrani extends ConsumerStatefulWidget {
@@ -78,6 +83,93 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
     );
   }
 
+  // Kullanıcı isteği (2026-09-13): "Borç Silme" — BorcDeposu.sil() zaten
+  // vardı (doğru soft-delete: is_deleted=1, hard delete yok) ama HİÇBİR
+  // ekrandan çağrılmıyordu — ölü koddu. Hatayla girilmiş bir borç kaydını
+  // (kira/vergi/kredi kartı vb.) düzeltmek için kullanılır. borc_odemeler
+  // kayıtları SİLİNMEZ (tarihsel iz olarak kalır) — bu yüzden zaten
+  // ödeme yapılmış bir borç silinirse kullanıcı önce açıkça uyarılır.
+  Future<void> _borcSil(BuildContext context) async {
+    if (_borc == null) return;
+    if (!ref.read(authProvider).isMudur) return;
+    final b = _borc!;
+
+    final odemeUyarisi = b.odenenTutar > 0
+        ? '\n\n⚠️ Bu borca ${ParaUtils.formatla(b.odenenTutar)} ödeme '
+            'yapılmış. Silinirse ödeme geçmişi kalır ama bu borç kaydı '
+            'artık hiçbir listede görünmez.'
+        : '';
+    final sebepCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.delete_outline, color: Colors.red),
+          SizedBox(width: 8),
+          Text('Borç Kaydını Sil'),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${b.baslik} (${ParaUtils.formatla(b.tutar)}) silinecek.$odemeUyarisi',
+                style: const TextStyle(fontSize: 12)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: sebepCtrl,
+              decoration: const InputDecoration(
+                  labelText: 'Sebep (zorunlu)', border: OutlineInputBorder(), isDense: true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Devam Et'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final sebep = sebepCtrl.text.trim();
+    if (sebep.isEmpty) {
+      if (context.mounted) BildirimServisi.uyari(context, 'Sebep girilmesi zorunludur');
+      return;
+    }
+
+    if (!context.mounted) return;
+    final onaylandi = await yoneticiSifresiIleOnayIste(
+      context,
+      baslik: 'Borç Silme Onayı',
+      aciklama: '"${b.baslik}" borç kaydı silinecek. Devam etmek için şifrenizi girin.',
+    );
+    if (!onaylandi) return;
+    if (!context.mounted) return;
+    if (!ref.read(authProvider).isMudur) return; // savunma: eylem anında ikinci kez doğrula
+
+    try {
+      await _depo.sil(b.id!);
+      await OnayMerkeziServisi().kaydet(
+        tur: OnayTuru.borcSilme,
+        tutar: b.kalanTutar,
+        esikTutar: OnayEsikleri.borcSilmeTutari,
+        referansTuru: 'borclar',
+        referansId: b.id,
+        aciklama: '${b.baslik}: $sebep',
+      );
+      if (context.mounted) {
+        ref.invalidate(tumBorclarProvider);
+        BildirimServisi.basari(context, 'Borç kaydı silindi');
+        context.pop();
+      }
+    } catch (e) {
+      if (context.mounted) BildirimServisi.hata(context, 'Silinemedi: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_yukleniyor) {
@@ -107,6 +199,12 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
             onPressed: b.odendi ? null : _odemeYap,
             tooltip: 'Ödeme Yap',
           ),
+          if (ref.read(authProvider).isMudur)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _borcSil(context),
+              tooltip: 'Borç Kaydını Sil',
+            ),
         ],
         gradyanli: false,
       ),

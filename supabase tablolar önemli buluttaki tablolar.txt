@@ -13,6 +13,13 @@
 --     mutabakatı — Kart/Nakit ayrımı).
 --   • kullanicilar.bayi_cari_id eksikti (DB v58, B2B Bayi Portalı).
 --
+-- 2026-09-13 İKİNCİ GÜNCELLEME — "Borç Silme" özelliği eklenirken
+-- bulundu: borclar.is_deleted sütunu yerel YÜKSELTME (migrasyon)
+-- zincirinde HİÇ yoktu (sadece fresh-install şemasında vardı) — DB v59
+-- ile düzeltildi, bu dosyaya da eklendi. supabase_sync_servisi.dart bu
+-- sütunu zaten "var" varsayıyordu (_softDeleteKolonu), yani soft-delete
+-- senkronu bu tabloda muhtemelen sessizce çalışmıyordu.
+--
 -- ═══════════════════════════════════════════════════════════════════════
 -- ÖNCEKİ DOSYA NEDEN İŞE YARAMADI — İTİRAF
 --
@@ -246,7 +253,8 @@ CREATE TABLE IF NOT EXISTS borclar (
   notlar TEXT,
   created_at TEXT,
   updated_at TEXT,
-  last_updated TEXT
+  last_updated TEXT,
+  is_deleted BOOLEAN  -- [YENİ — 2026-09-13] yerel DB v59, Borç Silme özelliği. NOT: bu sütun yerel migrasyon zincirinde de EKSİKTİ (sadece fresh-install şemasında vardı) — supabase_sync_servisi.dart'ın _softDeleteKolonu'nda 'borclar':'is_deleted' zaten TANIMLIYDI ama sütun çoğu cihazda hiç yoktu, senkron soft-delete algılaması sessizce çalışmıyordu. İkisi de bu oturumda düzeltildi.
 );
 
 -- [12/58] cari
@@ -1293,6 +1301,7 @@ ALTER TABLE borclar ADD COLUMN IF NOT EXISTS notlar TEXT;
 ALTER TABLE borclar ADD COLUMN IF NOT EXISTS created_at TEXT;
 ALTER TABLE borclar ADD COLUMN IF NOT EXISTS updated_at TEXT;
 ALTER TABLE borclar ADD COLUMN IF NOT EXISTS last_updated TEXT;
+ALTER TABLE borclar ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN;
 -- 🔴 GERÇEK ÜRETİM HATASI (kullanıcı logu): 'is_deleted' bu şemada
 -- HER YERDE (16 farklı tabloda) BOOLEAN olarak tanımlı — burada
 -- tek istisna olarak yanlışlıkla BIGINT yapılmıştı. BOOLEAN,

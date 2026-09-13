@@ -113,6 +113,34 @@ class KasaDeposu {
     }
   }
 
+  /// Vardiya kapanış mutabakatı (derin analizde bulundu): [baslangic]'tan
+  /// bu yana TÜM nakit kasa hareketlerinin (satış + tahsilat - gider -
+  /// ödeme ± virman, guncelBakiyeNakit() ile AYNI filtre) net etkisini
+  /// döner. ÖNCEDEN vardiya_ekrani.dart'taki "Beklenen Kasa" hesabı
+  /// SADECE 'satislar' tablosundan nakit satış toplamını kullanıyordu —
+  /// vardiya sırasında yapılan nakit tahsilat/gider/ödeme/virman hiç
+  /// sayılmıyordu, bu yüzden kasiyer hiçbir hata yapmadığı halde
+  /// "fazla/eksik" çıkabiliyordu.
+  Future<double> nakitDegisimi(DateTime baslangic) async {
+    try {
+      final db = await _d;
+      final girisler = KasaHareketModel.girisTipleri;
+      final icYer = List.filled(girisler.length, '?').join(',');
+      final rows = await db.rawQuery('''
+        SELECT COALESCE(SUM(
+          CASE WHEN hareket_tipi IN ($icYer) THEN tutar ELSE -tutar END
+        ), 0) as bakiye
+        FROM kasa_hareketleri
+        WHERE deleted_at IS NULL AND (odeme_yontemi IS NULL OR odeme_yontemi = 'Nakit')
+          AND datetime(tarih) >= datetime(?)
+      ''', [...girisler, baslangic.toIso8601String()]);
+      return (rows.first['bakiye'] as num?)?.toDouble() ?? 0;
+    } catch (e, st) {
+      LogServisi().hata('Kasa.nakitDegisimi', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
   Future<List<KasaHareketModel>> hareketleriniGetir({
     int limit = 100,
     DateTime? baslangic,

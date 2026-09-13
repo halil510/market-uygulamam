@@ -90,6 +90,14 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
           // hareketler toplanıyor — "Beklenen Kasa" (satislar tablosundan,
           // zaten doğruydu) ile artık tutarlı.
           ozet['kasa_bakiye'] = await KasaDeposu().guncelBakiyeNakit();
+          // 🔴 DÜZELTME (derin analizde bulundu): "Beklenen Kasa" hesabı
+          // sadece nakit SATIŞLARI (satislar tablosu) sayıyordu — vardiya
+          // sırasındaki nakit tahsilat/gider/ödeme/virman hiç dahil
+          // değildi. Artık KasaDeposu.nakitDegisimi() ile vardiya
+          // açılışından bu yana TÜM nakit kasa hareketlerinin net etkisi
+          // kullanılıyor (bkz. _vardiyaKapat()).
+          ozet['nakit_degisimi'] =
+              await KasaDeposu().nakitDegisimi(DateTime.parse(bas));
         }
       }
 
@@ -191,7 +199,15 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     final nakit = (_satisOzet['nakit'] as num?)?.toDouble() ?? 0;
     final kasaBak = (_satisOzet['kasa_bakiye'] as num?)?.toDouble() ?? 0;
     final basBakiye = (_aktif!['baslangic_bakiye'] as num?)?.toDouble() ?? 0;
-    final beklenenNakit = basBakiye + nakit;
+    // 🔴 DÜZELTME (derin analizde bulundu): 'beklenenNakit' ÖNCEDEN
+    // basBakiye + nakit SATIŞ toplamıydı — vardiya sırasındaki nakit
+    // tahsilat/gider/ödeme/virman hiç sayılmıyordu, kasiyer hata
+    // yapmadığı halde "fazla/eksik" çıkabiliyordu. Artık
+    // KasaDeposu.nakitDegisimi() ile TÜM nakit kasa hareketlerinin net
+    // etkisi kullanılıyor (bkz. _yukle()'deki 'nakit_degisimi').
+    final nakitDegisimi =
+        (_satisOzet['nakit_degisimi'] as num?)?.toDouble() ?? nakit;
+    final beklenenNakit = basBakiye + nakitDegisimi;
 
     final sayimCtrl =
         TextEditingController(text: beklenenNakit.toStringAsFixed(2));
@@ -221,6 +237,9 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
                 child: Column(children: [
                   _OzetSatir('Başlangıç Kasası', ParaUtils.formatla(basBakiye)),
                   _OzetSatir('Nakit Satışlar', ParaUtils.formatla(nakit)),
+                  if ((nakitDegisimi - nakit).abs() > 0.005)
+                    _OzetSatir('Diğer Nakit Hareketler (tahsilat/gider/ödeme/virman)',
+                        ParaUtils.formatla(nakitDegisimi - nakit)),
                   _OzetSatir('Beklenen Kasa', ParaUtils.formatla(beklenenNakit),
                       bold: true),
                   _OzetSatir('Anlık Kasa Bak.', ParaUtils.formatla(kasaBak)),

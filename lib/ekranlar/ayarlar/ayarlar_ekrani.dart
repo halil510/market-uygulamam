@@ -1039,6 +1039,13 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/tedarik')),
                 ListTile(
+                    leading: const Icon(Icons.lightbulb_outline,
+                        color: AppRenkler.primary),
+                    title: const Text('Satın Alma Önerileri'),
+                    subtitle: const Text('Kritik stoktaki ürünler için sipariş önerisi'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/tedarik/oneriler')),
+                ListTile(
                     leading: const Icon(Icons.straighten, color: Colors.brown),
                     title: const Text('Birim Yönetimi'),
                     subtitle: const Text('Adet, kg, lt gibi birimler'),

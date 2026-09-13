@@ -44,6 +44,7 @@ import '../../ekranlar/promosyon/promosyon_ekrani.dart';
 import '../../ekranlar/tedarik/tedarik_siparis_ekrani.dart';
 import '../../ekranlar/tedarik/alim_ekrani.dart';
 import '../../ekranlar/tedarik/siparis_olustur_ekrani.dart';
+import '../../ekranlar/tedarik/satin_alma_onerileri_ekrani.dart';
 import '../../ekranlar/barkod/etiket_tasarim_ekrani.dart';
 import '../../ekranlar/barkod/barkod_ureteci_ekrani.dart';
 import '../../ekranlar/sube/sube_ekrani.dart';
@@ -160,7 +161,18 @@ class UygulamaRouter {
             return AlimEkrani(tedarikci: extra as CariModel?);
           }),
         GoRoute(path: '/tedarik/siparis-olustur', name: 'tedarik_siparis_olustur', parentNavigatorKey: rootNavigatorKey,
-          builder: (c, s) => SiparisOlusturEkrani(tedarikci: s.extra as CariModel)),
+          builder: (c, s) {
+            final extra = s.extra;
+            if (extra is Map<String, dynamic>) {
+              return SiparisOlusturEkrani(
+                tedarikci: extra['tedarikci'] as CariModel,
+                onerilenKalemler: extra['onerilenKalemler'] as List<OnerilenSiparisKalemi>?,
+              );
+            }
+            return SiparisOlusturEkrani(tedarikci: extra as CariModel);
+          }),
+        GoRoute(path: '/tedarik/oneriler', name: 'tedarik_oneriler', parentNavigatorKey: rootNavigatorKey,
+          builder: (c, s) => const SatinAlmaOnerileriEkrani()),
         // 🔴 Derin analizde bulundu: bu rotanın hiç YetkiKoruma sarmalayıcısı
         // yoktu — kardeş rota '/kullanici' (liste) sarmalıyken bu (yeni
         // kullanıcı ekleme/rol atama) sarmalanmamıştı. '/kullanici' önekiyle

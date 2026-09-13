@@ -40,9 +40,16 @@ class _SiparisKalem {
   double get toplamTutar => miktar * birimFiyat;
 }
 
+class OnerilenSiparisKalemi {
+  final UrunModel urun;
+  final double miktar;
+  const OnerilenSiparisKalemi({required this.urun, required this.miktar});
+}
+
 class SiparisOlusturEkrani extends ConsumerStatefulWidget {
   final CariModel tedarikci;
-  const SiparisOlusturEkrani({super.key, required this.tedarikci});
+  final List<OnerilenSiparisKalemi>? onerilenKalemler;
+  const SiparisOlusturEkrani({super.key, required this.tedarikci, this.onerilenKalemler});
   @override
   ConsumerState<SiparisOlusturEkrani> createState() => _SiparisOlusturEkraniState();
 }
@@ -62,6 +69,15 @@ class _SiparisOlusturEkraniState extends ConsumerState<SiparisOlusturEkrani> {
   void initState() {
     super.initState();
     _araCtrl.addListener(_aramaChanged);
+    final onerilen = widget.onerilenKalemler;
+    if (onerilen != null && onerilen.isNotEmpty) {
+      _kalemler = onerilen
+          .map((o) => _SiparisKalem(
+              urun: o.urun,
+              miktar: o.miktar,
+              birimFiyat: o.urun.alisFiyat > 0 ? o.urun.alisFiyat : o.urun.satisFiyati))
+          .toList();
+    }
   }
 
   @override

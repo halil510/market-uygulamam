@@ -202,6 +202,13 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
       appBar: TsAppBar(
         baslik: 'Tedarikçi Siparişleri',
         aksiyonlar: [
+          IconButton(
+              icon: const Icon(Icons.lightbulb_outline, color: Colors.white),
+              tooltip: 'Satın Alma Önerileri',
+              onPressed: () async {
+                final kaydedildi = await context.push<bool>('/tedarik/oneriler');
+                if (kaydedildi == true && mounted) await _yukle();
+              }),
           IconButton(icon: const Icon(Icons.refresh, color: Colors.white), onPressed: _yukle),
         ],
         alt: TabBar(controller: _tab, tabs: const [

@@ -301,8 +301,15 @@ extension _FisTabExt on _IadeEkraniState {
           'odeme_turu': 'Nakit',
           'kullanici': AuthServisi().aktifAd,
         });
+        // 🔴 DÜZELTME (derin analizde bulundu — cari_hareket_ekrani.dart'ta
+        // AYNI hata sınıfı zaten düzeltilmişti): bu SUM 'is_deleted = 0'
+        // filtresi OLMADAN çalışıyordu — kanonik kural (CariDeposu.
+        // bakiyeYenidenHesapla, Veri Sağlığı Merkezi) soft-delete edilmiş
+        // (iptal edilmiş) cari_hareket kayıtlarının bakiyeye HİÇ katkı
+        // vermemesini gerektirir. Filtre yoksa, daha önce iptal edilmiş
+        // bir hareket burada sessizce tekrar sayılıp bakiyeyi bozardı.
         await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=?) WHERE id=?',
+            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
             [_bulunanSatis!.cariId, _bulunanSatis!.cariId]);
       }
     }); // transaction sonu

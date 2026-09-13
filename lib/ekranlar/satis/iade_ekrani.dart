@@ -408,10 +408,20 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
         if (kasaRows.isNotEmpty) {
           final tutar = (kasaRows.first['tutar'] as num?)?.toDouble() ?? 0;
           kasaHareketGid = const Uuid().v4();
+          // 🔴 DÜZELTME (derin analizde bulundu): 'bakiye_sonrasi' hiç
+          // yazılmıyordu. KasaDeposu._sonBakiyeTxn() bir sonraki kasa
+          // hareketinin bakiyesini hesaplarken EN SON satırın
+          // bakiye_sonrasi'nı okur (?? 0 ile NULL'a düşer) — bu satır
+          // kronolojik olarak "en son" olduğunda, ONDAN SONRAKİ HER
+          // kasa hareketi (satış/tahsilat/gider/virman) yanlış bir 0
+          // bazından hesaplanmaya başlıyordu (bkz. iade oluşturma
+          // akışlarındaki KasaDeposu().sonBakiyeTxn(txn) deseni).
+          final kasaBakiye = await KasaDeposu().sonBakiyeTxn(txn) + tutar;
           await txn.insert('kasa_hareketleri', {
             'global_id': kasaHareketGid,
             'hareket_tipi': 'İade İptali',
             'tutar': tutar,
+            'bakiye_sonrasi': kasaBakiye,
             'referans_id': iadeId,
             'referans_turu': 'iade_iptal',
             'tarih': now,
@@ -445,8 +455,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
               'alacak': eskiBorc,
               'odeme_turu': 'Nakit',
             });
+            // 🔴 DÜZELTME (derin analizde bulundu — bkz. iade_ekrani_fis.dart'taki
+            // aynı hata sınıfının tam açıklaması): 'is_deleted = 0' filtresi eklendi.
             await txn.rawUpdate(
-                'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=?) WHERE id=?',
+                'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
                 [cariId, cariId]);
           }
         }
@@ -714,8 +726,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
             });
           }
           // Bakiye güncelle
+          // 🔴 DÜZELTME (derin analizde bulundu — bkz. iade_ekrani_fis.dart'taki
+          // aynı hata sınıfının tam açıklaması): 'is_deleted = 0' filtresi eklendi.
           await txn.rawUpdate(
-              'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=?) WHERE id=?',
+              'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
               [_secilenCari!.id, _secilenCari!.id]);
         }
       }); // transaction sonu

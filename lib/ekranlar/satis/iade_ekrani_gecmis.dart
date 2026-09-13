@@ -256,10 +256,15 @@ extension _GecmisTabExt on _IadeEkraniState {
         // Kasa ters kayıt - iade iptali: kasaya para döner
         if (toplam > 0 && iadeId != null) {
           kasaGid = const Uuid().v4();
+          // 🔴 DÜZELTME (derin analizde bulundu, aynı hata sınıfı
+          // iade_ekrani.dart'ta da bulundu): 'bakiye_sonrasi' eksikti —
+          // bkz. o dosyadaki değişiklik notunun tam açıklaması.
+          final kasaBakiye = await KasaDeposu().sonBakiyeTxn(txn) + toplam;
           await txn.insert('kasa_hareketleri', {
             'global_id': kasaGid,
             'hareket_tipi': 'Iade Iptali',
             'tutar': toplam,
+            'bakiye_sonrasi': kasaBakiye,
             'referans_id': iadeId,
             'referans_turu': 'iade_iptal',
             'tarih': now,
@@ -988,10 +993,15 @@ extension _GecmisTabExt on _IadeEkraniState {
         // Kasa ters kayit - iade iptali kasaya para geri doner
         final tutar = (iade['toplam_tutar'] as num?)?.toDouble() ?? 0;
         kasaGid = const Uuid().v4();
+        // 🔴 DÜZELTME (derin analizde bulundu): 'bakiye_sonrasi' eksikti
+        // — bkz. yukarıdaki/iade_ekrani.dart'taki aynı hata sınıfının
+        // tam açıklaması.
+        final kasaBakiye = await KasaDeposu().sonBakiyeTxn(txn) + tutar;
         await txn.insert('kasa_hareketleri', {
           'global_id': kasaGid,
           'hareket_tipi': 'Iade Iptali',
           'tutar': tutar,  // Pozitif: kasa artar (iade geri alındı)
+          'bakiye_sonrasi': kasaBakiye,
           'referans_id': iadeId,
           'referans_turu': 'iade_iptal',
           'tarih': now,

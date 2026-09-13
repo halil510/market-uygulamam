@@ -211,8 +211,10 @@ extension _HizliTabExt on _IadeEkraniState {
             'odeme_turu': 'Nakit',
             'kullanici': AuthServisi().aktifAd,
           });
+          // 🔴 DÜZELTME (derin analizde bulundu — bkz. iade_ekrani_fis.dart'taki
+          // aynı hata sınıfının tam açıklaması): 'is_deleted = 0' filtresi eklendi.
           await txn.rawUpdate(
-              'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=?) WHERE id=?',
+              'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
               [_secilenCari!.id, _secilenCari!.id]);
         }
       }); // transaction sonu

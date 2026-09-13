@@ -306,7 +306,32 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
       );
       await KullaniciDeposu().ekle(model);
       if (context.mounted) {
-        BildirimServisi.basari(context, 'Bayi girişi oluşturuldu: $kullaniciAdi');
+        // Derin analizde bulundu: bayi oturumu (router kilidi sayesinde)
+        // hiçbir otomatik senkron TETİKLEMİYOR — bu, kurulmamış/sıfır
+        // bir cihazda bayinin kendi hesabının hiç inmemiş olması,
+        // GİRİŞ BİLE YAPAMAMASI anlamına gelir. Bu tek seferlik kurulum
+        // adımı olmadan bayi portalı yeni bir cihazda çalışmaz.
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(children: [
+              Icon(Icons.check_circle_outline, color: Colors.green),
+              SizedBox(width: 8),
+              Text('Bayi Girişi Oluşturuldu'),
+            ]),
+            content: Text(
+              'Kullanıcı adı: $kullaniciAdi\n\n'
+              'ÖNEMLİ — bayinin kendi cihazında İLK kullanımdan önce:\n'
+              'Ayarlar → Bulut Sync → "Buluttan Al" bir kez çalıştırılmalı. '
+              'Aksi halde bayinin hesabı ve ürün kataloğu cihaza hiç '
+              'inmediği için giriş yapamaz.',
+            ),
+            actions: [
+              FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Anladım')),
+            ],
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) BildirimServisi.hata(context, 'Oluşturulamadı: $e');

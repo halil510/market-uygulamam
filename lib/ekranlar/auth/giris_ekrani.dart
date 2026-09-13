@@ -14,7 +14,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../depolar/kullanici_deposu.dart';
-import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../cekirdek/sabitler/uygulama_sabitleri.dart';
 
@@ -320,10 +319,16 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
   }
 
   // ─── GİRİŞ KARTI ────────────────────────────────────────────────────────
+  // 🔴 DÜZELTME (görsel tutarlılık denetimi): kart içeriği (metin/kart/
+  // buton renkleri) ÖNCEDEN uçtan uca sabit/açık-tema hex renkleriyle
+  // yazılıydı — kullanıcı dark mode'a geçtiğinde uygulamanın geri kalanı
+  // koyulaşırken bu ekran sabit kalıyordu. Arkaplan gradyanı (marka
+  // kimliği, bilinçli olarak dokunulmadı) HARİÇ, kartın TÜMÜ artık
+  // TsRenk üzerinden tema-duyarlı.
   Widget _buildCard() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(235),
+        color: TsRenk.kart(context).withAlpha(245),
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
@@ -351,7 +356,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF0F172A),
+              color: TsRenk.metinBirincil(context),
               letterSpacing: -0.5,
             ),
           ),
@@ -360,7 +365,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
             'Hesabınıza giriş yapın',
             style: TextStyle(
               fontSize: 13,
-              color: const Color(0xFF64748B),
+              color: TsRenk.metinIkincil(context),
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -393,7 +398,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
           Text(
             'v${UygSabitler.versiyon}',
             style: TextStyle(
-              color: const Color(0xFF94A3B8),
+              color: TsRenk.metinIkincil(context),
               fontSize: 11,
               fontWeight: FontWeight.w400,
             ),
@@ -447,17 +452,17 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
           valueListenable: _seciliKullanici,
           builder: (_, secili, __) => Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: TsRenk.arkaplan(context),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: TsRenk.ayirac(context)),
             ),
             child: DropdownButtonFormField<String>(
               value: liste.contains(secili) ? secili : liste.first,
               isExpanded: true,
-              icon: const Icon(Icons.expand_more, color: Color(0xFF64748B)),
-              dropdownColor: Colors.white,
-              style: const TextStyle(
-                color: Color(0xFF0F172A),
+              icon: Icon(Icons.expand_more, color: TsRenk.metinIkincil(context)),
+              dropdownColor: TsRenk.kart(context),
+              style: TextStyle(
+                color: TsRenk.metinBirincil(context),
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -503,13 +508,13 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
             padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
               color: hata.isNotEmpty
-                  ? const Color(0xFFFFF1F0)
-                  : const Color(0xFFF8FAFC),
+                  ? TsRenk.zemin(TsRenk.hata)
+                  : TsRenk.arkaplan(context),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: hata.isNotEmpty
-                    ? const Color(0xFFFECACA)
-                    : const Color(0xFFE2E8F0),
+                    ? TsRenk.hata.withAlpha(120)
+                    : TsRenk.ayirac(context),
                 width: hata.isNotEmpty ? 1.5 : 1,
               ),
             ),
@@ -518,7 +523,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                     'Şifrenizi girin',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: const Color(0xFF94A3B8),
+                      color: TsRenk.metinIkincil(context),
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -561,19 +566,19 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
           duration: const Duration(milliseconds: 300),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF1F0),
+            color: TsRenk.zemin(TsRenk.hata),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFFECACA)),
+            border: Border.all(color: TsRenk.hata.withAlpha(120)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 18),
+              Icon(Icons.error_outline, color: TsRenk.hata, size: 18),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   hata,
-                  style: const TextStyle(
-                    color: Color(0xFFDC2626),
+                  style: TextStyle(
+                    color: TsRenk.hata,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -624,10 +629,10 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
 
     return Material(
       color: isTemizle
-          ? const Color(0xFFFEE2E2)
+          ? TsRenk.zemin(TsRenk.hata)
           : isSil
-              ? const Color(0xFFFFF3E0)
-              : const Color(0xFFF1F5F9),
+              ? TsRenk.zemin(Colors.orange)
+              : TsRenk.arkaplan(context),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -643,19 +648,19 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
           alignment: Alignment.center,
           child: isSil
               ? const Icon(Icons.backspace_outlined,
-                  color: Color(0xFFF57C00), size: 24)
+                  color: Colors.orange, size: 24)
               : isTemizle
-                  ? const Text('C',
+                  ? Text('C',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFFDC2626),
+                        color: TsRenk.hata,
                       ))
                   : Text(t,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF0F172A),
+                        color: TsRenk.metinBirincil(context),
                       )),
         ),
       ),
@@ -682,7 +687,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                   borderRadius: BorderRadius.circular(16),
                 ),
                 elevation: 0,
-                disabledBackgroundColor: const Color(0xFFCBD5E1),
+                disabledBackgroundColor: TsRenk.ayirac(context),
                 textStyle: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -711,7 +716,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
     if (_biyometrikMevcut) {
       return Column(
         children: [
-          const Divider(height: 24, thickness: 0.5, color: Color(0xFFE2E8F0)),
+          Divider(height: 24, thickness: 0.5, color: TsRenk.ayirac(context)),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -725,7 +730,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: Color.lerp(
-                          const Color(0xFF94A3B8),
+                          TsRenk.metinIkincil(context),
                           const Color(0xFF4361EE),
                           t,
                         )!,
@@ -736,7 +741,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                   );
                 },
                 child: Material(
-                  color: Colors.white,
+                  color: TsRenk.kart(context),
                   shape: const CircleBorder(),
                   elevation: 4,
                   child: InkWell(
@@ -754,12 +759,12 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
+              Text(
                 'Parmak İzi ile Giriş',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF475569),
+                  color: TsRenk.metinIkincil(context),
                 ),
               ),
             ],
@@ -773,13 +778,13 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.fingerprint, size: 18, color: const Color(0xFF94A3B8)),
+            Icon(Icons.fingerprint, size: 18, color: TsRenk.metinIkincil(context)),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'Şifreyle giriş yapın, parmak izi aktifleşsin',
               style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF94A3B8),
+                color: TsRenk.metinIkincil(context),
                 fontWeight: FontWeight.w400,
               ),
             ),

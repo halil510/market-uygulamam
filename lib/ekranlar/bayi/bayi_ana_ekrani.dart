@@ -18,6 +18,7 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'bayi_siparis_ekrani.dart';
 import 'bayi_siparislerim_ekrani.dart';
+import 'bayi_faturalarim_ekrani.dart';
 
 class BayiAnaEkrani extends ConsumerStatefulWidget {
   const BayiAnaEkrani({super.key});
@@ -97,6 +98,20 @@ class _BayiAnaEkraniState extends ConsumerState<BayiAnaEkrani> {
                       if (_bayi == null) return;
                       Navigator.push(context, MaterialPageRoute(
                         builder: (_) => BayiSiparislerimEkrani(cariId: _bayi!.id!),
+                      ));
+                    },
+                  ),
+                  const SizedBox(height: TsBosluk.md),
+                  _menuKarti(
+                    context,
+                    ikon: Icons.description_outlined,
+                    baslik: 'Faturalarım',
+                    altBaslik: 'Kesilmiş faturalarınız',
+                    renk: TsRenk.basarili,
+                    onTap: () {
+                      if (_bayi == null) return;
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => BayiFaturalarimEkrani(cariId: _bayi!.id!),
                       ));
                     },
                   ),

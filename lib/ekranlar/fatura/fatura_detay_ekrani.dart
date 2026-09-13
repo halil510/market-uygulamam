@@ -138,6 +138,12 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
     }
   }
 
+  // Fatura GİB'e (bir kez) başarıyla iletildi mi — 'gonderildi' (henüz
+  // GİB onayı sorgulanmamış) VEYA 'onaylandi' (GİB onayı sorgulanmış ve
+  // onaylanmış) ikisi de "artık tekrar gönderilemez" anlamına gelir.
+  bool _eFaturaGonderilmis(String? durum) =>
+      durum == 'gonderildi' || durum == 'onaylandi';
+
   // ── Durum Sorgula ──────────────────────────────────────────────────────────
   Future<void> _durumSorgula() async {
     if (_fatura?.eFaturaUuid == null) {
@@ -926,21 +932,30 @@ appBar: TsAppBar(
               icon: const Icon(Icons.payment),
               tooltip: 'Odeme Kaydet',
               onPressed: (f.kalanTutar > 0 && !_islemDevam) ? _odemeKaydet : null),
+          // 🔴 DÜZELTME (erp_roadmap madde 38 — e-Belge durum makinesi,
+          // GERÇEK BULGU): "Durum Sorgula" GİB'den 'onaylandi' dönüp bunu
+          // kaydettiğinde (eFaturaDurumGuncelle), bu iki buton SADECE
+          // 'gonderildi' değerine bakıyordu — 'onaylandi' o kontrolden
+          // GEÇMİYORDU. Sonuç: GİB tarafından ONAYLANMIŞ bir fatura,
+          // "e-Fatura Gönder" butonu tekrar AKTİFLEŞTİĞİ için yanlışlıkla
+          // İKİNCİ KEZ GİB'e gönderilebiliyordu — mükerrer gönderim riski.
           IconButton(
               icon: const Icon(Icons.refresh_outlined),
-              onPressed: f.eFaturaDurum == 'gonderildi' ? _durumSorgula : null,
+              onPressed: _eFaturaGonderilmis(f.eFaturaDurum) ? _durumSorgula : null,
               tooltip: 'Durum Sorgula',
             ),
             IconButton(
               icon: Icon(
-                f.eFaturaDurum == 'gonderildi'
+                _eFaturaGonderilmis(f.eFaturaDurum)
                     ? Icons.check_circle_outline
                     : Icons.send_outlined,
-                color: f.eFaturaDurum == 'gonderildi'
+                color: _eFaturaGonderilmis(f.eFaturaDurum)
                     ? Colors.green : Colors.blue),
-              tooltip: f.eFaturaDurum == 'gonderildi'
-                  ? 'e-Fatura Gönderildi' : 'e-Fatura Gönder',
-              onPressed: (f.eFaturaDurum == 'gonderildi' || _islemDevam) ? null : _efaturaGonder),
+              tooltip: f.eFaturaDurum == 'onaylandi'
+                  ? 'e-Fatura GİB Onayladı'
+                  : _eFaturaGonderilmis(f.eFaturaDurum)
+                      ? 'e-Fatura Gönderildi' : 'e-Fatura Gönder',
+              onPressed: (_eFaturaGonderilmis(f.eFaturaDurum) || _islemDevam) ? null : _efaturaGonder),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             tooltip: 'Diğer',

@@ -43,16 +43,45 @@ void main() {
     });
 
     test('"hata" durumu fatura listesindeki gösterim mantığıyla (eDurum hesabı) eşleşir', () {
-      // fatura_liste_ekrani.dart'taki _faturaKart'ın AYNI üçlü mantığı:
-      String eEtiket(String eDurum) => eDurum == 'gonderildi'
-          ? 'Gönderildi'
-          : eDurum == 'hata'
-              ? 'Gönderim Hatası'
-              : 'Beklemede';
+      // fatura_liste_ekrani.dart'taki _faturaKart'ın AYNI dörtlü mantığı:
+      String eEtiket(String eDurum) => eDurum == 'onaylandi'
+          ? 'GİB Onayladı'
+          : eDurum == 'gonderildi'
+              ? 'Gönderildi'
+              : eDurum == 'hata'
+                  ? 'Gönderim Hatası'
+                  : 'Beklemede';
 
       expect(eEtiket('hata'), 'Gönderim Hatası');
       expect(eEtiket('hazir'), 'Beklemede');
       expect(eEtiket('gonderildi'), 'Gönderildi');
+      expect(eEtiket('onaylandi'), 'GİB Onayladı');
+    });
+  });
+
+  // 🔴 GERÇEK BULGU (2026-09-14): "Durum Sorgula" GİB'den 'onaylandi'
+  // dönüp bunu kaydettiğinde, fatura_detay_ekrani.dart'taki "e-Fatura
+  // Gönder" butonu SADECE eFaturaDurum == 'gonderildi' kontrolü
+  // yaptığından tekrar AKTİFLEŞİYORDU — GİB tarafından zaten onaylanmış
+  // bir fatura yanlışlıkla İKİNCİ KEZ gönderilebiliyordu (mükerrer
+  // gönderim riski).
+  group('e-Fatura mükerrer gönderim koruması', () {
+    // fatura_detay_ekrani.dart._eFaturaGonderilmis ile AYNI mantık.
+    bool gonderilmis(String? durum) =>
+        durum == 'gonderildi' || durum == 'onaylandi';
+
+    test('"gonderildi" durumunda tekrar gönderme butonu KAPALI olmalı', () {
+      expect(gonderilmis('gonderildi'), isTrue);
+    });
+
+    test('"onaylandi" durumunda da tekrar gönderme butonu KAPALI olmalı (düzeltilen bug)', () {
+      expect(gonderilmis('onaylandi'), isTrue);
+    });
+
+    test('"hazir"/"hata"/null durumunda gönderme butonu AÇIK kalmalı', () {
+      expect(gonderilmis('hazir'), isFalse);
+      expect(gonderilmis('hata'), isFalse);
+      expect(gonderilmis(null), isFalse);
     });
   });
 }

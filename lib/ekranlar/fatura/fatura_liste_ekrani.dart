@@ -28,7 +28,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
   List<FaturaModel> _filtreli  = [];
   bool _yukleniyor = true;
   String? _filtreDurum; // 'beklemede', 'odendi', null
-  String? _filtreEFatura; // null=Tümü, 'hazir', 'gonderildi', 'hata'
+  String? _filtreEFatura; // null=Tümü, 'hazir', 'gonderildi', 'onaylandi', 'hata'
   // Kullanıcı sorusu: "gelen fatura ve giden fatura listeleme var mı?"
   // ÖNCEDEN böyle bir ayrım hiç yoktu — Satış (Giden) ve Alış (Gelen)
   // faturaları tek listede karışık duruyordu. Artık ayrı bir Yön filtresi
@@ -171,6 +171,8 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
               const SizedBox(width: 6),
               _eFaturaChip('Gönderildi', 'gonderildi', renk: Colors.green),
               const SizedBox(width: 6),
+              _eFaturaChip('GİB Onayladı', 'onaylandi', renk: Colors.teal),
+              const SizedBox(width: 6),
               _eFaturaChip('Hata', 'hata', renk: Colors.red),
               const SizedBox(width: 12),
               ChoiceChip(
@@ -276,11 +278,26 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
     Color durum = odendi ? Colors.green : vadesiGecti ? Colors.red : Colors.orange;
 
     final eDurum = f.eFaturaDurum ?? 'hazir';
-    final eRenk  = eDurum == 'gonderildi' ? Colors.green
+    // 🔴 DÜZELTME (erp_roadmap madde 38 — e-Belge durum makinesi):
+    // fatura_detay_ekrani.dart'taki "GİB Durum Sorgula" butonu GİB'in
+    // döndürdüğü 'onaylandi' değerini zaten eFaturaDurumGuncelle() ile
+    // kaydediyordu — ama BU liste ekranı 'onaylandi'yı hiç tanımıyordu,
+    // 'gonderildi'/'hata' DIŞINDA her şeyi "Beklemede" (turuncu) olarak
+    // gösteriyordu. Yani GİB tarafından ONAYLANMIŞ bir fatura, listede
+    // hâlâ "gönderilmemiş gibi" görünüyordu — yanıltıcıydı. GİB
+    // entegratörünün 'reddedildi' gibi başka string'ler dönüp
+    // dönmediği bu ortamda doğrulanamadığı için (gib_servisi.dart'taki
+    // EFaturaDurum enum'u hiçbir yerde kullanılmıyor, muhtemelen hiç
+    // bağlanmamış bir taslak) sadece KODUN KENDİSİNİN ZATEN VARSAYDIĞI
+    // 'onaylandi' değeri eklendi — başka string tahmin edilmedi.
+    final eRenk  = eDurum == 'onaylandi' ? Colors.teal
+                 : eDurum == 'gonderildi' ? Colors.green
                  : eDurum == 'hata' ? Colors.red : Colors.orange;
-    final eEtiket = eDurum == 'gonderildi' ? 'Gönderildi'
+    final eEtiket = eDurum == 'onaylandi' ? 'GİB Onayladı'
+                  : eDurum == 'gonderildi' ? 'Gönderildi'
                   : eDurum == 'hata' ? 'Gönderim Hatası' : 'Beklemede';
-    final eIkon  = eDurum == 'gonderildi' ? Icons.cloud_done_outlined
+    final eIkon  = eDurum == 'onaylandi' ? Icons.verified_outlined
+                 : eDurum == 'gonderildi' ? Icons.cloud_done_outlined
                  : eDurum == 'hata' ? Icons.error_outline : Icons.cloud_upload_outlined;
 
     final kart = TsKart(

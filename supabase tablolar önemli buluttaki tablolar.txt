@@ -386,10 +386,12 @@ CREATE TABLE IF NOT EXISTS faturalar (
   created_at TEXT,
   updated_at TEXT,
   last_updated TIMESTAMPTZ,
-  deleted_at TIMESTAMPTZ,
-  efatura_uuid TEXT,
-  efatura_durum TEXT,
-  efatura_tipi TEXT
+  deleted_at TIMESTAMPTZ
+  -- [DÜZELTME — 2026-09-13] 'efatura_uuid'/'efatura_durum'/'efatura_tipi'
+  -- kaldırıldı: yerel 'faturalar' tablosunda bu isimlerle sütun hiç yok
+  -- (gerçek sütunlar yukarıdaki 'e_fatura_uuid'/'e_fatura_durum' —
+  -- fatura_detay_ekrani.dart'ın eFaturaDurumGuncelle()'si bunları
+  -- yazıyor). Muhtemelen eski bir isimlendirme denemesinin kalıntısıydı.
 );
 
 -- [17/58] fiyat_gecmis
@@ -523,7 +525,8 @@ CREATE TABLE IF NOT EXISTS irsaliyeler (
   created_at TEXT,
   deleted_at TIMESTAMPTZ,
   global_id TEXT,
-  last_updated TIMESTAMPTZ
+  last_updated TIMESTAMPTZ,
+  aciklama TEXT  -- [DÜZELTME — 2026-09-13] yerelde vardı, dosyada eksikti
 );
 
 -- [27/58] kasa_hareketleri
@@ -771,8 +774,11 @@ CREATE TABLE IF NOT EXISTS personel (
   aktif BOOLEAN,
   notlar TEXT,
   last_updated TIMESTAMPTZ,
-  is_deleted BOOLEAN,
-  ise_baslama_tarihi TEXT
+  is_deleted BOOLEAN
+  -- [DÜZELTME — 2026-09-13] 'ise_baslama_tarihi' kaldırıldı: eski/terk
+  -- edilmiş bir migrasyon adımının kalıntısıydı, güncel yerel şemada
+  -- (sistem_semasi.dart) hiç yok, hiçbir Dart kodu artık yazmıyor —
+  -- 'ise_baslama' (yukarıda) onun yerini aldı.
 );
 
 -- [41/58] promosyon_aksiyon
@@ -813,17 +819,20 @@ CREATE TABLE IF NOT EXISTS promosyon_tanim (
 -- [44/58] promosyonlar
 CREATE TABLE IF NOT EXISTS promosyonlar (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  ad TEXT,
   urun_id BIGINT,
   min_miktar DOUBLE PRECISION,
   iskonto_oran DOUBLE PRECISION,
   baslangic_tarihi TEXT,
   bitis_tarihi TEXT,
   aktif BOOLEAN,
-  created_at TEXT,
   global_id TEXT,
   last_updated TIMESTAMPTZ,
-  deleted_at TIMESTAMPTZ
+  deleted_at TIMESTAMPTZ,
+  promosyon_adi TEXT,  -- [DÜZELTME — 2026-09-13] yerelde GERÇEKTEN kullanılan sütun buydu, dosyada hiç yoktu
+  iskonto_tutar DOUBLE PRECISION  -- [DÜZELTME — 2026-09-13] yerelde vardı, dosyada eksikti
+  -- [DÜZELTME — 2026-09-13] 'ad' ve 'created_at' kaldırıldı: yerel
+  -- şemada bu isimlerle sütun yok (gerçek ad sütunu 'promosyon_adi',
+  -- yukarıda) — eski bir isimlendirme kalıntısıydı.
 );
 
 -- [45/58] puan_hareket
@@ -950,7 +959,8 @@ CREATE TABLE IF NOT EXISTS sube_urun (
   raf_kodu TEXT,
   son_guncelleme TIMESTAMPTZ,
   global_id TEXT,
-  last_updated TIMESTAMPTZ
+  last_updated TIMESTAMPTZ,
+  alis_fiyati DOUBLE PRECISION  -- [DÜZELTME — 2026-09-13] yerelde vardı, dosyada eksikti
 );
 
 -- [52/58] subeler
@@ -1112,7 +1122,8 @@ CREATE TABLE IF NOT EXISTS urunler (
   koli_ici_miktar DOUBLE PRECISION,
   koli_birim_adi TEXT,
   satis_birimi_tipi TEXT,
-  toptan_satista BIGINT
+  toptan_satista BIGINT,
+  asgari_siparis_miktari DOUBLE PRECISION  -- [DÜZELTME — 2026-09-13] yerelde vardı (Bayi Portalı ile ilgili), dosyada eksikti
 );
 
 -- [57/58] vardiyalar
@@ -1427,9 +1438,6 @@ ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS created_at TEXT;
 ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS updated_at TEXT;
 ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS efatura_uuid TEXT;
-ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS efatura_durum TEXT;
-ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS efatura_tipi TEXT;
 ALTER TABLE fiyat_gecmis ADD COLUMN IF NOT EXISTS urun_id BIGINT;
 ALTER TABLE fiyat_gecmis ADD COLUMN IF NOT EXISTS eski_alis DOUBLE PRECISION;
 ALTER TABLE fiyat_gecmis ADD COLUMN IF NOT EXISTS yeni_alis DOUBLE PRECISION;
@@ -1514,6 +1522,7 @@ ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS created_at TEXT;
 ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS aciklama TEXT;
 ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS aciklama TEXT;  -- ➕ yerelde vardı, buluttan eksikti
 ALTER TABLE kasa_hareketleri ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE kasa_hareketleri ADD COLUMN IF NOT EXISTS hareket_tipi TEXT;
@@ -1684,7 +1693,6 @@ ALTER TABLE personel ADD COLUMN IF NOT EXISTS aktif BOOLEAN;
 ALTER TABLE personel ADD COLUMN IF NOT EXISTS notlar TEXT;
 ALTER TABLE personel ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE personel ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN;
-ALTER TABLE personel ADD COLUMN IF NOT EXISTS ise_baslama_tarihi TEXT;
 ALTER TABLE promosyon_aksiyon ADD COLUMN IF NOT EXISTS tanim_id BIGINT;
 ALTER TABLE promosyon_aksiyon ADD COLUMN IF NOT EXISTS aksiyon_tipi TEXT;
 ALTER TABLE promosyon_aksiyon ADD COLUMN IF NOT EXISTS aksiyon_degeri TEXT;
@@ -1705,14 +1713,12 @@ ALTER TABLE promosyon_tanim ADD COLUMN IF NOT EXISTS aktif BOOLEAN;
 ALTER TABLE promosyon_tanim ADD COLUMN IF NOT EXISTS oncelik BIGINT;
 ALTER TABLE promosyon_tanim ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ;
 ALTER TABLE promosyon_tanim ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
-ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS ad TEXT;
 ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS urun_id BIGINT;
 ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS min_miktar DOUBLE PRECISION;
 ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS iskonto_oran DOUBLE PRECISION;
 ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS baslangic_tarihi TEXT;
 ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS bitis_tarihi TEXT;
 ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS aktif BOOLEAN;
-ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS created_at TEXT;
 ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
@@ -1810,6 +1816,7 @@ ALTER TABLE sube_urun ADD COLUMN IF NOT EXISTS raf_kodu TEXT;
 ALTER TABLE sube_urun ADD COLUMN IF NOT EXISTS son_guncelleme TIMESTAMPTZ;
 ALTER TABLE sube_urun ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE sube_urun ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE sube_urun ADD COLUMN IF NOT EXISTS alis_fiyati DOUBLE PRECISION;
 ALTER TABLE sube_urun ADD COLUMN IF NOT EXISTS alis_fiyati DOUBLE PRECISION;  -- ➕ yerelde vardı, buluttan eksikti
 ALTER TABLE subeler ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE subeler ADD COLUMN IF NOT EXISTS sube_kodu TEXT;
@@ -1948,6 +1955,7 @@ ALTER TABLE urunler ADD COLUMN IF NOT EXISTS koli_ici_miktar DOUBLE PRECISION;
 ALTER TABLE urunler ADD COLUMN IF NOT EXISTS koli_birim_adi TEXT;
 ALTER TABLE urunler ADD COLUMN IF NOT EXISTS satis_birimi_tipi TEXT;
 ALTER TABLE urunler ADD COLUMN IF NOT EXISTS toptan_satista BIGINT;
+ALTER TABLE urunler ADD COLUMN IF NOT EXISTS asgari_siparis_miktari DOUBLE PRECISION;
 ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS kullanici_id BIGINT;
 ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS sube_id BIGINT;

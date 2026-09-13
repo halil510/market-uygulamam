@@ -1,6 +1,17 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- MARKETPLUS — SUPABASE ŞEMASI  (KENDİ KENDİNİ ONARAN SÜRÜM)
--- 58 senkron tablosu  ·  29.07.2026
+-- 59 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-13
+--
+-- 2026-09-13 GÜNCELLEMESİ — yerel uygulama şemasıyla karşılaştırılıp
+-- 3 sapma bulundu ve düzeltildi:
+--   • onay_talepleri tablosu HİÇ yoktu (Onay Merkezi / FAZ 9, DB v57).
+--     Kod tarafında da supabase_sync_servisi.dart'ın senkron listelerinde
+--     (_tabloSirasi ve kardeşleri) hiç yer almıyordu — yani bu tablo bu
+--     dosya güncellenmiş olsa bile ASLA buluta gitmeyecekti. İkisi de
+--     bu oturumda düzeltildi (bkz. commit geçmişi).
+--   • kasa_hareketleri.odeme_yontemi eksikti (DB v56, vardiya/kasa
+--     mutabakatı — Kart/Nakit ayrımı).
+--   • kullanicilar.bayi_cari_id eksikti (DB v58, B2B Bayi Portalı).
 --
 -- ═══════════════════════════════════════════════════════════════════════
 -- ÖNCEKİ DOSYA NEDEN İŞE YARAMADI — İTİRAF
@@ -521,7 +532,8 @@ CREATE TABLE IF NOT EXISTS kasa_hareketleri (
   kullanici_id BIGINT,
   sube_id BIGINT,
   last_updated TIMESTAMPTZ,
-  deleted_at TIMESTAMPTZ
+  deleted_at TIMESTAMPTZ,
+  odeme_yontemi TEXT  -- [YENİ — 2026-09-13] yerel DB v56, FAZ 1 madde 2 (vardiya/kasa mutabakatı)
 );
 
 -- [28/58] kategoriler
@@ -585,7 +597,8 @@ CREATE TABLE IF NOT EXISTS kullanicilar (
   son_giris TIMESTAMPTZ,
   kayit_tarihi TIMESTAMPTZ,
   last_updated TIMESTAMPTZ,
-  is_deleted BOOLEAN
+  is_deleted BOOLEAN,
+  bayi_cari_id BIGINT  -- [YENİ — 2026-09-13] yerel DB v58, B2B Bayi Portalı: doluysa bu kullanıcı bir bayi girişidir, cari(id)'ye işaret eder (FK kısıtı BÖLÜM 3 gereği bilerek konmadı)
 );
 
 -- [32/58] lot_seri
@@ -705,6 +718,31 @@ CREATE TABLE IF NOT EXISTS musteri_puan (
   kullanilan DOUBLE PRECISION,
   son_islem TIMESTAMPTZ,
   last_updated TIMESTAMPTZ
+);
+
+-- [YENİ — 2026-09-13] onay_talepleri (Onay Merkezi, FAZ 9, yerel DB v57)
+-- Önceden bu tablo _tabloSirasi'nde (supabase_sync_servisi.dart) hiç
+-- yoktu — BulutManager().upsert() ile sync_queue'ya düşüyordu ama
+-- gerçekte asla buluta gönderilmiyordu. Kod tarafı da bu oturumda
+-- düzeltildi, tablo artık gerçekten senkronize oluyor.
+CREATE TABLE IF NOT EXISTS onay_talepleri (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id TEXT,
+  tur TEXT,
+  referans_turu TEXT,
+  referans_id BIGINT,
+  tutar DOUBLE PRECISION,
+  esik_tutar DOUBLE PRECISION,
+  aciklama TEXT,
+  kullanici_id BIGINT,
+  kullanici_adi TEXT,
+  sube_id BIGINT,
+  tarih TIMESTAMPTZ,
+  goruldu BOOLEAN,
+  goren_kullanici_id BIGINT,
+  goruldu_tarihi TIMESTAMPTZ,
+  last_updated TIMESTAMPTZ,
+  is_deleted BOOLEAN
 );
 
 -- [40/58] personel
@@ -1480,6 +1518,7 @@ ALTER TABLE kasa_hareketleri ADD COLUMN IF NOT EXISTS kullanici_id BIGINT;
 ALTER TABLE kasa_hareketleri ADD COLUMN IF NOT EXISTS sube_id BIGINT;
 ALTER TABLE kasa_hareketleri ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE kasa_hareketleri ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE kasa_hareketleri ADD COLUMN IF NOT EXISTS odeme_yontemi TEXT;
 ALTER TABLE kategoriler ADD COLUMN IF NOT EXISTS ad TEXT;
 ALTER TABLE kategoriler ADD COLUMN IF NOT EXISTS ust_kategori_id BIGINT;
 ALTER TABLE kategoriler ADD COLUMN IF NOT EXISTS sira BIGINT;
@@ -1524,6 +1563,7 @@ ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS son_giris TIMESTAMPTZ;
 ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS kayit_tarihi TIMESTAMPTZ;
 ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN;
+ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS bayi_cari_id BIGINT;
 ALTER TABLE lot_seri ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE lot_seri ADD COLUMN IF NOT EXISTS cihaz_id TEXT;
 ALTER TABLE lot_seri ADD COLUMN IF NOT EXISTS urun_id BIGINT;
@@ -1603,6 +1643,22 @@ ALTER TABLE musteri_puan ADD COLUMN IF NOT EXISTS toplam_puan DOUBLE PRECISION;
 ALTER TABLE musteri_puan ADD COLUMN IF NOT EXISTS kullanilan DOUBLE PRECISION;
 ALTER TABLE musteri_puan ADD COLUMN IF NOT EXISTS son_islem TIMESTAMPTZ;
 ALTER TABLE musteri_puan ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS global_id TEXT;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS tur TEXT;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS referans_turu TEXT;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS referans_id BIGINT;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS tutar DOUBLE PRECISION;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS esik_tutar DOUBLE PRECISION;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS aciklama TEXT;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS kullanici_id BIGINT;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS kullanici_adi TEXT;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS sube_id BIGINT;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS tarih TIMESTAMPTZ;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS goruldu BOOLEAN;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS goren_kullanici_id BIGINT;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS goruldu_tarihi TIMESTAMPTZ;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN;
 ALTER TABLE personel ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE personel ADD COLUMN IF NOT EXISTS kullanici_id BIGINT;
 ALTER TABLE personel ADD COLUMN IF NOT EXISTS ad_soyad TEXT;
@@ -1963,6 +2019,7 @@ BEGIN
          'masa_siparisleri',
          'masalar',
          'musteri_puan',
+         'onay_talepleri',
          'personel',
          'promosyon_aksiyon',
          'promosyon_kosul',
@@ -2043,6 +2100,7 @@ BEGIN
          'masa_siparisleri',
          'masalar',
          'musteri_puan',
+         'onay_talepleri',
          'personel',
          'promosyon_aksiyon',
          'promosyon_kosul',
@@ -2123,6 +2181,7 @@ BEGIN
          'masa_siparisleri',
          'masalar',
          'musteri_puan',
+         'onay_talepleri',
          'personel',
          'promosyon_aksiyon',
          'promosyon_kosul',
@@ -2352,6 +2411,11 @@ DO $$ BEGIN
   END IF;
 END $$;
 DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_onay_talepleri_global_id') THEN
+    ALTER TABLE onay_talepleri ADD CONSTRAINT uq_onay_talepleri_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_personel_global_id') THEN
     ALTER TABLE personel ADD CONSTRAINT uq_personel_global_id UNIQUE (global_id);
   END IF;
@@ -2561,6 +2625,8 @@ CREATE INDEX IF NOT EXISTS idx_masalar_last_updated ON masalar(last_updated);
 CREATE INDEX IF NOT EXISTS idx_masalar_sube_id ON masalar(sube_id);
 CREATE INDEX IF NOT EXISTS idx_musteri_puan_last_updated ON musteri_puan(last_updated);
 CREATE INDEX IF NOT EXISTS idx_musteri_puan_cari_id ON musteri_puan(cari_id);
+CREATE INDEX IF NOT EXISTS idx_onay_talepleri_last_updated ON onay_talepleri(last_updated);
+CREATE INDEX IF NOT EXISTS idx_onay_talepleri_goruldu ON onay_talepleri(goruldu);
 CREATE INDEX IF NOT EXISTS idx_personel_last_updated ON personel(last_updated);
 CREATE INDEX IF NOT EXISTS idx_personel_kullanici_id ON personel(kullanici_id);
 CREATE INDEX IF NOT EXISTS idx_promosyon_aksiyon_last_updated ON promosyon_aksiyon(last_updated);
@@ -2736,6 +2802,9 @@ CREATE POLICY masalar_all ON masalar FOR ALL TO anon, authenticated USING (true)
 ALTER TABLE musteri_puan ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS musteri_puan_all ON musteri_puan;
 CREATE POLICY musteri_puan_all ON musteri_puan FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+ALTER TABLE onay_talepleri ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS onay_talepleri_all ON onay_talepleri;
+CREATE POLICY onay_talepleri_all ON onay_talepleri FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 ALTER TABLE personel ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS personel_all ON personel;
 CREATE POLICY personel_all ON personel FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
@@ -2841,6 +2910,7 @@ WITH beklenen(tablo) AS (VALUES
     ('masa_siparisleri'),
     ('masalar'),
     ('musteri_puan'),
+    ('onay_talepleri'),
     ('personel'),
     ('promosyon_aksiyon'),
     ('promosyon_kosul'),

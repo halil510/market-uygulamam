@@ -491,6 +491,11 @@ class Veritabani {
       'banka_hareketler', 'kredi_karti_hareket', 'borclar',
       'borc_odemeler', 'audit_log', 'urun_fiyat_gruplari',
       'fiyat_kademeleri', 'sube_urun',
+      // 🔴 DÜZELTME: bu 3 tablo senkron sistemine (supabase_sync_servisi.dart
+      // _tabloSirasi/_globalIdVar/_uniqueAlan) sonradan eklendiğinde bu
+      // liste güncellenmemişti — global_id çakışması olursa (retry/kesinti
+      // senaryosu) sessizce IGNORE ediliyordu, REPLACE yerine.
+      'bekleyen_siparisler', 'bekleyen_siparis_kalem', 'onay_talepleri',
     };
     final conflict = globalIdTablosu.contains(tablo) 
         ? ConflictAlgorithm.replace 

@@ -107,6 +107,15 @@ class SupabaseSyncServisi {
     // Toptan satış: fiyat_gruplari zaten yukarıda (cari'den önce)
     // eklendi — burada sadece ona bağımlı olanlar.
     'urun_fiyat_gruplari', 'fiyat_kademeleri', 'sube_urun',
+
+    // 🔴 DÜZELTME (Supabase şema dosyası güncellenirken bulundu):
+    // 'onay_talepleri' (Onay Merkezi, FAZ 9 — DB v57) BulutManager()
+    // .upsert() ile sync_queue'ya düşüyordu ama bu listede HİÇ yoktu —
+    // hem push hem pull tarafı _tabloSirasi üzerinden döndüğü için
+    // kayıtlar asla buluta gitmiyor, diğer şube/cihazlarda görünmüyordu.
+    // referans_id/referans_turu polimorfik (kolon_haritalama.dart'ta FK
+    // hedefi yok) olduğu için sıra bağımsız, listenin sonuna eklendi.
+    'onay_talepleri',
   ];
 
   static const _globalIdVar = {
@@ -131,6 +140,7 @@ class SupabaseSyncServisi {
     'cari_hareket', // 🔴 KRİTİK DÜZELTME: gerçekten global_id'ye sahip olduğu halde eksikti — PUSH öncesi global_id siliniyordu, yinelenen kayıt riski.
     // "Bayilerden Sipariş Alma" (bekleyen sipariş) tabloları:
     'bekleyen_siparisler', 'bekleyen_siparis_kalem',
+    'onay_talepleri',
 
   };
 
@@ -213,6 +223,7 @@ class SupabaseSyncServisi {
 
     // "Bayilerden Sipariş Alma" (bekleyen sipariş) tabloları:
     'bekleyen_siparisler', 'bekleyen_siparis_kalem',
+    'onay_talepleri',
 
   };
 
@@ -287,6 +298,7 @@ class SupabaseSyncServisi {
     // "Bayilerden Sipariş Alma" (bekleyen sipariş) tabloları:
     'bekleyen_siparisler': 'global_id',
     'bekleyen_siparis_kalem': 'global_id',
+    'onay_talepleri': 'global_id',
 
   };
 
@@ -334,6 +346,7 @@ class SupabaseSyncServisi {
     'bankalar': 'aktif', 'kredi_kartlari': 'aktif',
     'banka_hareketler': 'is_deleted', 'kredi_karti_hareket': 'is_deleted',
     'borclar': 'is_deleted',
+    'onay_talepleri': 'is_deleted',
     // Not: gider_kategoriler, rol_yetkileri, roller_yetki, ayarlar,
     // fiyat_gecmis, cari_adres, musteri_puan, vardiyalar, satis_kalem,
     // iade_kalem, irsaliye_kalem, promosyon_kosul, promosyon_aksiyon,
@@ -364,7 +377,7 @@ class SupabaseSyncServisi {
   static const Set<String> _boolAlanlar = {
     'aktif', 'is_deleted', 'iptal', 'seri_no_takibi', 'lot_takibi',
     'otomatik_indirim', 'evrak_kontrol_aktif', 'promosyon_aktif',
-    'varsayilan', 'okundu', 'silindi', 'onaylandi', 'tamamlandi',
+    'varsayilan', 'okundu', 'silindi', 'onaylandi', 'tamamlandi', 'goruldu',
   };
 
   // NOT: 'masalar','masa_siparisleri','masa_siparis_kalem' önceden

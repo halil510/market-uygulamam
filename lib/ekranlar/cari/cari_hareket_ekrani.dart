@@ -151,39 +151,35 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   // raporu). O yüzden bu iki ödeme türü için hâlâ sadece uyarı
   // gösteriliyor; kayıtlar arasında YANLIŞ bir eşleştirme riski almak
   // yerine güvenli (dokunmama) tarafta kalındı.
-  Future<void> _silHareket(CariHareketModel h) async {
-    if (h.id == null) return;
+  /// Swipe-silme akışındaki TEK onay diyaloğunun (bkz. Dismissible.confirmDismiss
+  /// aşağıda) içeriği — hareketin türüne göre bağlı kasa hareketinin ne
+  /// olacağını açıklar.
+  String _silHareketMesaji(CariHareketModel h) {
     final gercekParaOlabilir = h.fisTipi == 'Tahsilat' || h.fisTipi == 'Ödeme';
     final otomatikTersCevrilebilir =
         gercekParaOlabilir && h.odemeTuru == 'Nakit';
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Hareketi İptal Et'),
-        content: Text(!gercekParaOlabilir
-            ? '${h.aciklama} hareketi iptal edilecek. Devam edilsin mi?'
-            : otomatikTersCevrilebilir
-                ? '${h.aciklama} hareketi iptal edilecek. Bağlı kasa hareketi '
-                    'de otomatik olarak tersine çevrilecek. Devam edilsin mi?'
-                : '${h.aciklama} hareketi iptal edilecek.\n\n'
-                    'Bu bir Banka/Kredi Kartı hareketiyse, bağlı kayıt OTOMATİK '
-                    'OLARAK GERİ ALINMAZ — gerekiyorsa o tarafı elle düzeltin. '
-                    'Devam edilsin mi?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('İptal')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.red),
-            child: const Text('Sil'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
+    if (!gercekParaOlabilir) return '${h.aciklama} silinecek. Emin misiniz?';
+    if (otomatikTersCevrilebilir) {
+      return '${h.aciklama} silinecek. Bağlı kasa hareketi de otomatik '
+          'olarak tersine çevrilecek. Emin misiniz?';
+    }
+    return '${h.aciklama} silinecek.\n\n'
+        'Bu bir Banka/Kredi Kartı hareketiyse, bağlı kayıt OTOMATİK OLARAK '
+        'GERİ ALINMAZ — gerekiyorsa o tarafı elle düzeltin. Emin misiniz?';
+  }
+
+  // 🔴 DÜZELTME (kullanıcı bulgusu — "cari fiş silme işlemi çalışmıyor"):
+  // ÖNCEDEN burada Dismissible.confirmDismiss'in gösterdiği onay
+  // diyaloğundan SONRA, _silHareket kendi İKİNCİ bir onay diyaloğu daha
+  // gösteriyordu (aynı işlem için art arda 2 diyalog). Kullanıcı ikinci
+  // diyaloğun dışına dokunduğunda (varsayılan barrier-dismiss davranışı)
+  // veya onu fark etmeden kapattığında, `ok != true` olduğu için fonksiyon
+  // SESSİZCE hiçbir hata/bildirim göstermeden geri dönüyordu — "silme
+  // yapmıyor" hissi tam olarak buradan kaynaklanıyordu. Artık TEK onay
+  // diyaloğu var (Dismissible.confirmDismiss, _silHareketMesaji ile) —
+  // buraya ulaşıldığında kullanıcı zaten onaylamış demektir.
+  Future<void> _silHareket(CariHareketModel h) async {
+    if (h.id == null) return;
     try {
       final db = await Veritabani().db;
       String? tersCariGid;
@@ -202,8 +198,15 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
         await txn.update('cari_hareket', {'is_deleted': 1, 'last_updated': now},
             where: 'id = ?', whereArgs: [h.id]);
 
-        // 2. Ters cari_hareket (borç/alacak yer değiştirir), orijinali
-        // fis_id ile referans olarak taşır.
+        // 2. Ters cari_hareket — SADECE görüntüleme/audit-trail amaçlı
+        // (listede "X İptali" satırı olarak görünür), fis_id ile orijinali
+        // referans olarak taşır. Adım 1'de orijinal zaten is_deleted=1
+        // yapılıp bakiye SUM'ından (adım 3) tamamen dışlandığı için bu,
+        // bakiyeyi orijinalin tam tersi kadar etkiler; bu yüzden burada
+        // BİLİNÇLİ OLARAK borc=0/alacak=0 kullanılıyor — gerçek (sıfır
+        // olmayan) bir ters tutar eklemek, orijinalin dışlanmasıyla
+        // BİRLEŞİP bakiyeyi olması gerekenin İKİ KATI kadar kaydırırdı
+        // (bkz. adım 3'teki not).
         final tersGid = const Uuid().v4();
         await txn.insert('cari_hareket', {
           'global_id': tersGid,
@@ -212,9 +215,10 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
           'fis_tipi': '${h.fisTipi} İptali',
           'fis_id': h.id,
           'fis_no': h.fisNo,
-          'aciklama': 'İptal: ${h.aciklama}',
-          'borc': h.alacak,
-          'alacak': h.borc,
+          'aciklama': 'İptal: ${h.aciklama} '
+              '(${ParaUtils.formatla(h.borc > 0 ? h.borc : h.alacak)})',
+          'borc': 0,
+          'alacak': 0,
           'odeme_turu': h.odemeTuru,
           'kullanici': AuthServisi().aktifAd,
           'last_updated': now,
@@ -222,7 +226,17 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
         });
         tersCariGid = tersGid;
 
-        // 3. Cari bakiyeyi hareketlerden yeniden hesapla.
+        // 3. Cari bakiyeyi hareketlerden yeniden hesapla. Bu SUM her zaman
+        // 'is_deleted = 0' ile filtrelenir — bu, uygulamanın TEK yerden
+        // (CariDeposu.bakiyeYenidenHesapla, Veri Sağlığı Merkezi mutabakatı,
+        // cari_provider yenileme) kullandığı KANONİK kural: soft-delete
+        // edilmiş bir hareket bakiyeye HİÇ katkı vermemeli. O yüzden adım
+        // 2'deki ters kayıt bilinçli olarak borc=0/alacak=0 (aşağıda) —
+        // orijinal zaten dışlandığı için ayrıca sıfır-olmayan bir ters
+        // tutar eklemek bakiyeyi ORİJİNAL TUTARIN TERSİ kadar KAYDIRIRDI
+        // (ör. 10 TL'lik hareket silinince bakiye 0'a değil +10'a giderdi
+        // — silme her zaman "çalışıyordu" ama sonuç yanlıştı, bu yüzden
+        // fark edilmesi zor bir hataydı; bkz. aşağıdaki yorum).
         await txn.rawUpdate('''
           UPDATE cari SET bakiye = (
             SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0)
@@ -772,8 +786,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                                             borderRadius:
                                                 BorderRadius.circular(20)),
                                         title: const Text('Hareketi Sil'),
-                                        content: Text(
-                                            '${h.aciklama} silinecek. Emin misiniz?'),
+                                        content: Text(_silHareketMesaji(h)),
                                         actions: [
                                           TextButton(
                                               onPressed: () =>

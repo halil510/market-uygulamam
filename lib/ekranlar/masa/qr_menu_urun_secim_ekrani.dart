@@ -40,12 +40,19 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
   // (resimUrl) yükler; o da yoksa nötr bir ikon gösterir.
   Widget _resimGoster(UrunModel u, {double boyut = 44}) {
     Widget icerik;
+    // 🔴 DÜZELTME (performans denetimi): cacheWidth/cacheHeight yoktu —
+    // kamera fotoğrafı $boyut px'lik bir kutuda tam çözünürlükte decode
+    // ediliyordu (bellek/jank riski, ürün fotoğraflı menülerde scroll
+    // sırasında hissedilir).
+    final px = (boyut * MediaQuery.of(context).devicePixelRatio).round();
     final yerelYol = u.resimYolu;
     if (yerelYol != null && yerelYol.isNotEmpty && File(yerelYol).existsSync()) {
       icerik = Image.file(File(yerelYol), width: boyut, height: boyut, fit: BoxFit.cover,
+          cacheWidth: px, cacheHeight: px,
           errorBuilder: (_, __, ___) => _resimYer(boyut));
     } else if (u.resimUrl != null && u.resimUrl!.isNotEmpty) {
       icerik = Image.network(u.resimUrl!, width: boyut, height: boyut, fit: BoxFit.cover,
+          cacheWidth: px, cacheHeight: px,
           errorBuilder: (_, __, ___) => _resimYer(boyut),
           loadingBuilder: (c, child, prog) => prog == null ? child : _resimYer(boyut));
     } else {

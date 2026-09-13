@@ -224,23 +224,29 @@ class CariDeposu {
     }
   }
 
-  Future<List<CariModel>> ara(String sorgu, {String? tip}) async {
+  // 🔴 DÜZELTME (performans denetiminde bulundu): urunler.ara()'nın
+  // aksine bu fonksiyonun hiç LIMIT'i yoktu — büyük bir cari tabanında
+  // (binlerce müşteri/tedarikçi) kısa/genel bir arama terimi TÜM
+  // eşleşen satırları tek seferde belleğe çekebiliyordu.
+  // tumunuGetir()'deki AYNI varsayılan (500) ile tutarlı tutuldu.
+  Future<List<CariModel>> ara(String sorgu, {String? tip, int limit = 500}) async {
     try {
-      if (sorgu.isEmpty) return tumunuGetir(tip: tip);
+      if (sorgu.isEmpty) return tumunuGetir(tip: tip, limit: limit);
       final db = await _d;
       final q = '%$sorgu%';
       // 🔴 DÜZELTME: 'cari_tipi = ...' hem TAM eşleşme (dual-tip
       // carileri dışlıyordu, tumunuGetir()'deki AYNI hata) hem de
       // doğrudan string enjeksiyonuydu (parametreli değildi) hem de
       // 'aktif = 1' filtresi eksikti (tumunuGetir ile tutarsız).
-      final params = [q, q, q, q, q];
+      final params = <Object?>[q, q, q, q, q];
       final tipFilt = tip != null ? " AND cari_tipi LIKE ?" : '';
       if (tip != null) params.add('%$tip%');
+      params.add(limit);
       final rows = await db.rawQuery(
-        '''SELECT * FROM cari 
-           WHERE (unvan LIKE ? OR cari_kodu LIKE ? OR telefon LIKE ? OR vergi_no LIKE ? OR email LIKE ?) 
-           AND is_deleted = 0 AND aktif = 1$tipFilt 
-           ORDER BY unvan ASC''',
+        '''SELECT * FROM cari
+           WHERE (unvan LIKE ? OR cari_kodu LIKE ? OR telefon LIKE ? OR vergi_no LIKE ? OR email LIKE ?)
+           AND is_deleted = 0 AND aktif = 1$tipFilt
+           ORDER BY unvan ASC LIMIT ?''',
         params,
       );
       return rows.map(CariModel.fromMap).toList();

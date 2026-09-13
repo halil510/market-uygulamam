@@ -762,7 +762,18 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                               u.resimYolu!.isNotEmpty &&
                               File(u.resimYolu!).existsSync()
                           ? DecorationImage(
-                              image: FileImage(File(u.resimYolu!)),
+                              // 🔴 DÜZELTME (performans denetimi):
+                              // FileImage tam çözünürlükte decode ediyordu
+                              // (kamera fotoğrafı birkaç MB olabilir) —
+                              // 64x64'lük bir kutuda gösterilirken bile.
+                              // ResizeImage, decode boyutunu gerçek
+                              // gösterim boyutuna indirip bellek/jank
+                              // riskini ortadan kaldırıyor.
+                              image: ResizeImage(
+                                FileImage(File(u.resimYolu!)),
+                                width: (64 * MediaQuery.of(context).devicePixelRatio).round(),
+                                height: (64 * MediaQuery.of(context).devicePixelRatio).round(),
+                              ),
                               fit: BoxFit.cover)
                           : null,
                     ),
@@ -979,7 +990,12 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                                           u.resimYolu!.isNotEmpty &&
                                           File(u.resimYolu!).existsSync()
                                       ? DecorationImage(
-                                          image: FileImage(File(u.resimYolu!)),
+                                          // bkz. yukarıdaki liste-modu notu — aynı düzeltme
+                                          image: ResizeImage(
+                                            FileImage(File(u.resimYolu!)),
+                                            width: (48 * MediaQuery.of(context).devicePixelRatio).round(),
+                                            height: (48 * MediaQuery.of(context).devicePixelRatio).round(),
+                                          ),
                                           fit: BoxFit.cover)
                                       : null),
                               child: (u.resimYolu == null ||

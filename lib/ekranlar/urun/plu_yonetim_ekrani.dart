@@ -382,7 +382,12 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
     if (yol != null && yol.isNotEmpty) {
       final f = File(yol);
       if (f.existsSync()) {
+        // 🔴 DÜZELTME (performans denetimi): cacheWidth/cacheHeight
+        // yoktu — kamera fotoğrafı $boyut px'lik bir kutuda tam
+        // çözünürlükte decode ediliyordu.
+        final px = (boyut * MediaQuery.of(context).devicePixelRatio).round();
         return Image.file(f, width: boyut, height: boyut, fit: BoxFit.cover,
+            cacheWidth: px, cacheHeight: px,
             errorBuilder: (_, __, ___) => _harf(u, boyut));
       }
     }

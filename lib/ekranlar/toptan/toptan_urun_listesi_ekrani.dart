@@ -117,12 +117,19 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
 
   Widget _resimGoster(UrunModel u, {double boyut = 48}) {
     Widget icerik;
+    // 🔴 DÜZELTME (performans denetimi): cacheWidth/cacheHeight olmadan
+    // bu resim (kamera fotoğrafı birkaç MB olabilir) tam çözünürlükte
+    // decode ediliyordu — sadece $boyut px gösterilirken bile. Listede
+    // çok sayıda ürün fotoğrafı varsa scroll sırasında bellek/jank riski.
+    final px = (boyut * MediaQuery.of(context).devicePixelRatio).round();
     final yerelYol = u.resimYolu;
     if (yerelYol != null && yerelYol.isNotEmpty && File(yerelYol).existsSync()) {
       icerik = Image.file(File(yerelYol), width: boyut, height: boyut, fit: BoxFit.cover,
+          cacheWidth: px, cacheHeight: px,
           errorBuilder: (_, __, ___) => _resimYer(boyut));
     } else if (u.resimUrl != null && u.resimUrl!.isNotEmpty) {
       icerik = Image.network(u.resimUrl!, width: boyut, height: boyut, fit: BoxFit.cover,
+          cacheWidth: px, cacheHeight: px,
           errorBuilder: (_, __, ___) => _resimYer(boyut));
     } else {
       icerik = _resimYer(boyut);

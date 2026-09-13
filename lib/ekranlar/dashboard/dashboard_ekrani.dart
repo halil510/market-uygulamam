@@ -191,6 +191,8 @@ const List<_Kategori> _tumKategoriler = [
         'Mal Alımı', Icons.shopping_cart, Color(0xFF558B2F), '/tedarik/alim'),
     _UygulamaItem('Satın Alma Önerileri', Icons.lightbulb_outline,
         Color(0xFFEF6C00), '/tedarik/oneriler'),
+    _UygulamaItem('Tedarikçi Performansı', Icons.local_shipping_outlined,
+        Color(0xFF37474F), '/rapor/tedarikci-performans'),
   ]),
   _Kategori('Barkod & Etiket', Icons.qr_code_2, [
     _UygulamaItem(

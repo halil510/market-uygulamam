@@ -31,7 +31,7 @@ extension _GecmisTabExt on _IadeEkraniState {
       // Filtreler
       Container(
         padding: const EdgeInsets.all(12),
-        color: _R.bg,
+        color: _R.bg(context),
         child: Column(children: [
           Row(children: [
             Expanded(child: OutlinedButton.icon(

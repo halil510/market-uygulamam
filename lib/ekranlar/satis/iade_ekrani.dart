@@ -46,18 +46,28 @@ part 'iade_ekrani_fis.dart';
 part 'iade_ekrani_hizli.dart';
 
 // ─── Renk paleti ─────────────────────────────────────────────────────────────
+// 🔴 DÜZELTME (görsel tutarlılık denetimi — "sırayla" listenin 2.
+// maddesi): bu ekran ÖNCEDEN kendi izole/sabit renk paletini
+// kullanıyordu — primary rengi (koyu lacivert) uygulamanın geri
+// kalanından FARKLIYDI ve dark mode'a hiç uymuyordu (1266+ satırlık bu
+// finansal-kritik ekran diğer TÜM ekranlardan görsel olarak
+// kopuyordu). Durum/aksan renkleri (orange/green/red/blue/primary)
+// TsRenk'in AYNI semantik sabitleriyle hizalandı (hâlâ const, context
+// gerektirmiyor). Yüzey/metin renkleri (bg/card/textD/textL/border)
+// artık context alan metotlar — TsRenk üzerinden dark mode'a uyuyor.
 class _R {
-  static const bg = Color(0xFFF4F6FB);
-  static const card = Color(0xFFFFFFFF);
-  static const primary = Color(0xFF1A2E5A);
-  static const orange = Color(0xFFFF6635);
-  static const green = Color(0xFF22C55E);
-  static const red = Color(0xFFEF4444);
-  static const blue = Color(0xFF3B82F6);
-  static const textD = Color(0xFF0F172A);
-  static const textL = Color(0xFF64748B);
-  static const border = Color(0xFFE2E8F0);
+  static const primary = TsRenk.primary;
+  static const orange = TsRenk.uyari;
+  static const green = TsRenk.basarili;
+  static const red = TsRenk.hata;
+  static const blue = TsRenk.bilgi;
   static const shadow = Color(0x10000000);
+
+  static Color bg(BuildContext c) => TsRenk.arkaplan(c);
+  static Color card(BuildContext c) => TsRenk.kart(c);
+  static Color textD(BuildContext c) => TsRenk.metinBirincil(c);
+  static Color textL(BuildContext c) => TsRenk.metinIkincil(c);
+  static Color border(BuildContext c) => TsRenk.ayirac(c);
 }
 
 // ─── Hızlı mod öğesi ─────────────────────────────────────────────────────────
@@ -1040,185 +1050,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
         onOdemeYontemiChanged: (v) {
           if (mounted) setState(() => _iadeOdemeYontemi = v);
         },
-      );
-
-  // Eski _urunFormu gövdesi kaldırıldı
-  // Bkz: IadeUrunFormu widget
-  Widget _eskiUrunFormuGovdesi() => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-            color: _R.card,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: const [
-              BoxShadow(color: _R.shadow, blurRadius: 8, offset: Offset(0, 2))
-            ]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                    color: Color.fromARGB(
-                        26, _R.orange.red, _R.orange.green, _R.orange.blue),
-                    borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.inventory_2_outlined,
-                    color: _R.orange, size: 22)),
-            const SizedBox(width: 12),
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text(_secilenUrun!.urunAdi,
-                      style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: _R.textD)),
-                  Text(_secilenUrun!.barkod ?? '',
-                      style: const TextStyle(fontSize: 12, color: _R.textL)),
-                ])),
-            IconButton(
-                icon: const Icon(Icons.close, color: _R.textL),
-                onPressed: _formSifirla),
-          ]),
-          const Divider(height: 24),
-          Row(children: [
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  const Text('Normal Satış Fiyatı',
-                      style: TextStyle(fontSize: 11, color: _R.textL)),
-                  Text(ParaUtils.formatla(_secilenUrun!.satisFiyat),
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: _R.textD)),
-                ])),
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  const Text('Mevcut Stok',
-                      style: TextStyle(fontSize: 11, color: _R.textL)),
-                  Text(_secilenUrun!.stokMiktari.toStringAsFixed(0),
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: _secilenUrun!.stokMiktari <= 0
-                              ? _R.red
-                              : _R.green)),
-                ])),
-          ]),
-          const SizedBox(height: 16),
-          Row(children: [
-            Expanded(
-                child: TextField(
-              controller: _miktarCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
-              ],
-              decoration: const InputDecoration(
-                  labelText: 'İade Miktarı',
-                  prefixIcon: Icon(Icons.production_quantity_limits, size: 18),
-                  border: OutlineInputBorder(),
-                  isDense: true),
-            )),
-            const SizedBox(width: 12),
-            Expanded(
-                child: TextField(
-              controller: _fiyatCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
-              ],
-              decoration: const InputDecoration(
-                  labelText: 'Birim Fiyat (₺)',
-                  prefixIcon: Icon(Icons.attach_money, size: 18),
-                  border: OutlineInputBorder(),
-                  isDense: true),
-            )),
-          ]),
-          const SizedBox(height: 8),
-          // İskonto alanı
-          TextField(
-            controller: _iskontoCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
-            ],
-            decoration: InputDecoration(
-              labelText: 'İskonto % (0-100)',
-              prefixIcon: const Icon(Icons.percent, size: 18),
-              border: const OutlineInputBorder(),
-              isDense: true,
-              suffixText: '%',
-              helperText: 'İskonto uygulamak için doldurun',
-              helperStyle: const TextStyle(fontSize: 10),
-              filled: true,
-              fillColor: Colors.orange.shade50,
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-                color: Color.fromARGB(
-                    15, _R.orange.red, _R.orange.green, _R.orange.blue),
-                borderRadius: BorderRadius.circular(12)),
-            child: Column(
-              children: [
-                Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Ara Toplam:',
-                          style: TextStyle(fontSize: 12, color: _R.textL)),
-                      Text(
-                          ParaUtils.formatla(_miktar *
-                              (ParaUtils.sayiCoz(_fiyatCtrl.text) ??
-                                  _orijinalFiyat)),
-                          style:
-                              const TextStyle(fontSize: 13, color: _R.textL)),
-                    ]),
-                if ((ParaUtils.sayiCoz(_iskontoCtrl.text) ?? 0) > 0) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('İskonto (${_iskontoCtrl.text}%):',
-                            style: const TextStyle(
-                                fontSize: 12, color: Colors.orange)),
-                        Text(
-                            '- ${ParaUtils.formatla(_miktar * (ParaUtils.sayiCoz(_fiyatCtrl.text) ?? _orijinalFiyat) * (ParaUtils.sayiCoz(_iskontoCtrl.text) ?? 0) / 100)}',
-                            style: const TextStyle(
-                                fontSize: 12, color: Colors.orange)),
-                      ]),
-                ],
-                const Divider(height: 8),
-                Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('İade Toplam:',
-                          style: TextStyle(fontSize: 13, color: _R.textL)),
-                      Text(
-                          ParaUtils.formatla(_miktar *
-                              (ParaUtils.sayiCoz(_fiyatCtrl.text) ??
-                                  _orijinalFiyat) *
-                              (1 -
-                                  (ParaUtils.sayiCoz(_iskontoCtrl.text) ?? 0) /
-                                      100)),
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: _R.orange)),
-                    ]),
-              ],
-            ),
-          ),
-        ]),
       );
 
   Widget _bosEkran() => Center(

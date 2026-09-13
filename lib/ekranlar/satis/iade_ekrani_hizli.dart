@@ -347,11 +347,11 @@ extension _HizliTabExt on _IadeEkraniState {
                     child: const Icon(Icons.add_shopping_cart,
                         size: 52, color: _R.blue)),
                 const SizedBox(height: 16),
-                const Text('Hızlı iade listesi boş',
-                    style: TextStyle(fontSize: 15, color: _R.textL)),
+                Text('Hızlı iade listesi boş',
+                    style: TextStyle(fontSize: 15, color: _R.textL(context))),
                 const SizedBox(height: 6),
-                const Text('Barkod okutarak veya arama yaparak ürün ekleyin',
-                    style: TextStyle(fontSize: 12, color: _R.textL),
+                Text('Barkod okutarak veya arama yaparak ürün ekleyin',
+                    style: TextStyle(fontSize: 12, color: _R.textL(context)),
                     textAlign: TextAlign.center),
               ])))
         else
@@ -396,8 +396,8 @@ extension _HizliTabExt on _IadeEkraniState {
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13)),
                               Text(item.urun.barkod ?? '',
-                                  style: const TextStyle(
-                                      fontSize: 11, color: _R.textL)),
+                                  style: TextStyle(
+                                      fontSize: 11, color: _R.textL(context))),
                             ])),
                         Row(children: [
                           IconButton(

@@ -175,6 +175,20 @@ class SubeUrunDeposu {
       }
     }
 
+    // 🔴 DÜZELTME (derin analizde bulundu): transferEt ÖNCEDEN SADECE
+    // sube_urun satırlarını güncelliyordu — satış/alış/iade/sayım/lot
+    // düzeltme gibi HER DİĞER stok akışının aksine stok_hareket'e hiç
+    // kayıt düşmüyordu. urunler.stok (TOPLAM) transferden etkilenmediği
+    // için bu, genel stok mutabakatını BOZMAZ — ama şubeler arası
+    // transferler denetim/geçmiş ekranlarında hiç görünmüyordu ("bu
+    // ürün neden X şubesinde arttı" sorusuna iz yoktu). İki taraf için
+    // de (kaynak: çıkış, hedef: giriş) ayrı bir stok_hareket satırı
+    // ekleniyor; onceki_stok/sonraki_stok o ŞUBENİN kendi stoğunu
+    // yansıtıyor (urunler.stok'u DEĞİL — StokDeposu.stokGirTxn/
+    // stokDusTxn'den BİLEREK farklı, çünkü toplam stok değişmiyor).
+    final cikisGid = const Uuid().v4();
+    final girisGid = const Uuid().v4();
+
     await db.transaction((txn) async {
       final kaynakRows = await txn.query('sube_urun',
           where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, kaynakSubeId], limit: 1);
@@ -188,9 +202,24 @@ class SubeUrunDeposu {
           where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, hedefSubeId], limit: 1);
       final hedefStok = hedefRows.isEmpty
           ? 0.0 : (hedefRows.first['stok'] as num?)?.toDouble() ?? 0.0;
+      final kaynakYeni = kaynakStok - miktar;
+      final hedefYeni = hedefStok + miktar;
 
-      await satirUpsertTxn(txn, kaynakSubeId, kaynakStok - miktar);
-      await satirUpsertTxn(txn, hedefSubeId, hedefStok + miktar);
+      await satirUpsertTxn(txn, kaynakSubeId, kaynakYeni);
+      await satirUpsertTxn(txn, hedefSubeId, hedefYeni);
+
+      await txn.insert('stok_hareket', {
+        'global_id': cikisGid, 'urun_id': urunId, 'hareket_turu': 'Şube Transfer Çıkış',
+        'miktar': miktar, 'onceki_stok': kaynakStok, 'sonraki_stok': kaynakYeni,
+        'tarih': now, 'referans_turu': 'sube_transfer', 'sube_id': kaynakSubeId,
+        'aciklama': 'Şube #$hedefSubeId\'e transfer',
+      });
+      await txn.insert('stok_hareket', {
+        'global_id': girisGid, 'urun_id': urunId, 'hareket_turu': 'Şube Transfer Giriş',
+        'miktar': miktar, 'onceki_stok': hedefStok, 'sonraki_stok': hedefYeni,
+        'tarih': now, 'referans_turu': 'sube_transfer', 'sube_id': hedefSubeId,
+        'aciklama': 'Şube #$kaynakSubeId\'den transfer',
+      });
     });
 
     // Bulut senkronu — transaction commit olduktan SONRA (bkz.
@@ -200,6 +229,10 @@ class SubeUrunDeposu {
       if (kaynakSatir != null) BulutManager().upsert('sube_urun', Map<String, dynamic>.from(kaynakSatir));
       final hedefSatir = await satirGetir(urunId, hedefSubeId);
       if (hedefSatir != null) BulutManager().upsert('sube_urun', Map<String, dynamic>.from(hedefSatir));
+      for (final gid in [cikisGid, girisGid]) {
+        final satir = await db.query('stok_hareket', where: 'global_id = ?', whereArgs: [gid], limit: 1);
+        if (satir.isNotEmpty) BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(satir.first));
+      }
     } catch (e, st) {
       LogServisi().hata('SubeUrun.transferEt (bulut bildirimi)', hata: e, yigin: st);
     }

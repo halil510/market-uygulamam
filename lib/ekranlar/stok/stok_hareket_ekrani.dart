@@ -160,7 +160,7 @@ class _StokHareketEkraniState extends ConsumerState<StokHareketEkrani> {
           ]),
         ),
         Expanded(child: _yukleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)))
+          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: TsRenk.primary))
           : RefreshIndicator(
               onRefresh: _yukle,
               child: _filtreli.isEmpty

@@ -84,7 +84,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
       builder: (_) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         content: Row(children: [
-          const CircularProgressIndicator(color: Color(0xFF4361EE), strokeWidth: 3),
+          const CircularProgressIndicator(color: TsRenk.primary, strokeWidth: 3),
           const SizedBox(width: 16),
           Text('Excel içe alınıyor...'),
         ]),
@@ -436,7 +436,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
                           return const Center(
                               child: Padding(
                             padding: EdgeInsets.all(16),
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF4361EE)),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: TsRenk.primary),
                           ));
                         }
                         final urun = durum.gosterilenler[i];

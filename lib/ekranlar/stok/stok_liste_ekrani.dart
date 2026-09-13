@@ -291,7 +291,7 @@ class _StokListeEkraniState extends ConsumerState<StokListeEkrani>
 
   Widget _stokListesi(List<UrunModel> liste) {
     if (_yukleniyor) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)));
+      return const Center(child: CircularProgressIndicator(strokeWidth: 3, color: TsRenk.primary));
     }
     if (liste.isEmpty) {
       return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [

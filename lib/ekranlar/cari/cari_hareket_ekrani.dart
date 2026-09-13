@@ -679,7 +679,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
             child: _yukleniyor
                 ? const Center(
                     child: CircularProgressIndicator(
-                        strokeWidth: 3, color: Color(0xFF4361EE)))
+                        strokeWidth: 3, color: TsRenk.primary))
                 : RefreshIndicator(
                     onRefresh: _yukle,
                     child: _filtreli.isEmpty

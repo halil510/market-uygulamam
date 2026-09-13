@@ -143,7 +143,7 @@ class _KarZararEkraniState extends ConsumerState<KarZararEkrani>
           // İçerik
           Expanded(
             child: karAsync.when(
-              loading: () => const Center(child: const CircularProgressIndicator(color: Color(0xFF4361EE), strokeWidth: 3)),
+              loading: () => const Center(child: const CircularProgressIndicator(color: TsRenk.primary, strokeWidth: 3)),
               error:   (e, _) => Center(
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Icon(Icons.error_outline, size: 48, color: context.textSecondary),

@@ -175,7 +175,7 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
         },
       ),
       body: _yukleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)))
+          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: TsRenk.primary))
           : RefreshIndicator(
               onRefresh: _yukle,
               child: ListView(children: [

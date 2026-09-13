@@ -678,7 +678,7 @@ double _toDouble(dynamic value) {
           ]),
         ),
         Expanded(child: _yukleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)))
+          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: TsRenk.primary))
           : RefreshIndicator(
               onRefresh: _yukle,
               child: ListView(padding: const EdgeInsets.all(12), children: [

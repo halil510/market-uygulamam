@@ -26,7 +26,11 @@ class CariSecDialogState extends ConsumerState<CariSecDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Müşteri Seç'),
+      title: const Row(children: [
+        Icon(Icons.person_search_outlined, color: TsRenk.primary, size: 20),
+        SizedBox(width: 8),
+        Text('Müşteri Seç'),
+      ]),
       contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
       content: SizedBox(
         width: double.maxFinite,
@@ -45,12 +49,12 @@ class CariSecDialogState extends ConsumerState<CariSecDialog> {
               margin: const EdgeInsets.fromLTRB(4, 0, 4, 8),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: TsRenk.uyari.withAlpha(20),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange.shade200),
+                border: Border.all(color: TsRenk.uyari.withAlpha(70)),
               ),
               child: Row(children: [
-                Icon(Icons.person_outline, color: Colors.orange.shade700),
+                const Icon(Icons.person_outline, color: TsRenk.uyari),
                 const SizedBox(width: 10),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('Kayıtsız / Perakende Müşteri',
@@ -58,7 +62,7 @@ class CariSecDialogState extends ConsumerState<CariSecDialog> {
                   Text('Sadece kasa hareketi yapılır',
                       style: TextStyle(fontSize: 11, color: context.textSecondary)),
                 ])),
-                const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.orange),
+                const Icon(Icons.arrow_forward_ios, size: 14, color: TsRenk.uyari),
               ]),
             ),
           ),
@@ -71,7 +75,8 @@ class CariSecDialogState extends ConsumerState<CariSecDialog> {
               decoration: const InputDecoration(
                 hintText: 'Kayıtlı cari ara...',
                 prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(10))),
                 isDense: true,
               ),
               onChanged: (q) {
@@ -98,10 +103,10 @@ class CariSecDialogState extends ConsumerState<CariSecDialog> {
                         dense: true,
                         leading: CircleAvatar(
                           radius: 16,
-                          backgroundColor: Color.fromARGB(31, 67, 97, 238),
+                          backgroundColor: TsRenk.primary.withAlpha(31),
                           child: Text(
                             cari.unvan.isNotEmpty ? cari.unvan[0].toUpperCase() : '?',
-                            style: TsMetin.kucukVurgu.copyWith(color: Color(0xFF4361EE)),
+                            style: TsMetin.kucukVurgu.copyWith(color: TsRenk.primary),
                           ),
                         ),
                         title: Text(cari.unvan, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),

@@ -24,7 +24,7 @@ class IadeGecmisWidget extends StatelessWidget {
     required this.onExcel,
   });
 
-  static const _green = Color(0xFF2E7D32);
+  static const _green = TsRenk.basarili;
 
   @override
   Widget build(BuildContext context) {
@@ -53,14 +53,18 @@ class IadeGecmisWidget extends StatelessWidget {
       const SizedBox(height: 8),
       if (iadeListesi.isEmpty)
         Center(child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(
-            duzenlemeModu_iadeId != null
-                ? 'Fişe kalem eklemek için yukarıdan ürün seçin'
-                : 'Bu oturumda henüz iade yapılmadı',
-            style: TextStyle(fontSize: 12, color: textL),
-            textAlign: TextAlign.center,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(children: [
+            Icon(Icons.inbox_outlined, size: 28, color: textL.withAlpha(150)),
+            const SizedBox(height: 8),
+            Text(
+              duzenlemeModu_iadeId != null
+                  ? 'Fişe kalem eklemek için yukarıdan ürün seçin'
+                  : 'Bu oturumda henüz iade yapılmadı',
+              style: TextStyle(fontSize: 12, color: textL),
+              textAlign: TextAlign.center,
+            ),
+          ]),
         ))
       else
         ...iadeListesi.asMap().entries.map((entry) {
@@ -94,7 +98,7 @@ class IadeGecmisWidget extends StatelessWidget {
                   Container(
                     width: 36, height: 36,
                     decoration: BoxDecoration(
-                      color: const Color(0x1A2E7D32),
+                      color: _green.withAlpha(26),
                       borderRadius: BorderRadius.circular(12)),
                     child: const Icon(Icons.assignment_return, color: _green, size: 18)),
                   const SizedBox(width: 10),

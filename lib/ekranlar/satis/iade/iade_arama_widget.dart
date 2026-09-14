@@ -4,11 +4,12 @@ import '../../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../../cekirdek/utils/para_utils.dart';
 import '../../../modeller/urun_model.dart';
 
-// Renk sabitleri — sadece gerçekten kullanılanlar kaldı (textD/textL/card/
-// shadow/shadow2 kullanılmıyordu, kaldırıldı).
+// Renk sabitleri — ana iade_ekrani.dart'taki _R paletiyle aynı TsRenk
+// semantik sabitlerine hizalandı (önceden burada FARKLI, sabit bir turuncu
+// tonu vardı ve ekranın geri kalanıyla (İade Et butonu vb.) uyumsuzdu).
 class _R {
-  static const primary = Color(0xFF4361EE);
-  static const orange  = Color(0xFFE65100);
+  static const primary = TsRenk.primary;
+  static const orange  = TsRenk.uyari;
 }
 
 class IadeAramaKutusu extends StatelessWidget {
@@ -39,13 +40,19 @@ class IadeAramaKutusu extends StatelessWidget {
             suffixIcon: controller.text.isNotEmpty
                 ? IconButton(icon: const Icon(Icons.clear), onPressed: onTemizle)
                 : null,
-            border: const OutlineInputBorder(), isDense: true,
+            border: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(10))),
+            isDense: true,
           ),
         )),
         const SizedBox(width: 8),
         IconButton.filled(
           icon: const Icon(Icons.qr_code_scanner),
-          style: IconButton.styleFrom(backgroundColor: _R.primary, foregroundColor: Colors.white),
+          style: IconButton.styleFrom(
+              backgroundColor: _R.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10))),
           onPressed: onBarkod,
         ),
       ]),
@@ -95,7 +102,7 @@ class IadeAramaPanel extends StatelessWidget {
               dense: true,
               leading: CircleAvatar(
                 radius: 18,
-                backgroundColor: const Color(0x1AE65100),
+                backgroundColor: _R.orange.withAlpha(26),
                 child: Text(ad[0], style: const TextStyle(color: _R.orange, fontSize: 12)),
               ),
               title: Text(ad, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),

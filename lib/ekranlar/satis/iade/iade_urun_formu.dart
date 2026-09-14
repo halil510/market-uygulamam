@@ -31,9 +31,12 @@ class IadeUrunFormu extends StatelessWidget {
     required this.onOdemeYontemiChanged,
   });
 
-  static const _orange = Color(0xFFE65100);
-  static const _green = Color(0xFF2E7D32);
-  static const _red = Color(0xFFC62828);
+  // Ana iade_ekrani.dart'taki _R paletiyle aynı TsRenk semantik sabitleri
+  // kullanılıyor — önceden burada farklı, sabit bir turuncu tonu vardı ve
+  // ekranın geri kalanıyla (İade Et butonu, sekme göstergesi) renk uyumsuzdu.
+  static const _orange = TsRenk.uyari;
+  static const _green = TsRenk.basarili;
+  static const _red = TsRenk.hata;
 
   double get _fiyat => ParaUtils.sayiCoz(fiyatCtrl.text) ?? orijinalFiyat;
   double get _iskonto => ParaUtils.sayiCoz(iskontoCtrl.text) ?? 0;
@@ -65,7 +68,7 @@ class IadeUrunFormu extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                  color: const Color(0x1AE65100),
+                  color: _orange.withAlpha(26),
                   borderRadius: BorderRadius.circular(12)),
               child: const Icon(Icons.inventory_2_outlined,
                   color: _orange, size: 22)),
@@ -127,7 +130,8 @@ class IadeUrunFormu extends StatelessWidget {
             decoration: const InputDecoration(
                 labelText: 'İade Miktarı',
                 prefixIcon: Icon(Icons.production_quantity_limits, size: 18),
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(10))),
                 isDense: true),
           )),
           const SizedBox(width: 12),
@@ -146,7 +150,8 @@ class IadeUrunFormu extends StatelessWidget {
                   decoration: const InputDecoration(
                       labelText: 'Birim Fiyat (₺)',
                       prefixIcon: Icon(Icons.attach_money, size: 18),
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(10))),
                       isDense: true),
                 ),
                 const SizedBox(height: 4),
@@ -207,13 +212,14 @@ class IadeUrunFormu extends StatelessWidget {
           decoration: InputDecoration(
             labelText: 'İskonto % (0-100)',
             prefixIcon: const Icon(Icons.percent, size: 18),
-            border: const OutlineInputBorder(),
+            border: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(10))),
             isDense: true,
             suffixText: '%',
             helperText: 'İskonto uygulamak için doldurun',
             helperStyle: const TextStyle(fontSize: 10),
             filled: true,
-            fillColor: Colors.orange.shade50,
+            fillColor: _orange.withAlpha(18),
           ),
         ),
         const SizedBox(height: 12),
@@ -225,7 +231,8 @@ class IadeUrunFormu extends StatelessWidget {
           decoration: const InputDecoration(
             labelText: 'İade Ödeme Yöntemi',
             prefixIcon: Icon(Icons.payments_outlined, size: 18),
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(10))),
             isDense: true,
           ),
           items: const [
@@ -244,7 +251,7 @@ class IadeUrunFormu extends StatelessWidget {
             'Bu tutar kasadan nakit çıkışı olarak kaydedilmeyecek. Müşteriye iadeyi POS cihazından ayrıca yapmanız gerekir.',
             style: TextStyle(
                 fontSize: 11,
-                color: Colors.orange.shade800,
+                color: _orange,
                 fontWeight: FontWeight.w600),
           ),
         ],
@@ -253,7 +260,7 @@ class IadeUrunFormu extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-              color: const Color(0x0FE65100),
+              color: _orange.withAlpha(15),
               borderRadius: BorderRadius.circular(12)),
           child: Column(children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -265,9 +272,9 @@ class IadeUrunFormu extends StatelessWidget {
               const SizedBox(height: 4),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('İskonto (${iskontoCtrl.text}%):',
-                    style: const TextStyle(fontSize: 12, color: Colors.orange)),
+                    style: const TextStyle(fontSize: 12, color: _orange)),
                 Text('- ${ParaUtils.formatla(_araToplam * _iskonto / 100)}',
-                    style: const TextStyle(fontSize: 12, color: Colors.orange)),
+                    style: const TextStyle(fontSize: 12, color: _orange)),
               ]),
             ],
             const Divider(height: 8),

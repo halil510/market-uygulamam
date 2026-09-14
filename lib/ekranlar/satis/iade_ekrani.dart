@@ -37,6 +37,7 @@ import '../../servisler/excel_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
+import '../../widgetlar/ortak/app_widgetlar.dart';
 
 // Geçmiş İadeler sekmesinin kodu, dosya boyutunu azaltmak için ayrı bir
 // dosyaya taşındı (bkz. dosyanın sonundaki not). part/part of ile bu
@@ -991,24 +992,57 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                   if (_secilenUrun != null) ...[
                     _urunFormu(),
                     const SizedBox(height: 16),
-                    SizedBox(
+                    Container(
                       width: double.infinity,
-                      height: 52,
-                      child: FilledButton.icon(
-                        onPressed: _yukleniyor ? null : _kaydet,
-                        style: FilledButton.styleFrom(
-                            backgroundColor: _R.orange,
-                            foregroundColor: Colors.white),
-                        icon: _yukleniyor
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.assignment_return),
-                        label: const Text('İade Et',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
+                      height: 54,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: _yukleniyor
+                            ? null
+                            : LinearGradient(
+                                colors: [_R.orange, _R.orange.withAlpha(200)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                        color: _yukleniyor ? _R.orange.withAlpha(150) : null,
+                        boxShadow: _yukleniyor
+                            ? []
+                            : [
+                                BoxShadow(
+                                    color: _R.orange.withAlpha(90),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 5)),
+                              ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: _yukleniyor ? null : _kaydet,
+                          child: Center(
+                            child: _yukleniyor
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2.5, color: Colors.white))
+                                : const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.assignment_return,
+                                          color: Colors.white, size: 20),
+                                      SizedBox(width: 8),
+                                      Text('İade Et',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: 0.2)),
+                                    ],
+                                  ),
+                          ),
+                        ),
                       ),
                     ),
                   ] else
@@ -1052,21 +1086,16 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
         },
       );
 
-  Widget _bosEkran() => Center(
-          child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 48),
-        child: Column(children: [
-          Opacity(
-            opacity: 0.3,
-            child: Image.asset('assets/images/empty_box.png',
-                height: 80,
-                errorBuilder: (_, __, ___) => const Icon(
-                    Icons.assignment_return,
-                    size: 52,
-                    color: _R.orange)),
-          ),
-        ]),
-      ));
+  Widget _bosEkran() => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 32),
+        child: BosEkran(
+          ikon: Icons.assignment_return_outlined,
+          baslik: 'Ürün seçilmedi',
+          aciklama:
+              'İade almak için yukarıdaki kutudan ürün adı yazın,\nbarkod okutun veya "Hızlı" ve "Fiş" sekmelerini kullanın.',
+          renk: _R.orange,
+        ),
+      );
 
   Widget _iadeGecmisi() => IadeGecmisWidget(
         iadeListesi: _iadeListesi,

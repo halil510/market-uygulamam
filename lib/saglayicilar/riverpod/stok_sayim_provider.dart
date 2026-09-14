@@ -70,6 +70,22 @@ class SayimSonucu {
   const SayimSonucu({required this.basarili, required this.mesaj, this.guncellenen = 0});
 }
 
+/// Saf/statik yardımcılar — DB/Riverpod'dan bağımsız, doğrudan test edilebilir.
+class StokSayimHesap {
+  /// Çok şubeli kurulumda kullanıcı SADECE aktif şubenin fiziksel sayımını
+  /// girer ([sayilan]); [stokDuzelt] ise urunler.stok'u (TÜM şubelerin
+  /// TOPLAMI) mutlak değer olarak yazar. Bu yüzden [stokDuzelt]'e verilecek
+  /// yeni TOPLAM, mevcut toplam - eski şube payı + yeni şube sayımı olarak
+  /// hesaplanmalı — aksi halde diğer şubelerin stoğu sessizce silinir.
+  /// [subeStok] null ise (tek şubeli kurulum / şube seçilmemiş), [sayilan]
+  /// doğrudan yeni toplam olarak kabul edilir (eski davranış, değişmedi).
+  static double yeniToplamHesapla({
+    required double toplamStok,
+    required double? subeStok,
+    required double sayilan,
+  }) => subeStok != null ? (toplamStok - subeStok + sayilan) : sayilan;
+}
+
 @riverpod
 Future<List<Map<String, dynamic>>> sayimGecmis(SayimGecmisRef ref) =>
     StokDeposu().geciciSayimListesi();
@@ -167,7 +183,13 @@ class StokSayim extends _$StokSayim {
       for (final e in state.sayimMiktarlari.entries) {
         final u = state.urunler.firstWhere((x) => x.id == e.key,
             orElse: () => throw Exception('Ürün bulunamadı'));
-        await _stokDepo.geciciSayimEkleGuncelle(e.key, u.stok, e.value);
+        // 🔴🔴 KRİTİK VERİ KAYBI DÜZELTMESİ (komple derin analizde
+        // bulundu): bkz. StokSayimHesap.yeniToplamHesapla dokümantasyonu.
+        final subeStok = state.subeStoklari[u.id];
+        final yeniToplam = StokSayimHesap.yeniToplamHesapla(
+            toplamStok: u.stok, subeStok: subeStok, sayilan: e.value);
+        await _stokDepo.geciciSayimEkleGuncelle(
+            e.key, state.mevcutStok(u), yeniToplam);
       }
       await _stokDepo.geciciSayimUygula(kullaniciId);
       final count = state.sayimMiktarlari.length;

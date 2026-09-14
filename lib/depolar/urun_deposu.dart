@@ -371,6 +371,34 @@ class UrunDeposu {
     return rows.isEmpty ? null : UrunModel.fromMap(rows.first);
   }
 
+  /// barkodlaGetir() ile AYNI ama pasif (aktif=0) ürünleri de eşleştirir.
+  /// POS/barkod okutma akışları BİLEREK sadece aktif ürünleri bulur (pasif
+  /// bir ürün satışta görünmemeli) — ama Excel içe aktarımı gibi "bu
+  /// barkod zaten kayıtlı mı" kontrolü yapan senaryolarda, pasif bir ürün
+  /// de GÜNCELLENMESİ gereken mevcut bir kayıttır. 🔴 Derin analizde
+  /// bulundu: Excel içe aktarımı barkodlaGetir()'i (aktif=1 filtreli)
+  /// kullandığı için, geçici olarak pasifleştirilmiş bir ürünün fiyat/
+  /// stok güncellemesi içeren bir Excel satırı "mevcut ürün bulunamadı"
+  /// sanılıp YENİ KAYIT olarak eklenmeye çalışılıyor, barkod sütunundaki
+  /// UNIQUE kısıtına takılıp o satır sessizce "hatalı" sayılıyordu —
+  /// pasif ürünler Excel ile hiç güncellenemiyordu.
+  Future<UrunModel?> barkodlaGetirPasifDahil(String barkod) async {
+    final db = await _d;
+    var rows = await db.query(
+      DbSabitler.urunler,
+      where: 'barkod = ? AND is_deleted = 0',
+      whereArgs: [barkod],
+    );
+    if (rows.isNotEmpty) return UrunModel.fromMap(rows.first);
+    rows = await db.rawQuery(
+      "SELECT * FROM ${DbSabitler.urunler}"
+      " WHERE (',' || barkodlar || ',') LIKE ?"
+      "   AND is_deleted = 0 LIMIT 1",
+      ['%,$barkod,%'],
+    );
+    return rows.isEmpty ? null : UrunModel.fromMap(rows.first);
+  }
+
   Future<UrunModel?> kodlaGetir(String kod) async {
     final db = await _d;
     final rows = await db.query(

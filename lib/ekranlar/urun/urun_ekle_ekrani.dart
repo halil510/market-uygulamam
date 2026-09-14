@@ -663,8 +663,12 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
     final b = await _barkodSrv.barkodTara(context);
     if (b == null || !mounted) return;
 
-    // 1. Önce DB'de ara
-    final mevcutUrun = await _depo.barkodlaGetir(b);
+    // 1. Önce DB'de ara — pasif (deaktif edilmiş) ürünler dahil: aksi
+    // halde geçici olarak pasifleştirilmiş bir ürünün barkodu okutulunca
+    // "bulunamadı" sanılıp AI'ya soruluyor, kullanıcı formu doldurup
+    // kaydetmeye çalışınca da barkod UNIQUE kısıtına takılıp kafa
+    // karıştırıcı bir hata alıyordu.
+    final mevcutUrun = await _depo.barkodlaGetirPasifDahil(b);
     if (mevcutUrun != null) {
       _doldur(mevcutUrun);
       if (!mounted) return;
@@ -1578,7 +1582,12 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                           BildirimServisi.uyari(context, 'Bu barkod zaten ana barkod alanında var');
                           return;
                         }
-                        final dbUrun = await UrunDeposu().barkodlaGetir(b);
+                        // Pasif ürünler dahil aranıyor — aksi halde pasif
+                        // bir ürüne ait barkod, bu üründe "boşta" sanılıp
+                        // ikinci bir ürüne de eklenebiliyordu (aynı barkod
+                        // iki üründe birden görünüp POS'ta karışıklık
+                        // yaratıyordu).
+                        final dbUrun = await UrunDeposu().barkodlaGetirPasifDahil(b);
                         if (!mounted) return;
                         if (dbUrun != null && dbUrun.id != widget.duzenlenecekUrun?.id) {
                           BildirimServisi.hata(context,

@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../modeller/urun_model.dart';
 import '../modeller/satis_model.dart';
 import '../depolar/urun_deposu.dart';
+import 'excel_urun_birlestirici.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
 import 'package:uuid/uuid.dart';
@@ -437,6 +438,7 @@ class ExcelServisi {
         }
 
         // İndirim alanlarını oku
+        final indirimVarMi       = indirimOraniIndex != -1 || indirimliFiyatIndex != -1;
         final indirimOraniVal    = indirimOraniIndex != -1 ? _getCellDouble(row[indirimOraniIndex]) ?? 0.0 : 0.0;
         final indirimliFiyatVal  = indirimliFiyatIndex != -1 ? _getCellDouble(row[indirimliFiyatIndex]) ?? 0.0 : 0.0;
         final alan1Val           = alan1Index != -1 ? _getCellValue(row[alan1Index]) : '';
@@ -451,16 +453,19 @@ class ExcelServisi {
         final netAlisFiyatVal    = netAlisFiyatIndex != -1 ? _getCellDouble(row[netAlisFiyatIndex]) ?? 0.0 : 0.0;
         final eskiFiyatTarih     = eskiFiyatTarihStr.isNotEmpty ? DateTime.tryParse(eskiFiyatTarihStr) : null;
 
-        // İndirimOranı hesapla: 
+        // İndirimOranı hesapla (sadece Excel'de indirimle ilgili EN AZ
+        // bir sütun varsa — bkz. aşağıdaki GÜNCELLEME notu):
         // - Excel'de oran varsa kullan
         // - Sadece indirimli fiyat varsa → orandan hesapla
         // - İkisi de varsa Excel oranını kullan
         double finalIndirimOrani = 0;
-        if (indirimOraniVal > 0) {
-          finalIndirimOrani = indirimOraniVal;
-        } else if (indirimliFiyatVal > 0 && satisFiyat > 0 && indirimliFiyatVal < satisFiyat) {
-          // İndirimli fiyattan oranı hesapla
-          finalIndirimOrani = ((satisFiyat - indirimliFiyatVal) / satisFiyat) * 100;
+        if (indirimVarMi) {
+          if (indirimOraniVal > 0) {
+            finalIndirimOrani = indirimOraniVal;
+          } else if (indirimliFiyatVal > 0 && satisFiyat > 0 && indirimliFiyatVal < satisFiyat) {
+            // İndirimli fiyattan oranı hesapla
+            finalIndirimOrani = ((satisFiyat - indirimliFiyatVal) / satisFiyat) * 100;
+          }
         }
         final otomatikInd = finalIndirimOrani > 0;
         if (otomatikInd) indirimliKaydedilen++;
@@ -478,102 +483,173 @@ class ExcelServisi {
         final aktifRaw = aktifIndex != -1 ? _getCellValue(row[aktifIndex]) : '';
         final marka = markaIndex != -1 ? _getCellValue(row[markaIndex]) : '';
 
-        final urun = UrunModel(
-          id: null,
-          kod: gercekKod.isNotEmpty ? gercekKod : null,
-          barkod: barkod.isNotEmpty ? barkod : (kod.isNotEmpty ? kod : null),
-          // Barkodlar: null-safe, boşsa null
-          barkodlar: barkodlarIndex != -1
-              ? (row[barkodlarIndex]?.value?.toString()?.trim().isNotEmpty == true
-                  ? row[barkodlarIndex]!.value.toString().trim()
-                  : null)
-              : null,
-          urunAdi: urunAdi,
-          alternatifUrunAdi: null,
-          birimAdi: birim.isNotEmpty ? birim : 'Adet',
-          alisFiyat: alisFiyat,
-          alisFiyatKdvDahil: alisFiyatKdvDahil,
-          satisFiyati: satisFiyat,
-          stok: stok,
-          toplamMaliyet: 0,
-          toplamStok: 0,
-          alisKdvOran: kdvOran,
-          kdvOran: kdvOran.toStringAsFixed(0),
-          anaGrup: kategori.isNotEmpty ? kategori : null,
-          altGrup: null,
-          aktif: _parseBoolean(aktifRaw, defaultValue: true),
-          seriNoTakibi: false,
-          lotTakibi: false,
-          lotNo: null,
-          sonKullanmaTarihi: null,
-          alan1: alan1Val.isNotEmpty ? alan1Val : null,
-          alan2: null,
-          alan3: null,
-          alan4: null,
-          paraBirimi: 'TRY',
-          indirimOrani: finalIndirimOrani,
-          otomatikIndirim: otomatikInd,
-          indirimliFiyatKayitli: indirimliFiyatVal > 0 ? indirimliFiyatVal : 0,
-          eskiFiyat: eskiFiyatVal,
-          eskiFiyatTarih: eskiFiyatTarih,
-          promosyonGrup: promosyonGrupVal.isNotEmpty ? promosyonGrupVal : null,
-          promosyonAktif: promosyonAktifVal,
-          receteKatsayi: receteKatsayiVal,
-          lotAciklama: lotAciklamaVal.isNotEmpty ? lotAciklamaVal : null,
-          hacim: hacimVal,
-          evrakKontrolAktif: evrakKontrolVal,
-          netAlisFiyat: netAlisFiyatVal,
-          sonAlimIndirimOran: 0,
-          minimumStok: 0,
-          maksimumStok: 0,
-          maksimumSatirMiktari: 0,
-          renk: null,
-          beden: null,
-          sube: null,
-          resimYolu: null,
-          uretici: null,
-          marka: marka.isNotEmpty ? marka : null,
-          model: null,
-          grupSorumlusu: null,
-          mensei: null,
-          rafNumarasi: null,
-          rafOmru: null,
-          pluNumarasi: null,
-          puanOrani: 0,
-          muhasebeKodu: null,
-          muafiyetKodu: null,
-          resmiBakiye: 0,
-          barkodOlcuBirimi: null,
-          en: 0,
-          boy: 0,
-          yukseklik: 0,
-          agirlik: 0,
-          eskiKodu: null,
-          kartTipi: 'Standart',
-          seriNumarasi: null,
-          fiyatGuncellemeTarih: null,
-          fiyatGuncelleyenKullanici: null,
-          barkodYazdirmaTarih: null,
-          barkodYazdiranKullanici: null,
-          maliyetGuncellemeTarih: null,
-          maliyetGuncelleyenKullanici: null,
-          guncellemeTarihi: null,
-          kayitTarihi: null,
-          guncelleyenKullanici: null,
-          kaydedenKullanici: null,
-          lastUpdated: DateTime.now().toIso8601String(),
-          syncStatus: 'synced',
-          isDeleted: false,
-        );
-
-        // Mevcut ürünü bul
+        // Mevcut ürünü bul — GÜNCELLEME mi (aşağıdaki kritik düzeltmeye
+        // bkz.), yoksa YENİ KAYIT mı olduğunu bilmemiz, satırı nasıl
+        // kuracağımızı belirliyor.
         UrunModel? mevcut;
         final aranacakBarkod = barkod.isNotEmpty ? barkod : kod;
         if (aranacakBarkod.isNotEmpty) {
-          mevcut = await depo.barkodlaGetir(aranacakBarkod);
+          mevcut = await depo.barkodlaGetirPasifDahil(aranacakBarkod);
         }
         if (mevcut == null && kod.isNotEmpty) {
           mevcut = await depo.kodlaGetir(kod);
+        }
+
+        final UrunModel urun;
+        if (mevcut != null) {
+          // 🔴🔴🔴 KRİTİK KÖK NEDEN DÜZELTMESİ (ürün kaydı derin
+          // analizi — kullanıcı isteği: "ürün kaydını detaylı incele,
+          // excel içeri alma sıkıntısız olsun"): ÖNCEDEN bu GÜNCELLEME
+          // dalında da, Excel'de HİÇ OLMAYAN her alan için VARSAYILAN
+          // değerlerle sıfırdan bir UrunModel kurulup mevcut ürünün
+          // TÜM satırının üzerine YAZILIYORDU. Sonuç — sırf fiyat/stok
+          // güncellemek için hazırlanmış, birkaç sütunlu tipik bir
+          // tedarikçi Excel'i yeniden içe aktarıldığında, o üründe daha
+          // önce ayarlanmış HER ŞEY sessizce SIFIRLANIYORDU:
+          //   • global_id YENİ bir UUID'e değişiyordu → bulut senkron
+          //     kimliği kopuyor, bir sonraki gönderimde AYNI ürün
+          //     bulutta MÜKERRER bir satır olarak beliriyordu.
+          //   • qr_menude (QR Menüde Göster) HER ZAMAN false'a
+          //     düşüyordu — "QR menüde ürünler kayboldu" şikayetinin
+          //     olası kök nedenlerinden biri tam olarak buydu.
+          //   • Stok sütunu OLMAYAN bir fiyat-listesi Excel'i, mevcut
+          //     STOĞU SIFIRLIYORDU — sessiz, geri alınamaz envanter
+          //     kaybı.
+          //   • minimum/maksimum stok eşiği, seri/lot takibi, toptan
+          //     satış fiyat/koşulları, puan oranı, resim, muhasebe
+          //     kodu, PLU, ölçüler (en/boy/yükseklik/ağırlık) ve
+          //     onlarca alan daha aynı şekilde varsayılana dönüyordu.
+          // Artık GÜNCELLEME'de sıfırdan bir model KURULMUYOR — mevcut
+          // kaydın ÜZERİNE, SADECE Excel satırında GERÇEKTEN VAR OLAN
+          // (sütunu bulunan) alanlar copyWith ile uygulanıyor; Excel'de
+          // olmayan/boş bırakılmış her şey OLDUĞU GİBİ korunuyor —
+          // global_id ve qr_menude dahil (bu ikisi hiç parametre
+          // olarak verilmiyor, copyWith otomatik olarak mevcut kaydın
+          // değerini korur).
+          urun = ExcelUrunBirlestirici.guncellemeIcinBirlestir(
+            mevcut: mevcut,
+            urunAdi: urunAdi,
+            satisFiyat: satisFiyat,
+            kod: gercekKod.isNotEmpty ? gercekKod : null,
+            barkod: barkod.isNotEmpty ? barkod : (kod.isNotEmpty ? kod : null),
+            barkodlar: barkodlarIndex != -1
+                ? (row[barkodlarIndex]?.value?.toString()?.trim().isNotEmpty == true
+                    ? row[barkodlarIndex]!.value.toString().trim()
+                    : null)
+                : null,
+            birim: birim.isNotEmpty ? birim : null,
+            alisFiyat: (alisFiyatIndex != -1 || alisFiyatKdvDahilIndex != -1) ? alisFiyat : null,
+            alisFiyatKdvDahil: (alisFiyatIndex != -1 || alisFiyatKdvDahilIndex != -1) ? alisFiyatKdvDahil : null,
+            stok: stokIndex != -1 ? stok : null,
+            kdvOran: kdvIndex != -1 ? kdvOran : null,
+            anaGrup: kategori.isNotEmpty ? kategori : null,
+            aktif: aktifIndex != -1 ? _parseBoolean(aktifRaw, defaultValue: true) : null,
+            marka: marka.isNotEmpty ? marka : null,
+            alan1: alan1Val.isNotEmpty ? alan1Val : null,
+            indirimOrani: indirimVarMi ? finalIndirimOrani : null,
+            otomatikIndirim: indirimVarMi ? otomatikInd : null,
+            indirimliFiyatKayitli: indirimVarMi ? (indirimliFiyatVal > 0 ? indirimliFiyatVal : 0) : null,
+            eskiFiyat: eskiFiyatIndex != -1 ? eskiFiyatVal : null,
+            eskiFiyatTarih: eskiFiyatTarih,
+            promosyonGrup: promosyonGrupVal.isNotEmpty ? promosyonGrupVal : null,
+            promosyonAktif: promosyonAktifIndex != -1 ? promosyonAktifVal : null,
+            receteKatsayi: receteKatsayiIndex != -1 ? receteKatsayiVal : null,
+            lotAciklama: lotAciklamaVal.isNotEmpty ? lotAciklamaVal : null,
+            hacim: hacimIndex != -1 ? hacimVal : null,
+            evrakKontrolAktif: evrakKontrolIndex != -1 ? evrakKontrolVal : null,
+            netAlisFiyat: netAlisFiyatIndex != -1 ? netAlisFiyatVal : null,
+            lastUpdated: DateTime.now().toIso8601String(),
+          );
+        } else {
+          // YENİ KAYIT: bu ürün lokalde hiç yok — kaybedecek eski veri
+          // olmadığı için tüm alanlar (Excel'de yoksa makul
+          // varsayılanlarla) sıfırdan kuruluyor, eskisi gibi.
+          urun = UrunModel(
+            id: null,
+            kod: gercekKod.isNotEmpty ? gercekKod : null,
+            barkod: barkod.isNotEmpty ? barkod : (kod.isNotEmpty ? kod : null),
+            barkodlar: barkodlarIndex != -1
+                ? (row[barkodlarIndex]?.value?.toString()?.trim().isNotEmpty == true
+                    ? row[barkodlarIndex]!.value.toString().trim()
+                    : null)
+                : null,
+            urunAdi: urunAdi,
+            alternatifUrunAdi: null,
+            birimAdi: birim.isNotEmpty ? birim : 'Adet',
+            alisFiyat: alisFiyat,
+            alisFiyatKdvDahil: alisFiyatKdvDahil,
+            satisFiyati: satisFiyat,
+            stok: stok,
+            toplamMaliyet: 0,
+            toplamStok: 0,
+            alisKdvOran: kdvOran,
+            kdvOran: kdvOran.toStringAsFixed(0),
+            anaGrup: kategori.isNotEmpty ? kategori : null,
+            altGrup: null,
+            aktif: _parseBoolean(aktifRaw, defaultValue: true),
+            seriNoTakibi: false,
+            lotTakibi: false,
+            lotNo: null,
+            sonKullanmaTarihi: null,
+            alan1: alan1Val.isNotEmpty ? alan1Val : null,
+            alan2: null,
+            alan3: null,
+            alan4: null,
+            paraBirimi: 'TRY',
+            indirimOrani: finalIndirimOrani,
+            otomatikIndirim: otomatikInd,
+            indirimliFiyatKayitli: indirimliFiyatVal > 0 ? indirimliFiyatVal : 0,
+            eskiFiyat: eskiFiyatVal,
+            eskiFiyatTarih: eskiFiyatTarih,
+            promosyonGrup: promosyonGrupVal.isNotEmpty ? promosyonGrupVal : null,
+            promosyonAktif: promosyonAktifVal,
+            receteKatsayi: receteKatsayiVal,
+            lotAciklama: lotAciklamaVal.isNotEmpty ? lotAciklamaVal : null,
+            hacim: hacimVal,
+            evrakKontrolAktif: evrakKontrolVal,
+            netAlisFiyat: netAlisFiyatVal,
+            sonAlimIndirimOran: 0,
+            minimumStok: 0,
+            maksimumStok: 0,
+            maksimumSatirMiktari: 0,
+            renk: null,
+            beden: null,
+            sube: null,
+            resimYolu: null,
+            uretici: null,
+            marka: marka.isNotEmpty ? marka : null,
+            model: null,
+            grupSorumlusu: null,
+            mensei: null,
+            rafNumarasi: null,
+            rafOmru: null,
+            pluNumarasi: null,
+            puanOrani: 0,
+            muhasebeKodu: null,
+            muafiyetKodu: null,
+            resmiBakiye: 0,
+            barkodOlcuBirimi: null,
+            en: 0,
+            boy: 0,
+            yukseklik: 0,
+            agirlik: 0,
+            eskiKodu: null,
+            kartTipi: 'Standart',
+            seriNumarasi: null,
+            fiyatGuncellemeTarih: null,
+            fiyatGuncelleyenKullanici: null,
+            barkodYazdirmaTarih: null,
+            barkodYazdiranKullanici: null,
+            maliyetGuncellemeTarih: null,
+            maliyetGuncelleyenKullanici: null,
+            guncellemeTarihi: null,
+            kayitTarihi: null,
+            guncelleyenKullanici: null,
+            kaydedenKullanici: null,
+            lastUpdated: DateTime.now().toIso8601String(),
+            syncStatus: 'synced',
+            isDeleted: false,
+          );
         }
 
         // ÖNCEDEN BURADA HER SATIR İÇİN AYRI AYRI await depo.ekle()/

@@ -1,14 +1,27 @@
 // lib/cekirdek/servisler/crash_servisi.dart
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
+import "package:sentry_flutter/sentry_flutter.dart";
 import "../../servisler/log_servisi.dart";
+import "../../servisler/hata_izleme_ayarlari.dart";
 
 class CrashServisi {
   static final CrashServisi _instance = CrashServisi._();
   factory CrashServisi() => _instance;
   CrashServisi._();
 
+  // 🔴 KOMPLE DERİN ANALİZ — üretim görünürlüğü eksikliği düzeltildi:
+  // hatalar ÖNCEDEN sadece cihazın kendi Sistem Logları'na (yerel
+  // SQLite) kaydediliyordu — birden fazla müşteriye dağıtılan bir
+  // üründe bu, ofisten UZAKTAN hiçbir hata görünürlüğü olmadığı anlamına
+  // geliyordu. Sentry, kullanıcı Ayarlar > Hata İzleme'den KENDİ (ücretsiz)
+  // DSN'ini girerse devreye girer — DSN girilmemişse (varsayılan/eski
+  // davranış) hiçbir şey değişmez, sadece yerel loglama çalışır.
+  static bool _sentryAktif = false;
+
   static Future<void> init() async {
+    await _sentryBaslat();
+
     FlutterError.onError = (details) {
       // ÖNEMLİ: Artık debug/release fark etmeksizin HER ZAMAN konsola
       // (adb logcat) yazılıyor. Öncesinde release modda hata tamamen
@@ -32,6 +45,34 @@ class CrashServisi {
     ErrorWidget.builder = (details) => hataGoster(details);
 
     if (kDebugMode) debugPrint('CrashServisi başlatıldı');
+  }
+
+  /// Kullanıcı Ayarlar > Hata İzleme'den bir Sentry DSN'i kaydetmişse
+  /// Sentry SDK'sını başlatır. DSN yoksa (varsayılan durum) HİÇBİR ŞEY
+  /// yapmaz — üçüncü taraf bir servise ASLA sessizce veri gönderilmez,
+  /// sadece kullanıcı açıkça bir DSN girip onayladıysa aktif olur.
+  static Future<void> _sentryBaslat() async {
+    try {
+      final dsn = await HataIzlemeAyarlari.dsnOku();
+      if (dsn == null || dsn.trim().isEmpty) return;
+      await SentryFlutter.init((options) {
+        options.dsn = dsn.trim();
+        // Debug modda geliştirici konsolunu Sentry ağ trafiğiyle
+        // doldurmamak için sadece release'de otomatik gönderim aktif.
+        options.debug = false;
+        options.environment = kReleaseMode ? 'production' : 'debug';
+        // Bu bir POS/ERP uygulaması — satış/cari/fatura gibi tablolardan
+        // gelen değerler stack trace/breadcrumb içine sızabilir. Performans
+        // izleme (tracing) KAPALI — sadece hata yakalama için kullanılıyor.
+        options.tracesSampleRate = 0.0;
+      });
+      _sentryAktif = true;
+    } catch (e) {
+      // Sentry başlatılamazsa (ör. geçersiz DSN) uygulama ASLA bundan
+      // etkilenmemeli — sessizce devre dışı kalır, yerel loglama sürer.
+      _sentryAktif = false;
+      if (kDebugMode) debugPrint('Sentry başlatılamadı: $e');
+    }
   }
 
   /// Debug modda hatayı EKRANDA göstermek için — bembeyaz/boş ekran yerine
@@ -101,21 +142,6 @@ class CrashServisi {
   }
 
   static void _kaydet(Object hata, StackTrace? stack) {
-    // ─────────────────────────────────────────────────────────────────
-    // TODO (canlıya çıkmadan önce şart): Sentry veya Firebase Crashlytics
-    // buraya bağlanmalı. Şu an hatalar sadece cihazın kendi Sistem
-    // Logları'na (uygulama içi) kaydediliyor — bir müşteride hata olursa,
-    // Ayarlar > Sistem Logları'ndan görülebilir AMA UZAKTAN (sizin
-    // ofisinizden) göremezsiniz, müşterinin ekranını görmeniz/o ekranı
-    // paylaşmasını istemeniz gerekir. Birden fazla müşteriye dağıtılan
-    // profesyonel bir uygulamada bu ciddi bir sınırlamadır.
-    //
-    // Örnek (Sentry ile, pubspec.yaml'a `sentry_flutter` eklendikten sonra):
-    //   Sentry.captureException(hata, stackTrace: stack);
-    //
-    // Örnek (Firebase Crashlytics ile):
-    //   FirebaseCrashlytics.instance.recordError(hata, stack);
-    // ─────────────────────────────────────────────────────────────────
     debugPrint('[CRASH] $hata');
     if (stack != null) debugPrint(stack.toString());
     // ÖNCEDEN BURADA BİR TUTARSIZLIK VARDI: ana.dart'taki asenkron hata
@@ -129,9 +155,22 @@ class CrashServisi {
     } catch (_) {
       // LogServisi'nin kendisi başlatılmamışsa (çok erken bir hata) sessizce geç
     }
+    _sentryeGonder(hata, stack);
+  }
+
+  /// Sentry aktifse hatayı gönderir; değilse hiçbir şey yapmaz. `await`
+  /// EDİLMİYOR (çağıranlar senkron kalsın diye) — gönderim başarısız
+  /// olursa sessizce yutulur, ana akış ASLA bundan etkilenmez.
+  static void _sentryeGonder(Object hata, StackTrace? stack) {
+    if (!_sentryAktif) return;
+    Sentry.captureException(hata, stackTrace: stack).catchError((e) {
+      if (kDebugMode) debugPrint('Sentry gönderimi başarısız: $e');
+      return const SentryId.empty();
+    });
   }
 
   static void hataRaporla(Object hata, StackTrace stack, {String? aciklama}) {
     debugPrint('[HATA] ${aciklama ?? ""}: $hata');
+    _sentryeGonder(hata, stack);
   }
 }

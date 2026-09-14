@@ -25,6 +25,7 @@ import '../../../ekranlar/ayarlar/gib_ayar_ekrani.dart';
 import '../../../ekranlar/ayarlar/log_ekrani.dart';
 import '../../../ekranlar/ayarlar/doviz_kuru_ekrani.dart';
 import '../../../ekranlar/ayarlar/ai_asistan_ayar_ekrani.dart';
+import '../../../ekranlar/ayarlar/hata_izleme_ekrani.dart';
 
 List<GoRoute> ayarlarRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
       GoRoute(
@@ -60,6 +61,11 @@ List<GoRoute> ayarlarRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
           name: 'ayarlar_bulut_sync',
           parentNavigatorKey: rootNavigatorKey,
           builder: (_, __) => const BulutSyncEkrani()),
+      GoRoute(
+          path: '/ayarlar/hata-izleme',
+          name: 'ayarlar_hata_izleme',
+          parentNavigatorKey: rootNavigatorKey,
+          builder: (_, __) => const HataIzlemeEkrani()),
       GoRoute(
           path: '/ayarlar/site-fotograflari',
           name: 'ayarlar_site_fotograflari',

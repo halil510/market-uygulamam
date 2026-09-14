@@ -27,6 +27,9 @@ void main() {
   runZonedGuarded(_baslatApp, (error, stack) {
     LogServisi().kritik('UnhandledAsyncError', hata: error, yigin: stack);
     if (kDebugMode) debugPrint('UNHANDLED: $error\n$stack');
+    // Sentry aktifse (Ayarlar > Hata İzleme'den DSN girilmişse) bu
+    // yakalanmamış asenkron hatalar da uzaktan görünür olsun.
+    CrashServisi.hataRaporla(error, stack, aciklama: 'UnhandledAsyncError');
   });
 }
 

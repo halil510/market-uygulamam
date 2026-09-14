@@ -975,6 +975,14 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                   onTap: () => context.push('/ayarlar/bulut-sync'),
                 ),
                 ListTile(
+                  leading: const Icon(Icons.bug_report_outlined, color: Colors.deepOrange),
+                  title: const Text('Hata İzleme'),
+                  subtitle: const Text(
+                      'Uygulama hatalarını uzaktan görmek için Sentry bağlayın (isteğe bağlı)'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/ayarlar/hata-izleme'),
+                ),
+                ListTile(
                   leading: const Icon(Icons.photo_library_outlined,
                       color: Colors.teal),
                   title: const Text('İşyeri Fotoğrafları (Web Sitesi)'),

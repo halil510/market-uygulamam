@@ -45,5 +45,32 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- 🔴🔴 KRİTİK DÜZELTME (komple derin analizde bulundu): bu dosyada
+	     HİÇBİR NS*UsageDescription anahtarı yoktu. Uygulama kamera
+	     (barkod okuma/mobile_scanner, ürün fotoğrafı/image_picker),
+	     Bluetooth (termal yazıcı/flutter_blue_plus), mikrofon (sesli
+	     arama/speech_to_text), Face ID/Touch ID (biyometrik giriş/
+	     local_auth) ve fotoğraf kütüphanesi izinleri istiyor — iOS,
+	     açıklama string'i olmayan bir izni ilk istediği anda uygulamayı
+	     ANINDA ÇÖKERTİR (Android'in aksine sessizce reddetmez). Bu
+	     anahtarlar olmadan uygulama iOS'ta barkod okutma/yazıcı bağlama/
+	     biyometrik giriş/fotoğraf ekleme denendiği an kesin çöker. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Ürün barkodunu okutmak ve ürün fotoğrafı çekmek için kameraya ihtiyaç duyulur.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Sesli arama ve sesli komut özelliklerini kullanabilmek için mikrofona ihtiyaç duyulur.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Termal fiş yazıcısı ve barkod okuyucu gibi Bluetooth cihazlara bağlanmak için gereklidir.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Termal fiş yazıcısı ve barkod okuyucu gibi Bluetooth cihazlara bağlanmak için gereklidir.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Şifre yerine Face ID/Touch ID ile hızlı ve güvenli giriş yapabilmeniz için kullanılır.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ürün fotoğrafı veya fatura/irsaliye görseli seçebilmek için fotoğraf kütüphanesine erişim gerekir.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Oluşturulan fiş/rapor görsellerini fotoğraf kütüphanenize kaydedebilmek için gereklidir.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Aynı ağdaki yazıcı ve diğer cihazlarla (yerel senkronizasyon, ağ yazıcısı) iletişim kurmak için gereklidir.</string>
 </dict>
 </plist>

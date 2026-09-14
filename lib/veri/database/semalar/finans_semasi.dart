@@ -83,6 +83,7 @@ class FinansSemasi {
         odenen_tutar REAL DEFAULT 0, kalan_tutar REAL DEFAULT 0,
         odeme_durumu TEXT DEFAULT 'beklemede',
         e_fatura_uuid TEXT, e_fatura_durum TEXT DEFAULT 'hazir',
+        e_fatura_deneme_no INTEGER NOT NULL DEFAULT 0,
         e_fatura_html TEXT, e_fatura_xml TEXT,
         gonderim_tarihi DATETIME, uygulama_yaniti TEXT,
         html_icerik TEXT, xml_icerik TEXT, durum TEXT DEFAULT 'aktif',

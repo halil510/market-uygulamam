@@ -155,6 +155,7 @@ class MigrasyonYonetici {
     if (eskiVersiyon < 58) await _v57denV58e(db);
     if (eskiVersiyon < 59) await _v58denV59a(db);
     if (eskiVersiyon < 60) await _v59denV60a(db);
+    if (eskiVersiyon < 61) await _v60danV61e(db);
   }
 
   // ==================== v1 -> v2 ====================
@@ -2390,5 +2391,22 @@ class MigrasyonYonetici {
         olusturma_tarihi DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     ''');
+  }
+
+  // v60'tan v61'e — e-Belge durum makinesi genişletmesi (erp_roadmap madde
+  // 38, 2026-09-14 derin analiz). GİB bir e-Faturayı REDDEDERSE, kullanıcı
+  // aynı faturayı düzeltip yeniden göndermek isteyebilir. Ama gib_servisi
+  // .dart'taki ETTN, faturanın global_id'sinden DETERMİNİSTİK üretiliyor
+  // (mükerrer gönderim korumasının kalbi — bkz. o dosyadaki not) — yani
+  // düzeltmeden sonra yeniden gönderilse bile AYNI ETTN kullanılırdı, ki
+  // bu bir entegratörün "zaten reddedilmiş bu belgeyi" diye ikinci kez
+  // reddetmesine ya da kafa karışıklığına yol açabilir. Bu sayaç, SADECE
+  // bir RET sonrası yeniden gönderimde artırılıp ETTN'ye karıştırılıyor —
+  // network hatası sonrası yapılan (GİB'e hiç ulaşmamış) normal
+  // tekrar denemelerde sayaç ARTMIYOR, o yüzden mevcut "kazara çift
+  // gönderim" koruması BOZULMUYOR.
+  static Future<void> _v60danV61e(Database db) async {
+    await _calistir(db,
+        'ALTER TABLE faturalar ADD COLUMN e_fatura_deneme_no INTEGER NOT NULL DEFAULT 0');
   }
 }

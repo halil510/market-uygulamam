@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -38,12 +39,14 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
   final _ticaretSicilCtrl= TextEditingController();
   final _mersisCtrl      = TextEditingController();
 
-  // e-Fatura / GIB
-  final _gibApiUrlCtrl   = TextEditingController();
-  final _gibApiKeyCtrl   = TextEditingController();
-  final _gibKullaniciCtrl= TextEditingController();
-  final _gibSifreCtrl    = TextEditingController();
-  String _gibOrtam       = 'test'; // test | prod
+  // e-Fatura / GIB — SADECE aktiflik anahtarları burada. Bağlantı bilgileri
+  // (API URL/kullanıcı/şifre/VKN/test-canlı modu) TEK bir yerde, GİB e-Fatura
+  // Entegrasyonu ekranında (/ayarlar/gib) yönetilir — bkz. 2026-09-14 derin
+  // analiz: bu ekranda ÖNCEDEN bu bilgiler için AYRI, SharedPreferences'a
+  // yazan alanlar vardı ama gerçek gönderim servisi (GibServisi) onları HİÇ
+  // OKUMUYORDU — kullanıcı burayı doldurup "kaydedildi" görüp aslında hiçbir
+  // şey göndermemiş oluyordu. O alanlar kaldırıldı, tek gerçek ekrana link
+  // eklendi.
   bool _eFaturaAktif     = false;
   bool _eArsivAktif      = false;
   bool _eIrsaliyeAktif   = false;
@@ -80,8 +83,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
     _tab.dispose();
     for (final c in [_firmaAdiCtrl, _vergiNoCtrl, _vergiDairesiCtrl, _adresCtrl,
         _ilCtrl, _ilceCtrl, _telefonCtrl, _faxCtrl, _emailCtrl, _webCtrl,
-        _ticaretSicilCtrl, _mersisCtrl, _gibApiUrlCtrl, _gibApiKeyCtrl,
-        _gibKullaniciCtrl, _gibSifreCtrl, _faturaNotCtrl, _dipnotCtrl,
+        _ticaretSicilCtrl, _mersisCtrl, _faturaNotCtrl, _dipnotCtrl,
         _faturaOnEkCtrl, _iskontoCtrl, _baslangicNoCtrl]) {
       c.dispose();
     }
@@ -104,11 +106,6 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
       _webCtrl.text          = prefs.getString('firma_web') ?? '';
       _ticaretSicilCtrl.text = prefs.getString('firma_ticaret_sicil') ?? '';
       _mersisCtrl.text       = prefs.getString('firma_mersis') ?? '';
-      _gibApiUrlCtrl.text    = prefs.getString('gib_api_url') ?? 'https://earsivportal.efatura.gov.tr';
-      _gibApiKeyCtrl.text    = prefs.getString('gib_api_key') ?? '';
-      _gibKullaniciCtrl.text = prefs.getString('gib_kullanici') ?? '';
-      _gibSifreCtrl.text     = prefs.getString('gib_sifre') ?? '';
-      _gibOrtam              = prefs.getString('gib_ortam') ?? 'test';
       _eFaturaAktif          = prefs.getBool('efatura_aktif') ?? false;
       _eArsivAktif           = prefs.getBool('earsiv_aktif') ?? false;
       _eIrsaliyeAktif        = prefs.getBool('eirsaliye_aktif') ?? false;
@@ -149,11 +146,6 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
       await prefs.setString('firma_web',           _webCtrl.text.trim());
       await prefs.setString('firma_ticaret_sicil', _ticaretSicilCtrl.text.trim());
       await prefs.setString('firma_mersis',        _mersisCtrl.text.trim());
-      await prefs.setString('gib_api_url',         _gibApiUrlCtrl.text.trim());
-      await prefs.setString('gib_api_key',         _gibApiKeyCtrl.text.trim());
-      await prefs.setString('gib_kullanici',       _gibKullaniciCtrl.text.trim());
-      await prefs.setString('gib_sifre',           _gibSifreCtrl.text.trim());
-      await prefs.setString('gib_ortam',           _gibOrtam);
       await prefs.setBool('efatura_aktif',         _eFaturaAktif);
       await prefs.setBool('earsiv_aktif',          _eArsivAktif);
       await prefs.setBool('eirsaliye_aktif',       _eIrsaliyeAktif);
@@ -298,49 +290,23 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
     ]),
     const SizedBox(height: 16),
 
-    // GIB Ortam Seçimi
-    _Baslik('GIB Bağlantı Ayarları'),
+    // GİB bağlantı bilgileri (API URL/kullanıcı/şifre/VKN/test-canlı) TEK
+    // bir yerde yönetilir — burada AYRICA toplanmaz (bkz. dosya başındaki
+    // not: önceden burada aynı bilgiler için gerçek servisin hiç okumadığı,
+    // ölü bir kopya vardı).
+    _Baslik('GİB Bağlantı Ayarları'),
     _Kart(children: [
-      Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('GIB Ortamı', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-          const SizedBox(height: 8),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'test', label: Text('Test'), icon: Icon(Icons.bug_report, size: 16)),
-              ButtonSegment(value: 'prod', label: Text('Canlı'), icon: Icon(Icons.verified, size: 16)),
-            ],
-            selected: {_gibOrtam},
-            onSelectionChanged: (s) => setState(() => _gibOrtam = s.first),
-            style: SegmentedButton.styleFrom(
-              selectedBackgroundColor: _gibOrtam == 'prod' ? Colors.red.shade50 : Colors.blue.shade50),
-          ),
-          if (_gibOrtam == 'prod') Container(
-            margin: const EdgeInsets.only(top: 8),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-                color: Colors.red.shade50, borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red.shade200)),
-            child: Row(children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 16),
-              const SizedBox(width: 6),
-              const Expanded(child: Text('CANLI ORTAM - Gerçek faturalar kesilecek!',
-                  style: TextStyle(fontSize: 11, color: Colors.red))),
-            ]),
-          ),
-        ]),
+      ListTile(
+        leading: const Icon(Icons.settings_outlined, color: Colors.red),
+        title: const Text('GİB e-Fatura Entegrasyonu',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        subtitle: const Text(
+            'API URL, kullanıcı adı/şifre, VKN, test/canlı modu',
+            style: TextStyle(fontSize: 11)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push('/ayarlar/gib'),
       ),
     ]),
-    const SizedBox(height: 12),
-    _Alan('GIB API URL', _gibApiUrlCtrl,
-        hint: 'https://earsivportal.efatura.gov.tr'),
-    _Alan('API Key / Token', _gibApiKeyCtrl,
-        hint: 'Entegratör API anahtarınız', obscure: true),
-    _Alan('GIB Kullanıcı Kodu', _gibKullaniciCtrl,
-        hint: 'Vergi numaranız veya kullanıcı kodu'),
-    _Alan('GIB Şifre', _gibSifreCtrl,
-        hint: 'GIB portal şifreniz', obscure: true),
     const SizedBox(height: 8),
     // GIB bilgi kutusu
     Container(

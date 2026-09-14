@@ -123,112 +123,6 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
     setState(() => _ayarlar['tema'] = tema);
   }
 
-  Future<void> _gibAyarlariDuzenle() async {
-    final db = await Veritabani().db;
-    Future<String> oku(String k) async {
-      final rows =
-          await db.query('ayarlar', where: 'anahtar = ?', whereArgs: [k]);
-      return rows.isNotEmpty ? rows.first['deger'] as String : '';
-    }
-
-    // ÖNCEDEN BURADA CİDDİ BİR TUTARSIZLIK VARDI: bu dialog VKN/Vergi
-    // Dairesi'ni 'gib_vkn'/'gib_vergi_dairesi' anahtarlarıyla kaydediyordu
-    // — ama AYNI DOSYADAKİ "Firma Bilgileri" dialogu VE ayrı GİB Ayarları
-    // ekranı (gib_ayar_ekrani.dart) VE fatura/fiş yazdırma servisleri
-    // hepsi 'firma_vergi_no'/'firma_vergi_dairesi' kullanıyordu. Kullanıcı
-    // birinde girdiği VKN'yi diğerinde HİÇ GÖREMİYORDU. Artık tek, ortak
-    // anahtar seti kullanılıyor.
-    final vknCtrl = TextEditingController(text: await oku('firma_vergi_no'));
-    final vdCtrl =
-        TextEditingController(text: await oku('firma_vergi_dairesi'));
-    final apiUrlCtrl = TextEditingController(text: await oku('gib_api_url'));
-    final apiKeyCtrl = TextEditingController(text: await oku('gib_api_key'));
-    final ilCtrl = TextEditingController(text: await oku('firma_il'));
-    final ilceCtrl = TextEditingController(text: await oku('firma_ilce'));
-    if (!mounted) return;
-    await showDialog(
-      context: context,
-      builder: (dCtx1) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(children: [
-          Icon(Icons.receipt, color: Colors.red),
-          const SizedBox(width: 8),
-          Text('GIB E-Fatura')
-        ]),
-        content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(
-              'GIB onaylı bir Özel Entegratör firmadan aldığınız API bilgilerini girin.',
-              style: TextStyle(fontSize: 12, color: context.textSecondary)),
-          const SizedBox(height: 12),
-          TextField(
-              controller: vknCtrl,
-              decoration: const InputDecoration(
-                  labelText: 'VKN / TCKN',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.numbers))),
-          const SizedBox(height: 8),
-          TextField(
-              controller: vdCtrl,
-              decoration: const InputDecoration(
-                  labelText: 'Vergi Dairesi', border: OutlineInputBorder())),
-          const SizedBox(height: 8),
-          TextField(
-              controller: ilCtrl,
-              decoration: const InputDecoration(
-                  labelText: 'İl', border: OutlineInputBorder())),
-          const SizedBox(height: 8),
-          TextField(
-              controller: ilceCtrl,
-              decoration: const InputDecoration(
-                  labelText: 'İlçe', border: OutlineInputBorder())),
-          const SizedBox(height: 12),
-          const Divider(),
-          const Text('Özel Entegratör API',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-          const SizedBox(height: 8),
-          TextField(
-              controller: apiUrlCtrl,
-              decoration: const InputDecoration(
-                  labelText: 'API URL',
-                  border: OutlineInputBorder(),
-                  hintText: 'https://api.entegrator.com')),
-          const SizedBox(height: 8),
-          TextField(
-              controller: apiKeyCtrl,
-              obscureText: true,
-              decoration: const InputDecoration(
-                  labelText: 'API Key', border: OutlineInputBorder())),
-        ])),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dCtx1),
-              child: const Text('İptal')),
-          FilledButton(
-            onPressed: () async {
-              await _ayarGuncelle('firma_vergi_no', vknCtrl.text);
-              await _ayarGuncelle('firma_vergi_dairesi', vdCtrl.text);
-              await _ayarGuncelle('gib_api_url', apiUrlCtrl.text);
-              await _ayarGuncelle('gib_api_key', apiKeyCtrl.text);
-              await _ayarGuncelle('firma_il', ilCtrl.text);
-              await _ayarGuncelle('firma_ilce', ilceCtrl.text);
-              if (mounted) Navigator.pop(dCtx1);
-              if (mounted)
-                BildirimServisi.basari(context, 'GIB ayarları kaydedildi');
-            },
-            child: const Text('Kaydet'),
-          ),
-        ],
-      ),
-    );
-    vknCtrl.dispose();
-    vdCtrl.dispose();
-    apiUrlCtrl.dispose();
-    apiKeyCtrl.dispose();
-    ilCtrl.dispose();
-    ilceCtrl.dispose();
-  }
-
   Future<void> _firmaBilgisiDuzenle() async {
     final adCtrl = TextEditingController(text: _ayarlar['firma_adi'] ?? '');
     final adrCtrl = TextEditingController(text: _ayarlar['firma_adres'] ?? '');
@@ -1128,12 +1022,6 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                     title: const Text('Veri Aktarımı WiFi'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/ayarlar/sync')),
-                ListTile(
-                    leading: const Icon(Icons.receipt, color: Colors.red),
-                    title: const Text('GIB E-Fatura Ayarları'),
-                    subtitle: const Text('VKN, vergi dairesi, API bilgileri'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _gibAyarlariDuzenle()),
                 const Divider(),
                 _AyarBaslik('Veri İşlemleri'),
                 ListTile(

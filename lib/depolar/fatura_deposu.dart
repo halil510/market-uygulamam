@@ -213,6 +213,24 @@ class FaturaDeposu {
     }
   }
 
+  /// GİB tarafından REDDEDİLMİŞ bir faturayı yeniden göndermeden hemen
+  /// önce çağrılır — deneme sayacını artırır ki GibServisi YENİ (eski
+  /// reddedilmiş denemeyle çakışmayan) bir ETTN üretsin (bkz. gib_servisi
+  /// .dart _ettnFaturaIcin). SADECE 'reddedildi' durumundan çağrılmalı —
+  /// ağ hatası ('hata') sonrası tekrar denemede bu ÇAĞRILMAMALI (o durumda
+  /// AYNI ETTN ile tekrar denemek kasıtlı ve güvenli — mükerrer gönderim
+  /// korumasının ta kendisi).
+  Future<void> eFaturaYenidenGondermeyeHazirla(int id) async {
+    final db = await _d;
+    final rows = await db.query('faturalar', columns: ['e_fatura_deneme_no'], where: 'id = ?', whereArgs: [id], limit: 1);
+    final mevcut = rows.isNotEmpty ? (rows.first['e_fatura_deneme_no'] as int? ?? 0) : 0;
+    final now = DateTime.now().toIso8601String();
+    await db.update('faturalar', {
+      'e_fatura_deneme_no': mevcut + 1,
+      'last_updated': now,
+    }, where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<void> odemeDurumGuncelle(int id, String odemeDurumu, double odenenTutar) async {
     try {
       final db = await _d;

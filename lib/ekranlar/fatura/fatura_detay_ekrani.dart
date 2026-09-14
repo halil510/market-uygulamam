@@ -141,8 +141,42 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
   // Fatura GİB'e (bir kez) başarıyla iletildi mi — 'gonderildi' (henüz
   // GİB onayı sorgulanmamış) VEYA 'onaylandi' (GİB onayı sorgulanmış ve
   // onaylanmış) ikisi de "artık tekrar gönderilemez" anlamına gelir.
+  // 'reddedildi'/'hata' BİLEREK bu listede DEĞİL — ikisi de kullanıcının
+  // düzeltip yeniden gönderebilmesi gereken durumlar (bkz. ETTN yeniden
+  // üretme notu — gib_servisi.dart _ettnFaturaIcin). 'gib_iptal' de
+  // BİLEREK dışında değil ama zaten UI'da ayrı ele alınıyor (aşağı).
   bool _eFaturaGonderilmis(String? durum) =>
-      durum == 'gonderildi' || durum == 'onaylandi';
+      durum == 'gonderildi' || durum == 'onaylandi' || durum == 'gib_iptal';
+
+  IconData _durumIkonu(String? durum) => switch (durum) {
+        'onaylandi' => Icons.verified_outlined,
+        'gonderildi' => Icons.cloud_done_outlined,
+        'gonderiliyor' => Icons.cloud_upload_outlined,
+        'reddedildi' => Icons.cancel_outlined,
+        'gib_iptal' => Icons.block_outlined,
+        'hata' => Icons.error_outline,
+        _ => Icons.schedule_outlined,
+      };
+
+  Color _durumRengi(String? durum) => switch (durum) {
+        'onaylandi' => Colors.teal,
+        'gonderildi' => Colors.green,
+        'gonderiliyor' => Colors.blue,
+        'reddedildi' => Colors.red,
+        'gib_iptal' => Colors.grey,
+        'hata' => Colors.red,
+        _ => Colors.orange,
+      };
+
+  String _durumEtiketi(String? durum) => switch (durum) {
+        'onaylandi' => 'GİB Onayladı',
+        'gonderildi' => 'Gönderildi',
+        'gonderiliyor' => 'Gönderiliyor',
+        'reddedildi' => 'GİB Reddetti',
+        'gib_iptal' => 'GİB\'de İptal Edildi',
+        'hata' => 'Gönderim Hatası',
+        _ => 'Beklemede',
+      };
 
   // ── Durum Sorgula ──────────────────────────────────────────────────────────
   Future<void> _durumSorgula() async {
@@ -167,10 +201,9 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('GİB Durum'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(durum == 'onaylandi' ? Icons.check_circle : Icons.info_outline,
-              color: durum == 'onaylandi' ? Colors.green : Colors.orange, size: 40),
+          Icon(_durumIkonu(durum), color: _durumRengi(durum), size: 40),
           const SizedBox(height: 12),
-          Text(durum ?? 'Bilinmiyor', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(_durumEtiketi(durum), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           Text('UUID: ${_fatura!.eFaturaUuid!.substring(0, 8)}...',
               style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
         ]),
@@ -183,6 +216,67 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
       }
     } catch (e) {
       if (mounted) { Navigator.pop(context); BildirimServisi.hata(context, 'Hata: $e'); }
+    }
+  }
+
+  // ── GİB'de İptal Et ──────────────────────────────────────────────────────
+  // GİB'e ulaşmış (gonderildi/onaylandi) bir e-Belgeyi entegratör üzerinden
+  // iptal eder. GİB'in izin verdiği iptal penceresi (genelde e-Arşiv için
+  // aynı gün) ve tam istek formatı entegratöre göre değişir — bkz.
+  // GibServisi.iptalEt'teki uyarı.
+  Future<void> _gibIptalEt() async {
+    if (_fatura == null || !mounted || _islemDevam) return;
+    if (_fatura!.eFaturaUuid == null) return;
+    final onay = await showDialog<bool>(context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.red),
+          SizedBox(width: 8),
+          Text('GİB\'de İptal Et'),
+        ]),
+        content: Text(
+          '${_fatura!.faturaNo ?? "Fatura"} GİB\'e gönderilmiş bir e-Belge. '
+          'İptal işlemi GİB kurallarına göre sadece belirli bir süre içinde '
+          'geçerli olabilir ve entegratörünüze bağlıdır. Devam edilsin mi?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          FilledButton(
+            style: FilledButton.styleFrom(foregroundColor: Colors.white, backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('İptal Et')),
+        ],
+      ));
+    if (onay != true || !mounted) return;
+
+    setState(() => _islemDevam = true);
+    showDialog(context: context, barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(children: [
+          CircularProgressIndicator(color: Color(0xFF4361EE), strokeWidth: 3),
+          SizedBox(width: 16),
+          Text('GİB\'e iptal isteği gönderiliyor...'),
+        ])));
+    try {
+      final gib = GibServisi();
+      await gib.ayarlariYukle();
+      final basarili = await gib.iptalEt(uuid: _fatura!.eFaturaUuid!);
+      if (!mounted) return;
+      Navigator.pop(context);
+      if (basarili) {
+        await _depo.eFaturaDurumGuncelle(_fatura!.id!, 'gib_iptal', uuid: _fatura!.eFaturaUuid);
+        await _yukle();
+        if (mounted) BildirimServisi.basari(context, 'GİB\'de iptal edildi');
+      } else {
+        if (mounted) BildirimServisi.hata(context,
+            'İptal başarısız — entegratörünüzün iptal süresini/desteğini kontrol edin');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      BildirimServisi.hata(context, 'Hata: $e');
+    } finally {
+      if (mounted) setState(() => _islemDevam = false);
     }
   }
 
@@ -220,7 +314,7 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
           FilledButton(
-            onPressed: () { Navigator.pop(ctx); context.push('/ayarlar/icerik'); },
+            onPressed: () { Navigator.pop(ctx); context.push('/ayarlar/gib'); },
             child: const Text('Ayarlara Git')),
         ],
       ));
@@ -304,7 +398,23 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
         ])));
 
     try {
-      final sonuc = await gib.gonder(fatura: _fatura!, tip: tip);
+      // 🔴 GÜNCELLEME (e-Belge durum makinesi): daha önce REDDEDİLMİŞ bir
+      // faturayı yeniden gönderiyorsak, önce deneme sayacını artır ki
+      // GibServisi yeni, çakışmayan bir ETTN üretsin (bkz. FaturaDeposu.
+      // eFaturaYenidenGondermeyeHazirla / gib_servisi.dart _ettnFaturaIcin).
+      var gonderilecekFatura = _fatura!;
+      if (_fatura!.eFaturaDurum == 'reddedildi') {
+        await _depo.eFaturaYenidenGondermeyeHazirla(_fatura!.id!);
+        final tazelenen = await _depo.idileGetir(_fatura!.id!);
+        if (tazelenen != null) gonderilecekFatura = tazelenen;
+      }
+      // Ağ isteğinden ÖNCE 'gonderiliyor' olarak işaretle — uygulama tam bu
+      // sırada kapanır/çökerse (ör. pil bitmesi, işletim sistemi
+      // öldürmesi) fatura sessizce 'hazir/reddedildi' görünmeye devam
+      // etmez, kullanıcı gerçekten belirsiz bir denemenin farkında olur ve
+      // "Durum Sorgula" ile netleştirebilir.
+      await _depo.eFaturaDurumGuncelle(gonderilecekFatura.id!, 'gonderiliyor');
+      final sonuc = await gib.gonder(fatura: gonderilecekFatura, tip: tip);
       if (!mounted) return;
       Navigator.pop(context); // loading dialog kapat
 
@@ -945,16 +1055,12 @@ appBar: TsAppBar(
               tooltip: 'Durum Sorgula',
             ),
             IconButton(
-              icon: Icon(
-                _eFaturaGonderilmis(f.eFaturaDurum)
-                    ? Icons.check_circle_outline
-                    : Icons.send_outlined,
-                color: _eFaturaGonderilmis(f.eFaturaDurum)
-                    ? Colors.green : Colors.blue),
-              tooltip: f.eFaturaDurum == 'onaylandi'
-                  ? 'e-Fatura GİB Onayladı'
-                  : _eFaturaGonderilmis(f.eFaturaDurum)
-                      ? 'e-Fatura Gönderildi' : 'e-Fatura Gönder',
+              icon: Icon(_durumIkonu(f.eFaturaDurum), color: _durumRengi(f.eFaturaDurum)),
+              tooltip: _eFaturaGonderilmis(f.eFaturaDurum)
+                  ? 'e-Fatura ${_durumEtiketi(f.eFaturaDurum)}'
+                  : f.eFaturaDurum == 'reddedildi'
+                      ? 'GİB Reddetti — Yeniden Gönder'
+                      : 'e-Fatura Gönder',
               onPressed: (_eFaturaGonderilmis(f.eFaturaDurum) || _islemDevam) ? null : _efaturaGonder),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -963,20 +1069,27 @@ appBar: TsAppBar(
               if (v == 'eposta') _epostaGonder();
               if (v == '80mm') _pdf80mmGoster();
               if (v == 'a4') _pdfGosterA4();
+              if (v == 'gib_iptal') _gibIptalEt();
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'eposta', child: Row(children: [
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'eposta', child: Row(children: [
                 Icon(Icons.email_outlined, size: 18), SizedBox(width: 8),
                 Text('E-posta ile Gönder'),
               ])),
-              PopupMenuItem(value: '80mm', child: Row(children: [
+              const PopupMenuItem(value: '80mm', child: Row(children: [
                 Icon(Icons.receipt_long_outlined, size: 18), SizedBox(width: 8),
                 Text('80mm Fiş Yazdır'),
               ])),
-              PopupMenuItem(value: 'a4', child: Row(children: [
+              const PopupMenuItem(value: 'a4', child: Row(children: [
                 Icon(Icons.description_outlined, size: 18), SizedBox(width: 8),
                 Text('A4 Yazdır'),
               ])),
+              if (f.eFaturaDurum == 'gonderildi' || f.eFaturaDurum == 'onaylandi')
+                const PopupMenuItem(value: 'gib_iptal', child: Row(children: [
+                  Icon(Icons.block_outlined, size: 18, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('GİB\'de İptal Et', style: TextStyle(color: Colors.red)),
+                ])),
             ],
           ),
         ],
@@ -995,7 +1108,10 @@ appBar: TsAppBar(
                 Text(f.faturaNo ?? '-',
                     style: const TextStyle(
                         fontWeight: FontWeight.w800, fontSize: 16)),
-                _durumuChip(f.odemeDurumu),
+                Wrap(spacing: 6, children: [
+                  _eFaturaDurumChip(f.eFaturaDurum),
+                  _durumuChip(f.odemeDurumu),
+                ]),
               ]),
               const SizedBox(height: 8),
               _bilgiSatiri('Tarih', fmt.format(f.tarih)),
@@ -1075,6 +1191,23 @@ appBar: TsAppBar(
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
     ]),
   );
+
+  Widget _eFaturaDurumChip(String? eDurum) {
+    final renk = _durumRengi(eDurum);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+          color: Color.fromARGB(26, renk.red, renk.green, renk.blue),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Color.fromARGB(102, renk.red, renk.green, renk.blue))),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(_durumIkonu(eDurum), size: 13, color: renk),
+        const SizedBox(width: 4),
+        Text(_durumEtiketi(eDurum),
+            style: TextStyle(color: renk, fontSize: 11, fontWeight: FontWeight.w600)),
+      ]),
+    );
+  }
 
   Widget _durumuChip(String durum) {
     Color renk;

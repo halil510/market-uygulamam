@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      60; // v60: biyometrik_kayitlar eklendi (parmak izi girişi artık ham şifre değil, cihaza özel rastgele token hash'i ile çalışıyor)
+      61; // v61: faturalar.e_fatura_deneme_no eklendi (e-Belge durum makinesi genişletmesi — Reddedildi sonrası yeniden gönderimde ETTN çakışmasını önlemek için)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

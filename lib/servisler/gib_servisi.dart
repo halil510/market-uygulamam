@@ -18,6 +18,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:dio/dio.dart';
+import 'package:sqflite/sqflite.dart';
 import '../modeller/fatura_model.dart';
 import '../veri/database/veritabani.dart';
 
@@ -105,6 +106,40 @@ class GibServisi {
       _firmaAdi          = map['firma_adi'] ?? '';
       _firmaAdres        = map['firma_adres'] ?? '';
       _firmaVergiDairesi = map['firma_vergi_dairesi'] ?? '';
+
+      // 🔴🔴 GÜVEN KURTARMA GÖÇÜ (2026-09-14 derin analizde bulundu):
+      // fatura_ayar_ekrani.dart'ın "e-Fatura" sekmesi ÖNCEDEN GİB
+      // kullanıcı adı/şifre/URL'sini bu servisin hiç bakmadığı AYRI bir
+      // depoya (SharedPreferences) yazıyordu — o ekranı kullanan biri
+      // "kaydedildi" görüp aslında hiçbir zaman gerçek ayara ulaşmamış
+      // olabilir. O ekrandaki alanlar artık kaldırıldı, ama bu cihazda
+      // hâlâ o eski, kullanılmayan veriler duruyor olabilir. Gerçek
+      // ayar (SQLite/secure storage) HÂLÂ BOŞSA ve eski SharedPreferences
+      // kaydı DOLUYSA, sessizce buraya taşınır — kullanıcı yeniden
+      // girmek zorunda kalmaz. Gerçek ayar zaten doluysa dokunulmaz.
+      if ((_kullaniciAdi == null || _kullaniciAdi!.isEmpty) && _apiUrl == null) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final eskiUrl = prefs.getString('gib_api_url');
+          final eskiKullanici = prefs.getString('gib_kullanici');
+          final eskiSifre = prefs.getString('gib_sifre');
+          if ((eskiUrl?.isNotEmpty ?? false) && (eskiKullanici?.isNotEmpty ?? false)) {
+            await db.insert('ayarlar', {'anahtar': 'gib_api_url', 'deger': eskiUrl},
+                conflictAlgorithm: ConflictAlgorithm.replace);
+            await db.insert('ayarlar', {'anahtar': 'gib_kullanici_adi', 'deger': eskiKullanici},
+                conflictAlgorithm: ConflictAlgorithm.replace);
+            if (eskiSifre?.isNotEmpty ?? false) {
+              await secure.write(key: 'gib_sifre', value: eskiSifre);
+            }
+            _apiUrl = eskiUrl;
+            _kullaniciAdi = eskiKullanici;
+            _sifre = eskiSifre;
+            if (kDebugMode) debugPrint('GİB ayarları eski (kullanılmayan) depodan taşındı');
+          }
+        } catch (e) {
+          if (kDebugMode) debugPrint('GİB eski ayar taşıma hatası: $e');
+        }
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('GIB ayar yükleme hatası: $e');
     }
@@ -178,10 +213,19 @@ class GibServisi {
   // artık otomatik olarak engellenir; yapmıyorsa bile durum kötüleşmez.
   static const String _ettnNamespace = '2f6a8c1e-4b3d-4e7a-9c2f-1a5b7d9e3c6f';
 
+  // 🔴 GÜNCELLEME (e-Belge durum makinesi genişletmesi): eğer fatura DAHA
+  // ÖNCE GİB tarafından REDDEDİLDİYSE, kullanıcı düzeltip yeniden
+  // gönderdiğinde deneme_no artık > 0 olur (bkz. FaturaDeposu.
+  // yenidenGondermeyeHazirla) — bu, aynı fatura için AYNI ETTN'nin
+  // reddedilmiş bir belgeye yeniden atanmasını önler. deneme_no=0 (ilk
+  // gönderim VEYA GİB'e hiç ulaşmamış bir ağ hatası sonrası tekrar
+  // deneme) için davranış TAMAMEN ESKİSİYLE AYNI — mevcut mükerrer
+  // gönderim koruması bozulmuyor.
   String _ettnFaturaIcin(FaturaModel fatura) {
     final ad = fatura.globalId ?? fatura.faturaNo ?? fatura.id?.toString() ??
         DateTime.now().toIso8601String();
-    return _uuid.v5(_ettnNamespace, ad).toUpperCase();
+    final anahtar = fatura.eFaturaDenemeNo > 0 ? '$ad#${fatura.eFaturaDenemeNo}' : ad;
+    return _uuid.v5(_ettnNamespace, anahtar).toUpperCase();
   }
 
   /// Türkçe ödeme şeklini UBL/UNCL4461 standart koduna çevirir — UBL-TR
@@ -556,6 +600,31 @@ $satirlar
   }
 
   // ── Durum sorgula ──────────────────────────────────────────────────────
+  // 🔴 DÜZELTME (e-Belge durum makinesi genişletmesi, derin analiz
+  // bulgusu): ÖNCEDEN entegratörden gelen ham 'status' string'i AYNEN
+  // döndürülüyordu — çağıran taraf (fatura_liste/detay_ekrani.dart)
+  // sadece 'onaylandi' değerini tanıyordu, başka HER ŞEY (özellikle GİB
+  // gerçekten REDDETMİŞSE dönen 'rejected'/'reddedildi' gibi bir değer)
+  // sessizce "Beklemede" (turuncu, hiçbir şey olmamış gibi) gösteriliyordu.
+  // Yasal geçerliliği OLMAYAN reddedilmiş bir fatura, hâlâ "gönderim
+  // bekliyor" gibi görünüyordu — bu ciddi bir risktir. Artık yaygın
+  // entegratör terimleri kendi iç durum kelime dağarcığımıza (onaylandi/
+  // reddedildi/gib_iptal) NORMALLEŞTİRİLİYOR. Hangi entegratörün TAM
+  // OLARAK hangi string'i döndürdüğü burada doğrulanamadı (bkz. dosya
+  // başındaki genel uyarı) — tanınmayan bir değer gelirse ham hâliyle
+  // döndürülüyor (en azından teşhis edilebilir kalır, sessizce yutulmuyor).
+  String? _durumNormallestir(String? ham) {
+    if (ham == null) return null;
+    final h = ham.trim().toLowerCase();
+    const onay = {'onaylandi', 'approved', 'accepted', 'success', 'successful', 'basarili'};
+    const ret = {'reddedildi', 'rejected', 'declined', 'refused', 'red'};
+    const iptal = {'iptal', 'iptal_edildi', 'cancelled', 'canceled', 'voided'};
+    if (onay.contains(h)) return 'onaylandi';
+    if (ret.contains(h)) return 'reddedildi';
+    if (iptal.contains(h)) return 'gib_iptal';
+    return ham; // tanınmayan değer — olduğu gibi, teşhis için korunuyor
+  }
+
   Future<String?> durumSorgula(String uuid) async {
     await ayarlariYukle();
     if (!ayarliMi) return null;
@@ -566,10 +635,43 @@ $satirlar
       );
       if (r.statusCode == 200) {
         final body = r.data as Map<String, dynamic>?;
-        return body?['status']?.toString();
+        return _durumNormallestir(body?['status']?.toString());
       }
     } catch (e) { if (kDebugMode) debugPrint('[HATA] ' + e.toString()); }
     return null;
+  }
+
+  /// GİB'e gönderilmiş bir e-Fatura/e-Arşivi iptal eder. GİB kuralları
+  /// (e-Arşiv için genelde aynı gün/kısa süreli bir pencere) ve gerçek
+  /// uç nokta/istek formatı ENTEGRATÖRE göre değişir — burada yaygın bir
+  /// REST deseni (mukellefSorgula/gonder ile AYNI mimari yaklaşım)
+  /// varsayılan olarak kullanıldı. Kullandığınız entegratör farklıysa bu
+  /// fonksiyonun onun dokümantasyonuna göre uyarlanması gerekir. SADECE
+  /// GİB'e zaten ULAŞMIŞ ('gonderildi'/'onaylandi') bir belge için
+  /// anlamlıdır — çağıran taraf bu kontrolü yapar.
+  Future<bool> iptalEt({required String uuid, String? aciklama}) async {
+    await ayarlariYukle();
+    if (!ayarliMi) return false;
+    try {
+      final r = await _dio.post(
+        '${_apiUrl!}/invoice/cancel',
+        data: {'uuid': uuid, 'reason': aciklama ?? 'İptal'},
+        options: Options(headers: {
+          'Authorization': _authHeader,
+          'Content-Type': 'application/json',
+        }),
+      ).timeout(const Duration(seconds: 20));
+      final basarili = r.statusCode == 200 || r.statusCode == 201;
+      await _logKaydet(
+        referansId: 0, referansTuru: 'fatura', uuid: uuid,
+        islemTipi: 'iptal', durum: basarili ? 'basarili' : 'hata',
+        hataMesaj: basarili ? null : 'HTTP ${r.statusCode}',
+      );
+      return basarili;
+    } catch (e) {
+      if (kDebugMode) debugPrint('GİB iptal hatası (entegratör API\'si farklı olabilir): $e');
+      return false;
+    }
   }
 
   // ── XML önizleme ────────────────────────────────────────────────────────

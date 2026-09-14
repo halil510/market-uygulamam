@@ -57,7 +57,8 @@ class FaturaModel {
   /// hiç yoktu, ne basılan faturada ne UBL-TR XML'inde gösteriliyordu.
   final String? odemeSekli;
   final String? eFaturaUuid;
-  final String? eFaturaDurum; // 'hazir', 'gonderildi', 'hata'
+  final String? eFaturaDurum; // 'hazir','gonderiliyor','gonderildi','onaylandi','reddedildi','gib_iptal','hata'
+  final int eFaturaDenemeNo;
   final String? eFaturaHtml;
   final String? eFaturaXml;
   final DateTime? gonderimTarihi;
@@ -89,6 +90,7 @@ class FaturaModel {
     this.odemeDurumu = 'beklemede',
     this.odemeSekli,
     this.eFaturaUuid, this.eFaturaDurum = 'hazir',
+    this.eFaturaDenemeNo = 0,
     this.eFaturaHtml, this.eFaturaXml,
     this.gonderimTarihi, this.uygulamaYaniti,
     this.htmlIcerik, this.xmlIcerik,
@@ -141,6 +143,7 @@ class FaturaModel {
       odemeSekli: m['odeme_sekli'] as String?,
       eFaturaUuid: m['e_fatura_uuid'] as String?,
       eFaturaDurum: m['e_fatura_durum'] as String? ?? 'hazir',
+      eFaturaDenemeNo: (m['e_fatura_deneme_no'] as int?) ?? 0,
       eFaturaHtml: m['e_fatura_html'] as String?,
       eFaturaXml: m['e_fatura_xml'] as String?,
       gonderimTarihi: m['gonderim_tarihi'] != null

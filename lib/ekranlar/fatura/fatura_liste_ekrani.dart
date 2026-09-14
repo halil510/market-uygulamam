@@ -173,6 +173,10 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
               const SizedBox(width: 6),
               _eFaturaChip('GİB Onayladı', 'onaylandi', renk: Colors.teal),
               const SizedBox(width: 6),
+              _eFaturaChip('Reddedildi', 'reddedildi', renk: Colors.red),
+              const SizedBox(width: 6),
+              _eFaturaChip('GİB\'de İptal', 'gib_iptal', renk: Colors.grey),
+              const SizedBox(width: 6),
               _eFaturaChip('Hata', 'hata', renk: Colors.red),
               const SizedBox(width: 12),
               ChoiceChip(
@@ -278,27 +282,30 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
     Color durum = odendi ? Colors.green : vadesiGecti ? Colors.red : Colors.orange;
 
     final eDurum = f.eFaturaDurum ?? 'hazir';
-    // 🔴 DÜZELTME (erp_roadmap madde 38 — e-Belge durum makinesi):
-    // fatura_detay_ekrani.dart'taki "GİB Durum Sorgula" butonu GİB'in
-    // döndürdüğü 'onaylandi' değerini zaten eFaturaDurumGuncelle() ile
-    // kaydediyordu — ama BU liste ekranı 'onaylandi'yı hiç tanımıyordu,
-    // 'gonderildi'/'hata' DIŞINDA her şeyi "Beklemede" (turuncu) olarak
-    // gösteriyordu. Yani GİB tarafından ONAYLANMIŞ bir fatura, listede
-    // hâlâ "gönderilmemiş gibi" görünüyordu — yanıltıcıydı. GİB
-    // entegratörünün 'reddedildi' gibi başka string'ler dönüp
-    // dönmediği bu ortamda doğrulanamadığı için (gib_servisi.dart'taki
-    // EFaturaDurum enum'u hiçbir yerde kullanılmıyor, muhtemelen hiç
-    // bağlanmamış bir taslak) sadece KODUN KENDİSİNİN ZATEN VARSAYDIĞI
-    // 'onaylandi' değeri eklendi — başka string tahmin edilmedi.
+    // 🔴🔴 DÜZELTME (erp_roadmap madde 38 — e-Belge durum makinesi, 2026-09-14
+    // ikinci tur derin analiz): GİB'in gerçekten REDDETTİĞİ bir belge (artık
+    // gib_servisi.dart'taki durumSorgula() entegratör terimlerini
+    // 'reddedildi'/'gib_iptal'e normalleştiriyor) bu ekranda hâlâ turuncu
+    // "Beklemede" olarak görünüyordu — yasal geçerliliği OLMAYAN bir fatura,
+    // sanki hâlâ gönderim bekliyormuş gibi duruyordu. Artık tanınıyor.
     final eRenk  = eDurum == 'onaylandi' ? Colors.teal
                  : eDurum == 'gonderildi' ? Colors.green
+                 : eDurum == 'gonderiliyor' ? Colors.blue
+                 : eDurum == 'reddedildi' ? Colors.red
+                 : eDurum == 'gib_iptal' ? Colors.grey
                  : eDurum == 'hata' ? Colors.red : Colors.orange;
     final eEtiket = eDurum == 'onaylandi' ? 'GİB Onayladı'
                   : eDurum == 'gonderildi' ? 'Gönderildi'
+                  : eDurum == 'gonderiliyor' ? 'Gönderiliyor'
+                  : eDurum == 'reddedildi' ? 'GİB Reddetti'
+                  : eDurum == 'gib_iptal' ? 'GİB\'de İptal'
                   : eDurum == 'hata' ? 'Gönderim Hatası' : 'Beklemede';
     final eIkon  = eDurum == 'onaylandi' ? Icons.verified_outlined
                  : eDurum == 'gonderildi' ? Icons.cloud_done_outlined
-                 : eDurum == 'hata' ? Icons.error_outline : Icons.cloud_upload_outlined;
+                 : eDurum == 'gonderiliyor' ? Icons.cloud_upload_outlined
+                 : eDurum == 'reddedildi' ? Icons.cancel_outlined
+                 : eDurum == 'gib_iptal' ? Icons.block_outlined
+                 : eDurum == 'hata' ? Icons.error_outline : Icons.schedule_outlined;
 
     final kart = TsKart(
       onTap: () => context.push('/fatura/detay/${f.id}'),

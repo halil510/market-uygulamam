@@ -579,7 +579,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
         const SizedBox(width: 8),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(a['adres_tipi']?.toString() ?? 'Sevkiyat', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: context.textPrimary)),
+            Text(a['adres_tipi']?.toString() ?? 'Sevkiyat', style: TsMetin.kucukVurgu.copyWith(color: context.textPrimary)),
             Text('${a['adres']}${a['ilce'] != null ? ', ${a['ilce']}' : ''}${a['il'] != null ? '/${a['il']}' : ''}',
                 style: TextStyle(fontSize: 11.5, color: context.textSecondary)),
           ]),
@@ -1033,7 +1033,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
                 Expanded(child: Text(u['urun_adi']?.toString() ?? '—',
                     style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: context.textPrimary),
                     maxLines: 1, overflow: TextOverflow.ellipsis)),
-                Text(ParaUtils.formatla(buTutar), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: context.textPrimary)),
+                Text(ParaUtils.formatla(buTutar), style: TsMetin.kucukVurgu.copyWith(color: context.textPrimary)),
               ]),
               const SizedBox(height: 5),
               ClipRRect(

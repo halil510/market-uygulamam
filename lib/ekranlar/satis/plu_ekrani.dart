@@ -216,11 +216,7 @@ class _PluEkraniState extends ConsumerState<PluEkrani> {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(
             etiket,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: secili ? Colors.white : context.textSecondary,
-            ),
+            style: TsMetin.kucukVurgu.copyWith(color: secili ? Colors.white : context.textSecondary),
           ),
           const SizedBox(width: 4),
           Container(

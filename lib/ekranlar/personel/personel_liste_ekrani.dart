@@ -364,8 +364,7 @@ class _MaasOzetiTab extends StatelessWidget {
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(dept, style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 14)),
+                  Text(dept, style: TsMetin.govdeVurgu),
                   Text('${personeller.length} personel',
                       style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
                 ],

@@ -223,7 +223,7 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
         Align(alignment: Alignment.centerLeft,
-            child: Text(etiket, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: renk))),
+            child: Text(etiket, style: TsMetin.kucukVurgu.copyWith(color: renk))),
         const SizedBox(height: 4),
         FittedBox(fit: BoxFit.scaleDown, child: Text('₺ $_ekran',
             style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: renk, letterSpacing: 0.5))),

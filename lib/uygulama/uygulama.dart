@@ -15,6 +15,7 @@ import 'router/uygulama_router.dart';
 import 'tema/uygulama_temasi.dart';
 import '../saglayicilar/riverpod/auth_provider.dart';
 import '../saglayicilar/riverpod/tema_provider.dart';
+import '../tasarim_sistemi/tasarim_sistemi.dart';
 
 class MarketPlusApp extends ConsumerStatefulWidget {
   final String baslangicTema;
@@ -158,8 +159,7 @@ class MarketBackButtonDispatcher extends RootBackButtonDispatcher {
             TextButton(
               onPressed: () => Navigator.pop(dCtx, 'iptal'),
               child: Text('Vazgeç',
-                  style: TextStyle(color: dCtx.textSecondary,
-                      fontWeight: FontWeight.w600, fontSize: 14)),
+                  style: TsMetin.govdeVurgu.copyWith(color: dCtx.textSecondary)),
             ),
           ]),
         ),

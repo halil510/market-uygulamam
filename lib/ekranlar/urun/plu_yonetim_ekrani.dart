@@ -262,7 +262,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
               _boyutBtn(u, 3, 'Büyük'),
               const Spacer(),
               Text(ParaUtils.formatla(u.satisFiyati),
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                  style: TsMetin.kucukVurgu),
             ]),
           ],
         )),

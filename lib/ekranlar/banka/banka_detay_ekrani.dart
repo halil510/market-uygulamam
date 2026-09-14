@@ -128,7 +128,7 @@ class _BankaDetayIcerik extends StatelessWidget {
               ),
               child: Text(
                 banka.aktif ? 'Aktif' : 'Pasif',
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                style: TsMetin.kucukVurgu.copyWith(color: Colors.white),
               ),
             ),
           ]),

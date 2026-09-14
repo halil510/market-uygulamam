@@ -4,6 +4,7 @@ import '../../../uygulama/tema/uygulama_temasi.dart';
 import '../../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../modeller/cari_model.dart';
+import '../../../tasarim_sistemi/tasarim_sistemi.dart';
 class CariSecDialog extends ConsumerStatefulWidget {
   final List<CariModel> cariler;
   const CariSecDialog({super.key, required this.cariler});
@@ -100,7 +101,7 @@ class CariSecDialogState extends ConsumerState<CariSecDialog> {
                           backgroundColor: Color.fromARGB(31, 67, 97, 238),
                           child: Text(
                             cari.unvan.isNotEmpty ? cari.unvan[0].toUpperCase() : '?',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF4361EE)),
+                            style: TsMetin.kucukVurgu.copyWith(color: Color(0xFF4361EE)),
                           ),
                         ),
                         title: Text(cari.unvan, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),

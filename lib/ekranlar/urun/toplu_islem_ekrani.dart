@@ -505,8 +505,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
             const SizedBox(height: 8),
 
             // İşlem tipi
-            Text('İşlem Tipi', style: TextStyle(
-                fontWeight: FontWeight.w700, fontSize: 12, color: context.textSecondary)),
+            Text('İşlem Tipi', style: TsMetin.kucukVurgu.copyWith(color: context.textSecondary)),
             const SizedBox(height: 8),
             SegmentedButton<IslemTuru>(
               segments: const [

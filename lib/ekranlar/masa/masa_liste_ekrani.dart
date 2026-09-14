@@ -350,7 +350,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                 border: OutlineInputBorder())),
           const SizedBox(height: 14),
           Align(alignment: Alignment.centerLeft,
-              child: Text('Kategori', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: context.textSecondary))),
+              child: Text('Kategori', style: TsMetin.kucukVurgu.copyWith(color: context.textSecondary))),
           const SizedBox(height: 6),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final k in {...presetler, kategori})
@@ -420,7 +420,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
               style: TextStyle(fontSize: 12, color: context.textSecondary)),
           const SizedBox(height: 14),
           Align(alignment: Alignment.centerLeft,
-              child: Text('Kategori', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: context.textSecondary))),
+              child: Text('Kategori', style: TsMetin.kucukVurgu.copyWith(color: context.textSecondary))),
           const SizedBox(height: 6),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final k in presetler)

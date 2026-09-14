@@ -220,7 +220,7 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
                       radius: 16,
                       backgroundColor: Colors.teal.shade50,
                       child: Text(t.unvan.isNotEmpty ? t.unvan[0].toUpperCase() : '?',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.teal.shade700)),
+                          style: TsMetin.kucukVurgu.copyWith(color: Colors.teal.shade700)),
                     ),
                     title: Text(t.unvan, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     subtitle: t.telefon != null ? Text(t.telefon!, style: const TextStyle(fontSize: 11)) : null,

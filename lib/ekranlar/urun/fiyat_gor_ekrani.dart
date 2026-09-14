@@ -187,11 +187,7 @@ class _FiyatGorIcerikState extends State<FiyatGorIcerik> {
           ),
           child: Text(
             stokYok ? 'Stokta Yok' : 'Stok: ${u.stok.toStringAsFixed(0)} ${u.birimAdi}',
-            style: TextStyle(
-              color: stokYok ? Colors.red.shade700 : Colors.green.shade700,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
+            style: TsMetin.govdeVurgu.copyWith(color: stokYok ? Colors.red.shade700 : Colors.green.shade700),
           ),
         ),
         if (u.barkod != null && u.barkod!.isNotEmpty)

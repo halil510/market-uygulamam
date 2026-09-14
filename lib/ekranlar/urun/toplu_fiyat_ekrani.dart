@@ -292,7 +292,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
                     Expanded(child: Text(u.urunAdi, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
                     Text(ParaUtils.formatla(u.satisFiyati), style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
                     const Icon(Icons.arrow_forward, size: 14, color: Colors.orange),
-                    Text(ParaUtils.formatla(yeni), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange)),
+                    Text(ParaUtils.formatla(yeni), style: TsMetin.kucukVurgu.copyWith(color: Colors.orange)),
                   ]));
               })),
               if (_secili.length > 3) Text('... ve ${_secili.length - 3} ürün daha',

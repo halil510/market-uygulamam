@@ -198,7 +198,7 @@ class _KartDetayIcerik extends ConsumerWidget {
               ),
               child: Text(
                 kart.aktif ? 'Aktif' : 'Pasif',
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                style: TsMetin.kucukVurgu.copyWith(color: Colors.white),
               ),
             ),
           ]),

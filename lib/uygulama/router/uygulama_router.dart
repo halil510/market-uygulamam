@@ -87,6 +87,7 @@ import 'rotalar/borc_rotalari.dart';
 // Shell route içinde hâlâ doğrudan kullanılan borç ekranları
 import '../../ekranlar/borc/borc_takip_ekrani.dart';
 import '../../ekranlar/borc/borc_ekle_ekrani.dart';
+import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
 
 
@@ -416,7 +417,7 @@ class _AnaKabukState extends ConsumerState<AnaKabuk> {
               indicatorColor: const Color(0xFFE8EAFF),
               selectedIconTheme: const IconThemeData(color: Color(0xFF4361EE)),
               unselectedIconTheme: const IconThemeData(color: Color(0xFF6B7280)),
-              selectedLabelTextStyle: const TextStyle(color: Color(0xFF4361EE), fontWeight: FontWeight.w700, fontSize: 12),
+              selectedLabelTextStyle: TsMetin.kucukVurgu.copyWith(color: Color(0xFF4361EE)),
               unselectedLabelTextStyle: const TextStyle(color: Color(0xFF6B7280), fontSize: 12),
               destinations: _navItems.map((item) => NavigationRailDestination(
                 icon: Icon(item.icon),

@@ -309,7 +309,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
             Row(children: [
               Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12)),
-                child: Text(f.faturaNo ?? '—', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.blue))),
+                child: Text(f.faturaNo ?? '—', style: TsMetin.kucukVurgu.copyWith(color: Colors.blue))),
               const SizedBox(width: 6),
               Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(color: context.borderColor, borderRadius: BorderRadius.circular(12)),
@@ -331,7 +331,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
             ]),
             const SizedBox(height: 8),
             Text(f.cariUnvan ?? 'Bilinmeyen Cari',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                style: TsMetin.govdeVurgu),
             if (f.vadeTarihi != null)
               Text('Vade: ${DateFormat('dd.MM.yyyy').format(f.vadeTarihi!)}',
                   style: TextStyle(fontSize: 12, color: vadesiGecti ? Colors.red : context.textSecondary)),

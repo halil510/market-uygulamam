@@ -647,7 +647,7 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
             border: Border.all(color: context.borderColor),
           ),
           child: SwitchListTile(
-            title: const Text('KDV Detayı Göster', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            title: const Text('KDV Detayı Göster', style: TsMetin.govdeVurgu),
             subtitle: const Text('Fiş üzerinde KDV dökümünü göster', style: TextStyle(fontSize: 12)),
             value: _kdvGoster,
             onChanged: (v) => setState(() => _kdvGoster = v),
@@ -792,7 +792,7 @@ class _CihazKarti extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           minimumSize: const Size(0, 36),
         ),
-        child: Text(aksiyonEtiket, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+        child: Text(aksiyonEtiket, style: TsMetin.kucukVurgu),
       ),
     ]),
   );

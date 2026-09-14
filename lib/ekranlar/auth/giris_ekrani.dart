@@ -937,11 +937,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
             const SizedBox(width: 8),
             Text(
               'Şifreyle giriş yapın, parmak izi aktifleşsin',
-              style: TextStyle(
-                fontSize: 12,
-                color: TsRenk.metinIkincil(context),
-                fontWeight: FontWeight.w400,
-              ),
+              style: TsMetin.kucuk.copyWith(color: TsRenk.metinIkincil(context)),
             ),
           ],
         ),

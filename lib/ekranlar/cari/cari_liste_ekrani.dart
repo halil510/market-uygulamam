@@ -177,7 +177,7 @@ final tum = _filtrele(aramaFiltrelendi);
               indicatorWeight: 3,
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white60,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+              labelStyle: TsMetin.kucukVurgu,
               tabs: [
                 Tab(text: 'Tümü (${tum.length})'),
                 Tab(text: 'Müşteri (${musteriler.length})'),

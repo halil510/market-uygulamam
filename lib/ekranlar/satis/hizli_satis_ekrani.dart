@@ -1464,7 +1464,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                     },
                     style: TextButton.styleFrom(foregroundColor: Colors.white),
                     child: const Text('İPTAL',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                        style: TsMetin.kucukVurgu),
                   ),
                 ]),
               ),

@@ -478,7 +478,7 @@ class _GrafikTab extends StatelessWidget {
                   return PieChartSectionData(
                     value: val, color: e.value,
                     title: ciro > 0 ? '%${(val / ciro * 100).toStringAsFixed(0)}' : '',
-                    titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+                    titleStyle: TsMetin.kucukVurgu.copyWith(color: Colors.white),
                     radius: 60,
                   );
                 }).toList(),

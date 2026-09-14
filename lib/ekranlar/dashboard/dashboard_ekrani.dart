@@ -538,11 +538,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                     const SizedBox(width: 6),
                     Image.asset('assets/images/logoYazı.png',
                         height: 18,
-                        errorBuilder: (_, __, ___) => const Text('MarketPlus',
-                            style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600))),
+                        errorBuilder: (_, __, ___) => Text('MarketPlus',
+                            style: TsMetin.govdeVurgu.copyWith(color: Colors.white70))),
                     const SizedBox(width: 8),
                     // 🔴 DÜZELTME: Bu 3 rozet (Tümü/Şube/Yazıcı) Expanded/Flexible
                     // olmadan diziliyordu — uzun şube adında dar ekranlarda

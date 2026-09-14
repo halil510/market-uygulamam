@@ -656,8 +656,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
                   style: const TextStyle(fontSize: 11)),
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                 Text(ParaUtils.formatla(u.satisFiyati),
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.primary)),
+                    style: TsMetin.kucukVurgu.copyWith(color: Theme.of(context).colorScheme.primary)),
                 const SizedBox(width: 8),
                 Container(
                   width: 32, height: 32,

@@ -178,9 +178,7 @@ class _GibGelenKutusuEkraniState extends State<GibGelenKutusuEkrani> {
             child: Text(
               durum == 'accepted' ? '✓ Kabul Edildi' : '✗ Reddedildi',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: durum == 'accepted' ? Colors.green.shade700 : Colors.red.shade700,
-                  fontWeight: FontWeight.w700, fontSize: 12),
+              style: TsMetin.kucukVurgu.copyWith(color: durum == 'accepted' ? Colors.green.shade700 : Colors.red.shade700),
             ),
           )
         else

@@ -540,8 +540,7 @@ double _toDouble(dynamic value) {
                       SizedBox(width: 60, child: Text(
                           ParaUtils.formatla(k.toplamTutar),
                           textAlign: TextAlign.right,
-                          style: const TextStyle(fontSize: 12,
-                              fontWeight: FontWeight.w700))),
+                          style: TsMetin.kucukVurgu)),
                     ]),
                   );
                 },

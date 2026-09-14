@@ -1138,8 +1138,7 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                         ]),
                     const SizedBox(height: 8),
                     Text(u.urunAdi,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 14),
+                        style: TsMetin.govdeVurgu,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis),
                     const Spacer(),
@@ -1155,10 +1154,7 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                               31, stokRenk.red, stokRenk.green, stokRenk.blue),
                           borderRadius: BorderRadius.circular(6)),
                       child: Text('${u.stok.toStringAsFixed(0)} ${u.birimAdi}',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: stokRenk)),
+                          style: TsMetin.kucukVurgu.copyWith(color: stokRenk)),
                     ),
                   ]),
             ),

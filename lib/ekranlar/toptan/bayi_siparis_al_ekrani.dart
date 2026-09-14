@@ -469,7 +469,7 @@ class _KalemDialogState extends State<_KalemDialog> {
             decoration: BoxDecoration(color: context.textSecondary.withAlpha(30), borderRadius: BorderRadius.circular(8)),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Text('Alış Fiyatı (referans)', style: TextStyle(fontSize: 12, color: context.textSecondary)),
-              Text(ParaUtils.formatla(widget.urun.alisFiyat), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              Text(ParaUtils.formatla(widget.urun.alisFiyat), style: TsMetin.kucukVurgu),
             ]),
           ),
         ]),

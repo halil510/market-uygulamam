@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/ts_kart.dart';
+import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
 // ── Modern Stat Kart ──────────────────────────────────────────────────────
 class StatKart extends StatelessWidget {
@@ -92,8 +93,7 @@ class ModernListTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600),
+                      style: TsMetin.govdeVurgu,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   if (subtitle != null) ...[

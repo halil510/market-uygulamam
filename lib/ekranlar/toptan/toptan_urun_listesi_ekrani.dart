@@ -249,7 +249,7 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
                         final u = _liste[i];
                         return ListTile(
                           leading: _resimGoster(u),
-                          title: Text(u.urunAdi, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.textPrimary)),
+                          title: Text(u.urunAdi, style: TsMetin.govdeVurgu.copyWith(color: context.textPrimary)),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: _fiyatSatiri(u),

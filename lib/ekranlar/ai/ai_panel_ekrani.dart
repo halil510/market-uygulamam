@@ -154,7 +154,7 @@ class _OzetTab extends StatelessWidget {
             ),
             title: Text(r['urun_adi'] as String? ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
             trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('${(r['toplam_adet'] as num?)?.toStringAsFixed(0) ?? 0} adet', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: TsRenk.primary)),
+              Text('${(r['toplam_adet'] as num?)?.toStringAsFixed(0) ?? 0} adet', style: TsMetin.kucukVurgu.copyWith(color: TsRenk.primary)),
               Text(ParaUtils.formatla((r['toplam_tutar'] as num?)?.toDouble() ?? 0), style: TextStyle(fontSize: 11, color: context.textSecondary)),
             ]),
           );

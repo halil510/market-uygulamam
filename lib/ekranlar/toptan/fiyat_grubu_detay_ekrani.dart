@@ -236,7 +236,7 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                           title: Text(u.urunAdi, maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              style: TsMetin.govdeVurgu),
                           subtitle: Row(children: [
                             Text('Perakende: ${ParaUtils.formatla(u.satisFiyati)}',
                                 style: TextStyle(fontSize: 12, color: context.textSecondary)),

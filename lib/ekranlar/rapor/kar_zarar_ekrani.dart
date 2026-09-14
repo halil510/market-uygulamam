@@ -560,9 +560,7 @@ class _GiderTab extends StatelessWidget {
                   ),
                   child: Text(
                     'Toplam: ${ParaUtils.formatla(veri.giderToplam)}',
-                    style: TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w700,
-                        color: Colors.red.shade700),
+                    style: TsMetin.kucukVurgu.copyWith(color: Colors.red.shade700),
                   ),
                 ),
               ]),

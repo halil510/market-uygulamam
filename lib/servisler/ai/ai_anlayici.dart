@@ -214,7 +214,16 @@ class AiAnlayici {
     if (_ic(s, ['alan1 neler','alan1 listesi','alan1 grupları'])) return AiIntent.alan1Detay;
     if (_ic(s, ['genel stok','stok durumu','stok özet','stok raporu','depo durumu'])) return AiIntent.stokGenelDurum;
     if (_ic(s, ['tahmin','öngörü','gelecek satış','kaç olur','ne kadar olacak'])) return AiIntent.tahmin;
-    if (_ic(s, ['sipariş öner','ne sipariş','sipariş ver','al bunları','öner'])) return AiIntent.oneri;
+    // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu — "cari ismi veriyorum,
+    // bana sipariş önerileri diyor"): burada bağımsız/tek başına "öner"
+    // kelimesi de tetikleyiciydi. "Öner" GERÇEK, yaygın bir Türk soyadı/
+    // isim — bu satır "cari" kelimesi hiç geçmeyen, sadece müşteri adı
+    // "Öner" (veya "Önerşan", "Törnöner" gibi içinde bu 4 harfi
+    // barındıran HERHANGİ bir isim) olan HER soruyu, daha spesifik cari
+    // kurallarına (yukarıda) hiç fırsat vermeden "Sipariş Önerileri"ne
+    // kaçırıyordu. "sipariş öner"/"ne sipariş" gibi asıl beklenen
+    // kalıplar zaten bu amacı karşılıyor — tek başına "öner" kaldırıldı.
+    if (_ic(s, ['sipariş öner','ne sipariş','sipariş ver','al bunları'])) return AiIntent.oneri;
 
     // Context'ten devam: önceki intent ne ise devam et
     if (_sonIntent != null && !_ic(s, ['ne','nasıl','ne zaman','kim','hangi','kaç'])) {

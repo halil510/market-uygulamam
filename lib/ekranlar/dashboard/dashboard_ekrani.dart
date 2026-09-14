@@ -11,7 +11,6 @@ import '../../saglayicilar/riverpod/dashboard_provider.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../saglayicilar/riverpod/masa_provider.dart';
 import '../../saglayicilar/riverpod/masa_modu_provider.dart';
-import '../../servisler/yazdirma_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -268,8 +267,6 @@ class DashboardEkrani extends ConsumerStatefulWidget {
 
 class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
     with SingleTickerProviderStateMixin {
-  final _yazdirma = YazdirmaServisi();
-  bool _btBagliMi = false;
   bool _varsayilanSifreUyarisi = false;
   late AnimationController _animCtrl;
   final _pageCtrl = PageController();
@@ -284,7 +281,6 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
     super.initState();
     _animCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
-    _btDurumKontrol();
     // Yedek başlatma: splash'te zamanlama sorunu olursa (auth durumu
     // henüz hazır değilse) Dashboard açıldığında kesin olarak başlatılır.
     if (!AktifSubeServisi().hazir) {
@@ -349,15 +345,6 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
           ),
         ]),
       );
-
-  Future<void> _btDurumKontrol() async {
-    try {
-      final bagli = await _yazdirma.btBagliMi;
-      if (mounted) setState(() => _btBagliMi = bagli);
-    } catch (e) {
-      if (mounted) debugPrint('BT kontrol hatası: $e');
-    }
-  }
 
   /// Admin/Müdür kullanıcıların şubeler arasında geçiş yapmasını veya
   /// "Tüm Şubeler" görünümünü seçmesini sağlayan dialog.
@@ -528,20 +515,11 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(children: [
-                    Image.asset('assets/images/logo.png',
-                        width: 22,
-                        height: 22,
-                        errorBuilder: (_, __, ___) => const Icon(
-                            Icons.storefront,
-                            color: Colors.white70,
-                            size: 22)),
-                    const SizedBox(width: 6),
-                    Image.asset('assets/images/logoYazı.png',
-                        height: 18,
-                        errorBuilder: (_, __, ___) => Text('MarketPlus',
-                            style: TsMetin.govdeVurgu.copyWith(color: Colors.white70))),
-                    const SizedBox(width: 8),
-                    // 🔴 DÜZELTME: Bu 3 rozet (Tümü/Şube/Yazıcı) Expanded/Flexible
+                    // 🔴 DÜZELTME (kullanıcı isteği): logo + logo yazısı
+                    // kaldırıldı — üst bar zaten marka rengiyle (primary
+                    // gradyan) geliyor, ayrıca küçük bir logo/yazı ikilisi
+                    // görsel gürültü yaratıyordu.
+                    // 🔴 DÜZELTME: Bu 2 rozet (Tümü/Şube) Expanded/Flexible
                     // olmadan diziliyordu — uzun şube adında dar ekranlarda
                     // RenderFlex taşma hatası riski vardı. Artık gerekirse
                     // yatay kaydırılabilir.
@@ -629,55 +607,11 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          // Yazıcı durumu
-                          GestureDetector(
-                            onTap: () => context.push('/ayarlar/yazici'),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Color.fromARGB(
-                                    51,
-                                    (_btBagliMi ? Colors.green : Colors.red)
-                                        .red,
-                                    (_btBagliMi ? Colors.green : Colors.red)
-                                        .green,
-                                    (_btBagliMi ? Colors.green : Colors.red)
-                                        .blue),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: _btBagliMi
-                                      ? Colors.greenAccent
-                                      : Colors.redAccent,
-                                  width: 0.5,
-                                ),
-                              ),
-                              child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                        _btBagliMi
-                                            ? Icons.print
-                                            : Icons.print_disabled,
-                                        size: 14,
-                                        color: _btBagliMi
-                                            ? Colors.greenAccent
-                                            : Colors.redAccent),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                        _btBagliMi
-                                            ? 'Yazıcı Bağlı'
-                                            : 'Yazıcı Yok',
-                                        style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w500,
-                                            color: _btBagliMi
-                                                ? Colors.greenAccent
-                                                : Colors.redAccent)),
-                                  ]),
-                            ),
-                          ),
+                          // 🔴 DÜZELTME (kullanıcı isteği): "Yazıcı Bağlı/
+                          // Yazıcı Yok" rozeti kaldırıldı — diğer rozetlerle
+                          // (Tümü/Şube) üst üste binip görsel karmaşa
+                          // yaratıyordu. Yazıcı durumu zaten Ayarlar >
+                          // Yazıcı Ayarları ekranından görülüp yönetilebiliyor.
                         ]),
                       ),
                     ),

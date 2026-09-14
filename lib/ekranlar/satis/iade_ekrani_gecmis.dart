@@ -1285,6 +1285,21 @@ extension _GecmisTabExt on _IadeEkraniState {
                 _iadeyiFaturalandir(iade, kalemler);
               },
             ),
+          // 🔴 DÜZELTME (komple derin analizde bulundu): _gecmisIadeDuzelt()
+          // tam/çalışan bir fonksiyondu (iade nedenini düzenleyip
+          // BulutManager().upsert() ile senkronluyordu) ama hiçbir UI
+          // tetikleyicisi yoktu — analyzer'ın "unused_element" uyarısı
+          // vermemesi çağrılıyor sanılmasına yol açmıştı, oysa hiçbir yerde
+          // çağrılmıyordu. "Düzenle" (kalem ekleme) ile karıştırılmaması
+          // için ayrı, küçük bir ikon buton olarak bağlandı.
+          TextButton.icon(
+            icon: const Icon(Icons.edit_note_outlined, size: 18),
+            label: const Text('Notu Düzelt'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _gecmisIadeDuzelt(iade, kalemler);
+            },
+          ),
           FilledButton(
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
           backgroundColor: Colors.orange),
@@ -1303,6 +1318,17 @@ extension _GecmisTabExt on _IadeEkraniState {
   Future<void> _gecmisIadeDuzelt(Map<String, dynamic> iade, List<Map<String, dynamic>> kalemler) async {
     // Düzeltme: sadece not/açıklama ve iade nedeni düzenlenebilir
     final notCtrl = TextEditingController(text: iade['iade_nedeni']?.toString() ?? '');
+    // 🔴 DÜZELTME (komple derin analizde bulundu): notCtrl hiç dispose
+    // edilmiyordu — dış try/finally ile garanti altına alındı.
+    try {
+      await _gecmisIadeDuzeltIc(iade, notCtrl);
+    } finally {
+      notCtrl.dispose();
+    }
+  }
+
+  Future<void> _gecmisIadeDuzeltIc(
+      Map<String, dynamic> iade, TextEditingController notCtrl) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1342,7 +1368,7 @@ extension _GecmisTabExt on _IadeEkraniState {
           where: 'id = ?', whereArgs: [iade['id']]);
       final satir = await db.query('iade', where: 'id = ?', whereArgs: [iade['id']], limit: 1);
       if (satir.isNotEmpty) BulutManager().upsert('iade', Map<String, dynamic>.from(satir.first));
-      BildirimServisi.basari(context, 'İade güncellendi ✓');
+      if (mounted) BildirimServisi.basari(context, 'İade güncellendi ✓');
       _gecmisYukle();
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');

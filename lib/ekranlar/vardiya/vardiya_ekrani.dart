@@ -8,6 +8,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../servisler/auth_servisi.dart';
+import '../../servisler/aktif_sube_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
 import '../../veri/database/veritabani.dart';
 import '../../depolar/kasa_deposu.dart';
@@ -53,14 +54,24 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     setState(() => _yukleniyor = true);
     try {
       final db = await _db.db;
-      final aktifRows =
-          await db.rawQuery('SELECT v.*, k.ad_soyad FROM vardiyalar v '
-              'LEFT JOIN kullanicilar k ON v.kullanici_id = k.id '
-              'WHERE v.kapanis_tarihi IS NULL ORDER BY v.id DESC LIMIT 1');
-      final gecmisRows =
-          await db.rawQuery('SELECT v.*, k.ad_soyad FROM vardiyalar v '
-              'LEFT JOIN kullanicilar k ON v.kullanici_id = k.id '
-              'WHERE v.kapanis_tarihi IS NOT NULL ORDER BY v.id DESC LIMIT 30');
+      // 🔴🔴 KRİTİK DÜZELTME (komple derin analizde bulundu): bu sorgular
+      // ÖNCEDEN hiç sube_id filtresi içermiyordu — çok şubeli kurulumda
+      // "aktif vardiya" TÜM şubeler arasından rastgele (en son açılan)
+      // vardiyayı gösteriyordu. Şube B'deki kasiyer "Vardiyayı Kapat"a
+      // basınca aslında Şube A'nın açık vardiyasını kapatabiliyordu.
+      final subeId = AktifSubeServisi().subeId;
+      final subeSarti = subeId != null ? ' AND v.sube_id = ?' : '';
+      final subeArgs = subeId != null ? [subeId] : <Object?>[];
+      final aktifRows = await db.rawQuery(
+          'SELECT v.*, k.ad_soyad FROM vardiyalar v '
+          'LEFT JOIN kullanicilar k ON v.kullanici_id = k.id '
+          'WHERE v.kapanis_tarihi IS NULL$subeSarti ORDER BY v.id DESC LIMIT 1',
+          subeArgs);
+      final gecmisRows = await db.rawQuery(
+          'SELECT v.*, k.ad_soyad FROM vardiyalar v '
+          'LEFT JOIN kullanicilar k ON v.kullanici_id = k.id '
+          'WHERE v.kapanis_tarihi IS NOT NULL$subeSarti ORDER BY v.id DESC LIMIT 30',
+          subeArgs);
 
       // Aktif vardiya satış özeti
       Map<String, dynamic> ozet = {};
@@ -171,6 +182,10 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
       final id = await db.insert('vardiyalar', {
         'global_id': const Uuid().v4(),
         'kullanici_id': kullanici?.id ?? 1,
+        // 🔴 Komple derin analizde bulundu: sube_id hiç yazılmıyordu —
+        // her vardiya kaydı şubesiz (NULL) oluşuyordu, çok şubeli
+        // kurulumda "aktif vardiya" sorgusu şubeler arasında karışıyordu.
+        'sube_id': AktifSubeServisi().subeId,
         'acilis_tarihi': now,
         'acilis_kasasi': bas,
         'baslangic_bakiye': bas,

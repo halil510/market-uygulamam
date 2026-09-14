@@ -66,9 +66,25 @@ class KasaDeposu {
 
   Future<double> _sonBakiyeTxn(dynamic txn) async {
     try {
-      final rows = await txn.rawQuery(
-        'SELECT bakiye_sonrasi FROM kasa_hareketleri WHERE deleted_at IS NULL ORDER BY tarih DESC, id DESC LIMIT 1',
-      );
+      // 🔴🔴 KRİTİK DÜZELTME (komple derin analizde bulundu): bu zincir
+      // ÖNCEDEN sube_id filtresi içermiyordu — hareketEkleTxn() her yeni
+      // satırı AktifSubeServisi().subeId ile etiketlese de, "son bakiye"
+      // TÜM şubelerin hareketleri karışık okunarak hesaplanıyordu. Çok
+      // şubeli kurulumda Şube B'de açılan bir kasa hareketi, Şube A'nın
+      // son bakiyesinin üzerine (yanlış tabana göre) ekleniyordu —
+      // bakiye_sonrasi zinciri (ve buna dayanan Vardiya "Anlık Kasa Bak."
+      // ile kasa mutabakatı) şubeler arasında sessizce karışıyordu.
+      // hareketleriniGetir()'deki AYNI desen (aktif şube seçiliyse
+      // filtrele, "Tüm Şubeler" modunda filtreleme) burada da uygulandı.
+      final subeId = AktifSubeServisi().subeId;
+      final rows = subeId != null
+          ? await txn.rawQuery(
+              'SELECT bakiye_sonrasi FROM kasa_hareketleri WHERE deleted_at IS NULL AND sube_id = ? ORDER BY tarih DESC, id DESC LIMIT 1',
+              [subeId],
+            )
+          : await txn.rawQuery(
+              'SELECT bakiye_sonrasi FROM kasa_hareketleri WHERE deleted_at IS NULL ORDER BY tarih DESC, id DESC LIMIT 1',
+            );
       if (rows.isEmpty) return 0;
       return (rows.first['bakiye_sonrasi'] as num?)?.toDouble() ?? 0;
     } catch (e, st) {
@@ -99,13 +115,19 @@ class KasaDeposu {
       final db = await _d;
       final girisler = KasaHareketModel.girisTipleri;
       final icYer = List.filled(girisler.length, '?').join(',');
+      // 🔴 KRİTİK DÜZELTME (komple derin analizde bulundu): sube_id
+      // filtresi eksikti — çok şubeli kurulumda Vardiya'nın "Anlık Kasa
+      // Bak." alanı TÜM şubelerin nakit hareketlerini topluyordu.
+      final subeId = AktifSubeServisi().subeId;
+      final subeSarti = subeId != null ? ' AND sube_id = ?' : '';
+      final args = [...girisler, if (subeId != null) subeId];
       final rows = await db.rawQuery('''
         SELECT COALESCE(SUM(
           CASE WHEN hareket_tipi IN ($icYer) THEN tutar ELSE -tutar END
         ), 0) as bakiye
         FROM kasa_hareketleri
-        WHERE deleted_at IS NULL AND (odeme_yontemi IS NULL OR odeme_yontemi = 'Nakit')
-      ''', girisler.toList());
+        WHERE deleted_at IS NULL AND (odeme_yontemi IS NULL OR odeme_yontemi = 'Nakit')$subeSarti
+      ''', args);
       return (rows.first['bakiye'] as num?)?.toDouble() ?? 0;
     } catch (e, st) {
       LogServisi().hata('Kasa.guncelBakiyeNakit', hata: e, yigin: st);
@@ -126,14 +148,21 @@ class KasaDeposu {
       final db = await _d;
       final girisler = KasaHareketModel.girisTipleri;
       final icYer = List.filled(girisler.length, '?').join(',');
+      // 🔴 KRİTİK DÜZELTME (komple derin analizde bulundu): sube_id
+      // filtresi eksikti — çok şubeli kurulumda vardiya kapanış
+      // mutabakatı (Beklenen Kasa) diğer şubelerin nakit hareketlerini de
+      // sayıyordu.
+      final subeId = AktifSubeServisi().subeId;
+      final subeSarti = subeId != null ? ' AND sube_id = ?' : '';
+      final args = [...girisler, baslangic.toIso8601String(), if (subeId != null) subeId];
       final rows = await db.rawQuery('''
         SELECT COALESCE(SUM(
           CASE WHEN hareket_tipi IN ($icYer) THEN tutar ELSE -tutar END
         ), 0) as bakiye
         FROM kasa_hareketleri
         WHERE deleted_at IS NULL AND (odeme_yontemi IS NULL OR odeme_yontemi = 'Nakit')
-          AND datetime(tarih) >= datetime(?)
-      ''', [...girisler, baslangic.toIso8601String()]);
+          AND datetime(tarih) >= datetime(?)$subeSarti
+      ''', args);
       return (rows.first['bakiye'] as num?)?.toDouble() ?? 0;
     } catch (e, st) {
       LogServisi().hata('Kasa.nakitDegisimi', hata: e, yigin: st);

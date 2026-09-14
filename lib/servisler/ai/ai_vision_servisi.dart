@@ -12,6 +12,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:printing/printing.dart';
 import '../../modeller/ocr_urun_model.dart';
 
 class AiVisionServisi {
@@ -146,6 +147,19 @@ class AiVisionServisi {
         // 'gemini-2.5-flash' sürümüne geçildi (bkz. ai_genel_asistan.dart).
         model: await AiModelSecici.ilkAday(),
         apiKey: apiKey,
+        // 🔴 KÖK NEDEN DÜZELTMESİ (kullanıcı bulgusu — "fatura
+        // fotoğrafından textlere düzgün işlemiyor"): ÖNCEDEN bu model
+        // JSON zorunluluğu OLMADAN çağrılıyordu — "Sadece JSON çıktısı
+        // ver" talimatına RAĞMEN Gemini sık sık JSON'un öncesine/
+        // sonrasına açıklama metni ("İşte çıkardığım ürünler:" gibi)
+        // ekliyordu. Aşağıdaki ```/``` temizleme regex'i SADECE markdown
+        // kod bloğu kalıbını temizliyordu — blok DIŞINDAKİ serbest metni
+        // temizlemiyordu, bu da jsonDecode()'un ATMASINA ve TÜM
+        // faturanın sessizce "çıkarılamadı" sayılmasına yol açıyordu.
+        // responseMimeType: 'application/json' Gemini'yi SADECE geçerli
+        // JSON döndürmeye zorluyor (ai_urun_ekle_servisi.dart'taki diğer
+        // tüm Gemini çağrılarında zaten kullanılan, kanıtlanmış desen).
+        generationConfig: GenerationConfig(responseMimeType: 'application/json'),
       );
 
       final prompt = '''
@@ -218,7 +232,14 @@ Sadece JSON çıktısı ver, başka bir şey yazma. Emin olmadığın alanları 
           ? 'image/png'
           : 'image/jpeg';
 
-      final model = GenerativeModel(model: await AiModelSecici.ilkAday(), apiKey: apiKey);
+      final model = GenerativeModel(
+        model: await AiModelSecici.ilkAday(),
+        apiKey: apiKey,
+        // Bkz. _llmIleYapilandir'daki AYNI düzeltme notu — JSON modu
+        // zorunlu kılınmazsa Gemini görsel yanıtın etrafına açıklama
+        // metni ekleyebiliyor, bu da jsonDecode()'u sessizce bozuyordu.
+        generationConfig: GenerationConfig(responseMimeType: 'application/json'),
+      );
 
       const prompt = '''
 Bu bir marketin/dükkanın tedarikçiden aldığı faturanın veya fiş/irsaliyenin
@@ -280,26 +301,84 @@ null veya 0 bırak. Fotoğrafta hiçbir ürün satırı okunamıyorsa
   }
 
   // ---- YARDIMCI METOTLAR ----
+  // 🔴🔴🔴 KÖK NEDEN DÜZELTMESİ (kullanıcı bulgusu — "fatura
+  // fotoğrafından textlere düzgün işlemiyor"): Ürün Ekle ekranındaki
+  // "Faturadan Ürün Ekle" dosya seçici PDF'e (ve xlsx/xls'e) İZİN
+  // VERİYORDU — tedarikçi faturaları gerçek hayatta çok sık PDF
+  // olarak gelir. Ama bu fonksiyon PDF/Excel byte'larını DOĞRUDAN
+  // "resim" sanıp hem cihaz-üstü OCR'a (ML Kit — sadece gerçek
+  // raster görsel formatlarını tanır) hem Gemini'nin görsel girişine
+  // "image/jpeg" etiketiyle gönderiyordu. Sonuç: PDF faturalar SESSİZCE
+  // hiçbir zaman çalışmıyordu (OCR aşamasında hata fırlatıp doğrudan
+  // boş listeye düşülüyordu, görsel yedek yoluna hiç ULAŞILAMIYORDU).
+  // Artık: kaynak bir PDF ise, ürünün İLK SAYFASI gerçek bir rastere
+  // (PNG) çevrilip AYNI, kanıtlanmış OCR+görsel işlem hattına
+  // veriliyor — printing paketi zaten projede (PDF yazdırma için)
+  // kullanılıyor, ek bağımlılık gerekmedi.
+  /// Dosya yoluna bakarak PDF olup olmadığını belirler — DB/platform
+  /// bağımlılığı olmadan izole test edilebilsin diye ayrı bir fonksiyon
+  /// (bkz. sync_cakisma_tespit.dart'taki aynı desen).
+  static bool pdfUzantiliMi(String? path) =>
+      path?.toLowerCase().endsWith('.pdf') ?? false;
+
+  /// Dosya UZANTISI yanlış/eksik olsa bile (ör. bazı dosya seçicilerin
+  /// uzantısız geçici kopyaları), gerçek PDF magic-byte imzasına ("%PDF")
+  /// bakarak içeriğin PDF olup olmadığını belirler.
+  static bool pdfIcerikliMi(Uint8List? bytes) =>
+      bytes != null &&
+      bytes.length >= 4 &&
+      bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46; // "%PDF"
+
   Future<String?> _gorselYoluAl(dynamic kaynak) async {
-    if (kaynak is XFile) return kaynak.path;
-    if (kaynak is File) return kaynak.path;
-    if (kaynak is PlatformFile) {
-      if (kaynak.path != null) return kaynak.path;
-      if (kaynak.bytes != null) {
-        final tmpDir = Directory.systemTemp;
-        final tmpFile = File('${tmpDir.path}/ocr_${DateTime.now().millisecondsSinceEpoch}.jpg');
-        await tmpFile.writeAsBytes(kaynak.bytes!);
-        return tmpFile.path;
-      }
-      return null;
+    String? path;
+    Uint8List? bytes;
+    if (kaynak is XFile) {
+      path = kaynak.path;
+    } else if (kaynak is File) {
+      path = kaynak.path;
+    } else if (kaynak is PlatformFile) {
+      path = kaynak.path;
+      bytes = kaynak.bytes;
+    } else if (kaynak is Uint8List) {
+      bytes = kaynak;
     }
-    if (kaynak is Uint8List) {
+
+    final uzantiPdfMi = pdfUzantiliMi(path);
+    bytes ??= (uzantiPdfMi && path != null) ? await File(path).readAsBytes() : null;
+    if (uzantiPdfMi || pdfIcerikliMi(bytes)) {
+      final pdfBytes = bytes ?? (path != null ? await File(path).readAsBytes() : null);
+      if (pdfBytes == null) return null;
+      return _pdfIlkSayfayiResmeCevir(pdfBytes);
+    }
+
+    if (path != null) return path;
+    if (bytes != null) {
       final tmpDir = Directory.systemTemp;
       final tmpFile = File('${tmpDir.path}/ocr_${DateTime.now().millisecondsSinceEpoch}.jpg');
-      await tmpFile.writeAsBytes(kaynak);
+      await tmpFile.writeAsBytes(bytes);
       return tmpFile.path;
     }
     return null;
+  }
+
+  /// PDF'in ilk sayfasını, mevcut OCR/Gemini görsel hattının işleyebildiği
+  /// bir PNG dosyasına çevirir. 200 DPI, hem OCR okunabilirliği hem
+  /// makul dosya boyutu için dengeli bir değer.
+  Future<String?> _pdfIlkSayfayiResmeCevir(Uint8List pdfBytes) async {
+    try {
+      await for (final sayfa in Printing.raster(pdfBytes, pages: [0], dpi: 200)) {
+        final png = await sayfa.toPng();
+        final tmpDir = Directory.systemTemp;
+        final tmpFile = File(
+            '${tmpDir.path}/ocr_pdf_${DateTime.now().millisecondsSinceEpoch}.png');
+        await tmpFile.writeAsBytes(png);
+        return tmpFile.path;
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) debugPrint('PDF -> görsel dönüşümü başarısız: $e');
+      return null;
+    }
   }
 
   void dispose() => _recognizer.close();

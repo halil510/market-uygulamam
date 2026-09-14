@@ -729,9 +729,18 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
 
   // ---- FATURADAN ÜRÜN EKLE (AI DESTEKLİ) ----
   Future<void> _faturadanUrunEkle() async {
+    // 🔴 DÜZELTME (kullanıcı bulgusu — "fatura fotoğrafından textlere
+    // düzgün işlemiyor"): 'xlsx'/'xls' ÖNCEDEN burada seçilebilir
+    // sunuluyordu ama AiVisionServisi bunları hiçbir zaman
+    // İŞLEYEMİYORDU (OCR/Gemini görsel hattı sadece raster görsel VEYA
+    // artık PDF anlıyor — bir Excel dosyasının ham byte'ları görsel
+    // olarak yorumlanamaz). Kullanıcı bir Excel seçip sessizce "ürün
+    // çıkarılamadı" hatası alıyordu — desteklenmeyen bir format
+    // seçtirilebiliyor olması yanıltıcıydı. PDF artık gerçekten
+    // destekleniyor (bkz. AiVisionServisi._pdfIlkSayfayiResmeCevir).
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'xlsx', 'xls'],
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
       withData: true,
     );
     if (result == null || result.files.isEmpty || !mounted) return;

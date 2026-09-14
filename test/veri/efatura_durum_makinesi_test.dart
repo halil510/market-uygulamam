@@ -15,6 +15,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
+import 'package:market_plus/servisler/gib_servisi.dart';
 import '../helper/test_initializer.dart';
 
 const _ettnNamespace = '2f6a8c1e-4b3d-4e7a-9c2f-1a5b7d9e3c6f';
@@ -114,6 +115,92 @@ void main() {
       });
       final rows = await db.query('faturalar', where: 'id = ?', whereArgs: [id]);
       expect(rows.first['e_fatura_deneme_no'], equals(0));
+    });
+  });
+
+  group('irsaliyeler.e_irsaliye_* şeması (e-İrsaliye GİB gönderimi)', () {
+    late Database db;
+    setUp(() async => db = await TestVeritabani.olustur());
+    tearDown(() => db.close());
+
+    test('tüm e_irsaliye_* sütunları mevcut', () async {
+      final kolonlar = await db.rawQuery('PRAGMA table_info(irsaliyeler)');
+      final adlar = kolonlar.map((k) => k['name'] as String).toSet();
+      expect(adlar, containsAll([
+        'e_irsaliye_durum', 'e_irsaliye_uuid', 'e_irsaliye_xml',
+        'e_irsaliye_deneme_no', 'e_irsaliye_gonderim_tarihi',
+      ]));
+    });
+
+    test('yeni bir irsaliye kaydında deneme_no sessizce 0 değerini alır', () async {
+      final id = await db.insert('irsaliyeler', {'irsaliye_no': 'IRS-TEST-0001'});
+      final rows = await db.query('irsaliyeler', where: 'id = ?', whereArgs: [id]);
+      expect(rows.first['e_irsaliye_deneme_no'], equals(0));
+      expect(rows.first['e_irsaliye_durum'], equals('hazir'));
+    });
+  });
+
+  group('UBL-TR DespatchAdvice (e-İrsaliye) XML üretimi', () {
+    test('temel yapı ve alanlar doğru gömülüyor', () async {
+      final xml = await GibServisi().ublDespatchAdviceOlustur(
+        irsaliye: {
+          'irsaliye_no': 'IRS-2026-0001',
+          'tarih': '2026-09-14T10:00:00',
+          'tip': 'Çıkış',
+          'cari_adi': 'Test Müşteri A.Ş.',
+          'cari_vergi_no': '1234567890',
+          'cari_vergi_dairesi': 'Kadıköy',
+          'cari_adres': 'Test Mah. No:1',
+        },
+        kalemler: [
+          {'urun_adi': 'Ürün 1', 'miktar': 5},
+          {'urun_adi': 'Ürün 2', 'miktar': 2.5},
+        ],
+        ettn: 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE',
+      );
+
+      expect(xml, contains('<DespatchAdvice'));
+      expect(xml, contains('<cbc:ProfileID>TEMELIRSALIYE</cbc:ProfileID>'));
+      expect(xml, contains('<cbc:ID>IRS-2026-0001</cbc:ID>'));
+      expect(xml, contains('<cbc:UUID>AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE</cbc:UUID>'));
+      expect(xml, contains('<cbc:DespatchAdviceTypeCode>SEVK</cbc:DespatchAdviceTypeCode>'));
+      expect(xml, contains('schemeID="VKN">1234567890'));
+      expect(xml, contains('<cbc:Name>Test Müşteri A.Ş.</cbc:Name>'));
+      expect(xml, contains('<cbc:Name>Ürün 1</cbc:Name>'));
+      expect(xml, contains('<cbc:DeliveredQuantity unitCode="C62">5.0000</cbc:DeliveredQuantity>'));
+      expect(xml, contains('<cbc:DeliveredQuantity unitCode="C62">2.5000</cbc:DeliveredQuantity>'));
+      expect(xml, contains('<cbc:HandlingCode>CIKIS</cbc:HandlingCode>'));
+      // Vergi/tutar İÇERMEMELİ — bir irsaliye mal sevkini belgeler, satış tutarını değil.
+      expect(xml, isNot(contains('TaxTotal')));
+      expect(xml, isNot(contains('LegalMonetaryTotal')));
+    });
+
+    test('TCKN uzunluğundaki (11 hane) vergi no doğru schemeID alır', () async {
+      final xml = await GibServisi().ublDespatchAdviceOlustur(
+        irsaliye: {'irsaliye_no': 'IRS-2', 'cari_vergi_no': '12345678901'},
+        kalemler: const [],
+        ettn: 'ettn-2',
+      );
+      expect(xml, contains('schemeID="TCKN">12345678901'));
+    });
+
+    test('giriş irsaliyesi HandlingCode GIRIS olur', () async {
+      final xml = await GibServisi().ublDespatchAdviceOlustur(
+        irsaliye: {'irsaliye_no': 'IRS-3', 'tip': 'Giriş'},
+        kalemler: const [],
+        ettn: 'ettn-3',
+      );
+      expect(xml, contains('<cbc:HandlingCode>GIRIS</cbc:HandlingCode>'));
+    });
+
+    test('özel karakterler (&, <, >) XML-escape edilir', () async {
+      final xml = await GibServisi().ublDespatchAdviceOlustur(
+        irsaliye: {'irsaliye_no': 'IRS-4', 'cari_adi': 'A & B <Ltd>'},
+        kalemler: const [],
+        ettn: 'ettn-4',
+      );
+      expect(xml, contains('A &amp; B &lt;Ltd&gt;'));
+      expect(xml, isNot(contains('A & B <Ltd>')));
     });
   });
 }

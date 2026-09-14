@@ -221,11 +221,15 @@ class GibServisi {
   // gönderim VEYA GİB'e hiç ulaşmamış bir ağ hatası sonrası tekrar
   // deneme) için davranış TAMAMEN ESKİSİYLE AYNI — mevcut mükerrer
   // gönderim koruması bozulmuyor.
+  String _ettnUret2(String ad, int denemeNo) {
+    final anahtar = denemeNo > 0 ? '$ad#$denemeNo' : ad;
+    return _uuid.v5(_ettnNamespace, anahtar).toUpperCase();
+  }
+
   String _ettnFaturaIcin(FaturaModel fatura) {
     final ad = fatura.globalId ?? fatura.faturaNo ?? fatura.id?.toString() ??
         DateTime.now().toIso8601String();
-    final anahtar = fatura.eFaturaDenemeNo > 0 ? '$ad#${fatura.eFaturaDenemeNo}' : ad;
-    return _uuid.v5(_ettnNamespace, anahtar).toUpperCase();
+    return _ettnUret2(ad, fatura.eFaturaDenemeNo);
   }
 
   /// Türkçe ödeme şeklini UBL/UNCL4461 standart koduna çevirir — UBL-TR
@@ -594,6 +598,193 @@ $satirlar
         durum: 'hata',
         hataMesaj: hata,
         istekXml: xml,
+      );
+      return GibGonderimSonucu(basarili: false, hata: hata);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // e-İRSALİYE (DespatchAdvice) — kullanıcı isteği (2026-09-14): sevk
+  // irsaliyelerinin GİB'e e-İrsaliye olarak gönderilmesi. Ayarlar'daki
+  // "e-İrsaliye Aktif" anahtarı ÖNCEDEN hiçbir koda bağlı DEĞİLDİ — sadece
+  // süslemelikti, hiçbir yerde gönderim yapılmıyordu. Bu bölüm o eksiği
+  // kapatıyor.
+  //
+  // ⚠️ ÖNEMLİ DÜRÜSTLÜK NOTU: e-Fatura (Invoice) UBL-TR formatı yaygın
+  // dokümante edilmiş, bu dosyadaki ublXmlOlustur() önceki oturumlarda
+  // birkaç kez bağımsız araştırmayla çapraz kontrol edildi. e-İrsaliye
+  // (DespatchAdvice) formatı GİB'in AYRI bir UBL-TR profili (TEMELIRSALIYE)
+  // — burada üretilen XML, UBL-TR DespatchAdvice'ın genel/bilinen iskeletine
+  // (parti bilgileri + sevk satırları, VERGİ/TUTAR İÇERMEZ) dayanıyor ama
+  // BU ORTAMDA GERÇEK bir GİB şematronuna veya entegratör test ortamına
+  // karşı DOĞRULANAMADI. e-Fatura'nın aksine (yanlış vergi/tutar riski),
+  // bir irsaliyenin YANLIŞ İÇERİĞİ genelde sadece GİB/entegratör tarafından
+  // REDDEDİLİR (parasal/vergisel bir yükümlülük içermediği için yanlış-ama-
+  // kabul-edilmiş riski çok daha düşük) — yine de CANLI modda kullanmadan
+  // önce entegratörünüzün TEST ortamında deneyip mali müşavirinizle teyit
+  // etmenizi ÖNERİRİM.
+  // ══════════════════════════════════════════════════════════════════════
+
+  /// [irsaliye] en az şu anahtarları içermeli: id, irsaliye_no, tarih, tip
+  /// ('Çıkış'/'Giriş'), cari_adi, cari_vergi_no, cari_vergi_dairesi,
+  /// cari_adres (hepsi opsiyonel/null olabilir — eksikse XML'de '-' yazılır,
+  /// gönderim ENGELLENMEZ). [kalemler]'in her biri: urun_adi, miktar,
+  /// (opsiyonel) birim_fiyat.
+  Future<String> ublDespatchAdviceOlustur({
+    required Map<String, dynamic> irsaliye,
+    required List<Map<String, dynamic>> kalemler,
+    required String ettn,
+  }) async {
+    final tarihFmt = DateFormat('yyyy-MM-dd');
+    final saatFmt  = DateFormat('HH:mm:ss');
+    final now      = DateTime.now();
+    final belgeTarihi = DateTime.tryParse(irsaliye['tarih']?.toString() ?? '') ?? now;
+    final irsaliyeNo  = irsaliye['irsaliye_no']?.toString() ?? 'TMP${now.millisecondsSinceEpoch}';
+    final vkn = _firmaVkn ?? '0000000000';
+    final cariVergiNo = irsaliye['cari_vergi_no']?.toString() ?? '';
+    final cariSchemeId = cariVergiNo.length == 10 ? 'VKN' : 'TCKN';
+
+    final satirlar = kalemler.asMap().entries.map((e) {
+      final i = e.key + 1;
+      final k = e.value;
+      final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;
+      final urunAdi = k['urun_adi']?.toString() ?? k['urun_adi_db']?.toString() ?? '-';
+      return '''
+    <cac:DespatchLine>
+      <cbc:ID>$i</cbc:ID>
+      <cbc:DeliveredQuantity unitCode="C62">${miktar.toStringAsFixed(4)}</cbc:DeliveredQuantity>
+      <cac:Item>
+        <cbc:Name>${_xmlEscape(urunAdi)}</cbc:Name>
+      </cac:Item>
+    </cac:DespatchLine>''';
+    }).join('\n');
+
+    return '''<?xml version="1.0" encoding="UTF-8"?>
+<DespatchAdvice xmlns="urn:oasis:names:specification:ubl:schema:xsd:DespatchAdvice-2"
+  xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+  xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+  xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
+  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+  <cbc:CustomizationID>TR1.2</cbc:CustomizationID>
+  <cbc:ProfileID>TEMELIRSALIYE</cbc:ProfileID>
+  <cbc:ID>$irsaliyeNo</cbc:ID>
+  <cbc:CopyIndicator>false</cbc:CopyIndicator>
+  <cbc:UUID>$ettn</cbc:UUID>
+  <cbc:IssueDate>${tarihFmt.format(belgeTarihi)}</cbc:IssueDate>
+  <cbc:IssueTime>${saatFmt.format(now)}</cbc:IssueTime>
+  <cbc:DespatchAdviceTypeCode>SEVK</cbc:DespatchAdviceTypeCode>
+  <cbc:Note>${_xmlEscape(irsaliye['aciklama']?.toString() ?? '')}</cbc:Note>
+  <cbc:LineCountNumeric>${kalemler.length}</cbc:LineCountNumeric>
+
+  <cac:DespatchSupplierParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="VKN">$vkn</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyName>
+        <cbc:Name>${_xmlEscape(_firmaAdi.isNotEmpty ? _firmaAdi : 'MarketPlus')}</cbc:Name>
+      </cac:PartyName>
+      <cac:PostalAddress>
+        <cbc:StreetName>${_xmlEscape(_firmaAdres)}</cbc:StreetName>
+        <cac:Country><cbc:IdentificationCode>TR</cbc:IdentificationCode></cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:RegistrationName>${_xmlEscape(_firmaAdi)}</cbc:RegistrationName>
+        <cac:TaxScheme><cbc:Name>${_xmlEscape(_firmaVergiDairesi)}</cbc:Name></cac:TaxScheme>
+      </cac:PartyTaxScheme>
+    </cac:Party>
+  </cac:DespatchSupplierParty>
+
+  <cac:DeliveryCustomerParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="$cariSchemeId">${cariVergiNo.isNotEmpty ? cariVergiNo : '11111111111'}</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyName>
+        <cbc:Name>${_xmlEscape(irsaliye['cari_adi']?.toString() ?? '-')}</cbc:Name>
+      </cac:PartyName>
+      <cac:PostalAddress>
+        <cbc:StreetName>${_xmlEscape(irsaliye['cari_adres']?.toString() ?? '')}</cbc:StreetName>
+        <cac:Country><cbc:IdentificationCode>TR</cbc:IdentificationCode></cac:Country>
+      </cac:PostalAddress>
+    </cac:Party>
+  </cac:DeliveryCustomerParty>
+
+  <cac:Shipment>
+    <cbc:ID>1</cbc:ID>
+    <cbc:HandlingCode>${irsaliye['tip'] == 'Giriş' ? 'GIRIS' : 'CIKIS'}</cbc:HandlingCode>
+    <cac:Delivery>
+      <cbc:ActualDeliveryDate>${tarihFmt.format(belgeTarihi)}</cbc:ActualDeliveryDate>
+    </cac:Delivery>
+  </cac:Shipment>
+$satirlar
+</DespatchAdvice>''';
+  }
+
+  /// e-İrsaliyeyi GİB'e gönderir — mimari olarak [gonder]'ın (e-Fatura)
+  /// birebir aynısı (ayarlar/aktiflik kontrolü, ETTN, log) ama Invoice
+  /// yerine DespatchAdvice XML'i kullanır.
+  Future<GibGonderimSonucu> irsaliyeGonder({
+    required Map<String, dynamic> irsaliye,
+    required List<Map<String, dynamic>> kalemler,
+  }) async {
+    await ayarlariYukle();
+    if (!ayarliMi) {
+      return GibGonderimSonucu(
+        basarili: false,
+        hata: 'GIB API ayarları eksik. Ayarlar → GİB Entegrasyon ekranından yapılandırın.',
+      );
+    }
+    final prefs = await SharedPreferences.getInstance();
+    if (!(prefs.getBool('eirsaliye_aktif') ?? false)) {
+      return GibGonderimSonucu(
+        basarili: false,
+        hata: 'e-İrsaliye gönderimi kapalı. Ayarlar → Fatura Ayarları\'ndan '
+            '"e-İrsaliye Aktif" anahtarını açmanız gerekiyor.',
+      );
+    }
+
+    final irsaliyeId = irsaliye['id'] as int? ?? 0;
+    final globalId = irsaliye['global_id']?.toString() ?? irsaliye['irsaliye_no']?.toString() ?? 'irsaliye-$irsaliyeId';
+    final denemeNo = (irsaliye['e_irsaliye_deneme_no'] as int?) ?? 0;
+    final ettn = _ettnUret2(globalId, denemeNo);
+    final xml = await ublDespatchAdviceOlustur(irsaliye: irsaliye, kalemler: kalemler, ettn: ettn);
+
+    try {
+      final response = await _dio.post(
+        '${_apiUrl!}/despatch/send',
+        data: {
+          'uuid': ettn,
+          'despatch_xml': base64Encode(utf8.encode(xml)),
+          'type': 'despatch',
+          'test': _testModu,
+        },
+        options: Options(
+          headers: {'Authorization': _authHeader, 'Content-Type': 'application/json'},
+          sendTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+      final body = response.data as Map<String, dynamic>?;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await _logKaydet(
+          referansId: irsaliyeId, referansTuru: 'irsaliye', uuid: ettn,
+          islemTipi: 'gonder', durum: 'gonderildi', istekXml: xml, yanitXml: jsonEncode(body),
+        );
+        return GibGonderimSonucu(basarili: true, uuid: ettn, yanit: body?['message']?.toString());
+      } else {
+        final hata = body?['error']?.toString() ?? 'HTTP ${response.statusCode}';
+        await _logKaydet(
+          referansId: irsaliyeId, referansTuru: 'irsaliye', uuid: ettn,
+          islemTipi: 'gonder', durum: 'hata', istekXml: xml, hataMesaj: hata,
+        );
+        return GibGonderimSonucu(basarili: false, hata: hata);
+      }
+    } on DioException catch (e) {
+      final hata = e.response?.data?.toString() ?? e.message ?? 'Bağlantı hatası';
+      await _logKaydet(
+        referansId: irsaliyeId, referansTuru: 'irsaliye', uuid: ettn,
+        islemTipi: 'gonder', durum: 'hata', hataMesaj: hata, istekXml: xml,
       );
       return GibGonderimSonucu(basarili: false, hata: hata);
     }

@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      61; // v61: faturalar.e_fatura_deneme_no eklendi (e-Belge durum makinesi genişletmesi — Reddedildi sonrası yeniden gönderimde ETTN çakışmasını önlemek için)
+      62; // v62: irsaliyeler.e_irsaliye_* sütunları eklendi (e-İrsaliye GİB gönderimi — erp_roadmap madde 38/39)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

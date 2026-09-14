@@ -156,6 +156,7 @@ class MigrasyonYonetici {
     if (eskiVersiyon < 59) await _v58denV59a(db);
     if (eskiVersiyon < 60) await _v59denV60a(db);
     if (eskiVersiyon < 61) await _v60danV61e(db);
+    if (eskiVersiyon < 62) await _v61denV62ye(db);
   }
 
   // ==================== v1 -> v2 ====================
@@ -2408,5 +2409,18 @@ class MigrasyonYonetici {
   static Future<void> _v60danV61e(Database db) async {
     await _calistir(db,
         'ALTER TABLE faturalar ADD COLUMN e_fatura_deneme_no INTEGER NOT NULL DEFAULT 0');
+  }
+
+  // v61'den v62'ye — e-İrsaliye GİB gönderimi (kullanıcı isteği, 2026-09-14
+  // derin analiz: "e irsaliye türkiyeye göre tam doğru olmalı"). Ayarlar'da
+  // ÖNCEDEN "e-İrsaliye Aktif" anahtarı vardı ama hiçbir kod göndermiyordu —
+  // tamamen süslemelikti. faturalar tablosuyla AYNI desende (e_fatura_*)
+  // yeni sütunlar eklendi.
+  static Future<void> _v61denV62ye(Database db) async {
+    await _calistir(db, "ALTER TABLE irsaliyeler ADD COLUMN e_irsaliye_durum TEXT DEFAULT 'hazir'");
+    await _calistir(db, 'ALTER TABLE irsaliyeler ADD COLUMN e_irsaliye_uuid TEXT');
+    await _calistir(db, 'ALTER TABLE irsaliyeler ADD COLUMN e_irsaliye_xml TEXT');
+    await _calistir(db, 'ALTER TABLE irsaliyeler ADD COLUMN e_irsaliye_deneme_no INTEGER NOT NULL DEFAULT 0');
+    await _calistir(db, 'ALTER TABLE irsaliyeler ADD COLUMN e_irsaliye_gonderim_tarihi DATETIME');
   }
 }

@@ -25,6 +25,7 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../saglayicilar/riverpod/irsaliye_provider.dart';
 import '../../tasarim_sistemi/ts_yetki.dart';
 import '../../servisler/aktif_sube_servisi.dart';
+import '../../servisler/gib_servisi.dart';
 
 class IrsaliyeEkrani extends ConsumerWidget {
   const IrsaliyeEkrani({super.key});
@@ -641,6 +642,7 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
   Map<String, dynamic>? _irsaliye;
   List<Map<String, dynamic>> _kalemler = [];
   bool _yukleniyor = true;
+  bool _islemDevam = false;
   final _fmt = DateFormat('dd.MM.yyyy HH:mm');
 
   @override
@@ -655,8 +657,13 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
     try {
       final db = await Veritabani().db;
       final rows = await db.rawQuery('''
-        SELECT i.*, c.unvan as cari_adi FROM irsaliyeler i
+        SELECT i.*, c.unvan as cari_adi,
+          COALESCE(NULLIF(c.vergi_no, ''), c.tc_kimlik) as cari_vergi_no,
+          c.vergi_dairesi as cari_vergi_dairesi,
+          ca.adres as cari_adres
+        FROM irsaliyeler i
         LEFT JOIN cari c ON i.cari_id = c.id
+        LEFT JOIN cari_adres ca ON ca.cari_id = i.cari_id AND ca.varsayilan = 1
         WHERE i.id = ?
       ''', [widget.irsaliyeId]);
       final kalemler = await db.rawQuery('''
@@ -693,6 +700,102 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
     }
   }
 
+  bool get _eIrsaliyeGonderilmis {
+    final d = _irsaliye?['e_irsaliye_durum']?.toString();
+    return d == 'gonderildi' || d == 'onaylandi' || d == 'gib_iptal';
+  }
+
+  // ── e-İrsaliye Gönder ────────────────────────────────────────────────────
+  // Ayarlar > Fatura Ayarları'ndaki "e-İrsaliye Aktif" anahtarı ÖNCEDEN hiçbir
+  // koda bağlı değildi (bkz. gib_servisi.dart'taki geniş not) — bu, o
+  // eksikliği kapatan ilk gerçek gönderim noktası.
+  Future<void> _eIrsaliyeGonder() async {
+    if (_irsaliye == null || !mounted || _islemDevam || _eIrsaliyeGonderilmis) return;
+    final onay = await showDialog<bool>(context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('e-İrsaliye Gönder'),
+        content: Text(
+          '${_irsaliye!['irsaliye_no'] ?? "İrsaliye"} GİB sistemine '
+          'e-İrsaliye olarak gönderilecek.\n\nOnaylıyor musunuz?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Gönder')),
+        ],
+      ));
+    if (onay != true || !mounted) return;
+
+    setState(() => _islemDevam = true);
+    try {
+      final db = await Veritabani().db;
+      // Reddedilmiş bir denemeden sonra yeniden gönderiliyorsa deneme
+      // sayacını artır (bkz. gib_servisi.dart'taki ETTN notu — faturalar
+      // ile AYNI mantık).
+      if (_irsaliye!['e_irsaliye_durum'] == 'reddedildi') {
+        final mevcut = (_irsaliye!['e_irsaliye_deneme_no'] as int?) ?? 0;
+        await db.update('irsaliyeler', {'e_irsaliye_deneme_no': mevcut + 1},
+            where: 'id = ?', whereArgs: [widget.irsaliyeId]);
+        await _yukle();
+      }
+      await db.update('irsaliyeler', {'e_irsaliye_durum': 'gonderiliyor'},
+          where: 'id = ?', whereArgs: [widget.irsaliyeId]);
+
+      final gib = GibServisi();
+      await gib.ayarlariYukle();
+      final sonuc = await gib.irsaliyeGonder(irsaliye: _irsaliye!, kalemler: _kalemler);
+      final now = DateTime.now().toIso8601String();
+      if (sonuc.basarili) {
+        await db.update('irsaliyeler', {
+          'e_irsaliye_durum': 'gonderildi',
+          'e_irsaliye_uuid': sonuc.uuid,
+          'e_irsaliye_gonderim_tarihi': now,
+          'last_updated': now,
+        }, where: 'id = ?', whereArgs: [widget.irsaliyeId]);
+      } else {
+        await db.update('irsaliyeler', {'e_irsaliye_durum': 'hata', 'last_updated': now},
+            where: 'id = ?', whereArgs: [widget.irsaliyeId]);
+      }
+      final satir = await db.query('irsaliyeler', where: 'id = ?', whereArgs: [widget.irsaliyeId], limit: 1);
+      if (satir.isNotEmpty) BulutManager().upsert('irsaliyeler', Map<String, dynamic>.from(satir.first));
+      await _yukle();
+      if (!mounted) return;
+      if (sonuc.basarili) {
+        BildirimServisi.basari(context, 'e-İrsaliye gönderildi ✓');
+      } else {
+        BildirimServisi.hata(context, sonuc.hata ?? 'Gönderim başarısız');
+      }
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+    } finally {
+      if (mounted) setState(() => _islemDevam = false);
+    }
+  }
+
+  Future<void> _eIrsaliyeDurumSorgula() async {
+    final uuid = _irsaliye?['e_irsaliye_uuid']?.toString();
+    if (uuid == null || uuid.isEmpty) return;
+    setState(() => _islemDevam = true);
+    try {
+      final gib = GibServisi();
+      await gib.ayarlariYukle();
+      final durum = await gib.durumSorgula(uuid);
+      if (durum != null) {
+        final db = await Veritabani().db;
+        final now = DateTime.now().toIso8601String();
+        await db.update('irsaliyeler', {'e_irsaliye_durum': durum, 'last_updated': now},
+            where: 'id = ?', whereArgs: [widget.irsaliyeId]);
+        final satir = await db.query('irsaliyeler', where: 'id = ?', whereArgs: [widget.irsaliyeId], limit: 1);
+        if (satir.isNotEmpty) BulutManager().upsert('irsaliyeler', Map<String, dynamic>.from(satir.first));
+        await _yukle();
+      }
+      if (mounted) BildirimServisi.basari(context, 'Durum: ${durum ?? "Bilinmiyor"}');
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+    } finally {
+      if (mounted) setState(() => _islemDevam = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_yukleniyor) {
@@ -710,11 +813,41 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
     final durum  = _irsaliye!['durum']?.toString() ?? 'Bekliyor';
     final tarih  = DateTime.tryParse(_irsaliye!['tarih']?.toString() ?? '');
     final toplam = (_irsaliye!['toplam_tutar'] as num?)?.toDouble() ?? 0;
+    final eDurum = _irsaliye!['e_irsaliye_durum']?.toString() ?? 'hazir';
+    final eRenk  = eDurum == 'onaylandi' ? Colors.teal
+                 : eDurum == 'gonderildi' ? Colors.green
+                 : eDurum == 'gonderiliyor' ? Colors.blue
+                 : eDurum == 'reddedildi' ? Colors.red
+                 : eDurum == 'gib_iptal' ? Colors.grey
+                 : eDurum == 'hata' ? Colors.red : Colors.orange;
+    final eEtiket = eDurum == 'onaylandi' ? 'GİB Onayladı'
+                  : eDurum == 'gonderildi' ? 'e-İrsaliye Gönderildi'
+                  : eDurum == 'gonderiliyor' ? 'Gönderiliyor'
+                  : eDurum == 'reddedildi' ? 'GİB Reddetti'
+                  : eDurum == 'gib_iptal' ? 'GİB\'de İptal'
+                  : eDurum == 'hata' ? 'Gönderim Hatası' : 'e-İrsaliye Gönderilmedi';
 
     return Scaffold(
       appBar: TsAppBar(
         baslikWidget: Text(_irsaliye!['irsaliye_no']?.toString() ?? 'İrsaliye'),
         aksiyonlar: [
+          if (_irsaliye!['e_irsaliye_uuid'] != null)
+            IconButton(
+              icon: const Icon(Icons.refresh_outlined),
+              tooltip: 'GİB Durum Sorgula',
+              onPressed: _islemDevam ? null : _eIrsaliyeDurumSorgula,
+            ),
+          IconButton(
+            icon: Icon(
+              eDurum == 'onaylandi' ? Icons.verified_outlined
+                  : eDurum == 'gonderildi' ? Icons.cloud_done_outlined
+                  : eDurum == 'reddedildi' ? Icons.cancel_outlined
+                  : Icons.send_outlined,
+              color: eRenk,
+            ),
+            tooltip: _eIrsaliyeGonderilmis ? eEtiket : 'e-İrsaliye Gönder',
+            onPressed: (_islemDevam || _eIrsaliyeGonderilmis) ? null : _eIrsaliyeGonder,
+          ),
           PopupMenuButton<String>(
             onSelected: _durumGuncelle,
             itemBuilder: (_) => ['Hazırlanıyor', 'Yolda', 'Teslim Edildi', 'İptal']
@@ -745,11 +878,18 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
             ]),
             const SizedBox(height: 10),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Chip(
-                label: Text(durum),
-                backgroundColor: durum == 'Teslim Edildi'
-                    ? Colors.green.shade100 : Colors.orange.shade100,
-              ),
+              Wrap(spacing: 6, children: [
+                Chip(
+                  label: Text(durum),
+                  backgroundColor: durum == 'Teslim Edildi'
+                      ? Colors.green.shade100 : Colors.orange.shade100,
+                ),
+                Chip(
+                  label: Text(eEtiket, style: TextStyle(fontSize: 11, color: eRenk)),
+                  backgroundColor: Color.fromARGB(26, eRenk.red, eRenk.green, eRenk.blue),
+                  side: BorderSide(color: Color.fromARGB(102, eRenk.red, eRenk.green, eRenk.blue)),
+                ),
+              ]),
               Text(ParaUtils.formatla(toplam),
                   style: const TextStyle(
                       fontWeight: FontWeight.w900, fontSize: 18)),

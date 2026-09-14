@@ -376,6 +376,7 @@ CREATE TABLE IF NOT EXISTS faturalar (
   odeme_durumu TEXT,
   e_fatura_uuid TEXT,
   e_fatura_durum TEXT,
+  e_fatura_deneme_no BIGINT,
   e_fatura_html TEXT,
   e_fatura_xml TEXT,
   gonderim_tarihi TIMESTAMPTZ,
@@ -526,7 +527,12 @@ CREATE TABLE IF NOT EXISTS irsaliyeler (
   deleted_at TIMESTAMPTZ,
   global_id TEXT,
   last_updated TIMESTAMPTZ,
-  aciklama TEXT  -- [DÜZELTME — 2026-09-13] yerelde vardı, dosyada eksikti
+  aciklama TEXT,  -- [DÜZELTME — 2026-09-13] yerelde vardı, dosyada eksikti
+  e_irsaliye_durum TEXT,  -- [YENİ — 2026-09-14] e-İrsaliye GİB gönderimi
+  e_irsaliye_uuid TEXT,
+  e_irsaliye_xml TEXT,
+  e_irsaliye_deneme_no BIGINT,
+  e_irsaliye_gonderim_tarihi TIMESTAMPTZ
 );
 
 -- [27/58] kasa_hareketleri
@@ -1427,6 +1433,7 @@ ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS kalan_tutar DOUBLE PRECISION;
 ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS odeme_durumu TEXT;
 ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS e_fatura_uuid TEXT;
 ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS e_fatura_durum TEXT;
+ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS e_fatura_deneme_no BIGINT;
 ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS e_fatura_html TEXT;
 ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS e_fatura_xml TEXT;
 ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS gonderim_tarihi TIMESTAMPTZ;
@@ -1524,6 +1531,11 @@ ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS aciklama TEXT;
 ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS aciklama TEXT;  -- ➕ yerelde vardı, buluttan eksikti
+ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS e_irsaliye_durum TEXT;
+ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS e_irsaliye_uuid TEXT;
+ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS e_irsaliye_xml TEXT;
+ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS e_irsaliye_deneme_no BIGINT;
+ALTER TABLE irsaliyeler ADD COLUMN IF NOT EXISTS e_irsaliye_gonderim_tarihi TIMESTAMPTZ;
 ALTER TABLE kasa_hareketleri ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE kasa_hareketleri ADD COLUMN IF NOT EXISTS hareket_tipi TEXT;
 ALTER TABLE kasa_hareketleri ADD COLUMN IF NOT EXISTS tutar DOUBLE PRECISION;

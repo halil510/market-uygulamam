@@ -43,6 +43,9 @@ class IadeSemasi {
         toplam_tutar REAL NOT NULL DEFAULT 0, durum TEXT NOT NULL DEFAULT 'Tamamlandı',
         kullanici_id INTEGER, aciklama TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         deleted_at DATETIME, last_updated DATETIME,
+        e_irsaliye_durum TEXT DEFAULT 'hazir', e_irsaliye_uuid TEXT,
+        e_irsaliye_xml TEXT, e_irsaliye_deneme_no INTEGER NOT NULL DEFAULT 0,
+        e_irsaliye_gonderim_tarihi DATETIME,
         FOREIGN KEY(cari_id) REFERENCES ${DbSabitler.cari}(id)
       )
     ''');

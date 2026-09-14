@@ -7,6 +7,7 @@ import 'ai_modeller.dart';
 import 'ai_anlayici.dart';
 import 'ai_rapor_servisi.dart';
 import 'ai_genel_asistan.dart';
+import 'ai_niyet_yonlendirici.dart';
 
 /// AI Chat'in cevabı — normal metin cevabının yanı sıra, bir gezinme
 /// komutu algılandıysa hedef rota + (varsa) arama terimini de taşır.
@@ -169,7 +170,22 @@ class AiSohbetServisi {
 
   Future<String> _soruyaCevapVer(String soru) async {
     try {
-      final q = AiAnlayici.anla(soru);
+      var q = AiAnlayici.anla(soru);
+
+      // 🔴🔴 KÖK NEDEN DÜZELTMESİ (kullanıcı bulgusu — "Akıllı Analiz'de
+      // konuşmama göre herşeyi getiremiyor"): AiAnlayici SAF anahtar-
+      // kelime eşleştirmesiyle çalışır — kalıpların dışına çıkan HER
+      // soru buraya (bilinmiyor) düşüp gerçek veriye erişimi OLMAYAN
+      // genel sohbete (aşağıdaki default dalı) gidiyordu. Artık kural
+      // tabanlı sistem tanıyamazsa, AYNI rapor/sorgu fonksiyonları
+      // Gemini'ye "araç" olarak sunuluyor — model SADECE hangi aracın
+      // uyduğuna karar veriyor, sayıları YİNE aşağıdaki AYNI, değişmemiş
+      // SQL fonksiyonları üretiyor (bkz. ai_niyet_yonlendirici.dart).
+      if (q.intent == AiIntent.bilinmiyor) {
+        final yonlendirilen = await AiNiyetYonlendirici().yonlendir(soru);
+        if (yonlendirilen != null) q = yonlendirilen;
+      }
+
       final p = q.params;
       final bas = p['bas'] as DateTime? ?? DateTime.now();
       final bit = p['bit'] as DateTime? ?? DateTime.now();

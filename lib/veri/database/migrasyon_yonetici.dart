@@ -157,6 +157,7 @@ class MigrasyonYonetici {
     if (eskiVersiyon < 60) await _v59denV60a(db);
     if (eskiVersiyon < 61) await _v60danV61e(db);
     if (eskiVersiyon < 62) await _v61denV62ye(db);
+    if (eskiVersiyon < 63) await _v62denV63e(db);
   }
 
   // ==================== v1 -> v2 ====================
@@ -2422,5 +2423,57 @@ class MigrasyonYonetici {
     await _calistir(db, 'ALTER TABLE irsaliyeler ADD COLUMN e_irsaliye_xml TEXT');
     await _calistir(db, 'ALTER TABLE irsaliyeler ADD COLUMN e_irsaliye_deneme_no INTEGER NOT NULL DEFAULT 0');
     await _calistir(db, 'ALTER TABLE irsaliyeler ADD COLUMN e_irsaliye_gonderim_tarihi DATETIME');
+  }
+
+  // ==================== v62 -> v63 ====================
+  // 🔴🔴🔴 KRİTİK VERİ BOZULMASI (komple uygulama derin analizinde
+  // bulundu — v54→v55'teki 'trg_urun_updated' düzeltmesiyle AYNI SINIF
+  // hata, farklı bir tetikleyicide): 'cari' bakiyesini her yeni
+  // cari_hareket eklendiğinde otomatik yeniden hesaplayan tetikleyici
+  // (yükseltilen kurulumlarda 'trg_cari_bakiye_ins', taze kurulumlarda
+  // 'trg_cari_hareket_bakiye' — semalar/diger_semasi.dart) SUM
+  // sorgusunda 'is_deleted = 0' FİLTRESİ İÇERMİYORDU. Oysa uygulamanın
+  // HER YERDEKİ (CariDeposu.hareketEkle/bakiyeYenidenHesapla, Veri
+  // Sağlığı Merkezi mutabakatı, cari_hareket_ekrani.dart'taki iptal
+  // akışı, iade_ekrani_gecmis.dart'taki 3 iade-iptal noktası) KANONİK
+  // kuralı şudur: soft-delete edilmiş (is_deleted=1, ör. iptal edilmiş
+  // bir tahsilat/iade) bir hareket bakiyeye HİÇ katkı vermemeli.
+  //
+  // Bu "kanonik" uygulama kodu yollarının HEPSİ, kendi INSERT'lerinden
+  // HEMEN SONRA, AYNI transaction içinde, DOĞRU (is_deleted=0 filtreli)
+  // bir UPDATE ile bakiyeyi kendileri yeniden hesaplıyor — bu yüzden
+  // tetikleyicinin ürettiği YANLIŞ ara değer, o an İÇİN her zaman
+  // hemen üzerine yazılıp gizleniyordu.
+  //
+  // AMA TEK BİR YOL bunu YAPMIYOR: Veritabani.supaKayitlariEkle() —
+  // yani BULUTTAN GELEN cari_hareket satırlarını (başka bir cihazda
+  // oluşturulmuş) bu cihaza EKLERKEN kullanılan GENEL/JENERİK toplu
+  // ekleme yolu. Bu yol, hiçbir tabloya özel takip mantığı içermez;
+  // sadece INSERT eder. Sonuç: bir müşterinin GEÇMİŞTE iptal edilmiş
+  // (is_deleted=1) bir hareketi varsa, o müşteri için BAŞKA bir
+  // cihazdan senkronize olan HERHANGİ bir YENİ cari_hareket (normal bir
+  // satış, tahsilat, ödeme — iptalle hiç ilgisi olmayan bir işlem),
+  // "Hızlı Al"/"Tam Al" sırasında bu tetikleyiciyi ateşleyip müşterinin
+  // bakiyesini o ESKİ, İPTAL EDİLMİŞ tutar kadar YANLIŞ şişiriyordu —
+  // sessizce, kalıcı olarak, sadece "Veri Sağlığı Merkezi > Cari
+  // Mutabakat > Düzelt" ile fark edilip düzeltilebilecek şekilde.
+  //
+  // Düzeltme: her iki olası isimdeki eski, hatalı tetikleyici DROP
+  // edilip, is_deleted=0 filtresi eklenmiş TEK bir doğru tetikleyici
+  // (fresh-install ile AYNI ada sahip: trg_cari_hareket_bakiye) yeniden
+  // oluşturuluyor. Kasıtlı olarak MEVCUT (muhtemelen zaten bozulmuş)
+  // bakiye değerleri burada OTOMATİK toplu düzeltilmiyor — bu
+  // dosyanın/protokolün "hiçbir kontrol kullanıcı onayı olmadan veri
+  // değiştirmez" ilkesiyle tutarlı olarak, kullanıcı bunu Veri Sağlığı
+  // Merkezi'nden kendi onayıyla çalıştırır.
+  static Future<void> _v62denV63e(Database db) async {
+    await _calistir(db, 'DROP TRIGGER IF EXISTS trg_cari_bakiye_ins');
+    await _calistir(db, 'DROP TRIGGER IF EXISTS trg_cari_hareket_bakiye');
+    await _calistir(db, """CREATE TRIGGER trg_cari_hareket_bakiye
+      AFTER INSERT ON cari_hareket BEGIN
+      UPDATE cari SET bakiye = (
+        SELECT COALESCE(SUM(borc - alacak), 0) FROM cari_hareket
+        WHERE cari_id = NEW.cari_id AND is_deleted = 0
+      ) WHERE id = NEW.cari_id; END""");
   }
 }

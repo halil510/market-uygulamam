@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      62; // v62: irsaliyeler.e_irsaliye_* sütunları eklendi (e-İrsaliye GİB gönderimi — erp_roadmap madde 38/39)
+      63; // v63: trg_cari_hareket_bakiye tetikleyicisine is_deleted=0 filtresi eklendi (buluttan gelen cari_hareket ekleri, iptal edilmiş eski hareketleri bakiyeye dahil ediyordu)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

@@ -83,6 +83,14 @@ class DigerSemasi {
       END
     ''');
 
+    // 🔴🔴🔴 KRİTİK VERİ BOZULMASI DÜZELTMESİ (komple uygulama derin
+    // analizinde bulundu — bkz. migrasyon_yonetici.dart v62→v63'teki
+    // aynı düzeltmenin ayrıntılı kök neden notu): bu tetikleyici
+    // ÖNCEDEN is_deleted=0 FİLTRESİ İÇERMİYORDU — soft-delete edilmiş
+    // (iptal edilmiş) bir cari_hareket, buluttan senkronla gelen
+    // TAMAMEN İLGİSİZ, yeni bir cari_hareket eklendiğinde bile bakiye
+    // hesabına dahil edilip müşterinin bakiyesini sessizce yanlış
+    // şişiriyordu.
     await db.execute('''
       CREATE TRIGGER IF NOT EXISTS trg_cari_hareket_bakiye
       AFTER INSERT ON ${DbSabitler.cariHareket}
@@ -90,7 +98,7 @@ class DigerSemasi {
         UPDATE ${DbSabitler.cari}
         SET bakiye = (
           SELECT COALESCE(SUM(borc - alacak), 0) FROM ${DbSabitler.cariHareket}
-          WHERE cari_id = NEW.cari_id
+          WHERE cari_id = NEW.cari_id AND is_deleted = 0
         )
         WHERE id = NEW.cari_id;
       END

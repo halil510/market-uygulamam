@@ -99,7 +99,17 @@ class SatisAltPanel extends StatelessWidget {
 
             // ── Sağ: ödeme butonu ──────────────────────────────────────
             GestureDetector(
-              onTap: bos ? null : onOdeme,
+              // 🔴🔴 KRİTİK DÜZELTME (hızlı satış derin analizi,
+              // 2026-09-14): 'satisIsleniyor' true iken (bir satış tam
+              // işlenirken, kasa/stok/cari hareketleri kaydedilirken) bu
+              // buton SADECE görsel olarak spinner gösteriyordu — 'onTap'
+              // hâlâ aktifti. Kasiyer bu sırada tekrar dokunursa
+              // _odemeYontemiSec() İKİNCİ KEZ tetiklenip AYNI sepet için
+              // İKİNCİ bir satış tamamlanabilirdi (çift stok düşümü, çift
+              // kasa/cari hareketi) — 'bos' bu süre boyunca hâlâ false
+              // kaldığı için (sepet ancak BAŞARI sonrası temizleniyor)
+              // eski kontrol bunu YAKALAMIYORDU.
+              onTap: (bos || sepet.satisIsleniyor) ? null : onOdeme,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 height: 58,

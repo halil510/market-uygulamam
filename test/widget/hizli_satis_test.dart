@@ -55,6 +55,50 @@ void main() {
       expect(durum().bos, isTrue);
       expect(durum().musteri, isNull);
     });
+
+    // 🔴 Regresyon testleri (hızlı satış derin analizi, 2026-09-14):
+    // elle uygulanan bir indirim (fiyatGuncelle), aynı ürün tekrar
+    // eklenince (barkod tekrar okutulunca) veya miktarı elle
+    // değiştirilince ÖNCEDEN sessizce kayboluyordu — fiyat koşulsuz
+    // _fiyatHesapla() ile yeniden hesaplanıyordu.
+    test('Elle indirim uygulanmış kalem, AYNI ürün tekrar eklenince (barkod '
+        'tekrar okutulunca) korunur — standart fiyata SIFIRLANMAZ', () {
+      final urun = UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
+      notifier().ekle(urun);
+      notifier().fiyatGuncelle(0, 80); // kasiyer elle %20 indirim uyguladı
+      expect(durum().kalemler.first.birimFiyat, 80.0);
+
+      notifier().ekle(urun); // aynı ürün tekrar barkodla okutuldu (miktar 2 oldu)
+
+      expect(durum().kalemSayisi, 1);
+      expect(durum().kalemler.first.miktar, 2.0);
+      expect(durum().kalemler.first.birimFiyat, 80.0,
+          reason: 'elle uygulanan indirim miktar artışında kaybolmamalı');
+      expect(durum().genelToplam, closeTo(160.0, 0.01));
+    });
+
+    test('Elle indirim uygulanmış kalemin miktarı elle değiştirilince '
+        'indirim korunur', () {
+      final urun = UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
+      notifier().ekle(urun);
+      notifier().fiyatGuncelle(0, 75);
+      notifier().miktarGuncelle(0, 3); // kasiyer sepet kartından miktarı 3'e çıkardı
+
+      expect(durum().kalemler.first.birimFiyat, 75.0,
+          reason: 'elle uygulanan indirim, elle miktar değişiminde de kaybolmamalı');
+      expect(durum().genelToplam, closeTo(225.0, 0.01));
+    });
+
+    test('HİÇ elle dokunulmamış bir kalemde miktar artışı fiyatı normal '
+        'şekilde yeniden hesaplar (mevcut davranış bozulmadı)', () {
+      final urun = UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
+      notifier().ekle(urun);
+      notifier().ekle(urun); // elle indirim YOK — normal birleşme
+
+      expect(durum().kalemler.first.miktar, 2.0);
+      expect(durum().kalemler.first.birimFiyat, 100.0);
+      expect(durum().genelToplam, closeTo(200.0, 0.01));
+    });
   });
 
   group('UI Widget Testleri', () {

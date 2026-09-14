@@ -598,9 +598,14 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
               ),
               child: Column(children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Text('\${m.toStringAsFixed(3)} \${urun.birimAdi}',
+                  // 🔴 DÜZELTME (hızlı satış derin analizi, 2026-09-14):
+                  // '\$' (kaçışlı dolar) kullanıldığı için bu iki metin
+                  // hiç interpolasyon YAPMIYORDU — ekranda kelimenin tam
+                  // anlamıyla "${m.toStringAsFixed(3)} ${urun.birimAdi}"
+                  // yazıyordu, gerçek miktar/birim fiyat GÖRÜNMÜYORDU.
+                  Text('${m.toStringAsFixed(3)} ${urun.birimAdi}',
                       style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(ctx))),
-                  Text('@\${ParaUtils.formatla(urun.indirimliFiyat)}/\${urun.birimAdi}',
+                  Text('@${ParaUtils.formatla(urun.indirimliFiyat)}/${urun.birimAdi}',
                       style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(ctx))),
                 ]),
                 const SizedBox(height: 6),
@@ -779,6 +784,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
 
   // ── Müşteri Seç ──────────────────────────────────────────────────────────────
   Future<void> _musteriSec() async {
+    if (_islemAktif || _dialogAcik) return; // çift-tıklama koruması
     _islemBasladi();
     try {
       final cariler = await _cariDepo.tumunuGetir();
@@ -815,7 +821,14 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   // ── Ödeme Akışı ──────────────────────────────────────────────────────────────
   Future<void> _odemeYontemiSec() async {
     final sepet  = ref.read(sepetProvider);
-    if (sepet.bos) return;
+    // 🔴🔴 KRİTİK DÜZELTME (hızlı satış derin analizi, 2026-09-14): bu
+    // fonksiyon çift-tıklamaya karşı HİÇ korunmuyordu — barkod okutma
+    // (_barkodOkutIsle) '_islemAktif'i zaten kontrol ediyordu ama "Ödeme
+    // Al" butonu bunu hiç yapmıyordu. Aynı anda iki kez tetiklenirse AYNI
+    // sepet için İKİ AYRI satış tamamlanabilir (çift stok düşümü, çift
+    // kasa/cari hareketi) — bkz. satis_alt_panel.dart'taki eşlik eden
+    // düzeltme (buton görsel olarak da devre dışı bırakılıyor artık).
+    if (sepet.bos || _islemAktif || _dialogAcik) return;
     _islemBasladi();
 
     try {
@@ -1186,7 +1199,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
 
   Future<void> _tedarikciyeAktar() async {
     final sepet = ref.read(sepetProvider);
-    if (sepet.bos) return;
+    if (sepet.bos || _islemAktif || _dialogAcik) return; // çift-tıklama koruması
     _islemBasladi();
     try {
       final list = await CariDeposu().tumunuGetir().then((l) => l.where((x) =>
@@ -1243,7 +1256,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
 
   Future<void> _askiyaAl() async {
     final sepet = ref.read(sepetProvider);
-    if (sepet.bos) return;
+    if (sepet.bos || _islemAktif || _dialogAcik) return; // çift-tıklama koruması
     _islemBasladi();
 
     try {

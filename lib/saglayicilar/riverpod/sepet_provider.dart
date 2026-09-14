@@ -123,6 +123,21 @@ class Sepet extends _$Sepet {
     ekle(urun, miktar: adet, fiyatOverride: fiyatOverride);
   }
 
+  // 🔴🔴 KRİTİK DÜZELTME (hızlı satış derin analizi, 2026-09-14): bir
+  // kalemin fiyatı elle indirimliDüzenle() (_indirimDuzenle ekranda)
+  // ile değiştirildikten SONRA aynı ürün TEKRAR barkodla okutulursa
+  // (miktar artışı) veya sepet kartından miktarı elle düzenlenirse, bu
+  // iki fonksiyon fiyatı KOŞULSUZ _fiyatHesapla() ile YENİDEN
+  // hesaplıyordu — kasiyerin biraz önce uyguladığı manuel indirim
+  // SESSİZCE KAYBOLUYOR, müşteri fark etmeden standart fiyattan
+  // faturalandırılıyordu. Artık: kalemin GEÇERLİ fiyatı, O ANKİ
+  // miktarı için otomatik hesaplanacak fiyattan FARKLIYSA (yani elle
+  // değiştirilmişse) bu fiyat KORUNUYOR — sadece hiç elle dokunulmamış
+  // kalemlerde miktar artışında (ör. bir promosyon eşiği aşıldığında)
+  // otomatik yeniden hesaplama devam ediyor.
+  bool _elleDegistirilmisMi(SepetKalem k) =>
+      (k.birimFiyat - _fiyatHesapla(k.urun, k.miktar)).abs() > 0.001;
+
   void ekle(UrunModel urun, {double? miktar, double? fiyatOverride}) {
     final adet  = miktar ?? 1.0;
     final fiyat = fiyatOverride ?? _fiyatHesapla(urun, adet);
@@ -134,9 +149,13 @@ class Sepet extends _$Sepet {
         ? liste.indexWhere((k) => k.urun.id == urun.id)
         : liste.indexWhere((k) => identical(k.urun, urun));
     if (idx >= 0) {
-      final yeniMiktar = liste[idx].miktar + adet;
-      final yeniFiyat  = _fiyatHesapla(urun, yeniMiktar);
-      final yeniKalem  = liste[idx].copyWith(miktar: yeniMiktar, birimFiyat: yeniFiyat);
+      final mevcut = liste[idx];
+      final yeniMiktar = mevcut.miktar + adet;
+      final yeniFiyat = fiyatOverride ??
+          (_elleDegistirilmisMi(mevcut)
+              ? mevcut.birimFiyat
+              : _fiyatHesapla(urun, yeniMiktar));
+      final yeniKalem  = mevcut.copyWith(miktar: yeniMiktar, birimFiyat: yeniFiyat);
       liste.removeAt(idx);
       liste.insert(0, yeniKalem);
     } else {
@@ -151,8 +170,11 @@ class Sepet extends _$Sepet {
     if (yeniMiktar <= 0) {
       liste.removeAt(i);
     } else {
-      final yeniFiyat = _fiyatHesapla(liste[i].urun, yeniMiktar);
-      liste[i] = liste[i].copyWith(miktar: yeniMiktar, birimFiyat: yeniFiyat);
+      final mevcut = liste[i];
+      final yeniFiyat = _elleDegistirilmisMi(mevcut)
+          ? mevcut.birimFiyat
+          : _fiyatHesapla(mevcut.urun, yeniMiktar);
+      liste[i] = mevcut.copyWith(miktar: yeniMiktar, birimFiyat: yeniFiyat);
     }
     state = state.copyWith(kalemler: liste);
   }

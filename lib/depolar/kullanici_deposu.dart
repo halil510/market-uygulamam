@@ -1,5 +1,6 @@
 // lib/depolar/kullanici_deposu.dart
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
@@ -225,20 +226,54 @@ class KullaniciDeposu {
     }
   }
 
-  /// Yetkileri transaction ile kaydet — önce temizle, sonra ekle
+  /// Yetkileri transaction ile kaydet — önce temizle, sonra ekle.
+  ///
+  /// 🔴🔴 KOMPLE DERİN ANALİZ — mimari borç pilot düzeltmesi: bu metod
+  /// ÖNCEDEN gerçekten var ama HİÇBİR YERDEN ÇAĞRILMIYORDU (dead code) —
+  /// `kullanici_ekle_ekrani.dart` bunun yerine KENDİ private kopyasını
+  /// (`_yetkileriKaydet`) kullanıyordu; UI katmanında `Veritabani().db`'ye
+  /// doğrudan erişen 44 dosyadan biriydi. O kopya, bu depo metodunun
+  /// EKSİK bıraktığı iki şeyi ZATEN doğru yapıyordu: `global_id`/
+  /// `created_at`/`last_updated` sütunlarını dolduruyordu VE her satırı
+  /// `BulutManager().upsert()` ile senkronluyordu (roller_yetki daha önce
+  /// senkron sisteminde HİÇ yoktu — bir yöneticinin verdiği özel yetki
+  /// başka bir terminalde hiç görünmüyordu). Bu depo metodu, ekrandaki
+  /// doğru mantıkla değiştirildi ve ekran artık BUNU çağırıyor —
+  /// SCREEN→REPOSITORY hedef mimarisine uygun, davranış AYNEN korundu.
   Future<void> yetkileriKaydet(
       int kullaniciId, Set<String> yetkiler) async {
     final db = await _d;
+    final now = DateTime.now().toIso8601String();
+    final gidler = <String>[];
     await db.transaction((txn) async {
       await txn.delete('roller_yetki',
           where: 'kullanici_id = ?', whereArgs: [kullaniciId]);
       for (final yetki in yetkiler) {
+        final gid = const Uuid().v4();
+        gidler.add(gid);
         await txn.insert(
           'roller_yetki',
-          {'kullanici_id': kullaniciId, 'yetki_kodu': yetki},
+          {
+            'kullanici_id': kullaniciId,
+            'yetki_kodu': yetki,
+            'created_at': now,
+            'global_id': gid,
+            'last_updated': now,
+          },
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
     });
+    try {
+      for (final gid in gidler) {
+        final satir = await db.query('roller_yetki',
+            where: 'global_id = ?', whereArgs: [gid], limit: 1);
+        if (satir.isNotEmpty) {
+          BulutManager().upsert('roller_yetki', Map<String, dynamic>.from(satir.first));
+        }
+      }
+    } catch (e) {
+      LogServisi().hata('Kullanici.yetkileriKaydet (bulut bildirimi)', hata: e);
+    }
   }
 }

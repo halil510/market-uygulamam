@@ -1,19 +1,14 @@
 // lib/ekranlar/kullanici/kullanici_ekle_ekrani.dart
 // Kullanıcı ekleme + ekran kısıtlama yetki sistemi
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sqflite/sqflite.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/kullanici_deposu.dart';
 import '../../modeller/kullanici_model.dart';
 import '../../cekirdek/utils/sifre_hash.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
-import '../../veri/database/veritabani.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
-import 'package:uuid/uuid.dart';
 
 // Tanımlı ekran/işlem yetkileri
 class YetkiTanimlari {
@@ -75,7 +70,6 @@ class _KullaniciEkleEkraniState extends ConsumerState<KullaniciEkleEkrani>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _depo = KullaniciDeposu();
-  final _db = Veritabani();
   late final TabController _tab;
 
   final _adCtrl = TextEditingController();
@@ -122,57 +116,22 @@ class _KullaniciEkleEkraniState extends ConsumerState<KullaniciEkleEkrani>
     _aktif = k.aktif;
   }
 
+  // 🔴 KOMPLE DERİN ANALİZ — mimari borç pilot düzeltmesi: bu ekran
+  // ÖNCEDEN 'roller_yetki' tablosuna doğrudan `Veritabani().db` ile
+  // (SCREEN→DATABASE, depo katmanı atlanarak) erişiyordu. Mantık AYNEN
+  // korunarak `KullaniciDeposu.yetkileriniGetir()`/`.yetkileriKaydet()`e
+  // taşındı (bkz. o dosyadaki kök neden notu — depodaki eski metod
+  // hiç kullanılmıyordu ve senkron bildirimi eksikti, ekranın DOĞRU
+  // mantığı artık depoda).
   Future<void> _mevcutYetkileriYukle(int kullaniciId) async {
     try {
-      final db = await _db.db;
-      final rows = await db.query('roller_yetki',
-          where: 'kullanici_id = ?', whereArgs: [kullaniciId]);
+      final yetkiler = await _depo.yetkileriniGetir(kullaniciId);
       if (!mounted) return;
-      setState(() => _yetkiler = rows.map((r) => r['yetki_kodu'] as String).toSet());
+      setState(() => _yetkiler = yetkiler);
     } catch (_) {
       if (!mounted) return;
       setState(() => _yetkiler = YetkiTanimlari.rolVarsayilanlari(_rol));
     }
-  }
-
-  Future<void> _yetkileriKaydet(int kullaniciId) async {
-    final db = await _db.db;
-    final now = DateTime.now().toIso8601String();
-    final gidler = <String>[];
-    // Transaction: delete+insert atomik — yarım kayıt olmaz
-    await db.transaction((txn) async {
-      await txn.delete('roller_yetki',
-          where: 'kullanici_id = ?', whereArgs: [kullaniciId]);
-      for (final yetki in _yetkiler) {
-        final gid = const Uuid().v4();
-        gidler.add(gid);
-        await txn.insert(
-          'roller_yetki',
-          {
-            'kullanici_id': kullaniciId,
-            'yetki_kodu': yetki,
-            'created_at': now,
-            'global_id': gid,
-            'last_updated': now,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-      }
-    });
-    // 🔴🔴 Derin analizde bulundu: 'roller_yetki' (kullanıcıya özel
-    // yetki override'ları) senkron sisteminde HİÇ yoktu — bir
-    // yöneticinin bir çalışana verdiği özel yetki, o çalışan başka bir
-    // terminalden giriş yaptığında hiç görünmüyordu. Artık her satır
-    // için BulutManager çağrılıyor.
-    try {
-      for (final gid in gidler) {
-        final satir = await db.query('roller_yetki', where: 'global_id = ?', whereArgs: [gid], limit: 1);
-        if (satir.isNotEmpty) BulutManager().upsert('roller_yetki', Map<String, dynamic>.from(satir.first));
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Yetki bulut bildirimi hatası: $e');
-    }
-    if (kDebugMode) debugPrint('✅ ${_yetkiler.length} yetki kaydedildi: kullanici=$kullaniciId');
   }
 
   Future<void> _kaydet() async {
@@ -245,7 +204,7 @@ class _KullaniciEkleEkraniState extends ConsumerState<KullaniciEkleEkrani>
       }
 
       // Yetkileri kaydet
-      await _yetkileriKaydet(kullaniciId);
+      await _depo.yetkileriKaydet(kullaniciId, _yetkiler);
 
       if (mounted) {
         BildirimServisi.basari(

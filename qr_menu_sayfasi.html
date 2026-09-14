@@ -84,69 +84,14 @@
   .hero .cizgi { width: 46px; height: 3px; background: var(--vurgu-renk); margin: 16px auto 0;
                  border-radius: 2px; position: relative; z-index: 1; }
 
-  /* ── Arama kutusu ── */
-  .arama-kutusu-sarmal { padding: 16px 16px 4px; }
-  .arama-kutusu { display: flex; align-items: center; gap: 10px; background: var(--kart-bg);
-                  border-radius: 16px; padding: 12px 16px; box-shadow: 0 3px 12px rgba(0,0,0,0.07);
-                  border: 1.5px solid transparent; transition: border-color 0.2s ease; }
-  .arama-kutusu:focus-within { border-color: var(--vurgu-renk); }
-  .arama-kutusu .arama-ikon { font-size: 15px; opacity: 0.6; flex-shrink: 0; }
-  .arama-kutusu input { border: none; padding: 0; margin: 0; font-size: 14.5px;
-                         background: transparent; flex: 1; }
-  .arama-kutusu input:focus { outline: none; }
-  .arama-temizle { background: none; border: none; font-size: 15px; color: var(--yazi-acik);
-                    cursor: pointer; padding: 2px 4px; display: none; }
-  .arama-temizle.gorunur { display: block; }
-
-  /* ── Kategori hızlı geçiş çubuğu ──
-     top değeri .ust-bar'ın (üstteki sabit marka çubuğu) yaklaşık
-     yüksekliği kadardır — aksi halde ikisi aynı anda "yapışkan"
-     olduğunda bu çubuk üst bar'ın ARKASINDA kaybolurdu. */
-  .kategori-nav { position: sticky; top: 60px; z-index: 18; display: flex; gap: 8px;
-                   overflow-x: auto; padding: 12px 16px; background: var(--arkaplan);
-                   scrollbar-width: none; }
-  .kategori-nav::-webkit-scrollbar { display: none; }
-  /* Tek kategorili (veya henüz yüklenmemiş) menülerde çubuk hiç
-     kurulmaz — boş bir şerit olarak görünmesin diye alanı da kaplamaz. */
-  .kategori-nav:empty { display: none; padding: 0; }
-  .kategori-nav.golgeli { box-shadow: 0 4px 10px -4px rgba(0,0,0,0.15); }
-  .kategori-cip { flex-shrink: 0; background: var(--kart-bg); color: var(--yazi-koyu);
-                   border: 1px solid #E5E1D6; border-radius: 20px; padding: 8px 16px;
-                   font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
-                   transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease; }
-  .kategori-cip:active { transform: scale(0.95); }
-  .kategori-cip.aktif { background: var(--ana-renk); color: white; border-color: var(--ana-renk); }
-
-  /* ── İskelet (skeleton) yükleme durumu ── */
-  .iskelet-liste { padding: 8px 16px; }
-  .iskelet-satir { display: flex; gap: 12px; align-items: center; background: var(--kart-bg);
-                    margin-bottom: 10px; border-radius: 18px; padding: 14px 16px;
-                    box-shadow: 0 3px 14px rgba(0,0,0,0.05); }
-  .iskelet-kutu { border-radius: 12px; background: linear-gradient(100deg, #EEEAE0 30%, #F7F4EC 50%, #EEEAE0 70%);
-                   background-size: 200% 100%; animation: iskeletParla 1.4s ease-in-out infinite; }
-  .iskelet-resim { width: 92px; height: 92px; flex-shrink: 0; }
-  .iskelet-metin { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-  .iskelet-metin .iskelet-kutu:nth-child(1) { height: 14px; width: 65%; }
-  .iskelet-metin .iskelet-kutu:nth-child(2) { height: 11px; width: 90%; }
-  .iskelet-metin .iskelet-kutu:nth-child(3) { height: 16px; width: 40%; margin-top: 4px; }
-  @keyframes iskeletParla { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-  .iskelet-vitrin { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 16px; }
-  .iskelet-vitrin .iskelet-kutu { aspect-ratio: 1 / 1; border-radius: 20px; }
-
   .grup { padding: 26px 20px 10px; font-family: 'Playfair Display', serif;
           font-size: 17px; font-weight: 700; color: var(--ana-renk);
-          display: flex; align-items: center; gap: 10px; scroll-margin-top: 120px; }
+          display: flex; align-items: center; gap: 10px; }
   .grup::after { content: ''; flex: 1; height: 1px; background: #E5E1D6; }
-
-  .sonuc-yok { text-align: center; padding: 50px 24px; color: var(--yazi-acik); }
-  .sonuc-yok .ikon { font-size: 40px; margin-bottom: 10px; opacity: 0.7; }
-  .sonuc-yok p { font-size: 13.5px; }
 
   .urun { background: var(--kart-bg); margin: 8px 16px; border-radius: 18px; padding: 14px 16px;
           display: flex; justify-content: space-between; align-items: center;
-          box-shadow: 0 3px 14px rgba(0,0,0,0.06); gap: 12px;
-          animation: urunBelir 0.4s ease backwards; }
-  @keyframes urunBelir { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+          box-shadow: 0 3px 14px rgba(0,0,0,0.06); gap: 12px; }
   .urun-resim { width: 92px; height: 92px; border-radius: 16px; object-fit: cover;
                 flex-shrink: 0; background: var(--arkaplan); cursor: zoom-in;
                 box-shadow: 0 3px 10px rgba(22,36,27,0.14);
@@ -246,8 +191,6 @@
                  box-shadow: 0 -4px 20px rgba(0,0,0,0.3); border-radius: 22px 22px 0 0; z-index: 15; }
   .sepet-cubuk.gorunur { display: flex; animation: sepetYukari 0.3s ease; }
   @keyframes sepetYukari { from { transform: translateY(100%); } to { transform: translateY(0); } }
-  .sepet-cubuk.nabiz { animation: sepetNabiz 0.35s ease; }
-  @keyframes sepetNabiz { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
   .sepet-buton { background: var(--vurgu-renk); color: var(--ana-renk-koyu); border: none; border-radius: 12px;
                  padding: 12px 22px; font-weight: 700; font-size: 14px; }
 
@@ -257,13 +200,8 @@
   .modal-icerik { background: var(--kart-bg); width: 100%; border-radius: 26px 26px 0 0;
                   padding: 26px; max-height: 82vh; overflow-y: auto; }
   .modal-icerik h2 { font-family: 'Playfair Display', serif; font-size: 20px; margin-bottom: 14px; color: var(--ana-renk); }
-  .sepet-satir { display: flex; justify-content: space-between; align-items: center; padding: 9px 0;
-                 border-bottom: 1px solid #EFECE3; font-size: 14px; gap: 10px; }
-  .sepet-satir .satir-ad { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-                             white-space: nowrap; }
-  .sepet-satir .satir-kontrol { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .sepet-satir .satir-kontrol .btn-yuvarlak { width: 26px; height: 26px; font-size: 14px; }
-  .sepet-satir .satir-tutar { min-width: 62px; text-align: right; font-weight: 600; flex-shrink: 0; }
+  .sepet-satir { display: flex; justify-content: space-between; padding: 9px 0;
+                 border-bottom: 1px solid #EFECE3; font-size: 14px; }
   input, textarea { width: 100%; padding: 13px; border: 1.5px solid #E5E1D6;
                      border-radius: 12px; font-size: 14px; margin-top: 8px; margin-bottom: 14px;
                      font-family: 'Poppins', sans-serif; }
@@ -316,34 +254,12 @@
       <p id="heroAltYazi">Lezzetin Doğal Hâli</p>
       <div class="cizgi"></div>
     </div>
-    <div class="arama-kutusu-sarmal">
-      <div class="arama-kutusu">
-        <span class="arama-ikon">🔎</span>
-        <input type="text" id="menuArama" placeholder="Menüde ara..." oninput="menuAraGuncelle(this.value)">
-        <button class="arama-temizle" id="aramaTemizleBtn" onclick="menuAramaTemizle()">✕</button>
-      </div>
-    </div>
-    <div class="kategori-nav" id="kategoriNav"></div>
-    <div id="menuAlani">
-      <div class="iskelet-liste">
-        <div class="iskelet-satir"><div class="iskelet-kutu iskelet-resim"></div>
-          <div class="iskelet-metin"><div class="iskelet-kutu"></div><div class="iskelet-kutu"></div><div class="iskelet-kutu"></div></div></div>
-        <div class="iskelet-satir"><div class="iskelet-kutu iskelet-resim"></div>
-          <div class="iskelet-metin"><div class="iskelet-kutu"></div><div class="iskelet-kutu"></div><div class="iskelet-kutu"></div></div></div>
-        <div class="iskelet-satir"><div class="iskelet-kutu iskelet-resim"></div>
-          <div class="iskelet-metin"><div class="iskelet-kutu"></div><div class="iskelet-kutu"></div><div class="iskelet-kutu"></div></div></div>
-      </div>
-    </div>
+    <div id="menuAlani"><div class="yukleniyor">Menü yükleniyor...</div></div>
   </div>
 
   <div class="sayfa" id="sayfa-urunler">
     <div class="hero kucuk"><h1>Ürünlerimiz</h1><div class="cizgi"></div></div>
-    <div id="vitrinAlani">
-      <div class="iskelet-vitrin">
-        <div class="iskelet-kutu"></div><div class="iskelet-kutu"></div>
-        <div class="iskelet-kutu"></div><div class="iskelet-kutu"></div>
-      </div>
-    </div>
+    <div id="vitrinAlani"><div class="yukleniyor">Ürünler yükleniyor...</div></div>
   </div>
 
   <div class="sayfa" id="sayfa-hakkimizda">
@@ -616,24 +532,6 @@ const params = new URLSearchParams(window.location.search);
 const MASA_ID = parseInt(params.get('masa') || '0', 10);
 let urunler = [];
 let sepet = {};
-let menuArama = '';
-let kategoriNavKuruldu = false;
-
-function escapeHtml(s) {
-  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-// Kategori adını, DOM id'sinde güvenle kullanılabilecek bir kalıba çevirir
-// (Türkçe karakterler, boşluk ve özel karakterler temizlenir).
-function kategoriSlug(grupAdi) {
-  return 'grup-' + grupAdi
-    .toString()
-    .toLowerCase()
-    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '') || 'diger';
-}
 
 async function yukle() {
   try {
@@ -654,7 +552,6 @@ async function yukle() {
       kdv: parseFloat(u.kdv_oran) || 18, grup: u.ana_grup || 'Diğer',
       aciklama: u.alan1 || '', resim: u.resim_url || ''
     }));
-    kategoriNavKur();
     render();
   } catch (e) {
     document.getElementById('menuAlani').innerHTML =
@@ -662,67 +559,15 @@ async function yukle() {
   }
 }
 
-// Kategori hızlı-geçiş çubuğunu, ürünlerdeki İLK GÖRÜLME sırasına göre
-// TEK SEFER kurar — arama sırasında filtrelenen liste bu çubuğu etkilemez,
-// kullanıcı her zaman tüm kategoriler arasında gezinebilir.
-function kategoriNavKur() {
-  if (kategoriNavKuruldu || urunler.length === 0) return;
-  kategoriNavKuruldu = true;
-  const gorulen = [];
-  urunler.forEach(u => { if (!gorulen.includes(u.grup)) gorulen.push(u.grup); });
-  if (gorulen.length < 2) return; // tek kategori varsa çubuk göstermeye gerek yok
-  document.getElementById('kategoriNav').innerHTML = gorulen.map(g =>
-    '<button class="kategori-cip" id="cip-' + kategoriSlug(g) + '" onclick="kategoriyeGit(\'' + kategoriSlug(g) + '\')">' + g + '</button>'
-  ).join('');
-}
-
-function kategoriyeGit(slug) {
-  const hedef = document.getElementById(slug);
-  if (!hedef) return;
-  hedef.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  document.querySelectorAll('.kategori-cip').forEach(c => c.classList.remove('aktif'));
-  const cip = document.getElementById('cip-' + slug);
-  if (cip) cip.classList.add('aktif');
-}
-
-function menuAraGuncelle(deger) {
-  menuArama = deger.trim().toLowerCase();
-  document.getElementById('aramaTemizleBtn').classList.toggle('gorunur', menuArama.length > 0);
-  render();
-}
-function menuAramaTemizle() {
-  document.getElementById('menuArama').value = '';
-  menuAraGuncelle('');
-}
-
 function render() {
-  const filtrelenmis = menuArama
-    ? urunler.filter(u =>
-        u.ad.toLowerCase().includes(menuArama) ||
-        (u.aciklama && u.aciklama.toLowerCase().includes(menuArama)))
-    : urunler;
-
-  if (filtrelenmis.length === 0) {
-    // Arama kutusundan gelen metin doğrudan sayfaya yazılıyor — kendi
-    // girdisini kendi tarayıcısında görmekten öte bir etkisi olmasa da
-    // (başka kullanıcıyı etkilemez), yine de temkinli olmak için kaçışlanıyor.
-    document.getElementById('menuAlani').innerHTML = menuArama
-      ? '<div class="sonuc-yok"><div class="ikon">🔍</div><p>"' + escapeHtml(menuArama) + '" ile eşleşen ürün bulunamadı.</p></div>'
-      : '<div class="sonuc-yok"><div class="ikon">🍽️</div><p>Menüde henüz ürün yok.</p></div>';
-    sepetCubuguGuncelle();
-    return;
-  }
-
   const gruplar = {};
-  filtrelenmis.forEach(u => { (gruplar[u.grup] = gruplar[u.grup] || []).push(u); });
+  urunler.forEach(u => { (gruplar[u.grup] = gruplar[u.grup] || []).push(u); });
   let html = '';
-  let sira = 0;
   for (const grup in gruplar) {
-    html += '<div class="grup" id="' + kategoriSlug(grup) + '">' + grup + '</div>';
+    html += '<div class="grup">' + grup + '</div>';
     gruplar[grup].forEach(u => {
       const adet = sepet[u.id] ? sepet[u.id].adet : 0;
-      const gecikme = (sira++ % 10) * 0.04;
-      html += '<div class="urun" style="animation-delay:' + gecikme + 's">' +
+      html += '<div class="urun">' +
         (u.resim ? '<img class="urun-resim" src="' + u.resim + '" alt="" onclick="resmiBuyut(\'' + u.resim + '\')">' : '') +
         '<div class="urun-bilgi">' +
         '<div class="urun-ad">' + u.ad + '</div>' +
@@ -745,11 +590,6 @@ function degistir(urunId, delta) {
   sepet[urunId].adet = Math.max(0, sepet[urunId].adet + delta);
   if (sepet[urunId].adet === 0) delete sepet[urunId];
   render();
-  // Sepet modalı zaten açıksa (kullanıcı sepetten miktar değiştiriyorsa),
-  // modalı kapatıp yeniden açmak yerine içeriğini olduğu yerde tazele.
-  if (document.getElementById('modal').classList.contains('acik')) {
-    sepetModalIcerigiOlustur();
-  }
 }
 
 function sepetCubuguGuncelle() {
@@ -757,42 +597,20 @@ function sepetCubuguGuncelle() {
   const toplamAdet = adetler.reduce((s, k) => s + k.adet, 0);
   const toplamTutar = adetler.reduce((s, k) => s + k.adet * k.urun.fiyat, 0);
   const cubuk = document.getElementById('sepetCubuk');
-  const oncekiGorunur = cubuk.classList.contains('gorunur');
   if (toplamAdet > 0) {
     cubuk.classList.add('gorunur');
     document.getElementById('sepetOzet').textContent = toplamAdet + ' ürün · ' + toplamTutar.toFixed(2) + ' ₺';
-    // Sepet zaten görünürken miktar değiştiyse ufak bir "nabız" animasyonuyla
-    // fark edilir kılınıyor (ilk beliriş anında tekrar oynatılmaz).
-    if (oncekiGorunur) {
-      cubuk.classList.remove('nabiz');
-      void cubuk.offsetWidth; // reflow — animasyonu yeniden tetiklemek için
-      cubuk.classList.add('nabiz');
-    }
   } else {
     cubuk.classList.remove('gorunur');
   }
 }
 
-function sepetModalIcerigiOlustur() {
+function sepetiAc() {
   const adetler = Object.values(sepet);
   const toplam = adetler.reduce((s, k) => s + k.adet * k.urun.fiyat, 0);
-  if (adetler.length === 0) {
-    kapat();
-    return;
-  }
-  // Kullanıcı sepetteki bir miktarı değiştirirken (modal AÇIKKEN),
-  // az önce yazdığı ad/not kaybolmasın diye mevcut değerler alınıp
-  // yeniden oluşturulan modalda geri yazılıyor.
-  const oncekiAd  = document.getElementById('adSoyad')?.value ?? '';
-  const oncekiNot = document.getElementById('not')?.value ?? '';
   let satirlar = adetler.map(k =>
-    '<div class="sepet-satir"><span class="satir-ad">' + k.urun.ad + '</span>' +
-    '<div class="satir-kontrol">' +
-    '<button class="btn-yuvarlak" onclick="degistir(' + k.urun.id + ',-1)">−</button>' +
-    '<span class="miktar-sayi">' + k.adet + '</span>' +
-    '<button class="btn-yuvarlak" onclick="degistir(' + k.urun.id + ',1)">+</button>' +
-    '</div>' +
-    '<span class="satir-tutar">' + (k.adet * k.urun.fiyat).toFixed(2) + ' ₺</span></div>').join('');
+    '<div class="sepet-satir"><span>' + k.adet + 'x ' + k.urun.ad + '</span><span>' +
+    (k.adet * k.urun.fiyat).toFixed(2) + ' ₺</span></div>').join('');
   document.getElementById('modalIcerik').innerHTML =
     '<h2>Siparişiniz</h2>' + satirlar +
     '<div class="sepet-satir" style="font-weight:700;border-bottom:none;padding-top:10px;">' +
@@ -801,12 +619,6 @@ function sepetModalIcerigiOlustur() {
     '<input id="not" placeholder="Sipariş notu (opsiyonel)">' +
     '<button class="gonder-btn" id="gonderBtn" onclick="gonder()">Siparişi Gönder</button>' +
     '<button class="kapat-btn" onclick="kapat()">Vazgeç</button>';
-  if (oncekiAd) document.getElementById('adSoyad').value = oncekiAd;
-  if (oncekiNot) document.getElementById('not').value = oncekiNot;
-}
-
-function sepetiAc() {
-  sepetModalIcerigiOlustur();
   document.getElementById('modal').classList.add('acik');
 }
 
@@ -857,13 +669,6 @@ async function gonder() {
     if (btn) { btn.disabled = false; btn.textContent = 'Siparişi Gönder'; }
   }
 }
-
-// Kategori çubuğu yapışkan hâle geçtiğinde (sayfa kaydırıldığında) hafif
-// bir gölge ekleyip arkasındaki içerikten görsel olarak ayrışmasını sağlar.
-window.addEventListener('scroll', () => {
-  const nav = document.getElementById('kategoriNav');
-  if (nav) nav.classList.toggle('golgeli', window.scrollY > 70);
-}, { passive: true });
 
 // ÖNCEDEN ürünler SADECE geçerli masa varsa yükleniyordu — bu, QR
 // olmadan (normal internet ziyaretçisi olarak) siteye girenlerin

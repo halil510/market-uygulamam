@@ -59,4 +59,53 @@ void main() {
       expect(farklar, contains('aciklama'));
     });
   });
+
+  // 🔴 Regresyon testleri (kullanıcı bulgusu — "sync çakışma var
+  // diyor"): ÖNCEDEN her fark, bu cihaz o kaydı hiç düzenlememiş olsa
+  // bile "çakışma" sayılıyordu — başka bir cihazın normal, tek yönlü
+  // güncellemesinin bu cihaza ilk kez ulaşması da aynı şekilde
+  // raporlanıyordu. gercekCakismaMi() artık bunu ayırt ediyor.
+  group('SyncCakismaTespit.gercekCakismaMi', () {
+    test('yerel kayıt en son başarılı gönderimden SONRA değişmişse '
+        'GERÇEK çakışma sayılır', () {
+      final sonrasi = SyncCakismaTespit.gercekCakismaMi(
+        yerelSonGuncelleme: DateTime.parse('2026-01-01T10:05:00'),
+        sonBasariliGonderim: DateTime.parse('2026-01-01T10:00:00'),
+      );
+      expect(sonrasi, isTrue);
+    });
+
+    test('yerel kayıt en son başarılı gönderimden ÖNCE/EŞİT değişmişse '
+        '— bu cihazda kaybolacak bir şey yok, çakışma SAYILMAZ', () {
+      final oncesi = SyncCakismaTespit.gercekCakismaMi(
+        yerelSonGuncelleme: DateTime.parse('2026-01-01T09:55:00'),
+        sonBasariliGonderim: DateTime.parse('2026-01-01T10:00:00'),
+      );
+      expect(oncesi, isFalse);
+
+      final esiti = SyncCakismaTespit.gercekCakismaMi(
+        yerelSonGuncelleme: DateTime.parse('2026-01-01T10:00:00'),
+        sonBasariliGonderim: DateTime.parse('2026-01-01T10:00:00'),
+      );
+      expect(esiti, isFalse);
+    });
+
+    test('bu tablo bu cihazdan hiç gönderilmediyse (filigran yok) '
+        'emin olunamaz — güvenli tarafta kalınır, GERÇEK çakışma sayılır', () {
+      final sonuc = SyncCakismaTespit.gercekCakismaMi(
+        yerelSonGuncelleme: DateTime.parse('2026-01-01T10:05:00'),
+        sonBasariliGonderim: null,
+      );
+      expect(sonuc, isTrue);
+    });
+
+    test('yerel last_updated ayrıştırılamıyorsa (null) emin olunamaz — '
+        'güvenli tarafta kalınır', () {
+      final sonuc = SyncCakismaTespit.gercekCakismaMi(
+        yerelSonGuncelleme: null,
+        sonBasariliGonderim: DateTime.parse('2026-01-01T10:00:00'),
+      );
+      expect(sonuc, isTrue);
+    });
+  });
 }

@@ -33,4 +33,29 @@ class SyncCakismaTespit {
     if (a is num && b is num) return a.toDouble() == b.toDouble();
     return (a?.toString() ?? '') == (b?.toString() ?? '');
   }
+
+  /// farklariBul() ile bulunan bir "fark"ın GERÇEK bir çakışma mı,
+  /// yoksa bu cihazın hiç dokunmadığı, başka bir cihazın DAHA ÖNCE
+  /// yaptığı normal (tek yönlü) bir senkron güncellemesinin bu cihaza
+  /// İLK KEZ ulaşması mı olduğunu ayırt eder.
+  ///
+  /// ÖNCEDEN bu ayrım hiç yapılmıyordu — yerelde duran ESKİ bir sürüm
+  /// ile buluttan gelen YENİ sürüm arasındaki her fark, kullanıcıya
+  /// "iki cihaz aynı kaydı bağımsız değiştirdi" gibi gösteriliyordu.
+  /// Oysa bu cihaz o kaydı hiç düzenlememiş olabilir — sadece henüz bu
+  /// güncellemeyi görmemişti. Gerçek bir çakışma için, yerel kaydın
+  /// bu cihazda EN SON BAŞARIYLA BULUTA GÖNDERİLDİĞİ andan SONRA yine
+  /// bu cihazda değişmiş olması gerekir (yani hâlâ buluta gitmemiş,
+  /// kaybolma riski taşıyan bir yerel değişiklik olması gerekir).
+  ///
+  /// [sonBasariliGonderim] bilinmiyorsa (bu tablo bu cihazdan hiç
+  /// gönderilmediyse) emin olunamaz — güvenli/muhafazakâr tarafta
+  /// kalınır ve true (gerçek çakışma sayılır) döner.
+  static bool gercekCakismaMi({
+    required DateTime? yerelSonGuncelleme,
+    required DateTime? sonBasariliGonderim,
+  }) {
+    if (sonBasariliGonderim == null || yerelSonGuncelleme == null) return true;
+    return yerelSonGuncelleme.isAfter(sonBasariliGonderim);
+  }
 }

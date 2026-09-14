@@ -427,6 +427,18 @@ class Veritabani {
     }
   }
 
+  /// SupabaseSyncServisi._filigranAnahtari(tablo, 'gonder') İLE AYNI
+  /// anahtar biçimi — bu cihazın o tabloyu buluta EN SON BAŞARIYLA
+  /// gönderdiği (hatasız tamamlanan) zaman. Kasıtlı olarak o dosyayı
+  /// import ETMİYORUZ (döngüsel bağımlılık: o dosya zaten bu dosyayı
+  /// import ediyor) — sadece aynı anahtar sözleşmesini paylaşıyoruz.
+  Future<DateTime?> _sonGonderFiligrani(String tablo) async {
+    final prefs = await SharedPreferences.getInstance();
+    final s = prefs.getString('mp_sync_gonder_$tablo') ??
+        prefs.getString('mp_sync_$tablo'); // eski tek-anahtar sürümü
+    return s != null ? DateTime.tryParse(s) : null;
+  }
+
   /// Bir kaydın gelen (buluttan) sürümüyle üzerine yazılmadan HEMEN önce
   /// çağrılır. Yerel ve gelen satır arasında metadata dışı gerçek bir alan
   /// farkı varsa 'sync_cakismalar' tablosuna kalıcı bir kayıt düşer —
@@ -442,6 +454,31 @@ class Veritabani {
     try {
       final farklar = SyncCakismaTespit.farklariBul(yerelSatir, gelenSatir);
       if (farklar.isEmpty) return; // gerçek bir fark yok, çakışma sayılmaz
+
+      // 🔴🔴 KÖK NEDEN DÜZELTMESİ (kullanıcı bulgusu — "sync çakışma var
+      // diyor"): ÖNCEDEN buraya, yerel satır ile gelen satır sadece
+      // FARKLI diye düşülüyordu. Ama bu fark, BU cihazın yaptığı bir
+      // değişiklikle hiç ilgisiz olabilir — sadece BAŞKA bir cihazın
+      // DAHA ÖNCE yaptığı, tamamen normal bir güncellemenin bu cihaza
+      // İLK KEZ ulaşması da (yerelde eski sürüm durduğu için) birebir
+      // aynı şekilde "fark" üretiyordu. Sonuç: gerçekte kimse çakışmadı
+      // — sadece normal, tek yönlü senkron yayılması oldu — ama bu her
+      // seferinde "Sync Çakışmaları" ekranına gerçek bir çakışmaymış
+      // gibi düşüp kullanıcıyı gereksiz yere karar vermeye zorluyordu.
+      // Artık: bu cihazın o tabloyu EN SON BAŞARIYLA gönderdiği andan
+      // BERİ yerel kayıt hiç değişmediyse (yani yerelde "kaybolacak",
+      // henüz buluta gitmemiş bir değişiklik YOKSA) bu bir çakışma
+      // sayılmıyor — sadece sessizce uygulanıyor. Emin olunamayan
+      // durumlarda (bu tablo bu cihazdan hiç gönderilmediyse)
+      // ESKİ (güvenli/muhafazakâr) davranışa dönülüyor: yine kaydedilir.
+      final gonderFiligrani = await _sonGonderFiligrani(tablo);
+      final yerelZaman =
+          DateTime.tryParse(yerelSatir['last_updated']?.toString() ?? '');
+      if (!SyncCakismaTespit.gercekCakismaMi(
+          yerelSonGuncelleme: yerelZaman,
+          sonBasariliGonderim: gonderFiligrani)) {
+        return; // yerel sürüm zaten buluta gönderilmişti — kayıp riski yok
+      }
 
       final now = DateTime.now().toIso8601String();
       await database.insert(DbSabitler.syncCakismalar, {

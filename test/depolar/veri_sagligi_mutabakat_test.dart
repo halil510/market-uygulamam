@@ -32,13 +32,17 @@ Future<int> _cariBakiyeMutabakatYap(Database db) async {
       FROM cari_hareket WHERE cari_id = c.id AND is_deleted = 0
     )) > 0.01
   ''');
+  final now = DateTime.now().toIso8601String();
   for (final r in uyumsuzlar) {
+    // last_updated bump'ı da CariDeposu.bakiyeYenidenHesapla() ile AYNI
+    // (bkz. o fonksiyondaki kök neden notu) — bu olmadan delta senkron
+    // ("Hızlı Gönder") düzeltmeyi asla yakalayamaz.
     await db.rawUpdate('''
       UPDATE cari SET bakiye = (
         SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
         FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-      ) WHERE id = ?
-    ''', [r['id'], r['id']]);
+      ), last_updated = ? WHERE id = ?
+    ''', [r['id'], now, r['id']]);
   }
   return uyumsuzlar.length;
 }
@@ -79,9 +83,11 @@ const _uyumsuzHesaplarSql = '''
 
 Future<int> _bankaBakiyeMutabakatYap(Database db) async {
   final uyumsuzlar = await db.rawQuery(_uyumsuzHesaplarSql);
+  final now = DateTime.now().toIso8601String();
   for (final r in uyumsuzlar) {
     final dogru = (r['dogru_bakiye'] as num?)?.toDouble() ?? 0;
-    await db.update('banka_hesaplar', {'bakiye': dogru}, where: 'id = ?', whereArgs: [r['id']]);
+    await db.update('banka_hesaplar', {'bakiye': dogru, 'last_updated': now},
+        where: 'id = ?', whereArgs: [r['id']]);
   }
   return uyumsuzlar.length;
 }
@@ -115,6 +121,27 @@ void main() {
       final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
       expect((cari['bakiye'] as num).toDouble(), equals(300.0));
       expect(await _cariBakiyeUyumsuzlukSayisi(db), equals(0));
+    });
+
+    // 🔴 Regresyon testi (kullanıcı isteği — "veri sağlığı merkezine
+    // düzgün bak"): ÖNCEDEN CariDeposu.bakiyeYenidenHesapla() (bu
+    // fonksiyonun dayandığı GERÇEK kod) last_updated'ı hiç bümlemiyordu
+    // — düzeltilen bakiye normal "Hızlı Gönder" (delta) senkronuyla
+    // ASLA buluta/diğer cihazlara gitmiyordu.
+    test('düzeltme sonrası last_updated bümlenir — delta senkron bunu '
+        'yakalayabilsin diye', () async {
+      final cariId = await TestVeritabani.ornekCariEkle(db);
+      await db.update('cari', {'last_updated': '2020-01-01T00:00:00'},
+          where: 'id = ?', whereArgs: [cariId]);
+      await db.insert('cari_hareket', {'cari_id': cariId, 'borc': 500, 'alacak': 0, 'is_deleted': 0, 'fis_tipi': 'Test', 'tarih': DateTime.now().toIso8601String()});
+      await db.update('cari', {'bakiye': 999, 'last_updated': '2020-01-01T00:00:00'}, where: 'id = ?', whereArgs: [cariId]);
+
+      await _cariBakiyeMutabakatYap(db);
+
+      final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
+      expect(cari['last_updated'], isNot(equals('2020-01-01T00:00:00')),
+          reason: 'düzeltme sonrası last_updated GÜNCEL olmalı, aksi halde '
+              'delta senkron bu düzeltmeyi hiç görmez');
     });
   });
 
@@ -193,6 +220,24 @@ void main() {
 
       final hesap = (await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [hesapId])).first;
       expect((hesap['bakiye'] as num).toDouble(), equals(70.0));
+    });
+
+    // 🔴 Regresyon testi (bkz. Cari bölümündeki AYNI not) — banka
+    // mutabakatı zaten last_updated bümlüyordu, ama bu davranışın
+    // korunduğunu doğrulayan açık bir test yoktu.
+    test('düzeltme sonrası last_updated bümlenir', () async {
+      final hesapId = await hesapEkle(999);
+      await db.update('banka_hesaplar', {'last_updated': '2020-01-01T00:00:00'},
+          where: 'id = ?', whereArgs: [hesapId]);
+      await db.insert('banka_hareketler', {
+        'banka_hesap_id': hesapId, 'islem_tipi': 'Gelen', 'tutar': 100,
+        'onceki_bakiye': 0, 'sonraki_bakiye': 100, 'tarih': '2026-01-01T10:00:00',
+      });
+
+      await _bankaBakiyeMutabakatYap(db);
+
+      final hesap = (await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [hesapId])).first;
+      expect(hesap['last_updated'], isNot(equals('2020-01-01T00:00:00')));
     });
   });
 }

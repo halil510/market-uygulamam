@@ -343,12 +343,26 @@ class CariDeposu {
   Future<void> bakiyeYenidenHesapla(int cariId) async {
     try {
       final db = await _d;
+      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı isteği — "veri sağlığı merkezine
+      // düzgün bak"): StokDeposu.stokMutabakatYap()'ta AYNI hata sınıfı
+      // daha önce bulunup düzeltilmişti ama buraya (Cari Mutabakat)
+      // hiç uygulanmamıştı — last_updated hiç bümlenmiyor, BulutManager
+      // hiç çağrılmıyordu. Sonuç: Veri Sağlığı Merkezi'nden "Cari
+      // Mutabakat" düzeltmesi çalıştırıldığında, düzeltilen bakiye
+      // SADECE bu cihazda kalıyordu — normal "Hızlı Gönder" (delta,
+      // last_updated'a bakar) bunu ASLA yakalamıyor, diğer cihazlar/
+      // bulut hâlâ eski (hatalı) bakiyeyi görmeye devam ediyordu.
+      final now = DateTime.now().toIso8601String();
       await db.rawUpdate('''
         UPDATE cari SET bakiye = (
           SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
           FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-        ) WHERE id = ?
-      ''', [cariId, cariId]);
+        ), last_updated = ? WHERE id = ?
+      ''', [cariId, now, cariId]);
+      final satir = await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
+      if (satir.isNotEmpty) {
+        BulutManager().upsert('cari', Map<String, dynamic>.from(satir.first));
+      }
     } catch (e, st) {
       LogServisi().hata('Cari.bakiyeYenidenHesapla', hata: e, yigin: st);
       rethrow;

@@ -126,6 +126,16 @@ class BankaHesapDeposu {
         await db.update('banka_hesaplar',
             {'bakiye': dogru, 'kullanilabilir_bakiye': dogru, 'last_updated': now},
             where: 'id = ?', whereArgs: [r['id']]);
+        // 🔴 DÜZELTME (kullanıcı isteği — "veri sağlığı merkezine düzgün
+        // bak"): last_updated bümleniyordu (delta senkronla eninde
+        // sonunda giderdi) ama Kasa/Stok mutabakatındaki gibi ANINDA
+        // BulutManager'a bildirilmiyordu — diğer cihazlar bir sonraki
+        // manuel/zamanlı senkrona kadar düzeltmeyi görmüyordu.
+        final satir = await db.query('banka_hesaplar',
+            where: 'id = ?', whereArgs: [r['id']], limit: 1);
+        if (satir.isNotEmpty) {
+          BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(satir.first));
+        }
       }
       return uyumsuzlar.length;
     } catch (e, st) {

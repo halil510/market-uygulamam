@@ -2976,3 +2976,61 @@ SELECT
      JOIN beklenen b ON b.tablo = c.table_name
     WHERE c.table_schema='public' AND c.column_default IS NOT NULL
       AND c.column_name <> 'id')                                     AS default_tanim;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- QR MENÜ / HERKESE AÇIK WEB SAYFASI TABLOLARI (qr_menu_sayfasi.html)
+-- ═══════════════════════════════════════════════════════════════════════
+-- [YENİ — 2026-09-14] Kullanıcı bulgusu: "html'den sipariş ver diyorum
+-- vermiyor". Bu iki tablo (qr_siparisler, site_icerik) uygulamanın ana
+-- senkron sistemine (yukarıdaki tüm tablolar) HİÇ dahil DEĞİL — bunlar
+-- lokal SQLite'a hiç yansımaz, SADECE Supabase'de yaşar ve doğrudan
+-- HTTP ile okunur/yazılır. ÖNCEDEN bu iki tablo bu referans dosyasında
+-- HİÇ dokümante edilmemişti — bu yüzden "gerçekten doğru şemada mı,
+-- RLS izinleri doğru mu" hiç doğrulanamıyordu. Aşağıdaki SQL'i Supabase
+-- SQL Editor'de ÇALIŞTIRIP hem tabloların var olduğunu/doğru sütunlara
+-- sahip olduğunu GARANTİ altına alın hem de (en olası "sipariş
+-- vermiyor" nedeni) anon anahtarla INSERT izni verin.
+--
+-- ÖNEMLİ GÜVENLİK NOTU: qr_menu_sayfasi.html'e gömülü anahtar
+-- (SUPABASE_ANON_KEY) HERKESE AÇIKTIR — sayfa kaynağını gören HERKES
+-- görebilir. Bu yüzden bu iki tabloda RLS AÇIK tutulup SADECE gerekli
+-- (aşağıdaki) dar izinler verilmeli; ASLA "tüm izinler" gibi geniş bir
+-- policy eklenmemeli.
+
+CREATE TABLE IF NOT EXISTS qr_siparisler (
+  id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  masa_id      BIGINT NOT NULL,
+  kalemler     JSONB NOT NULL,
+  musteri_adi  TEXT,
+  musteri_tel  TEXT,
+  not_         TEXT,
+  islendi      BOOLEAN NOT NULL DEFAULT false,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE qr_siparisler ENABLE ROW LEVEL SECURITY;
+-- Müşteri (kimliksiz/anon) sipariş EKLEYEBİLMELİ — bu policy olmadan
+-- (veya RLS açıkken hiç policy yoksa) HTML'den gelen POST /qr_siparisler
+-- isteği 401/403 ile SESSİZCE reddedilir, tam olarak "sipariş
+-- vermiyor" şikayetinin en olası nedeni budur.
+DROP POLICY IF EXISTS qr_siparis_anon_ekleyebilir ON qr_siparisler;
+CREATE POLICY qr_siparis_anon_ekleyebilir ON qr_siparisler
+  FOR INSERT TO anon WITH CHECK (true);
+-- Uygulamanın kendi (sb_secret_ / service_role) anahtarı RLS'i zaten
+-- atlar — okuma/işaretleme (QrSiparisCekiciServisi) için ayrı bir
+-- policy GEREKMEZ. Müşterinin BAŞKA siparişleri okuyabilmesi/
+-- değiştirebilmesi İSTENMEDİĞİ için SELECT/UPDATE/DELETE için anon
+-- policy'si BİLİNÇLİ OLARAK eklenmedi.
+
+CREATE TABLE IF NOT EXISTS site_icerik (
+  id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  anahtar      TEXT NOT NULL UNIQUE,
+  deger        TEXT,
+  last_updated TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE site_icerik ENABLE ROW LEVEL SECURITY;
+-- Müşteri sadece OKUYABİLMELİ (işyeri fotoğrafları, hakkımızda metni
+-- vb.) — yazma her zaman uygulamanın kendi (secret) anahtarıyla,
+-- Ayarlar > Site İçeriği ekranından yapılır.
+DROP POLICY IF EXISTS site_icerik_anon_okuyabilir ON site_icerik;
+CREATE POLICY site_icerik_anon_okuyabilir ON site_icerik
+  FOR SELECT TO anon USING (true);

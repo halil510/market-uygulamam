@@ -661,11 +661,30 @@ async function gonder() {
       sepet = {}; render();
       setTimeout(kapat, 2500);
     } else {
-      bildirimGoster('Bir hata oluştu, lütfen personelden yardım isteyin.', true);
+      // 🔴 KÖK NEDEN TEŞHİSİ (kullanıcı bulgusu — "sipariş ver diyorum
+      // vermiyor"): ÖNCEDEN burada Supabase'in GERÇEK hata mesajı hiç
+      // okunmuyor, sadece genel "bir hata oluştu" gösteriliyordu. Bu,
+      // asıl nedeni (en olası: qr_siparisler tablosunda anon/publishable
+      // anahtarla INSERT yapmaya izin veren bir RLS policy'sinin
+      // olmaması — 401/403; ya da tablo yoksa/sütun uyuşmazsa 400/404)
+      // tamamen görünmez kılıyordu. Artık HTTP kodu ekranda gösteriliyor
+      // ve tam gövde tarayıcı konsoluna yazılıyor — işletme sahibi
+      // "F12 > Console" ile (veya bu ekran görüntüsünü bana göndererek)
+      // asıl nedeni görebilir.
+      let detay = '';
+      try { detay = await r.text(); } catch (_) {}
+      console.error('QR sipariş gönderilemedi — HTTP ' + r.status + ':', detay);
+      const ipucu = r.status === 401 || r.status === 403
+        ? ' (yetki hatası — Supabase\'de qr_siparisler tablosunun RLS izinlerini kontrol edin)'
+        : r.status === 404
+          ? ' (qr_siparisler tablosu bulunamadı)'
+          : '';
+      bildirimGoster('Sipariş gönderilemedi (kod: ' + r.status + ')' + ipucu + '. Lütfen personelden yardım isteyin.', true);
       if (btn) { btn.disabled = false; btn.textContent = 'Siparişi Gönder'; }
     }
   } catch (e) {
-    bildirimGoster('Bağlantı hatası, lütfen personelden yardım isteyin.', true);
+    console.error('QR sipariş gönderme bağlantı hatası:', e);
+    bildirimGoster('Bağlantı hatası: ' + e.message + '. Lütfen personelden yardım isteyin.', true);
     if (btn) { btn.disabled = false; btn.textContent = 'Siparişi Gönder'; }
   }
 }

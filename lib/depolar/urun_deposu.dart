@@ -629,13 +629,25 @@ class UrunDeposu {
 
   Future<Map<String, dynamic>> istatistikler() async {
     final db = await _d;
+    // 🔴🔴 DÜZELTME (komple derin analizde bulundu): 'kritik' ve
+    // 'stoksuz' ÖNCEDEN 'aktif = 1' filtresi içermiyordu (sadece 'aktif'
+    // sayacı içeriyordu) VE iki küme ÖRTÜŞÜYORDU (stok=0 + minimum_stok>0
+    // olan bir ürün ikisine de sayılıyordu). Bu, çağıranların kurduğu
+    // 'saglikli = aktif - kritik - stoksuz' formülünü (bkz.
+    // stok_rapor_ekrani.dart) bozuyordu — pasif ürünler ve örtüşen
+    // kayıtlar yüzünden "Sağlıklı" sayısı olması gerekenden düşük
+    // görünüyordu. Artık üçü de 'aktif=1' bazlı VE birbirini dışlıyor:
+    // stoksuz (stok<=0) ile kritik (0'dan büyük ama minimum altında)
+    // ayrık kümeler, toplamları her zaman 'aktif' sayısına eşit.
     final res = await db.rawQuery('''
       SELECT
         COUNT(*)                                                           AS toplam,
         COUNT(CASE WHEN aktif = 1 AND is_deleted = 0 THEN 1 END)          AS aktif,
-        COUNT(CASE WHEN stok <= minimum_stok AND minimum_stok > 0
-                        AND is_deleted = 0 THEN 1 END)                    AS kritik,
-        COUNT(CASE WHEN stok <= 0 AND is_deleted = 0 THEN 1 END)          AS stoksuz,
+        COUNT(CASE WHEN aktif = 1 AND is_deleted = 0
+                        AND stok > 0 AND stok <= minimum_stok
+                        AND minimum_stok > 0 THEN 1 END)                  AS kritik,
+        COUNT(CASE WHEN aktif = 1 AND is_deleted = 0
+                        AND stok <= 0 THEN 1 END)                         AS stoksuz,
         COALESCE(SUM(CASE WHEN is_deleted = 0 AND aktif = 1
                           THEN stok * alis_fiyat END), 0)                 AS stok_degeri
       FROM ${DbSabitler.urunler}

@@ -18,6 +18,7 @@ import 'package:go_router/go_router.dart';
 import 'package:excel/excel.dart' hide Border;
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgetlar/urun/excel_ice_aktar_yardimcisi.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../modeller/urun_model.dart';
@@ -45,11 +46,94 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
   bool _izgara = false;
   Timer? _araDebounce;
 
+  // ── Görünüm/kolon yönetimi ──────────────────────────────────────────────
+  // Roadmap madde 17 ("Enterprise DataTable — sıralanabilir kolon, kolon
+  // yönetimi"): bu ekran spreadsheet tarzı bir tablo değil, kart tabanlı bir
+  // liste — telefon/tablet POS hedefli bu uygulamada gerçek bir DataTable
+  // widget'ı (yatay kaydırma, küçük dokunma alanları) UX'i kötüleştirirdi,
+  // bu yüzden BİLİNÇLİ OLARAK yapılmadı (daha önce de 2 kez bu nedenle
+  // ertelenmişti). Bunun yerine aynı ihtiyacı bu ortama uygun şekilde
+  // karşılıyor: "sıralama" zaten filtre sayfasında var (_filtreSheet),
+  // "kolon yönetimi" ise kart üzerinde HANGİ EK ALANLARIN görüneceğini
+  // seçebilme olarak karşılanıyor. Varsayılan: hiçbiri (mevcut görünüm
+  // BİREBİR korunuyor, sadece isteyen kullanıcı ek bilgi ekleyebiliyor).
+  static const _ekAlanEtiketleri = {
+    'barkod': 'Barkod',
+    'marka': 'Marka',
+    'kdv': 'KDV Oranı',
+  };
+  Set<String> _ekAlanlar = {};
+
+  Future<void> _gorunumTercihiYukle() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final kayitli = prefs.getStringList('urun_liste_ek_alanlar');
+      if (kayitli != null && mounted) {
+        setState(() => _ekAlanlar = kayitli.toSet());
+      }
+    } catch (_) {
+      // Tercih okunamazsa varsayılan (boş) görünümle devam edilir.
+    }
+  }
+
+  Future<void> _gorunumTercihiKaydet() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('urun_liste_ek_alanlar', _ekAlanlar.toList());
+    } catch (_) {
+      // Kaydedilemezse sessizce geçilir — bir sonraki açılışta varsayılana döner.
+    }
+  }
+
+  Future<void> _gorunumSecimiAc() async {
+    var secim = Set<String>.from(_ekAlanlar);
+    final sonuc = await showDialog<Set<String>>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, ss) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Kartta Gösterilecek Alanlar'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final e in _ekAlanEtiketleri.entries)
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(e.value),
+                  value: secim.contains(e.key),
+                  onChanged: (v) => ss(() {
+                    if (v == true) {
+                      secim.add(e.key);
+                    } else {
+                      secim.remove(e.key);
+                    }
+                  }),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('İptal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, secim),
+                child: const Text('Uygula')),
+          ],
+        );
+      }),
+    );
+    if (sonuc != null && mounted) {
+      setState(() => _ekAlanlar = sonuc);
+      _gorunumTercihiKaydet();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _araCtrl.addListener(_aramaChanged);
     _scrollCtrl.addListener(_scrollChanged);
+    _gorunumTercihiYukle();
     if (widget.baslangicArama != null &&
         widget.baslangicArama!.trim().isNotEmpty) {
       // addListener sonrası .text ataması _aramaChanged'i otomatik tetikler.
@@ -534,6 +618,14 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                         Icon(_izgara ? Icons.list : Icons.grid_view, size: 22),
                     onPressed: () => setState(() => _izgara = !_izgara),
                   ),
+                  if (!_izgara)
+                    IconButton(
+                      icon: Badge(
+                          isLabelVisible: _ekAlanlar.isNotEmpty,
+                          child: const Icon(Icons.view_column_outlined, size: 22)),
+                      tooltip: 'Kartta Gösterilecek Alanlar',
+                      onPressed: _gorunumSecimiAc,
+                    ),
                   IconButton(
                     icon: Badge(
                         isLabelVisible: filtreAktif,
@@ -841,6 +933,30 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                                   color: Colors.blue.shade700,
                                   fontWeight: FontWeight.w500)),
                         ),
+                      ],
+                      if (_ekAlanlar.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Wrap(spacing: 8, runSpacing: 2, children: [
+                          if (_ekAlanlar.contains('barkod') &&
+                              u.barkod != null &&
+                              u.barkod!.isNotEmpty)
+                            Text('Barkod: ${u.barkod}',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: TsRenk.metinIkincil(context))),
+                          if (_ekAlanlar.contains('marka') &&
+                              u.marka != null &&
+                              u.marka!.isNotEmpty)
+                            Text('Marka: ${u.marka}',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: TsRenk.metinIkincil(context))),
+                          if (_ekAlanlar.contains('kdv'))
+                            Text('KDV: %${u.kdvOran}',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: TsRenk.metinIkincil(context))),
+                        ]),
                       ],
                     ])),
                 const SizedBox(width: 10),

@@ -18,6 +18,7 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../modeller/cari_model.dart';
 import '../../modeller/satis_model.dart';
 import '../../modeller/urun_model.dart';
+import '../../widgetlar/ortak/il_ilce_alani.dart';
 import '../../modeller/fatura_model.dart';
 import '../../modeller/cari_hareket_model.dart';
 import '../../depolar/satis_deposu.dart';
@@ -910,9 +911,9 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
           TextField(controller: adresCtrl, decoration: const InputDecoration(labelText: 'Adres'), maxLines: 2, autofocus: true),
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: TextField(controller: ilceCtrl, decoration: const InputDecoration(labelText: 'İlçe'))),
+            Expanded(child: IlceAlani(controller: ilceCtrl, ilController: ilCtrl)),
             const SizedBox(width: 8),
-            Expanded(child: TextField(controller: ilCtrl, decoration: const InputDecoration(labelText: 'İl'))),
+            Expanded(child: IlAlani(controller: ilCtrl)),
           ]),
         ]),
         actions: [

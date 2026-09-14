@@ -16,6 +16,7 @@ import '../../tasarim_sistemi/ts_kart.dart';
 import '../../cekirdek/utils/vergi_no_dogrulayici.dart';
 import '../../modeller/fiyat_grubu_model.dart';
 import '../../depolar/toptan_fiyat_deposu.dart';
+import '../../widgetlar/ortak/il_ilce_alani.dart';
 
 class CariEkleEkrani extends ConsumerStatefulWidget {
   final CariModel? duzenlenecekCari;
@@ -331,9 +332,23 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
             const SizedBox(height: 8),
             _Alan(_adresCtrl, 'Adres (Mahalle, Cadde/Sokak, No)', satirSayisi: 2),
             Row(children: [
-              Expanded(child: _Alan(_ilceCtrl, 'İlçe')),
+              Expanded(
+                  child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: IlceAlani(controller: _ilceCtrl, ilController: _ilCtrl),
+              )),
               const SizedBox(width: 8),
-              Expanded(child: _Alan(_ilCtrl, 'İl')),
+              Expanded(
+                  child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: IlAlani(
+                  controller: _ilCtrl,
+                  // İl seçilince ilçe alanı o ile göre daralsın diye
+                  // yeniden çizim tetikleniyor (IlceAlani her build'de
+                  // güncel _ilCtrl.text'i okuyor).
+                  onSecildi: (_) => setState(() {}),
+                ),
+              )),
             ]),
             _Alan(_postaKoduCtrl, 'Posta Kodu', klavye: TextInputType.number),
             const Divider(height: 24),

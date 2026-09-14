@@ -10,6 +10,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../widgetlar/ortak/il_ilce_alani.dart';
 
 class FaturaAyarEkrani extends ConsumerStatefulWidget {
   /// true ise kendi Scaffold/AppBar'ını çizmez — Yazdırma Merkezi içine
@@ -258,9 +259,15 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
     _Baslik('Adres'),
     _Alan('Adres', _adresCtrl, hint: 'Mevlana Cad. No:1 Daire:5', maxLines: 2),
     Row(children: [
-      Expanded(child: _Alan('İl', _ilCtrl, hint: 'İstanbul')),
+      Expanded(child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: IlAlani(controller: _ilCtrl, onSecildi: (_) => setState(() {})),
+      )),
       const SizedBox(width: 10),
-      Expanded(child: _Alan('İlçe', _ilceCtrl, hint: 'Kadıköy')),
+      Expanded(child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: IlceAlani(controller: _ilceCtrl, ilController: _ilCtrl),
+      )),
     ]),
     const SizedBox(height: 8),
     _Baslik('İletişim'),

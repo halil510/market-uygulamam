@@ -117,19 +117,22 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
 
     // Filtreleme - memoize için durum değişmeden hesaplamayı atla
     final aramaMetni = filtre.aramaMetni.toLowerCase();
-    final hepsi = [...durum.musteriler,
-      ...durum.tedarikciler.where((t) => !durum.musteriler.any((m) => m.id == t.id))];
-   final List<CariModel> aramaFiltrelendi = aramaMetni.isEmpty
-    ? hepsi.cast<CariModel>()
-    : hepsi.where((c) =>
+    // 🔴 DÜZELTME (cari ekranları derin analizi, 2026-09-14): "Tümü"
+    // sekmesi ünvan/telefon/cari kodu ÜÇÜNÜ de kontrol ederken, "Müşteri"
+    // ve "Tedarikçi" sekmeleri SADECE ünvanı kontrol ediyordu — AYNI arama
+    // terimini yazan kullanıcı "Tümü"de sonuç görüp sekme değiştirince
+    // (ör. bir telefon numarası aratılınca) boş liste görüyordu. Artık her
+    // üç sekme de AYNI eşleşme kuralını kullanıyor.
+    bool aramaEslesiyor(CariModel c) =>
+        aramaMetni.isEmpty ||
         c.unvan.toLowerCase().contains(aramaMetni) ||
         (c.telefon?.contains(aramaMetni) ?? false) ||
-        (c.cariKodu?.toLowerCase().contains(aramaMetni) ?? false)).toList().cast<CariModel>();
-final tum = _filtrele(aramaFiltrelendi);
-    final musteriler   = _filtrele(durum.musteriler.where((c) =>
-        aramaMetni.isEmpty || c.unvan.toLowerCase().contains(aramaMetni)).toList());
-    final tedarikciler = _filtrele(durum.tedarikciler.where((c) =>
-        aramaMetni.isEmpty || c.unvan.toLowerCase().contains(aramaMetni)).toList());
+        (c.cariKodu?.toLowerCase().contains(aramaMetni) ?? false);
+    final hepsi = [...durum.musteriler,
+      ...durum.tedarikciler.where((t) => !durum.musteriler.any((m) => m.id == t.id))];
+    final tum = _filtrele(hepsi.where(aramaEslesiyor).toList());
+    final musteriler   = _filtrele(durum.musteriler.where(aramaEslesiyor).toList());
+    final tedarikciler = _filtrele(durum.tedarikciler.where(aramaEslesiyor).toList());
     final toplamAlacak = durum.toplamAlacak;
     final toplamBorc   = durum.toplamBorc;
 

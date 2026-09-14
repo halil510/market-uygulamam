@@ -492,6 +492,16 @@ class CariDeposu {
   Future<List<CariModel>> vadesiGecmisler() async {
     try {
       final db = await _d;
+      // 🔴 DÜZELTME (cari ekranları derin analizi, 2026-09-14): ch.tarih
+      // DateTime.now().toIso8601String() ile (CİHAZIN YEREL SAATİYLE, UTC
+      // DEĞİL) yazılıyor — ama datetime('now') SQLite'ta VARSAYILAN OLARAK
+      // UTC döner. Bu ikisini karşılaştırmak, Türkiye'de (+3) sistematik
+      // ~3 saatlik bir kaymaya yol açıyordu — bir alacak, gerçekte vadesi
+      // geçtikten SAATLER SONRA "vadesi geçmiş" listesine düşüyordu. Aynı
+      // hata sınıfı bu oturumdan önce 6 ayrı yerde bulunup 'localtime'
+      // değiştiricisiyle düzeltilmişti (bkz. rapor_deposu.dart,
+      // kar_zarar_provider.dart vb.) — bu yedinci örnek o turda
+      // kapsanmamış.
       final rows = await db.rawQuery('''
         SELECT c.* FROM cari c
         WHERE c.is_deleted = 0 AND c.aktif = 1 AND c.bakiye > 0
@@ -499,7 +509,7 @@ class CariDeposu {
           AND EXISTS (
             SELECT 1 FROM cari_hareket ch
             WHERE ch.cari_id = c.id AND ch.borc > 0 AND ch.is_deleted = 0
-            AND datetime(ch.tarih, '+' || c.vade_gun || ' days') < datetime('now')
+            AND datetime(ch.tarih, '+' || c.vade_gun || ' days') < datetime('now', 'localtime')
           )
         ORDER BY c.bakiye DESC
       ''');

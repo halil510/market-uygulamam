@@ -115,6 +115,19 @@ class TabloOlusturucu {
     await db.execute("CREATE INDEX IF NOT EXISTS idx_onay_talepleri_goruldu ON onay_talepleri(goruldu, tarih DESC)");
     await db.execute("CREATE INDEX IF NOT EXISTS idx_onay_talepleri_tur ON onay_talepleri(tur)");
 
+    // Biyometrik giriş — bkz. migrasyon _v59denV60a ile AYNI tanım (fresh
+    // install migrasyon adımlarını çalıştırmıyor, bu yüzden burada
+    // tekrarlanıyor). Bilinçli olarak Supabase'e senkron edilmiyor —
+    // cihaza özel bir sır.
+    await db.execute("""
+      CREATE TABLE IF NOT EXISTS biyometrik_kayitlar (
+        kullanici_id INTEGER PRIMARY KEY REFERENCES kullanicilar(id),
+        token_hash TEXT NOT NULL,
+        tuz TEXT NOT NULL,
+        olusturma_tarihi DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    """);
+
     // 18. Toptan satış / bayi fiyatlandırma sistemi (kullanıcı isteği:
     // "Ülker gibi firmaların kullandığı profesyonel sistem").
     await db.execute("""

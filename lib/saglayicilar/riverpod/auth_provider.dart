@@ -86,6 +86,29 @@ class Auth extends _$Auth {
     }
   }
 
+  /// Parmak izi ile giriş — bkz. AuthServisi.girisYapBiyometrikToken.
+  /// Şifreyle girişten farklı olarak brute-force kilidi/hata sayacı YOK
+  /// (token 256-bit rastgele, tahmin edilemez); token geçersizse çağıran
+  /// ekran kullanıcıyı şifreyle girişe yönlendirir.
+  Future<GirisSonucu> girisYapBiyometrik(String kullaniciAdi, String token) async {
+    state = const AuthState.yukleniyor();
+    try {
+      final basarili = await _servis.girisYapBiyometrikToken(kullaniciAdi, token);
+      if (basarili) {
+        final k = _servis.aktifKullanici;
+        if (k != null) {
+          state = AuthState.girisYapildi(k);
+          ref.read(sepetProvider.notifier).temizle();
+          return GirisSonucu.basarili;
+        }
+      }
+      state = const AuthState.cikisYapildi();
+      return GirisSonucu.hataliSifre;
+    } catch (e) {
+      state = AuthState.hata(e.toString()); return GirisSonucu.hata;
+    }
+  }
+
   Future<void> cikisYap() async {
     try {
       await _servis.cikisYap();

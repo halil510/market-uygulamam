@@ -17,8 +17,18 @@ import 'package:go_router/go_router.dart';
 
 import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../depolar/kullanici_deposu.dart';
+import '../../servisler/auth_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../cekirdek/sabitler/uygulama_sabitleri.dart';
+
+// Secure storage anahtarları — biyometrik giriş.
+// 🔴 GÜVENLİK DÜZELTMESİ: 'biyometrik_sifre' anahtarı ÖNCEDEN kullanıcının
+// ham şifresini saklıyordu. Artık şifre hiç saklanmıyor; sadece rastgele,
+// tuzlanmış hash'i DB'de tutulan bir token saklanıyor (bkz. AuthServisi.
+// girisYapBiyometrikToken / BiyometrikDeposu). Eski anahtar sadece bir
+// kereliğine sessizce yeni şemaya taşınıp siliniyor (bkz. _biyometrikKontrolEt).
+const _eskiBiyometrikSifreAnahtari = 'biyometrik_sifre';
+const _biyometrikTokenAnahtari = 'biyometrik_token';
 
 class GirisEkrani extends ConsumerStatefulWidget {
   const GirisEkrani({super.key});
@@ -148,12 +158,14 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
       final destekleniyor = await _localAuth.isDeviceSupported();
       final mevcutBiyometrikler = await _localAuth.getAvailableBiometrics();
       const secure = FlutterSecureStorage();
-      final kayitliSifre = await secure.read(key: 'biyometrik_sifre');
+
+      var kayitliToken = await secure.read(key: _biyometrikTokenAnahtari);
+      kayitliToken ??= await _eskiBiyometrikKaydiTasi(secure);
 
       if (mounted) {
         setState(() {
           _biyometrikDestekli = destekleniyor && mevcutBiyometrikler.isNotEmpty;
-          _biyometrikMevcut = _biyometrikDestekli && kayitliSifre != null;
+          _biyometrikMevcut = _biyometrikDestekli && kayitliToken != null;
         });
       }
     } catch (e) {
@@ -162,6 +174,34 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
         _biyometrikMevcut = false;
         _biyometrikDestekli = false;
       });
+    }
+  }
+
+  /// Bir önceki sürümden kalma, ham şifre içeren eski anahtarı bulursa
+  /// sessizce yeni token şemasına taşır (kullanıcı yeniden "kaydolmak"
+  /// zorunda kalmaz) ve eski anahtarı siler. Şifre yeni şemada HİÇ
+  /// saklanmaz — sadece token üretmek için bir kereliğine kullanılır.
+  Future<String?> _eskiBiyometrikKaydiTasi(FlutterSecureStorage secure) async {
+    final eskiSifre = await secure.read(key: _eskiBiyometrikSifreAnahtari);
+    final kullaniciAdi = await secure.read(key: 'kullanici_adi');
+    if (eskiSifre == null || kullaniciAdi == null) {
+      if (eskiSifre != null) await secure.delete(key: _eskiBiyometrikSifreAnahtari);
+      return null;
+    }
+    try {
+      final kullanici = await KullaniciDeposu().girisKontrol(kullaniciAdi, eskiSifre);
+      if (kullanici?.id == null) {
+        await secure.delete(key: _eskiBiyometrikSifreAnahtari);
+        return null;
+      }
+      final token = await AuthServisi().biyometrikKaydet(kullanici!.id!);
+      await secure.write(key: _biyometrikTokenAnahtari, value: token);
+      await secure.delete(key: _eskiBiyometrikSifreAnahtari);
+      return token;
+    } catch (e) {
+      if (kDebugMode) debugPrint('Biyometrik kayıt taşıma hatası: $e');
+      await secure.delete(key: _eskiBiyometrikSifreAnahtari);
+      return null;
     }
   }
 
@@ -180,15 +220,15 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
 
       const secure = FlutterSecureStorage();
       final kayitliKullanici = await secure.read(key: 'kullanici_adi');
-      final kayitliSifre = await secure.read(key: 'biyometrik_sifre');
-      if (kayitliKullanici == null || kayitliSifre == null) {
+      final kayitliToken = await secure.read(key: _biyometrikTokenAnahtari);
+      if (kayitliKullanici == null || kayitliToken == null) {
         _hata.value = 'Kayıtlı giriş bilgisi bulunamadı. Lütfen önce şifrenizle giriş yapın.';
         return;
       }
 
       _yukleniyor.value = true;
       final sonuc = await ref.read(authProvider.notifier)
-          .girisYap(kayitliKullanici, kayitliSifre);
+          .girisYapBiyometrik(kayitliKullanici, kayitliToken);
       if (!mounted) return;
       _yukleniyor.value = false;
 
@@ -250,7 +290,14 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
         _kilitli.value = false;
         const secure = FlutterSecureStorage();
         await secure.write(key: 'kullanici_adi', value: _seciliKullanici.value);
-        await secure.write(key: 'biyometrik_sifre', value: _sifre.value);
+        // Şifre ARTIK saklanmıyor — sadece bu cihaza özel rastgele bir
+        // token üretilip hash'i DB'de tutuluyor (bkz. AuthServisi.
+        // biyometrikKaydet / BiyometrikDeposu).
+        final userId = AuthServisi().aktifId;
+        if (userId != null) {
+          final token = await AuthServisi().biyometrikKaydet(userId);
+          await secure.write(key: _biyometrikTokenAnahtari, value: token);
+        }
         if (mounted) context.go('/');
       } else if (sonuc == GirisSonucu.kilitli) {
         _kilitli.value = true;

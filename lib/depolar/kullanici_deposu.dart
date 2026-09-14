@@ -58,6 +58,21 @@ class KullaniciDeposu {
     return KullaniciModel.fromMap(row);
   }
 
+  /// Şifresiz, sadece kullanıcı adına göre aktif kullanıcıyı getirir —
+  /// biyometrik girişte kullanıcının şifresi hiç bilinmediği için
+  /// girisKontrol() yerine bu kullanılır (biyometrik token doğrulaması
+  /// ayrıca yapılır, bkz. BiyometrikDeposu).
+  Future<KullaniciModel?> kullaniciAdiIleGetir(String kullaniciAdi) async {
+    final db = await _d;
+    final rows = await db.query(
+      'kullanicilar',
+      where: 'kullanici_adi = ? AND aktif = 1 AND is_deleted = 0',
+      whereArgs: [kullaniciAdi],
+    );
+    if (rows.isEmpty) return null;
+    return KullaniciModel.fromMap(rows.first);
+  }
+
   Future<KullaniciModel?> idileGetir(int id) async {
     try {
       final db = await _d;

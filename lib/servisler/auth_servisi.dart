@@ -13,6 +13,7 @@ import '../cekirdek/utils/sifre_hash.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
 import '../cekirdek/sabitler/uygulama_sabitleri.dart';
+import '../depolar/biyometrik_deposu.dart';
 import '../depolar/kullanici_deposu.dart';
 import '../modeller/kullanici_model.dart';
 import '../veri/database/veritabani.dart';
@@ -56,6 +57,7 @@ class AuthServisi {
   AuthServisi._internal();
 
   final KullaniciDeposu _depo = KullaniciDeposu();
+  final BiyometrikDeposu _biyoDepo = BiyometrikDeposu();
   KullaniciModel? _aktifKullanici;
   Set<String> _yetkiCache = {};
   // Sadece bellekte — process ölünce false olur (banka davranışı)
@@ -120,29 +122,67 @@ class AuthServisi {
         return false;
       }
       await _denemeSayaci.temizle(kullaniciAdi);
-
-      _aktifKullanici = kullanici;
-      _oturumAktif = true;
-
-      // Yetkileri önbelleğe al — sync yetkiVarSync() için
-      if (kullanici.rol != KullaniciRolu.admin.label) {
-        _yetkiCache = await _depo.yetkileriniGetir(kullanici.id!);
-      } else {
-        _yetkiCache = {};
-      }
-
-      // UID'yi prefs'e yaz; son_giris DB'ye yazılıyor (manipülasyon koruması)
-      // Hassas veriyi güvenli depoda sakla
-      final _secure = const FlutterSecureStorage();
-      await _secure.write(key: 'uid', value: kullanici.id!.toString());
-      await _secure.write(key: 'kullanici_adi', value: kullanici.kullaniciAdi);
-      // Tema vb. hassas olmayan veriler SharedPreferences'ta kalabilir
-      await _depo.sonGirisGuncelle(kullanici.id!);
+      await _girisTamamla(kullanici);
       return true;
     } catch (e) {
       if (kDebugMode) debugPrint('Giriş hatası: $e');
       return false;
     }
+  }
+
+  // ── Biyometrik giriş ──────────────────────────────────────────────────
+  // 🔴 GÜVENLİK DÜZELTMESİ: önceden giris_ekrani.dart parmak izi ile giriş
+  // için kullanıcının HAM ŞİFRESİNİ secure storage'a yazıyordu. Artık
+  // şifre yerine cihaza özel rastgele bir token (BiyometrikDeposu) kontrol
+  // ediliyor — şifre bir daha hiçbir zaman diskte/secure storage'da
+  // saklanmıyor. Token doğrulaması başarısız olursa (kayıt yok/eşleşmiyor)
+  // false döner, çağıran taraf kullanıcıyı şifreyle girişe yönlendirir —
+  // brute-force kilidi burada UYGULANMAZ çünkü token 256-bit rastgele,
+  // tahmin edilebilir değil (parola gibi kaba kuvvete açık değil).
+  Future<bool> girisYapBiyometrikToken(String kullaniciAdi, String token) async {
+    try {
+      final kullanici = await _depo.kullaniciAdiIleGetir(kullaniciAdi);
+      if (kullanici == null || kullanici.id == null) return false;
+      final gecerli = await _biyoDepo.dogrula(kullanici.id!, token);
+      if (!gecerli) return false;
+      await _girisTamamla(kullanici);
+      return true;
+    } catch (e) {
+      if (kDebugMode) debugPrint('Biyometrik giriş hatası: $e');
+      return false;
+    }
+  }
+
+  /// Başarılı şifreyle girişten sonra çağrılır: verilen kullanıcı için
+  /// yeni bir biyometrik token üretip kaydeder ve secure storage'a yazar.
+  /// Döndürülen token, çağıran (giris_ekrani.dart) tarafından
+  /// FlutterSecureStorage'a yazılır.
+  Future<String> biyometrikKaydet(int kullaniciId) async {
+    final token = BiyometrikDeposu.tokenUret();
+    await _biyoDepo.kaydet(kullaniciId, token);
+    return token;
+  }
+
+  Future<void> biyometrikKaydiSil(int kullaniciId) => _biyoDepo.sil(kullaniciId);
+
+  Future<void> _girisTamamla(KullaniciModel kullanici) async {
+    _aktifKullanici = kullanici;
+    _oturumAktif = true;
+
+    // Yetkileri önbelleğe al — sync yetkiVarSync() için
+    if (kullanici.rol != KullaniciRolu.admin.label) {
+      _yetkiCache = await _depo.yetkileriniGetir(kullanici.id!);
+    } else {
+      _yetkiCache = {};
+    }
+
+    // UID'yi prefs'e yaz; son_giris DB'ye yazılıyor (manipülasyon koruması)
+    // Hassas veriyi güvenli depoda sakla
+    final _secure = const FlutterSecureStorage();
+    await _secure.write(key: 'uid', value: kullanici.id!.toString());
+    await _secure.write(key: 'kullanici_adi', value: kullanici.kullaniciAdi);
+    // Tema vb. hassas olmayan veriler SharedPreferences'ta kalabilir
+    await _depo.sonGirisGuncelle(kullanici.id!);
   }
 
   // ── Çıkış ─────────────────────────────────────────────────────────────

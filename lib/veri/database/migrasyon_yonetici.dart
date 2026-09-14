@@ -154,6 +154,7 @@ class MigrasyonYonetici {
     // v57'den v58'e — Bayi Portalı (kullanıcı onayıyla)
     if (eskiVersiyon < 58) await _v57denV58e(db);
     if (eskiVersiyon < 59) await _v58denV59a(db);
+    if (eskiVersiyon < 60) await _v59denV60a(db);
   }
 
   // ==================== v1 -> v2 ====================
@@ -2369,5 +2370,25 @@ class MigrasyonYonetici {
   static Future<void> _v58denV59a(Database db) async {
     await _calistir(db,
         'ALTER TABLE borclar ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
+  }
+
+  // v59'dan v60'a — güvenlik düzeltmesi: parmak izi ile giriş ÖNCEDEN
+  // kullanıcının ham şifresini FlutterSecureStorage'a yazıyordu (OS
+  // seviyesinde şifreli ama yine de düz metin şifre). Artık şifre hiç
+  // saklanmıyor; her cihaz için rastgele üretilen 256-bit bir "biyometrik
+  // token" tuzlanıp hash'i bu YENİ, tamamen İZOLE ve bilerek Supabase'e
+  // senkron EDİLMEYEN tabloya yazılıyor (cihaza özel bir sır — başka
+  // cihaza/kullanıcıya sızması anlamsız/riskli olurdu, bu yüzden
+  // supabase_sync_servisi.dart'ın tablo listesine BİLİNÇLİ OLARAK
+  // eklenmedi). kullanicilar tablosuna dokunulmuyor.
+  static Future<void> _v59denV60a(Database db) async {
+    await _calistir(db, '''
+      CREATE TABLE IF NOT EXISTS biyometrik_kayitlar (
+        kullanici_id INTEGER PRIMARY KEY REFERENCES kullanicilar(id),
+        token_hash TEXT NOT NULL,
+        tuz TEXT NOT NULL,
+        olusturma_tarihi DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    ''');
   }
 }

@@ -69,7 +69,17 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
     if (_fatura == null || !mounted || _islemDevam) return;
     setState(() => _islemDevam = true);
     final ctrl = TextEditingController();
+    // 🔴 DÜZELTME (komple derin analizde bulundu): bu controller hiçbir
+    // zaman dispose edilmiyordu — dış try/finally ile artık her çıkış
+    // yolunda (erken dönüş, hata, başarı) garanti altına alındı.
+    try {
+      await _odemeKaydetIc(ctrl);
+    } finally {
+      ctrl.dispose();
+    }
+  }
 
+  Future<void> _odemeKaydetIc(TextEditingController ctrl) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

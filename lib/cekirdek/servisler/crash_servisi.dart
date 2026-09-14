@@ -34,10 +34,21 @@ class CrashServisi {
     if (kDebugMode) debugPrint('CrashServisi başlatıldı');
   }
 
-  /// Release modda da hatayı EKRANDA göstermek için — bembeyaz/boş ekran
-  /// yerine en azından hangi hatanın oluştuğunu okuyabilirsiniz. Bu widget
-  /// geçicidir; gerçek hata bulunup düzeltildikten sonra kaldırılabilir.
-  static Widget hataGoster(FlutterErrorDetails details) => Material(
+  /// Debug modda hatayı EKRANDA göstermek için — bembeyaz/boş ekran yerine
+  /// en azından hangi hatanın oluştuğunu okuyabilirsiniz.
+  ///
+  /// 🔴🔴 GÜVENLİK/KALİTE DÜZELTMESİ (komple derin analizde bulundu): bu
+  /// widget ÖNCEDEN debug/release AYRIMI YAPMADAN her zaman ham
+  /// `details.exception` VE TAM stack trace'i doğrudan ekranda kullanıcıya
+  /// (ör. gerçek bir kasiyer/müşteride) gösteriyordu — projenin kendi hata
+  /// yönetimi ilkesini ("kullanıcıya teknik değil anlaşılır hata göster,
+  /// teknik detay log'a yazılsın") doğrudan ihlal ediyordu. Loglama
+  /// (`_kaydet`) bundan ETKİLENMEDİ — hata detayları her zaman olduğu gibi
+  /// Sistem Logları'na kaydedilmeye devam ediyor, sadece EKRANDA gösterim
+  /// artık debug/release'e göre ayrışıyor.
+  static Widget hataGoster(FlutterErrorDetails details) {
+    if (kDebugMode) {
+      return Material(
         color: Colors.white,
         child: SafeArea(
           child: SingleChildScrollView(
@@ -45,7 +56,7 @@ class CrashServisi {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('⚠️ Ekran Hatası',
+                const Text('⚠️ Ekran Hatası (DEBUG)',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
                 const SizedBox(height: 12),
                 Text('${details.exception}',
@@ -58,6 +69,36 @@ class CrashServisi {
           ),
         ),
       );
+    }
+    // RELEASE: gerçek kullanıcıya teknik detay/stack trace gösterilmez.
+    return Material(
+      color: Colors.white,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline_rounded, size: 48, color: Colors.red),
+                const SizedBox(height: 12),
+                const Text('Bir şeyler ters gitti',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                const Text(
+                  'Bu ekran yüklenirken beklenmeyen bir hata oluştu.\n'
+                  'Lütfen tekrar deneyin. Sorun devam ederse Ayarlar > '
+                  'Sistem Logları üzerinden destek ile paylaşabilirsiniz.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   static void _kaydet(Object hata, StackTrace? stack) {
     // ─────────────────────────────────────────────────────────────────

@@ -236,7 +236,13 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
         
         title: const Text('Müşteri Seç'),
         content: SizedBox(
-          width: 360, height: 400,
+          // 🔴 DÜZELTME (komple derin analizde bulundu): sabit width:360
+          // küçük ekranlarda (320-360px) dialog taşmasına/overflow'a yol
+          // açabiliyordu. Artık ekran genişliğine göre üst sınırlanıyor.
+          width: MediaQuery.of(bCtx).size.width < 400
+              ? MediaQuery.of(bCtx).size.width * 0.85
+              : 360,
+          height: 400,
           child: ListView.builder(
             itemCount: cariler.length,
             itemBuilder: (_, i) => ListTile(

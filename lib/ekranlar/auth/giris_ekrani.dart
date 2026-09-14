@@ -5,8 +5,11 @@
 // - Parmak izi / biyometrik destekli (pulse animasyonu)
 // - Responsive ve şık tasarım
 
+import 'dart:ui';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
@@ -296,22 +299,53 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
             stops: [0.0, 0.5, 1.0],
           ),
         ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: FadeTransition(
-                  opacity: _fadeAnim,
-                  child: ScaleTransition(
-                    scale: _scaleAnim,
-                    child: _buildCard(),
+        child: Stack(
+          children: [
+            // ── Dekoratif ışık lekeleri (derinlik hissi, salt görsel) ─────────
+            Positioned(
+              top: -80,
+              left: -60,
+              child: _buildGlowBlob(const Color(0xFF4361EE), 260),
+            ),
+            Positioned(
+              bottom: -100,
+              right: -70,
+              child: _buildGlowBlob(const Color(0xFF3A0CA3), 300),
+            ),
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.all(24),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: FadeTransition(
+                      opacity: _fadeAnim,
+                      child: ScaleTransition(
+                        scale: _scaleAnim,
+                        child: _buildCard(),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGlowBlob(Color renk, double boyut) {
+    return IgnorePointer(
+      child: ImageFiltered(
+        imageFilter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
+        child: Container(
+          width: boyut,
+          height: boyut,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: renk.withAlpha(90),
           ),
         ),
       ),
@@ -328,11 +362,10 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
   Widget _buildCard() {
     return Container(
       decoration: BoxDecoration(
-        color: TsRenk.kart(context).withAlpha(245),
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(60),
+            color: Colors.black.withAlpha(70),
             blurRadius: 40,
             offset: const Offset(0, 16),
           ),
@@ -343,8 +376,21 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
-      child: Column(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: TsRenk.kart(context).withAlpha(235),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(
+                color: Colors.white.withAlpha(22),
+                width: 1.2,
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
+            child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // ── Logo ──────────────────────────────────────────────────────────
@@ -403,39 +449,64 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
               fontWeight: FontWeight.w400,
             ),
           ),
-        ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
   // ─── LOGO ──────────────────────────────────────────────────────────────────
   Widget _buildLogo() {
-    return Container(
-      width: 72,
-      height: 72,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4361EE), Color(0xFF3A0CA3)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4361EE).withAlpha(80),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+    return AnimatedBuilder(
+      animation: _pulseCtrl,
+      builder: (_, child) {
+        final t = _pulseCtrl.value;
+        return Container(
+          padding: EdgeInsets.all(5 + t * 3),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: SweepGradient(
+              colors: [
+                const Color(0xFF4361EE).withAlpha(0),
+                const Color(0xFF4361EE).withAlpha(180),
+                const Color(0xFF3A0CA3).withAlpha(180),
+                const Color(0xFF4361EE).withAlpha(0),
+              ],
+              stops: const [0.0, 0.35, 0.65, 1.0],
+            ),
           ),
-        ],
-      ),
-      child: ClipOval(
-        child: Image.asset(
-          'assets/images/logo.png',
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(
-            Icons.storefront_rounded,
-            color: Colors.white,
-            size: 36,
+          child: child,
+        );
+      },
+      child: Container(
+        width: 72,
+        height: 72,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF4361EE), Color(0xFF3A0CA3)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4361EE).withAlpha(90),
+              blurRadius: 28,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Image.asset(
+            'assets/images/logo.png',
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.storefront_rounded,
+              color: Colors.white,
+              size: 36,
+            ),
           ),
         ),
       ),
@@ -532,7 +603,16 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
                       pin.length,
-                      (i) => Container(
+                      (i) => TweenAnimationBuilder<double>(
+                        key: ValueKey('pin_dot_$i'),
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutBack,
+                        builder: (_, deger, child) => Transform.scale(
+                          scale: deger,
+                          child: child,
+                        ),
+                        child: Container(
                         width: 14,
                         height: 14,
                         margin: const EdgeInsets.symmetric(horizontal: 5),
@@ -552,6 +632,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                   ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -639,6 +720,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
         onTap: kilitli
             ? null
             : () {
+                HapticFeedback.lightImpact();
                 if (isSil) _silSon();
                 else if (isTemizle) _temizle();
                 else _rakamEkle(t);
@@ -675,37 +757,63 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
         valueListenable: _kilitli,
         builder: (_, kilitli, __) => ValueListenableBuilder<String>(
           valueListenable: _sifre,
-          builder: (_, pin, __) => SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: FilledButton(
-              onPressed: (yukleniyor || kilitli || pin.isEmpty) ? null : _girisYap,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF4361EE),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
+          builder: (_, pin, __) {
+            final aktif = !(yukleniyor || kilitli || pin.isEmpty);
+            return SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
+                  gradient: aktif
+                      ? const LinearGradient(
+                          colors: [Color(0xFF4361EE), Color(0xFF3A0CA3)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        )
+                      : null,
+                  color: aktif ? null : TsRenk.ayirac(context),
+                  boxShadow: aktif
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF4361EE).withAlpha(90),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ]
+                      : null,
                 ),
-                elevation: 0,
-                disabledBackgroundColor: TsRenk.ayirac(context),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
+                child: FilledButton(
+                  onPressed: aktif ? _girisYap : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.white,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                    disabledBackgroundColor: Colors.transparent,
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  child: yukleniyor
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : const Text('Giriş Yap'),
                 ),
               ),
-              child: yukleniyor
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                  : const Text('Giriş Yap'),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

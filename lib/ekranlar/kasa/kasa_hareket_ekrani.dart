@@ -201,9 +201,7 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
         ),
         Expanded(
           child: _yukleniyor
-              ? const Center(
-                  child: CircularProgressIndicator(
-                      strokeWidth: 3, color: TsRenk.primary))
+              ? const TsYukleniyor()
               : _hareketler.isEmpty
                   ? Center(
                       child: Column(

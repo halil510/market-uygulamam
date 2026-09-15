@@ -6,13 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../veri/database/veritabani.dart';
-import '../../depolar/stok_deposu.dart';
+import '../../depolar/lot_deposu.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
-import 'package:uuid/uuid.dart';
 
 class LotSeriEkrani extends ConsumerStatefulWidget {
   final int? urunId;
@@ -172,16 +170,9 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
       return;
     }
     try {
-      final db = await Veritabani().db;
       final skt = sktCtrl.text.trim().isNotEmpty
           ? DateTime.tryParse(sktCtrl.text.trim())?.toIso8601String()
           : null;
-      final data = {
-        'lot_no': lotCtrl.text.trim(),
-        'son_kullanma_tarihi': skt,
-        'miktar': miktar,
-        'aciklama': notCtrl.text.trim(),
-      };
 
       // 🔴🔴 FAZ 1 madde 3 (kullanıcı onayıyla, Seçenek A): lot miktarı
       // ARTIK bağımsız düzenlenemiyor — buradaki her miktar değişikliği
@@ -198,68 +189,20 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
       }
       final eskiMiktar =
           lot == null ? 0.0 : (lot['miktar'] as num?)?.toDouble() ?? 0.0;
-      final fark = miktar - eskiMiktar;
 
-      late int lotId;
-      await db.transaction((txn) async {
-        if (lot == null) {
-          final gid = const Uuid().v4();
-          lotId = await txn.insert('lot_seri', {
-            ...data,
-            'global_id': gid,
-            'urun_id': urunId,
-            'kayit_tarihi': DateTime.now().toIso8601String(),
-            'last_updated': DateTime.now().toIso8601String(),
-          });
-        } else {
-          lotId = lot['id'] as int;
-          data['last_updated'] = DateTime.now().toIso8601String();
-          await txn.update('lot_seri', data, where: 'id=?', whereArgs: [lotId]);
-        }
+      // Tüm transaction + bulut senkron mantığı artık LotDeposu.kaydet'te
+      // — bkz. o metodun doc yorumu, davranış birebir korundu.
+      final (lotId, fark) = await LotDeposu().kaydet(
+        existingLotId: lot == null ? null : lot['id'] as int,
+        urunId: urunId,
+        eskiMiktar: eskiMiktar,
+        lotNo: lotCtrl.text.trim(),
+        sktIso: skt,
+        miktar: miktar,
+        aciklama: notCtrl.text.trim(),
+        kullaniciId: AuthServisi().aktifId,
+      );
 
-        if (fark == 0) return;
-        final hareketGid = const Uuid().v4();
-        final aciklama = 'Lot Düzeltme: ${lotCtrl.text.trim()}';
-        if (fark > 0) {
-          await StokDeposu().stokGirTxn(txn, hareketGid,
-              urunId: urunId,
-              miktar: fark,
-              kullaniciId: AuthServisi().aktifId,
-              aciklama: aciklama,
-              referansId: lotId,
-              referansTuru: 'lot_seri',
-              hareketTuru: 'Lot Düzeltme',
-              lotId: lotId);
-        } else {
-          await StokDeposu().stokDusTxn(txn, hareketGid,
-              urunId: urunId,
-              miktar: fark.abs(),
-              kullaniciId: AuthServisi().aktifId,
-              aciklama: aciklama,
-              referansId: lotId,
-              referansTuru: 'lot_seri',
-              hareketTuru: 'Lot Düzeltme',
-              lotId: lotId);
-        }
-      });
-
-      // 🔴 Derin analizde bulundu: bu ekran (lot_seri senkron sisteminde
-      // olduğu halde) global_id atamıyordu ve BulutManager'ı hiç
-      // çağırmıyordu — lot/SKT takibi (çok şubeli işletmelerde kritik)
-      // hiç senkronize olmuyordu.
-      final db2 = await Veritabani().db;
-      final satir = await db2.query('lot_seri',
-          where: 'id = ?', whereArgs: [lotId], limit: 1);
-      if (satir.isNotEmpty)
-        BulutManager()
-            .upsert('lot_seri', Map<String, dynamic>.from(satir.first));
-      if (fark != 0) {
-        final urunSatir = await db2.query('urunler',
-            where: 'id = ?', whereArgs: [urunId], limit: 1);
-        if (urunSatir.isNotEmpty)
-          BulutManager()
-              .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-      }
       // FAZ 9 — Onay Merkezi (bildirim tipi): stok düzeltmesi ENGELLENMEDİ,
       // zaten uygulandı — sadece miktar eşiği aşılıyorsa sonradan
       // incelenebilsin diye kayda düşülüyor.

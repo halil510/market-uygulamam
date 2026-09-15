@@ -272,13 +272,20 @@ class KasaDeposu {
     try {
       final db = await _d;
       // 🔴 Derin analizde bulundu: aynı eksik kopya burada da vardı.
+      // 🔴 Derin denetimde bulundu (P2): sube_id filtresi hiç yoktu —
+      // Kasa Raporu ekranı çok şubeli kurulumda aktif şube ne olursa
+      // olsun TÜM şubelerin toplamını gösteriyordu. Dosyadaki diğer
+      // fonksiyonlar (guncelBakiye, gunlukOzet vb.) zaten bu deseni
+      // kullanıyor — aynı şekilde uygulandı.
+      final subeId = AktifSubeServisi().subeId;
+      final subeKosulu = subeId != null ? ' AND sube_id = ?' : '';
       final res = await db.rawQuery("""
-        SELECT 
+        SELECT
           COALESCE(SUM(CASE WHEN hareket_tipi IN ('Satış','Tahsilat','AçılışKasa','Giriş','Virman Giriş','Iade Iptali','İade İptali','Ödeme Girişi','Gider İptali') THEN tutar ELSE 0 END), 0) as giris,
           COALESCE(SUM(CASE WHEN hareket_tipi IN ('Gider','Ödeme','KapanışKasa') THEN tutar ELSE 0 END), 0) as cikis
-        FROM kasa_hareketleri 
-        WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND deleted_at IS NULL
-      """, [bas.toIso8601String(), bit.toIso8601String()]);
+        FROM kasa_hareketleri
+        WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND deleted_at IS NULL$subeKosulu
+      """, [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId]);
       if (res.isEmpty) return {'giris': 0, 'cikis': 0};
       final r = res.first;
       return {

@@ -612,18 +612,29 @@ class YazdirmaServisi {
     final c = _aktif?._btKaraktar;
     if (c == null) throw Exception('Bluetooth yazıcı bağlı değil');
 
-    // MTU'ya göre parçala
-    const mtu = 20;
-    for (int i = 0; i < bytes.length; i += mtu) {
-      final son   = (i + mtu < bytes.length) ? i + mtu : bytes.length;
-      final parca = Uint8List.fromList(bytes.sublist(i, son));
-      if (c.properties.writeWithoutResponse) {
-        await c.write(parca, withoutResponse: true);
-      } else {
-        await c.write(parca);
+    // 🔴 Derin denetimde bulundu (P2): _wifiYaz'ın aksine burada hiç
+    // zaman aşımı yoktu — zombi bir GATT bağlantısı (disconnected
+    // event'i hiç gelmeyen, donmuş bir bağlantı) c.write()'ı süresiz
+    // beklemede bırakabilirdi, _yazdir()'in yeniden deneme sarmalayıcısı
+    // (satır ~700) hiç devreye giremez, kullanıcı hiç hata görmeden
+    // "yazdırılıyor" durumunda sonsuza kadar kilitli kalabilirdi.
+    // _wifiYaz ile AYNI 12sn zaman aşımı deseni uygulandı.
+    await () async {
+      // MTU'ya göre parçala
+      const mtu = 20;
+      for (int i = 0; i < bytes.length; i += mtu) {
+        final son   = (i + mtu < bytes.length) ? i + mtu : bytes.length;
+        final parca = Uint8List.fromList(bytes.sublist(i, son));
+        if (c.properties.writeWithoutResponse) {
+          await c.write(parca, withoutResponse: true);
+        } else {
+          await c.write(parca);
+        }
+        await Future.delayed(const Duration(milliseconds: 6));
       }
-      await Future.delayed(const Duration(milliseconds: 6));
-    }
+    }().timeout(const Duration(seconds: 12),
+        onTimeout: () => throw Exception(
+            'Yazıcıya veri gönderilemedi (12sn zaman aşımı — Bluetooth bağlantısı muhtemelen donmuş)'));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -681,7 +692,12 @@ class YazdirmaServisi {
   Future<void> _usbYaz(List<int> bytes) async {
     final port = _aktif?._usbPort;
     if (port == null) throw Exception('USB yazıcı bağlı değil');
-    await port.write(Uint8List.fromList(bytes));
+    // 🔴 Derin denetimde bulundu (P2): _wifiYaz ile AYNI zaman aşımı
+    // eksikliği — port.write() donarsa yazdırma süresiz asılı kalırdı.
+    await port.write(Uint8List.fromList(bytes)).timeout(
+        const Duration(seconds: 12),
+        onTimeout: () => throw Exception(
+            'Yazıcıya veri gönderilemedi (12sn zaman aşımı — USB bağlantısı muhtemelen donmuş)'));
   }
 
   // ══════════════════════════════════════════════════════════════════════════

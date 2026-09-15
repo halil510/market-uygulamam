@@ -11,6 +11,7 @@ import '../../depolar/satis_deposu.dart';
 import '../../modeller/satis_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
@@ -137,9 +138,9 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
       final fmt = DateFormat('dd.MM.yyyy HH:mm');
       for (final s in satislar) {
         sheet.appendRow([
-          TextCellValue(s.fisNo ?? ''),
+          TextCellValue(excelIcinGuvenliMetin(s.fisNo)),
           TextCellValue(fmt.format(s.tarih)),
-          TextCellValue(s.cariAdi ?? ''),
+          TextCellValue(excelIcinGuvenliMetin(s.cariAdi)),
           TextCellValue(s.odemeYontemi ?? ''),
           DoubleCellValue(s.genelToplam),
           TextCellValue(s.iptal ? 'Evet' : ''),

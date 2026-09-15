@@ -11,6 +11,7 @@ import 'excel_urun_birlestirici.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
 import 'package:uuid/uuid.dart';
+import '../cekirdek/utils/excel_guvenlik_utils.dart';
 
 class IceriAktarSonuc {
   final int eklenen;
@@ -194,11 +195,11 @@ class ExcelServisi {
 
       sheet.appendRow([
         IntCellValue(urun.id ?? 0),
-        TextCellValue(urun.kod ?? ''),
-        TextCellValue(urun.barkod ?? ''),
-        TextCellValue(urun.barkodlar ?? ''),
-        TextCellValue(urun.urunAdi),
-        TextCellValue(urun.alternatifUrunAdi ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.kod)),
+        TextCellValue(excelIcinGuvenliMetin(urun.barkod)),
+        TextCellValue(excelIcinGuvenliMetin(urun.barkodlar)),
+        TextCellValue(excelIcinGuvenliMetin(urun.urunAdi)),
+        TextCellValue(excelIcinGuvenliMetin(urun.alternatifUrunAdi)),
         TextCellValue(urun.birimAdi),
         DoubleCellValue(urun.netAlisFiyat),
         DoubleCellValue(urun.alisFiyat),
@@ -211,22 +212,22 @@ class ExcelServisi {
         DoubleCellValue(urun.toplamStok * urun.alisFiyat),
         DoubleCellValue(urun.alisKdvOran.toDouble()),
         TextCellValue(urun.kdvOran),
-        TextCellValue(urun.anaGrup ?? ''),
-        TextCellValue(urun.altGrup ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.anaGrup)),
+        TextCellValue(excelIcinGuvenliMetin(urun.altGrup)),
         TextCellValue(urun.aktif ? 'DOĞRU' : 'YANLIŞ'),
         TextCellValue(urun.seriNoTakibi ? 'DOĞRU' : 'YANLIŞ'),
-        TextCellValue(urun.alan1 ?? ''),
-        TextCellValue(urun.alan2 ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.alan1)),
+        TextCellValue(excelIcinGuvenliMetin(urun.alan2)),
         TextCellValue(urun.paraBirimi),
         DoubleCellValue(urun.minimumStok),
         DoubleCellValue(urun.maksimumStok),
-        TextCellValue(urun.alan3 ?? ''),
-        TextCellValue(urun.alan4 ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.alan3)),
+        TextCellValue(excelIcinGuvenliMetin(urun.alan4)),
         TextCellValue(''),  // Renk
         TextCellValue(''),  // Beden
         TextCellValue(''),  // Şube
         TextCellValue(''),  // Üretici
-        TextCellValue(urun.marka ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.marka)),
         TextCellValue(''),  // Model
         TextCellValue(''),  // Raf numarası
         TextCellValue(''),  // Raf ömrü
@@ -235,26 +236,26 @@ class ExcelServisi {
         DoubleCellValue(urun.indirimOrani),
         DoubleCellValue(urun.indirimliFiyatKayitli),
         TextCellValue(urun.lotTakibi ? 'DOĞRU' : 'YANLIŞ'),
-        TextCellValue(urun.lotNo ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.lotNo)),
         DoubleCellValue(urun.sonAlimIndirimOran),
-        TextCellValue(urun.muhasebeKodu ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.muhasebeKodu)),
         DoubleCellValue(urun.en),
         DoubleCellValue(urun.boy),
         DoubleCellValue(urun.yukseklik),
         DoubleCellValue(urun.hacim),
         DoubleCellValue(urun.agirlik),
-        TextCellValue(urun.eskiKodu ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.eskiKodu)),
         TextCellValue(urun.kartTipi),
-        TextCellValue(urun.seriNumarasi ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.seriNumarasi)),
         TextCellValue(urun.otomatikIndirim ? 'DOĞRU' : 'YANLIŞ'),
         TextCellValue(urun.guncellemeTarihi ?? ''),
         TextCellValue(urun.kayitTarihi ?? ''),
-        TextCellValue(urun.resimYolu ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.resimYolu)),
         TextCellValue(''),  // Grup Sorumlusu
         TextCellValue(''),  // Menşei
         TextCellValue(''),  // Barkod Ölçü Birimi
         DoubleCellValue(karOrani.toDouble()),
-        TextCellValue(urun.muafiyetKodu ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.muafiyetKodu)),
         DoubleCellValue(urun.resmiBakiye ?? 0),
         DoubleCellValue(urun.alisFiyatKdvDahil),
         TextCellValue(urun.fiyatGuncellemeTarih ?? ''),
@@ -269,10 +270,10 @@ class ExcelServisi {
         TextCellValue(urun.sonKullanmaTarihi ?? ''),
         TextCellValue(urun.evrakKontrolAktif ? 'DOĞRU' : 'YANLIŞ'),
         DoubleCellValue(urun.satisFiyati),  // Satış Fiyat TL
-        TextCellValue(urun.lotAciklama ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.lotAciklama)),
         DoubleCellValue(urun.eskiFiyat),
         TextCellValue(urun.eskiFiyatTarih?.toIso8601String() ?? ''),
-        TextCellValue(urun.promosyonGrup ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(urun.promosyonGrup)),
         DoubleCellValue(urun.receteKatsayi),
         TextCellValue(urun.promosyonAktif ? 'DOĞRU' : 'YANLIŞ'),
       ]);
@@ -692,7 +693,7 @@ class ExcelServisi {
       sheet.appendRow([
         TextCellValue(s.fisNo ?? ''),
         TextCellValue(s.tarih.toIso8601String()),
-        TextCellValue(s.cariAdi ?? 'Perakende'),
+        TextCellValue(excelIcinGuvenliMetin(s.cariAdi ?? 'Perakende')),
         DoubleCellValue(s.genelToplam),
       ]);
     }
@@ -714,7 +715,7 @@ class ExcelServisi {
     for (final i in iadeler) {
       sheet.appendRow([
         TextCellValue(i['tarih']?.toString() ?? ''),
-        TextCellValue(i['urun_adi']?.toString() ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(i['urun_adi']?.toString())),
         DoubleCellValue((i['miktar'] as num?)?.toDouble() ?? 0),
         DoubleCellValue((i['toplam_tutar'] as num?)?.toDouble() ?? 0),
       ]);
@@ -895,12 +896,12 @@ class ExcelServisi {
       final adi    = s['UrunAdi']?.toString() ?? s['urun_adi']?.toString() ?? '';
       final depo   = s['DepoAdi']?.toString() ?? 'Merkez Depo';
       sheet.appendRow([
-        TextCellValue(kod),
-        TextCellValue(adi),
+        TextCellValue(excelIcinGuvenliMetin(kod)),
+        TextCellValue(excelIcinGuvenliMetin(adi)),
         DoubleCellValue(miktar),
         DoubleCellValue(stok),
         DoubleCellValue(fark),
-        TextCellValue(depo),
+        TextCellValue(excelIcinGuvenliMetin(depo)),
       ]);
     }
 
@@ -1026,8 +1027,8 @@ class ExcelServisi {
       final birimFiyat = satisFiyat * (1 - iskonto / 100);
       final minMiktar  = (p['min_miktar'] as num?)?.toDouble() ?? 1.0;
       sheet.appendRow([
-        TextCellValue(p['barkod']?.toString() ?? p['urun_kodu']?.toString() ?? ''),
-        TextCellValue(p['urun_adi']?.toString() ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(p['barkod']?.toString() ?? p['urun_kodu']?.toString())),
+        TextCellValue(excelIcinGuvenliMetin(p['urun_adi']?.toString())),
         DoubleCellValue(minMiktar),
         DoubleCellValue(iskonto),
         DoubleCellValue(satisFiyat),
@@ -1076,8 +1077,8 @@ class ExcelServisi {
       final kdvliTutar   = birimFiyat * miktar;
       final netTutar     = (kdvliTutar - iskonto) / (1 + kdvOran / 100);
       sheet.appendRow([
-        TextCellValue(k['barkod']?.toString() ?? ''),
-        TextCellValue(k['urun_adi']?.toString() ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(k['barkod']?.toString())),
+        TextCellValue(excelIcinGuvenliMetin(k['urun_adi']?.toString())),
         DoubleCellValue(miktar),
         TextCellValue(k['birim_adi']?.toString() ?? 'ADET'),
         DoubleCellValue(kdvliFiyat),
@@ -1132,9 +1133,9 @@ class ExcelServisi {
       final kdvliT     = kdvliF * miktar;
       final kdvTutar   = kdvliT - netTutar;
       sheet.appendRow([
-        TextCellValue(k['kod']?.toString() ?? k['barkod']?.toString() ?? ''),
-        TextCellValue(k['barkod']?.toString() ?? ''),
-        TextCellValue(k['urun_adi']?.toString() ?? ''),
+        TextCellValue(excelIcinGuvenliMetin(k['kod']?.toString() ?? k['barkod']?.toString())),
+        TextCellValue(excelIcinGuvenliMetin(k['barkod']?.toString())),
+        TextCellValue(excelIcinGuvenliMetin(k['urun_adi']?.toString())),
         DoubleCellValue(miktar),
         TextCellValue(k['birim_adi']?.toString() ?? 'ADET'),
         DoubleCellValue(miktar),

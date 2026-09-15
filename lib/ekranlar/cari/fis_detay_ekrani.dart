@@ -33,6 +33,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../veri/database/veritabani.dart';
 
@@ -256,7 +257,7 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
       }
 
       sh.appendRow([TextCellValue('FİŞ DETAYI')]);
-      sh.appendRow([TextCellValue('Cari:'), TextCellValue(widget.cariUnvan)]);
+      sh.appendRow([TextCellValue('Cari:'), TextCellValue(excelIcinGuvenliMetin(widget.cariUnvan))]);
       sh.appendRow([TextCellValue('Fiş Tipi:'), TextCellValue(widget.fisTipi)]);
       sh.appendRow([
         TextCellValue('Fiş No:'),
@@ -281,7 +282,7 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
 
         for (final k in _kalemler) {
           sh.appendRow([
-            TextCellValue(k['urun_adi']?.toString() ?? '-'),
+            TextCellValue(excelIcinGuvenliMetin(k['urun_adi']?.toString() ?? '-')),
             TextCellValue(k['barkod']?.toString() ?? ''),
             DoubleCellValue((k['miktar'] as num?)?.toDouble() ?? 0),
             TextCellValue(k['birim_adi']?.toString() ?? ''),

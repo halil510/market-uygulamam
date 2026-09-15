@@ -18,6 +18,7 @@ import '../../modeller/cari_model.dart';
 import '../../modeller/cari_hareket_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import '../../veri/database/veritabani.dart';
 import 'fis_detay_ekrani.dart';
 import '../../tasarim_sistemi/ts_kart.dart';
@@ -335,8 +336,8 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
         sh.appendRow([
           TextCellValue(_fmtT.format(h.tarih)),
           TextCellValue(h.fisTipi),
-          TextCellValue(h.fisNo ?? ''),
-          TextCellValue(h.aciklama),
+          TextCellValue(excelIcinGuvenliMetin(h.fisNo)),
+          TextCellValue(excelIcinGuvenliMetin(h.aciklama)),
           DoubleCellValue(h.borc),
           DoubleCellValue(h.alacak),
           DoubleCellValue(runBak),

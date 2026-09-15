@@ -22,6 +22,7 @@ import '../../depolar/kasa_deposu.dart';
 import '../../veri/database/veritabani.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../servisler/aktif_sube_servisi.dart';
+import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 
 class GunlukRaporEkrani extends ConsumerStatefulWidget {
   const GunlukRaporEkrani({super.key});
@@ -295,8 +296,8 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
       String saatStr = DateFormat('HH:mm:ss').format(tarih);
       
       detaySayfa.appendRow([
-        TextCellValue(kod),
-        TextCellValue(urunAdi),
+        TextCellValue(excelIcinGuvenliMetin(kod)),
+        TextCellValue(excelIcinGuvenliMetin(urunAdi)),
         DoubleCellValue(miktar),
         TextCellValue(birim),
         DoubleCellValue(kdvliFiyat),
@@ -304,7 +305,7 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
         DoubleCellValue(indirimTutari),
         DoubleCellValue(kdvOrani),
         DoubleCellValue(netTutarTL),
-        TextCellValue(musteri),
+        TextCellValue(excelIcinGuvenliMetin(musteri)),
         TextCellValue(tarihStr),
         TextCellValue(saatStr),
       ]);

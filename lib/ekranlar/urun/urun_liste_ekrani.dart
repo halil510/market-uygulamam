@@ -25,6 +25,7 @@ import '../../modeller/urun_model.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../saglayicilar/riverpod/urun_provider.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
@@ -374,13 +375,13 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
       ]);
       for (final u in durum.urunler) {
         sheet.appendRow([
-          TextCellValue(u.urunAdi),
-          TextCellValue(u.barkod ?? ''),
+          TextCellValue(excelIcinGuvenliMetin(u.urunAdi)),
+          TextCellValue(excelIcinGuvenliMetin(u.barkod)),
           DoubleCellValue(u.stok),
           DoubleCellValue(u.alisFiyat),
           DoubleCellValue(u.satisFiyati),
           TextCellValue(u.birimAdi),
-          TextCellValue(u.anaGrup ?? ''),
+          TextCellValue(excelIcinGuvenliMetin(u.anaGrup)),
         ]);
       }
       final dir = await getApplicationDocumentsDirectory();

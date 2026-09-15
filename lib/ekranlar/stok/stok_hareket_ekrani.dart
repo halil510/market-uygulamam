@@ -13,6 +13,7 @@ import '../../depolar/stok_deposu.dart';
 import '../../modeller/stok_hareket_model.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 
 class StokHareketEkrani extends ConsumerStatefulWidget {
   const StokHareketEkrani({super.key});
@@ -87,7 +88,7 @@ class _StokHareketEkraniState extends ConsumerState<StokHareketEkrani> {
       for (final h in _filtreli) {
         sheet.appendRow([
           TextCellValue(fmt.format(h.tarih)),
-          TextCellValue(h.urunAdi ?? ''),
+          TextCellValue(excelIcinGuvenliMetin(h.urunAdi)),
           TextCellValue(h.hareketTuru),
           DoubleCellValue(h.miktar),
           DoubleCellValue(h.oncekiStok),

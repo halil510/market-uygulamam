@@ -9,15 +9,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../depolar/urun_deposu.dart';
+import '../../depolar/tedarikci_siparis_deposu.dart';
 import '../../veri/database/veritabani.dart';
 import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
@@ -157,52 +156,25 @@ class _SiparisOlusturEkraniState extends ConsumerState<SiparisOlusturEkrani> {
     if (mounted) setState(() {});
     try {
       final kullanici = AuthServisi().aktifKullanici;
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
       final siparisNo = await Veritabani().fisNoUret('siparis', subeId: AktifSubeServisi().subeId ?? 1);
-      final siparisGid = const Uuid().v4();
-      int siparisId = 0;
-      final kalemGidler = <String>[];
 
-      await db.transaction((txn) async {
-        siparisId = await txn.insert('tedarikci_siparisler', {
-          'global_id': siparisGid,
-          'cari_id': widget.tedarikci.id,
-          'siparis_no': siparisNo,
-          'siparis_tarihi': now,
-          'toplam_tutar': _genelToplam,
-          'durum': 'beklemede',
-          'notlar': 'Sipariş: ${widget.tedarikci.unvan}',
-          'olusturan_id': kullanici?.id,
-          'last_updated': now,
-        });
-        for (final k in _kalemler) {
-          final kalemGid = const Uuid().v4();
-          kalemGidler.add(kalemGid);
-          await txn.insert('tedarikci_siparis_kalem', {
-            'global_id': kalemGid,
-            'siparis_id': siparisId,
-            'urun_id': k.urun.id,
-            'siparis_mik': k.miktar,
-            'teslim_mik': 0,
-            'birim_fiyat': k.birimFiyat,
-            'kdv_oran': 0,
-            'toplam_tutar': k.toplamTutar,
-            'last_updated': now,
-          });
-        }
-      });
-
-      try {
-        final siparisSatir = await db.query('tedarikci_siparisler', where: 'id = ?', whereArgs: [siparisId], limit: 1);
-        if (siparisSatir.isNotEmpty) BulutManager().upsert('tedarikci_siparisler', Map<String, dynamic>.from(siparisSatir.first));
-        for (final gid in kalemGidler) {
-          final s = await db.query('tedarikci_siparis_kalem', where: 'global_id = ?', whereArgs: [gid], limit: 1);
-          if (s.isNotEmpty) BulutManager().upsert('tedarikci_siparis_kalem', Map<String, dynamic>.from(s.first));
-        }
-      } catch (_) {
-        // Bulut bildirimi hatası asıl işlemi engellemez
-      }
+      // Tüm transaction + bulut senkron mantığı artık
+      // TedarikciSiparisDeposu.olustur'da — bkz. o metodun doc yorumu,
+      // davranış birebir korundu (stok/kasa/cari HİÇ ETKİLENMEZ, sadece
+      // 'beklemede' sipariş kaydı).
+      await TedarikciSiparisDeposu().olustur(
+        tedarikciId: widget.tedarikci.id!,
+        tedarikciUnvan: widget.tedarikci.unvan,
+        kalemler: _kalemler
+            .map((k) => TedarikciSiparisKalemGirdi(
+                urunId: k.urun.id!,
+                miktar: k.miktar,
+                birimFiyat: k.birimFiyat))
+            .toList(),
+        genelToplam: _genelToplam,
+        siparisNo: siparisNo,
+        olusturanId: kullanici?.id,
+      );
 
       if (mounted) {
         BildirimServisi.basari(context, 'Sipariş oluşturuldu: $siparisNo');

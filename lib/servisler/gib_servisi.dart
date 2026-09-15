@@ -134,6 +134,14 @@ class GibServisi {
             _apiUrl = eskiUrl;
             _kullaniciAdi = eskiKullanici;
             _sifre = eskiSifre;
+            // 🔴 Derin denetimde bulundu (P2): taşıma başarılı olduktan
+            // sonra eski, düz-metin SharedPreferences kayıtları (özellikle
+            // 'gib_sifre') HİÇ silinmiyordu — güvenli depoya kopyalandıktan
+            // sonra bile şifre, cihazda korumasız bir ikinci kopya olarak
+            // kalıcı biçimde duruyordu. Artık taşıma tamamlanınca temizleniyor.
+            await prefs.remove('gib_api_url');
+            await prefs.remove('gib_kullanici');
+            await prefs.remove('gib_sifre');
             if (kDebugMode) debugPrint('GİB ayarları eski (kullanılmayan) depodan taşındı');
           }
         } catch (e) {

@@ -72,11 +72,25 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
           const SizedBox(width: 10),
           const Text('Cari Sil', style: TextStyle(fontSize: 16)),
         ]),
+        // 🔴 Derin denetimde bulundu (P2): bu diyalog carinin bakiyesini
+        // hiç göstermiyordu — borçlu/alacaklı bir cari (soft-delete
+        // olduğu için veri kaybolmasa da) is_deleted=0 filtresi
+        // kullanan TÜM ekran/rapordan kaybolur, işletme o parayı
+        // unutabilir. Bakiye sıfır değilse net bir uyarı ekleniyor.
         content: RichText(text: TextSpan(
           style: TextStyle(color: TsRenk.metinBirincil(ctx), fontSize: 14),
           children: [
             TextSpan(text: c.unvan, style: const TextStyle(fontWeight: FontWeight.w700)),
             const TextSpan(text: ' adlı cari silinecek.\nBu işlem geri alınamaz.'),
+            if (c.bakiye.abs() > 0.005)
+              TextSpan(
+                text: c.bakiye > 0
+                    ? '\n\n⚠️ Bu carinin ${ParaUtils.formatla(c.bakiye)} alacağı var — '
+                      'silindikten sonra raporlarda görünmeyecek.'
+                    : '\n\n⚠️ Bu carinin ${ParaUtils.formatla(c.bakiye.abs())} borcu var — '
+                      'silindikten sonra raporlarda görünmeyecek.',
+                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+              ),
           ],
         )),
         actions: [

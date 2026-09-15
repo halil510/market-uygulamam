@@ -24,6 +24,7 @@ import 'package:uuid/uuid.dart';
 import '../../veri/database/veritabani.dart';
 import '../satis/coklu_odeme_ekrani.dart';
 import '../../servisler/aktif_sube_servisi.dart';
+import '../../depolar/cari_deposu.dart';
 
 class MasaDetayEkrani extends ConsumerStatefulWidget {
   final MasaModel masa;
@@ -35,6 +36,7 @@ class MasaDetayEkrani extends ConsumerStatefulWidget {
 
 class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
   bool _islemAktif = false;
+  final _cariDepo = CariDeposu();
 
   @override
   void initState() {
@@ -326,6 +328,52 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
 
       final kalemler = (sonuc['kalemler'] as List).cast<Map<String, dynamic>>();
       final paraUstu = (sonuc['para_ustu'] as num?)?.toDouble() ?? 0.0;
+
+      // 🔴 Derin denetimde bulundu (P1): kredi limiti kontrolü
+      // (CariDeposu.limitKontrolEt) sadece Toptan Satış'ta çağrılıyordu
+      // — masadan 'Cari' (veresiye) ödemede müşterinin kredi limiti
+      // aşımı HİÇ kontrol edilmiyordu/uyarılmıyordu. Toptan Satış'taki
+      // AYNI desen (limit aşılıyorsa net onay iste, engelleme) burada
+      // da uygulandı.
+      final cariTutar = kalemler
+          .where((k) => k['yontem'] == 'Cari')
+          .fold(0.0, (s, k) => s + (k['tutar'] as num).toDouble());
+      final efektifCariId = siparis.cariId;
+      if (efektifCariId != null && cariTutar > 0.005) {
+        final limitSonuc = await _cariDepo.limitKontrolEt(efektifCariId, cariTutar);
+        if (limitSonuc.asildi) {
+          if (!mounted) return;
+          final devam = await showDialog<bool>(
+            context: context,
+            builder: (c) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(children: [
+                Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
+                SizedBox(width: 8),
+                Text('Kredi Limiti Aşılıyor'),
+              ]),
+              content: Text(
+                'Tanımlı kredi limiti: ${ParaUtils.formatla(limitSonuc.limit)}\n'
+                'Mevcut bakiye: ${ParaUtils.formatla(limitSonuc.mevcutBakiye)}\n'
+                'Bu ödemeyle birlikte: ${ParaUtils.formatla(limitSonuc.mevcutBakiye + cariTutar)}\n\n'
+                'Limit ${ParaUtils.formatla(limitSonuc.asimTutari)} kadar aşılacak. '
+                'Yine de devam etmek istiyor musunuz?',
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(c, false),
+                    child: const Text('Vazgeç')),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: TsRenk.uyari),
+                  onPressed: () => Navigator.pop(c, true),
+                  child: const Text('Yine de Devam Et'),
+                ),
+              ],
+            ),
+          );
+          if (devam != true) return;
+        }
+      }
 
       final odemeSonuc = await MasaOdemeServisi().odemeYap(
         siparis: siparis,

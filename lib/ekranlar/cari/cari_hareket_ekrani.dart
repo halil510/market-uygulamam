@@ -365,11 +365,16 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       double runBak = 0;
       for (final h in _filtreli.reversed.toList()) {
         runBak += h.borc - h.alacak;
+        // 🔴 Derin denetimde bulundu (P2): _exportExcel() bu oturumda
+        // excelIcinGuvenliMetin ile korunmuştu ama hemen altındaki
+        // _exportCSV() atlanmıştı — CSV enjeksiyonu Excel'deki AYNI
+        // risk sınıfı (bir hücre '='/'+'/'-'/'@' ile başlıyorsa CSV'yi
+        // açan programda formül olarak çalıştırılabilir).
         final row = [
           _fmtT.format(h.tarih),
           h.fisTipi,
-          h.fisNo ?? '',
-          h.aciklama,
+          excelIcinGuvenliMetin(h.fisNo),
+          excelIcinGuvenliMetin(h.aciklama),
           h.borc.toStringAsFixed(2),
           h.alacak.toStringAsFixed(2),
           runBak.toStringAsFixed(2)

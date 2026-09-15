@@ -12,6 +12,7 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../servisler/puan_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../tasarim_sistemi/ts_kart.dart';
 
 class MusteriPuanEkrani extends ConsumerStatefulWidget {
@@ -33,6 +34,12 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
   double _bakiye = 0;
   List<Map<String, dynamic>> _gecmis = [];
   bool _yukleniyor = true;
+  // 🔴 Derin denetimde bulundu (P2): Puan Ekle/Puan Kullan akışlarında
+  // hiç çift-dokunma koruması yoktu — hızlı art arda dokunma mükerrer
+  // puan ekleme/kullanma riski taşıyordu. Ayrıca yazma çağrıları
+  // (puanKullan/puanEkle) try/catch'siz — bir hata kullanıcıya hiç
+  // gösterilmiyordu.
+  bool _islemAktif = false;
 
   @override
   void initState() {
@@ -67,6 +74,7 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
   }
 
   Future<void> _puanHarca() async {
+    if (_islemAktif) return;
     if (_bakiye <= 0) {
       BildirimServisi.uyari(context, 'Kullanılabilir puan yok');
       return;
@@ -112,15 +120,22 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
     );
 
     if (istenen == null || !mounted) return;
-    await _puan.puanKullan(
-      cariId:       widget.cariId,
-      istenenPuan:  istenen,
-      satisId:      0, // Manuel kullanım
-    );
-    if (mounted) {
-      BildirimServisi.basari(context,
-          '${istenen.toStringAsFixed(0)} puan kullanıldı');
-      await _yukle();
+    setState(() => _islemAktif = true);
+    try {
+      await _puan.puanKullan(
+        cariId:       widget.cariId,
+        istenenPuan:  istenen,
+        satisId:      0, // Manuel kullanım
+      );
+      if (mounted) {
+        BildirimServisi.basari(context,
+            '${istenen.toStringAsFixed(0)} puan kullanıldı');
+        await _yukle();
+      }
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Puan kullanılamadı: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      if (mounted) setState(() => _islemAktif = false);
     }
   }
 
@@ -138,6 +153,7 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
         icon: const Icon(Icons.add),
         label: const Text('Puan Ekle'),
         onPressed: () async {
+          if (_islemAktif) return;
           final ctrl = TextEditingController();
           final puan = await showDialog<double>(
             context: context,
@@ -167,10 +183,17 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
             ),
           );
           if (puan != null && puan > 0 && mounted) {
-            await _puan.puanEkle(
-              cariId: widget.cariId, tutar: puan, satisId: 0, puanOrani: 1.0);
-            await _yukle();
-            if (mounted) basariMesaji(context, '${puan.toStringAsFixed(0)} puan eklendi ✓');
+            setState(() => _islemAktif = true);
+            try {
+              await _puan.puanEkle(
+                cariId: widget.cariId, tutar: puan, satisId: 0, puanOrani: 1.0);
+              await _yukle();
+              if (mounted) basariMesaji(context, '${puan.toStringAsFixed(0)} puan eklendi ✓');
+            } catch (e) {
+              if (mounted) hataMesaji(context, 'Puan eklenemedi: ${kullaniciyaHataMetni(e)}');
+            } finally {
+              if (mounted) setState(() => _islemAktif = false);
+            }
           }
         },
       ),

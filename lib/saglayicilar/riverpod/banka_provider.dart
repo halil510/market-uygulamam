@@ -19,7 +19,11 @@ final bankalarProvider = FutureProvider<List<BankaModel>>((ref) async {
   }
 });
 
-final bankaDetayProvider = FutureProvider.family<BankaModel?, int>((ref, id) async {
+// 🔴 Derin analizde bulundu: bu dosyadaki bankaHareketlerProvider'a
+// eklenen .autoDispose düzeltmesi aşağıdaki 4 provider'a uygulanmamıştı
+// (tutarsızlık) — parametre uzayı (banka/kart id) küçük olduğu için
+// pratik etkisi düşük, ama aynı gerekçeyle tutarlılık için eklendi.
+final bankaDetayProvider = FutureProvider.family.autoDispose<BankaModel?, int>((ref, id) async {
   try {
     return await BankaDeposu().idileGetir(id);
   } catch (e, st) {
@@ -28,7 +32,7 @@ final bankaDetayProvider = FutureProvider.family<BankaModel?, int>((ref, id) asy
   }
 });
 
-final bankaHesaplarProvider = FutureProvider.family<List<BankaHesapModel>, int?>((ref, bankaId) async {
+final bankaHesaplarProvider = FutureProvider.family.autoDispose<List<BankaHesapModel>, int?>((ref, bankaId) async {
   try {
     return await BankaHesapDeposu().tumunuGetir(bankaId: bankaId);
   } catch (e, st) {
@@ -37,7 +41,7 @@ final bankaHesaplarProvider = FutureProvider.family<List<BankaHesapModel>, int?>
   }
 });
 
-final krediKartlariProvider = FutureProvider.family<List<KrediKartiModel>, int?>((ref, bankaId) async {
+final krediKartlariProvider = FutureProvider.family.autoDispose<List<KrediKartiModel>, int?>((ref, bankaId) async {
   try {
     return await KrediKartiDeposu().tumunuGetir(bankaId: bankaId);
   } catch (e, st) {
@@ -46,7 +50,7 @@ final krediKartlariProvider = FutureProvider.family<List<KrediKartiModel>, int?>
   }
 });
 
-final krediKartiDetayProvider = FutureProvider.family<KrediKartiModel?, int>((ref, id) async {
+final krediKartiDetayProvider = FutureProvider.family.autoDispose<KrediKartiModel?, int>((ref, id) async {
   try {
     return await KrediKartiDeposu().idileGetir(id);
   } catch (e, st) {

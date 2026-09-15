@@ -87,8 +87,13 @@ class MasaListesiNotifier extends StateNotifier<AsyncValue<List<MasaModel>>> {
   }
 }
 
-final masaListesiProvider =
-    StateNotifierProvider<MasaListesiNotifier, AsyncValue<List<MasaModel>>>(
+// 🔴 Derin analizde bulundu (Riverpod lifecycle denetimi): .autoDispose
+// olmadan tanımlanmıştı — masaSiparisProvider'da düzeltilen sızıntıyla
+// AYNI kök neden, farklı provider. 15 saniyelik oto-yenileme Timer'ı
+// hiç dispose olmadığı için restoran modu açık bir işletmede kullanıcı
+// dashboard'dan tamamen ayrılsa bile arka planda sonsuza kadar çalışıyordu.
+final masaListesiProvider = StateNotifierProvider.autoDispose<
+    MasaListesiNotifier, AsyncValue<List<MasaModel>>>(
         (ref) => MasaListesiNotifier(ref.watch(masaDeposuProvider)));
 
 class MasaSiparisNotifier extends StateNotifier<AsyncValue<MasaSiparisModel?>> {
@@ -234,5 +239,7 @@ class MutfakNotifier extends StateNotifier<AsyncValue<MutfakDurum>> {
   }
 }
 
-final mutfakProvider = StateNotifierProvider<MutfakNotifier, AsyncValue<MutfakDurum>>(
+// 🔴 Derin analizde bulundu: aynı sızıntı sınıfı, 6 saniyelik Timer —
+// masaListesiProvider'daki düzeltmeyle aynı gerekçe.
+final mutfakProvider = StateNotifierProvider.autoDispose<MutfakNotifier, AsyncValue<MutfakDurum>>(
     (ref) => MutfakNotifier(ref.watch(masaDeposuProvider)));

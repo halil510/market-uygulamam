@@ -8,11 +8,9 @@ import 'package:flutter/services.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/urun_deposu.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../modeller/urun_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
-import '../../veri/database/veritabani.dart';
 
 class TopluFiyatEkrani extends ConsumerStatefulWidget {
   const TopluFiyatEkrani({super.key});
@@ -22,7 +20,6 @@ class TopluFiyatEkrani extends ConsumerStatefulWidget {
 
 class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with SingleTickerProviderStateMixin {
   final _urunDepo = UrunDeposu();
-  final _db = Veritabani();
   late final TabController _tab;
 
   List<UrunModel> _urunler    = [];
@@ -136,46 +133,33 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
 
     setState(() => _isleniyor = true);
     try {
-      final db = await _db.db;
-      final now = DateTime.now().toIso8601String();
       final hedefUrunler = _secili.where((u) => hedefIds.contains(u.id)).toList();
-      final guncellenenIds = <int>[];
       var atlanan = 0;
+      final yeniFiyatlar = <int, double>{};
+      for (final u in hedefUrunler) {
+        final yeni = _yeniFiyatHesapla(u);
+        if (yeni <= 0) {
+          // 🔴 DÜZELTME (derin analizde bulundu): bu satır ÖNCEDEN
+          // kullanıcıya HİÇ bildirilmeden sessizce atlanıyordu —
+          // "$guncellenen ürün güncellendi" mesajı kaç ürünün
+          // atlandığını söylemiyordu, kullanıcı TÜM seçilenlerin
+          // güncellendiğini sanıyordu.
+          atlanan++;
+          continue;
+        }
+        yeniFiyatlar[u.id!] = yeni;
+      }
 
-      // 🔴 DÜZELTME (derin analizde bulundu): bu döngü ÖNCEDEN tek
+      // 🔴 DÜZELTME (derin analizde bulundu): bu güncelleme ÖNCEDEN tek
       // transaction'da DEĞİLDİ — her ürün ayrı db.update() ile
       // güncelleniyordu. Kullanıcıya "Bu işlem geri alınamaz!" denip
       // atomik bir işlem izlenimi veriliyordu, ama ortasında bir kesinti
       // (uygulama çökmesi/güç kesintisi) olsaydı KISMİ güncelleme kalır,
-      // geri alınamazdı. Artık tek transaction'da: ya hepsi, ya hiçbiri.
-      await db.transaction((txn) async {
-        for (final u in hedefUrunler) {
-          final yeni = _yeniFiyatHesapla(u);
-          if (yeni <= 0) {
-            // 🔴 DÜZELTME (derin analizde bulundu): bu satır ÖNCEDEN
-            // kullanıcıya HİÇ bildirilmeden sessizce atlanıyordu —
-            // "$guncellenen ürün güncellendi" mesajı kaç ürünün
-            // atlandığını söylemiyordu, kullanıcı TÜM seçilenlerin
-            // güncellendiğini sanıyordu.
-            atlanan++;
-            continue;
-          }
-          await txn.update('urunler', {'satis_fiyati': yeni, 'last_updated': now},
-              where: 'id = ?', whereArgs: [u.id]);
-          guncellenenIds.add(u.id!);
-        }
-      });
-
-      // 🔴 Derin analizde bulundu: bu ekran UrunDeposu.topluFiyatGuncelle()'den
-      // TAMAMEN BAĞIMSIZ kendi ham SQL'ini kullanıyordu — last_updated
-      // hiç bump edilmiyordu, BulutManager hiç çağrılmıyordu. Toplu
-      // fiyat işlemi (yüzlerce ürünü etkileyebilir) sadece manuel
-      // senkronla buluta gidiyordu. Bulut bildirimi (transaction
-      // BAŞARIYLA bittikten sonra) korunuyor.
-      for (final id in guncellenenIds) {
-        final satir = await db.query('urunler', where: 'id = ?', whereArgs: [id], limit: 1);
-        if (satir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(satir.first));
-      }
+      // geri alınamazdı. Artık UrunDeposu.topluFiyatUygula() TEK
+      // transaction'da yazıyor (ya hepsi, ya hiçbiri) VE her ürünü
+      // buluta bildiriyor (ÖNCEDEN hiç bildirmiyordu, sadece manuel
+      // senkronla gidiyordu).
+      final guncellenenIds = await UrunDeposu().topluFiyatUygula(yeniFiyatlar);
 
       await _yukle();
       if (mounted) {

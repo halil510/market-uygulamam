@@ -721,6 +721,34 @@ class UrunDeposu {
     }
   }
 
+  /// Toplu Fiyat Güncelleme ekranından taşındı — bkz.
+  /// toplu_fiyat_ekrani.dart._guncelle. Nihai fiyat (zam/indirim/sabit/
+  /// alış-üstüne modlarının hesabı) çağıran tarafta hesaplanır (bu, UI'a
+  /// özgü bir iş kuralı); burası SADECE hesaplanmış {urunId: yeniFiyat}
+  /// haritasını TEK transaction içinde atomik olarak yazar (ya hepsi
+  /// güncellenir ya hiçbiri) ve commit sonrası her ürünü buluta bildirir.
+  Future<List<int>> topluFiyatUygula(Map<int, double> yeniFiyatlar) async {
+    final db = await _d;
+    final now = DateTime.now().toIso8601String();
+    final guncellenenIds = <int>[];
+    await db.transaction((txn) async {
+      for (final entry in yeniFiyatlar.entries) {
+        await txn.update(DbSabitler.urunler,
+            {'satis_fiyati': entry.value, 'last_updated': now},
+            where: 'id = ?', whereArgs: [entry.key]);
+        guncellenenIds.add(entry.key);
+      }
+    });
+    for (final id in guncellenenIds) {
+      final satir = await db.query(DbSabitler.urunler,
+          where: 'id = ?', whereArgs: [id], limit: 1);
+      if (satir.isNotEmpty) {
+        BulutManager().upsert(DbSabitler.urunler, Map<String, dynamic>.from(satir.first));
+      }
+    }
+    return guncellenenIds;
+  }
+
   // 🔴 Derin analizde bulundu: stokGuncelle(id, yeniStok) burada duruyordu
   // ama projede HİÇBİR YERDEN çağrılmıyordu (ölü kod) — ve çağrılsaydı
   // TEHLİKELİYDİ: urunler.stok'u stok_hareket tablosuna hiç kayıt

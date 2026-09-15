@@ -310,7 +310,7 @@ class _MusteriSecimPaneliState extends ConsumerState<_MusteriSecimPaneli> {
 }
 
 // ── Modern AppBar İkon Butonu (nullable onTap desteği) ──────────────────────
-class _AppBarButon extends StatelessWidget {
+class _AppBarButon extends StatefulWidget {
   final IconData icon;
   final Color renk;
   final String tooltip;
@@ -324,25 +324,56 @@ class _AppBarButon extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Tooltip(
-    message: tooltip,
-    child: Opacity(
-      opacity: onTap == null ? 0.4 : 1.0,
-      child: GestureDetector(
-        onTap: onTap, // null ise tıklama olmaz
-        child: Container(
-          width: 38, height: 38,
-          margin: const EdgeInsets.only(right: 4),
-          decoration: BoxDecoration(
-            color: renk == Colors.white
-                ? Colors.white.withAlpha(25)
-                : Colors.white.withAlpha(40),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withAlpha(50)),
+  State<_AppBarButon> createState() => _AppBarButonState();
+}
+
+class _AppBarButonState extends State<_AppBarButon> {
+  // 🔴 Kullanıcı isteği: ikonlara dokunma geri bildirimi — önceden bu
+  // buton çıplak bir GestureDetector'dı, hiç ripple/animasyon yoktu.
+  // Artık InkWell (ripple) + basılıyken kısa bir büzülme + arka plan
+  // koyulaşması ekleniyor. onHighlightChanged InkWell'in KENDİ basılı/
+  // bırakıldı durumunu bildirdiği için ayrı bir jest algılayıcısına
+  // gerek yok.
+  bool _basili = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final temelRenk = widget.renk == Colors.white
+        ? Colors.white.withAlpha(25)
+        : Colors.white.withAlpha(40);
+    return Tooltip(
+      message: widget.tooltip,
+      child: Opacity(
+        opacity: widget.onTap == null ? 0.4 : 1.0,
+        child: AnimatedScale(
+          scale: _basili ? 0.9 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: Container(
+            width: 38, height: 38,
+            margin: const EdgeInsets.only(right: 4),
+            decoration: BoxDecoration(
+              color: _basili ? Colors.black.withAlpha(60) : temelRenk,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white.withAlpha(50)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: widget.onTap, // null ise tıklama olmaz
+                onHighlightChanged: widget.onTap == null
+                    ? null
+                    : (v) {
+                        if (mounted) setState(() => _basili = v);
+                      },
+                child: Icon(widget.icon, size: 20,
+                    color: widget.onTap == null ? Colors.grey : Colors.white),
+              ),
+            ),
           ),
-          child: Icon(icon, size: 20, color: onTap == null ? Colors.grey : Colors.white),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

@@ -390,36 +390,11 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
         _bekleyenSayiFuture = BekleyenFislerEkrani.bekleyenSayi();
       });
 
-      final mesaj = (odemeYontemi == 'Nakit' && paraUstu > 0.005)
-          ? 'Satış tamamlandı ✓  Para üstü: ${ParaUtils.formatla(paraUstu)}'
-          : 'Satış başarıyla tamamlandı ✓';
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(mesaj),
-          backgroundColor: Colors.green.shade700,
-          duration: const Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'Fişi Gör',
-            textColor: Colors.white,
-            onPressed: () {
-              if (!mounted) return;
-              Navigator.push(context, MaterialPageRoute(
-                builder: (_) => FisOnizlemeEkrani(satis: SatisModel(
-                  id:          satisId,
-                  fisNo:       fisNo,
-                  tarih:       tarih,
-                  odemeYontemi: odemeYontemi,
-                  genelToplam: genelTop,
-                  odenenTutar: odenenTutar,
-                  kalemler:    satisKalemler,
-                  cariId:      musteri?.id,
-                  cariAdi:     musteri?.unvan,
-                )),
-              ));
-            },
-          ),
-        ));
-      }
+      // Kullanıcı isteği: "satış başarıyla tamamlandı fiş gör dialoğu
+      // kaldır" — her satıştan sonra çıkan "Satış tamamlandı ✓ / Fişi
+      // Gör" SnackBar'ı kaldırıldı. Sepetin anında temizlenip yeni bir
+      // satışa hazır hale gelmesi zaten görsel bir onay; fişi görmek/
+      // yazdırmak isteyen kullanıcı appBar'daki yazıcı ikonunu kullanır.
 
       // Yazdırma işlemi tamamen kaldırıldı. Kullanıcı appBar'daki yazıcı ikonu ile manuel olarak yazdıracak.
 

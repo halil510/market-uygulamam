@@ -50,7 +50,6 @@ import 'bekleyen_fisler_ekrani.dart';
 import 'widgets/satis_alt_panel.dart';
 import 'widgets/kamera_paneli.dart';
 import 'coklu_odeme_ekrani.dart';
-import 'fis_onizleme_ekrani.dart';
 import 'plu_ekrani.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 
@@ -196,10 +195,10 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
               return Badge(
                 label:          sayi > 0 ? Text(sayi.toString()) : null,
                 isLabelVisible: sayi > 0,
-                child: IconButton(
-                  icon: const Icon(Icons.pause_circle_outline),
+                child: TsDokunmaIkon(
+                  ikon: Icons.pause_circle_outline,
                   tooltip: 'Askıdaki Satışlar',
-                  onPressed: () async {
+                  onTap: () async {
                     _islemBasladi();
                     // 🔴 Derin analizde bulundu: bu blokta birden fazla
                     // erken 'return' vardı ve hiçbiri try/finally ile

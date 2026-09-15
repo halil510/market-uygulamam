@@ -192,7 +192,7 @@ class SupabaseSyncServisi {
     'birimler','cari','cari_adres','cari_hareket','fatura_detaylari',
     'faturalar','gider_kategoriler','giderler','iade','iade_kalem',
     'kasa_hareketleri','kategoriler','kullanicilar','lot_seri',
-    'musteri_puan','personel','promosyonlar','puan_hareket',
+    'musteri_puan','personel','promosyonlar','promosyon_tanim','puan_hareket',
     'satis_kalem','satislar','stok_hareket','tedarikci_siparis_kalem',
     'tedarikci_siparisler','urunler','vardiyalar',
     'masalar','masa_siparisleri','masa_siparis_kalem',

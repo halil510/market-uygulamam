@@ -201,7 +201,14 @@ class MasaOdemeServisi {
 
       // Masayı kapat — aynı transaction içinde, siparisKapat()'ın
       // yaptığının birebir aynısı (masa_siparisleri + masalar).
-      await txn.update(
+      // 🔴 Derin denetimde bulundu (P1): bu UPDATE'te sadece 'id = ?'
+      // vardı, mevcut 'durum' hiç kontrol edilmiyordu — iki terminal/
+      // garson aynı masanın ödemesini eşzamanlı işlerse (ya da çift
+      // dokunma/geri-ileri) ikisi de "sipariş hâlâ açık" sanıp devam
+      // edebilir, mükerrer satış+stok+kasa/cari kaydı oluşurdu.
+      // alim_islem_servisi.dart/bekleyen_siparis_deposu.dart'taki AYNI
+      // korumayla hizalandı: etkilenen satır 0 ise dur.
+      final etkilenen = await txn.update(
           'masa_siparisleri',
           {
             'durum': 'odendi',
@@ -209,8 +216,11 @@ class MasaOdemeServisi {
             'satis_id': satisId,
             'last_updated': now,
           },
-          where: 'id = ?',
-          whereArgs: [siparis.id]);
+          where: 'id = ? AND durum = ?',
+          whereArgs: [siparis.id, 'acik']);
+      if (etkilenen == 0) {
+        throw Exception('Bu sipariş zaten ödenmiş veya kapatılmış.');
+      }
       await txn.update('masalar', {'durum': 'bos', 'last_updated': now},
           where: 'id = ?', whereArgs: [siparis.masaId]);
     }); // transaction sonu

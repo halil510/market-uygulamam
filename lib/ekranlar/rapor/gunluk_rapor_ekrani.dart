@@ -21,6 +21,7 @@ import '../../depolar/gider_deposu.dart';
 import '../../depolar/kasa_deposu.dart';
 import '../../veri/database/veritabani.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../servisler/aktif_sube_servisi.dart';
 
 class GunlukRaporEkrani extends ConsumerStatefulWidget {
   const GunlukRaporEkrani({super.key});
@@ -74,6 +75,15 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
       final bas = _baslangic.toIso8601String();
       final bit = _bitis.toIso8601String();
 
+      // 🔴 Derin denetimde bulundu (P1): maliyet (COGS) sorgusunda
+      // sube_id filtresi yoktu — üstteki tariheGoreGetir() zaten aktif
+      // şubeye göre filtrelerken, bu sorgu HER ZAMAN tüm şubelerin
+      // maliyetini topluyordu. Çok şubeli kurulumda "Net Kâr" rakamı
+      // bu yüzden yanlış hesaplanıyordu (bir şubenin karı, diğer TÜM
+      // şubelerin maliyetiyle kirleniyordu). tariheGoreGetir()'deki
+      // AYNI desenle hizalandı.
+      final subeId = AktifSubeServisi().subeId;
+      final subeKosulu = subeId != null ? 'AND s.sube_id = ?' : '';
       final results = await Future.wait([
         _satisDepo.tariheGoreGetir(_baslangic, _bitis),
         _giderDepo.aralikToplamGider(_baslangic, _bitis),
@@ -84,8 +94,8 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
           JOIN satislar s ON sk.satis_id = s.id
           JOIN urunler u ON sk.urun_id = u.id
           WHERE s.tarih BETWEEN ? AND ?
-            AND s.iptal = 0 AND s.is_deleted = 0
-        ''', [bas, bit]),
+            AND s.iptal = 0 AND s.is_deleted = 0 $subeKosulu
+        ''', [bas, bit, if (subeId != null) subeId]),
       ]);
 
       final satislar    = results[0] as List<SatisModel>;
@@ -186,8 +196,15 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
     final bit = _bitis.toIso8601String();
     
     // ★★★★★ DÜZELTİLMİŞ SQL SORGUSU - cari_adi yerine cari.unvan ★★★★★
+    // 🔴 Derin denetimde bulundu (P1): burada da sube_id filtresi
+    // yoktu — ekrandaki özet doğru şubeye göre filtrelenirken, Excel
+    // dışa aktarımı sessizce TÜM şubelerin satış kalemlerini
+    // içeriyordu (hem ekranla uyuşmayan bir rapor hem de diğer
+    // şubelerin verisinin sızması).
+    final subeIdExcel = AktifSubeServisi().subeId;
+    final subeKosuluExcel = subeIdExcel != null ? 'AND s.sube_id = ?' : '';
     final sorguSonucu = await db.rawQuery('''
-      SELECT 
+      SELECT
         s.fis_no,
         s.tarih,
         c.unvan as cari_unvan,
@@ -206,10 +223,10 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
       INNER JOIN satis_kalem sk ON s.id = sk.satis_id
       LEFT JOIN cari c ON s.cari_id = c.id
       WHERE s.tarih BETWEEN ? AND ?
-        AND s.iptal = 0 
-        AND s.is_deleted = 0
+        AND s.iptal = 0
+        AND s.is_deleted = 0 $subeKosuluExcel
       ORDER BY s.tarih, s.id
-    ''', [bas, bit]);
+    ''', [bas, bit, if (subeIdExcel != null) subeIdExcel]);
     
     if (sorguSonucu.isEmpty) {
       if (mounted) {

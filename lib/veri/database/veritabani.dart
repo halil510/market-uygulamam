@@ -650,20 +650,44 @@ class Veritabani {
     await _cakismaKorumasiUygula(database, tablo, kayitlar);
 
     await database.execute('PRAGMA foreign_keys = OFF');
+    // 🔴🔴 KRİTİK DÜZELTME (derin denetimde bulundu): `batch.commit(...,
+    // continueOnError: true)` bir satır eklerken hata verirse SESSİZCE
+    // atlıyordu — bu fonksiyon hiçbir istisna fırlatmadan normal dönüyordu.
+    // Çağıran taraf (supabase_sync_servisi.dart._buluttanAlCalistir),
+    // "her şey başarıyla yazıldı" sanıp senkron filigranını (watermark)
+    // çekilen TÜM kayıtların en büyük last_updated'ine ilerletiyordu.
+    // Sonuç: atlanan satır bu cihazda KALICI OLARAK kayboluyordu — bir
+    // daha hiçbir zaman "last_updated > filigran" sorgusuna dahil
+    // olmuyordu, senkron ekranı ise "başarılı" diyordu. Push tarafında
+    // (aynı dosya, ~satır 1133) kısmi hatada filigranın İLERLETİLMEDİĞİ
+    // zaten doğru yapılmış — pull tarafında bu koruma hiç yoktu.
+    // Artık her satır TEK TEK denenip başarısız olanlar sayılıyor; en az
+    // bir satır başarısız olursa fonksiyon istisna fırlatıyor (iyi
+    // giden satırlar yine de yazılmış olarak kalır — eski dayanıklılık
+    // korunuyor) — bu istisna _buluttanAlCalistir'in try/catch'ine düşer,
+    // filigran o tablo için İLERLEMEZ, başarısız satır BİR SONRAKİ
+    // senkronda tekrar çekilip denenir.
+    var basarisizSayisi = 0;
     try {
-      final batch = database.batch();
       for (final kayit in kayitlar) {
         final temiz = Map<String, dynamic>.from(kayit);
         temiz.remove('id');
         temiz.removeWhere((_, v) => v == null);
-        batch.insert(tablo, temiz, conflictAlgorithm: conflict);
+        try {
+          await database.insert(tablo, temiz, conflictAlgorithm: conflict);
+        } catch (e) {
+          basarisizSayisi++;
+          if (kDebugMode) {
+            debugPrint('supaKayitlariEkle ($tablo) satır hatası: $e');
+          }
+        }
       }
-      // continueOnError: yukarıdaki FK/kolon filtrelemesi çoğu sorunu
-      // önlese de, beklenmeyen bir satır yine de hata verirse TÜM
-      // toplu eklemeyi durdurmasın diye ek güvenlik katmanı.
-      await batch.commit(noResult: true, continueOnError: true);
     } finally {
       await database.execute('PRAGMA foreign_keys = ON');
+    }
+    if (basarisizSayisi > 0) {
+      throw Exception(
+          '$tablo: $basarisizSayisi/${kayitlar.length} kayıt yazılamadı');
     }
   }
 

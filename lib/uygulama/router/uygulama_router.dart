@@ -288,9 +288,33 @@ class UygulamaRouter {
     '/irsaliye': 'stok',
     '/promosyon': 'promosyon',
     '/rapor': 'rapor',
-    '/kullanici': 'ayarlar',
+    // 🔴 Derin denetimde bulundu (P2): bu satır 'ayarlar' idi ama
+    // '/kullanici' rotasının KENDİ ekranı (KullaniciListeEkrani)
+    // YetkiKoruma(yetkiKodu: 'kullanici', ...) ile sarmalı — router
+    // seviyesindeki bu kontrol widget seviyesindekiyle UYUŞMUYORDU.
+    // Router kontrolü widget'tan ÖNCE çalıştığı için 'kullanici'
+    // yetkisi olan ama 'ayarlar' yetkisi olmayan biri asla ekrana
+    // ulaşamıyordu — 'Kullanıcı Yönetimi' kutucuğunun pratikte hiçbir
+    // etkisi yoktu. Artık ikisi de 'kullanici' kullanıyor.
+    '/kullanici': 'kullanici',
     '/ayarlar': 'ayarlar',
     '/personel': 'ayarlar',
+    // 🔴 Derin denetimde bulundu (P2): Şube yönetimi, Finans Merkezi,
+    // Onay Merkezi ve Risk Merkezi rotalarının hiçbiri bu haritada
+    // yoktu — kasiyer/personel/depocu gibi yetkisiz bir hesap deep-link
+    // ile bu hassas finansal/yönetimsel ekranlara doğrudan
+    // erişebiliyordu. 'ayarlar' KULLANILMADI (mudur'un varsayılan
+    // yetki kümesi kullanici/ayarlar HARİÇ her şeyi kapsıyor —
+    // Onay Merkezi zaten müdürlerin onay kuyruğunu gördüğü ekran,
+    // 'ayarlar'a bağlamak müdürü kendi ekranından mahrum bırakırdı).
+    // Bunun yerine kasa/gider/fatura/tedarik ile AYNI desende dedike
+    // yetki kodları eklendi (bkz. kullanici_ekle_ekrani.dart) —
+    // admin+mudur varsayılan olarak erişir, kasiyer/personel/depocu
+    // erişmez, hepsi elle de ayarlanabilir.
+    '/sube': 'sube',
+    '/finans': 'finans',
+    '/onay-merkezi': 'onay_merkezi',
+    '/risk-merkezi': 'risk_merkezi',
     '/banka': 'cari',
     '/kredi-karti': 'cari',
     '/mail-baglanti': 'cari',

@@ -45,6 +45,13 @@ class YetkiTanimlari {
     // ekranlara deep-link/geri-ileri gezinme ile doğrudan erişebiliyordu.
     'borc_takip': {'label': 'Borç Takip', 'grup': 'Cari'},
     'toptan': {'label': 'Toptan/Bayi Satış', 'grup': 'Satış'},
+    // 🔴 Derin denetimde bulundu (P2): /sube, /finans, /onay-merkezi,
+    // /risk-merkezi rotalarının hiç yetki kodu yoktu (bkz.
+    // uygulama_router.dart._routeYetkiler).
+    'sube': {'label': 'Şube Yönetimi', 'grup': 'Sistem'},
+    'finans': {'label': 'Finans Merkezi', 'grup': 'Diğer'},
+    'onay_merkezi': {'label': 'Onay Merkezi', 'grup': 'Diğer'},
+    'risk_merkezi': {'label': 'Risk Merkezi', 'grup': 'Rapor'},
   };
 
   // Rol bazlı varsayılan yetkiler

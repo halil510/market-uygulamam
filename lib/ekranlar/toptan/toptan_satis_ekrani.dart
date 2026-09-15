@@ -9,7 +9,6 @@
 // hesaplama katmanı ve "Logo tarzı" fatura-önizleme görünümlü sepet
 // ekliyor.
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,20 +18,17 @@ import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
 import '../../modeller/satis_model.dart';
 import '../../modeller/satis_kalem_model.dart';
-import '../../modeller/cari_hareket_model.dart';
 import '../../modeller/fatura_model.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/cari_deposu.dart';
-import '../../depolar/satis_deposu.dart';
-import '../../depolar/stok_deposu.dart';
 import '../../veri/database/veritabani.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../servisler/fiyat_hesaplama_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
+import '../../servisler/toptan_satis_islem_servisi.dart';
 
 class _SepetKalemi {
   final UrunModel urun;
@@ -75,8 +71,6 @@ class ToptanSatisEkrani extends StatefulWidget {
 class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
   final _cariDepo = CariDeposu();
   final _urunDepo = UrunDeposu();
-  final _satisDepo = SatisDeposu();
-  final _stokDepo = StokDeposu();
   final _fiyatServisi = FiyatHesaplamaServisi();
 
   CariModel? _secilenBayi;
@@ -439,87 +433,24 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
         kullaniciId: kullanici?.id,
       );
 
-      // 🔴 DÜZELTME: buradan aşağıdaki 3 veritabanı yazması ÖNCEDEN AYRI
-      // transaction'larda yapılıyordu (aynı sorun perakende hızlı satış
-      // ekranında da bulunup düzeltilmişti) — uygulama ortada kapanırsa
-      // satış kaydedilip stok düşülmemiş, bayinin carisine borç
-      // yazılmamış olabiliyordu. Artık satış + stok + cari TEK
-      // transaction içinde: ya hepsi birden kalıcı olur, ya hiçbiri.
-      final db = await Veritabani().db;
-      late final int satisId;
-      // FAZ 5 (Lot/SKT — kullanıcı onayıyla): lot_takibi açık üründe
-      // birden fazla lottan tüketilebildiği için ürün başına birden
-      // fazla global_id olabiliyor (bkz. StokDeposu.stokDusFefoTxn).
-      final stokHareketGidleri = <int, List<String>>{};
-      late final String cariGlobalId;
-
-      await db.transaction((txn) async {
-        satisId = await _satisDepo.satisEkleTxn(txn, satis, satisKalemler);
-
-        for (final k in _sepet) {
-          stokHareketGidleri[k.urun.id!] = await _stokDepo.stokDusFefoTxn(
-            txn,
-            urunId: k.urun.id!,
-            miktar: k.stokMiktari,
-            kullaniciId: kullanici?.id,
-            referansId: satisId,
-            referansTuru: 'toptan_satis',
-          );
-        }
-
-        cariGlobalId = await _cariDepo.hareketEkleTxn(
-            txn,
-            CariHareketModel(
-              cariId: _secilenBayi!.id!,
-              tarih: tarih,
-              fisTipi: 'Toptan Satış',
-              fisId: satisId,
-              fisNo: fisNo,
-              aciklama: 'Toptan satış: $fisNo',
-              borc: _genelToplam,
-              alacak: 0,
-              odemeTuru: 'Cari',
-              kullanici: kullanici?.adSoyad,
-            ));
-      }); // transaction sonu
-
-      // Transaction kalıcı olduktan sonra buluta bildir.
-      try {
-        BulutManager().upsert('satislar',
-            {...satis.toMap(), 'id': satisId, 'global_id': satis.globalId});
-        for (final k in satisKalemler) {
-          BulutManager().upsert('satis_kalem', k.toMap());
-        }
-        for (final k in _sepet) {
-          final gidler = stokHareketGidleri[k.urun.id!];
-          if (gidler == null || gidler.isEmpty) continue;
-          final urunSatir = await db.query('urunler',
-              where: 'id = ?', whereArgs: [k.urun.id], limit: 1);
-          if (urunSatir.isNotEmpty)
-            BulutManager()
-                .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-          for (final gid in gidler) {
-            final stokSatir = await db.query('stok_hareket',
-                where: 'global_id = ?', whereArgs: [gid], limit: 1);
-            if (stokSatir.isNotEmpty)
-              BulutManager().upsert(
-                  'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
-          }
-        }
-        final cariHareketSatir = await db.query('cari_hareket',
-            where: 'global_id = ?', whereArgs: [cariGlobalId], limit: 1);
-        if (cariHareketSatir.isNotEmpty) {
-          BulutManager().upsert('cari_hareket',
-              Map<String, dynamic>.from(cariHareketSatir.first));
-        }
-        final cariSatir = await db.query('cari',
-            where: 'id = ?', whereArgs: [_secilenBayi!.id], limit: 1);
-        if (cariSatir.isNotEmpty)
-          BulutManager()
-              .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-      } catch (e) {
-        if (kDebugMode) debugPrint('Toptan satış bulut bildirimi hatası: $e');
-      }
+      // Satış + stok (FEFO) + cari hareketi artık ToptanSatisIslemServisi
+      // içinde TEK transaction'da atomik olarak yürütülüyor (uygulama
+      // ortada kapanırsa satış kaydedilip stok düşülmemiş, bayinin
+      // carisine borç yazılmamış olabiliyordu — bkz. o servisin doc
+      // yorumu), davranış birebir korundu.
+      final satisId = await ToptanSatisIslemServisi().satisKaydet(
+        satis: satis,
+        kalemler: satisKalemler,
+        stokKalemleri: _sepet
+            .map((k) => ToptanStokKalemi(
+                urunId: k.urun.id!, stokMiktari: k.stokMiktari))
+            .toList(),
+        cariId: _secilenBayi!.id!,
+        fisNo: fisNo,
+        genelToplam: _genelToplam,
+        kullaniciId: kullanici?.id,
+        kullaniciAdi: kullanici?.adSoyad,
+      );
 
       // ══════════════════════════════════════════════════════════════
       // 🔴 KRİTİK DÜZELTME (kullanıcı bulgusu — "toptan satış sonrası

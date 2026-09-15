@@ -11,26 +11,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter/services.dart';
 import '../../depolar/urun_deposu.dart';
-import '../../veri/database/veritabani.dart';
 import '../../depolar/cari_deposu.dart';
-import '../../depolar/kasa_deposu.dart';
 import '../../depolar/banka_hesap_deposu.dart';
-import '../../depolar/banka_hareket_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
-import '../../modeller/kasa_hareket_model.dart';
-import '../../modeller/banka_hareket_model.dart';
 import '../../modeller/banka_hesap_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
-import 'package:uuid/uuid.dart';
+import '../../servisler/alim_islem_servisi.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
-import '../../servisler/aktif_sube_servisi.dart';
 
 class _AlimKalem {
   UrunModel urun;
@@ -60,8 +53,6 @@ class AlimEkrani extends ConsumerStatefulWidget {
 class _AlimEkraniState extends ConsumerState<AlimEkrani> {
   final _urunDepo  = UrunDeposu();
   final _barkodSrv = BarkodServisi();
-  final _kasaDepo  = KasaDeposu();
-  final _bankaDepo = BankaHareketDeposu();
 
   List<_AlimKalem> _kalemler       = [];
   List<UrunModel>  _aramaSonuclari = [];
@@ -321,252 +312,26 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
     if (mounted) setState(() {});
     try {
       final kullanici = AuthServisi().aktifKullanici;
-      final db        = await Veritabani().db;
-      final now       = DateTime.now().toIso8601String();
-      final siparisModu = widget.mevcutSiparisId != null;
 
-      // Fiş no: mevcut bir siparişi teslim alıyorsak o siparişin KENDİ
-      // numarası kullanılır — yeni bir sıra numarası tüketmeye gerek yok.
-      var alimNo = '';
-      if (!siparisModu) {
-        alimNo = await Veritabani().fisNoUret('alim', subeId: AktifSubeServisi().subeId ?? 1);
-      }
-      int alimId   = widget.mevcutSiparisId ?? 0;
-      final alimGid = const Uuid().v4();
-      final kalemGidler = <String>[];
-      final stokHareketGidler = <String>[];
-      final etkilenenUrunIdler = <int>{};
-      String? cariHareketGid;
-      int? kasaHareketId;
-      int? bankaHareketId;
+      // Tüm transaction + bulut senkron mantığı artık
+      // AlimIslemServisi.alimKaydet'te — bkz. o metodun doc yorumu,
+      // davranış birebir korundu (fiş + kalemler + stok + kasa/banka +
+      // cari TEK transaction içinde).
+      await AlimIslemServisi().alimKaydet(
+        mevcutSiparisId: widget.mevcutSiparisId,
+        kalemler: _kalemler
+            .map((k) => AlimKalemGirdi(
+                urunId: k.urun.id!, miktar: k.miktar, alisFiyat: k.alisFiyat))
+            .toList(),
+        tedarikciId: _tedarikci?.id,
+        tedarikciAdi: _tedarikci?.unvan,
+        genelToplam: _genelToplam,
+        odemeYontemi: _odemeYontemi,
+        bankaHesapId: _secilenHesap?.id,
+        kullaniciId: kullanici?.id,
+        kullaniciAdi: kullanici?.adSoyad,
+      );
 
-      // ── TEK TRANSACTION: fiş + kalemler + stok + kasa/banka + cari ──────
-      await db.transaction((txn) async {
-
-        // 1. Alım fişi — YENİ alım mı, yoksa BEKLEYEN bir siparişin teslim
-        // alınması mı? İkinci durumda yeni bir tedarikci_siparisler satırı
-        // AÇILMAZ; var olan 'beklemede' kaydı 'teslim_alindi' olarak
-        // güncellenir (aksi halde her teslim alımda aynı sipariş için
-        // mükerrer, birbirinden habersiz iki fiş oluşurdu).
-        if (siparisModu) {
-          final mevcut = await txn.query('tedarikci_siparisler',
-              where: 'id = ?', whereArgs: [alimId], limit: 1);
-          alimNo = mevcut.isNotEmpty ? (mevcut.first['siparis_no'] as String? ?? alimNo) : alimNo;
-          await txn.update('tedarikci_siparisler', {
-            'durum':          'teslim_alindi',
-            'teslim_tarihi':  now,
-            'toplam_tutar':   _genelToplam,
-            'last_updated':   now,
-          }, where: 'id = ?', whereArgs: [alimId]);
-        } else {
-          alimId = await txn.insert('tedarikci_siparisler', {
-            'global_id':      alimGid,
-            'cari_id':        _tedarikci?.id,
-            'siparis_no':     alimNo,
-            'siparis_tarihi': now,
-            'toplam_tutar':   _genelToplam,
-            'durum':          'teslim_alindi',
-            'notlar':         'Alım: ${_tedarikci?.unvan ?? "Manuel"}',
-            'olusturan_id':   kullanici?.id,
-            'last_updated':   now,
-          });
-        }
-
-        // 2. Kalemler + stok
-        for (final k in _kalemler) {
-          if (siparisModu) {
-            // Siparişteki ilgili kalemi teslim-alındı olarak güncelle;
-            // siparişte hiç olmayan bir ürün eklendiyse (kullanıcı teslim
-            // alırken ekstra ürün eklemiş) yeni kalem satırı açılır.
-            final mevcutKalem = await txn.query('tedarikci_siparis_kalem',
-                where: 'siparis_id = ? AND urun_id = ?', whereArgs: [alimId, k.urun.id], limit: 1);
-            if (mevcutKalem.isNotEmpty) {
-              final mk = mevcutKalem.first;
-              final kalemGid = (mk['global_id'] as String?) ?? const Uuid().v4();
-              kalemGidler.add(kalemGid);
-              await txn.update('tedarikci_siparis_kalem', {
-                'global_id':    kalemGid,
-                'teslim_mik':   k.miktar,
-                'birim_fiyat':  k.alisFiyat,
-                'toplam_tutar': k.miktar * k.alisFiyat,
-                'last_updated': now,
-              }, where: 'id = ?', whereArgs: [mk['id']]);
-            } else {
-              final kalemGid = const Uuid().v4();
-              kalemGidler.add(kalemGid);
-              await txn.insert('tedarikci_siparis_kalem', {
-                'global_id':    kalemGid,
-                'siparis_id':   alimId,
-                'urun_id':      k.urun.id,
-                'siparis_mik':  k.miktar,
-                'teslim_mik':   k.miktar,
-                'birim_fiyat':  k.alisFiyat,
-                'kdv_oran':     0,
-                'toplam_tutar': k.miktar * k.alisFiyat,
-                'last_updated': now,
-              });
-            }
-          } else {
-            final kalemGid = const Uuid().v4();
-            kalemGidler.add(kalemGid);
-            await txn.insert('tedarikci_siparis_kalem', {
-              'global_id':    kalemGid,
-              'siparis_id':   alimId,
-              'urun_id':      k.urun.id,
-              'siparis_mik':  k.miktar,
-              'teslim_mik':   k.miktar,
-              'birim_fiyat':  k.alisFiyat,
-              'kdv_oran':     0,
-              'toplam_tutar': k.miktar * k.alisFiyat,
-              'last_updated': now,
-            });
-          }
-          // Stok güncelle
-          final rows = await txn.query('urunler',
-              columns: ['stok'], where: 'id = ?', whereArgs: [k.urun.id]);
-          if (rows.isNotEmpty) {
-            final onceki = (rows.first['stok'] as num).toDouble();
-            await txn.update('urunler', {'stok': onceki + k.miktar,
-                'alis_fiyat': k.alisFiyat, 'last_updated': now},
-                where: 'id = ?', whereArgs: [k.urun.id]);
-            etkilenenUrunIdler.add(k.urun.id!);
-            final stokGid = const Uuid().v4();
-            stokHareketGidler.add(stokGid);
-            await txn.insert('stok_hareket', {
-              'global_id':    stokGid,
-              'urun_id':      k.urun.id,
-              'hareket_turu': 'Alim Giris',
-              'miktar':       k.miktar,
-              'onceki_stok':  onceki,
-              'sonraki_stok': onceki + k.miktar,
-              'birim_maliyet': k.alisFiyat,
-              'tarih':        now,
-              'last_updated': now,
-              'referans_id':  alimId,
-              'referans_turu': 'alim',
-              'kullanici_id': kullanici?.id,
-              'aciklama':     'Alım: $alimNo',
-            });
-          }
-        }
-
-        // 3. Gerçek para hareketi
-        // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): "Nakit"/"Havale"
-        // ile yapılan alışlarda ÖNCEDEN gerçek bir kasa/banka hareketi
-        // HİÇ oluşturulmuyordu — stok artıyor ama kasadan/bankadan hiç
-        // para çıkmamış gibi görünüyordu (kasa sayımı ile sistem
-        // bakiyesi, protokol §10, tutmaz hale gelirdi). Bu, borç ödeme/
-        // tahsilat akışlarında bulunup düzeltilen AYNI hatanın alış
-        // tarafındaki karşılığıydı.
-        if (_odemeYontemi == 'Nakit' && _genelToplam > 0.005) {
-          kasaHareketId = await _kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
-            hareketTipi: 'Alım',
-            tutar:       _genelToplam,
-            referansId:  alimId,
-            referansTuru: 'alim',
-            tarih:       DateTime.now(),
-            aciklama:    'Mal Alımı: $alimNo',
-            kullaniciId: kullanici?.id,
-          ));
-        } else if (_odemeYontemi == 'Havale' && _genelToplam > 0.005) {
-          bankaHareketId = await _bankaDepo.ekleTxn(txn, BankaHareketModel(
-            bankaHesapId: _secilenHesap!.id!,
-            islemTipi:    'Giden',
-            tutar:        _genelToplam,
-            aciklama:     'Mal Alımı: $alimNo',
-            tarih:        DateTime.now(),
-          ));
-        }
-
-        // 4. Cari hareket
-        if (_tedarikci != null && _odemeYontemi == 'Cari') {
-          cariHareketGid = const Uuid().v4();
-          await txn.insert('cari_hareket', {
-            'global_id':  cariHareketGid,
-            'cari_id':    _tedarikci!.id,
-            'tarih':      now,
-            'fis_tipi':   'Alım',
-            'fis_id':     alimId,
-            'fis_no':     alimNo,
-            'aciklama':   'Mal Alımı: $alimNo',
-            'borc':       0,
-            'alacak':     _genelToplam,
-            'odeme_turu': 'Cari',
-            'kullanici':  kullanici?.adSoyad,
-            'last_updated': now,
-          });
-          await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
-            [_tedarikci!.id, _tedarikci!.id]);
-        } else if (_tedarikci != null && _genelToplam > 0.005) {
-          // Kullanıcı isteği: "tedarikçide de aynı, nakit alımda da
-          // carinin hareketinde gözüksün." Nakit/Kredi Kartı ile
-          // peşin ödense bile, tedarikçinin cari hareket geçmişinde
-          // görünsün — ama borc VE alacak AYNI tutarda yazıldığı
-          // için (net sıfır etki), tedarikçiye olan borcumuz HİÇ
-          // DEĞİŞMİYOR. Sadece kayıt/geçmiş amaçlı.
-          cariHareketGid = const Uuid().v4();
-          await txn.insert('cari_hareket', {
-            'global_id':  cariHareketGid,
-            'cari_id':    _tedarikci!.id,
-            'tarih':      now,
-            'fis_tipi':   'Alım',
-            'fis_id':     alimId,
-            'fis_no':     alimNo,
-            'aciklama':   '$_odemeYontemi Alım: $alimNo — bakiyeyi etkilemez',
-            'borc':       _genelToplam,
-            'alacak':     _genelToplam,
-            'odeme_turu': _odemeYontemi,
-            'kullanici':  kullanici?.adSoyad,
-            'last_updated': now,
-          });
-          await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
-            [_tedarikci!.id, _tedarikci!.id]);
-        }
-      }); // transaction sonu
-
-      // 🔴🔴 Derin analizde bulundu: bu transaction (alım fişi, kalemler,
-      // stok, stok hareketi, cari/kasa/banka hareketi) hiçbir yerde
-      // global_id atamıyordu ve BulutManager'ı HİÇ çağırmıyordu — her
-      // alım/mal kabul işlemi sadece manuel senkronla buluta gidiyordu.
-      // Transaction kapandıktan (veri kalıcı olduktan) SONRA bildiriliyor.
-      try {
-        final alimSatir = await db.query('tedarikci_siparisler', where: 'id = ?', whereArgs: [alimId], limit: 1);
-        if (alimSatir.isNotEmpty) BulutManager().upsert('tedarikci_siparisler', Map<String, dynamic>.from(alimSatir.first));
-        for (final gid in kalemGidler) {
-          final s = await db.query('tedarikci_siparis_kalem', where: 'global_id = ?', whereArgs: [gid], limit: 1);
-          if (s.isNotEmpty) BulutManager().upsert('tedarikci_siparis_kalem', Map<String, dynamic>.from(s.first));
-        }
-        for (final urunId in etkilenenUrunIdler) {
-          final s = await db.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
-          if (s.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(s.first));
-        }
-        for (final gid in stokHareketGidler) {
-          final s = await db.query('stok_hareket', where: 'global_id = ?', whereArgs: [gid], limit: 1);
-          if (s.isNotEmpty) BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(s.first));
-        }
-        if (cariHareketGid != null) {
-          final s = await db.query('cari_hareket', where: 'global_id = ?', whereArgs: [cariHareketGid], limit: 1);
-          if (s.isNotEmpty) BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(s.first));
-          if (_tedarikci != null) {
-            final cariSatir = await db.query('cari', where: 'id = ?', whereArgs: [_tedarikci!.id], limit: 1);
-            if (cariSatir.isNotEmpty) BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-          }
-        }
-        if (kasaHareketId != null) {
-          final s = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
-          if (s.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(s.first));
-        }
-        if (bankaHareketId != null) {
-          final s = await db.query('banka_hareketler', where: 'id = ?', whereArgs: [bankaHareketId], limit: 1);
-          if (s.isNotEmpty) BulutManager().upsert('banka_hareketler', Map<String, dynamic>.from(s.first));
-          final hesapSatir = await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [_secilenHesap!.id], limit: 1);
-          if (hesapSatir.isNotEmpty) BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
-        }
-      } catch (e) {
-        // Bulut bildirimi hatası asıl işlemi engellemez
-      }
       if (mounted) {
         BildirimServisi.basari(context,
             '${_kalemler.length} kalem stoka eklendi');

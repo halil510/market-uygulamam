@@ -157,7 +157,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                   child: ChoiceChip(
                     label: Text(k, style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: _kategori == k ? Colors.white : const Color(0xFF4E342E))),
+                        color: _kategori == k ? Colors.white : context.textPrimary)),
                     selected: _kategori == k,
                     selectedColor: TsRenk.masaAcik,
                     backgroundColor: context.cardBg,
@@ -358,7 +358,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
               ChoiceChip(
                 label: Text(k, style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: kategori == k ? Colors.white : const Color(0xFF4E342E))),
+                    color: kategori == k ? Colors.white : context.textPrimary)),
                 selected: kategori == k,
                 selectedColor: TsRenk.masaAcik,
                 backgroundColor: context.borderColor,
@@ -428,7 +428,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
               ChoiceChip(
                 label: Text(k, style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: kategori == k ? Colors.white : const Color(0xFF4E342E))),
+                    color: kategori == k ? Colors.white : context.textPrimary)),
                 selected: kategori == k,
                 selectedColor: TsRenk.masaAcik,
                 backgroundColor: context.borderColor,

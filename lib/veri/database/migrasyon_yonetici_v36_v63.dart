@@ -794,3 +794,22 @@ Future<void> _v62denV63e(Database db) async {
       WHERE cari_id = NEW.cari_id AND is_deleted = 0
     ) WHERE id = NEW.cari_id; END""");
 }
+
+// v63'ten v64'e — fis_seri (fiş/irsaliye/sipariş numara sayacı) artık
+// buluta senkronize oluyor.
+//
+// 🔴 Derin analizde bulundu: fis_seri tablosu senkron sisteminin
+// TAMAMEN DIŞINDAYDı (global_id/last_updated hiç yoktu, ne push ne pull
+// yolunda hiç göründü) — aynı şubede birden fazla POS cihazı kullanılan
+// kurulumlarda her cihaz kendi lokal sayacını tutuyordu, biri diğerinin
+// ürettiği numaralardan habersizdi. son_fis_no bir SAYAÇ olduğu için bu
+// tabloyu projenin standart global_id tabanlı, "son güncelleme kazanır"
+// senkron yoluna sokmak YANLIŞ olur: iki cihaz aynı şubede farklı
+// zamanlarda senkron olursa, geç senkron olan cihazın DAHA KÜÇÜK yerel
+// sayacı, buluttaki DAHA BÜYÜK sayacın üzerine yazıp aynı numaraların
+// tekrar üretilmesine yol açabilirdi. last_updated eklendi (yalnızca
+// push zamanlaması için); asıl güvenlik MAX-birleştirme'de —
+// bkz. veritabani.dart.fisNoUret() ve _fisSeriBulutlaUyumla().
+Future<void> _v63denV64e(Database db) async {
+  await _calistir(db, 'ALTER TABLE fis_seri ADD COLUMN last_updated TEXT');
+}

@@ -1,6 +1,17 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- MARKETPLUS — SUPABASE ŞEMASI  (KENDİ KENDİNİ ONARAN SÜRÜM)
--- 59 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-13
+-- 60 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-15
+--
+-- 2026-09-15 GÜNCELLEMESİ — Derin denetim P1 #11: fis_seri (fiş/
+-- irsaliye/sipariş numara sayacı) tablosu senkron sisteminin TAMAMEN
+-- DIŞINDAYDI (yerel DB v64). Bu tablonun global_id'si yok — doğal
+-- anahtarı (sube_id, fis_tipi). UNIQUE (sube_id, fis_tipi) + BEFORE
+-- UPDATE tetikleyicisi (trg_fis_seri_max_koru — son_fis_no'nun ASLA
+-- küçülmemesini garanti eder, GREATEST) eklendi. Bu tablo BİLEREK
+-- projenin genel _tabloSirasi (supabase_sync_servisi.dart) akışının
+-- DIŞINDA tutuluyor — bir SAYAÇ için "son güncelleyen kazanır"
+-- semantiği yanlıştır, kod tarafı (veritabani.dart) kendi özel
+-- push/MAX-birleştirme mantığını kullanıyor.
 --
 -- 2026-09-13 GÜNCELLEMESİ — yerel uygulama şemasıyla karşılaştırılıp
 -- 3 sapma bulundu ve düzeltildi:
@@ -1169,6 +1180,45 @@ CREATE TABLE IF NOT EXISTS zaman_fiyat (
   last_updated TIMESTAMPTZ
 );
 
+-- [YENİ — 2026-09-15] fis_seri (fiş/irsaliye/sipariş numara sayacı)
+-- Derin analizde bulundu (P1 #11): bu tablo senkron sisteminin
+-- TAMAMEN DIŞINDAYDI — aynı şubede birden fazla POS terminali
+-- kullanılıyorsa her biri kendi lokal sayacını tutuyordu, biri
+-- diğerinin ürettiği numaradan habersizdi. Artık yeni bir numara
+-- üretildikten sonra best-effort buluta itiliyor (veritabani.dart —
+-- _fisSeriBulutaPushla) ve periyodik olarak MAX-birleştirmeyle geri
+-- çekiliyor (_fisSeriBulutlaUyumla). Doğal anahtarı (sube_id, fis_tipi)
+-- çifti — global_id YOK, bu yüzden BİLEREK projenin genel
+-- _tabloSirasi/global_id senkron akışının (supabase_sync_servisi.dart)
+-- DIŞINDA tutuluyor. Bir SAYAÇ için "son güncelleyen kazanır" (last-
+-- write-wins) semantiği YANLIŞTIR — geç senkron olan bir cihazın DAHA
+-- KÜÇÜK yerel değeri, zaten kullanılmış BÜYÜK bir numarayı sessizce
+-- geri alıp aynı numaranın tekrar üretilmesine yol açabilir. Bunun
+-- yerine aşağıdaki BEFORE UPDATE tetikleyicisi son_fis_no'nun ASLA
+-- küçülmemesini (GREATEST(eski, yeni)) garanti eder.
+CREATE TABLE IF NOT EXISTS fis_seri (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  sube_id BIGINT,
+  fis_tipi TEXT,
+  son_fis_no BIGINT,
+  last_updated TIMESTAMPTZ
+);
+
+-- fis_seri.son_fis_no'nun bir UPDATE ile asla küçülmemesini garanti
+-- eden tetikleyici — üstteki nota bkz. Sadece bu tabloya özel; diğer
+-- hiçbir tabloda böyle bir kısıt yok (onlarda last-write-wins doğru).
+CREATE OR REPLACE FUNCTION trg_fis_seri_max_koru() RETURNS TRIGGER AS $$
+BEGIN
+  NEW.son_fis_no := GREATEST(OLD.son_fis_no, NEW.son_fis_no);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_fis_seri_max_koru ON fis_seri;
+CREATE TRIGGER trg_fis_seri_max_koru
+  BEFORE UPDATE ON fis_seri
+  FOR EACH ROW EXECUTE FUNCTION trg_fis_seri_max_koru();
+
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- BÖLÜM 2 — EKSİK SÜTUNLARI EKLE
@@ -1689,6 +1739,10 @@ ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS goren_kullanici_id BIGINT;
 ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS goruldu_tarihi TIMESTAMPTZ;
 ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE onay_talepleri ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN;
+ALTER TABLE fis_seri ADD COLUMN IF NOT EXISTS sube_id BIGINT;
+ALTER TABLE fis_seri ADD COLUMN IF NOT EXISTS fis_tipi TEXT;
+ALTER TABLE fis_seri ADD COLUMN IF NOT EXISTS son_fis_no BIGINT;
+ALTER TABLE fis_seri ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE personel ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE personel ADD COLUMN IF NOT EXISTS kullanici_id BIGINT;
 ALTER TABLE personel ADD COLUMN IF NOT EXISTS ad_soyad TEXT;
@@ -2025,6 +2079,7 @@ BEGIN
          'cari_hareket',
          'fatura_detaylari',
          'faturalar',
+         'fis_seri',
          'fiyat_gecmis',
          'fiyat_gruplari',
          'fiyat_kademeleri',
@@ -2106,6 +2161,7 @@ BEGIN
          'cari_hareket',
          'fatura_detaylari',
          'faturalar',
+         'fis_seri',
          'fiyat_gecmis',
          'fiyat_gruplari',
          'fiyat_kademeleri',
@@ -2187,6 +2243,7 @@ BEGIN
          'cari_hareket',
          'fatura_detaylari',
          'faturalar',
+         'fis_seri',
          'fiyat_gecmis',
          'fiyat_gruplari',
          'fiyat_kademeleri',
@@ -2322,6 +2379,13 @@ END $$;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_faturalar_global_id') THEN
     ALTER TABLE faturalar ADD CONSTRAINT uq_faturalar_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+-- fis_seri: global_id YOK, doğal anahtarı (sube_id, fis_tipi) çifti —
+-- kod tarafı on_conflict=sube_id,fis_tipi gönderiyor (bkz. kolon_haritalama.dart).
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_fis_seri_sube_tip') THEN
+    ALTER TABLE fis_seri ADD CONSTRAINT uq_fis_seri_sube_tip UNIQUE (sube_id, fis_tipi);
   END IF;
 END $$;
 DO $$ BEGIN
@@ -2589,6 +2653,7 @@ CREATE INDEX IF NOT EXISTS idx_faturalar_satis_id ON faturalar(satis_id);
 CREATE INDEX IF NOT EXISTS idx_faturalar_iade_id ON faturalar(iade_id);
 CREATE INDEX IF NOT EXISTS idx_faturalar_cari_id ON faturalar(cari_id);
 CREATE INDEX IF NOT EXISTS idx_faturalar_sube_id ON faturalar(sube_id);
+CREATE INDEX IF NOT EXISTS idx_fis_seri_last_updated ON fis_seri(last_updated);
 CREATE INDEX IF NOT EXISTS idx_fiyat_gecmis_last_updated ON fiyat_gecmis(last_updated);
 CREATE INDEX IF NOT EXISTS idx_fiyat_gecmis_urun_id ON fiyat_gecmis(urun_id);
 CREATE INDEX IF NOT EXISTS idx_fiyat_gruplari_last_updated ON fiyat_gruplari(last_updated);
@@ -2762,6 +2827,9 @@ CREATE POLICY fatura_detaylari_all ON fatura_detaylari FOR ALL TO anon, authenti
 ALTER TABLE faturalar ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS faturalar_all ON faturalar;
 CREATE POLICY faturalar_all ON faturalar FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+ALTER TABLE fis_seri ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS fis_seri_all ON fis_seri;
+CREATE POLICY fis_seri_all ON fis_seri FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 ALTER TABLE fiyat_gecmis ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS fiyat_gecmis_all ON fiyat_gecmis;
 CREATE POLICY fiyat_gecmis_all ON fiyat_gecmis FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
@@ -2916,6 +2984,7 @@ WITH beklenen(tablo) AS (VALUES
     ('cari_hareket'),
     ('fatura_detaylari'),
     ('faturalar'),
+    ('fis_seri'),
     ('fiyat_gecmis'),
     ('fiyat_gruplari'),
     ('fiyat_kademeleri'),

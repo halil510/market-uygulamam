@@ -63,6 +63,7 @@ class SistemSemasi {
         sube_id INTEGER NOT NULL DEFAULT 1,
         fis_tipi TEXT NOT NULL,
         son_fis_no INTEGER NOT NULL DEFAULT 0,
+        last_updated TEXT,
         PRIMARY KEY (sube_id, fis_tipi),
         FOREIGN KEY(sube_id) REFERENCES ${DbSabitler.subeler}(id)
       )

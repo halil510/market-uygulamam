@@ -162,5 +162,8 @@ class MigrasyonYonetici {
     if (eskiVersiyon < 61) await _v60danV61e(db);
     if (eskiVersiyon < 62) await _v61denV62ye(db);
     if (eskiVersiyon < 63) await _v62denV63e(db);
+
+    // v63'ten v64'e — fis_seri buluta senkronize oluyor (MAX-birleştirme)
+    if (eskiVersiyon < 64) await _v63denV64e(db);
   }
 }

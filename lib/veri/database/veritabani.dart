@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../servisler/log_servisi.dart';
+import '../../servisler/bulut/bulut_manager.dart';
 import 'package:path/path.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
@@ -187,16 +189,42 @@ class Veritabani {
   // e-fatura/e-irsaliye için şube bazlı sıralı numaralandırma yasal
   // bir gereklilik olabilir. Artık [subeId] parametre olarak alınıyor;
   // çağıran taraf vermezse (geriye dönük uyumluluk) varsayılan 1'dir.
+  // 🔴 Derin analizde bulundu (P1 #11): fis_seri TAMAMEN yerel bir
+  // sayaçtı — aynı şubede birden fazla POS terminali kullanılıyorsa her
+  // biri kendi sayacını tutuyordu, biri diğerinin ürettiği numaradan
+  // habersizdi. Aşağıdaki iki adım riski azaltır ama TAM bulletproof
+  // DEĞİLDİR — iki terminal TAMAMEN AYNI ANDA, ikisi de offlineyken sayaç
+  // üretirse çakışma yine mümkündür (çevrimdışı-öncelikli bir mimaride
+  // kaçınılmaz bir ödünleşim; kesin çözüm online zorunluluğu getirir ki
+  // bu, uygulamanın temel "internet olmadan da satış yapılabilir"
+  // ilkesini bozar — bkz. kullanıcıyla yapılan görüşme):
+  //   1) fisNoUret'in KENDİSİ ağdan ASLA etkilenmez/beklemez —
+  //      _fisSeriBulutlaUyumla() burada unawaited'tir, sadece BİR
+  //      SONRAKİ çağrıya fayda sağlar, mevcut satışı yavaşlatmaz/offline'ı
+  //      bozmaz.
+  //   2) Yeni sayaç DEĞERİ üretildikten (transaction commit olduktan)
+  //      SONRA buluta best-effort itilir; Supabase tarafındaki BEFORE
+  //      UPDATE tetikleyicisi (bkz. Supabase şema dosyası) son_fis_no'nun
+  //      ASLA küçülmemesini (GREATEST) garanti eder — iki terminal farklı
+  //      sırayla/farklı zamanlarda senkron olsa bile büyük olan değer
+  //      kazanır, küçük bir yerel değer büyük olanın üzerine yazamaz.
+  // Bilerek projenin genel "son_updated kazanır" senkron mekanizmasından
+  // (SupabaseSyncServisi._tabloSirasi) AYRI, özel bir yol kullanıldı —
+  // bir SAYAÇ için "son güncelleyen kazanır" semantiği YANLIŞTIR (geç
+  // senkron olan küçük bir yerel değer, zaten kullanılmış büyük bir
+  // numarayı sessizce geri alıp numara çakışmasına yeniden yol açabilir).
   Future<String> fisNoUret(String tip, {int subeId = 1}) async {
+    unawaited(_fisSeriBulutlaUyumla());
     final database = await db;
-    return await database.transaction((txn) async {
+    late final int yeniNo;
+    final sonuc = await database.transaction((txn) async {
       final result = await txn.rawQuery(
         'SELECT son_fis_no FROM ${DbSabitler.fisSeri} WHERE sube_id = ? AND fis_tipi = ?',
         [subeId, tip],
       );
       final sonNo =
           result.isNotEmpty ? (result.first['son_fis_no'] as int) : 0;
-      final yeniNo = sonNo + 1;
+      yeniNo = sonNo + 1;
       if (result.isEmpty) {
         // Satır yoksa ekle
         await txn.rawInsert(
@@ -228,8 +256,89 @@ class Veritabani {
       final siraNo = yeniNo.toString().padLeft(9, '0');
       return '$prefix$yil$siraNo'; // GIB standartı: 16 karakter
     });
+    unawaited(_fisSeriBulutaPushla(subeId, tip, yeniNo));
+    return sonuc;
   }
-  
+
+  static DateTime? _sonFisSeriUyum;
+
+  /// Bulut'taki fis_seri satırlarını çekip yerel sayaçla MAX-birleştirir
+  /// (bkz. fisNoUret üzerindeki not) — başka bir terminalin bu şubede/bu
+  /// tipte ÜRETTİĞİ daha yüksek bir numarayı öğrenirse yerel sayaç ona
+  /// göre YUKARI çekilir, ASLA aşağı çekilmez (MAX(), tersini yapamaz).
+  /// Tamamen best-effort: bulut yapılandırılmamışsa, offline'sa ya da
+  /// herhangi bir hata olursa sessizce hiçbir şey yapmaz — fisNoUret'i
+  /// asla ağa bağımlı hale getirmez. 30 saniyede bir kendini kısıtlar
+  /// (her satışta ağ isteği atmasın diye).
+  Future<void> _fisSeriBulutlaUyumla() async {
+    final simdi = DateTime.now();
+    if (_sonFisSeriUyum != null &&
+        simdi.difference(_sonFisSeriUyum!) < const Duration(seconds: 30)) {
+      return;
+    }
+    _sonFisSeriUyum = simdi;
+    try {
+      final saglayici = BulutManager().mevcutSaglayici;
+      if (saglayici == null) return;
+      final uzakSatirlar =
+          await saglayici.cek(tablo: DbSabitler.fisSeri, limit: 500);
+      if (uzakSatirlar.isEmpty) return;
+      final database = await db;
+      await database.transaction((txn) async {
+        for (final satir in uzakSatirlar) {
+          final uzakSubeId = (satir['sube_id'] as num?)?.toInt();
+          final uzakTip = satir['fis_tipi']?.toString();
+          final uzakSon = (satir['son_fis_no'] as num?)?.toInt();
+          if (uzakSubeId == null || uzakTip == null || uzakSon == null) {
+            continue;
+          }
+          // Satır yerelde yoksa önce oluştur (yoksayılabilir çakışma),
+          // sonra HER KOŞULDA MAX() ile kelepçele — asla küçültme.
+          await txn.rawInsert(
+            'INSERT OR IGNORE INTO ${DbSabitler.fisSeri}'
+            '(sube_id, fis_tipi, son_fis_no) VALUES(?, ?, ?)',
+            [uzakSubeId, uzakTip, uzakSon],
+          );
+          await txn.rawUpdate(
+            'UPDATE ${DbSabitler.fisSeri} SET son_fis_no = MAX(son_fis_no, ?) '
+            'WHERE sube_id = ? AND fis_tipi = ?',
+            [uzakSon, uzakSubeId, uzakTip],
+          );
+        }
+      });
+    } catch (_) {
+      // best-effort — offline/hata sessizce yutulur
+    }
+  }
+
+  /// Yeni üretilen yerel sayaç değerini buluta best-effort iter.
+  /// BulutManager()'ın genel kuyruk/dedup mekanizması KASITLI OLARAK
+  /// kullanılmıyor — o mekanizma kayıtları 'global_id' ile eşleştirip
+  /// gruplandırıyor, fis_seri'nin ise hiç global_id'si yok (doğal
+  /// anahtarı sube_id+fis_tipi). Bu, aynı tablo için kuyrukta bekleyen
+  /// FARKLI (sube_id,fis_tipi) kayıtlarının birbirinin üzerine
+  /// yazılmasına (kuyruktan sessizce düşmesine) yol açabilirdi — bu
+  /// yüzden burada sağlayıcının tekli upsert'i DOĞRUDAN, kuyruğa
+  /// girmeden çağrılıyor.
+  Future<void> _fisSeriBulutaPushla(int subeId, String tip, int yeniNo) async {
+    try {
+      final saglayici = BulutManager().mevcutSaglayici;
+      if (saglayici == null) return;
+      await saglayici.upsert(
+        tablo: DbSabitler.fisSeri,
+        veri: {
+          'sube_id': subeId,
+          'fis_tipi': tip,
+          'son_fis_no': yeniNo,
+          'last_updated': DateTime.now().toUtc().toIso8601String(),
+        },
+        uniqueAlan: 'sube_id,fis_tipi',
+      );
+    } catch (_) {
+      // best-effort — offline/hata sessizce yutulur, yerel numara zaten üretildi
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // SUPABASE SYNC METODLARI
   // ═══════════════════════════════════════════════════════════════

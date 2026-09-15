@@ -34,6 +34,16 @@ class KolonHaritalama {
     'banka_hesaplar':'global_id', 'kredi_kartlari':'global_id',
     'sube_urun':'global_id',
     'ayarlar':'anahtar','sync_meta':'tablo_adi','gunluk_rapor_ozet':'rapor_tarihi',
+    // 🔴 Derin analizde bulundu: fis_seri (fiş/irsaliye/sipariş sayacı)
+    // buluta hiç gitmiyordu. Bu tablonun global_id'si YOK — doğal
+    // anahtarı (sube_id, fis_tipi) çifti. PostgREST composite on_conflict
+    // hedefini virgülle ayrılmış kolon listesi olarak kabul eder; MAX
+    // birleştirmesi (küçük bir değerin büyüğün üzerine yazmaması) burada
+    // DEĞİL, Supabase tarafındaki BEFORE UPDATE tetikleyicisinde
+    // sağlanıyor (bkz. Supabase şema dosyasındaki fis_seri notu) —
+    // bu harita sadece hangi sütun(lar)ın eşleşme anahtarı olduğunu
+    // belirtir, MAX mantığını uygulamaz.
+    'fis_seri':'sube_id,fis_tipi',
     // 🔴🔴🔴 KAPSAMLI DERİN ANALİZ (kullanıcı isteği — tek tek yama
     // değil, TÜM sistemi tara): bu harita, OTOMATİK/anlık senkron
     // yolunun (BulutManager -> bu fonksiyon) hangi sütunu on_conflict

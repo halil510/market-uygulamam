@@ -15,6 +15,7 @@ import '../../servisler/bulut/bulut_manager.dart';
 import 'package:uuid/uuid.dart';
 import '../../cekirdek/sabitler/db_sabitleri.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
@@ -579,6 +580,11 @@ class _PersonelFormSheetState extends ConsumerState<_PersonelFormSheet> {
       final satir = await db.query(DbSabitler.personel, where: 'id = ?', whereArgs: [personelId], limit: 1);
       if (satir.isNotEmpty) BulutManager().upsert(DbSabitler.personel, Map<String, dynamic>.from(satir.first));
       if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      // 🔴 Derin denetimde bulundu (P2): bu blokta catch yoktu — bir
+      // yazma hatası ele alınmamış bir Future hatasına dönüşüyordu,
+      // form ne kapanıyor ne de hata gösteriyordu.
+      if (mounted) hataMesaji(context, 'Kaydedilemedi: ${kullaniciyaHataMetni(e)}');
     } finally {
       if (mounted) setState(() => _yukleniyor = false);
     }

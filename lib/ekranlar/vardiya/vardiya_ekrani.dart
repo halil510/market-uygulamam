@@ -35,6 +35,11 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
   List<Map<String, dynamic>> _gecmis = [];
   Map<String, dynamic> _satisOzet = {};
   bool _yukleniyor = true;
+  // 🔴 Derin denetimde bulundu (P2): vardiya aç/kapat, kod tabanındaki
+  // neredeyse tek istisna olarak çift-dokunma korumasına sahip değildi
+  // — hızlı art arda dokunma (onay diyaloğu render olmadan önce) aynı
+  // terminal için iki 'vardiyalar' satırı açabilirdi.
+  bool _islemAktif = false;
 
   @override
   void initState() {
@@ -128,6 +133,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
   }
 
   Future<void> _vardiyaAc() async {
+    if (_islemAktif) return;
     // Başlangıç kasasını gir
     final kasaCtrl = TextEditingController(text: '0');
     final bas = await showDialog<double>(
@@ -174,7 +180,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
       ),
     );
     if (bas == null || !mounted) return;
-
+    setState(() => _islemAktif = true);
     try {
       final db = await _db.db;
       final kullanici = await AuthServisi().mevcutKullanici();
@@ -206,11 +212,13 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
             '✓ Vardiya açıldı (Başlangıç: ${ParaUtils.formatla(bas)})');
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+    } finally {
+      if (mounted) setState(() => _islemAktif = false);
     }
   }
 
   Future<void> _vardiyaKapat() async {
-    if (_aktif == null) return;
+    if (_aktif == null || _islemAktif) return;
     final nakit = (_satisOzet['nakit'] as num?)?.toDouble() ?? 0;
     final kasaBak = (_satisOzet['kasa_bakiye'] as num?)?.toDouble() ?? 0;
     final basBakiye = (_aktif!['baslangic_bakiye'] as num?)?.toDouble() ?? 0;
@@ -345,6 +353,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     );
 
     if (sonuc == null || !mounted) return;
+    setState(() => _islemAktif = true);
     try {
       final db = await _db.db;
       final vardiyaId = _aktif!['id'];
@@ -371,6 +380,8 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
       if (mounted) BildirimServisi.basari(context, '✓ Vardiya kapatıldı');
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+    } finally {
+      if (mounted) setState(() => _islemAktif = false);
     }
   }
 

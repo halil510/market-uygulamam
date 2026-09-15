@@ -11,6 +11,7 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
 import '../../veri/database/veritabani.dart';
 import '../../widgetlar/ortak/yukleniyor_widget.dart';
+import '../../cekirdek/utils/vergi_no_dogrulayici.dart';
 
 class GibAyarEkrani extends ConsumerStatefulWidget {
   const GibAyarEkrani({super.key});
@@ -79,8 +80,31 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
     }
   }
 
+  // 🔴 Derin denetimde bulundu (P2): bu fonksiyon hiç validasyon
+  // yapmıyordu — tamamen boş bir GİB ayarı bile "kaydedildi ✓" diyerek
+  // sessizce kaydedilebiliyordu (yan taraftaki _baglantiTest() aynı
+  // alanları doğruluyordu, _kaydet() etmiyordu). VKN/TCKN formatı da
+  // hiç kontrol edilmiyordu — yanlış bir vergi no GİB'e hatalı fatura
+  // gitmesine yol açabilir.
   Future<void> _kaydet() async {
     if (!mounted) return;
+    final tumAlanlarBos = _apiUrlCtrl.text.trim().isEmpty &&
+        _kullaniciAdiCtrl.text.trim().isEmpty &&
+        _sifreCtrl.text.trim().isEmpty &&
+        _vknCtrl.text.trim().isEmpty &&
+        _vdCtrl.text.trim().isEmpty;
+    if (tumAlanlarBos) {
+      BildirimServisi.uyari(context, 'Kaydedilecek bir bilgi girilmedi');
+      return;
+    }
+    final vkn = _vknCtrl.text.trim();
+    if (vkn.isNotEmpty && !VergiNoDogrulayici.gecerliMi(vkn)) {
+      BildirimServisi.uyari(context,
+          vkn.length == 10 || vkn.length == 11
+              ? 'Geçersiz VKN/TCKN — rakamları kontrol edin'
+              : 'VKN 10, TCKN 11 haneli olmalı');
+      return;
+    }
     _kaydediyor = true;
     if (mounted) setState(() {});
     try {

@@ -9,6 +9,7 @@ import '../../modeller/satis_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/yazdirma_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../modeller/fatura_model.dart';
 import '../../servisler/faturalandirma_servisi.dart';
@@ -103,7 +104,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
       ref.read(satislarProvider.notifier).yukle();
       if (mounted) { BildirimServisi.basari(context, 'Satış iptal edildi'); context.pop(); }
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+      if (mounted) BildirimServisi.hata(context, kullaniciyaHataMetni(e));
     } finally {
       if (mounted) setState(() => _islemYapiliyor = false);
     }
@@ -197,7 +198,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
       BildirimServisi.basari(context, 'Fatura oluşturuldu');
       context.push('/fatura/detay/$yeniId');
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Faturalandırma hatası: $e');
+      if (mounted) BildirimServisi.hata(context, 'Faturalandırma hatası: ${kullaniciyaHataMetni(e)}');
     } finally {
       if (mounted) setState(() => _islemYapiliyor = false);
     }
@@ -207,7 +208,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
     try {
       await YazdirmaServisi().fisYazdir(widget.satis);
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Yazıcı hatası: $e');
+      if (mounted) BildirimServisi.hata(context, 'Yazıcı hatası: ${kullaniciyaHataMetni(e)}');
     }
   }
 

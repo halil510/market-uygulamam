@@ -308,7 +308,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       // YAZDIRMA DİALOGU KALDIRILDI — manuel yazdırma butonu ile yapılacak.
 
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Fiş güncellenemedi: $e');
+      if (mounted) BildirimServisi.hata(context, 'Fiş güncellenemedi: ${kullaniciyaHataMetni(e)}');
     } finally {
       _islemBitti();
     }
@@ -424,7 +424,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       // Yazdırma işlemi tamamen kaldırıldı. Kullanıcı appBar'daki yazıcı ikonu ile manuel olarak yazdıracak.
 
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Satış hatası: $e');
+      if (mounted) BildirimServisi.hata(context, 'Satış hatası: ${kullaniciyaHataMetni(e)}');
     } finally {
       if (mounted) ref.read(sepetProvider.notifier).satisGitti();
       _islemBitti();
@@ -556,7 +556,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       await _sepetiAlimaAktar(tedarikci);
     } catch (e) {
       _islemBitti();
-      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+      if (mounted) BildirimServisi.hata(context, kullaniciyaHataMetni(e));
     }
   }
 

@@ -9,6 +9,7 @@ import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../modeller/masa_model.dart';
 import '../../modeller/masa_siparis_model.dart';
 import '../../modeller/satis_model.dart';
@@ -66,7 +67,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
         BildirimServisi.basari(context, 'Adisyon yazdırıldı');
       }
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Yazdırma hatası: $e');
+      if (mounted) BildirimServisi.hata(context, 'Yazdırma hatası: ${kullaniciyaHataMetni(e)}');
     } finally {
       if (mounted) setState(() => _islemAktif = false);
     }
@@ -220,7 +221,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
         context.pop();
       }
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Taşınamadı: $e');
+      if (mounted) BildirimServisi.hata(context, 'Taşınamadı: ${kullaniciyaHataMetni(e)}');
     } finally {
       if (mounted) setState(() => _islemAktif = false);
     }
@@ -264,17 +265,33 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
         context.pop();
       }
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'İptal edilemedi: $e');
+      if (mounted) BildirimServisi.hata(context, 'İptal edilemedi: ${kullaniciyaHataMetni(e)}');
     } finally {
       if (mounted) setState(() => _islemAktif = false);
     }
   }
 
+  // 🔴 Derin analizde bulundu (P2): bu fonksiyon kardeşlerinin (
+  // _adisyonYazdir, _masayiTasi, _siparisIptal, _odemeAl) hepsinde olan
+  // _islemAktif çift-dokunma korumasını VE try/catch'i hiç içermiyordu
+  // — art arda dokunma tekrar tekrar gereksiz DB/bulut yazımına yol
+  // açabiliyordu, bir hata da (ör. DB kilidi) kullanıcıya hiç
+  // bildirilmiyordu.
   Future<void> _hesapIstendi(MasaSiparisModel siparis) async {
-    await ref.read(masaDeposuProvider).hesapIstendi(widget.masa.id!);
-    ref.read(masaListesiProvider.notifier).yukle();
-    if (mounted) {
-      BildirimServisi.uyari(context, 'Hesap istendi olarak işaretlendi');
+    if (_islemAktif) return;
+    setState(() => _islemAktif = true);
+    try {
+      await ref.read(masaDeposuProvider).hesapIstendi(widget.masa.id!);
+      ref.read(masaListesiProvider.notifier).yukle();
+      if (mounted) {
+        BildirimServisi.uyari(context, 'Hesap istendi olarak işaretlendi');
+      }
+    } catch (e) {
+      if (mounted) {
+        BildirimServisi.hata(context, 'İşaretlenemedi: ${kullaniciyaHataMetni(e)}');
+      }
+    } finally {
+      if (mounted) setState(() => _islemAktif = false);
     }
   }
 
@@ -336,7 +353,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Ödeme hatası: $e');
+      if (mounted) BildirimServisi.hata(context, 'Ödeme hatası: ${kullaniciyaHataMetni(e)}');
     } finally {
       if (mounted) setState(() => _islemAktif = false);
     }

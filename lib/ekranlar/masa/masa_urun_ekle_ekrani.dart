@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../modeller/urun_model.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../saglayicilar/riverpod/masa_provider.dart';
@@ -113,7 +114,7 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
         if (context.mounted) Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Ürün eklenemedi: $e');
+      if (mounted) BildirimServisi.hata(context, 'Ürün eklenemedi: ${kullaniciyaHataMetni(e)}');
     } finally {
       if (mounted) setState(() => _islemAktif = false);
     }

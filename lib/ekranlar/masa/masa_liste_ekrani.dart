@@ -11,6 +11,7 @@ import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../widgetlar/ortak/bulut_durum_widget.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../modeller/masa_model.dart';
 import '../../saglayicilar/riverpod/masa_provider.dart';
 import '../../depolar/masa_deposu.dart';
@@ -325,7 +326,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                 await MasaDeposu().masaSil(m.id!);
                 ref.read(masaListesiProvider.notifier).yukle();
               } catch (e) {
-                if (mounted) BildirimServisi.hata(context, '$e');
+                if (mounted) BildirimServisi.hata(context, kullaniciyaHataMetni(e));
               }
             },
           ),

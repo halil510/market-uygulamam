@@ -327,6 +327,20 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
   }
 
   // ─── BUILD ────────────────────────────────────────────────────────────────
+  // 🔴 KULLANICI İSTEĞİ — İKİ KATMANLI KART YAPISI TAMAMEN KALDIRILDI: bu
+  // ekran önceden koyu gradyanlı TAM EKRAN bir arka plan ÜZERİNE, ayrıca
+  // yuvarlak köşeli/gölgeli/neredeyse opak KENDİ arka planı olan (TsRenk
+  // .kart(context).withAlpha(235)) tek büyük bir "kart" içine HER ŞEYİ
+  // (logo, karşılama metni, kullanıcı seçici, PIN, numpad, buton, parmak
+  // izi) gömüyordu — bu, "ekran içinde ekran" gibi görünen, istenmeyen bir
+  // iki katmanlı görünüme yol açıyordu. Artık TEK, kesintisiz bir dikey
+  // düzlem: üst kısım (logo/amblem + kullanıcı seçici + PIN göstergesi)
+  // doğrudan gradyan arka planın üzerinde akıyor, alt kısım (numerik
+  // klavye + giriş butonu + parmak izi) ekranın en altına gerçekten
+  // KAYNAŞMIŞ, hafif buzlu-cam (BackdropFilter blur + %5-7 beyaz saydamlık)
+  // tek bir panel. GÜVENLİK/VALUENOTIFIER ALTYAPISI (biyometrik token,
+  // ValueNotifier'lar, şifreleme/kilit mantığı) HİÇ DOKUNULMADI — sadece
+  // bu build() ve altındaki saf-görsel yardımcı widget'lar değişti.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -360,19 +374,60 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
               child: _buildGlowBlob(const Color(0xFF3A0CA3), 300),
             ),
             SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.all(24),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: FadeTransition(
-                      opacity: _fadeAnim,
-                      child: ScaleTransition(
-                        scale: _scaleAnim,
-                        child: _buildCard(),
+              child: FadeTransition(
+                opacity: _fadeAnim,
+                child: ScaleTransition(
+                  scale: _scaleAnim,
+                  child: Column(
+                    children: [
+                      // ── ÜST BÖLÜM: amblem + kullanıcı seçici + PIN ─────────
+                      // Taşarsa kaydırılabilir (SingleChildScrollView) ama
+                      // artık ayrı bir "kart" değil — arka planla TEK düzlem.
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 420),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildLogo(),
+                                  const SizedBox(height: 20),
+                                  const Text(
+                                    'Hoş Geldiniz',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Hesabınıza giriş yapın',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 28),
+                                  _buildKullaniciSecici(),
+                                  const SizedBox(height: 20),
+                                  _buildPinGosterge(),
+                                  const SizedBox(height: 10),
+                                  _buildHataMesaji(),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      // ── ALT PANEL: numpad + giriş butonu + parmak izi ──────
+                      _buildAltPanel(),
+                    ],
                   ),
                 ),
               ),
@@ -399,104 +454,47 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
     );
   }
 
-  // ─── GİRİŞ KARTI ────────────────────────────────────────────────────────
-  // 🔴 DÜZELTME (görsel tutarlılık denetimi): kart içeriği (metin/kart/
-  // buton renkleri) ÖNCEDEN uçtan uca sabit/açık-tema hex renkleriyle
-  // yazılıydı — kullanıcı dark mode'a geçtiğinde uygulamanın geri kalanı
-  // koyulaşırken bu ekran sabit kalıyordu. Arkaplan gradyanı (marka
-  // kimliği, bilinçli olarak dokunulmadı) HARİÇ, kartın TÜMÜ artık
-  // TsRenk üzerinden tema-duyarlı.
-  Widget _buildCard() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(70),
-            blurRadius: 40,
-            offset: const Offset(0, 16),
+  // ─── ALT PANEL (entegre numerik klavye) ─────────────────────────────────
+  // Ekranın en alt kenarına KAYNAŞMIŞ, sadece üst köşeleri yuvarlatılmış,
+  // hafif buzlu-cam (Glassmorphism) tek bir panel — üstteki bölümle AYNI
+  // koyu gradyan arka planın devamı gibi görünür, ayrı bir "kart" DEĞİL.
+  Widget _buildAltPanel() {
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(14),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: const Border(
+              top: BorderSide(color: Colors.white12, width: 1),
+            ),
           ),
-          BoxShadow(
-            color: Colors.black.withAlpha(30),
-            blurRadius: 80,
-            offset: const Offset(0, 30),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            decoration: BoxDecoration(
-              color: TsRenk.kart(context).withAlpha(235),
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: Colors.white.withAlpha(22),
-                width: 1.2,
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildNumPad(),
+                  const SizedBox(height: 16),
+                  _buildGirisButonu(),
+                  const SizedBox(height: 12),
+                  _buildBiometricButton(),
+                  const SizedBox(height: 6),
+                  Text(
+                    'v${UygSabitler.versiyon}',
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
-            child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Logo ──────────────────────────────────────────────────────────
-          _buildLogo(),
-
-          const SizedBox(height: 8),
-          Text(
-            'Hoş Geldiniz',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: TsRenk.metinBirincil(context),
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Hesabınıza giriş yapın',
-            style: TextStyle(
-              fontSize: 13,
-              color: TsRenk.metinIkincil(context),
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // ── Kullanıcı Seçici ─────────────────────────────────────────────
-          _buildKullaniciSecici(),
-          const SizedBox(height: 20),
-
-          // ── PIN Göstergesi ──────────────────────────────────────────────
-          _buildPinGosterge(),
-          const SizedBox(height: 16),
-
-          // ── Hata Mesajı ──────────────────────────────────────────────────
-          _buildHataMesaji(),
-          const SizedBox(height: 12),
-
-          // ── NumPad ──────────────────────────────────────────────────────
-          _buildNumPad(),
-          const SizedBox(height: 16),
-
-          // ── Giriş Butonu ────────────────────────────────────────────────
-          _buildGirisButonu(),
-          const SizedBox(height: 12),
-
-          // ── Parmak İzi ──────────────────────────────────────────────────
-          _buildBiometricButton(),
-
-          const SizedBox(height: 6),
-          Text(
-            'v${UygSabitler.versiyon}',
-            style: TextStyle(
-              color: TsRenk.metinIkincil(context),
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-              ],
             ),
           ),
         ),
@@ -570,17 +568,17 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
           valueListenable: _seciliKullanici,
           builder: (_, secili, __) => Container(
             decoration: BoxDecoration(
-              color: TsRenk.arkaplan(context),
+              color: Colors.white.withAlpha(18),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: TsRenk.ayirac(context)),
+              border: Border.all(color: Colors.white.withAlpha(35)),
             ),
             child: DropdownButtonFormField<String>(
               value: liste.contains(secili) ? secili : liste.first,
               isExpanded: true,
-              icon: Icon(Icons.expand_more, color: TsRenk.metinIkincil(context)),
-              dropdownColor: TsRenk.kart(context),
-              style: TextStyle(
-                color: TsRenk.metinBirincil(context),
+              icon: const Icon(Icons.expand_more, color: Colors.white70),
+              dropdownColor: const Color(0xFF1E293B),
+              style: const TextStyle(
+                color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -626,22 +624,22 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
             padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
               color: hata.isNotEmpty
-                  ? TsRenk.zemin(TsRenk.hata)
-                  : TsRenk.arkaplan(context),
+                  ? TsRenk.zemin(TsRenk.hata, opaklik: 0.18)
+                  : Colors.white.withAlpha(14),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: hata.isNotEmpty
-                    ? TsRenk.hata.withAlpha(120)
-                    : TsRenk.ayirac(context),
+                    ? TsRenk.hata.withAlpha(140)
+                    : Colors.white.withAlpha(30),
                 width: hata.isNotEmpty ? 1.5 : 1,
               ),
             ),
             child: pin.isEmpty
-                ? Text(
+                ? const Text(
                     'Şifrenizi girin',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: TsRenk.metinIkincil(context),
+                      color: Colors.white70,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -757,10 +755,10 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
 
     return Material(
       color: isTemizle
-          ? TsRenk.zemin(TsRenk.hata)
+          ? TsRenk.zemin(TsRenk.hata, opaklik: 0.18)
           : isSil
-              ? TsRenk.zemin(Colors.orange)
-              : TsRenk.arkaplan(context),
+              ? TsRenk.zemin(Colors.orange, opaklik: 0.18)
+              : Colors.white.withAlpha(16),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -779,17 +777,17 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
               ? const Icon(Icons.backspace_outlined,
                   color: Colors.orange, size: 24)
               : isTemizle
-                  ? Text('C',
+                  ? const Text('C',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: TsRenk.hata,
                       ))
                   : Text(t,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
-                        color: TsRenk.metinBirincil(context),
+                        color: Colors.white,
                       )),
         ),
       ),
@@ -819,7 +817,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                           end: Alignment.centerRight,
                         )
                       : null,
-                  color: aktif ? null : TsRenk.ayirac(context),
+                  color: aktif ? null : Colors.white.withAlpha(20),
                   boxShadow: aktif
                       ? [
                           BoxShadow(
@@ -871,7 +869,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
     if (_biyometrikMevcut) {
       return Column(
         children: [
-          Divider(height: 24, thickness: 0.5, color: TsRenk.ayirac(context)),
+          const Divider(height: 24, thickness: 0.5, color: Colors.white24),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -885,7 +883,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: Color.lerp(
-                          TsRenk.metinIkincil(context),
+                          Colors.white54,
                           const Color(0xFF4361EE),
                           t,
                         )!,
@@ -896,9 +894,8 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                   );
                 },
                 child: Material(
-                  color: TsRenk.kart(context),
+                  color: Colors.white.withAlpha(18),
                   shape: const CircleBorder(),
-                  elevation: 4,
                   child: InkWell(
                     customBorder: const CircleBorder(),
                     onTap: _biyometrikGirisYap,
@@ -914,12 +911,12 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                 ),
               ),
               const SizedBox(width: 12),
-              Text(
+              const Text(
                 'Parmak İzi ile Giriş',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: TsRenk.metinIkincil(context),
+                  color: Colors.white70,
                 ),
               ),
             ],
@@ -933,11 +930,11 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.fingerprint, size: 18, color: TsRenk.metinIkincil(context)),
+            const Icon(Icons.fingerprint, size: 18, color: Colors.white54),
             const SizedBox(width: 8),
             Text(
               'Şifreyle giriş yapın, parmak izi aktifleşsin',
-              style: TsMetin.kucuk.copyWith(color: TsRenk.metinIkincil(context)),
+              style: TsMetin.kucuk.copyWith(color: Colors.white60),
             ),
           ],
         ),

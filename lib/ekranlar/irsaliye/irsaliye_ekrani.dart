@@ -20,7 +20,7 @@ import '../../modeller/cari_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
-import 'package:uuid/uuid.dart';
+import '../../depolar/irsaliye_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../saglayicilar/riverpod/irsaliye_provider.dart';
 import '../../tasarim_sistemi/ts_yetki.dart';
@@ -280,97 +280,31 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
     }
     setState(() => _kayit = true);
     try {
-      final db     = await Veritabani().db;
       // ÖNCEDEN burada zaman damgası tabanlı ("IRS" + yıl + zaman
       // damgasının son haneleri) bir numara üretiliyordu — bu, fatura/
       // cari numarasında bulup düzelttiğim AYNI çakışma riskini
       // taşıyordu. Meğer doğru, GİB-standardı, kalıcı sayaç tabanlı
       // fonksiyon (fisNoUret) ZATEN varmış, sadece kullanılmıyormuş.
       final no     = await Veritabani().fisNoUret('irsaliye', subeId: AktifSubeServisi().subeId ?? 1);
-      final toplam = _kalemler.fold(0.0, (s, k) => s + k.miktar * k.birimFiyat);
-      final now = DateTime.now().toIso8601String();
-      final irsaliyeGid = const Uuid().v4();
-      late int irsaliyeId;
-      final kalemGidler = <String>[];
-      final stokHareketGidler = <String>[];
-      final etkilenenUrunIdler = <int>{};
 
-      await db.transaction((txn) async {
-        irsaliyeId = await txn.insert('irsaliyeler', {
-          'global_id':    irsaliyeGid,
-          'irsaliye_no':  no,
-          'cari_id':      _seciliCari?.id,
-          'tarih':        _tarih.toIso8601String(),
-          'tip':          _tip,
-          'toplam_tutar': toplam,
-          'durum':        'Hazırlanıyor',
-          'kullanici_id': AuthServisi().aktifId,
-          'created_at':   now,
-          'last_updated': now,
-        });
-        for (final k in _kalemler) {
-          final kalemGid = const Uuid().v4();
-          kalemGidler.add(kalemGid);
-          await txn.insert('irsaliye_kalem', {
-            'global_id':    kalemGid,
-            'irsaliye_id':  irsaliyeId,
-            'urun_id':      k.urunId,
-            'urun_adi':     k.urunAdi,
-            'miktar':       k.miktar,
-            'birim_fiyat':  k.birimFiyat,
-            'toplam_tutar': k.miktar * k.birimFiyat,
-            'last_updated': now,
-          });
-          // Stok hareketi — ÖNCEDEN hareket kaydı hiç oluşturulmuyordu.
-          final hareketMiktar = _tip == 'Çıkış' ? -k.miktar : k.miktar;
-          final urunRows = await txn.query('urunler',
-              columns: ['stok'], where: 'id = ?', whereArgs: [k.urunId]);
-          if (urunRows.isNotEmpty) {
-            final onceki = (urunRows.first['stok'] as num).toDouble();
-            final sonraki = onceki + hareketMiktar;
-            await txn.update('urunler', {'stok': sonraki, 'last_updated': now}, where: 'id = ?', whereArgs: [k.urunId]);
-            etkilenenUrunIdler.add(k.urunId);
-            final stokGid = const Uuid().v4();
-            stokHareketGidler.add(stokGid);
-            await txn.insert('stok_hareket', {
-              'global_id': stokGid,
-              'urun_id': k.urunId,
-              'hareket_turu': 'İrsaliye $_tip',
-              'miktar': k.miktar,
-              'onceki_stok': onceki,
-              'sonraki_stok': sonraki,
-              'tarih': now,
-              'last_updated': now,
-              'referans_id': irsaliyeId,
-              'referans_turu': 'irsaliye',
-            });
-          }
-        }
-      });
-
-      // 🔴🔴 Derin analizde bulundu: bu ekran (irsaliyeler, irsaliye_kalem,
-      // urunler, stok_hareket — 4 tablo) hiçbir yerde global_id atamıyordu
-      // ve BulutManager'ı HİÇ çağırmıyordu — irsaliyeler (resmi sevk
-      // belgeleri) sadece manuel senkronla buluta gidiyordu. Transaction
-      // kapandıktan (veri kalıcı olduktan) SONRA bildiriliyor.
-      try {
-        final irsSatir = await db.query('irsaliyeler', where: 'id = ?', whereArgs: [irsaliyeId], limit: 1);
-        if (irsSatir.isNotEmpty) BulutManager().upsert('irsaliyeler', Map<String, dynamic>.from(irsSatir.first));
-        for (final gid in kalemGidler) {
-          final s = await db.query('irsaliye_kalem', where: 'global_id = ?', whereArgs: [gid], limit: 1);
-          if (s.isNotEmpty) BulutManager().upsert('irsaliye_kalem', Map<String, dynamic>.from(s.first));
-        }
-        for (final urunId in etkilenenUrunIdler) {
-          final s = await db.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
-          if (s.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(s.first));
-        }
-        for (final gid in stokHareketGidler) {
-          final s = await db.query('stok_hareket', where: 'global_id = ?', whereArgs: [gid], limit: 1);
-          if (s.isNotEmpty) BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(s.first));
-        }
-      } catch (e) {
-        // Bulut bildirimi hatası asıl işlemi engellemez
-      }
+      // Tüm transaction + bulut senkron mantığı artık
+      // IrsaliyeDeposu.olustur'da — bkz. o metodun doc yorumu, davranış
+      // birebir korundu (irsaliye + kalemler + stok hareketi TEK
+      // transaction içinde).
+      await IrsaliyeDeposu().olustur(
+        kalemler: _kalemler
+            .map((k) => IrsaliyeKalemGirdi(
+                urunId: k.urunId,
+                urunAdi: k.urunAdi,
+                miktar: k.miktar,
+                birimFiyat: k.birimFiyat))
+            .toList(),
+        cariId: _seciliCari?.id,
+        tarih: _tarih,
+        tip: _tip,
+        irsaliyeNo: no,
+        kullaniciId: AuthServisi().aktifId,
+      );
 
       if (!mounted) return;
       BildirimServisi.basari(context, 'İrsaliye oluşturuldu ✓');

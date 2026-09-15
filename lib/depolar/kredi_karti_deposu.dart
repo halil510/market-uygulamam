@@ -1,9 +1,11 @@
 // lib/depolar/kredi_karti_deposu.dart
 import 'package:sqflite/sqflite.dart';
 import '../modeller/kredi_karti_model.dart';
+import '../modeller/kasa_hareket_model.dart';
 import '../veri/database/veritabani.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import 'kasa_deposu.dart';
 import 'package:uuid/uuid.dart';
 
 class KrediKartiDeposu {
@@ -146,6 +148,58 @@ class KrediKartiDeposu {
     } catch (e, st) {
       LogServisi().hata('KrediKartiDeposu.limitDegistir', hata: e, yigin: st);
       rethrow;
+    }
+  }
+
+  /// Kredi kartına NAKİT ödeme yapar — bkz.
+  /// kredi_karti_detay_ekrani.dart'ın "Karta Ödeme Yap" dialogu (taşındığı
+  /// yer). Kartın kullanılan limitini azaltır (limitDegistirTxn, negatif
+  /// delta) VE aynı transaction'da bir kasa hareketi (çıkış) oluşturur —
+  /// bu ekranın tek tutar alanı olduğu (ödeme kaynağı seçimi yok) için en
+  /// yaygın senaryo olan NAKİT ödeme varsayılır. Bu form dışında Nakit
+  /// olmayan bir ödeme kaynağı gerekiyorsa borç ödeme ekranlarındaki
+  /// (BorcOdemeIslemServisi) daha genel akış kullanılmalı.
+  Future<void> nakitOdemeYap(int kartId, double tutar, String kartAdi,
+      {String aciklama = 'Elle ödeme girişi'}) async {
+    final db = await _d;
+    int? kartHareketId;
+    int? kasaHareketId;
+    await db.transaction((txn) async {
+      kartHareketId =
+          await limitDegistirTxn(txn, kartId, -tutar, aciklama: aciklama);
+      kasaHareketId = await KasaDeposu().hareketEkleTxn(
+          txn,
+          KasaHareketModel(
+            hareketTipi: 'Ödeme',
+            tutar: tutar,
+            referansId: kartId,
+            referansTuru: 'kredi_karti_odeme',
+            tarih: DateTime.now(),
+            aciklama: 'Kredi kartı ödemesi: $kartAdi',
+          ));
+    });
+
+    final kartSatir = await db.query('kredi_kartlari',
+        where: 'id = ?', whereArgs: [kartId], limit: 1);
+    if (kartSatir.isNotEmpty) {
+      BulutManager()
+          .upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
+    }
+    if (kartHareketId != null) {
+      final kartHareketSatir = await db.query('kredi_karti_hareket',
+          where: 'id = ?', whereArgs: [kartHareketId], limit: 1);
+      if (kartHareketSatir.isNotEmpty) {
+        BulutManager().upsert('kredi_karti_hareket',
+            Map<String, dynamic>.from(kartHareketSatir.first));
+      }
+    }
+    if (kasaHareketId != null) {
+      final kasaSatir = await db.query('kasa_hareketleri',
+          where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
+      if (kasaSatir.isNotEmpty) {
+        BulutManager().upsert(
+            'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+      }
     }
   }
 

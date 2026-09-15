@@ -7,12 +7,8 @@ import '../../saglayicilar/riverpod/banka_provider.dart';
 import '../../saglayicilar/riverpod/borc_provider.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../depolar/kredi_karti_deposu.dart';
-import '../../depolar/kasa_deposu.dart';
 import '../../modeller/kredi_karti_model.dart';
-import '../../modeller/kasa_hareket_model.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
-import '../../veri/database/veritabani.dart';
 import '../../tasarim_sistemi/ts_yetki.dart';
 
 class KrediKartiDetayEkrani extends ConsumerStatefulWidget {
@@ -366,40 +362,13 @@ class _KartDetayIcerik extends ConsumerWidget {
                 }
                 setStateDialog(() => isleniyor = true);
                 try {
-                  // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): bu ekran
-                  // SADECE KrediKartiDeposu.limitDegistir() çağırıyordu —
-                  // kartın borcu azalıyordu ama bu ödeme için kullanılan
-                  // GERÇEK parayı hiçbir yerde (kasa) kaydetmiyordu; kart
-                  // borcu "kayboluyor", nakit hiç düşmüyordu. Bu formda
-                  // ödeme kaynağı seçimi olmadığı için (tek tutar alanı),
-                  // en yaygın senaryo olan NAKİT ödeme varsayılıp kasa
-                  // hareketi de aynı transaction'da atomik olarak
-                  // oluşturuluyor — borç ödeme ekranlarındaki aynı desen.
-                  int? kartHareketId;
-                  int? kasaHareketId;
-                  final db = await Veritabani().db;
-                  await db.transaction((txn) async {
-                    kartHareketId = await KrediKartiDeposu().limitDegistirTxn(txn, kart.id!, -tutar,
-                        aciklama: 'Elle ödeme girişi');
-                    kasaHareketId = await KasaDeposu().hareketEkleTxn(txn, KasaHareketModel(
-                      hareketTipi: 'Ödeme',
-                      tutar: tutar,
-                      referansId: kart.id,
-                      referansTuru: 'kredi_karti_odeme',
-                      tarih: DateTime.now(),
-                      aciklama: 'Kredi kartı ödemesi: ${kart.kartAdi}',
-                    ));
-                  });
-                  final kartSatir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [kart.id], limit: 1);
-                  if (kartSatir.isNotEmpty) BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
-                  if (kartHareketId != null) {
-                    final kartHareketSatir = await db.query('kredi_karti_hareket', where: 'id = ?', whereArgs: [kartHareketId], limit: 1);
-                    if (kartHareketSatir.isNotEmpty) BulutManager().upsert('kredi_karti_hareket', Map<String, dynamic>.from(kartHareketSatir.first));
-                  }
-                  if (kasaHareketId != null) {
-                    final kasaSatir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
-                    if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
-                  }
+                  // Kart borcu azaltma + kasa hareketi (NAKİT ödeme
+                  // varsayılıyor — bu formda ödeme kaynağı seçimi yok)
+                  // artık KrediKartiDeposu.nakitOdemeYap'ta TEK transaction
+                  // içinde atomik olarak yürütülüyor — bkz. o metodun doc
+                  // yorumu, davranış birebir korundu.
+                  await KrediKartiDeposu()
+                      .nakitOdemeYap(kart.id!, tutar, kart.kartAdi);
                   if (ctx.mounted) Navigator.pop(ctx);
                   ref.invalidate(krediKartiDetayProvider(kart.id!));
                   if (context.mounted) {

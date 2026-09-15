@@ -14,6 +14,7 @@ import '../depolar/fatura_deposu.dart';
 import '../modeller/cari_model.dart';
 import '../modeller/fatura_model.dart';
 import '../veri/database/veritabani.dart';
+import '../cekirdek/utils/vergi_no_dogrulayici.dart';
 
 /// Cari'nin faturalandırma için hazır olup olmadığının sonucu.
 class CariFaturaKontrolu {
@@ -60,9 +61,22 @@ class FaturalandirmaServisi {
 
     final eksikler = <String>[];
     if (cari.unvan.trim().isEmpty) eksikler.add('Ünvan');
-    if ((cari.vergiNo == null || cari.vergiNo!.isEmpty) &&
-        (cari.tcKimlik == null || cari.tcKimlik!.isEmpty)) {
+    // 🔴 Derin denetimde bulundu (P2): VKN/TC Kimlik No'nun sadece BOŞ
+    // olup olmadığı kontrol ediliyordu, format/checksum'ı hiç
+    // doğrulanmıyordu — hatalı (typo'lu) bir VKN GİB'e kadar gidip
+    // reddedilebilirdi. VergiNoDogrulayici (tam checksum algoritması,
+    // gib_ayar_ekrani.dart'ta şirketin kendi VKN'si için zaten
+    // kullanılıyor) burada da uygulandı.
+    final vergiNo = cari.vergiNo?.trim();
+    final tcKimlik = cari.tcKimlik?.trim();
+    if ((vergiNo == null || vergiNo.isEmpty) &&
+        (tcKimlik == null || tcKimlik.isEmpty)) {
       eksikler.add('VKN veya TC Kimlik No');
+    } else {
+      final girilen = (vergiNo != null && vergiNo.isNotEmpty) ? vergiNo : tcKimlik!;
+      if (!VergiNoDogrulayici.gecerliMi(girilen)) {
+        eksikler.add('Geçerli bir VKN (10 hane) veya TC Kimlik No (11 hane) — rakamları kontrol edin');
+      }
     }
     if (cari.vergiDairesi == null || cari.vergiDairesi!.isEmpty) {
       eksikler.add('Vergi Dairesi');

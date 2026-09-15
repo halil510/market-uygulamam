@@ -15,6 +15,7 @@ import '../../modeller/fatura_model.dart';
 import '../../modeller/cari_model.dart';
 import '../../modeller/urun_model.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/faturalandirma_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 
 // Kalem modeli — controller'ları içinde tutar (memory leak önlenir)
@@ -261,13 +262,25 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
         toplamTutar:   k.toplam,
       )).toList();
 
+      // 🔴 Derin denetimde bulundu (P2): satış/iade üzerinden otomatik
+      // oluşturulan faturalarda (faturalandirma_servisi.dart) cariVergiDairesi/
+      // cariAdres doluyordu ama bu manuel ekranda hiç set edilmiyordu —
+      // GİB e-Fatura XML'i bu alanları kullanıyor (bkz. gib_servisi.dart
+      // düzeltmesi), eksik kalırlarsa gönderim reddedilebilir. Aynı
+      // kontrol fonksiyonu (FaturalandirmaServisi.kontrolEt) burada da
+      // kullanılıp adres/vergi dairesi dolduruluyor.
+      final cariKontrol = await FaturalandirmaServisi.kontrolEt(_seciliCari!.id!);
+
+      final girilenFaturaNo = _faturaNoCtrl.text.trim();
       final fatura = FaturaModel(
-        faturaNo:       _faturaNoCtrl.text.trim(),
+        faturaNo:       girilenFaturaNo,
         odemeSekli:     _odemeSekli,
         faturaTipi:     _faturaTipi,
         cariId:         _seciliCari!.id,
         cariUnvan:      _seciliCari!.unvan,
         cariVergiNo:    _seciliCari!.vergiNo,
+        cariVergiDairesi: _seciliCari!.vergiDairesi,
+        cariAdres:      cariKontrol?.adresMetni,
         tarih:          _tarih,
         vadeTarihi:     _vadeTarihi,
         malinNereye:    _nereyeCtrl.text.trim().isEmpty ? null : _nereyeCtrl.text.trim(),
@@ -282,9 +295,25 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
         detaylar:       detaylar,
       );
 
-      await _faturaDepo.ekle(fatura, detaylar);
+      final faturaId = await _faturaDepo.ekle(fatura, detaylar);
       if (!mounted) return;
-      BildirimServisi.basari(context, 'Fatura oluşturuldu');
+      // 🔴 Derin denetimde bulundu (P2): fatura_no alanı serbestçe
+      // düzenlenebiliyordu — kullanıcı otomatik üretilen numarayı silip
+      // mevcut bir faturayla ÇAKIŞAN bir değer yazabilirdi. faturalar.
+      // fatura_no UNIQUE olduğu için FaturaDeposu.ekle() bunu
+      // yakalayıp SESSİZCE farklı, otomatik bir numarayla değiştiriyor
+      // — kullanıcı kendi seçtiği numaranın değiştirildiğinden habersiz
+      // kalıyordu. Kaydedilen faturanın gerçek numarası kontrol edilip
+      // farklıysa açıkça bildiriliyor.
+      final kaydedilen = await _faturaDepo.idileGetir(faturaId);
+      if (kaydedilen != null && kaydedilen.faturaNo != girilenFaturaNo) {
+        BildirimServisi.uyari(context,
+            'Fatura oluşturuldu — ama "$girilenFaturaNo" numarası zaten '
+            'kullanıldığı için otomatik olarak "${kaydedilen.faturaNo}" '
+            'verildi.');
+      } else {
+        BildirimServisi.basari(context, 'Fatura oluşturuldu');
+      }
       context.pop(true);
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');

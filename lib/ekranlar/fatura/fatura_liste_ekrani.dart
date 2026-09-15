@@ -366,6 +366,40 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
       direction: ref.watch(authProvider.select((s) => s.isMudur))
           ? DismissDirection.endToStart : DismissDirection.none,
       confirmDismiss: (_) async {
+        // 🔴🔴 P1 (derin denetimde bulundu): bu swipe-iptal, fatura_no
+        // durumundan bağımsız SADECE faturalar.durum='iptal' yazıyordu
+        // — e_fatura_durum'a hiç bakmıyordu, GİB'e HİÇBİR bildirim
+        // göndermiyordu. Fatura zaten GİB'e gönderilmiş/onaylanmışsa,
+        // bir mudur burada "iptal ettim" sanıp GİB'de hâlâ geçerli/
+        // yürürlükte bir faturayı fark etmeden bırakabilirdi (gerçek
+        // vergi/uyum riski). fatura_detay_ekrani.dart._gibIptalEt() bu
+        // durumu doğru ele alıyor (gerçek GİB API çağrısı + doğru
+        // durum). Artık GİB'e gönderilmiş bir fatura için buradan
+        // yerel-only iptal YAPILAMIYOR, kullanıcı detay ekranına
+        // yönlendiriliyor.
+        final gibeGonderildi = f.eFaturaDurum == 'gonderildi' ||
+            f.eFaturaDurum == 'onaylandi' ||
+            f.eFaturaDurum == 'gonderiliyor';
+        if (gibeGonderildi) {
+          if (mounted) {
+            await showDialog<void>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: const Text('Bu Fatura GİB\'e Gönderildi'),
+                content: Text(
+                    '${f.faturaNo ?? "Bu fatura"} zaten GİB\'e gönderilmiş/onaylanmış. '
+                    'Buradan sadece yerel işaretleme yapılamaz — GİB\'de de iptal '
+                    'edilmesi gerekir. Lütfen fatura detay ekranını açıp '
+                    '"GİB\'de İptal Et" seçeneğini kullanın.'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam')),
+                ],
+              ),
+            );
+          }
+          return false;
+        }
         final onay = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(

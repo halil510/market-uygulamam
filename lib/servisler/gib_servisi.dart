@@ -472,6 +472,13 @@ class GibServisi {
     </cac:Party>
   </cac:AccountingSupplierParty>
 
+  <!-- 🔴 Derin denetimde bulundu (P1): müşteri PostalAddress/
+       PartyTaxScheme HİÇ gönderilmiyordu — aynı dosyadaki e-İrsaliye
+       (DeliveryCustomerParty) bunu doğru dolduruyor, e-Fatura'da bu
+       adım unutulmuştu. FaturaModel.cariAdres/cariVergiDairesi zaten
+       doluyordu (faturalandirma_servisi.dart), sadece burada
+       kullanılmıyordu. Gerçek B2B e-Fatura'da bu eksik zorunlu
+       alanlar entegratör/GİB tarafından reddedilmeye yol açabilir. -->
   <cac:AccountingCustomerParty>
     <cac:Party>
       <cac:PartyIdentification>
@@ -480,6 +487,18 @@ class GibServisi {
       <cac:PartyName>
         <cbc:Name>${_xmlEscape(fatura.cariUnvan ?? '-')}</cbc:Name>
       </cac:PartyName>
+      <cac:PostalAddress>
+        <cbc:StreetName>${_xmlEscape(fatura.cariAdres ?? '')}</cbc:StreetName>
+        <cac:Country>
+          <cbc:IdentificationCode>TR</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:RegistrationName>${_xmlEscape(fatura.cariUnvan ?? '-')}</cbc:RegistrationName>
+        <cac:TaxScheme>
+          <cbc:Name>${_xmlEscape(fatura.cariVergiDairesi ?? '')}</cbc:Name>
+        </cac:TaxScheme>
+      </cac:PartyTaxScheme>
     </cac:Party>
   </cac:AccountingCustomerParty>
 $billingReferenceXml

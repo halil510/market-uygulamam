@@ -66,8 +66,22 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // 🔴 Denemesi 2026-09-16'da yapıldı (protokol P1 maddesi):
+            // önceden APK boyutu/native-plugin keep-rule riski nedeniyle
+            // bilinçli olarak kapalıydı. proguard-rules.pro daha önceki
+            // bir oturumda hazırlanmış ama hiç etkin olmamıştı — şimdi
+            // devreye alınıyor. flutter build apk --release BAŞARIYLA
+            // tamamlandı ama bu makinede gerçek Android cihaz/emulatör
+            // YOK — yani release APK'nın çalışma zamanı davranışı (barkod
+            // tarama, Bluetooth/USB yazdırma, biyometrik giriş, bildirim,
+            // senkron) HİÇ doğrulanamadı. Gerçek cihazda test edilmeden
+            // production'a güvenilmemeli.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 

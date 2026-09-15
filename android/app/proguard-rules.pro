@@ -1,15 +1,20 @@
 # ============================================================
 # ProGuard/R8 Kuralları — Flutter + Bu Projenin Kullandığı Eklentiler
 # ============================================================
-# NOT: Bu dosya hazırlandı ama şu an build.gradle.kts'te
-# isMinifyEnabled = false olduğu için AKTİF DEĞİL — yani şu an
-# hiçbir riski yok. İleride kod küçültme/gizleme (minification) açmak
-# isterseniz, önce bu kuralları etkinleştirip, MUTLAKA gerçek bir
-# release APK ile TÜM özellikleri (yazdırma, tarama, senkronizasyon,
-# GİB, PDF/Excel dışa aktarma) elle test etmeniz gerekir — ben bunu
-# derleyip çalıştıramadığım için bu kuralların eksiksiz olduğunu
-# garanti edemem, sadece Flutter ekosisteminde YAYGIN olarak
-# kullanılan, bilinen standart kuralları içeriyor.
+# 2026-09-16: build.gradle.kts'te isMinifyEnabled = true yapılarak bu
+# dosya ARTIK AKTİF. `flutter build apk --release` başarıyla derlendi
+# ama bu makinede gerçek Android cihaz/emulatör YOK — yani aşağıdaki
+# kurallar SADECE derleme zamanında doğrulandı, çalışma zamanında
+# (runtime) DOĞRULANMADI. Production'a güvenmeden önce release APK'yı
+# gerçek bir cihazda MUTLAKA elle test edin — özellikle: barkod/metin
+# tarama (mobile_scanner, mlkit), yazdırma (Bluetooth/USB termal
+# yazıcı: flutter_blue_plus, usb_serial), biyometrik giriş (local_auth),
+# bildirimler (flutter_local_notifications), senkronizasyon (sqflite +
+# http/dio), GİB e-Fatura, PDF/Excel dışa aktarma, Sentry crash
+# reporting. Bir özellik release'de (debug'da değil) çöküyor/sessizce
+# çalışmıyorsa, önce bu dosyaya ilgili paket için -keep kuralı eklemeyi
+# deneyin — R8 genelde reflection/native köprü kullanan sınıfları
+# silerek bu tür sessiz hatalara yol açar.
 
 # Flutter'ın kendi motoru
 -keep class io.flutter.app.** { *; }
@@ -26,6 +31,11 @@
 # Google ML Kit (barkod/metin tanıma)
 -keep class com.google.mlkit.** { *; }
 -dontwarn com.google.mlkit.**
+
+# flutter_local_notifications — Android sistemi zamanlanmış bildirim
+# receiver/service sınıflarını reflection ile örnekliyor; bilinen,
+# yaygın bir R8 tuzağı (bkz. paketin kendi dokümantasyonu).
+-keep class com.dexterous.** { *; }
 
 # JSON serileştirme kullanan modeller — Dart tarafında olduğu için
 # genelde etkilenmez, ama native köprü sınıfları korunmalı

@@ -31,13 +31,25 @@ class _AlimKalem {
   double alisFiyat;
   late final TextEditingController miktarCtrl;
   late final TextEditingController fiyatCtrl;
+  // 🔴 Derin denetimde bulundu (P2, kullanıcı onayıyla): lot_takibi
+  // açık ürünlerde alım anında lot_seri hiç oluşturulmuyordu — ikisi de
+  // OPSİYONEL, boş bırakılırsa davranış eskisi gibi kalır.
+  late final TextEditingController lotNoCtrl;
+  late final TextEditingController sktCtrl;
 
   _AlimKalem({required this.urun, required this.miktar, required this.alisFiyat}) {
     miktarCtrl = TextEditingController(
         text: miktar % 1 == 0 ? miktar.toStringAsFixed(0) : miktar.toStringAsFixed(3));
     fiyatCtrl  = TextEditingController(text: alisFiyat.toStringAsFixed(2));
+    lotNoCtrl  = TextEditingController();
+    sktCtrl    = TextEditingController();
   }
-  void dispose() { miktarCtrl.dispose(); fiyatCtrl.dispose(); }
+  void dispose() {
+    miktarCtrl.dispose();
+    fiyatCtrl.dispose();
+    lotNoCtrl.dispose();
+    sktCtrl.dispose();
+  }
   double get toplamTutar => miktar * alisFiyat;
 }
 
@@ -321,7 +333,15 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
         mevcutSiparisId: widget.mevcutSiparisId,
         kalemler: _kalemler
             .map((k) => AlimKalemGirdi(
-                urunId: k.urun.id!, miktar: k.miktar, alisFiyat: k.alisFiyat))
+                urunId: k.urun.id!,
+                miktar: k.miktar,
+                alisFiyat: k.alisFiyat,
+                lotNo: k.urun.lotTakibi && k.lotNoCtrl.text.trim().isNotEmpty
+                    ? k.lotNoCtrl.text.trim()
+                    : null,
+                skt: k.urun.lotTakibi
+                    ? DateTime.tryParse(k.sktCtrl.text.trim())
+                    : null))
             .toList(),
         tedarikciId: _tedarikci?.id,
         tedarikciAdi: _tedarikci?.unvan,
@@ -550,6 +570,32 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
                                   fontSize: 13),
                             ),
                           ]),
+                          if (k.urun.lotTakibi) ...[
+                            const SizedBox(height: 6),
+                            Row(children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: k.lotNoCtrl,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Lot No (opsiyonel)',
+                                    border: OutlineInputBorder(),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: k.sktCtrl,
+                                  decoration: const InputDecoration(
+                                    labelText: 'SKT (YYYY-AA-GG)',
+                                    border: OutlineInputBorder(),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                            ]),
+                          ],
                         ]),
                       ),
                     );

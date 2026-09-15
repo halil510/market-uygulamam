@@ -18,12 +18,26 @@ import 'package:uuid/uuid.dart';
 
 /// Bir alım kaleminin (ürün + miktar + alış fiyatı) DB yazımı için
 /// gereken minimal bilgisi.
+///
+/// [lotNo]/[skt]: kullanıcıya soruldu — lot_takibi açık bir ürün alınınca
+/// lot_seri kaydı HİÇ otomatik oluşturulmuyordu (P2 bulgusu), "alım
+/// ekranına lot/SKT alanı ekle" seçildi. İkisi de OPSİYONEL: [lotNo]
+/// boş/null bırakılırsa davranış birebir eskisi gibi kalır (lot'suz
+/// stok artışı, kullanıcı isterse sonradan Lot/Seri ekranından elle
+/// ekler) — hiçbir mevcut akış bozulmaz.
 class AlimKalemGirdi {
   final int urunId;
   final double miktar;
   final double alisFiyat;
-  const AlimKalemGirdi(
-      {required this.urunId, required this.miktar, required this.alisFiyat});
+  final String? lotNo;
+  final DateTime? skt;
+  const AlimKalemGirdi({
+    required this.urunId,
+    required this.miktar,
+    required this.alisFiyat,
+    this.lotNo,
+    this.skt,
+  });
 }
 
 class AlimIslemServisi {
@@ -60,6 +74,7 @@ class AlimIslemServisi {
     final alimGid = const Uuid().v4();
     final kalemGidler = <String>[];
     final stokHareketGidler = <String>[];
+    final lotGidler = <String>[];
     final etkilenenUrunIdler = <int>{};
     final subePayiFarklari = <int, double>{};
     String? cariHareketGid;
@@ -179,6 +194,30 @@ class AlimIslemServisi {
           // bekliyor, bu yüzden negatif veriliyor.
           subePayiFarklari[k.urunId] =
               (subePayiFarklari[k.urunId] ?? 0) - k.miktar;
+
+          // 🔴 Derin denetimde bulundu (P2, kullanıcı onayıyla): lot_takibi
+          // açık ürünlerde alım anında lot_seri hiç oluşturulmuyordu.
+          // Kullanıcı lot no girdiyse burada oluşturulur, stok_hareket
+          // bu lota bağlanır (LotDeposu.kaydet()'in yaptığıyla aynı
+          // alanlar) — girmediyse davranış birebir eskisi gibi kalır.
+          int? lotId;
+          final lotNo = k.lotNo?.trim();
+          if (lotNo != null && lotNo.isNotEmpty) {
+            final lotGid = const Uuid().v4();
+            lotGidler.add(lotGid);
+            lotId = await txn.insert('lot_seri', {
+              'global_id': lotGid,
+              'urun_id': k.urunId,
+              'lot_no': lotNo,
+              'miktar': k.miktar,
+              'son_kullanma_tarihi': k.skt?.toIso8601String(),
+              'tedarikci_cari_id': tedarikciId,
+              'aciklama': 'Alım: $alimNo',
+              'kayit_tarihi': now,
+              'last_updated': now,
+            });
+          }
+
           final stokGid = const Uuid().v4();
           stokHareketGidler.add(stokGid);
           await txn.insert('stok_hareket', {
@@ -195,6 +234,7 @@ class AlimIslemServisi {
             'referans_turu': 'alim',
             'kullanici_id': kullaniciId,
             'aciklama': 'Alım: $alimNo',
+            'lot_id': lotId,
           });
         }
       }
@@ -299,6 +339,13 @@ class AlimIslemServisi {
         if (s.isNotEmpty) {
           BulutManager()
               .upsert('stok_hareket', Map<String, dynamic>.from(s.first));
+        }
+      }
+      for (final gid in lotGidler) {
+        final s = await db.query('lot_seri',
+            where: 'global_id = ?', whereArgs: [gid], limit: 1);
+        if (s.isNotEmpty) {
+          BulutManager().upsert('lot_seri', Map<String, dynamic>.from(s.first));
         }
       }
       if (cariHareketGid != null) {

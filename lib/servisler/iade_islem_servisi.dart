@@ -1033,4 +1033,219 @@ class IadeIslemServisi {
       if (kDebugMode) debugPrint('Fiş silme bulut bildirimi hatası: $e');
     }
   }
+
+  /// "Manuel" (ürün seç + miktar/fiyat gir) sekmesindeki kaydetme akışı —
+  /// bkz. iade_ekrani.dart._kaydet (taşındığı yer, sadece "yeni oturum
+  /// başlat / mevcut oturuma ekle" dalı — düzenleme modu dalı zaten
+  /// IadeIslemServisi.duzenlemeModuKalemEkle'yi kullanıyor). Bir oturumda
+  /// aynı ürün tekrar eklenirse iade_kalem satırı TOPLANARAK güncellenir
+  /// (yeni satır açılmaz). iade + kalem + stok + (varsa) kasa + (varsa)
+  /// cari TEK transaction içinde.
+  ///
+  /// Döner: yeni oluşturulan veya güncellenen iadeId — [oturumIadeId]
+  /// null ise çağıran taraf bunu oturumun kalıcı iade id'si olarak
+  /// saklamalı.
+  Future<int> manuelKalemEkle({
+    required int? oturumIadeId,
+    required int? cariId,
+    required String? cariTipi,
+    required String fisNo,
+    required int urunId,
+    required String urunAdi,
+    required double miktar,
+    required double fiyat,
+    required double toplam,
+    required String neden,
+    required String odemeYontemi,
+    required int? kullaniciId,
+    required String kullaniciAdi,
+  }) async {
+    final db = await Veritabani().db;
+    final isTedarikci =
+        (cariTipi ?? 'Müşteri').contains('edarik') || (cariTipi ?? '').contains('upplier');
+    final now = DateTime.now().toIso8601String();
+    int iadeId = oturumIadeId ?? 0;
+
+    await db.transaction((txn) async {
+      // 1. İade kaydı
+      if (oturumIadeId != null) {
+        await txn.rawUpdate(
+            'UPDATE iade SET toplam_tutar = toplam_tutar + ?, iade_nedeni = ? WHERE id = ?',
+            [toplam, neden, iadeId]);
+      } else {
+        iadeId = await txn.insert('iade', {
+          'global_id': const Uuid().v4(),
+          'cari_id': cariId,
+          'fis_no': fisNo,
+          'tarih': now,
+          'toplam_tutar': toplam,
+          'iade_nedeni': neden,
+          'durum': 'tamamlandi',
+          'kasiyer_id': kullaniciId,
+        });
+      }
+
+      // 2. İade kalem
+      final mevcutKalem = await txn.rawQuery(
+          'SELECT id, miktar, toplam FROM iade_kalem WHERE iade_id=? AND urun_id=?',
+          [iadeId, urunId]);
+      if (mevcutKalem.isNotEmpty) {
+        final k = mevcutKalem.first;
+        await txn.rawUpdate('UPDATE iade_kalem SET miktar=?, toplam=? WHERE id=?', [
+          ((k['miktar'] as num?)?.toDouble() ?? 0) + miktar,
+          ((k['toplam'] as num?)?.toDouble() ?? 0) + toplam,
+          k['id']
+        ]);
+      } else {
+        await txn.insert('iade_kalem', {
+          'global_id': const Uuid().v4(),
+          'iade_id': iadeId,
+          'urun_id': urunId,
+          'urun_adi': urunAdi,
+          'miktar': miktar,
+          'birim_fiyat': fiyat,
+          'toplam': toplam,
+        });
+      }
+
+      // 3. Stok geri ekle
+      final urunRows = await txn.query('urunler',
+          columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
+      if (urunRows.isNotEmpty) {
+        final onceki = (urunRows.first['stok'] as num).toDouble();
+        await txn.update('urunler', {'stok': onceki + miktar},
+            where: 'id = ?', whereArgs: [urunId]);
+        await txn.insert('stok_hareket', {
+          'global_id': const Uuid().v4(),
+          'urun_id': urunId,
+          'hareket_turu': 'Iade Giris',
+          'miktar': miktar,
+          'onceki_stok': onceki,
+          'sonraki_stok': onceki + miktar,
+          'tarih': now,
+          'referans_id': iadeId,
+          'referans_turu': 'iade',
+          'kullanici_id': kullaniciId,
+          'aciklama': 'Iade: $fisNo',
+        });
+      }
+
+      // 4. Kasa — SADECE Nakit iade seçildiyse. KasaDeposu ile AYNI
+      // güvenli bakiye sorgusu (deleted_at IS NULL + tarih DESC).
+      if (odemeYontemi == 'Nakit') {
+        final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) - toplam;
+        await txn.insert('kasa_hareketleri', {
+          'global_id': const Uuid().v4(),
+          'hareket_tipi': 'Iade',
+          'tutar': toplam,
+          'bakiye_sonrasi': kasaBakiye,
+          'referans_id': iadeId,
+          'referans_turu': 'iade',
+          'tarih': now,
+          'sube_id': AktifSubeServisi().subeId,
+          'aciklama': 'Iade: $fisNo - $urunAdi',
+          'kullanici_id': kullaniciId,
+        });
+      }
+
+      // 5. Cari — fis_tipi ile de kontrol edilir: 'iade' ve 'satislar'
+      // tablolarının BAĞIMSIZ sayaçları tesadüfen aynı id'yi üretebilir.
+      if (cariId != null) {
+        final mevcut = await txn.rawQuery(
+            "SELECT id, alacak, borc FROM cari_hareket WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi')",
+            [iadeId, cariId]);
+        if (mevcut.isNotEmpty) {
+          final eskiAlacak = (mevcut.first['alacak'] as num?)?.toDouble() ?? 0;
+          final eskiBorc = (mevcut.first['borc'] as num?)?.toDouble() ?? 0;
+          await txn.rawUpdate(
+              "UPDATE cari_hareket SET alacak=?, borc=? WHERE fis_id=? AND cari_id=? AND fis_tipi IN ('İade','Alım İadesi')",
+              [
+                isTedarikci ? eskiAlacak : eskiAlacak + toplam,
+                isTedarikci ? eskiBorc + toplam : eskiBorc,
+                iadeId,
+                cariId
+              ]);
+        } else {
+          await txn.insert('cari_hareket', {
+            'global_id': const Uuid().v4(),
+            'cari_id': cariId,
+            'tarih': now,
+            'fis_tipi': isTedarikci ? 'Alım İadesi' : 'İade',
+            'fis_id': iadeId,
+            'fis_no': fisNo,
+            'aciklama': fisNo,
+            'borc': isTedarikci ? toplam : 0,
+            'alacak': isTedarikci ? 0 : toplam,
+            'odeme_turu': 'Nakit',
+            'kullanici': kullaniciAdi,
+          });
+        }
+        await txn.rawUpdate(
+            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
+            [cariId, cariId]);
+      }
+    });
+
+    // Transaction kapandıktan sonra buluta bildir — 7 farklı tablo
+    // (iade, iade_kalem, urunler, stok_hareket, kasa_hareketleri,
+    // cari_hareket, cari) değişebilir, her birinin EN SON değişen
+    // satırı sorgulanıp bildirilir.
+    try {
+      final iadeSatir =
+          await db.query('iade', where: 'id = ?', whereArgs: [iadeId], limit: 1);
+      if (iadeSatir.isNotEmpty) {
+        BulutManager().upsert('iade', Map<String, dynamic>.from(iadeSatir.first));
+      }
+      final kalemSatir = await db.query('iade_kalem',
+          where: 'iade_id = ? AND urun_id = ?',
+          whereArgs: [iadeId, urunId],
+          limit: 1);
+      if (kalemSatir.isNotEmpty) {
+        BulutManager()
+            .upsert('iade_kalem', Map<String, dynamic>.from(kalemSatir.first));
+      }
+      final urunSatir =
+          await db.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
+      if (urunSatir.isNotEmpty) {
+        BulutManager().upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
+      }
+      final stokSatir = await db.query('stok_hareket',
+          where: 'referans_id = ? AND referans_turu = ?',
+          whereArgs: [iadeId, 'iade'],
+          orderBy: 'id DESC',
+          limit: 1);
+      if (stokSatir.isNotEmpty) {
+        BulutManager()
+            .upsert('stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+      }
+      final kasaSatir = await db.query('kasa_hareketleri',
+          where: 'referans_id = ? AND referans_turu = ?',
+          whereArgs: [iadeId, 'iade'],
+          orderBy: 'id DESC',
+          limit: 1);
+      if (kasaSatir.isNotEmpty) {
+        BulutManager().upsert(
+            'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+      }
+      if (cariId != null) {
+        final cariHareketSatir = await db.query('cari_hareket',
+            where: "fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi')",
+            whereArgs: [iadeId, cariId],
+            limit: 1);
+        if (cariHareketSatir.isNotEmpty) {
+          BulutManager().upsert(
+              'cari_hareket', Map<String, dynamic>.from(cariHareketSatir.first));
+        }
+        final cariSatir =
+            await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
+        if (cariSatir.isNotEmpty) {
+          BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('İade bulut bildirimi hatası: $e');
+    }
+
+    return iadeId;
+  }
 }

@@ -721,6 +721,29 @@ class UrunDeposu {
     }
   }
 
+  /// PLU Yönetimi ekranından taşındı — bkz.
+  /// plu_yonetim_ekrani.dart._siralamaKaydet. Sürükle-bırak ile
+  /// belirlenen yeni sıra (liste indeksi = plu_sira) TEK transaction
+  /// içinde atomik olarak yazılır, commit sonrası her ürün buluta
+  /// bildirilir.
+  Future<void> pluSiralamaKaydet(List<int> siraliUrunIdler) async {
+    final db = await _d;
+    final now = DateTime.now().toIso8601String();
+    await db.transaction((txn) async {
+      for (var i = 0; i < siraliUrunIdler.length; i++) {
+        await txn.update(DbSabitler.urunler, {'plu_sira': i, 'last_updated': now},
+            where: 'id = ?', whereArgs: [siraliUrunIdler[i]]);
+      }
+    });
+    for (final id in siraliUrunIdler) {
+      final satir = await db.query(DbSabitler.urunler,
+          where: 'id = ?', whereArgs: [id], limit: 1);
+      if (satir.isNotEmpty) {
+        BulutManager().upsert(DbSabitler.urunler, Map<String, dynamic>.from(satir.first));
+      }
+    }
+  }
+
   /// Toplu Fiyat Güncelleme ekranından taşındı — bkz.
   /// toplu_fiyat_ekrani.dart._guncelle. Nihai fiyat (zam/indirim/sabit/
   /// alış-üstüne modlarının hesabı) çağıran tarafta hesaplanır (bu, UI'a

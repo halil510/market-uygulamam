@@ -202,20 +202,11 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
       _pluUrunler.insert(yeni, u);
     });
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      await db.transaction((txn) async {
-        for (int i = 0; i < _pluUrunler.length; i++) {
-          await txn.update('urunler', {'plu_sira': i, 'last_updated': now},
-              where: 'id = ?', whereArgs: [_pluUrunler[i].id]);
-        }
-      });
-      // 🔴 Derin analizde bulundu: last_updated hiç bump edilmiyordu,
-      // BulutManager hiçbir ürün için çağrılmıyordu.
-      for (final u in _pluUrunler) {
-        final satir = await db.query('urunler', where: 'id = ?', whereArgs: [u.id], limit: 1);
-        if (satir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(satir.first));
-      }
+      // TEK transaction'da atomik yazım + her ürün için bulut bildirimi
+      // artık UrunDeposu.pluSiralamaKaydet'te — bkz. o metodun doc
+      // yorumu, davranış birebir korundu.
+      await UrunDeposu()
+          .pluSiralamaKaydet(_pluUrunler.map((u) => u.id!).toList());
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Sıralama kaydedilemedi: $e');
     }

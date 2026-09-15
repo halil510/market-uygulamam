@@ -17,6 +17,7 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
+    id("io.sentry.android.gradle")
 }
 
 android {
@@ -99,6 +100,38 @@ android {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("com.google.mlkit:text-recognition:16.0.1")
+}
+
+// ── Sentry native (ProGuard/R8) mapping yükleme ─────────────────────────
+// 🔴 DÜZELTME (bu depoda gerçek bir release build ile doğrulandı):
+// autoUploadProguardMapping=true'yu KOŞULSUZ açmak YANLIŞTI — plugin,
+// kimlik bilgisi (SENTRY_AUTH_TOKEN / sentry.properties) yoksa YÜKLEMEYİ
+// SESSİZCE ATLAMIYOR, ':app:uploadSentryProguardMappingsRelease'
+// task'ı hata verip TÜM release build'i başarısız kılıyor — bu depoda
+// (ve muhtemelen kullanıcının makinesinde de, kimlik bilgisi
+// eklenmeden) BUGÜN tam olarak bu şekilde denendi ve doğrulandı.
+// Bu yüzden yükleme, kimlik bilgisi GERÇEKTEN VARSA (SENTRY_AUTH_TOKEN
+// ortam değişkeni ya da git'e eklenmemiş sentry.properties — bkz.
+// .gitignore) etkinleştiriliyor; yoksa plugin'in upload task'ı build
+// zincirine hiç eklenmiyor, `flutter build apk --release` eskisi gibi
+// sorunsuz tamamlanıyor. Kimlik bilgisi eklendiğinde bir sonraki
+// release build'de otomatik devreye girer — CrashServisi'nin
+// runtime'da okuduğu Sentry DSN'inden (Ayarlar > Hata İzleme,
+// kullanıcının kendi Sentry projesi) AYRI bir kimlik bilgisidir; bu,
+// sadece mapping dosyasını YÜKLEMEK için CLI/API erişimidir.
+val sentryTokenVar = !System.getenv("SENTRY_AUTH_TOKEN").isNullOrBlank() ||
+        file("sentry.properties").exists() ||
+        rootProject.file("sentry.properties").exists()
+
+sentry {
+    autoUploadProguardMapping = sentryTokenVar
+    includeProguardMapping = true
+    // Performans/oturum izleme bu üründe kullanılmıyor (bkz.
+    // crash_servisi.dart — tracesSampleRate = 0.0); Sentry plugin'in bu
+    // amaçla otomatik ekleyebileceği native/NDK bileşenlerine gerek yok.
+    tracingInstrumentation {
+        enabled.set(false)
+    }
 }
 
 flutter {

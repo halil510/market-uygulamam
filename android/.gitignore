@@ -12,3 +12,6 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Sentry mapping-yükleme kimlik bilgisi (auth.token) — asla commit edilmez.
+sentry.properties

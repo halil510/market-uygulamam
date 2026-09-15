@@ -62,7 +62,7 @@ class _BayiSiparisEkraniState extends State<BayiSiparisEkrani> {
     }
     final sira = ++_aramaSira;
     setState(() => _araniyor = true);
-    final r = await _urunDepo.ara(sorgu.trim(), limit: 20);
+    final r = await _urunDepo.ara(sorgu.trim(), limit: 20, sadeceToptan: true);
     if (mounted && sira == _aramaSira) setState(() { _sonuclar = r; _araniyor = false; });
   }
 

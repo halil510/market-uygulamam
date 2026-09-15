@@ -569,12 +569,22 @@ class UrunDeposu {
   }
 
   /// Hızlı satış arama — aktif ürünler, DB'ye sorgu atar (bellekte tam liste tutmaz).
+  // 🔴 Derin denetimde bulundu (P3): [sadeceToptan] eklendi — Bayi
+  // Portalı'ndaki ürün araması bu filtreyi hiç kullanmıyordu, bir bayi
+  // toptan satışa açık işaretlenmemiş (perakende-only) ürünleri de
+  // arayıp sipariş edebiliyordu. Güvenlik açığı değil (bayi verisi
+  // zaten kendi cari'siyle izole) — iş mantığı boşluğu. Varsayılan
+  // false: diğer TÜM çağıranların davranışı birebir korunuyor.
   Future<List<UrunModel>> ara(String sorgu,
-      {int limit = 80, int offset = 0, bool sadecaAktif = true}) async {
+      {int limit = 80,
+      int offset = 0,
+      bool sadecaAktif = true,
+      bool sadeceToptan = false}) async {
     if (sorgu.isEmpty) return [];
     final db = await _d;
     final q = '%$sorgu%';
     final aktifFiltre = sadecaAktif ? ' AND aktif = 1' : '';
+    final toptanFiltre = sadeceToptan ? ' AND toptan_satista = 1' : '';
     // ÖNCEDEN bu fonksiyonun offset parametresi yoktu — "daha fazla
     // yükle" (sonsuz kaydırma) her zaman AYNI ilk sonuçları tekrar
     // getiriyordu, listeye aynı ürünler tekrar tekrar ekleniyordu
@@ -584,7 +594,7 @@ class UrunDeposu {
       'SELECT * FROM ${DbSabitler.urunler}'
       ' WHERE (urun_adi LIKE ? OR barkod LIKE ? OR kod LIKE ?'
       '       OR alternatif_urun_adi LIKE ? OR marka LIKE ?)'
-      '   AND is_deleted = 0$aktifFiltre'
+      '   AND is_deleted = 0$aktifFiltre$toptanFiltre'
       ' ORDER BY urun_adi ASC LIMIT ? OFFSET ?',
       [q, q, q, q, q, limit, offset],
     );

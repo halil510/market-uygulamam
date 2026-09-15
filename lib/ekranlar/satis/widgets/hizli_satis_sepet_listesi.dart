@@ -116,7 +116,34 @@ class HizliSatisSepetListesi extends ConsumerWidget {
             Text('${sepet.kalemler.length} çeşit • ${sepet.toplamAdet} adet',
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             GestureDetector(
-              onTap: () => ref.read(sepetProvider.notifier).temizle(),
+              // 🔴 Derin denetimde bulundu (P2): sepeti TAMAMEN boşaltan
+              // bu buton hiç onay diyaloğu içermiyordu — tek dokunuşla,
+              // geri alma seçeneği olmadan tüm sepet siliniyordu. Küçük
+              // (14px ikon) bir hedef, yoğun bir POS ortamında yanlışlıkla
+              // dokunma riski gerçek; kardeş akışların (satış tamamlama,
+              // fiş güncelleme vb.) hepsi onay/geri bildirim içeriyor.
+              onTap: () async {
+                if (sepet.kalemler.isEmpty) return;
+                final onay = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    title: const Text('Sepeti Temizle'),
+                    content: Text('${sepet.kalemler.length} çeşit ürün sepetten tamamen silinecek. Emin misiniz?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE53935)),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Temizle'),
+                      ),
+                    ],
+                  ),
+                );
+                if (onay == true) {
+                  ref.read(sepetProvider.notifier).temizle();
+                }
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(

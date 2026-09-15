@@ -221,7 +221,7 @@ class SepetKalemKarti extends StatelessWidget {
   }
 }
 
-class _MiktarButon extends StatelessWidget {
+class _MiktarButon extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
   final Color renk;
@@ -232,16 +232,40 @@ class _MiktarButon extends StatelessWidget {
   });
 
   @override
+  State<_MiktarButon> createState() => _MiktarButonState();
+}
+
+class _MiktarButonState extends State<_MiktarButon> {
+  // 🔴 Kullanıcı isteği: ikonlara dokunma geri bildirimi — sepetteki en
+  // sık dokunulan ikonlar (miktar +/-) önceden çıplak bir
+  // GestureDetector'dı, hiç ripple/animasyon yoktu. Hızlı Satış
+  // AppBar'ındaki TsDokunmaIkon ile AYNI desen (InkWell.onHighlightChanged
+  // + kısa büzülme) burada da uygulandı.
+  bool _basili = false;
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    return AnimatedScale(
+      scale: _basili ? 0.85 : 1.0,
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
       child: Container(
         width: 26, height: 26,
         decoration: BoxDecoration(
-          color: renk.withAlpha(20),
+          color: _basili ? widget.renk.withAlpha(50) : widget.renk.withAlpha(20),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, size: 15, color: renk),
+        clipBehavior: Clip.antiAlias,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            onHighlightChanged: (v) {
+              if (mounted) setState(() => _basili = v);
+            },
+            child: Icon(widget.icon, size: 15, color: widget.renk),
+          ),
+        ),
       ),
     );
   }

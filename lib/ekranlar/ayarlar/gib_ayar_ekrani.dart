@@ -227,7 +227,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
         geriTusu: false,
       ),
       body: _yukleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)))
+          ? const TsYukleniyor()
           : ListView(padding: const EdgeInsets.all(16), children: [
               // Bilgi banner
               Container(

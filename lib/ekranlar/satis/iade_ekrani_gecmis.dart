@@ -96,7 +96,7 @@ extension _GecmisTabExt on _IadeEkraniState {
       // Liste
       Expanded(
         child: _gecmisYukleniyor
-            ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)))
+            ? const TsYukleniyor()
             : _gecmisIadeler.isEmpty
                 ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.assignment_return, size: 56, color: TsRenk.ayirac(context)),

@@ -118,7 +118,7 @@ class _BorcTakipEkraniState extends ConsumerState<BorcTakipEkrani> {
         ],
       ),
       body: borclarAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE))),
+        loading: () => const TsYukleniyor(),
         error: (e, _) => Center(
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             const Icon(Icons.error_outline, size: 56, color: Colors.red),

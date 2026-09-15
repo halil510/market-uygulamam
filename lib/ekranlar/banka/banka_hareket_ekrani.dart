@@ -88,9 +88,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
   Widget build(BuildContext context) {
     if (_yukleniyor) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)),
-        ),
+        body: TsYukleniyor(),
       );
     }
 

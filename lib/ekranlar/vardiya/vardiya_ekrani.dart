@@ -519,9 +519,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
         geriTusu: false,
       ),
       body: _yukleniyor
-          ? const Center(
-              child: CircularProgressIndicator(
-                  strokeWidth: 3, color: Color(0xFF4361EE)))
+          ? const TsYukleniyor()
           : TabBarView(controller: _tab, children: [
               _aktifTab(),
               _gecmisTab(),

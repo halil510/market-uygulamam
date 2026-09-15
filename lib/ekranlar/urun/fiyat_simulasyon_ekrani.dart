@@ -196,7 +196,7 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
           ],
           if (_hesaplaniyor) const Padding(
             padding: EdgeInsets.symmetric(vertical: TsBosluk.xl),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: TsRenk.primary)),
+            child: TsYukleniyor(),
           ),
           if (_sonuc != null && !_hesaplaniyor) ...[
             const SizedBox(height: TsBosluk.lg),

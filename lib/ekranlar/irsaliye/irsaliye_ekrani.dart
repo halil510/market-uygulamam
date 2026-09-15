@@ -63,7 +63,7 @@ class IrsaliyeEkrani extends ConsumerWidget {
         label: const Text('Yeni İrsaliye'),
       )),
       body: irsaliyelerAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 3, color: TsRenk.primary)),
+        loading: () => const TsYukleniyor(),
         error: (e, _) => BosEkran(ikon: Icons.inbox_outlined, baslik: 'Hata: $e'),
         data: (irsaliyeler) {
           if (irsaliyeler.isEmpty) {

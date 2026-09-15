@@ -1522,7 +1522,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
         ],
       ),
       body: _yukleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)))
+          ? const TsYukleniyor()
           : Form(
               key: _formKey,
               child: SingleChildScrollView(

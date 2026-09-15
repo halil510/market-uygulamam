@@ -160,9 +160,7 @@ class _HizliTusPaneliState extends ConsumerState<HizliTusPaneli> {
         // ── İçerik ────────────────────────────────────────────────────
         Expanded(
           child: _yukleniyor
-              ? const Center(
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: TsRenk.primary))
+              ? const TsYukleniyor()
               : _urunler.isEmpty
                   ? _bosDurum(context)
                   : LayoutBuilder(builder: (ctx, kisit) {

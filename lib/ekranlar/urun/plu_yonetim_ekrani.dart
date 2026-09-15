@@ -157,7 +157,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
         ),
       ),
       body: _yukleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+          ? const TsYukleniyor()
           : TabBarView(
               controller: _tabCtrl,
               children: [_pluTab(), _ekleTab()],

@@ -1485,7 +1485,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
           ),
         Expanded(
           child: sepet.satisIsleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)))
+          ? const TsYukleniyor()
           : LayoutBuilder(builder: (ctx, constraints) {
               if (constraints.maxWidth > 700) {
                 return Row(children: [

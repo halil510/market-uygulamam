@@ -45,9 +45,7 @@ class _BankaDetayEkraniState extends ConsumerState<BankaDetayEkrani> {
         ],
       ),
       body: bankaAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)),
-        ),
+        loading: () => const TsYukleniyor(),
         error: (e, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

@@ -1016,8 +1016,7 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
   @override
   Widget build(BuildContext context) {
     if (_yukleniyor) {
-      return const Scaffold(
-          body: Center(child: const CircularProgressIndicator(color: Color(0xFF4361EE), strokeWidth: 3)));
+      return const Scaffold(body: TsYukleniyor());
     }
     if (_fatura == null) {
       return Scaffold(

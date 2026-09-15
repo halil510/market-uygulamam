@@ -166,7 +166,7 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
       body: ValueListenableBuilder<bool>(
         valueListenable: _yukleniyor,
         builder: (_, yukleniyor, __) {
-          if (yukleniyor) return const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)));
+          if (yukleniyor) return const TsYukleniyor();
           return ValueListenableBuilder<List<KullaniciModel>>(
             valueListenable: _kullanicilar,
             builder: (_, liste, __) {

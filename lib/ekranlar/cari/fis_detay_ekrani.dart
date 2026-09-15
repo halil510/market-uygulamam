@@ -430,7 +430,7 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
         gradyanli: false,
       ),
       body: _yukleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: TsRenk.primary))
+          ? const TsYukleniyor()
           : _hata != null
               ? _hataEkrani()
               : _icerik(),

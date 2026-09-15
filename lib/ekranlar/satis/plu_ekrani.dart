@@ -170,7 +170,7 @@ class _PluEkraniState extends ConsumerState<PluEkrani> {
         // ── Ürün ızgarası ───────────────────────────────────────────────────
         Expanded(
           child: _yukleniyor
-              ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF4361EE)))
+              ? const TsYukleniyor()
               : _urunler.isEmpty
                   ? _bosEkran()
                   : gosterilen.isEmpty

@@ -206,9 +206,7 @@ class _HizliTusYonetimEkraniState extends ConsumerState<HizliTusYonetimEkrani>
         gradyanli: false,
       ),
         body: _yukleniyor
-            ? const Center(
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: TsRenk.primary))
+            ? const TsYukleniyor()
             : TabBarView(
                 controller: _tab,
                 children: [_tuslarimSekmesi(), _urunEkleSekmesi()],
@@ -404,9 +402,7 @@ class _HizliTusYonetimEkraniState extends ConsumerState<HizliTusYonetimEkrani>
         ),
       Expanded(
         child: _araniyor
-            ? const Center(
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: TsRenk.primary))
+            ? const TsYukleniyor()
             : _aramaSonuc.isEmpty
                 ? Center(
                     child: Padding(

@@ -218,7 +218,7 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
         ]),
       ),
       body: _yukleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: TsRenk.primary))
+          ? const TsYukleniyor()
           : _siparisler.isEmpty
               ? Center(
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [

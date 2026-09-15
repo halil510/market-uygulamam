@@ -215,7 +215,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
           ]),
         ),
         Expanded(child: _yukleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)))
+          ? const TsYukleniyor()
           : RefreshIndicator(
               onRefresh: _yukle,
               child: _filtreli.isEmpty

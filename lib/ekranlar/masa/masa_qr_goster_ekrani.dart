@@ -86,7 +86,7 @@ class _MasaQrGosterEkraniState extends State<MasaQrGosterEkrani> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: _yukleniyor
-              ? const CircularProgressIndicator()
+              ? const TsYukleniyor()
               : _hata != null
                   ? Column(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.wifi_off, size: 56, color: Colors.orange.shade400),

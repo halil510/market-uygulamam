@@ -214,7 +214,7 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
 
         Expanded(
           child: async.when(
-            loading: () => const Center(child: const CircularProgressIndicator(color: TsRenk.primary, strokeWidth: 3)),
+            loading: () => const TsYukleniyor(),
             error:   (e, _) => Center(child: Column(
               mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(Icons.error_outline, size: 48, color: context.textSecondary),

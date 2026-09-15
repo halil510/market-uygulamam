@@ -118,7 +118,7 @@ class _FiyatGorIcerikState extends State<FiyatGorIcerik> {
         Expanded(
           child: Center(
             child: _yukleniyor
-                ? const CircularProgressIndicator()
+                ? const TsYukleniyor()
                 : _hata != null
                     ? _hataGoster(_hata!)
                     : _urun != null

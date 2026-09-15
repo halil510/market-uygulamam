@@ -305,7 +305,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
                   style: const TextStyle(fontWeight: FontWeight.w600)),
             ])),
           Expanded(child: _yukleniyor
-              ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF4361EE)))
+              ? const TsYukleniyor()
               : ListView.builder(
                   itemCount: _secili.length,
                   itemBuilder: (_, i) {

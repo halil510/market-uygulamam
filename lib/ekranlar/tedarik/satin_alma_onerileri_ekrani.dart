@@ -156,7 +156,7 @@ class _SatinAlmaOnerileriEkraniState extends ConsumerState<SatinAlmaOnerileriEkr
         ],
       ),
       body: _yukleniyor
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 3, color: TsRenk.primary))
+          ? const TsYukleniyor()
           : _urunler.isEmpty
               ? const BosEkran(
                   ikon: Icons.check_circle_outline,

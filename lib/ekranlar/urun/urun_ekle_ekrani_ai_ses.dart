@@ -395,6 +395,29 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
       return;
     }
 
+    // 🔴 Derin denetimde bulundu (P1): fiyat/stok alanları hep
+    // `double.tryParse(...) ?? 0` ile okunuyordu — negatif bir değer
+    // ("-50" gibi) geçerli bir double olarak parse edilip hiçbir yerde
+    // kontrol edilmeden kaydediliyordu. Kaydetmeden önce tek bir yerden
+    // negatif değer kontrolü ekleniyor.
+    const negatifKontrolAlanlari = {
+      'alisFiyat': 'Alış Fiyatı',
+      'alisFiyatKdvDahil': 'Alış Fiyatı (KDV Dahil)',
+      'satisFiyati': 'Satış Fiyatı',
+      'indirimliFiyat': 'İndirimli Fiyat',
+      'stok': 'Stok',
+      'toptanFiyat': 'Toptan Fiyat',
+      'koliIciMiktar': 'Koli İçi Miktar',
+    };
+    for (final girdi in negatifKontrolAlanlari.entries) {
+      final metin = _c[girdi.key]?.text.trim().replaceAll(',', '.') ?? '';
+      final deger = double.tryParse(metin);
+      if (deger != null && deger < 0) {
+        BildirimServisi.uyari(context, '${girdi.value} negatif olamaz.');
+        return;
+      }
+    }
+
     setState(() => _yukleniyor = true);
     try {
       // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu — QR menü ürününün
@@ -626,21 +649,31 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
   }
 
   // ---- OTOMATİK BARKOD ÜRET ----
+  // 🔴 Derin denetimde bulundu (P2): iki ayrı sorun vardı —
+  //   1) `ORDER BY id DESC` en YÜKSEK M-numaralı barkodu değil en SON
+  //      EKLENEN satırı buluyordu (Excel'den yüksek numaralı bir barkod
+  //      düşük id ile önce eklenmişse ikisi aynı olmayabilirdi) —
+  //      SQLite'ın sayısal CAST'i ile gerçek MAX numaraya göre sıralanıyor.
+  //   2) `int.parse` try/catch'siz çağrılıyordu — biri elle "M-ABC" gibi
+  //      rakam olmayan bir barkod girip kaydederse bir sonraki "Otomatik
+  //      Barkod Üret" denemesi yakalanmamış bir FormatException ile
+  //      çöküyordu. `int.tryParse` + `?? 0` ile artık böyle bir satır
+  //      sessizce yok sayılıyor (0 kabul edilir), çökme riski yok.
   Future<String> _benzersizBarkodUret() async {
     final db = await Veritabani().db;
     final sonuc = await db.rawQuery('''
-      SELECT barkod FROM urunler 
-      WHERE barkod LIKE 'M%' 
+      SELECT barkod FROM urunler
+      WHERE barkod LIKE 'M%'
         AND barkod IS NOT NULL
         AND barkod != ''
         AND is_deleted = 0
-      ORDER BY id DESC LIMIT 1
+      ORDER BY CAST(SUBSTR(barkod, 2) AS INTEGER) DESC LIMIT 1
     ''');
     int yeniNumara = 1;
     if (sonuc.isNotEmpty) {
       final sonBarkod = sonuc.first['barkod'] as String;
       final numaraStr = sonBarkod.substring(1);
-      yeniNumara = int.parse(numaraStr) + 1;
+      yeniNumara = (int.tryParse(numaraStr) ?? 0) + 1;
     }
     return "M${yeniNumara.toString().padLeft(6, '0')}";
   }

@@ -224,11 +224,29 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
       ),
     );
     if (onay != true) return;
+    // 🔴 Derin denetimde bulundu (P2): döngü try/catch'siz — N üründen
+    // biri hata verirse döngü kesiliyordu, secimTemizle() ve başarı
+    // mesajı hiç çalışmıyordu, kullanıcı hangi ürünlerin silindiğini
+    // bilemiyordu. Artık her ürün kendi try/catch'inde: bir hata
+    // diğerlerini engellemiyor, sonunda ne kadarının silindiği/
+    // silinemediği açıkça bildiriliyor.
+    var silinen = 0;
+    var hatali = 0;
     for (final id in ids) {
-      await ref.read(urunlerProvider.notifier).sil(id);
+      try {
+        await ref.read(urunlerProvider.notifier).sil(id);
+        silinen++;
+      } catch (e) {
+        hatali++;
+      }
     }
     ref.read(urunlerProvider.notifier).secimTemizle();
-    if (mounted) basariMesaji(context, '${ids.length} ürün silindi');
+    if (!mounted) return;
+    if (hatali == 0) {
+      basariMesaji(context, '$silinen ürün silindi');
+    } else {
+      hataMesaji(context, '$silinen ürün silindi, $hatali ürün silinemedi');
+    }
   }
 
   void _aramaChanged() {

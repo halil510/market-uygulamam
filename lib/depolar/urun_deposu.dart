@@ -51,8 +51,16 @@ class UrunDeposu {
           m['last_updated'] = DateTime.now().toIso8601String();
 
           if (s.mevcutId == null) {
+            // 🔴🔴 P0 (derin denetimde bulundu): ekle() ile AYNI hata —
+            // bkz. oradaki not. Excel toplu içe aktarımda bu daha da
+            // tehlikeli: yüzlerce satırlık bir dosyada tek bir mükerrer
+            // barkod/kod, mevcut bir ürünü sessizce SİLİP YERİNE
+            // GEÇEBİLİRDİ. abort ile artık bu satır normal şekilde
+            // aşağıdaki catch'e düşüp ATLANIYOR (diğer satırlar
+            // etkilenmiyor — dosyadaki mevcut per-satır izolasyon
+            // deseniyle tam uyumlu).
             final id = await txn.insert(DbSabitler.urunler, m,
-                conflictAlgorithm: ConflictAlgorithm.replace);
+                conflictAlgorithm: ConflictAlgorithm.abort);
             etkilenenId = id;
             if (s.urun.stok > 0) {
               hareketGid = const Uuid().v4();
@@ -159,8 +167,21 @@ class UrunDeposu {
     final db = await _d;
     final m = urun.toMap()..remove('id');
     m['global_id'] ??= const Uuid().v4();
+    // 🔴🔴 P0 (derin denetimde bulundu): ConflictAlgorithm.replace,
+    // urunler.kod/barkod UNIQUE çakışmasında istisna FIRLATMAZ — SQLite
+    // bunun yerine ÇAKIŞAN ESKİ SATIRI SESSİZCE SİLİP yeni bir id ile
+    // yeniden ekler. Somut senaryo: kasiyer yeni ürün eklerken zaten
+    // kayıtlı bir ürünün barkodunu (yanlışlıkla) girerse, o ESKİ ürüne
+    // bağlı TÜM stok_hareket/satis_kalem/lot_seri/sube_urun kayıtları
+    // artık var olmayan bir urun_id'ye işaret eder — geçmiş satışlarda/
+    // raporlarda o kalemler sessizce kaybolur, kullanıcıya "Ürün
+    // eklendi ✓" gösterilir. Aşağıdaki catch bloğu ("Bu barkod zaten
+    // başka bir üründe kullanılıyor") TAM OLARAK bu senaryo için
+    // yazılmıştı ama replace hiç istisna fırlatmadığı için pratikte
+    // ASLA tetiklenmiyordu. abort (SQLite'ın varsayılanı) ile artık
+    // gerçek bir UNIQUE ihlali doğru şekilde istisna fırlatıyor.
     final _id = await db.insert(DbSabitler.urunler, m,
-        conflictAlgorithm: ConflictAlgorithm.replace);
+        conflictAlgorithm: ConflictAlgorithm.abort);
     BulutManager().upsert('urunler', {...m, 'id': _id});
     // ÖNCEDEN başlangıç stoğu (yeni ürün eklenirken "50 adet ile
     // başla" gibi) hiçbir zaman bir hareket olarak kaydedilmiyordu.

@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/stok_deposu.dart';
 import '../../servisler/auth_servisi.dart';
@@ -188,27 +187,26 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
             final yeni = _hesapla(u.stok, sayisalDeger!).clamp(0, double.infinity);
             final fark = yeni - u.stok;
             if (fark.abs() > 0.0001) {
-              final db = await _depo.db;
-              final hareketGid = const Uuid().v4();
-              await db.transaction((txn) async {
-                if (fark > 0) {
-                  await StokDeposu().stokGirTxn(txn, hareketGid,
-                      urunId: id, miktar: fark,
-                      kullaniciId: AuthServisi().aktifId,
-                      referansTuru: 'toplu_islem',
-                      aciklama: 'Toplu işlem: stok düzeltmesi');
-                } else {
-                  await StokDeposu().stokDusTxn(txn, hareketGid,
-                      urunId: id, miktar: fark.abs(),
-                      kullaniciId: AuthServisi().aktifId,
-                      referansTuru: 'toplu_islem',
-                      aciklama: 'Toplu işlem: stok düzeltmesi');
-                }
-              });
-              final urunSatir = await db.query('urunler', where: 'id = ?', whereArgs: [id], limit: 1);
-              if (urunSatir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-              final hareketSatir = await db.query('stok_hareket', where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
-              if (hareketSatir.isNotEmpty) BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
+              // db.transaction() + BulutManager senkronu artık burada
+              // elle açılmıyor — StokDeposu.stokGir/stokDus (Txn OLMAYAN
+              // "kendi transaction'ını açan" varyantlar) zaten AYNI işi
+              // yapıyor VE ayrıca şube payını (sube_urun) da güncelliyor
+              // — bu ekranın elle yazdığı kod bunu hiç yapmıyordu, çok
+              // şubeli kurulumlarda toplu stok düzeltmesi şube payını
+              // atlıyordu. Aynı depo metodunu kullanmak bunu da düzeltiyor.
+              if (fark > 0) {
+                await StokDeposu().stokGir(
+                    urunId: id, miktar: fark,
+                    kullaniciId: AuthServisi().aktifId,
+                    referansTuru: 'toplu_islem',
+                    aciklama: 'Toplu işlem: stok düzeltmesi');
+              } else {
+                await StokDeposu().stokDus(
+                    urunId: id, miktar: fark.abs(),
+                    kullaniciId: AuthServisi().aktifId,
+                    referansTuru: 'toplu_islem',
+                    aciklama: 'Toplu işlem: stok düzeltmesi');
+              }
             }
             basarili++;
           } catch (e) {

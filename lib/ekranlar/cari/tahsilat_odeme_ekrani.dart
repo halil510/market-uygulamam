@@ -11,19 +11,14 @@ import '../../tasarim_sistemi/ts_kart.dart';
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "../../modeller/cari_model.dart";
-import "../../modeller/cari_hareket_model.dart";
 import "../../depolar/cari_deposu.dart";
-import "../../depolar/kasa_deposu.dart";
 import "../../depolar/banka_hesap_deposu.dart";
-import "../../depolar/banka_hareket_deposu.dart";
 import "../../depolar/kredi_karti_deposu.dart";
-import "../../modeller/kasa_hareket_model.dart";
-import "../../modeller/banka_hareket_model.dart";
 import "../../modeller/banka_hesap_model.dart";
 import "../../modeller/kredi_karti_model.dart";
 import "../../servisler/auth_servisi.dart";
 import "../../servisler/bildirim_servisi.dart";
-import "../../servisler/bulut/bulut_manager.dart";
+import "../../servisler/cari_tahsilat_odeme_servisi.dart";
 import "../../cekirdek/utils/para_utils.dart";
 
 class TahsilatOdemeEkrani extends ConsumerStatefulWidget {
@@ -220,129 +215,23 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
       // ══════════════════════════════════════════════════════════════════
       final oncekiBakiye = _cari?.bakiye ?? 0;
 
-      // 🔴🔴 DÜZELTME (derin analizde bulundu): Cari hareket ve gerçek para
-      // hareketi (kasa/banka/kart) önceden İKİ AYRI, transaction'sız çağrı
-      // idi — ikincisi herhangi bir nedenle başarısız olursa cari bakiyesi
-      // güncellenmiş ama kasaya/bankaya hiç para girmemiş/çıkmamış gibi
-      // görünüyordu (kasa sayımı ile sistem bakiyesi tutmaz hale gelirdi).
-      // Artık BorcOdemeIslemServisi'ndeki desenle aynı şekilde TEK bir
-      // db.transaction() içinde atomik olarak yürütülüyor.
-      final db = await Veritabani().db;
-      String? cariHareketGlobalId;
-      int? kasaHareketId;
-      int? bankaHareketId;
-      int? krediHareketId;
-
-      await db.transaction((txn) async {
-        cariHareketGlobalId = await _depo.hareketEkleTxn(
-            txn,
-            CariHareketModel(
-              cariId: widget.cariId,
-              tarih: DateTime.now(),
-              fisTipi: _islemTipi,
-              aciklama: _aciklamaCtrl.text.trim().isEmpty
-                  ? '$_islemTipi - $_odemeTuru'
-                  : _aciklamaCtrl.text.trim(),
-              borc: _islemTipi == 'Odeme' ? tutar : 0,
-              alacak: _islemTipi == 'Tahsilat' ? tutar : 0,
-              odemeTuru: _odemeTuru,
-              kullanici: kasiyer,
-            ));
-        // 🔴🔴 FAZ 1 madde 5 (kullanıcı onayıyla): bu cari_hareket'in
-        // YEREL id'sini alıp, oluşturacağımız kasa hareketine referans
-        // olarak veriyoruz — cari_hareket_ekrani.dart artık bu iptal
-        // edildiğinde bağlı kasa hareketini GÜVENİLİR şekilde bulup
-        // otomatik tersine çevirebiliyor (kasa_hareketleri zaten
-        // referans_id/referans_turu taşıyordu, yeni sütun gerekmedi).
-        int? cariHareketLocalId;
-        if (cariHareketGlobalId != null) {
-          final satir = await txn.query('cari_hareket',
-              columns: ['id'],
-              where: 'global_id = ?',
-              whereArgs: [cariHareketGlobalId],
-              limit: 1);
-          if (satir.isNotEmpty) cariHareketLocalId = satir.first['id'] as int;
-        }
-        // 🔴 DÜZELTME (kullanıcı bulgusu): "Banka"/"Kredi Kartı" seçilse
-        // bile önceden HİÇBİR gerçek hareket oluşturulmuyordu — sadece
-        // cari bakiyesi değişiyor, şirketin gerçek banka bakiyesi/kart
-        // limiti hiç etkilenmiyordu. Artık BorcOdemeIslemServisi'ndeki
-        // AYNI, doğru desen uygulanıyor. "Borç Ekle" (tedarikçi, veresiye
-        // kayıt) için hiçbir para hareketi oluşturulmaz — bu doğru,
-        // çünkü henüz gerçek bir ödeme yapılmamıştır.
-        if (_paraHareketEdiyor) {
-          if (_odemeTuru == 'Nakit') {
-            kasaHareketId = await KasaDeposu().hareketEkleTxn(
-                txn,
-                KasaHareketModel(
-                  hareketTipi: _islemTipi == 'Tahsilat' ? 'Tahsilat' : 'Ödeme',
-                  tutar: tutar,
-                  tarih: DateTime.now(),
-                  referansId: cariHareketLocalId,
-                  referansTuru: 'cari_hareket',
-                  aciklama: '${_cari?.unvan ?? 'Cari'} - $_islemTipi',
-                ));
-          } else if (_odemeTuru == 'Banka' || _odemeTuru == 'Havale') {
-            bankaHareketId = await BankaHareketDeposu().ekleTxn(
-                txn,
-                BankaHareketModel(
-                  bankaHesapId: _secilenHesap!.id!,
-                  islemTipi: _paraCikiyor ? 'Giden' : 'Gelen',
-                  tutar: tutar,
-                  aciklama: '${_cari?.unvan ?? 'Cari'} - $_islemTipi',
-                  tarih: DateTime.now(),
-                ));
-          } else if (_odemeTuru == 'Kredi Kartı') {
-            // Kredi kartı sadece PARA ÇIKIŞI (ödeme) senaryosunda anlamlıdır
-            // — bir müşteriden kredi kartıyla "tahsilat" bu ekranın kapsamı
-            // dışında (o zaten Satış ekranından yapılır).
-            krediHareketId = await KrediKartiDeposu().limitDegistirTxn(
-                txn, _secilenKart!.id!, tutar,
-                aciklama: '${_cari?.unvan ?? 'Cari'} - $_islemTipi');
-          }
-        }
-      });
-
-      // Transaction kalıcı oldu — bulut senkronunu şimdi tetikle (bkz.
-      // KasaDeposu.hareketEkleTxn'deki aynı gerekçe: commit'ten önce
-      // senkronlamak, geri alınırsa buluta var olmayan satır gönderirdi).
-      Future<void> sync(String tablo, dynamic id) async {
-        if (id == null) return;
-        final satir =
-            await db.query(tablo, where: 'id = ?', whereArgs: [id], limit: 1);
-        if (satir.isNotEmpty)
-          BulutManager().upsert(tablo, Map<String, dynamic>.from(satir.first));
-      }
-
-      if (cariHareketGlobalId != null) {
-        final satir = await db.query('cari_hareket',
-            where: 'global_id = ?', whereArgs: [cariHareketGlobalId], limit: 1);
-        if (satir.isNotEmpty)
-          BulutManager()
-              .upsert('cari_hareket', Map<String, dynamic>.from(satir.first));
-      }
-      final cariSatir = await db.query('cari',
-          where: 'id = ?', whereArgs: [widget.cariId], limit: 1);
-      if (cariSatir.isNotEmpty)
-        BulutManager()
-            .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-      await sync('kasa_hareketleri', kasaHareketId);
-      if (bankaHareketId != null) {
-        await sync('banka_hareketler', bankaHareketId);
-        final hesapSatir = await db.query('banka_hesaplar',
-            where: 'id = ?', whereArgs: [_secilenHesap!.id], limit: 1);
-        if (hesapSatir.isNotEmpty)
-          BulutManager().upsert(
-              'banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
-      }
-      if (krediHareketId != null) {
-        await sync('kredi_karti_hareket', krediHareketId);
-        final kartSatir = await db.query('kredi_kartlari',
-            where: 'id = ?', whereArgs: [_secilenKart!.id], limit: 1);
-        if (kartSatir.isNotEmpty)
-          BulutManager().upsert(
-              'kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
-      }
+      // Cari hareket + (varsa) gerçek para hareketi (kasa/banka/kredi
+      // kartı) artık CariTahsilatOdemeServisi'nde TEK bir db.transaction()
+      // içinde atomik olarak yürütülüyor — bkz. o servisin doc yorumu,
+      // davranış birebir korundu.
+      await CariTahsilatOdemeServisi().kaydet(
+        cariId: widget.cariId,
+        cariUnvan: _cari?.unvan ?? 'Cari',
+        islemTipi: _islemTipi,
+        tutar: tutar,
+        odemeTuru: _odemeTuru,
+        kullanici: kasiyer,
+        paraHareketEdiyor: _paraHareketEdiyor,
+        paraCikiyor: _paraCikiyor,
+        aciklama: _aciklamaCtrl.text,
+        bankaHesapId: _secilenHesap?.id,
+        krediKartiId: _secilenKart?.id,
+      );
       // ══════════════════════════════════════════════════════════════════
       // 🆕 TAHSİLAT / TEDİYE MAKBUZU YAZDIRMA
       //

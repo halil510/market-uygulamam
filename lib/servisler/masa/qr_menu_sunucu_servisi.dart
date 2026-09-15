@@ -38,6 +38,16 @@ class QrMenuSunucuServisi {
   bool get calisiyorMu => _server != null;
   String? get yerelIp => _yerelIp;
 
+  // 🔴 Derin analizde bulundu: sunucu tarafında tekrar-gönderim koruması
+  // yoktu — istemcideki buton kilidi (aşağıdaki JS) UI seviyesinde
+  // çift-tıklamayı önler ama ağ katmanındaki gerçek bir tekrar isteğini
+  // (ör. yanıt gecikip istemci zaman aşımına uğrayınca kendiliğinden
+  // tekrar deneme) durduramaz. Aynı masa+gövde içerikli istek birkaç
+  // saniye içinde tekrar gelirse veritabanına ikinci kez yazılmadan
+  // önceki 'başarılı' yanıt aynen döndürülür.
+  final _sonIstekler = <String, DateTime>{};
+  static const _tekrarPenceresi = Duration(seconds: 8);
+
   /// Sunucuyu başlatır (zaten çalışıyorsa hiçbir şey yapmaz).
   /// Dönen değer: yerel IP adresi (QR kod URL'i oluşturmak için), veya
   /// null (WiFi bağlantısı bulunamadıysa).
@@ -154,6 +164,16 @@ class QrMenuSunucuServisi {
           await req.response.close();
           return;
         }
+        final now = DateTime.now();
+        _sonIstekler.removeWhere((_, t) => now.difference(t) > _tekrarPenceresi);
+        final istekAnahtari = '$masaId:${body.hashCode}';
+        if (_sonIstekler.containsKey(istekAnahtari)) {
+          req.response.headers.set('Content-Type', 'application/json; charset=utf-8');
+          req.response.write(jsonEncode({'basarili': true}));
+          await req.response.close();
+          return;
+        }
+        _sonIstekler[istekAnahtari] = now;
         await QrMenuServisi().musteriSiparisKaydet(
           masaId: masaId,
           kalemler: kalemler,
@@ -314,7 +334,17 @@ function sepetiAc() {
 
 function kapat() { document.getElementById('modal').classList.remove('acik'); }
 
+let gonderiliyor = false;
+
 async function gonder() {
+  // 🔴 Derin analizde bulundu: buton, istek sürerken devre dışı
+  // bırakılmıyordu — müşteri "Siparişi Gönder"e art arda dokunursa
+  // (ya da yavaş ağda sabırsızlanırsa) aynı sepet İKİ KEZ POST
+  // edilebiliyordu (çift sipariş, çift tutar).
+  if (gonderiliyor) return;
+  gonderiliyor = true;
+  const btn = document.querySelector('.gonder-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Gönderiliyor...'; }
   const kalemler = Object.values(sepet).map(k => ({
     urun_id: k.urun.id, urun_adi: k.urun.ad, miktar: k.adet,
     birim_fiyat: k.urun.fiyat, kdv_oran: k.urun.kdv,
@@ -336,8 +366,16 @@ async function gonder() {
         '<h2>Siparişiniz Alındı!</h2><p style="margin-top:8px;color:#6B7280;">Teşekkür ederiz, hazırlanıyor.</p></div>';
       sepet = {}; render();
       setTimeout(kapat, 2500);
-    } else { alert('Bir hata oluştu, lütfen personelden yardım isteyin.'); }
-  } catch (e) { alert('Bağlantı hatası, lütfen personelden yardım isteyin.'); }
+    } else {
+      alert('Bir hata oluştu, lütfen personelden yardım isteyin.');
+      gonderiliyor = false;
+      if (btn) { btn.disabled = false; btn.textContent = 'Siparişi Gönder'; }
+    }
+  } catch (e) {
+    alert('Bağlantı hatası, lütfen personelden yardım isteyin.');
+    gonderiliyor = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Siparişi Gönder'; }
+  }
 }
 
 yukle();

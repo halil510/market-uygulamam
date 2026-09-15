@@ -30,7 +30,8 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
   List<String> _kategoriler = [];
   String _seciliKategori = 'Tümü';
   bool _yukleniyor = true;
-  
+  bool _gonderiliyor = false;
+
   final Map<int, _SepetKalem> _sepet = {};
   
   @override
@@ -90,8 +91,14 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
   }
   
   Future<void> _siparisGonder() async {
-    if (_sepet.isEmpty) return;
-    
+    // 🔴 Derin analizde bulundu: çift-tıklama/gönderim koruması yoktu —
+    // dialog kapandıktan sonra kullanıcı butona tekrar dokunursa aynı
+    // sepet iki kez kaydedilebiliyordu. Ayrıca musteriSiparisKaydet()
+    // çağrısının etrafında try/catch yoktu — bir hata (ör. DB kilidi)
+    // sessizce yutulur, kullanıcı sepeti boşalmış/başarı mesajı
+    // olmadan ekranda asılı kalırdı.
+    if (_sepet.isEmpty || _gonderiliyor) return;
+
     final musteriAdiCtrl = TextEditingController();
     final musteriTelCtrl = TextEditingController();
     final notCtrl = TextEditingController();
@@ -130,7 +137,7 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
     );
     
     if (onay != true) return;
-    
+
     final kalemler = _sepet.values.map((k) => {
       'urun_id': k.urun.id,
       'urun_adi': k.urun.urunAdi,
@@ -139,20 +146,27 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
       'kdv_oran': double.tryParse(k.urun.kdvOran) ?? 18,
       'not': notCtrl.text.trim(),
     }).toList();
-    
-    await _servis.musteriSiparisKaydet(
-      masaId: widget.masaId,
-      kalemler: kalemler,
-      musteriAdi: musteriAdiCtrl.text.trim(),
-      musteriTel: musteriTelCtrl.text.trim(),
-      not: notCtrl.text.trim(),
-    );
-    
-    setState(() => _sepet.clear());
-    
-    if (mounted) {
-      basariMesaji(context, 'Siparişiniz alındı! Teşekkür ederiz.');
-      Navigator.pop(context);
+
+    setState(() => _gonderiliyor = true);
+    try {
+      await _servis.musteriSiparisKaydet(
+        masaId: widget.masaId,
+        kalemler: kalemler,
+        musteriAdi: musteriAdiCtrl.text.trim(),
+        musteriTel: musteriTelCtrl.text.trim(),
+        not: notCtrl.text.trim(),
+      );
+
+      setState(() => _sepet.clear());
+
+      if (mounted) {
+        basariMesaji(context, 'Siparişiniz alındı! Teşekkür ederiz.');
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) hataMesaji(context, 'Sipariş gönderilemedi: $e');
+    } finally {
+      if (mounted) setState(() => _gonderiliyor = false);
     }
   }
   
@@ -238,9 +252,14 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
                       SizedBox(
                         height: 48,
                         child: FilledButton.icon(
-                          onPressed: _siparisGonder,
-                          icon: const Icon(Icons.send),
-                          label: const Text('Sipariş Gönder'),
+                          onPressed: _gonderiliyor ? null : _siparisGonder,
+                          icon: _gonderiliyor
+                              ? const SizedBox(
+                                  width: 16, height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.send),
+                          label: Text(_gonderiliyor ? 'Gönderiliyor...' : 'Sipariş Gönder'),
                           style: FilledButton.styleFrom(
                             backgroundColor: TsRenk.basarili,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

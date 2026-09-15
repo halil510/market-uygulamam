@@ -37,6 +37,16 @@
 # yaygın bir R8 tuzağı (bkz. paketin kendi dokümantasyonu).
 -keep class com.dexterous.** { *; }
 
+# 🔴 Derin analizde bulundu: flutter_secure_storage (biyometrik/GİB
+# şifreleri, oturum token'ları için kullanılıyor), AndroidX Security
+# Crypto üzerinden Google Tink'i kullanır — Tink kendi sınıflarını
+# reflection ile örnekler, R8 bu keep kuralı olmadan şifreleme
+# sınıflarını silebilir ve release'de secure storage sessizce
+# bozulabilir (yazma/okuma hatası ya da veri kaybı).
+-keep class com.google.crypto.tink.** { *; }
+-keep interface com.google.crypto.tink.** { *; }
+-dontwarn com.google.crypto.tink.**
+
 # JSON serileştirme kullanan modeller — Dart tarafında olduğu için
 # genelde etkilenmez, ama native köprü sınıfları korunmalı
 -keepattributes Signature

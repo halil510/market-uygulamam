@@ -200,16 +200,24 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                   tooltip: 'Askıdaki Satışlar',
                   onPressed: () async {
                     _islemBasladi();
-                    final secilen = await showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(20))),
-                      builder: (_) => const BekleyenFislerEkrani(),
-                    );
-                    if (!mounted) { _islemBitti(); return; }
-                    if (secilen != null) {
+                    // 🔴 Derin analizde bulundu: bu blokta birden fazla
+                    // erken 'return' vardı ve hiçbiri try/finally ile
+                    // korunmuyordu — akış sırasında (ör. idileGetir,
+                    // SharedPreferences, jsonDecode) bir istisna oluşursa
+                    // _islemBitti() hiç çağrılmadan fonksiyon sonlanır,
+                    // _islemAktif kalıcı olarak true kalır ve TÜM satış
+                    // ekranı (barkod okuma dahil) uygulama yeniden
+                    // başlatılana kadar kilitlenirdi.
+                    try {
+                      final secilen = await showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(20))),
+                        builder: (_) => const BekleyenFislerEkrani(),
+                      );
+                      if (!mounted || secilen == null) return;
                       if (sepet.kalemler.isNotEmpty) {
                         final onay = await showDialog<bool>(
                           context: context,
@@ -231,7 +239,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                             ],
                           ),
                         );
-                        if (onay != true) { _islemBitti(); return; }
+                        if (onay != true) return;
                       }
                       final prefs2 = await SharedPreferences.getInstance();
                       final json2  = prefs2.getString('askidaki_satislar');
@@ -257,8 +265,9 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                       setState(() {
                         _bekleyenSayiFuture = BekleyenFislerEkrani.bekleyenSayi();
                       });
+                    } finally {
+                      _islemBitti();
                     }
-                    _islemBitti();
                   },
                 ),
               );

@@ -38,6 +38,13 @@ class YetkiTanimlari {
     'fiyat_degistir': {'label': 'Fiyat Değiştirme', 'grup': 'Ürün'},
     'iskonto_ver': {'label': 'İskonto Verme', 'grup': 'Satış'},
     'tedarik': {'label': 'Tedarik/Alım', 'grup': 'Stok'},
+    // 🔴 Derin analizde bulundu: Borç Takip ve Toptan/Bayi modüllerinin
+    // rotaları (/borc-*, /toptan/*) uygulama_router.dart'taki
+    // _routeYetkiler haritasında HİÇ yoktu — bu kutucuklar
+    // tanımlanmadan önce, yetkisi olmayan bir personel bile bu
+    // ekranlara deep-link/geri-ileri gezinme ile doğrudan erişebiliyordu.
+    'borc_takip': {'label': 'Borç Takip', 'grup': 'Cari'},
+    'toptan': {'label': 'Toptan/Bayi Satış', 'grup': 'Satış'},
   };
 
   // Rol bazlı varsayılan yetkiler

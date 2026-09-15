@@ -299,6 +299,14 @@ class UygulamaRouter {
     '/gider': 'gider',
     '/fatura': 'fatura',
     '/tedarik': 'tedarik',
+    // 🔴🔴 GÜVENLİK AÇIĞI (derin analizde bulundu): Borç Takip ve
+    // Toptan/Bayi modüllerinin rotaları bu haritada hiç yoktu — yetki
+    // kutucuğu olmayan (kasiyer/personel/depocu vb.) bir hesap bile
+    // '/borc-takip', '/borc-ekle' veya '/toptan/*' rotalarına doğrudan
+    // gidip bu ekranları tam yetkiyle kullanabiliyordu.
+    '/borc-takip': 'borc_takip',
+    '/borc-ekle': 'borc_takip',
+    '/toptan': 'toptan',
   };
 
   static String? _redirect(WidgetRef ref, GoRouterState state) {

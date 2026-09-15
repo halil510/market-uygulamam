@@ -332,6 +332,13 @@ class SatisTamamlamaServisi {
             BulutManager().upsert(
                 'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
         }
+        // 🔴 Derin analizde bulundu: bu, uygulamanın EN SIK çalışan satış
+        // akışı olmasına rağmen şube bazlı stok payını (sube_urun) hiç
+        // güncellemiyordu — sadece "fişi güncelle" (mevcut satışı
+        // düzenleme, çok daha nadir kullanılan) akışı bunu yapıyordu.
+        // Fark POZİTİF (stok DÜŞTÜ) veriliyor — subeStokPayiUygula'nın
+        // beklediği "ana stok yönü" bu (bkz. o metodun kendi yorumu).
+        await _stokDepo.subeStokPayiUygula(k.urun.id!, k.miktar);
       }
       // 🔴🔴 FAZ 1 madde 2: karma ödemede artık BİRDEN FAZLA kasa hareketi
       // oluşabiliyor (her ödeme yöntemi için ayrı satır) — bu yüzden

@@ -109,8 +109,20 @@ class CariTahsilatOdemeServisi {
                 tarih: DateTime.now(),
               ));
         } else if (odemeTuru == 'Kredi Kartı') {
+          // 🔴 Derin analizde bulundu: yön (paraCikiyor) hiç dikkate
+          // alınmıyordu, tutar her zaman pozitif veriliyordu —
+          // limitDegistirTxn pozitif delta'yı her zaman "harcama" (kullanılan
+          // limiti artırma) sayıyor (bkz. o metodun içindeki 'yon' mantığı).
+          // Banka/Havale dalı zaten paraCikiyor'a göre yön belirliyordu
+          // (satır yukarıda: islemTipi: paraCikiyor ? 'Giden' : 'Gelen'),
+          // kredi kartı dalı bunu hiç yapmıyordu. Somut hata: bir MÜŞTERİDEN
+          // "Tahsilat" (para İÇERİ giriyor, paraCikiyor=false) ödeme şekli
+          // "Kredi Kartı" seçilirse, şirketin kendi kartında yanlışlıkla bir
+          // HARCAMA gibi işlenip kullanılan limit artıyordu. Artık para
+          // dışarı çıkıyorsa (ödeme/harcama) pozitif, içeri giriyorsa
+          // (tahsilat/iade — kart kullanımını azaltır) negatif delta veriliyor.
           krediHareketId = await _krediKartiDepo.limitDegistirTxn(
-              txn, krediKartiId!, tutar,
+              txn, krediKartiId!, paraCikiyor ? tutar : -tutar,
               aciklama: '$cariUnvan - $islemTipi');
         }
       }

@@ -491,6 +491,14 @@ class IadeIslemServisi {
           'referans_id': iadeId,
           'referans_turu': 'iade_iptal',
           'tarih': now,
+          // 🔴 Derin analizde bulundu: sube_id eksikti — bu dosyadaki diğer
+          // kasa yazan fonksiyonların (topluIadeKaydet, fisKalemIadeKaydet,
+          // manuelKalemEkle) hepsi bunu set ediyordu. Eksik olunca, çok
+          // şubeli kurulumda bu kayıt aktif şube filtreli bakiye
+          // sorgularında (sonBakiyeTxn/guncelBakiyeNakit/nakitDegisimi)
+          // "görünmez" kalıyor, şubenin nakit bakiyesi bu düzeltmeyi hiç
+          // yansıtmıyordu.
+          'sube_id': AktifSubeServisi().subeId,
           'aciklama': 'İade silindi: $fisNo',
         });
       }
@@ -634,6 +642,9 @@ class IadeIslemServisi {
           'referans_id': iadeId,
           'referans_turu': 'iade_duzeltme',
           'tarih': now,
+          // 🔴 Derin analizde bulundu: sube_id eksikti (bkz. oturumIadeSil'deki
+          // aynı düzeltmenin gerekçesi).
+          'sube_id': AktifSubeServisi().subeId,
           'aciklama': 'İade düzeltme: $fisNo',
         });
       }
@@ -970,6 +981,9 @@ class IadeIslemServisi {
         'referans_id': iadeId,
         'referans_turu': 'iade_iptal',
         'tarih': now,
+        // 🔴 Derin analizde bulundu: sube_id eksikti (bkz. oturumIadeSil'deki
+        // aynı düzeltmenin gerekçesi).
+        'sube_id': AktifSubeServisi().subeId,
         'aciklama': 'Iade silindi: $fisNo',
       });
 

@@ -8,6 +8,7 @@
 // commit sonrası bulut senkronu.
 import '../depolar/kasa_deposu.dart';
 import '../depolar/banka_hareket_deposu.dart';
+import '../depolar/stok_deposu.dart';
 import '../modeller/kasa_hareket_model.dart';
 import '../modeller/banka_hareket_model.dart';
 import '../servisler/aktif_sube_servisi.dart';
@@ -28,6 +29,7 @@ class AlimKalemGirdi {
 class AlimIslemServisi {
   final _kasaDepo = KasaDeposu();
   final _bankaDepo = BankaHareketDeposu();
+  final _stokDepo = StokDeposu();
 
   /// [mevcutSiparisId] doluysa YENİ fiş AÇILMAZ, var olan 'beklemede'
   /// sipariş 'teslim_alindi'ya güncellenir (kalem bazında teslim_mik
@@ -59,6 +61,7 @@ class AlimIslemServisi {
     final kalemGidler = <String>[];
     final stokHareketGidler = <String>[];
     final etkilenenUrunIdler = <int>{};
+    final subePayiFarklari = <int, double>{};
     String? cariHareketGid;
     int? kasaHareketId;
     int? bankaHareketId;
@@ -71,7 +74,13 @@ class AlimIslemServisi {
         alimNo = mevcut.isNotEmpty
             ? (mevcut.first['siparis_no'] as String? ?? alimNo)
             : alimNo;
-        await txn.update(
+        // 🔴 Derin analizde bulundu: WHERE koşulu sadece id=? idi, mevcut
+        // 'durum' hiç kontrol edilmiyordu — aynı 'beklemede' sipariş
+        // (çift dokunma, geri tuşu + tekrar "Teslim Al", ağ gecikmesi)
+        // iki kez "teslim alınırsa" stok/cari/kasa iki kez işlenirdi.
+        // bekleyen_siparis_deposu.dart.onaylaVeSatisaCevir'deki AYNI
+        // korumayla hizalandı: etkilenen satır 0 ise dur.
+        final etkilenen = await txn.update(
             'tedarikci_siparisler',
             {
               'durum': 'teslim_alindi',
@@ -79,8 +88,12 @@ class AlimIslemServisi {
               'toplam_tutar': genelToplam,
               'last_updated': now,
             },
-            where: 'id = ?',
-            whereArgs: [alimId]);
+            where: 'id = ? AND durum = ?',
+            whereArgs: [alimId, 'beklemede']);
+        if (etkilenen == 0) {
+          throw Exception(
+              'Bu sipariş zaten teslim alınmış veya iptal edilmiş.');
+        }
       } else {
         alimId = await txn.insert('tedarikci_siparisler', {
           'global_id': alimGid,
@@ -162,6 +175,10 @@ class AlimIslemServisi {
               where: 'id = ?',
               whereArgs: [k.urunId]);
           etkilenenUrunIdler.add(k.urunId);
+          // Ana stok ARTTI (alım) — subeStokPayiUygula pozitif=düştü
+          // bekliyor, bu yüzden negatif veriliyor.
+          subePayiFarklari[k.urunId] =
+              (subePayiFarklari[k.urunId] ?? 0) - k.miktar;
           final stokGid = const Uuid().v4();
           stokHareketGidler.add(stokGid);
           await txn.insert('stok_hareket', {
@@ -325,6 +342,12 @@ class AlimIslemServisi {
     } catch (_) {
       // Bulut bildirimi hatası asıl işlemi engellemez — orijinal ekran
       // davranışıyla aynı (sessizce yutulur).
+    }
+
+    // 🔴 Derin analizde bulundu: çok şubeli stok payı (sube_urun) hiç
+    // güncellenmiyordu.
+    for (final girdi in subePayiFarklari.entries) {
+      await _stokDepo.subeStokPayiUygula(girdi.key, girdi.value);
     }
   }
 }

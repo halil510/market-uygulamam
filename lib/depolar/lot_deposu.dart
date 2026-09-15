@@ -12,6 +12,8 @@ import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
 
 class LotDeposu {
+  final _stokDepo = StokDeposu();
+
   /// [existingLotId] null ise yeni lot eklenir, doluysa günceller.
   /// [eskiMiktar] güncelleme durumunda önceki miktar (fark hesaplamak
   /// için) — yeni eklemede 0 kabul edilir.
@@ -59,7 +61,7 @@ class LotDeposu {
       final hareketGid = const Uuid().v4();
       final hareketAciklama = 'Lot Düzeltme: $lotNo';
       if (fark > 0) {
-        await StokDeposu().stokGirTxn(txn, hareketGid,
+        await _stokDepo.stokGirTxn(txn, hareketGid,
             urunId: urunId,
             miktar: fark,
             kullaniciId: kullaniciId,
@@ -69,7 +71,7 @@ class LotDeposu {
             hareketTuru: 'Lot Düzeltme',
             lotId: lotId);
       } else {
-        await StokDeposu().stokDusTxn(txn, hareketGid,
+        await _stokDepo.stokDusTxn(txn, hareketGid,
             urunId: urunId,
             miktar: fark.abs(),
             kullaniciId: kullaniciId,
@@ -93,6 +95,11 @@ class LotDeposu {
       if (urunSatir.isNotEmpty) {
         BulutManager().upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
       }
+      // 🔴 Derin analizde bulundu: çok şubeli stok payı (sube_urun) hiç
+      // güncellenmiyordu. fark>0 iken ana stok ARTTIĞI (stokGirTxn) için,
+      // subeStokPayiUygula'nın beklediği "ana stok yönü" (pozitif=düştü)
+      // ile ters — bu yüzden -fark veriliyor.
+      await _stokDepo.subeStokPayiUygula(urunId, -fark);
     }
 
     return (lotId, fark);

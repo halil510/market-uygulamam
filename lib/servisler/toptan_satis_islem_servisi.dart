@@ -115,6 +115,13 @@ class ToptanSatisIslemServisi {
       if (kDebugMode) debugPrint('Toptan satış bulut bildirimi hatası: $e');
     }
 
+    // 🔴 Derin analizde bulundu: çok şubeli stok payı (sube_urun) hiç
+    // güncellenmiyordu — ana stok DÜŞTÜ (satış), subeStokPayiUygula
+    // pozitif=düştü bekliyor.
+    for (final k in stokKalemleri) {
+      await _stokDepo.subeStokPayiUygula(k.urunId, k.stokMiktari);
+    }
+
     return satisId;
   }
 }

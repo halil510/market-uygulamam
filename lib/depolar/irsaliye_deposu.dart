@@ -7,6 +7,7 @@
 import 'package:uuid/uuid.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
+import 'stok_deposu.dart';
 
 /// Bir irsaliye kaleminin DB yazımı için gereken minimal bilgisi.
 class IrsaliyeKalemGirdi {
@@ -23,6 +24,8 @@ class IrsaliyeKalemGirdi {
 }
 
 class IrsaliyeDeposu {
+  final _stokDepo = StokDeposu();
+
   /// Bekleyen Sipariş onaylandıktan SONRA (satış zaten oluşturulmuş,
   /// stok ZATEN düşürülmüş — bkz. BekleyenSiparisDeposu.onaylaVeSatisaCevir)
   /// kayıt amaçlı sevk belgesi oluşturur. [olustur]'un aksine STOĞA HİÇ
@@ -92,6 +95,7 @@ class IrsaliyeDeposu {
     final kalemGidler = <String>[];
     final stokHareketGidler = <String>[];
     final etkilenenUrunIdler = <int>{};
+    final subePayiFarklari = <int, double>{};
 
     await db.transaction((txn) async {
       irsaliyeId = await txn.insert('irsaliyeler', {
@@ -124,10 +128,19 @@ class IrsaliyeDeposu {
             columns: ['stok'], where: 'id = ?', whereArgs: [k.urunId]);
         if (urunRows.isNotEmpty) {
           final onceki = (urunRows.first['stok'] as num).toDouble();
-          final sonraki = onceki + hareketMiktar;
+          // 🔴 Derin analizde bulundu: 'Çıkış' irsaliyesinde negatif stok
+          // engeli (clamp) yoktu — StokDeposu.stokDusTxn'in her zaman
+          // uyguladığı `.clamp(0, double.infinity)` burada eksikti, mevcut
+          // stoktan fazlası sevk edilirse urunler.stok negatife düşebiliyordu.
+          final sonraki =
+              (onceki + hareketMiktar).clamp(0, double.infinity);
           await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
               where: 'id = ?', whereArgs: [k.urunId]);
           etkilenenUrunIdler.add(k.urunId);
+          // subeStokPayiUygula "ana stok yönü"nü pozitif=düştü olarak
+          // bekliyor — hareketMiktar 'Çıkış' için negatif (stok düştü).
+          subePayiFarklari[k.urunId] =
+              (subePayiFarklari[k.urunId] ?? 0) - hareketMiktar;
           final stokGid = const Uuid().v4();
           stokHareketGidler.add(stokGid);
           await txn.insert('stok_hareket', {
@@ -180,6 +193,12 @@ class IrsaliyeDeposu {
     } catch (_) {
       // Bulut bildirimi hatası asıl işlemi engellemez — orijinal ekran
       // davranışıyla aynı (sessizce yutulur).
+    }
+
+    // 🔴 Derin analizde bulundu: çok şubeli stok payı (sube_urun) hiç
+    // güncellenmiyordu.
+    for (final girdi in subePayiFarklari.entries) {
+      await _stokDepo.subeStokPayiUygula(girdi.key, girdi.value);
     }
 
     return irsaliyeId;

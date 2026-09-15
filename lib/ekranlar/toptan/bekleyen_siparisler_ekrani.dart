@@ -8,13 +8,13 @@ import 'package:flutter/material.dart';
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../modeller/cari_model.dart';
 import '../../modeller/fatura_model.dart';
 import '../../depolar/bekleyen_siparis_deposu.dart';
 import '../../depolar/cari_deposu.dart';
+import '../../depolar/irsaliye_deposu.dart';
 import '../../veri/database/veritabani.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
@@ -329,39 +329,26 @@ class _SiparisDetayEkraniState extends State<_SiparisDetayEkrani> {
   /// akışı stok da düşürür; o akışla KARIŞTIRILMAMALI.
   Future<void> _irsaliyeOlustur(CariModel cari, int satisId) async {
     try {
-      final db = await Veritabani().db;
       final no = await Veritabani().fisNoUret('irsaliye', subeId: AktifSubeServisi().subeId ?? 1);
-      final now = DateTime.now().toIso8601String();
-      final toplam = _kalemler.fold(0.0, (s, k) => s + (k['toplam_tutar'] as num).toDouble());
-      late int irsaliyeId;
-      await db.transaction((txn) async {
-        irsaliyeId = await txn.insert('irsaliyeler', {
-          'global_id': const Uuid().v4(),
-          'irsaliye_no': no,
-          'cari_id': cari.id,
-          'tarih': now,
-          'tip': 'Çıkış',
-          'toplam_tutar': toplam,
-          'durum': 'Hazırlanıyor',
-          'kullanici_id': AuthServisi().aktifId,
-          'created_at': now,
-          'last_updated': now,
-        });
-        for (final k in _kalemler) {
-          await txn.insert('irsaliye_kalem', {
-            'global_id': const Uuid().v4(),
-            'irsaliye_id': irsaliyeId,
-            'urun_id': k['urun_id'],
-            'urun_adi': '${k['urun_adi']} (${k['birim_adi']})',
-            'miktar': k['toplam_miktar'],
-            'birim_fiyat': (k['toplam_miktar'] as num) > 0
-                ? (k['toplam_tutar'] as num).toDouble() / (k['toplam_miktar'] as num).toDouble()
-                : 0.0,
-            'toplam_tutar': k['toplam_tutar'],
-            'last_updated': now,
-          });
-        }
-      });
+
+      // Transaction artık IrsaliyeDeposu.olusturSevkKaydi'de — bkz. o
+      // metodun doc yorumu, davranış birebir korundu (STOĞA DOKUNMAZ,
+      // bulut senkronu tetiklemez).
+      final irsaliyeId = await IrsaliyeDeposu().olusturSevkKaydi(
+        kalemler: _kalemler
+            .map((k) => IrsaliyeKalemGirdi(
+                urunId: k['urun_id'] as int,
+                urunAdi: '${k['urun_adi']} (${k['birim_adi']})',
+                miktar: (k['toplam_miktar'] as num).toDouble(),
+                birimFiyat: (k['toplam_miktar'] as num) > 0
+                    ? (k['toplam_tutar'] as num).toDouble() /
+                        (k['toplam_miktar'] as num).toDouble()
+                    : 0.0))
+            .toList(),
+        cariId: cari.id,
+        kullaniciId: AuthServisi().aktifId,
+        irsaliyeNo: no,
+      );
       if (!mounted) return;
       BildirimServisi.basari(context, 'İrsaliye oluşturuldu: $no ✓');
       context.push('/irsaliye/detay/$irsaliyeId');

@@ -23,6 +23,55 @@ class IrsaliyeKalemGirdi {
 }
 
 class IrsaliyeDeposu {
+  /// Bekleyen Sipariş onaylandıktan SONRA (satış zaten oluşturulmuş,
+  /// stok ZATEN düşürülmüş — bkz. BekleyenSiparisDeposu.onaylaVeSatisaCevir)
+  /// kayıt amaçlı sevk belgesi oluşturur. [olustur]'un aksine STOĞA HİÇ
+  /// DOKUNMAZ (aksi halde stok iki kez düşerdi) ve bulut senkronu
+  /// tetiklemez — davranış, taşındığı
+  /// bekleyen_siparisler_ekrani.dart._irsaliyeOlustur ile birebir aynı.
+  ///
+  /// Döner: yeni irsaliyenin id'si.
+  Future<int> olusturSevkKaydi({
+    required List<IrsaliyeKalemGirdi> kalemler,
+    required int? cariId,
+    required int? kullaniciId,
+    required String irsaliyeNo,
+  }) async {
+    final db = await Veritabani().db;
+    final now = DateTime.now().toIso8601String();
+    final toplam = kalemler.fold(0.0, (s, k) => s + k.miktar * k.birimFiyat);
+    late int irsaliyeId;
+
+    await db.transaction((txn) async {
+      irsaliyeId = await txn.insert('irsaliyeler', {
+        'global_id': const Uuid().v4(),
+        'irsaliye_no': irsaliyeNo,
+        'cari_id': cariId,
+        'tarih': now,
+        'tip': 'Çıkış',
+        'toplam_tutar': toplam,
+        'durum': 'Hazırlanıyor',
+        'kullanici_id': kullaniciId,
+        'created_at': now,
+        'last_updated': now,
+      });
+      for (final k in kalemler) {
+        await txn.insert('irsaliye_kalem', {
+          'global_id': const Uuid().v4(),
+          'irsaliye_id': irsaliyeId,
+          'urun_id': k.urunId,
+          'urun_adi': k.urunAdi,
+          'miktar': k.miktar,
+          'birim_fiyat': k.birimFiyat,
+          'toplam_tutar': k.miktar * k.birimFiyat,
+          'last_updated': now,
+        });
+      }
+    });
+
+    return irsaliyeId;
+  }
+
   /// [tip]: 'Çıkış' | 'Giriş' | 'Transfer' — 'Çıkış' stoktan düşer,
   /// diğerleri stoğa ekler (davranış ekranla birebir aynı).
   ///

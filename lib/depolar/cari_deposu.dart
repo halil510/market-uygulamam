@@ -10,9 +10,13 @@ import 'package:uuid/uuid.dart';
 
 import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/auth_servisi.dart';
 import '../veri/database/veritabani.dart';
 import '../modeller/cari_model.dart';
 import '../modeller/cari_hareket_model.dart';
+import '../modeller/kasa_hareket_model.dart';
+import '../cekirdek/utils/para_utils.dart';
+import 'kasa_deposu.dart';
 
 class CariDeposu {
   final Veritabani _db = Veritabani();
@@ -439,36 +443,125 @@ class CariDeposu {
     return rows.map(CariHareketModel.fromMap).toList();
   }
 
-  Future<void> hareketSil(int hareketId, int cariId) async {
+  /// Bir cari hareketi iptal eder: orijinal kayıt SOFT-DELETE edilir
+  /// (is_deleted=1, hard-delete edilmez — bulut senkron için gerekli),
+  /// audit-trail amaçlı borc=0/alacak=0 bir "... İptali" kaydı eklenir,
+  /// bakiye hareketlerden yeniden hesaplanır (her zaman is_deleted=0
+  /// filtresiyle — kanonik kural), ve varsa bağlı (referans_turu=
+  /// 'cari_hareket') NAKİT kasa hareketi otomatik ters çevrilir. Banka/
+  /// Kredi Kartı bağlı kayıtlar otomatik geri alınmaz — güvenli fallback,
+  /// kullanıcı o tarafı elle düzeltmeli.
+  ///
+  /// Ters kaydın borc=0/alacak=0 olması BİLİNÇLİDİR: orijinal kayıt zaten
+  /// bakiye SUM'ından (is_deleted=0 filtresiyle) dışlandığı için, sıfır
+  /// olmayan bir ters tutar eklemek bakiyeyi orijinal tutarın TERSİ kadar
+  /// kaydırırdı (10 TL'lik hareket silinince bakiye 0'a değil +10'a giderdi).
+  Future<void> hareketIptalEt(CariHareketModel h) async {
+    if (h.id == null) throw Exception('Hareket id boş olamaz');
     try {
       final db = await _d;
-      final now = DateTime.now().toIso8601String();
+      String? tersCariGid;
+      int? tersKasaId;
       await db.transaction((txn) async {
-        // 🔴 DÜZELTME: Gerçek HARD DELETE yapılıyordu — 'is_deleted'
-        // sütunu şemada VARDI ama hiç kullanılmıyordu. Hard delete,
-        // buluta silindiğini bildirmenin imkansız olması demekti (silme
-        // bildirilecek bir alan yok) ve bulut→yerel çekişte kayıt
-        // "dirilebiliyordu". Artık soft-delete.
+        final guncelRows = await txn
+            .query('cari_hareket', where: 'id = ?', whereArgs: [h.id]);
+        if (guncelRows.isEmpty) throw Exception('Hareket bulunamadı');
+        final guncel = guncelRows.first;
+        if ((guncel['is_deleted'] as int? ?? 0) == 1) {
+          throw Exception('Bu hareket zaten iptal edilmiş');
+        }
+        final now = DateTime.now().toIso8601String();
+
         await txn.update('cari_hareket',
             {'is_deleted': 1, 'last_updated': now},
-            where: 'id = ?', whereArgs: [hareketId]);
+            where: 'id = ?', whereArgs: [h.id]);
+
+        final tersGid = const Uuid().v4();
+        await txn.insert('cari_hareket', {
+          'global_id': tersGid,
+          'cari_id': h.cariId,
+          'tarih': now,
+          'fis_tipi': '${h.fisTipi} İptali',
+          'fis_id': h.id,
+          'fis_no': h.fisNo,
+          'aciklama': 'İptal: ${h.aciklama} '
+              '(${ParaUtils.formatla(h.borc > 0 ? h.borc : h.alacak)})',
+          'borc': 0,
+          'alacak': 0,
+          'odeme_turu': h.odemeTuru,
+          'kullanici': AuthServisi().aktifAd,
+          'last_updated': now,
+          'is_deleted': 0,
+        });
+        tersCariGid = tersGid;
+
         await txn.rawUpdate('''
           UPDATE cari SET bakiye = (
-            SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
+            SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0)
             FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-          ) WHERE id = ?
-        ''', [cariId, cariId]);
+          ), last_updated = ?
+          WHERE id = ?
+        ''', [h.cariId, now, h.cariId]);
+
+        final kasaRows = await txn.query('kasa_hareketleri',
+            where:
+                'referans_turu = ? AND referans_id = ? AND deleted_at IS NULL',
+            whereArgs: ['cari_hareket', h.id]);
+        if (kasaRows.isNotEmpty) {
+          final orijinalKasa = kasaRows.first;
+          final orijinalTip = orijinalKasa['hareket_tipi'] as String? ?? '';
+          final orijinalTutar =
+              (orijinalKasa['tutar'] as num?)?.toDouble() ?? 0;
+          final tersTip = orijinalTip == 'Tahsilat'
+              ? 'Tahsilat İptali'
+              : orijinalTip == 'Ödeme'
+                  ? 'Ödeme Girişi'
+                  : null;
+          if (tersTip != null && orijinalTutar > 0) {
+            tersKasaId = await KasaDeposu().hareketEkleTxn(
+                txn,
+                KasaHareketModel(
+                  hareketTipi: tersTip,
+                  tutar: orijinalTutar,
+                  referansId: h.id,
+                  referansTuru: 'cari_hareket_iptal',
+                  tarih: DateTime.parse(now),
+                  aciklama: 'İptal: ${h.aciklama}',
+                ));
+          }
+        }
       });
-      final hareketSatir = await db.query('cari_hareket', where: 'id = ?', whereArgs: [hareketId], limit: 1);
-      if (hareketSatir.isNotEmpty) {
-        BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(hareketSatir.first));
+
+      final orijinalSatir = await db.query('cari_hareket',
+          where: 'id = ?', whereArgs: [h.id], limit: 1);
+      if (orijinalSatir.isNotEmpty) {
+        BulutManager().upsert(
+            'cari_hareket', Map<String, dynamic>.from(orijinalSatir.first));
       }
-      final cariSatir = await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
+      if (tersCariGid != null) {
+        final satir = await db.query('cari_hareket',
+            where: 'global_id = ?', whereArgs: [tersCariGid], limit: 1);
+        if (satir.isNotEmpty) {
+          BulutManager()
+              .upsert('cari_hareket', Map<String, dynamic>.from(satir.first));
+        }
+      }
+      final cariSatir = await db.query('cari',
+          where: 'id = ?', whereArgs: [h.cariId], limit: 1);
       if (cariSatir.isNotEmpty) {
-        BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
+        BulutManager()
+            .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
+      }
+      if (tersKasaId != null) {
+        final kasaSatir = await db.query('kasa_hareketleri',
+            where: 'id = ?', whereArgs: [tersKasaId], limit: 1);
+        if (kasaSatir.isNotEmpty) {
+          BulutManager().upsert(
+              'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+        }
       }
     } catch (e, st) {
-      LogServisi().hata('Cari.hareketSil', hata: e, yigin: st);
+      LogServisi().hata('Cari.hareketIptalEt', hata: e, yigin: st);
       rethrow;
     }
   }

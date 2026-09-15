@@ -13,15 +13,10 @@ import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../uygulama/tema/uygulama_temasi.dart';
-import 'package:uuid/uuid.dart';
 import '../../depolar/cari_deposu.dart';
-import '../../depolar/kasa_deposu.dart';
 import '../../modeller/cari_model.dart';
 import '../../modeller/cari_hareket_model.dart';
-import '../../modeller/kasa_hareket_model.dart';
-import '../../servisler/auth_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../veri/database/veritabani.dart';
 import 'fis_detay_ekrani.dart';
@@ -181,132 +176,11 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   Future<void> _silHareket(CariHareketModel h) async {
     if (h.id == null) return;
     try {
-      final db = await Veritabani().db;
-      String? tersCariGid;
-      int? tersKasaId;
-      await db.transaction((txn) async {
-        final guncelRows =
-            await txn.query('cari_hareket', where: 'id = ?', whereArgs: [h.id]);
-        if (guncelRows.isEmpty) throw Exception('Hareket bulunamadı');
-        final guncel = guncelRows.first;
-        if ((guncel['is_deleted'] as int? ?? 0) == 1) {
-          throw Exception('Bu hareket zaten iptal edilmiş');
-        }
-        final now = DateTime.now().toIso8601String();
-
-        // 1. Orijinal kayıt KORUNUR — sadece soft-delete işaretlenir.
-        await txn.update('cari_hareket', {'is_deleted': 1, 'last_updated': now},
-            where: 'id = ?', whereArgs: [h.id]);
-
-        // 2. Ters cari_hareket — SADECE görüntüleme/audit-trail amaçlı
-        // (listede "X İptali" satırı olarak görünür), fis_id ile orijinali
-        // referans olarak taşır. Adım 1'de orijinal zaten is_deleted=1
-        // yapılıp bakiye SUM'ından (adım 3) tamamen dışlandığı için bu,
-        // bakiyeyi orijinalin tam tersi kadar etkiler; bu yüzden burada
-        // BİLİNÇLİ OLARAK borc=0/alacak=0 kullanılıyor — gerçek (sıfır
-        // olmayan) bir ters tutar eklemek, orijinalin dışlanmasıyla
-        // BİRLEŞİP bakiyeyi olması gerekenin İKİ KATI kadar kaydırırdı
-        // (bkz. adım 3'teki not).
-        final tersGid = const Uuid().v4();
-        await txn.insert('cari_hareket', {
-          'global_id': tersGid,
-          'cari_id': h.cariId,
-          'tarih': now,
-          'fis_tipi': '${h.fisTipi} İptali',
-          'fis_id': h.id,
-          'fis_no': h.fisNo,
-          'aciklama': 'İptal: ${h.aciklama} '
-              '(${ParaUtils.formatla(h.borc > 0 ? h.borc : h.alacak)})',
-          'borc': 0,
-          'alacak': 0,
-          'odeme_turu': h.odemeTuru,
-          'kullanici': AuthServisi().aktifAd,
-          'last_updated': now,
-          'is_deleted': 0,
-        });
-        tersCariGid = tersGid;
-
-        // 3. Cari bakiyeyi hareketlerden yeniden hesapla. Bu SUM her zaman
-        // 'is_deleted = 0' ile filtrelenir — bu, uygulamanın TEK yerden
-        // (CariDeposu.bakiyeYenidenHesapla, Veri Sağlığı Merkezi mutabakatı,
-        // cari_provider yenileme) kullandığı KANONİK kural: soft-delete
-        // edilmiş bir hareket bakiyeye HİÇ katkı vermemeli. O yüzden adım
-        // 2'deki ters kayıt bilinçli olarak borc=0/alacak=0 (aşağıda) —
-        // orijinal zaten dışlandığı için ayrıca sıfır-olmayan bir ters
-        // tutar eklemek bakiyeyi ORİJİNAL TUTARIN TERSİ kadar KAYDIRIRDI
-        // (ör. 10 TL'lik hareket silinince bakiye 0'a değil +10'a giderdi
-        // — silme her zaman "çalışıyordu" ama sonuç yanlıştı, bu yüzden
-        // fark edilmesi zor bir hataydı; bkz. aşağıdaki yorum).
-        await txn.rawUpdate('''
-          UPDATE cari SET bakiye = (
-            SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0)
-            FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-          ), last_updated = ?
-          WHERE id = ?
-        ''', [h.cariId, now, h.cariId]);
-
-        // 4. Bağlı (referans_turu='cari_hareket') kasa hareketi varsa
-        // ters çevir. Yoksa (eski kayıt veya Banka/Kredi Kartı) sessizce
-        // atlanır — güvenli fallback.
-        final kasaRows = await txn.query('kasa_hareketleri',
-            where:
-                'referans_turu = ? AND referans_id = ? AND deleted_at IS NULL',
-            whereArgs: ['cari_hareket', h.id]);
-        if (kasaRows.isNotEmpty) {
-          final orijinalKasa = kasaRows.first;
-          final orijinalTip = orijinalKasa['hareket_tipi'] as String? ?? '';
-          final orijinalTutar =
-              (orijinalKasa['tutar'] as num?)?.toDouble() ?? 0;
-          // Tahsilat (giriş) → İptali çıkış olur (girisTipleri'nde yok,
-          // varsayılan olarak çıkış sayılır). Ödeme (çıkış) → Girişi
-          // zaten girisTipleri'nde tanımlı bir giriş tipidir.
-          final tersTip = orijinalTip == 'Tahsilat'
-              ? 'Tahsilat İptali'
-              : orijinalTip == 'Ödeme'
-                  ? 'Ödeme Girişi'
-                  : null;
-          if (tersTip != null && orijinalTutar > 0) {
-            tersKasaId = await KasaDeposu().hareketEkleTxn(
-                txn,
-                KasaHareketModel(
-                  hareketTipi: tersTip,
-                  tutar: orijinalTutar,
-                  referansId: h.id,
-                  referansTuru: 'cari_hareket_iptal',
-                  tarih: DateTime.parse(now),
-                  aciklama: 'İptal: ${h.aciklama}',
-                ));
-          }
-        }
-      });
-
-      // Transaction kalıcı oldu — şimdi buluta bildir (bu çağrı zaten
-      // AuditLogServisi'ni de otomatik tetikliyor).
-      final db2 = await Veritabani().db;
-      final orijinalSatir = await db2.query('cari_hareket',
-          where: 'id = ?', whereArgs: [h.id], limit: 1);
-      if (orijinalSatir.isNotEmpty)
-        BulutManager().upsert(
-            'cari_hareket', Map<String, dynamic>.from(orijinalSatir.first));
-      if (tersCariGid != null) {
-        final satir = await db2.query('cari_hareket',
-            where: 'global_id = ?', whereArgs: [tersCariGid], limit: 1);
-        if (satir.isNotEmpty)
-          BulutManager()
-              .upsert('cari_hareket', Map<String, dynamic>.from(satir.first));
-      }
-      final cariSatir = await db2.query('cari',
-          where: 'id = ?', whereArgs: [widget.cariId], limit: 1);
-      if (cariSatir.isNotEmpty)
-        BulutManager()
-            .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-      if (tersKasaId != null) {
-        final kasaSatir = await db2.query('kasa_hareketleri',
-            where: 'id = ?', whereArgs: [tersKasaId], limit: 1);
-        if (kasaSatir.isNotEmpty)
-          BulutManager().upsert(
-              'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
-      }
+      // Tüm iptal mantığı (soft-delete + audit ters kayıt + bakiye
+      // yeniden hesaplama + bağlı kasa hareketi ters çevirme + bulut
+      // senkron) artık CariDeposu.hareketIptalEt'te — bkz. o metodun
+      // doc yorumu, davranış birebir korundu.
+      await _depo.hareketIptalEt(h);
 
       if (!mounted) return;
       await _yukle();

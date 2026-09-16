@@ -6,6 +6,8 @@
 // çalıştığını doğrular: [aktifDbTest]/[arsivDosyaYoluTest] test seamleri
 // sayesinde Veritabani() singleton'ına ve path_provider'a ihtiyaç
 // duymadan, gerçek geçici bir arşiv dosyasına karşı test edilebiliyor.
+// 5 ana hareket tablosu + satis_kalem (satislar'ın JOIN'li çocuk
+// tablosu) kapsanıyor.
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
@@ -36,20 +38,30 @@ void main() {
 
   /// Şube 1'e 2026 içine düşen, Şube 2'ye ve 2025'e düşen örnek satırlar
   /// ekler — filtreleme (tarih aralığı + şube) doğru çalışıyor mu
-  /// görebilmek için.
-  Future<void> ornekVeriEkle() async {
+  /// görebilmek için. Dönen id'ler satis_kalem bağlantısı için kullanılır.
+  Future<Map<String, int>> ornekVeriEkle() async {
     // satislar — sube_id'li
-    await aktif.insert('satislar', {
+    final satis1Id = await aktif.insert('satislar', {
       'tarih': DateTime(2026, 6, 15).toIso8601String(), 'sube_id': 1, 'genel_toplam': 100.0,
     });
     await aktif.insert('satislar', {
       'tarih': DateTime(2026, 3, 1).toIso8601String(), 'sube_id': 1, 'genel_toplam': 50.0,
     });
-    await aktif.insert('satislar', { // farklı şube — dahil edilmemeli
+    final satisFarkliSubeId = await aktif.insert('satislar', { // farklı şube — dahil edilmemeli
       'tarih': DateTime(2026, 6, 15).toIso8601String(), 'sube_id': 2, 'genel_toplam': 999.0,
     });
     await aktif.insert('satislar', { // önceki yıl — dahil edilmemeli
       'tarih': DateTime(2025, 12, 31).toIso8601String(), 'sube_id': 1, 'genel_toplam': 777.0,
+    });
+
+    // satis_kalem — sadece satis1Id'ye (Şube 1, 2026) bağlı olan kopyalanmalı.
+    await aktif.insert('satis_kalem', {
+      'satis_id': satis1Id, 'urun_id': 1, 'urun_adi': 'Kola', 'miktar': 2.0,
+      'birim_fiyat': 50.0, 'toplam_tutar': 100.0,
+    });
+    await aktif.insert('satis_kalem', { // farklı şubenin satışına bağlı — dahil edilmemeli
+      'satis_id': satisFarkliSubeId, 'urun_id': 1, 'urun_adi': 'Kola', 'miktar': 1.0,
+      'birim_fiyat': 999.0, 'toplam_tutar': 999.0,
     });
 
     // stok_hareket — sube_id'li
@@ -83,13 +95,15 @@ void main() {
       'banka_hesap_id': 1, 'islem_tipi': 'Havale', 'tutar': 250.0,
       'tarih': DateTime(2026, 6, 15).toIso8601String(),
     });
+
+    return {'satis1Id': satis1Id, 'satisFarkliSubeId': satisFarkliSubeId};
   }
 
   final baslangic = DateTime(2026, 1, 1);
   final bitis = DateTime(2026, 12, 31, 23, 59, 59);
 
   group('arsivleVeDogrula', () {
-    test('5 tablo da doğrulanır, sadece dönem+şube filtresine uyan satırlar kopyalanır', () async {
+    test('6 tablo da doğrulanır, sadece dönem+şube filtresine uyan satırlar kopyalanır', () async {
       await ornekVeriEkle();
       final servis = DonemArsivServisi();
 
@@ -98,7 +112,7 @@ void main() {
         aktifDbTest: aktif, arsivDosyaYoluTest: arsivYolu,
       );
 
-      expect(sonuclar, hasLength(5));
+      expect(sonuclar, hasLength(6));
       for (final s in sonuclar) {
         expect(s.dogrulandiMi, isTrue, reason: '${s.tablo} doğrulanamadı');
       }
@@ -112,6 +126,12 @@ void main() {
 
       final cariSonuc = sonuclar.firstWhere((s) => s.tablo == 'cari_hareket');
       expect(cariSonuc.kopyalanan, 1); // şube filtresi YOK, ama tarih filtresi var
+
+      final kalemSonuc = sonuclar.firstWhere((s) => s.tablo == 'satis_kalem');
+      // sadece Şube 1'in 2026 satışına (satis1Id) bağlı kalem — farklı
+      // şubenin satışına bağlı kalem JOIN filtresiyle dışarıda kalmalı.
+      expect(kalemSonuc.kopyalanan, 1);
+      expect(kalemSonuc.aktifToplam, 100.0);
     });
 
     test('şirket geneli tablolar (cari/banka) şube filtresi UYGULANMADAN kopyalanır', () async {
@@ -152,7 +172,7 @@ void main() {
         // ürettiği dahili bir tablo — beklenen bir yan etki.
         expect(tabloAdlari, {
           'satislar', 'stok_hareket', 'cari_hareket', 'kasa_hareketleri',
-          'banka_hareketler', 'sqlite_sequence',
+          'banka_hareketler', 'satis_kalem', 'sqlite_sequence',
         });
         expect(tabloAdlari.contains('urunler'), isFalse);
         expect(tabloAdlari.contains('cari'), isFalse);

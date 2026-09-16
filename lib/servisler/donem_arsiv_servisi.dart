@@ -16,11 +16,13 @@
 // "arşiv tamamlandı" işareti konmaz.
 //
 // Master tablolar (urunler, cariler, subeler, kasalar, bankalar,
-// kullanicilar...) Madde 7 gereği HİÇ kopyalanmaz — sadece bu 5 tablo.
-// satis_kalemleri ve diğer detay/child tablolar bu ilk kopyalama
-// increment'ine BİLEREK DAHİL EDİLMEDİ (satislar'ın ana kaydı arşivde
-// olsa bile kalemleri henüz yok) — kapsamı dar tutup doğrulanabilir
-// başlamak için, ileriki bir artışta eklenmeli.
+// kullanicilar...) Madde 7 gereği HİÇ kopyalanmaz — sadece bu 5 tablo +
+// satis_kalem (satislar'ın çocuk tablosu, kendi tarih/sube_id'si yoktur
+// — WHERE'ü satis_id üzerinden JOIN ile satislar'a bağlanır, bkz.
+// _satisKalemArsivle). satis_kalem, satislar'dan SONRA arşivlenir —
+// verifikasyon sorgusu arşivdeki satislar'a bakar, bu yüzden sıra önemli.
+// Diğer detay/child tablolar (ör. fatura kalemleri) bu increment'e
+// BİLEREK DAHİL EDİLMEDİ — ileriki bir artışta eklenmeli.
 //
 // Şema replikasyonu: arşiv tablosu, aktif DB'deki CREATE TABLE SQL'i
 // (sqlite_master.sql) BİREBİR çalıştırılarak oluşturulur — elle
@@ -157,33 +159,46 @@ class DonemArsivServisi {
           ilerlemeBildir: ilerlemeBildir,
         );
         sonuclar.add(sonuc);
-        if (!sonuc.dogrulandiMi) {
-          throw StateError(
-            '${kural.tablo} arşiv doğrulaması başarısız — '
-            'aktif: ${sonuc.aktifSayim} satır / ${sonuc.aktifToplam}, '
-            'arşiv: ${sonuc.arsivSayim} satır / ${sonuc.arsivToplam}.',
-          );
-        }
+        _dogrulamaKontrolEt(sonuc);
       }
+
+      // satis_kalem, satislar'ın çocuğudur (kendi tarih/sube_id'si yok)
+      // — satislar'dan SONRA, satis_id JOIN'iyle arşivlenir.
+      final kalemSonuc = await _satisKalemArsivle(
+        aktif: aktif,
+        arsiv: arsiv,
+        subeId: subeId,
+        baslangic: baslangic,
+        bitis: bitis,
+        ilerlemeBildir: ilerlemeBildir,
+      );
+      sonuclar.add(kalemSonuc);
+      _dogrulamaKontrolEt(kalemSonuc);
+
       return sonuclar;
     } finally {
       await arsiv.close();
     }
   }
 
-  Future<DonemArsivTabloSonucu> _tabloyuArsivle({
-    required Database aktif,
-    required Database arsiv,
-    required _TabloKurali kural,
-    required int subeId,
-    required DateTime baslangic,
-    required DateTime bitis,
-    void Function(String mesaj)? ilerlemeBildir,
-  }) async {
+  void _dogrulamaKontrolEt(DonemArsivTabloSonucu sonuc) {
+    if (!sonuc.dogrulandiMi) {
+      throw StateError(
+        '${sonuc.tablo} arşiv doğrulaması başarısız — '
+        'aktif: ${sonuc.aktifSayim} satır / ${sonuc.aktifToplam}, '
+        'arşiv: ${sonuc.arsivSayim} satır / ${sonuc.arsivToplam}.',
+      );
+    }
+  }
+
+  /// Aktif DB'deki [tablo]'nun CREATE TABLE SQL'ini sqlite_master'dan
+  /// alıp [arsiv]'a birebir uygular (IF NOT EXISTS garantisiyle, bkz.
+  /// aşağıdaki not). Tablo [arsiv]'da zaten varsa no-op.
+  Future<void> _semaKopyala(Database aktif, Database arsiv, String tablo) async {
     final semaSatirlari = await aktif.rawQuery(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", [kural.tablo]);
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", [tablo]);
     if (semaSatirlari.isEmpty) {
-      throw StateError('Aktif veritabanında ${kural.tablo} tablosu bulunamadı.');
+      throw StateError('Aktif veritabanında $tablo tablosu bulunamadı.');
     }
     // 🔴 ÖNEMLİ: sqlite_master.sql, orijinal CREATE TABLE metnini DEĞİL,
     // SQLite'ın YENİDEN SERİLEŞTİRDİĞİ halini döner — "IF NOT EXISTS"
@@ -198,6 +213,18 @@ class DonemArsivServisi {
           RegExp(r'CREATE TABLE', caseSensitive: false), 'CREATE TABLE IF NOT EXISTS');
     }
     await arsiv.execute(semaSql);
+  }
+
+  Future<DonemArsivTabloSonucu> _tabloyuArsivle({
+    required Database aktif,
+    required Database arsiv,
+    required _TabloKurali kural,
+    required int subeId,
+    required DateTime baslangic,
+    required DateTime bitis,
+    void Function(String mesaj)? ilerlemeBildir,
+  }) async {
+    await _semaKopyala(aktif, arsiv, kural.tablo);
 
     final whereParts = <String>['${kural.tarihKolonu} >= ?', '${kural.tarihKolonu} <= ?'];
     final args = <Object?>[baslangic.toIso8601String(), bitis.toIso8601String()];
@@ -241,6 +268,70 @@ class DonemArsivServisi {
 
     return DonemArsivTabloSonucu(
       tablo: kural.tablo,
+      kopyalanan: islenen,
+      aktifSayim: (aktifOzet.first['n'] as int?) ?? 0,
+      arsivSayim: (arsivOzet.first['n'] as int?) ?? 0,
+      aktifToplam: (aktifOzet.first['t'] as num?)?.toDouble() ?? 0,
+      arsivToplam: (arsivOzet.first['t'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  /// satis_kalem'in kendi tarih/sube_id'si yok — satis_id üzerinden
+  /// satislar'a JOIN edilerek aynı dönem+şube filtresiyle arşivlenir.
+  /// ÖNKOŞUL: satislar bu [arsiv] bağlantısında ZATEN arşivlenmiş
+  /// olmalı — doğrulama sorgusu arşivdeki satislar'a bakar (bkz. dosya
+  /// başı yorumu, _kurallar sırası).
+  Future<DonemArsivTabloSonucu> _satisKalemArsivle({
+    required Database aktif,
+    required Database arsiv,
+    required int subeId,
+    required DateTime baslangic,
+    required DateTime bitis,
+    void Function(String mesaj)? ilerlemeBildir,
+  }) async {
+    const tablo = 'satis_kalem';
+    await _semaKopyala(aktif, arsiv, tablo);
+
+    const subSorgu =
+        'satis_id IN (SELECT id FROM satislar WHERE tarih >= ? AND tarih <= ? AND sube_id = ?)';
+    final args = <Object?>[
+      baslangic.toIso8601String(), bitis.toIso8601String(), subeId,
+    ];
+
+    var islenen = 0;
+    int? sonId;
+    while (true) {
+      final sayfaWhere = sonId == null ? subSorgu : '$subSorgu AND id > ?';
+      final sayfaArgs = sonId == null ? args : [...args, sonId];
+      final satirlar = await aktif.query(
+        tablo,
+        where: sayfaWhere,
+        whereArgs: sayfaArgs,
+        orderBy: 'id ASC',
+        limit: _sayfaBoyutu,
+      );
+      if (satirlar.isEmpty) break;
+
+      final batch = arsiv.batch();
+      for (final satir in satirlar) {
+        batch.insert(tablo, satir, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+
+      islenen += satirlar.length;
+      sonId = satirlar.last['id'] as int;
+      ilerlemeBildir?.call('$tablo arşivleniyor: $islenen satır');
+      if (satirlar.length < _sayfaBoyutu) break;
+    }
+
+    const toplamIfadesi = 'COALESCE(SUM(toplam_tutar),0)';
+    final aktifOzet = await aktif.rawQuery(
+        'SELECT COUNT(*) AS n, $toplamIfadesi AS t FROM $tablo WHERE $subSorgu', args);
+    final arsivOzet = await arsiv.rawQuery(
+        'SELECT COUNT(*) AS n, $toplamIfadesi AS t FROM $tablo WHERE $subSorgu', args);
+
+    return DonemArsivTabloSonucu(
+      tablo: tablo,
       kopyalanan: islenen,
       aktifSayim: (aktifOzet.first['n'] as int?) ?? 0,
       arsivSayim: (arsivOzet.first['n'] as int?) ?? 0,

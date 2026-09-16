@@ -52,6 +52,10 @@ class YetkiTanimlari {
     'finans': {'label': 'Finans Merkezi', 'grup': 'Diğer'},
     'onay_merkezi': {'label': 'Onay Merkezi', 'grup': 'Diğer'},
     'risk_merkezi': {'label': 'Risk Merkezi', 'grup': 'Rapor'},
+    // 🔴 MASTER ERP DEEP AUDIT — Madde 15 (2026-09-16): /masa, /mutfak,
+    // /rezervasyon (restoran modülü — sipariş alma/ödeme içerir)
+    // uygulama_router.dart._routeYetkiler'de hiç yoktu, herkes erişebiliyordu.
+    'masa': {'label': 'Masa/Restoran', 'grup': 'Satış'},
   };
 
   // Rol bazlı varsayılan yetkiler
@@ -62,9 +66,9 @@ class YetkiTanimlari {
       case 'mudur':
         return yetkiler.keys.where((k) => !['kullanici', 'ayarlar'].contains(k)).toSet();
       case 'kasiyer':
-        return {'satis', 'satis_liste', 'satis_iade', 'urun', 'cari', 'cari_hareket', 'stok', 'promosyon'};
+        return {'satis', 'satis_liste', 'satis_iade', 'urun', 'cari', 'cari_hareket', 'stok', 'promosyon', 'masa'};
       case 'personel':
-        return {'satis', 'urun', 'cari', 'stok'};
+        return {'satis', 'urun', 'cari', 'stok', 'masa'};
       case 'depocu':
         return {'urun', 'stok', 'stok_sayim', 'tedarik'};
       default:

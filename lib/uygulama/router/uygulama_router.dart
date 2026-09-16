@@ -336,6 +336,24 @@ class UygulamaRouter {
     '/borc-takip': 'borc_takip',
     '/borc-ekle': 'borc_takip',
     '/toptan': 'toptan',
+    // 🔴🔴 MASTER ERP DEEP AUDIT — Madde 15 (Yetki Sistemi, 2026-09-16):
+    // aynı hata sınıfının devamı — /borc-dashboard, /borc-detay,
+    // /borc-odeme AYNI borç modülünün parçası ama farklı yazıldıkları
+    // (borc-takip/borc-ekle ÖNEKİYLE BAŞLAMADIKLARI) için önceki
+    // düzeltme onları kaçırmıştı; /masa*, /mutfak, /rezervasyon
+    // (restoran modülü — sipariş/ödeme içerir) ve /birim, /lot (katalog/
+    // stok bütünlüğü), /ai (satış/kasa/gider verisini özetleyen panel)
+    // router seviyesinde HİÇ korumasızdı — deep-link ile herhangi bir
+    // rol (kasiyer/personel/depocu) erişebiliyordu.
+    '/borc-dashboard': 'borc_takip',
+    '/borc-detay': 'borc_takip',
+    '/borc-odeme': 'borc_takip',
+    '/masa': 'masa',
+    '/mutfak': 'masa',
+    '/rezervasyon': 'masa',
+    '/birim': 'urun_ekle',
+    '/lot': 'stok',
+    '/ai': 'rapor',
   };
 
   static String? _redirect(WidgetRef ref, GoRouterState state) {

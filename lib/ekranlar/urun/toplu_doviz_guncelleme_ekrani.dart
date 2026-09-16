@@ -100,17 +100,34 @@ class _TopluDovizGuncellemeEkraniState extends State<TopluDovizGuncellemeEkrani>
     );
     if (onay != true || !mounted) return;
     setState(() => _guncelleniyor = true);
-    var adet = 0;
     try {
+      // 🔴 DÜZELTME (Madde 4 — Transaction denetimi, 2026-09-16):
+      // ÖNCEDEN her ürün ayrı ayrı alisFiyatiGuncelle() ile (N farklı
+      // db.update() çağrısı, atomik DEĞİL) güncelleniyordu —
+      // kullanıcıya "Bu işlem geri alınamaz!" denip atomik bir işlem
+      // izlenimi veriliyordu, ama ortasında bir kesinti (uygulama
+      // çökmesi/güç kesintisi) olsaydı KISMİ güncelleme kalır, geri
+      // alınamazdı. Artık UrunDeposu.topluAlanGuncelle() ile TEK
+      // transaction'da (ya hepsi ya hiçbiri) yazılıyor. alis_kdv_oran
+      // her ürün için zaten bellekte olduğundan (u.alisKdvOran), eski
+      // yoldaki gereksiz per-ürün SELECT de ayrıca ortadan kalktı.
+      final now = DateTime.now().toIso8601String();
+      final guncellemeler = <int, Map<String, dynamic>>{};
       for (final u in _urunler) {
         if (u.id == null || !_secili.contains(u.id)) continue;
         final yeni = _yeniFiyat(u);
         if (yeni == null) continue;
-        await UrunDeposu().alisFiyatiGuncelle(u.id!, yeni);
-        adet++;
+        final yeniKdvDahil = yeni * (1 + u.alisKdvOran / 100);
+        guncellemeler[u.id!] = {
+          'alis_fiyat': yeni,
+          'alis_fiyat_kdv_dahil': yeniKdvDahil,
+          'fiyat_guncelleme_tarih': now,
+        };
       }
+      final guncellenenIds = await UrunDeposu().topluAlanGuncelle(guncellemeler);
       if (!mounted) return;
-      BildirimServisi.basari(context, '$adet ürünün fiyatı güncel kurla yeniden hesaplandı ✓');
+      BildirimServisi.basari(context,
+          '${guncellenenIds.length} ürünün fiyatı güncel kurla yeniden hesaplandı ✓');
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Güncelleme başarısız: $e');

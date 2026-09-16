@@ -862,6 +862,34 @@ class UrunDeposu {
     return guncellenenIds;
   }
 
+  /// Birden fazla ürünün FARKLI alan/değer kombinasyonlarını TEK
+  /// transaction'da (ya hepsi ya hiçbiri) günceller — toplu_islem_ekrani
+  /// .dart için (Madde 4 sertleştirmesi, 2026-09-16). ÖNCEDEN bu ekran
+  /// her ürünü ayrı ayrı alanGuncelle() ile (N ayrı yazma, atomik
+  /// DEĞİL) güncelliyordu — kullanıcıya "Bu işlem geri alınamaz!"
+  /// denip atomik bir işlem izlenimi veriliyordu, ama ortasında bir
+  /// kesinti (uygulama çökmesi/güç kesintisi) olsaydı KISMİ güncelleme
+  /// kalır, geri alınamazdı. Commit sonrası tüm güncellenen ürünler tek
+  /// (parçalı) sorguyla buluta bildirilir.
+  Future<List<int>> topluAlanGuncelle(
+      Map<int, Map<String, dynamic>> guncellemeler) async {
+    if (guncellemeler.isEmpty) return [];
+    final db = await _d;
+    final now = DateTime.now().toIso8601String();
+    final guncellenenIds = <int>[];
+    await db.transaction((txn) async {
+      for (final entry in guncellemeler.entries) {
+        final data = Map<String, dynamic>.from(entry.value);
+        data['last_updated'] = now;
+        await txn.update(DbSabitler.urunler, data,
+            where: 'id = ?', whereArgs: [entry.key]);
+        guncellenenIds.add(entry.key);
+      }
+    });
+    await _topluBulutSenkronuGonder(guncellenenIds);
+    return guncellenenIds;
+  }
+
   /// Verilen id listesindeki ürünleri TEK (parçalı) SELECT ile çekip her
   /// birini buluta bildirir. 🔴 Madde 25 (N+1 sertleştirmesi, 2026-09-16):
   /// dört toplu-yazma fonksiyonu (qrMenuSecimleriniKaydet,

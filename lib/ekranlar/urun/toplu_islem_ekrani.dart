@@ -166,22 +166,23 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
 
     setState(() => _islemYapiliyor = true);
     int basarili = 0;
+    int basarisiz = 0;
+    int sifiraDusen = 0;
     try {
-      for (final id in _secili) {
-        final u = _tum.firstWhere((x) => x.id == id);
-
-        // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): 'stok' alanı
-        // burada diğer alanlar gibi doğrudan 'urunler.stok' sütununa
-        // yazılıyordu — hiçbir stok_hareket kaydı oluşturulmadan. Stok
-        // StokDeposu'nda event-sourcing ile (stok_hareket toplamından)
-        // yönetiliyor; bu yolla değiştirilen bir stok, bir sonraki
-        // stokMutabakatYap() turunda (senkron sonrası veya Veri Sağlığı
-        // Merkezi'nden tetiklenebiliyor) sessizce ESKİ değerine geri
-        // dönüyordu — kullanıcı "düzelttim" sanıp aslında kalıcı hiçbir
-        // şey olmuyordu. Artık StokDeposu.stokDusTxn/stokGirTxn ile
-        // (UrunDeposu.guncelle()'deki "Manuel Düzeltme" deseniyle aynı)
-        // düzgün bir stok_hareket kaydı da oluşturuluyor.
-        if (_alan!.id == 'stok') {
+      // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): 'stok' alanı
+      // burada diğer alanlar gibi doğrudan 'urunler.stok' sütununa
+      // yazılıyordu — hiçbir stok_hareket kaydı oluşturulmadan. Stok
+      // StokDeposu'nda event-sourcing ile (stok_hareket toplamından)
+      // yönetiliyor; bu yolla değiştirilen bir stok, bir sonraki
+      // stokMutabakatYap() turunda (senkron sonrası veya Veri Sağlığı
+      // Merkezi'nden tetiklenebiliyor) sessizce ESKİ değerine geri
+      // dönüyordu — kullanıcı "düzelttim" sanıp aslında kalıcı hiçbir
+      // şey olmuyordu. Artık StokDeposu.stokGir/stokDus ile (UrunDeposu
+      // .guncelle()'deki "Manuel Düzeltme" deseniyle aynı) düzgün bir
+      // stok_hareket kaydı da oluşturuluyor.
+      if (_alan!.id == 'stok') {
+        for (final id in _secili) {
+          final u = _tum.firstWhere((x) => x.id == id);
           try {
             final yeni = _hesapla(u.stok, sayisalDeger!).clamp(0, double.infinity);
             final fark = yeni - u.stok;
@@ -209,46 +210,65 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
             }
             basarili++;
           } catch (e) {
+            // 🔴 DÜZELTME (Madde 18/UX, 2026-09-16): önceden bu hata
+            // SADECE debugPrint ile yazılıyordu — üretim kullanıcısı
+            // hangi/kaç ürünün ATLANDIĞINI hiç görmüyordu, final mesaj
+            // her zaman "N ürün güncellendi ✓" diyordu (yanıltıcı).
+            basarisiz++;
             if (kDebugMode) debugPrint('Toplu stok güncelleme satır hatası (id=$id): $e');
           }
-          continue;
         }
+      } else {
+        // 🔴 DÜZELTME (Madde 4 — Transaction denetimi, 2026-09-16):
+        // ÖNCEDEN her ürün ayrı ayrı, N farklı db.update() çağrısıyla
+        // (atomik DEĞİL) güncelleniyordu — kullanıcıya "Bu işlem geri
+        // alınamaz!" denip atomik bir işlem izlenimi veriliyordu, ama
+        // ortasında bir kesinti (uygulama çökmesi/güç kesintisi)
+        // olsaydı KISMİ güncelleme kalır, geri alınamazdı. Artık
+        // UrunDeposu.topluAlanGuncelle() TEK transaction'da yazıyor
+        // (ya hepsi ya hiçbiri).
+        final guncellemeler = <int, Map<String, dynamic>>{};
+        for (final id in _secili) {
+          final u = _tum.firstWhere((x) => x.id == id);
+          final Map<String, dynamic> data = {};
+          if (_alan!.sayisal) {
+            final ham = _hesapla(_mevcutDeger(u, _alan!.id) ?? 0, sayisalDeger!);
+            if (ham < 0) sifiraDusen++;
+            final yeni = ham.clamp(0, double.infinity);
+            data[_alanKolonAdi(_alan!.id)] = yeni;
 
-        final Map<String, dynamic> data = {};
-        if (_alan!.sayisal) {
-          final yeni = _hesapla(
-              _mevcutDeger(u, _alan!.id) ?? 0, sayisalDeger!);
-          data[_alanKolonAdi(_alan!.id)] = yeni.clamp(0, double.infinity);
-
-          // Bağımlı alanları güncelle
-          if (_alan!.id == 'alisFiyat') {
-            final kdv = double.tryParse(u.kdvOran) ?? 18;
-            data['alis_fiyat_kdv_dahil'] = yeni * (1 + kdv / 100);
-          } else if (_alan!.id == 'alisFiyatKdvDahil') {
-            final kdv = double.tryParse(u.kdvOran) ?? 18;
-            data['alis_fiyat'] = kdv > 0 ? yeni / (1 + kdv / 100) : yeni;
-          } else if (_alan!.id == 'indirimOrani') {
-            data['indirimli_fiyat'] = u.satisFiyati * (1 - yeni / 100);
+            // Bağımlı alanları güncelle
+            if (_alan!.id == 'alisFiyat') {
+              final kdv = double.tryParse(u.kdvOran) ?? 18;
+              data['alis_fiyat_kdv_dahil'] = yeni * (1 + kdv / 100);
+            } else if (_alan!.id == 'alisFiyatKdvDahil') {
+              final kdv = double.tryParse(u.kdvOran) ?? 18;
+              data['alis_fiyat'] = kdv > 0 ? yeni / (1 + kdv / 100) : yeni;
+            } else if (_alan!.id == 'indirimOrani') {
+              data['indirimli_fiyat'] = u.satisFiyati * (1 - yeni / 100);
+            }
+          } else {
+            data[_alanKolonAdi(_alan!.id)] = degerMetin;
           }
-        } else {
-          data[_alanKolonAdi(_alan!.id)] = degerMetin;
+          guncellemeler[id] = data;
         }
-        // last_updated güncellenmeli — yoksa "Buluta Gönder" bu değişikliği görmez
-        data['last_updated'] = DateTime.now().toIso8601String();
+        final guncellenenIds = await _depo.topluAlanGuncelle(guncellemeler);
+        basarili = guncellenenIds.length;
+      }
 
-        // Madde 2 sertleştirmesi: doğrudan _depo.db erişimi kaldırıldı —
-        // UrunDeposu.alanGuncelle() üzerinden yazılıyor (last_updated +
-        // BulutManager bildirimi orada merkezi olarak yapılıyor).
-        try {
-          await _depo.alanGuncelle(id, data);
-          basarili++;
-        } catch (e) {
-          if (kDebugMode) debugPrint('Toplu güncelleme satır hatası (id=$id): $e');
+      await _yukle();
+      if (mounted) {
+        if (basarisiz > 0) {
+          BildirimServisi.uyari(context,
+              '$basarili ürün güncellendi, $basarisiz ürün hata nedeniyle ATLANDI');
+        } else if (sifiraDusen > 0) {
+          BildirimServisi.uyari(context,
+              '$basarili ürün güncellendi ($sifiraDusen tanesinde hesaplanan '
+              'değer 0\'ın altına düştüğü için 0 olarak kaydedildi)');
+        } else {
+          BildirimServisi.basari(context, '$basarili ürün güncellendi ✓');
         }
       }
-      await _yukle();
-      if (mounted) BildirimServisi.basari(context,
-          '$basarili ürün güncellendi ✓');
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     } finally {
@@ -468,7 +488,16 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                 children: entry.value.map((a) {
                   final secili = _alan?.id == a.id;
                   return GestureDetector(
-                    onTap: () => setState(() => _alan = a),
+                    onTap: () => setState(() {
+                      _alan = a;
+                      // 🔴 DÜZELTME (UX, 2026-09-16): metin (sayısal
+                      // olmayan) bir alana geçildiğinde önceden seçili
+                      // 'Artır'/'Azalt' İşlem Tipi'ni sıfırla — bu
+                      // ikisi sadece sayısal alanlar için anlamlıdır,
+                      // aksi halde aşağıdaki seçici gizlense de eski
+                      // seçim takılı kalırdı.
+                      if (!a.sayisal) _islem = IslemTuru.degistir;
+                    }),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -497,21 +526,28 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
             const Divider(),
             const SizedBox(height: 8),
 
-            // İşlem tipi
-            Text('İşlem Tipi', style: TsMetin.kucukVurgu.copyWith(color: context.textSecondary)),
-            const SizedBox(height: 8),
-            SegmentedButton<IslemTuru>(
-              segments: const [
-                ButtonSegment(value: IslemTuru.degistir,
-                    label: Text('Değiştir'), icon: Icon(Icons.edit, size: 15)),
-                ButtonSegment(value: IslemTuru.artir,
-                    label: Text('Artır'), icon: Icon(Icons.trending_up, size: 15)),
-                ButtonSegment(value: IslemTuru.azalt,
-                    label: Text('Azalt'), icon: Icon(Icons.trending_down, size: 15)),
-              ],
-              selected: {_islem},
-              onSelectionChanged: (s) => setState(() { _islem = s.first; }),
-            ),
+            // İşlem tipi — 🔴 DÜZELTME (UX, 2026-09-16): Artır/Azalt
+            // sadece sayısal alanlar için anlamlı; metin alanlarda
+            // (marka, grup vb.) önceden bu seçici yine gösteriliyordu
+            // ama seçim SESSİZCE yok sayılıyordu (her zaman "Değiştir"
+            // gibi davranıyordu) — kullanıcı "Artır"ı seçip değerin
+            // gerçekten eklendiğini sanabiliyordu.
+            if (_alan!.sayisal) ...[
+              Text('İşlem Tipi', style: TsMetin.kucukVurgu.copyWith(color: context.textSecondary)),
+              const SizedBox(height: 8),
+              SegmentedButton<IslemTuru>(
+                segments: const [
+                  ButtonSegment(value: IslemTuru.degistir,
+                      label: Text('Değiştir'), icon: Icon(Icons.edit, size: 15)),
+                  ButtonSegment(value: IslemTuru.artir,
+                      label: Text('Artır'), icon: Icon(Icons.trending_up, size: 15)),
+                  ButtonSegment(value: IslemTuru.azalt,
+                      label: Text('Azalt'), icon: Icon(Icons.trending_down, size: 15)),
+                ],
+                selected: {_islem},
+                onSelectionChanged: (s) => setState(() { _islem = s.first; }),
+              ),
+            ],
 
             // Artır/Azalt ise Yüzde/Sabit toggle
             if (_islem != IslemTuru.degistir && _alan!.sayisal) ...[

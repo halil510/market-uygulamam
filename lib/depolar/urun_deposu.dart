@@ -255,12 +255,17 @@ class UrunDeposu {
     }
   }
 
+  // 🔴 DÜZELTME (Madde 19 — Silme Mantığı denetimi, 2026-09-16): bu
+  // metodun (şu an hiçbir yerden çağrılmıyor, ama gelecekte "seçili
+  // ürünleri getir" amaçlı kullanılabilir) 'is_deleted' filtresi yoktu —
+  // dosyadaki diğer TÜM toplu sorgular (ara, tumunuGetir, sayfaliGetir
+  // vb.) bunu uyguluyor, bu istisnaydı.
   Future<List<UrunModel>> idListesiyleGetir(List<int> idler) async {
     if (idler.isEmpty) return [];
     final db = await _d;
     final phs = idler.map((_) => '?').join(',');
     final rows = await db.rawQuery(
-        'SELECT * FROM urunler WHERE id IN ($phs) ORDER BY urun_adi',
+        'SELECT * FROM urunler WHERE id IN ($phs) AND is_deleted = 0 ORDER BY urun_adi',
         idler);
     return rows.map(UrunModel.fromMap).toList();
   }

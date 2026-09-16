@@ -69,10 +69,20 @@ class PromosyonDeposu {
     }
   }
 
+  // 🔴 DÜZELTME (Madde 19 — Silme Mantığı denetimi, 2026-09-16): bu ve
+  // aşağıdaki iki metod, promosyonu urunler tablosuyla LEFT JOIN
+  // ediyordu ama u.is_deleted'ı hiç kontrol etmiyordu — ürün soft-delete
+  // edildikten sonra bile promosyon yönetim ekranında "aktif" gibi
+  // görünmeye devam ediyordu. '(u.id IS NULL OR u.is_deleted = 0)'
+  // urun_id'si hiç eşleşmeyen (NULL join) promosyonları etkilemeden
+  // SADECE ürünü GERÇEKTEN silinmiş olanları eler.
   Future<List<PromosyonModel>> tumunuGetir({bool sadecaAktif = false}) async {
     try {
       final db = await _d;
-      final where = sadecaAktif ? 'WHERE p.aktif = 1 AND p.deleted_at IS NULL' : 'WHERE p.deleted_at IS NULL';
+      final urunFiltre = '(u.id IS NULL OR u.is_deleted = 0)';
+      final where = sadecaAktif
+          ? 'WHERE p.aktif = 1 AND p.deleted_at IS NULL AND $urunFiltre'
+          : 'WHERE p.deleted_at IS NULL AND $urunFiltre';
       final rows = await db.rawQuery(
         'SELECT p.*, u.urun_adi FROM promosyonlar p LEFT JOIN urunler u ON p.urun_id = u.id $where ORDER BY p.aktif DESC, p.promosyon_adi',
       );
@@ -90,6 +100,7 @@ class PromosyonDeposu {
       final rows = await db.rawQuery(
         'SELECT p.*, u.urun_adi FROM promosyonlar p LEFT JOIN urunler u ON p.urun_id = u.id '
         'WHERE p.urun_id = ? AND p.aktif = 1 AND p.deleted_at IS NULL '
+        'AND (u.id IS NULL OR u.is_deleted = 0) '
         'AND (p.bitis_tarihi IS NULL OR p.bitis_tarihi >= ?) '
         'ORDER BY p.iskonto_oran DESC',
         [urunId, now],
@@ -129,7 +140,7 @@ class PromosyonDeposu {
           'SELECT p.*, u.urun_adi, u.satis_fiyati, u.barkod '
           'FROM promosyonlar p '
           'LEFT JOIN urunler u ON p.urun_id = u.id '
-          'WHERE p.deleted_at IS NULL '
+          'WHERE p.deleted_at IS NULL AND (u.id IS NULL OR u.is_deleted = 0) '
           'ORDER BY p.aktif DESC',
         );
         return rows.map((r) => Map<String, dynamic>.from(r)).toList();

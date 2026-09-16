@@ -14,9 +14,17 @@ class SubeDeposu {
   final Veritabani _db = Veritabani();
   Future<Database> get _d async => _db.db;
 
+  // 🔴 DÜZELTME (Madde 19 — Silme Mantığı denetimi, 2026-09-16): bu metod
+  // hiçbir 'is_deleted' filtresi uygulamıyordu — kardeş metod
+  // aktifOlanlariGetir() bunu doğru yapıyordu ama Şube Yönetimi ekranının
+  // kendisinin kullandığı BU metod yapmıyordu. Bir şube BAŞKA bir
+  // cihazdan soft-delete edilip sync ile is_deleted=1 geldiğinde, Şube
+  // Yönetimi ekranı onu hâlâ normal bir satır gibi listeliyor ve
+  // kullanıcı silinmiş bir şubeyi tekrar "aktif şube" olarak seçebiliyordu.
   Future<List<Map<String, dynamic>>> hepsiGetir() async {
     final db = await _d;
-    final rows = await db.query('subeler', orderBy: 'sube_adi');
+    final rows = await db.query('subeler',
+        where: 'is_deleted = 0', orderBy: 'sube_adi');
     return rows.map((r) => Map<String, dynamic>.from(r)).toList();
   }
 

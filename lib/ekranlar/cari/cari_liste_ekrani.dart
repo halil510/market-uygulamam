@@ -14,6 +14,7 @@ import '../../widgetlar/ortak/yukleniyor_widget.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/gib_servisi.dart';
 import '../../depolar/cari_deposu.dart';
+import '../../depolar/bekleyen_siparis_deposu.dart';
 
 class CariListeEkrani extends ConsumerStatefulWidget {
   /// AI Chat'ten "cari X'e git" gibi bir komutla gelindiğinde, ekran
@@ -61,6 +62,24 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
   }
 
   Future<void> _sil(CariModel c) async {
+    // 🔴 DÜZELTME (Madde 19 — Silme Mantığı denetimi, 2026-09-16): bu
+    // diyalog carinin AÇIK (durum='bekliyor') bekleyen siparişi olup
+    // olmadığını hiç kontrol etmiyordu — cari silindiğinde (soft-delete)
+    // fiziksel kayıt bozulmuyor ama cari artık dropdown/arama
+    // sonuçlarında görünmediğinden, o siparişi kapatmak için cari
+    // tekrar seçilemiyordu. Bakiye uyarısıyla aynı desende, doluysa
+    // net bir uyarı ekleniyor.
+    var bekleyenSiparisSayisi = 0;
+    if (c.id != null) {
+      try {
+        final bekleyenler = await BekleyenSiparisDeposu()
+            .bekleyenSiparisleriGetir(cariId: c.id, durum: 'bekliyor');
+        bekleyenSiparisSayisi = bekleyenler.length;
+      } catch (_) {
+        // Sayım başarısız olursa sessizce geç — silme akışını bloklamasın.
+      }
+    }
+    if (!mounted) return;
     final onay = await showDialog<bool>(context: context,
       builder: (ctx) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -89,6 +108,13 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
                       'silindikten sonra raporlarda görünmeyecek.'
                     : '\n\n⚠️ Bu carinin ${ParaUtils.formatla(c.bakiye.abs())} borcu var — '
                       'silindikten sonra raporlarda görünmeyecek.',
+                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+              ),
+            if (bekleyenSiparisSayisi > 0)
+              TextSpan(
+                text: '\n\n⚠️ Bu carinin $bekleyenSiparisSayisi bekleyen siparişi var — '
+                    'cari silindikten sonra arama/seçim listelerinde görünmeyeceği için '
+                    'bu siparişleri kapatmak zorlaşacak.',
                 style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
               ),
           ],

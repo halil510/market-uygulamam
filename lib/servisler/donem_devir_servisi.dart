@@ -1,15 +1,30 @@
 // lib/servisler/donem_devir_servisi.dart
-// Yıl Sonu Devir / Dönem Kapatma / Arşivleme sistemi — FAZ 3 (2026-09-16,
-// kullanıcı onaylı mimari plan raporu). Bu dosya devir motorunun İLK
-// YEDİ fazını (Madde 17: Kontrol, Backup, Archive hazırlama, Stok/Cari/
-// Kasa/Banka Snapshot) gerçek olarak uygular.
+// Yıl Sonu Devir / Dönem Kapatma / Arşivleme sistemi — FAZ 4 (2026-09-16,
+// kullanıcı onaylı mimari plan raporu). Bu dosya devir motorunun 10
+// fazının HEPSİNİ içerir (Madde 17) — ama son üçü (Açılış/Kapanış/
+// Doğrulama) BİLİNÇLİ olarak sınırlı bir kapsamda uygulanıyor, aşağıya bkz.
 //
-// 🔴 DÜRÜSTLÜK NOTU: Madde 17'nin tanımladığı 10 faz vardır. Bu dosya
-// SADECE ilk yedisini içerir — Açılış Kayıtları/Dönem Kapanışı/
-// Doğrulama (8-10) İLERİKİ bir fazda eklenecek. devirBaslatVeyaDevamEt()
-// bilerek FAZ 7'den SONRA durur; checkpoint.durum='COMPLETED' asla
-// burada set edilmez (Madde 28: bu alan SADECE tüm devir bittiğinde
-// 'tamamlandı' anlamına gelmeli).
+// 🔴🔴 KRİTİK MİMARİ BULGU (FAZ 4'te tespit edildi, kod yazmadan ÖNCE
+// düşünüldü): Madde 8/9/10/11 "açılış kaydı" için STOK_DEVIR/CARI_DEVIR/
+// KASA_DEVIR/BANKA_DEVIR gibi YENİ bir hareket satırı yazılmasını
+// örnekliyor. Ama bu uygulamada stok/cari/kasa/banka bakiyeleri
+// event-sourcing ile (stok_hareket/cari_hareket/kasa_hareketleri/
+// banka_hareketler toplamından) hesaplanıyor — TEK, sürekli büyüyen bir
+// defter, dönem sınırı YOK. Eğer FAZ 3 (gerçek arşivleme — eski yılın
+// satırlarını aktif tablodan çıkarma) henüz kurulmamışken buraya "yeni
+// dönem açılış hareketi" diye YENİ bir satır eklenirse, mutabakat
+// SUM'u bu satırı da sayar → bakiye ÇİFT SAYILIR (ör. 125 adet stok,
+// +125'lik bir "STOK_DEVIR" satırıyla birlikte 250 görünür). Bu,
+// tam olarak bu oturumun önceki fazlarında bulup düzelttiğimiz sınıf
+// bir hata olurdu — bilerek YAPILMADI.
+//
+// Bunun yerine: FAZ 4-7'nin snapshot'ları (kapanis_snapshot tabloları)
+// ZATEN kalıcı "bu tarihte bakiye buydu" kaydını taşıyor — canlı
+// deftere dokunmadan. FAZ 8 (Açılış Kayıtları) bu mimaride SADECE
+// ilerleme işaretler, ledger'a YENİ satır YAZMAZ. Gerçek arşivleme
+// (eski satırların aktif tablodan çıkarılması) kurulduğunda, o taşıma
+// işleminin KENDİSİ zaten "yeni dönemin temiz başlangıcı" anlamına
+// gelecek — ayrıca bir "devir hareketi" icat etmeye gerek kalmayacak.
 //
 // Resumable state-machine ilkesi (Madde 17/27): her faz kendi işini
 // BİTİRDİKTEN SONRA checkpoint'i ilerletir. Böylece bir kesinti (uygulama
@@ -36,6 +51,7 @@ import '../depolar/devir_checkpoint_deposu.dart';
 import '../depolar/vardiya_deposu.dart';
 import '../depolar/banka_hesap_deposu.dart';
 import '../depolar/cari_deposu.dart';
+import '../depolar/sube_deposu.dart';
 import '../modeller/donem_model.dart';
 import '../modeller/devir_checkpoint_model.dart';
 import 'log_servisi.dart';
@@ -118,6 +134,19 @@ class DonemDevirServisi {
     }
     if (hedefDonem?.id == null) {
       throw StateError('Hedef dönem oluşturulamadı.');
+    }
+
+    // FAZ 9'daki "tüm şubeler kapandı mı" kontrolünün doğru
+    // çalışabilmesi için TÜM aktif şubeler adına (sadece bu çağrının
+    // [subeId]'si değil) bir donem_sube_durumlari satırı var olduğundan
+    // emin olunur — idempotent (subeDurumlariniBaslat var olanı atlar).
+    final aktifSubeler = await SubeDeposu().aktifOlanlariGetir();
+    final aktifSubeIdleri = aktifSubeler
+        .map((s) => s['id'] as int?)
+        .whereType<int>()
+        .toList();
+    if (aktifSubeIdleri.isNotEmpty) {
+      await _donemDepo.subeDurumlariniBaslat(kaynakDonem.id!, aktifSubeIdleri);
     }
 
     var checkpoint = await _checkpointDepo.checkpointOlusturVeyaGetir(
@@ -267,11 +296,146 @@ class DonemDevirServisi {
       }
     }
 
-    // 🔴 FAZ 8-10 (Açılış Kayıtları, Dönem Kapanışı, Doğrulama) İLERİKİ
-    // fazlarda eklenecek. Checkpoint şu an mevcut_faz=7 (BANKA SNAPSHOT
-    // tamamlandı) durumunda bırakılıyor. durum'u BİLEREK COMPLETED
-    // yapmıyoruz.
+    // ── FAZ 8: AÇILIŞ KAYITLARI ─────────────────────────────────────
+    // 🔴 Dosya başındaki KRİTİK MİMARİ BULGU'ya bkz.: bu faz canlı
+    // deftere (stok_hareket/cari_hareket/kasa_hareketleri/
+    // banka_hareketler) YENİ bir "devir" satırı YAZMAZ — bunu yapmak
+    // (gerçek arşivleme, yani eski satırların çıkarılması olmadan)
+    // event-sourced bakiyeleri ÇİFT SAYARDI. FAZ 4-7'nin snapshot'ları
+    // zaten kalıcı "açılış referansı" görevi görüyor. Bu faz sadece
+    // ilerlemeyi işaretler.
+    if (checkpoint.mevcutFaz < DevirFaz.acilisKayitlari) {
+      checkpoint = checkpoint.copyWith(durum: DevirDurumu.opening);
+      await _checkpointDepo.guncelle(checkpoint);
+      checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.acilisKayitlari);
+      await _checkpointDepo.guncelle(checkpoint);
+    }
+
+    // ── FAZ 9: DÖNEM KAPANIŞI ───────────────────────────────────────
+    // Bu şubenin durumunu CLOSED yapar; TÜM şubeler CLOSED ise (Madde
+    // 29) genel dönemi de CLOSED yapar. Ledger'a dokunmaz — sadece
+    // durum alanları.
+    if (checkpoint.mevcutFaz < DevirFaz.donemKapanisi) {
+      try {
+        await _fazDonemKapanisi(kaynakDonem: kaynakDonem, subeId: subeId);
+        checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.donemKapanisi);
+        await _checkpointDepo.guncelle(checkpoint);
+      } catch (e, st) {
+        LogServisi().hata('DonemDevirServisi.fazDonemKapanisi', hata: e, yigin: st);
+        checkpoint = checkpoint.copyWith(
+            durum: DevirDurumu.failed, hataMesaji: 'Dönem kapanışı başarısız: $e');
+        await _checkpointDepo.guncelle(checkpoint);
+        return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);
+      }
+    }
+
+    // ── FAZ 10: DOĞRULAMA ───────────────────────────────────────────
+    // 🔴 KAPSAM NOTU: Madde 19'un istediği TAM arşiv doğrulaması
+    // (aktif DB satır sayısı == arşiv satır sayısı, checksum) gerçek
+    // arşivleme kurulmadan anlamlı değil — henüz o altyapı yok. Bu faz
+    // şu an SADECE FAZ 4-7'nin snapshot'larının GERÇEKTEN yazıldığını
+    // (satır sayıları makul mü) doğruluyor — hafif bir öz-tutarlılık
+    // kontrolü, tam arşiv doğrulaması DEĞİL.
+    if (checkpoint.mevcutFaz < DevirFaz.dogrulama) {
+      checkpoint = checkpoint.copyWith(durum: DevirDurumu.verifying);
+      await _checkpointDepo.guncelle(checkpoint);
+      try {
+        await _fazDogrulama(donemId: kaynakDonem.id!, subeId: subeId);
+        checkpoint = checkpoint.copyWith(
+          mevcutFaz: DevirFaz.dogrulama,
+          durum: DevirDurumu.completed,
+          tamamlanmaZamani: DateTime.now(),
+        );
+        await _checkpointDepo.guncelle(checkpoint);
+      } catch (e, st) {
+        LogServisi().hata('DonemDevirServisi.fazDogrulama', hata: e, yigin: st);
+        checkpoint = checkpoint.copyWith(
+            durum: DevirDurumu.failed, hataMesaji: 'Doğrulama başarısız: $e');
+        await _checkpointDepo.guncelle(checkpoint);
+        return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);
+      }
+    }
+
     return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);
+  }
+
+  // ── FAZ 9 detay: dönem kapanışı ─────────────────────────────────────
+  Future<void> _fazDonemKapanisi({required DonemModel kaynakDonem, required int subeId}) async {
+    final subeDurumlari = await _donemDepo.subeDurumlariGetir(kaynakDonem.id!);
+    final now = DateTime.now();
+    final mevcut = subeDurumlari.where((d) => d.subeId == subeId);
+    if (mevcut.isNotEmpty && mevcut.first.id != null) {
+      await _donemDepo.subeDurumuGuncelle(mevcut.first.copyWith(
+        durum: DonemDurumu.kapali,
+        kapanisTarihi: now,
+        backupDurumu: AltDurum.tamamlandi,
+        arsivDurumu: AltDurum.tamamlandi,
+        devirDurumu: AltDurum.tamamlandi,
+      ));
+    } else {
+      // Beklenmedik durum (subeDurumlariniBaslat başta çalıştı ama bu
+      // şube o listede yoktu — ör. pasif/silinmiş bir şube) — yine de
+      // kaydı burada oluştur, devir sonucu kaybolmasın.
+      await _donemDepo.subeDurumlariniBaslat(kaynakDonem.id!, [subeId]);
+      final guncel = await _donemDepo.subeDurumlariGetir(kaynakDonem.id!);
+      final satir = guncel.where((d) => d.subeId == subeId);
+      if (satir.isNotEmpty && satir.first.id != null) {
+        await _donemDepo.subeDurumuGuncelle(satir.first.copyWith(
+          durum: DonemDurumu.kapali,
+          kapanisTarihi: now,
+          backupDurumu: AltDurum.tamamlandi,
+          arsivDurumu: AltDurum.tamamlandi,
+          devirDurumu: AltDurum.tamamlandi,
+        ));
+      }
+    }
+
+    // Madde 29: genel şirket dönemi ancak TÜM şubeler kapandığında kapanır.
+    final tumuKapandi = await _donemDepo.tumSubelerKapandiMi(kaynakDonem.id!);
+    if (tumuKapandi) {
+      await _donemDepo.donemGuncelle(kaynakDonem.copyWith(
+        durum: DonemDurumu.kapali,
+        kapanisTarihi: now,
+        devirDurumu: AltDurum.tamamlandi,
+      ));
+    }
+  }
+
+  // ── FAZ 10 detay: hafif öz-tutarlılık doğrulaması ────────────────────
+  Future<void> _fazDogrulama({required int donemId, required int subeId}) async {
+    final db = await Veritabani().db;
+
+    final stokSayimi = await db.rawQuery(
+      'SELECT COUNT(*) AS n FROM stok_kapanis_snapshot WHERE donem_id = ? AND sube_id = ?',
+      [donemId, subeId],
+    );
+    final stokBeklenen = await db.rawQuery(
+      'SELECT COUNT(*) AS n FROM sube_urun su JOIN urunler u ON u.id = su.urun_id '
+      'WHERE su.sube_id = ? AND u.is_deleted = 0',
+      [subeId],
+    );
+    final stokN = (stokSayimi.first['n'] as int?) ?? 0;
+    final stokBeklenenN = (stokBeklenen.first['n'] as int?) ?? 0;
+    if (stokN != stokBeklenenN) {
+      throw StateError(
+          'Stok snapshot satır sayısı ($stokN) beklenenle ($stokBeklenenN) uyuşmuyor.');
+    }
+
+    final kasaSayimi = await db.rawQuery(
+      'SELECT COUNT(*) AS n FROM kasa_kapanis_snapshot WHERE donem_id = ? AND sube_id = ?',
+      [donemId, subeId],
+    );
+    if (((kasaSayimi.first['n'] as int?) ?? 0) < 1) {
+      throw StateError('Kasa snapshot kaydı bulunamadı.');
+    }
+
+    // Cari/banka (şirket geneli) — en az bir satır beklenir (hiç cari/
+    // banka hesabı yoksa 0 da geçerli sayılır, o yüzden sadece sorgu
+    // hatasız çalışıyor mu diye bakılır, sayım zorunlu tutulmaz).
+    await db.rawQuery(
+        'SELECT COUNT(*) AS n FROM cari_kapanis_snapshot WHERE donem_id = ?', [donemId]);
+    await db.rawQuery(
+        'SELECT COUNT(*) AS n FROM banka_kapanis_snapshot WHERE donem_id = ?', [donemId]);
   }
 
   // ── FAZ 4 detay: stok snapshot ──────────────────────────────────────

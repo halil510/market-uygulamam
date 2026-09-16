@@ -171,4 +171,27 @@ class DonemSubeDurumuModel {
         'arsiv_durumu': arsivDurumu,
         'devir_durumu': devirDurumu,
       };
+
+  DonemSubeDurumuModel copyWith({
+    String? durum,
+    DateTime? kapanisTarihi,
+    int? kapanisiYapanKullaniciId,
+    String? kapanisCihazi,
+    String? backupDurumu,
+    String? arsivDurumu,
+    String? devirDurumu,
+  }) =>
+      DonemSubeDurumuModel(
+        id: id,
+        globalId: globalId,
+        donemId: donemId,
+        subeId: subeId,
+        durum: durum ?? this.durum,
+        kapanisTarihi: kapanisTarihi ?? this.kapanisTarihi,
+        kapanisiYapanKullaniciId: kapanisiYapanKullaniciId ?? this.kapanisiYapanKullaniciId,
+        kapanisCihazi: kapanisCihazi ?? this.kapanisCihazi,
+        backupDurumu: backupDurumu ?? this.backupDurumu,
+        arsivDurumu: arsivDurumu ?? this.arsivDurumu,
+        devirDurumu: devirDurumu ?? this.devirDurumu,
+      );
 }

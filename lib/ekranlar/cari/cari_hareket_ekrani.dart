@@ -19,7 +19,6 @@ import '../../modeller/cari_hareket_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
-import '../../veri/database/veritabani.dart';
 import 'fis_detay_ekrani.dart';
 import '../../tasarim_sistemi/ts_kart.dart';
 
@@ -32,7 +31,6 @@ class CariHareketEkrani extends ConsumerStatefulWidget {
 
 class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   final _depo = CariDeposu();
-  final _db = Veritabani();
   final _fmt = DateFormat('dd.MM.yyyy');
   final _fmtT = DateFormat('dd.MM.yyyy HH:mm');
 
@@ -83,14 +81,20 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
     }
   }
 
-  Future<List<CariHareketModel>> _hareketleriGetir() async {
-    final db = await _db.db;
-    final rows = await db.rawQuery(
-      'SELECT * FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0 ORDER BY tarih DESC',
-      [widget.cariId],
-    );
-    return rows.map(CariHareketModel.fromMap).toList();
-  }
+  // MASTER ERP DEEP AUDIT — Madde 25 (Performans) sertleştirmesi: bu
+  // ekran ÖNCEDEN doğrudan Veritabani().db üzerinden 'SELECT * FROM
+  // cari_hareket WHERE cari_id=? ...' çalıştırıyordu — hiç LIMIT yoktu.
+  // Sıradan bir müşteride sorun olmaz ama yıllardır işlem gören bir
+  // bayi/toptancı carisinde bu, TÜM geçmişi (potansiyel olarak on
+  // binlerce satır) tek seferde belleğe çekip UI'yi kilitleyebilirdi.
+  // Artık CariDeposu.hareketleriniGetir() üzerinden, yüksek ama GÜVENLİ
+  // bir tavanla (5000) çağrılıyor — normal cariler için davranış
+  // BİREBİR aynı (hemen hepsi 5000'in çok altında hareket sayısına
+  // sahip), sadece patolojik uç durumda ekranı çökertmek yerine "son
+  // 5000 hareket" gösterir. Ayrıca repository katmanını atlayan
+  // doğrudan SQL erişimi de bu vesileyle kapatıldı.
+  Future<List<CariHareketModel>> _hareketleriGetir() =>
+      _depo.hareketleriniGetir(widget.cariId, limit: 5000);
 
   void _filtrele() {
     var list = List<CariHareketModel>.from(_tumHareketler);

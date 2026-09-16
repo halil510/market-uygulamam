@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      66; // v66: kritik hareket tablolarında (kasa/stok/cari/iade/fatura/irsaliye/tedarik/vardiya) eksik indeksler + vardiyalar.deleted_at eklendi (Madde 3 sertleştirmesi)
+      67; // v67: cari_hareket'e (cari_id,is_deleted,tarih) bileşik indeksi eklendi — cari ekstre ekranı artık sınırsız SELECT * yerine limitli repository metodunu kullanıyor (Madde 25/26 sertleştirmesi)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

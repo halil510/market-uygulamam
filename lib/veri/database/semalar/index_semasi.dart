@@ -122,5 +122,15 @@ class IndexSemasi {
     //    göre filtreliyor) ───────────────────────────────────────────────
     "CREATE INDEX IF NOT EXISTS idx_vardiya_sube_kapanis ON vardiyalar(sube_id, kapanis_tarihi)",
     "CREATE INDEX IF NOT EXISTS idx_vardiya_kullanici ON vardiyalar(kullanici_id)",
+
+    // 🔴🔴 MASTER ERP DEEP AUDIT — Madde 25/26 (Performans/Index Denetimi,
+    // 2026-09-16): cari_hareket_ekrani.dart'ın ekstre sorgusu
+    // ('WHERE cari_id=? AND is_deleted=0 ORDER BY tarih DESC') ayrı
+    // idx_carih_cari(cari_id) ve idx_cari_hareket_deleted(is_deleted)
+    // indekslerine sahipti ama İKİSİNİ BİRDEN + sıralamayı TEK geçişte
+    // karşılayan bileşik bir indeks yoktu — yıllardır işlem gören bir
+    // bayi/toptancı carisinde (binlerce hareket) bu sorgu index
+    // birleştirme yerine kısmi tam taramaya düşebiliyordu.
+    "CREATE INDEX IF NOT EXISTS idx_carih_cari_silinmemis_tarih ON cari_hareket(cari_id, is_deleted, tarih)",
   ];
 }

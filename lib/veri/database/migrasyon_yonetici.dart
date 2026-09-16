@@ -174,5 +174,9 @@ class MigrasyonYonetici {
     // tamamlandı, vardiyalar.deleted_at eklendi (Madde 3 sertleştirmesi
     // — bkz. _v65denV66ya yorumu).
     if (eskiVersiyon < 66) await _v65denV66ya(db);
+
+    // v66'dan v67'ye — cari ekstre sorgusu için bileşik index (Madde
+    // 25/26 sertleştirmesi — bkz. _v66danV67ye yorumu).
+    if (eskiVersiyon < 67) await _v66danV67ye(db);
   }
 }

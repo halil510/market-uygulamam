@@ -879,3 +879,18 @@ Future<void> _v65denV66ya(Database db) async {
   // için hazırlık, nullable olduğu için mevcut hiçbir sorguyu etkilemez.
   await _calistir(db, 'ALTER TABLE vardiyalar ADD COLUMN deleted_at DATETIME');
 }
+
+// ==================== v66 -> v67 ====================
+// MASTER ERP DEEP AUDIT — Madde 25/26 (Performans / Database Index
+// Audit): cari_hareket_ekrani.dart (cari ekstre ekranı) doğrudan
+// Veritabani().db üzerinden 'SELECT * FROM cari_hareket WHERE cari_id=?
+// AND is_deleted=0 ORDER BY tarih DESC' çalıştırıyordu — HİÇ LIMIT yoktu
+// ve mevcut ayrı cari_id/is_deleted indeksleri bu bileşik sorguyu tek
+// geçişte karşılamıyordu. Ekran artık CariDeposu.hareketleriniGetir()
+// (mevcut, sınırlı/parametrik repository metodu) üzerinden güvenli bir
+// tavanla (5000) çağırıyor; bu bileşik indeks o sorguyu (ve aynı deseni
+// kullanan her yeri) hızlandırır.
+Future<void> _v66danV67ye(Database db) async {
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_carih_cari_silinmemis_tarih ON cari_hareket(cari_id, is_deleted, tarih)');
+}

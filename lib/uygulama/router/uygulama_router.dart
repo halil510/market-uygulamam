@@ -138,7 +138,12 @@ class UygulamaRouter {
       routes: [
         GoRoute(path: '/splash', builder: (_, __) => const SplashEkrani()),
         GoRoute(path: '/giris', builder: (_, __) => const GirisEkrani()),
-        GoRoute(path: '/sifre', builder: (_, __) => const SifreEkrani()),
+        GoRoute(
+          path: '/sifre',
+          builder: (_, state) => SifreEkrani(
+            zorunlu: (state.extra as Map?)?['zorunlu'] == true,
+          ),
+        ),
 
         // ---------- FULL-SCREEN ROUTES ----------
         GoRoute(path: '/kasa/virman', name: 'virman', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const VirmanEkrani()),

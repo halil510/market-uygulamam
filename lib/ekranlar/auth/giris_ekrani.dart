@@ -233,7 +233,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
       _yukleniyor.value = false;
 
       if (sonuc == GirisSonucu.basarili) {
-        if (mounted) context.go('/');
+        if (mounted) await _girisSonrasiYonlendir();
       } else {
         _hata.value = 'Parmak izi ile giriş başarısız. Şifrenizle giriş yapın.';
       }
@@ -257,6 +257,25 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
   }
 
   void _temizle() => _sifre.value = '';
+
+  // ─── MASTER ERP DEEP AUDIT — Madde 17 (Authentication) sertleştirmesi ──
+  // ÖNCEDEN: admin hâlâ varsayılan "1234" şifresini kullanıyorsa sadece
+  // Dashboard'da göz ardı edilebilir bir uyarı banner'ı gösteriliyordu —
+  // kullanıcı bunu hiç kapatmadan sonsuza kadar uygulamayı kullanmaya
+  // devam edebilirdi. Denetim dosyasının istediği "zorunlu parola
+  // değişimi → 1234 tamamen geçersiz" akışı hiç yoktu. Artık başarılı
+  // her girişten (şifre veya biyometrik) SONRA bu kontrol yapılıyor;
+  // varsayılan şifre hâlâ kullanılıyorsa ana uygulamaya (`/`) DEĞİL,
+  // geri tuşu kapalı zorunlu şifre değiştirme ekranına yönlendirilir.
+  Future<void> _girisSonrasiYonlendir() async {
+    final varsayilanSifre = await AuthServisi().varsayilanSifreKullaniliyorMu();
+    if (!mounted) return;
+    if (varsayilanSifre) {
+      context.go('/sifre', extra: {'zorunlu': true});
+    } else {
+      context.go('/');
+    }
+  }
 
   // ─── GİRİŞ İŞLEMİ ───────────────────────────────────────────────────────
   Future<void> _girisYap() async {
@@ -298,7 +317,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
           final token = await AuthServisi().biyometrikKaydet(userId);
           await secure.write(key: _biyometrikTokenAnahtari, value: token);
         }
-        if (mounted) context.go('/');
+        if (mounted) await _girisSonrasiYonlendir();
       } else if (sonuc == GirisSonucu.kilitli) {
         _kilitli.value = true;
         _kilitBitis = DateTime.now()

@@ -8,7 +8,13 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
 class SifreEkrani extends ConsumerStatefulWidget {
-  const SifreEkrani({super.key});
+  /// MASTER ERP DEEP AUDIT — Madde 17 (Authentication) sertleştirmesi:
+  /// true ise bu ekran, admin hâlâ varsayılan "1234" şifresini
+  /// kullandığı için giriş sonrası ZORUNLU olarak açılmıştır — geri tuşu
+  /// gizlenir ve sistem geri tuşu (Android) devre dışı bırakılır, ana
+  /// uygulamaya sadece şifre gerçekten değiştirildiğinde geçilebilir.
+  final bool zorunlu;
+  const SifreEkrani({super.key, this.zorunlu = false});
   @override
   ConsumerState<SifreEkrani> createState() => _SifreEkraniState();
 }
@@ -46,7 +52,14 @@ class _SifreEkraniState extends ConsumerState<SifreEkrani> {
       await KullaniciDeposu().sifreDegistir(kullanici.id!, _yeniCtrl.text);
       if (mounted) {
         BildirimServisi.basari(context, 'Şifre değiştirildi ✓');
-        context.pop();
+        // Zorunlu akışta (varsayılan "1234" şifresiyle giriş sonrası)
+        // bu ekrana context.go() ile ulaşılır — geri dönülecek bir sayfa
+        // yoktur. Normal (Ayarlar'dan) akışta ise push edilmiştir.
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/');
+        }
       }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Değiştirilemedi: $e');
@@ -96,9 +109,14 @@ class _SifreEkraniState extends ConsumerState<SifreEkrani> {
     final eslesiyorMu =
         _tekrarCtrl.text.isNotEmpty && _tekrarCtrl.text == _yeniCtrl.text;
 
-    return Scaffold(
+    return PopScope(
+      // Zorunlu akışta sistem geri tuşu (Android) bu ekranı atlayıp
+      // varsayılan şifreyle uygulamaya girme yolu olmasın diye kapalı.
+      canPop: !widget.zorunlu,
+      child: Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
-      appBar: const TsAppBar(baslik: 'Şifre Değiştir', gradyanli: true),
+      appBar: TsAppBar(
+          baslik: 'Şifre Değiştir', gradyanli: true, geriTusu: !widget.zorunlu),
       body: Form(
         key: _form,
         // Tabletlerde tam genişliğe yayılıp dağınık görünmesin diye makul
@@ -114,6 +132,29 @@ class _SifreEkraniState extends ConsumerState<SifreEkrani> {
                 vertical: TsBosluk.xl,
               ),
               children: [
+                if (widget.zorunlu) ...[
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: TsRenk.hata.withAlpha(20),
+                      borderRadius: BorderRadius.circular(TsRadius.lg),
+                      border: Border.all(color: TsRenk.hata.withAlpha(60)),
+                    ),
+                    child: Row(children: [
+                      Icon(Icons.warning_amber_rounded, color: TsRenk.hata),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Hesabınız hâlâ varsayılan "1234" şifresini kullanıyor. '
+                          'Güvenlik nedeniyle devam etmeden önce yeni bir şifre belirlemelisiniz.',
+                          style: TsMetin.kucuk.copyWith(
+                              color: TsRenk.hata, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ]),
+                  ),
+                  const SizedBox(height: TsBosluk.lg),
+                ],
                 // ── Başlık ikonu + kısa açıklama ────────────────────────
                 Center(
                   child: Container(
@@ -265,6 +306,7 @@ class _SifreEkraniState extends ConsumerState<SifreEkrani> {
             );
           },
         ),
+      ),
       ),
     );
   }

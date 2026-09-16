@@ -113,7 +113,17 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
         AuthServisi().ayarlarDogrulamaTemizle();
         // bildir() kaldırıldı — state otomatik güncellenir
         while (Navigator.canPop(context)) Navigator.pop(context);
-        context.go('/');
+        // Madde 17 sertleştirmesi (bkz. giris_ekrani.dart._girisSonrasiYonlendir
+        // ile AYNI gerekçe): "Kullanıcı Değiştir" akışı da admin/1234 ile
+        // ana uygulamaya doğrudan geçebilen İKİNCİ bir yoldu.
+        final varsayilanSifre =
+            await AuthServisi().varsayilanSifreKullaniliyorMu();
+        if (!mounted) return;
+        if (varsayilanSifre) {
+          context.go('/sifre', extra: {'zorunlu': true});
+        } else {
+          context.go('/');
+        }
       } else {
         _hataliGiris++;
         _pin.value = '';

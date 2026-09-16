@@ -54,8 +54,6 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
   // ─── Animasyon controller'ları ──────────────────────────────────────────
   late AnimationController _shakeCtrl;
   late Animation<double> _shakeAnim;
-  late AnimationController _pulseCtrl;
-  late Animation<double> _pulseAnim;
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
   late AnimationController _scaleCtrl;
@@ -99,15 +97,6 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
         .chain(CurveTween(curve: Curves.elasticIn))
         .animate(_shakeCtrl);
 
-    // Parmak izi nabız (pulse) animasyonu
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.12).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
-
     // Verileri yükle
     _kullanicilariYukle();
     _biyometrikKontrolEt();
@@ -128,7 +117,6 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
     _kullanicilar.dispose();
     _seciliKullanici.dispose();
     _shakeCtrl.dispose();
-    _pulseCtrl.dispose();
     _fadeCtrl.dispose();
     _scaleCtrl.dispose();
     super.dispose();
@@ -522,28 +510,25 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
   }
 
   // ─── LOGO ──────────────────────────────────────────────────────────────────
+  // 🔴 KULLANICI İSTEĞİ (2026-09-16): "ekran hareketli olmasın" — sürekli
+  // tekrar eden (infinite repeat) nabız animasyonu kaldırıldı, statik bir
+  // halka ile değiştirildi. Tek seferlik açılış animasyonu (fade/scale)
+  // ve hatalı şifrede sallanma KORUNDU — bunlar "sürekli hareket" değil.
   Widget _buildLogo() {
-    return AnimatedBuilder(
-      animation: _pulseCtrl,
-      builder: (_, child) {
-        final t = _pulseCtrl.value;
-        return Container(
-          padding: EdgeInsets.all(5 + t * 3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: SweepGradient(
-              colors: [
-                const Color(0xFF4361EE).withAlpha(0),
-                const Color(0xFF4361EE).withAlpha(180),
-                const Color(0xFF3A0CA3).withAlpha(180),
-                const Color(0xFF4361EE).withAlpha(0),
-              ],
-              stops: const [0.0, 0.35, 0.65, 1.0],
-            ),
-          ),
-          child: child,
-        );
-      },
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: SweepGradient(
+          colors: [
+            Color(0x004361EE),
+            Color(0xB44361EE),
+            Color(0xB43A0CA3),
+            Color(0x004361EE),
+          ],
+          stops: [0.0, 0.35, 0.65, 1.0],
+        ),
+      ),
       child: Container(
         width: 72,
         height: 72,
@@ -609,9 +594,30 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
               items: liste.map((k) {
                 return DropdownMenuItem(
                   value: k,
-                  child: Text(k),
+                  child: Text(k, style: const TextStyle(color: Colors.white)),
                 );
               }).toList(),
+              // 🔴 KULLANICI BULGUSU (2026-09-16): kapalı haldeki (seçili)
+              // metin bazı Flutter/Material sürümlerinde 'style'
+              // parametresini değil, ortamdaki (genelde koyu/siyah) form
+              // temasını kullanıyordu — koyu arka plan üzerinde görünmez
+              // hale geliyordu. selectedItemBuilder, kapalı haldeki
+              // gösterimi tema/ortamdan bağımsız, açıkça beyaz olarak
+              // sabitler.
+              selectedItemBuilder: (context) => liste
+                  .map((k) => Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          k,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ))
+                  .toList(),
               onChanged: (v) {
                 if (v != null) {
                   _seciliKullanici.value = v;
@@ -892,26 +898,15 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedBuilder(
-                animation: _pulseCtrl,
-                builder: (_, child) {
-                  final t = _pulseCtrl.value;
-                  return Container(
-                    padding: EdgeInsets.all(6 + t * 4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Color.lerp(
-                          Colors.white54,
-                          const Color(0xFF4361EE),
-                          t,
-                        )!,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: child,
-                  );
-                },
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF4361EE),
+                    width: 1.5,
+                  ),
+                ),
                 child: Material(
                   color: Colors.white.withAlpha(18),
                   shape: const CircleBorder(),

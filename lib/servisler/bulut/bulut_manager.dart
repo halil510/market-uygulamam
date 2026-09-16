@@ -31,6 +31,7 @@ import 'bulut_saglayici.dart';
 import 'supabase_saglayici.dart';
 import 'supabase_ayarlari.dart';
 import 'sync_kuyruk_yazici.dart';
+import 'sync_backoff.dart';
 import '../kolon_haritalama.dart';
 import '../../cekirdek/sabitler/db_sabitleri.dart';
 import '../../veri/database/veritabani.dart';
@@ -239,34 +240,8 @@ class BulutManager {
   }
 
   // ── Madde 5 sertleştirmesi: exponential backoff + hata sınıflandırması ──
-  //
-  // Taban gecikme 10 saniye, her başarısız denemede İKİYE KATLANIR (10,
-  // 20, 40, 80, ... saniye), en fazla 30 dakikada bir denenecek şekilde
-  // TAVANLANIR — sürekli başarısız olan bir kayıt sunucuyu/ağı
-  // gereksizce bombalamaz, ama asla tamamen durmaz (sınırsız yeniden
-  // deneme — veri kaybı yok).
-  static const _backoffTabanSaniye = 10;
-  static const _backoffMaxSaniye = 1800; // 30 dakika
-
-  int _backoffSuresiSaniye(int denemeSayisi) {
-    if (denemeSayisi <= 0) return 0; // ilk deneme — hiç bekleme
-    final us = _backoffTabanSaniye * (1 << denemeSayisi.clamp(0, 12));
-    return us > _backoffMaxSaniye ? _backoffMaxSaniye : us;
-  }
-
-  /// Bu kuyruk satırının şu an (backoff penceresi geçmiş olduğu için)
-  /// yeniden denenmeye UYGUN olup olmadığını belirler. İlk deneme
-  /// (deneme_sayisi=0) veya son_deneme kaydı yoksa her zaman uygundur.
-  bool _satirSimdiDenenebilirMi(Map<String, dynamic> satir) {
-    final denemeSayisi = (satir['deneme_sayisi'] as int?) ?? 0;
-    if (denemeSayisi <= 0) return true;
-    final sonDenemeStr = satir['son_deneme'] as String?;
-    if (sonDenemeStr == null) return true;
-    final sonDeneme = DateTime.tryParse(sonDenemeStr);
-    if (sonDeneme == null) return true;
-    final gecenSaniye = DateTime.now().difference(sonDeneme).inSeconds;
-    return gecenSaniye >= _backoffSuresiSaniye(denemeSayisi);
-  }
+  // Saf hesaplama mantığı (test edilebilirlik için) sync_backoff.dart'ta
+  // — bkz. backoffSuresiSaniyeHesapla/syncSatiriSimdiDenenebilirMi.
 
   /// Bir kuyruk satırını başarısız olarak işaretler. [tur] == kalici ise
   /// (validation/auth — 4xx) durum 'kalici_hata'ya çevrilir: bu satır
@@ -349,7 +324,7 @@ class BulutManager {
       // paylaşılan durum.value/istatistik güncellemesini atlayıp
       // durum'u kalıcı olarak "Senkronize ediliyor…"da bırakırdı.
       final denenecekler =
-          bekleyenSatirlar.where(_satirSimdiDenenebilirMi).toList();
+          bekleyenSatirlar.where(syncSatiriSimdiDenenebilirMi).toList();
 
       if (denenecekler.isNotEmpty) {
         isYapildiMi = true;

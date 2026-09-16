@@ -178,5 +178,11 @@ class MigrasyonYonetici {
     // v66'dan v67'ye — cari ekstre sorgusu için bileşik index (Madde
     // 25/26 sertleştirmesi — bkz. _v66danV67ye yorumu).
     if (eskiVersiyon < 67) await _v66danV67ye(db);
+
+    // v67'den v68'e — Yıl Sonu Devir/Dönem Kapatma/Arşivleme sistemi
+    // FAZ 1: donemler, donem_sube_durumlari, devir_checkpoint,
+    // stok/cari/kasa/banka_kapanis_snapshot tabloları (bkz. _v67denV68e
+    // yorumu — kullanıcı onaylı mimari plan raporu, 2026-09-16).
+    if (eskiVersiyon < 68) await _v67denV68e(db);
   }
 }

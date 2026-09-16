@@ -1,6 +1,19 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- MARKETPLUS — SUPABASE ŞEMASI  (KENDİ KENDİNİ ONARAN SÜRÜM)
--- 60 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-15
+-- 67 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-16
+--
+-- 2026-09-16 GÜNCELLEMESİ — Yıl Sonu Devir / Dönem Kapatma / Arşivleme
+-- sistemi FAZ 1 (kullanıcı onaylı mimari plan raporu, ERP_DENETIM_
+-- KURALLARI.md.txt). 7 yeni tablo eklendi: donemler,
+-- donem_sube_durumlari, devir_checkpoint, stok_kapanis_snapshot,
+-- cari_kapanis_snapshot, kasa_kapanis_snapshot, banka_kapanis_snapshot.
+-- Yerel SQLite tarafında donem_semasi.dart (fresh install) + migrasyon
+-- v67→v68 ile BİREBİR aynı yapı. Devir motoru mantığı
+-- (DevirYoneticiServisi) henüz YOK — bu turda sadece şema + DonemDeposu/
+-- DevirCheckpointDeposu CRUD iskeleti eklendi. Kod tarafında
+-- supabase_sync_servisi.dart'ın senkron listelerine de eklenmesi
+-- GEREKİYOR — bkz. protokol_supabase_sema_guncel_tutma hafıza notu
+-- madde 3 (bu oturumda yapıldı, bkz. commit geçmişi).
 --
 -- 2026-09-15 GÜNCELLEMESİ — Derin denetim P1 #11: fis_seri (fiş/
 -- irsaliye/sipariş numara sayacı) tablosu senkron sisteminin TAMAMEN
@@ -1219,6 +1232,110 @@ CREATE TRIGGER trg_fis_seri_max_koru
   BEFORE UPDATE ON fis_seri
   FOR EACH ROW EXECUTE FUNCTION trg_fis_seri_max_koru();
 
+-- ═══════════════════════════════════════════════════════════════════════
+-- YIL SONU DEVİR / DÖNEM KAPATMA / ARŞİVLEME SİSTEMİ — FAZ 1 (2026-09-16,
+-- kullanıcı onaylı mimari plan raporu). 7 yeni tablo — SQLite tarafıyla
+-- (donem_semasi.dart) birebir aynı yapı. Devir motoru mantığı
+-- (DevirYoneticiServisi) İLERİKİ bir fazda gelecek, bu SADECE şema.
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS donemler (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id TEXT,
+  donem_yili BIGINT,
+  baslangic_tarihi TEXT,
+  bitis_tarihi TEXT,
+  durum TEXT,
+  kapanis_tarihi TEXT,
+  kapanisi_yapan_kullanici_id BIGINT,
+  kapanis_cihazi TEXT,
+  backup_durumu TEXT,
+  arsiv_durumu TEXT,
+  devir_durumu TEXT,
+  created_at TEXT,
+  last_updated TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS donem_sube_durumlari (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id TEXT,
+  donem_id BIGINT,
+  sube_id BIGINT,
+  durum TEXT,
+  kapanis_tarihi TEXT,
+  kapanisi_yapan_kullanici_id BIGINT,
+  kapanis_cihazi TEXT,
+  backup_durumu TEXT,
+  arsiv_durumu TEXT,
+  devir_durumu TEXT,
+  last_updated TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS devir_checkpoint (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id TEXT,
+  devir_id TEXT,
+  kaynak_donem_id BIGINT,
+  hedef_donem_id BIGINT,
+  sube_id BIGINT,
+  durum TEXT,
+  mevcut_faz BIGINT,
+  faz_ilerleme_json TEXT,
+  baslangic_zamani TEXT,
+  son_guncelleme TEXT,
+  tamamlanma_zamani TEXT,
+  hata_mesaji TEXT,
+  last_updated TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS stok_kapanis_snapshot (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id TEXT,
+  devir_id TEXT,
+  donem_id BIGINT,
+  sube_id BIGINT,
+  urun_id BIGINT,
+  miktar DOUBLE PRECISION,
+  kaynak_hash TEXT,
+  olusturma_tarihi TEXT,
+  last_updated TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS cari_kapanis_snapshot (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id TEXT,
+  devir_id TEXT,
+  donem_id BIGINT,
+  cari_id BIGINT,
+  bakiye DOUBLE PRECISION,
+  kaynak_hash TEXT,
+  olusturma_tarihi TEXT,
+  last_updated TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS kasa_kapanis_snapshot (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id TEXT,
+  devir_id TEXT,
+  donem_id BIGINT,
+  sube_id BIGINT,
+  bakiye DOUBLE PRECISION,
+  kaynak_hash TEXT,
+  olusturma_tarihi TEXT,
+  last_updated TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS banka_kapanis_snapshot (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id TEXT,
+  devir_id TEXT,
+  donem_id BIGINT,
+  banka_hesap_id BIGINT,
+  bakiye DOUBLE PRECISION,
+  kaynak_hash TEXT,
+  olusturma_tarihi TEXT,
+  last_updated TIMESTAMPTZ
+);
+
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- BÖLÜM 2 — EKSİK SÜTUNLARI EKLE
@@ -2050,6 +2167,78 @@ ALTER TABLE zaman_fiyat ADD COLUMN IF NOT EXISTS guncelleme TIMESTAMPTZ;
 ALTER TABLE zaman_fiyat ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE zaman_fiyat ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 
+-- Yıl Sonu Devir / Dönem Kapatma / Arşivleme (2026-09-16)
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS global_id TEXT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS donem_yili BIGINT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS baslangic_tarihi TEXT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS bitis_tarihi TEXT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS durum TEXT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS kapanis_tarihi TEXT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS kapanisi_yapan_kullanici_id BIGINT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS kapanis_cihazi TEXT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS backup_durumu TEXT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS arsiv_durumu TEXT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS devir_durumu TEXT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS created_at TEXT;
+ALTER TABLE donemler ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE donem_sube_durumlari ADD COLUMN IF NOT EXISTS global_id TEXT;
+ALTER TABLE donem_sube_durumlari ADD COLUMN IF NOT EXISTS donem_id BIGINT;
+ALTER TABLE donem_sube_durumlari ADD COLUMN IF NOT EXISTS sube_id BIGINT;
+ALTER TABLE donem_sube_durumlari ADD COLUMN IF NOT EXISTS durum TEXT;
+ALTER TABLE donem_sube_durumlari ADD COLUMN IF NOT EXISTS kapanis_tarihi TEXT;
+ALTER TABLE donem_sube_durumlari ADD COLUMN IF NOT EXISTS kapanisi_yapan_kullanici_id BIGINT;
+ALTER TABLE donem_sube_durumlari ADD COLUMN IF NOT EXISTS kapanis_cihazi TEXT;
+ALTER TABLE donem_sube_durumlari ADD COLUMN IF NOT EXISTS backup_durumu TEXT;
+ALTER TABLE donem_sube_durumlari ADD COLUMN IF NOT EXISTS arsiv_durumu TEXT;
+ALTER TABLE donem_sube_durumlari ADD COLUMN IF NOT EXISTS devir_durumu TEXT;
+ALTER TABLE donem_sube_durumlari ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS global_id TEXT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS devir_id TEXT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS kaynak_donem_id BIGINT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS hedef_donem_id BIGINT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS sube_id BIGINT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS durum TEXT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS mevcut_faz BIGINT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS faz_ilerleme_json TEXT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS baslangic_zamani TEXT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS son_guncelleme TEXT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS tamamlanma_zamani TEXT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS hata_mesaji TEXT;
+ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS global_id TEXT;
+ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS devir_id TEXT;
+ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS donem_id BIGINT;
+ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS sube_id BIGINT;
+ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS urun_id BIGINT;
+ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS miktar DOUBLE PRECISION;
+ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS kaynak_hash TEXT;
+ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS olusturma_tarihi TEXT;
+ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE cari_kapanis_snapshot ADD COLUMN IF NOT EXISTS global_id TEXT;
+ALTER TABLE cari_kapanis_snapshot ADD COLUMN IF NOT EXISTS devir_id TEXT;
+ALTER TABLE cari_kapanis_snapshot ADD COLUMN IF NOT EXISTS donem_id BIGINT;
+ALTER TABLE cari_kapanis_snapshot ADD COLUMN IF NOT EXISTS cari_id BIGINT;
+ALTER TABLE cari_kapanis_snapshot ADD COLUMN IF NOT EXISTS bakiye DOUBLE PRECISION;
+ALTER TABLE cari_kapanis_snapshot ADD COLUMN IF NOT EXISTS kaynak_hash TEXT;
+ALTER TABLE cari_kapanis_snapshot ADD COLUMN IF NOT EXISTS olusturma_tarihi TEXT;
+ALTER TABLE cari_kapanis_snapshot ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE kasa_kapanis_snapshot ADD COLUMN IF NOT EXISTS global_id TEXT;
+ALTER TABLE kasa_kapanis_snapshot ADD COLUMN IF NOT EXISTS devir_id TEXT;
+ALTER TABLE kasa_kapanis_snapshot ADD COLUMN IF NOT EXISTS donem_id BIGINT;
+ALTER TABLE kasa_kapanis_snapshot ADD COLUMN IF NOT EXISTS sube_id BIGINT;
+ALTER TABLE kasa_kapanis_snapshot ADD COLUMN IF NOT EXISTS bakiye DOUBLE PRECISION;
+ALTER TABLE kasa_kapanis_snapshot ADD COLUMN IF NOT EXISTS kaynak_hash TEXT;
+ALTER TABLE kasa_kapanis_snapshot ADD COLUMN IF NOT EXISTS olusturma_tarihi TEXT;
+ALTER TABLE kasa_kapanis_snapshot ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE banka_kapanis_snapshot ADD COLUMN IF NOT EXISTS global_id TEXT;
+ALTER TABLE banka_kapanis_snapshot ADD COLUMN IF NOT EXISTS devir_id TEXT;
+ALTER TABLE banka_kapanis_snapshot ADD COLUMN IF NOT EXISTS donem_id BIGINT;
+ALTER TABLE banka_kapanis_snapshot ADD COLUMN IF NOT EXISTS banka_hesap_id BIGINT;
+ALTER TABLE banka_kapanis_snapshot ADD COLUMN IF NOT EXISTS bakiye DOUBLE PRECISION;
+ALTER TABLE banka_kapanis_snapshot ADD COLUMN IF NOT EXISTS kaynak_hash TEXT;
+ALTER TABLE banka_kapanis_snapshot ADD COLUMN IF NOT EXISTS olusturma_tarihi TEXT;
+ALTER TABLE banka_kapanis_snapshot ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- BÖLÜM 3 — TÜM FOREIGN KEY KISITLARINI KALDIR   (hata 23503 biter)
@@ -2068,6 +2257,7 @@ BEGIN
          'ayarlar',
          'banka_hareketler',
          'banka_hesaplar',
+         'banka_kapanis_snapshot',
          'bankalar',
          'bekleyen_siparis_kalem',
          'bekleyen_siparisler',
@@ -2077,6 +2267,10 @@ BEGIN
          'cari',
          'cari_adres',
          'cari_hareket',
+         'cari_kapanis_snapshot',
+         'devir_checkpoint',
+         'donem_sube_durumlari',
+         'donemler',
          'fatura_detaylari',
          'faturalar',
          'fis_seri',
@@ -2091,6 +2285,7 @@ BEGIN
          'irsaliye_kalem',
          'irsaliyeler',
          'kasa_hareketleri',
+         'kasa_kapanis_snapshot',
          'kategoriler',
          'kredi_karti_hareket',
          'kredi_kartlari',
@@ -2115,6 +2310,7 @@ BEGIN
          'satis_kalem',
          'satislar',
          'stok_hareket',
+         'stok_kapanis_snapshot',
          'sube_urun',
          'subeler',
          'tedarikci_siparis_kalem',
@@ -2150,6 +2346,7 @@ BEGIN
          'ayarlar',
          'banka_hareketler',
          'banka_hesaplar',
+         'banka_kapanis_snapshot',
          'bankalar',
          'bekleyen_siparis_kalem',
          'bekleyen_siparisler',
@@ -2159,6 +2356,10 @@ BEGIN
          'cari',
          'cari_adres',
          'cari_hareket',
+         'cari_kapanis_snapshot',
+         'devir_checkpoint',
+         'donem_sube_durumlari',
+         'donemler',
          'fatura_detaylari',
          'faturalar',
          'fis_seri',
@@ -2173,6 +2374,7 @@ BEGIN
          'irsaliye_kalem',
          'irsaliyeler',
          'kasa_hareketleri',
+         'kasa_kapanis_snapshot',
          'kategoriler',
          'kredi_karti_hareket',
          'kredi_kartlari',
@@ -2197,6 +2399,7 @@ BEGIN
          'satis_kalem',
          'satislar',
          'stok_hareket',
+         'stok_kapanis_snapshot',
          'sube_urun',
          'subeler',
          'tedarikci_siparis_kalem',
@@ -2232,6 +2435,7 @@ BEGIN
          'ayarlar',
          'banka_hareketler',
          'banka_hesaplar',
+         'banka_kapanis_snapshot',
          'bankalar',
          'bekleyen_siparis_kalem',
          'bekleyen_siparisler',
@@ -2241,6 +2445,10 @@ BEGIN
          'cari',
          'cari_adres',
          'cari_hareket',
+         'cari_kapanis_snapshot',
+         'devir_checkpoint',
+         'donem_sube_durumlari',
+         'donemler',
          'fatura_detaylari',
          'faturalar',
          'fis_seri',
@@ -2255,6 +2463,7 @@ BEGIN
          'irsaliye_kalem',
          'irsaliyeler',
          'kasa_hareketleri',
+         'kasa_kapanis_snapshot',
          'kategoriler',
          'kredi_karti_hareket',
          'kredi_kartlari',
@@ -2279,6 +2488,7 @@ BEGIN
          'satis_kalem',
          'satislar',
          'stok_hareket',
+         'stok_kapanis_snapshot',
          'sube_urun',
          'subeler',
          'tedarikci_siparis_kalem',
@@ -2327,6 +2537,11 @@ DO $$ BEGIN
   END IF;
 END $$;
 DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_banka_kapanis_snapshot_global_id') THEN
+    ALTER TABLE banka_kapanis_snapshot ADD CONSTRAINT uq_banka_kapanis_snapshot_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_bankalar_global_id') THEN
     ALTER TABLE bankalar ADD CONSTRAINT uq_bankalar_global_id UNIQUE (global_id);
   END IF;
@@ -2369,6 +2584,26 @@ END $$;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_cari_hareket_global_id') THEN
     ALTER TABLE cari_hareket ADD CONSTRAINT uq_cari_hareket_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_cari_kapanis_snapshot_global_id') THEN
+    ALTER TABLE cari_kapanis_snapshot ADD CONSTRAINT uq_cari_kapanis_snapshot_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_devir_checkpoint_global_id') THEN
+    ALTER TABLE devir_checkpoint ADD CONSTRAINT uq_devir_checkpoint_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_donem_sube_durumlari_global_id') THEN
+    ALTER TABLE donem_sube_durumlari ADD CONSTRAINT uq_donem_sube_durumlari_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_donemler_global_id') THEN
+    ALTER TABLE donemler ADD CONSTRAINT uq_donemler_global_id UNIQUE (global_id);
   END IF;
 END $$;
 DO $$ BEGIN
@@ -2441,6 +2676,11 @@ END $$;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_kasa_hareketleri_global_id') THEN
     ALTER TABLE kasa_hareketleri ADD CONSTRAINT uq_kasa_hareketleri_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_kasa_kapanis_snapshot_global_id') THEN
+    ALTER TABLE kasa_kapanis_snapshot ADD CONSTRAINT uq_kasa_kapanis_snapshot_global_id UNIQUE (global_id);
   END IF;
 END $$;
 DO $$ BEGIN
@@ -2561,6 +2801,11 @@ END $$;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_stok_hareket_global_id') THEN
     ALTER TABLE stok_hareket ADD CONSTRAINT uq_stok_hareket_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_stok_kapanis_snapshot_global_id') THEN
+    ALTER TABLE stok_kapanis_snapshot ADD CONSTRAINT uq_stok_kapanis_snapshot_global_id UNIQUE (global_id);
   END IF;
 END $$;
 DO $$ BEGIN
@@ -2774,6 +3019,22 @@ CREATE INDEX IF NOT EXISTS idx_vardiyalar_sube_id ON vardiyalar(sube_id);
 CREATE INDEX IF NOT EXISTS idx_zaman_fiyat_last_updated ON zaman_fiyat(last_updated);
 CREATE INDEX IF NOT EXISTS idx_zaman_fiyat_urun_id ON zaman_fiyat(urun_id);
 
+-- Yıl Sonu Devir / Dönem Kapatma / Arşivleme (2026-09-16)
+CREATE INDEX IF NOT EXISTS idx_donemler_last_updated ON donemler(last_updated);
+CREATE INDEX IF NOT EXISTS idx_donemler_yili ON donemler(donem_yili);
+CREATE INDEX IF NOT EXISTS idx_donem_sube_durumlari_last_updated ON donem_sube_durumlari(last_updated);
+CREATE INDEX IF NOT EXISTS idx_donem_sube_durumlari_donem ON donem_sube_durumlari(donem_id);
+CREATE INDEX IF NOT EXISTS idx_devir_checkpoint_last_updated ON devir_checkpoint(last_updated);
+CREATE INDEX IF NOT EXISTS idx_devir_checkpoint_durum ON devir_checkpoint(durum);
+CREATE INDEX IF NOT EXISTS idx_stok_kapanis_snapshot_last_updated ON stok_kapanis_snapshot(last_updated);
+CREATE INDEX IF NOT EXISTS idx_stok_kapanis_snapshot_donem ON stok_kapanis_snapshot(donem_id, sube_id);
+CREATE INDEX IF NOT EXISTS idx_cari_kapanis_snapshot_last_updated ON cari_kapanis_snapshot(last_updated);
+CREATE INDEX IF NOT EXISTS idx_cari_kapanis_snapshot_donem ON cari_kapanis_snapshot(donem_id);
+CREATE INDEX IF NOT EXISTS idx_kasa_kapanis_snapshot_last_updated ON kasa_kapanis_snapshot(last_updated);
+CREATE INDEX IF NOT EXISTS idx_kasa_kapanis_snapshot_donem ON kasa_kapanis_snapshot(donem_id);
+CREATE INDEX IF NOT EXISTS idx_banka_kapanis_snapshot_last_updated ON banka_kapanis_snapshot(last_updated);
+CREATE INDEX IF NOT EXISTS idx_banka_kapanis_snapshot_donem ON banka_kapanis_snapshot(donem_id);
+
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- BÖLÜM 8 — ROW LEVEL SECURITY
@@ -2794,6 +3055,9 @@ CREATE POLICY banka_hareketler_all ON banka_hareketler FOR ALL TO anon, authenti
 ALTER TABLE banka_hesaplar ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS banka_hesaplar_all ON banka_hesaplar;
 CREATE POLICY banka_hesaplar_all ON banka_hesaplar FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+ALTER TABLE banka_kapanis_snapshot ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS banka_kapanis_snapshot_all ON banka_kapanis_snapshot;
+CREATE POLICY banka_kapanis_snapshot_all ON banka_kapanis_snapshot FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 ALTER TABLE bankalar ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS bankalar_all ON bankalar;
 CREATE POLICY bankalar_all ON bankalar FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
@@ -2821,6 +3085,18 @@ CREATE POLICY cari_adres_all ON cari_adres FOR ALL TO anon, authenticated USING 
 ALTER TABLE cari_hareket ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS cari_hareket_all ON cari_hareket;
 CREATE POLICY cari_hareket_all ON cari_hareket FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+ALTER TABLE cari_kapanis_snapshot ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS cari_kapanis_snapshot_all ON cari_kapanis_snapshot;
+CREATE POLICY cari_kapanis_snapshot_all ON cari_kapanis_snapshot FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+ALTER TABLE devir_checkpoint ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS devir_checkpoint_all ON devir_checkpoint;
+CREATE POLICY devir_checkpoint_all ON devir_checkpoint FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+ALTER TABLE donem_sube_durumlari ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS donem_sube_durumlari_all ON donem_sube_durumlari;
+CREATE POLICY donem_sube_durumlari_all ON donem_sube_durumlari FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+ALTER TABLE donemler ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS donemler_all ON donemler;
+CREATE POLICY donemler_all ON donemler FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 ALTER TABLE fatura_detaylari ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS fatura_detaylari_all ON fatura_detaylari;
 CREATE POLICY fatura_detaylari_all ON fatura_detaylari FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
@@ -2863,6 +3139,9 @@ CREATE POLICY irsaliyeler_all ON irsaliyeler FOR ALL TO anon, authenticated USIN
 ALTER TABLE kasa_hareketleri ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS kasa_hareketleri_all ON kasa_hareketleri;
 CREATE POLICY kasa_hareketleri_all ON kasa_hareketleri FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+ALTER TABLE kasa_kapanis_snapshot ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS kasa_kapanis_snapshot_all ON kasa_kapanis_snapshot;
+CREATE POLICY kasa_kapanis_snapshot_all ON kasa_kapanis_snapshot FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 ALTER TABLE kategoriler ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS kategoriler_all ON kategoriler;
 CREATE POLICY kategoriler_all ON kategoriler FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
@@ -2935,6 +3214,9 @@ CREATE POLICY satislar_all ON satislar FOR ALL TO anon, authenticated USING (tru
 ALTER TABLE stok_hareket ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS stok_hareket_all ON stok_hareket;
 CREATE POLICY stok_hareket_all ON stok_hareket FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+ALTER TABLE stok_kapanis_snapshot ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS stok_kapanis_snapshot_all ON stok_kapanis_snapshot;
+CREATE POLICY stok_kapanis_snapshot_all ON stok_kapanis_snapshot FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 ALTER TABLE sube_urun ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS sube_urun_all ON sube_urun;
 CREATE POLICY sube_urun_all ON sube_urun FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
@@ -2973,6 +3255,7 @@ WITH beklenen(tablo) AS (VALUES
     ('ayarlar'),
     ('banka_hareketler'),
     ('banka_hesaplar'),
+    ('banka_kapanis_snapshot'),
     ('bankalar'),
     ('bekleyen_siparis_kalem'),
     ('bekleyen_siparisler'),
@@ -2982,6 +3265,10 @@ WITH beklenen(tablo) AS (VALUES
     ('cari'),
     ('cari_adres'),
     ('cari_hareket'),
+    ('cari_kapanis_snapshot'),
+    ('devir_checkpoint'),
+    ('donem_sube_durumlari'),
+    ('donemler'),
     ('fatura_detaylari'),
     ('faturalar'),
     ('fis_seri'),
@@ -2996,6 +3283,7 @@ WITH beklenen(tablo) AS (VALUES
     ('irsaliye_kalem'),
     ('irsaliyeler'),
     ('kasa_hareketleri'),
+    ('kasa_kapanis_snapshot'),
     ('kategoriler'),
     ('kredi_karti_hareket'),
     ('kredi_kartlari'),
@@ -3020,6 +3308,7 @@ WITH beklenen(tablo) AS (VALUES
     ('satis_kalem'),
     ('satislar'),
     ('stok_hareket'),
+    ('stok_kapanis_snapshot'),
     ('sube_urun'),
     ('subeler'),
     ('tedarikci_siparis_kalem'),

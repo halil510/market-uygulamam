@@ -76,4 +76,13 @@ class DbSabitler {
 
   // Çoklu para birimi / döviz kuru modülü
   static const String dovizKurlari        = 'doviz_kurlari';
+
+  // Yıl Sonu Devir / Dönem Kapatma / Arşivleme modülü (2026-09-16)
+  static const String donemler              = 'donemler';
+  static const String donemSubeDurumlari    = 'donem_sube_durumlari';
+  static const String devirCheckpoint       = 'devir_checkpoint';
+  static const String stokKapanisSnapshot   = 'stok_kapanis_snapshot';
+  static const String cariKapanisSnapshot   = 'cari_kapanis_snapshot';
+  static const String kasaKapanisSnapshot   = 'kasa_kapanis_snapshot';
+  static const String bankaKapanisSnapshot  = 'banka_kapanis_snapshot';
 }

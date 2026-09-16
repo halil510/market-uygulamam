@@ -31,6 +31,7 @@ import '../semalar/borc_semasi.dart';
 import '../semalar/banka_borc_semasi.dart';
 import '../semalar/doviz_semasi.dart';
 import '../semalar/toptan_siparis_semasi.dart';
+import '../semalar/donem_semasi.dart';
 import '../semalar/index_semasi.dart';
 import '../semalar/kolon_tamamlayici.dart';
 
@@ -223,6 +224,10 @@ class TabloOlusturucu {
         FOREIGN KEY(hedef_masa_id) REFERENCES masalar(id)
       )
     """);
+
+    // 18. Yıl Sonu Devir / Dönem Kapatma / Arşivleme (2026-09-16,
+    // kullanıcı onaylı mimari plan — bkz. donem_semasi.dart baş yorumu).
+    await DonemSemasi.olustur(db);
 
     // 🔴 KRİTİK (derin analiz bulgusu): 30 indeks SADECE migrasyon
     // zincirinde tanımlıydı — taze kurulumlarda hiç oluşmuyordu.

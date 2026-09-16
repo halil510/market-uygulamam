@@ -642,9 +642,13 @@ class Veritabani {
       // liste güncellenmemişti — global_id çakışması olursa (retry/kesinti
       // senaryosu) sessizce IGNORE ediliyordu, REPLACE yerine.
       'bekleyen_siparisler', 'bekleyen_siparis_kalem', 'onay_talepleri',
+      // Yıl Sonu Devir / Dönem Kapatma / Arşivleme (2026-09-16):
+      'donemler', 'donem_sube_durumlari', 'devir_checkpoint',
+      'stok_kapanis_snapshot', 'cari_kapanis_snapshot',
+      'kasa_kapanis_snapshot', 'banka_kapanis_snapshot',
     };
-    final conflict = globalIdTablosu.contains(tablo) 
-        ? ConflictAlgorithm.replace 
+    final conflict = globalIdTablosu.contains(tablo)
+        ? ConflictAlgorithm.replace
         : ConflictAlgorithm.ignore;
 
     await _cakismaKorumasiUygula(database, tablo, kayitlar);

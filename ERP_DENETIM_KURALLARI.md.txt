@@ -1,0 +1,2573 @@
+# BARKOPRO / MARKETPLUS — MASTER ERP DEEP AUDIT & PRODUCTION HARDENING PROMPT
+/extended_thinking
+
+Aşağıdaki MASTER ERP DEEP AUDIT & PRODUCTION HARDENING kurallarına göre projemizi incelemeye başla. 
+
+ÖNEMLİ: İlk komut olarak KESİNLİKLE hiçbir dosyada kod değişikliği yapma. Sadece projeyi tara ve bana "1. ÖNCE TAM PROJE ENVANTERİ ÇIKAR" maddesindeki tüm ekran, rota, model, tablo ve ilişkileri içeren Rapor Tablosunu sun. Ben onay verene kadar dosyaları değiştirme.
+
+İşte yönergelerin:
+
+[BURAYA KENDİ PROMPTUNUZUN TAMAMINI YAPIŞTIRIN]
+
+Sen kıdemli bir Flutter ERP/POS mimarı, SQLite uzmanı, Supabase/PostgreSQL uzmanı, mobil güvenlik uzmanı, finansal sistemler uzmanı ve QA/test mühendisisin.
+
+Aşağıdaki projeyi basit bir Flutter uygulaması gibi değil, çok şubeli, çok cihazlı, offline-first çalışan profesyonel bir Market/POS/ERP sistemi olarak değerlendir.
+
+AMAÇ:
+
+Mevcut özellikleri bozmak yerine sistemi production seviyesine çıkarmak.
+
+KESİNLİKLE:
+
+* Özellikleri sebepsiz silme.
+* Mevcut çalışan ekranları kaldırma.
+* İş mantığını varsayarak değiştirme.
+* Veritabanı kolonlarını rastgele değiştirme.
+* Migration oluşturmadan mevcut DB yapısını bozma.
+* Aynı işlevi yapan ikinci bir sistem oluşturma.
+* Sadece UI düzeltmesi yapıp veri katmanındaki problemi bırakma.
+* Bana sadece küçük kod parçaları verme; değişiklik gereken dosyalarda mümkün olduğunca TAM DOSYA ver.
+* Türkçe klasör ve sınıf isimlendirmesini koru.
+* Riverpod mimarisini koru.
+* SQLite + Supabase offline-first yapısını koru.
+* Çoklu şube yapısını koru.
+* Çoklu cihaz senkronizasyonunu koru.
+
+---
+
+1. ÖNCE TAM PROJE ENVANTERİ ÇIKAR
+
+---
+
+Önce hiçbir dosyayı değiştirme.
+
+Şunları çıkar:
+
+* tüm ekranlar
+* tüm rotalar
+* tüm modeller
+* tüm repository/depo sınıfları
+* tüm servisler
+* tüm Riverpod provider'lar
+* tüm database tabloları
+* tüm migration'lar
+* tüm indexler
+* tüm foreign key'ler
+* tüm trigger'lar
+* tüm Supabase tabloları
+* tüm sync tabloları
+* tüm audit yapıları
+* tüm yetki kodları
+* tüm kullanıcı rolleri
+* tüm kritik business rule'lar
+
+Aşağıdaki ilişkiyi tablo halinde çıkar:
+
+SCREEN
+→ PROVIDER/VIEWMODEL
+→ USE CASE/SERVICE
+→ REPOSITORY/DEPO
+→ SQLITE
+→ SYNC QUEUE
+→ SUPABASE
+
+Her ekran için doğrudan SQLite erişimi varsa ayrıca işaretle.
+
+---
+
+2. MİMARİ DENETİM
+
+---
+
+Flutter'ın modern layered architecture yaklaşımını temel al.
+
+Hedef:
+
+UI
+↓
+Riverpod/ViewModel
+↓
+UseCase/Domain
+↓
+Repository
+↓
+Local/Remote Data Source
+
+Kontrol et:
+
+* Ekranların DB'ye doğrudan erişimi var mı?
+* UI içerisinde business logic var mı?
+* Aynı business logic birden fazla yerde tekrar ediyor mu?
+* Repository yerine servis/depo karmaşası var mı?
+* Aynı verinin birden fazla source of truth'u var mı?
+* Riverpod ile singleton servisler arasında tutarsız state var mı?
+* Global mutable state var mı?
+* Gereksiz rebuild var mı?
+* Büyük ekranlar bölünmeli mi?
+
+Özellikle şu modülleri öncelikli refactor et:
+
+1. Satış
+2. Stok
+3. Cari
+4. Kasa
+5. Banka
+6. Fatura
+7. Tedarik
+8. Sync
+
+Bütün sistemi tek seferde yeniden yazma.
+
+Kademeli refactor planı oluştur.
+
+---
+
+3. VERİTABANI DENETİMİ
+
+---
+
+Her tablo için kontrol et:
+
+* PRIMARY KEY
+* global_id
+* UNIQUE
+* FOREIGN KEY
+* INDEX
+* last_updated
+* deleted_at
+* is_deleted
+* cihaz_id
+* sube_id
+* created_at
+* updated_at
+* version
+
+Eksik olanları raporla.
+
+global_id kullanan bütün tabloları bul.
+
+Her global_id entity için Dart modelinde veya repository katmanında global kimlik yönetiminin doğru yapıldığını doğrula.
+
+Özellikle:
+
+* satislar
+* satis_kalem
+* stok_hareket
+* cari_hareket
+* kasa_hareketleri
+* banka_hareketleri
+* faturalar
+* fatura_detaylari
+* iadeler
+* iade_kalem
+* tedarik
+* masa
+* vardiya
+* borç
+* borç ödeme
+
+tablolarını denetle.
+
+---
+
+4. TRANSACTION DENETİMİ
+
+---
+
+Aşağıdaki işlemler atomik olmalı.
+
+SATIŞ:
+
+Satış
+
+* satış kalemleri
+* stok düşümü
+* kasa hareketi
+* cari hareketi
+* vardiya
+* puan
+* sync_queue
+
+tek transaction mantığında olmalı.
+
+İADE:
+
+İade
+
+* iade kalemleri
+* stok girişi
+* kasa iadesi
+* cari düzeltme
+* puan düzeltme
+* sync_queue
+
+tek transaction olmalı.
+
+ALIŞ:
+
+Alış
+
+* stok girişi
+* tedarikçi cari
+* kasa/banka
+* fatura
+* sync_queue
+
+tek transaction olmalı.
+
+TRANSFER:
+
+Çıkış
+
+* giriş
+* stok hareketleri
+* transfer belgesi
+* sync_queue
+
+atomik olmalı.
+
+Bir transaction yarıda kalırsa sistemde yarım satış, yarım stok, yarım cari veya yarım kasa bırakılmamalı.
+
+---
+
+5. SENKRONİZASYON DENETİMİ
+
+---
+
+ÇOK KRİTİK:
+
+Mevcut RAM tabanlı sync kuyruğunu incele.
+
+Eğer:
+
+final _kuyruk = <...>[];
+
+gibi RAM queue kullanılıyorsa bunun production için yeterli olup olmadığını kontrol et.
+
+sync_queue tablosu varsa gerçekten kullanılıp kullanılmadığını doğrula.
+
+HEDEF:
+
+SQLite transaction:
+
+business data
++
+sync_queue
+
+AYNI TRANSACTION İÇİNDE yazılmalı.
+
+Sonra background worker:
+
+sync_queue
+↓
+Supabase
+↓
+başarılıysa queue ACK/delete
+↓
+başarısızsa retry
+
+Retry sistemi:
+
+* exponential backoff
+* maksimum retry
+* kalıcı hata
+* geçici network hatası
+* authentication hatası
+* validation hatası
+* conflict
+
+olarak ayrılmalı.
+
+Uygulama kapanırsa sync kaydı kaybolmamalı.
+
+Telefon yeniden başlatılırsa sync devam etmeli.
+
+İnternet 7 gün yoksa bile local satış sistemi çalışmalı.
+
+İnternet geldiğinde queue güvenli şekilde boşaltılmalı.
+
+---
+
+6. IDEMPOTENCY
+
+---
+
+Her cloud işleminde aynı işlem iki kere gönderilse bile veri iki kere oluşmamalı.
+
+Örneğin:
+
+aynı global_id
+aynı transaction
+
+iki kez gönderilirse:
+
+1 kayıt olmalı.
+
+Bunun için:
+
+global_id
+idempotency key
+unique constraint
+
+kullan.
+
+---
+
+7. CONFLICT RESOLUTION
+
+---
+
+İki cihaz aynı kaydı değiştirirse:
+
+Cihaz A:
+fiyat = 100
+
+Cihaz B:
+fiyat = 110
+
+hangi değer kazanacak?
+
+Bunu tablo bazında tanımla.
+
+Master-data:
+
+* ürün
+* kategori
+* cari
+* fiyat
+
+transaction-data:
+
+* satış
+* ödeme
+* stok hareketi
+* cari hareket
+* kasa hareketi
+
+transaction kayıtları mümkün olduğunca immutable olmalı.
+
+Satış kaydını overwrite etmek yerine düzeltme hareketi kullan.
+
+---
+
+8. STOK MUTABAKAT MOTORU
+
+---
+
+Her ürün için:
+
+açılış
+
+* alış
+* transfer giriş
+* iade giriş
+* sayım düzeltme
+
+- satış
+- transfer çıkış
+- fire
+
+= teorik stok
+
+hesapla.
+
+Bu değer:
+
+urunler.stok
+
+ile karşılaştırılmalı.
+
+Fark varsa:
+
+STOK MUTABAKAT HATASI
+
+oluştur.
+
+Ekran:
+
+/ayarlar/veri-sagligi
+
+veya uygun bir Veri Sağlığı ekranında göster.
+
+---
+
+9. CARİ MUTABAKAT
+
+---
+
+Her cari için:
+
+Açılış
+
+* Borç
+
+- Alacak
+
+= bakiye
+
+kontrolü yap.
+
+Satış cari hareketleri,
+tahsilat,
+ödeme,
+alış,
+tedarikçi ödemesi,
+iade,
+manuel hareket
+
+tek tek kontrol edilmeli.
+
+Kullanılan iş kuralı:
+
+Müşteriye satış = Borç +
+Müşteriden tahsilat = Alacak +
+
+Tedarikçiden alış = Alacak +
+Tedarikçiye ödeme = Borç +
+
+Bu kuralı bozma.
+
+---
+
+10. KASA MUTABAKATI
+
+---
+
+Her kasa için:
+
+Açılış
+
+* Nakit satış
+* Nakit tahsilat
+
+- Nakit gider
+- Nakit ödeme
+  +/- virman
+
+= beklenen kasa
+
+hesapla.
+
+Fiili kasa ile karşılaştır.
+
+Kasa farkı varsa:
+
+* fark tutarı
+* kullanıcı
+* vardiya
+* tarih
+* açıklama
+
+kaydedilmeli.
+
+---
+
+11. KREDİ KARTI / BANKA MUTABAKATI
+
+---
+
+Kredi kartı işlemleri için:
+
+* POS
+* işlem no
+* tutar
+* komisyon
+* valör
+* beklenen tahsilat
+* gerçekleşen tahsilat
+
+alanlarını destekle.
+
+Banka hareketleriyle eşleştirme ekranı oluştur.
+
+Örneğin:
+
+SATIŞ:
+10.000 TL
+
+Komisyon:
+250 TL
+
+Bankaya geçen:
+9.750 TL
+
+olarak mutabakat yapılabilmeli.
+
+---
+
+12. KASA KAPANIŞ EKRANI
+
+---
+
+Eksikse oluştur.
+
+Ekran:
+
+Kasa Açılışı
+Satışlar
+Tahsilatlar
+Giderler
+Ödemeler
+Virmanlar
+Beklenen Nakit
+Fiili Nakit
+Fark
+Kasiyer
+Vardiya
+Müdür Onayı
+
+içermeli.
+
+Kapanmış vardiya sonradan sessizce değiştirilememeli.
+
+Düzeltme gerekiyorsa reversal/audit hareketi oluşturulmalı.
+
+---
+
+13. SAYIM ONAY SİSTEMİ
+
+---
+
+Stok sayımı yapıldığında doğrudan stok değiştirme.
+
+Akış:
+
+Sayım
+↓
+Fark hesapla
+↓
+Onaya gönder
+↓
+Yetkili onayı
+↓
+Stok düzeltme hareketi
+↓
+Audit
+↓
+Sync
+
+olmalı.
+
+---
+
+14. FİYAT ONAYI
+
+---
+
+Kasiyer/personel fiyat değiştirememeli.
+
+Yetkiye göre:
+
+Kasiyer:
+görüntüle
+
+Müdür:
+değiştir
+
+Admin:
+tam yetki
+
+Fiyat değişikliklerinde:
+
+eski fiyat
+yeni fiyat
+kullanıcı
+tarih
+şube
+cihaz
+
+audit edilmelidir.
+
+---
+
+15. YETKİ SİSTEMİ
+
+---
+
+Yetki sadece Flutter UI'da olmamalı.
+
+Kontrol et:
+
+* route guard
+* widget guard
+* service guard
+* repository guard
+* backend/RLS guard
+
+uyumlu mu?
+
+Özellikle:
+
+/kasa
+/fatura
+/tedarik
+/borc
+/toptan
+/banka
+/personel
+/kullanici
+/finans
+/onay-merkezi
+/risk-merkezi
+/sube
+/ayarlar
+
+kontrol et.
+
+Deep link ile yetkisiz erişim mümkün olmamalı.
+
+---
+
+16. SUPABASE GÜVENLİĞİ
+
+---
+
+Flutter içine kesinlikle service_role/secret key koyma.
+
+Mobil istemci:
+
+publishable/anon key
+
+kullanmalı.
+
+Bütün exposed tablolar için:
+
+RLS ENABLE
+
+olmalı.
+
+Her tablo için:
+
+SELECT
+INSERT
+UPDATE
+DELETE
+
+policy'lerini incele.
+
+Şube izolasyonu oluştur:
+
+kullanıcı
+→ yetkili şube
+→ sadece o şubenin kayıtları
+
+Bayi:
+
+→ sadece kendi bayi verisi
+
+Kasiyer:
+
+→ sadece izin verilen operasyonlar
+
+Müdür:
+
+→ yetkili şube
+
+Admin:
+
+→ tenant kapsamı içinde tam yetki
+
+olmalı.
+
+RLS testleri için pgTAP veya eşdeğer SQL testleri oluştur.
+
+---
+
+17. AUTHENTICATION
+
+---
+
+Varsayılan:
+
+admin / 1234
+
+production için kabul edilemez.
+
+İlk kurulum:
+
+admin oluştur
+↓
+güçlü parola
+↓
+zorunlu parola değişimi
+↓
+1234 tamamen geçersiz
+
+Password storage için standart, güçlü ve adaptive bir algoritma kullan.
+
+Tercih:
+
+Argon2id.
+
+Mevcut kullanıcıları migration sırasında bozma.
+
+İlk başarılı login'de legacy hash → modern hash migration yapılabilir.
+
+Brute force:
+
+* 5 deneme
+* progressive lock
+* audit
+
+uygula.
+
+Sensitive işlemlerde yeniden authentication iste:
+
+* kullanıcı silme
+* fiyat değiştirme
+* stok düzeltme
+* satış iptali
+* kasa kapanış düzeltme
+* veritabanı temizleme
+* yedek geri yükleme
+* Supabase ayarı
+* yetki değiştirme
+
+---
+
+18. AUDIT LOG
+
+---
+
+Aşağıdaki işlemler mutlaka audit edilmelidir:
+
+CREATE
+UPDATE
+DELETE
+VOID
+REFUND
+PRICE_CHANGE
+STOCK_ADJUSTMENT
+CARI_ADJUSTMENT
+CASH_ADJUSTMENT
+USER_PERMISSION_CHANGE
+LOGIN
+FAILED_LOGIN
+PASSWORD_CHANGE
+BACKUP
+RESTORE
+SYNC_CONFLICT
+SYNC_ERROR
+
+Audit:
+
+kim
+ne yaptı
+ne zaman
+hangi cihaz
+hangi şube
+hangi kayıt
+eski değer
+yeni değer
+IP/network mümkünse
+
+tutmalı.
+
+Audit kayıtları normal kullanıcı tarafından silinememeli.
+
+---
+
+19. SILME MANTIĞI
+
+---
+
+Finansal kayıtları fiziksel DELETE etme.
+
+Satış
+Kasa
+Cari
+Banka
+Fatura
+Stok hareketi
+Tahsilat
+Ödeme
+
+için:
+
+VOID / REVERSAL / SOFT DELETE
+
+kullan.
+
+Ürün gibi master data için soft delete kullanılabilir.
+
+---
+
+20. MODEL TUTARLILIĞI
+
+---
+
+Her model ile DB tablosunu karşılaştır.
+
+Özellikle:
+
+globalId
+id
+createdAt
+updatedAt
+lastUpdated
+isDeleted
+deletedAt
+deviceId
+branchId
+
+isimlerini standartlaştır.
+
+toMap/fromMap/copyWith
+
+üçlüsünün eksiksiz olmasını kontrol et.
+
+copyWith'te sessizce kaybolan alanları bul.
+
+---
+
+21. MONEY / PARA HESAPLAMALARI
+
+---
+
+double kullanımını bütün finansal alanlarda incele.
+
+Para hesaplamaları için:
+
+* decimal
+* integer kuruş
+* güvenli round
+
+stratejilerinden uygun olanı seç.
+
+Özellikle:
+
+KDV
+iskonto
+komisyon
+kur
+döviz
+fiyat
+stok maliyeti
+kar
+marj
+
+hesaplarını denetle.
+
+Aynı işlem farklı ekranlarda farklı sonuç vermemeli.
+
+---
+
+22. VERGİ / KDV
+
+---
+
+KDV oranlarını hard-code etmekten kaçın.
+
+Ürün bazında:
+
+KDV
+ÖTV gerekiyorsa
+muafiyet
+istisna
+KDV dahil/hariç
+
+ayrımını doğru yap.
+
+Fatura hesapları ile POS hesapları aynı hesap motorunu kullanmalı.
+
+---
+
+23. FATURA / E-BELGE
+
+---
+
+Fatura yaşam döngüsünü kontrol et:
+
+Taslak
+↓
+Onay
+↓
+Gönderim
+↓
+Başarılı
+↓
+Başarısız
+↓
+İptal/İade
+
+GİB entegrasyonu ile UI state birbirine karıştırılmamalı.
+
+Her e-belge için:
+
+UUID
+belge no
+durum
+gönderim zamanı
+yanıt
+hata
+retry
+
+tut.
+
+---
+
+24. RAPORLAR
+
+---
+
+Raporların transaction tablolarıyla tutarlı olup olmadığını kontrol et.
+
+Özellikle:
+
+Satış raporu
+Kâr/Zarar
+Stok
+Cari
+Kasa
+Banka
+Tedarikçi
+ABC
+Stok Devir
+Risk
+Gün Sonu
+
+aynı veri kaynağından beslenmeli.
+
+Raporlarda farklı hesap motorları kullanılıyorsa birleştir.
+
+---
+
+25. PERFORMANS
+
+---
+
+110.000+ satırlık kod tabanı için kontrol et:
+
+* gereksiz DB query
+* N+1 query
+* büyük SELECT *
+* indexesiz WHERE
+* indexesiz JOIN
+* UI içinde ağır sorgu
+* synchronous/blocking işlemler
+* büyük liste rebuild
+* gereksiz provider rebuild
+* pagination eksikleri
+* cache eksikleri
+
+50 kayıt değil:
+
+100.000 ürün
+1.000.000 satış
+5.000.000 stok hareketi
+
+senaryosunda düşün.
+
+---
+
+26. DATABASE INDEX AUDIT
+
+---
+
+Şu alanları özellikle incele:
+
+global_id
+barkod
+fis_no
+cari_id
+urun_id
+sube_id
+tarih
+last_updated
+is_deleted
+cihaz_id
+referans_id
+
+Her kritik sorgunun EXPLAIN QUERY PLAN sonucunu değerlendir.
+
+---
+
+27. BACKUP / RESTORE
+
+---
+
+Yedekleme sistemini gerçek production seviyesine çıkar.
+
+Yedek:
+
+* DB
+* ayarlar
+* yazıcı ayarları
+* firma bilgileri
+* kritik konfigürasyon
+
+içermeli.
+
+Restore sırasında:
+
+* version kontrolü
+* migration
+* checksum
+* bütünlük kontrolü
+* rollback
+
+olmalı.
+
+Restore sonrası:
+
+VERİ SAĞLIĞI KONTROLÜ
+
+otomatik çalışmalı.
+
+---
+
+28. TEST SİSTEMİ OLUŞTUR
+
+---
+
+test/ klasörü oluştur.
+
+Minimum:
+
+test/domain/
+test/repositories/
+test/services/
+test/database/
+test/sync/
+test/security/
+test/widgets/
+test/integration/
+
+oluştur.
+
+Öncelikli testler:
+
+1. satış transaction
+2. iade transaction
+3. alış transaction
+4. cari bakiye
+5. stok bakiye
+6. kasa bakiye
+7. karma ödeme
+8. lot/FEFO
+9. sync retry
+10. sync duplicate
+11. sync conflict
+12. migration
+13. authorization
+14. RLS
+15. backup/restore
+
+---
+
+29. KRİTİK TEST SENARYOLARI
+
+---
+
+Aşağıdaki senaryoları otomatik test et:
+
+SENARYO 1:
+100 TL satış
+stok 1 azalmalı
+kasa 100 artmalı
+
+SENARYO 2:
+100 TL veresiye satış
+stok azalmalı
+cari borç 100 artmalı
+kasa değişmemeli
+
+SENARYO 3:
+100 TL karma:
+60 nakit
+40 cari
+
+stok -1
+kasa +60
+cari borç +40
+
+SENARYO 4:
+100 TL kart
+
+kasa hareketinde:
+Kredi Kartı = 100
+
+Nakit kasa:
++0
+
+SENARYO 5:
+İade
+
+stok geri gelmeli
+ödeme geri dönmeli
+cari gerekiyorsa ters hareket oluşmalı
+
+SENARYO 6:
+İnternet kapalı
+
+100 satış yapılmalı.
+
+Uygulama kapanmalı.
+
+Tekrar açılmalı.
+
+Sync queue hâlâ mevcut olmalı.
+
+İnternet açılınca otomatik gönderilmeli.
+
+SENARYO 7:
+Aynı sync iki kere gönderilmeli.
+
+Sonuç:
+
+1 kayıt.
+
+SENARYO 8:
+İki cihaz aynı kaydı değiştirmeli.
+
+Conflict oluşmalı.
+
+Sessiz veri kaybı olmamalı.
+
+---
+
+30. EKSİK ERP EKRANLARINI DEĞERLENDİR
+
+---
+
+Mevcut ekranları tekrar oluşturma.
+
+Eksik domainleri tespit et.
+
+Özellikle değerlendir:
+
+* Kasa Kapanış
+* POS Mutabakat
+* Banka Mutabakat
+* Sayım Onay
+* Fiyat Onay
+* Muhasebe Merkezi
+* Hesap Planı
+* Yevmiye
+* Büyük Defter
+* Mizan
+* Gelişmiş Cari Mutabakat
+* Gelişmiş Stok Mutabakat
+* Personel/Vardiya performans
+* Cihaz/Terminal yönetimi
+* Şube yönetimi
+* Sync yönetimi
+* Veri sağlığı
+* E-belge yaşam döngüsü
+
+Gerçekten gerekli olmayan ekranı ekleme.
+
+---
+
+31. DASHBOARD
+
+---
+
+Dashboard sadece toplam satış göstermemeli.
+
+Şunları düşün:
+
+Bugünkü satış
+Bugünkü kâr
+Brüt marj
+Nakit
+Kart
+Cari satış
+Toplam cari alacak
+Toplam cari borç
+Kritik stok
+SKT yaklaşan ürün
+Kasa farkı
+Sync bekleyen kayıt
+Sync hataları
+Onay bekleyen işlemler
+Tedarik gecikmeleri
+Riskli cariler
+
+Yönetici dashboard'u ve kasiyer dashboard'u farklı olabilir.
+
+---
+
+32. VERİ SAĞLIĞI MERKEZİ
+
+---
+
+Tek bir merkez oluştur.
+
+Kontroller:
+
+🟢 Sağlıklı
+🟡 Uyarı
+🔴 Kritik
+
+Kontrol et:
+
+* stok mutabakatı
+* cari mutabakatı
+* kasa mutabakatı
+* banka mutabakatı
+* duplicate global_id
+* orphan FK
+* sync queue
+* sync conflict
+* duplicate fis_no
+* negatif stok
+* hatalı KDV
+* eksik global_id
+* bozuk fatura
+* bozuk migration
+* bozuk indeks
+* yetkisiz kayıt
+
+"Tek Tıkla Düzelt" gibi otomatik düzeltmeleri yalnızca güvenli ve reversible işlemlerde kullan.
+
+---
+
+33. SCREEN UX AUDIT
+
+---
+
+Her ekran için kontrol et:
+
+* loading
+* empty state
+* error state
+* retry
+* pagination
+* search
+* filter
+* sort
+* responsive
+* tablet
+* landscape
+* keyboard
+* barcode scanner
+* accessibility
+* confirmation
+* destructive action
+* unsaved changes
+
+Telefon + tablet + yatay kullanımını test et.
+
+---
+
+34. BARKOD / POS
+
+---
+
+Hızlı satış ekranında:
+
+* barkod
+* Code128
+* GS1
+* tartım barkodu
+* PLU
+* gram
+* kg
+* litre
+* promosyon
+* çoklu ödeme
+* müşteri
+* bekleyen fiş
+* fiş çağırma
+* iade
+
+akışlarını tek tek test et.
+
+Kasiyerin 10 saniye içinde temel satış işlemini tamamlayabilmesini hedefle.
+
+---
+
+35. RAPORLAMA
+
+---
+
+Raporların export özelliklerini değerlendir:
+
+Excel
+PDF
+CSV
+
+Büyük veri setlerinde bütün kayıtları RAM'e alma.
+
+Streaming/pagination kullan.
+
+---
+
+36. SONUÇ RAPORU
+
+---
+
+Kod değiştirmeden önce bana şu raporu üret:
+
+A. KRİTİK BUGLAR
+B. GÜVENLİK AÇIKLARI
+C. VERİ KAYBI RİSKLERİ
+D. SYNC PROBLEMLERİ
+E. TRANSACTION PROBLEMLERİ
+F. CARİ PROBLEMLERİ
+G. STOK PROBLEMLERİ
+H. KASA/BANKA PROBLEMLERİ
+I. FATURA PROBLEMLERİ
+J. YETKİ PROBLEMLERİ
+K. MİMARİ BORÇ
+L. PERFORMANS
+M. UX
+N. TEST EKSİKLERİ
+O. ERP EKSİKLERİ
+
+Her madde için:
+
+Önem:
+CRITICAL / HIGH / MEDIUM / LOW
+
+Dosya:
+lib/...
+
+Problem:
+
+Neden problem:
+
+Gerçek hayatta oluşturacağı hata:
+
+Önerilen çözüm:
+
+Migration gerekiyor mu:
+
+Test gerekiyor mu:
+
+---
+
+37. PUANLAMA
+
+---
+
+Sonunda:
+
+Security /10
+Architecture /10
+Database /10
+Sync /10
+POS /10
+Stock /10
+Cari /10
+Finance /10
+ERP /10
+UX /10
+Testing /10
+Performance /10
+
+ve genel puanı ver.
+
+---
+
+38. UYGULAMA PLANI
+
+---
+
+Sonunda tüm işleri önceliklendir:
+
+P0 = production blocker
+P1 = kritik
+P2 = önemli
+P3 = geliştirme
+P4 = gelecekte
+
+Sonra:
+
+FAZ 1
+FAZ 2
+FAZ 3
+FAZ 4
+FAZ 5
+
+şeklinde sırala.
+
+Her faz için hangi dosyaların değişeceğini belirt.
+
+---
+
+39. KOD DEĞİŞTİRME KURALI
+
+---
+
+ÖNCE ANALİZ.
+
+Sonra plan.
+
+Sonra dosya değişiklikleri.
+
+Bir dosyayı değiştirirken mevcut çalışan özellikleri koru.
+
+Bir bugı düzeltirken başka modülü bozmadığını kontrol et.
+
+Migration gerekiyorsa migration dosyası oluştur.
+
+Yeni DB kolonunu doğrudan eski migration'a ekleme.
+
+Yeni sürüm migration'ı oluştur.
+
+---
+
+40. SON HEDEF
+
+---
+
+BARKOPRO şu seviyeye getirilmeli:
+
+OFFLINE-FIRST
+MULTI-BRANCH
+MULTI-DEVICE
+POS
+STOCK
+CRM/CARI
+PURCHASING
+SALES
+WHOLESALE
+DEALER
+INVOICE
+E-DOCUMENT
+CASH
+BANK
+PAYMENT
+SHIFT
+PROMOTION
+LOT/SERIAL
+EXPIRY
+REPORTING
+AUDIT
+APPROVAL
+CLOUD SYNC
+CONFLICT RESOLUTION
+SECURITY
+BACKUP
+DATA HEALTH
+AI
+
+özelliklerini tek bir tutarlı veri modeli altında çalıştıran profesyonel bir Market ERP sistemi.
+
+EN ÖNEMLİ KURAL:
+
+Önce veri doğruluğu.
+
+Sonra güvenlik.
+
+Sonra sync.
+
+Sonra transaction.
+
+Sonra test.
+
+Sonra mimari refactor.
+
+Sonra performans.
+
+En son yeni özellik.
+
+Yeni ekran eklemekten önce mevcut sistemin doğru çalıştığını kanıtla.
+
+# BARKOPRO — YIL SONU DEVİR / DÖNEM KAPATMA / ARŞİVLEME SİSTEMİ
+
+Yukarıda paylaştığım 'YIL SONU DEVİR / DÖNEM KAPATMA / ARŞİVLEME SİSTEMİ' yönergelerinin tamamını 'ERP_DENETIM_KURALLARI.md' dosyasına ekle ve hafızana kazı. Talimatlarım net: Eski verileri rastgele silmeyeceğiz; aktif çalışma alanı ile salt-okunur arşiv alanlarını (SQLite ve Supabase tarafında) birbirinden güvenle ayıracağız.
+
+Hata payını sıfırlamak için ilk olarak KESİNLİKLE hiçbir kod dosyasında değişiklik yapma. Sadece projeyi analiz et ve bana şu planlama raporunu sun:
+
+1. DÖNEM VE SQLITE ARŞİV PLANLAMASI (Madde 2 & 6): Projedeki mevcut SQLite veritabanı yapısına (barkopro.db) göre, 'donemler' tablosunu ve 'arsiv/YYYY/barkopro_YYYY.db' dosya hiyerarşisini en güvenli şekilde nasıl entegre edeceğini planla. 
+2. AŞAMALI (CHECKPOINT) DEVİR MOTORU MİMARİSİ (Madde 17): Bahsettiğim 10 fazlı (Kontrol -> Backup -> Archive -> Stok/Cari/Kasa/Banka Snapshot -> Açılış Kayıtları -> Doğrulama) mimariyi, işlem yarıda kalsa dahi kaldığı yerden devam edebilecek (State-machine) bir 'DevirYoneticiServisi' olarak nasıl tasarlayacağını açıkla.
+3. SUPABASE ARŞİV SORGUSU (Madde 21): Supabase/PostgreSQL tarafındaki yüksek hacimli hareket tabloları (satislar, stok_hareket vb.) için projenin mevcut uzaktan sorgu yapısını bozmayacak en güvenli yaklaşımı (Partitioning mi yoksa Archive Tables mı) seç ve sebebini raporla.
+
+Bu mimari ve strateji raporunu bana sunduktan sonra terminal kontrolünü devret. Onay verdiğimde kodlama fazlarına parça parça geçeceğiz. Başlayabilirsin!
+BARKOPRO profesyonel Market/POS/ERP uygulamasına gerçek production seviyesinde YIL SONU DEVİR sistemi geliştir.
+
+AMAÇ:
+
+Yıl sonunda eski dönemin operasyonel hareketlerini aktif SQLite ve aktif cloud çalışma alanından ayırmak; yeni yılı temiz ve hızlı bir çalışma dönemi olarak başlatmak; ancak geçmiş yıl verilerini kesinlikle kaybetmemek.
+
+ÖRNEK:
+
+31.12.2026
+↓
+2026 dönem kapanışı
+↓
+2026 arşivi
+↓
+2027 açılış devirleri
+↓
+2027 aktif dönem
+
+---
+
+1. EN ÖNEMLİ KURAL
+
+---
+
+ESKİ YIL VERİLERİNİ RASTGELE DELETE ETME.
+
+Aşağıdaki veriler tarihsel olarak korunmalıdır:
+
+* satışlar
+* satış kalemleri
+* iadeler
+* iade kalemleri
+* stok hareketleri
+* cari hareketleri
+* kasa hareketleri
+* banka hareketleri
+* faturalar
+* fatura detayları
+* tahsilatlar
+* ödemeler
+* tedarik hareketleri
+* sayımlar
+* vardiyalar
+* audit kayıtları
+* sync kayıtları
+* belge geçmişleri
+
+Yıl sonu işlemi bu kayıtları fiziksel olarak kaybetmemeli.
+
+Eski dönem salt okunur arşiv haline getirilmeli.
+
+---
+
+2. DÖNEM KAVRAMI OLUŞTUR
+
+---
+
+Sistemde açıkça:
+
+donem_id
+donem_yili
+baslangic_tarihi
+bitis_tarihi
+durum
+kapanis_tarihi
+kapanisi_yapan_kullanici
+kapanis_cihazi
+backup_durumu
+arsiv_durumu
+devir_durumu
+
+alanlarını kullan.
+
+Durumlar:
+
+OPEN
+CLOSING
+CLOSED
+ARCHIVED
+
+olabilir.
+
+Bir anda sadece bir aktif dönem bulunabilmeli.
+
+---
+
+3. DÖNEM YÖNETİMİ EKRANI
+
+---
+
+Yeni ekran oluştur:
+
+Dönem Yönetimi / Yıl Sonu Devir
+
+Ekranda:
+
+Aktif dönem
+Dönem başlangıcı
+Dönem bitişi
+Dönem durumu
+Son kapanış
+Son devir
+Arşiv durumu
+Sync durumu
+
+göster.
+
+Butonlar:
+
+[Yıl Sonu Kontrolü]
+[Yedek Al]
+[Devir Sihirbazını Başlat]
+[Arşivleri Gör]
+[Geçmiş Dönemler]
+
+Geçmiş dönemler salt okunur açılmalı.
+
+---
+
+4. YIL SONU KONTROLÜ
+
+---
+
+Devir başlamadan önce otomatik kontrol yap.
+
+Kontroller:
+
+1. Açık satış var mı?
+2. Açık fiş var mı?
+3. Açık vardiya var mı?
+4. Bekleyen ödeme var mı?
+5. Bekleyen tahsilat var mı?
+6. Açık transfer var mı?
+7. Açık sayım var mı?
+8. Bekleyen onay var mı?
+9. Sync queue boş mu?
+10. Sync error var mı?
+11. Sync conflict var mı?
+12. Negatif stok var mı?
+13. Stok mutabakatı doğru mu?
+14. Cari mutabakatı doğru mu?
+15. Kasa mutabakatı doğru mu?
+16. Banka mutabakatı doğru mu?
+17. Fatura hatası var mı?
+18. Yetkisiz/bozuk kayıt var mı?
+19. DB bütünlük kontrolü başarılı mı?
+20. Backup alınabilir durumda mı?
+
+CRITICAL hata varsa devir başlatılmamalı.
+
+WARNING varsa kullanıcıya gösterilmeli.
+
+Kullanıcı kritik olmayan uyarılar için devam edebilmeli.
+
+---
+
+5. SYNC KONTROLÜ
+
+---
+
+Yıl kapanmadan önce:
+
+sync_queue
+sync_errors
+sync_conflicts
+
+kontrol edilmeli.
+
+Cloud'a gönderilmemiş kritik işlem varsa dönem kapatılmamalı.
+
+Önce sync tamamlanmalı.
+
+Fakat internet yoksa kullanıcının açıkça onayladığı kontrollü "offline kapanış" senaryosunu ayrıca tasarla.
+
+Offline kapanışta:
+
+* local archive oluştur
+* sync pending kayıtlarını koru
+* cloud dönem kapanışını daha sonra tamamla
+
+---
+
+6. SQLITE ARŞİV MİMARİSİ
+
+---
+
+Aktif çalışma DB'si ile eski dönem arşivlerini ayır.
+
+Önerilen yapı:
+
+aktif:
+barkopro.db
+
+arşiv:
+
+arsiv/
+2024/
+barkopro_2024.db
+2025/
+barkopro_2025.db
+2026/
+barkopro_2026.db
+
+Ancak mevcut uygulamanın yapısını analiz etmeden kesin dosya yapısına karar verme.
+
+Mevcut SQLite mimarisine en güvenli yaklaşımı belirle.
+
+Arşiv DB:
+
+READ ONLY
+
+olmalı.
+
+---
+
+7. MASTER TABLOLAR
+
+---
+
+Ürün ve diğer master verileri gereksiz yere yıllık kopyalama.
+
+Örneğin:
+
+urunler
+cariler
+subeler
+depolar
+kasalar
+bankalar
+kullanicilar
+personel
+kategoriler
+
+gibi tablolar aktif sistemde devam edebilir.
+
+Ancak tarihsel kayıtların hangi döneme ait olduğu kesin olarak belirlenebilmeli.
+
+---
+
+8. STOK DEVİR
+
+---
+
+Her ürün ve şube/depo için 31 Aralık kapanış stokunu hesapla.
+
+Örnek:
+
+Ürün:
+Coca Cola
+
+2026 kapanış:
+125 adet
+
+2027 açılış:
+
+STOK_DEVIR
+
+125 adet
+
+olarak oluştur.
+
+2026'nın bütün stok hareketlerini 2027'ye kopyalama.
+
+Sadece kapanış bakiyesini açılış hareketi olarak aktar.
+
+Açılış hareketinde:
+
+kaynak_donem_id
+hedef_donem_id
+kaynak_stok
+urun_id
+sube_id
+depo_id
+miktar
+
+tut.
+
+---
+
+9. CARİ DEVİR
+
+---
+
+Her cari için dönem kapanış bakiyesini hesapla.
+
+Müşteri:
+
+Borç - Alacak = Bakiye
+
+Tedarikçi:
+
+aynı cari hareket mantığını kullan.
+
+2026 sonunda:
+
+30.000 TL borç
+
+varsa 2027'ye:
+
+CARI_DEVIR
+
+30.000 TL borç
+
+olarak aktar.
+
+Orijinal kaynağı mutlaka referansla:
+
+kaynak_donem_id
+kaynak_cari_hareket_id
+kaynak_belge_id
+hedef_donem_id
+
+Devir hareketi sonradan izlenebilir olmalı.
+
+---
+
+10. KASA DEVİR
+
+---
+
+Her kasa için:
+
+2026 kapanış bakiyesi
+
+→
+
+2027 açılış bakiyesi
+
+olarak aktar.
+
+2026 kasa hareketlerini 2027'ye kopyalama.
+
+Açılış hareketi oluştur:
+
+KASA_DEVIR
+
+---
+
+11. BANKA DEVİR
+
+---
+
+Her banka hesabı için:
+
+2026 kapanış bakiyesi
+
+→
+
+2027 banka açılışı.
+
+Kaynak dönem referansı korunmalı.
+
+---
+
+12. BORÇ / ALACAK DEVİR
+
+---
+
+Açık faturaları ve açık borçları kontrol et.
+
+Örnek:
+
+Fatura:
+100.000
+
+Ödenen:
+70.000
+
+Kalan:
+30.000
+
+2027'ye:
+
+30.000 açık bakiye
+
+devret.
+
+Ancak:
+
+* orijinal fatura no
+* belge tarihi
+* kaynak dönem
+* kaynak kayıt ID
+* vade tarihi
+* cari
+* kalan tutar
+
+korunmalı.
+
+Böylece 2027'de kullanıcı 30.000 TL'nin hangi 2026 belgesinden geldiğini görebilmeli.
+
+---
+
+13. PROMOSYON DEVİR
+
+---
+
+Biten promosyonları devretme.
+
+Başlangıç/bitiş tarihlerini kontrol et.
+
+Yeni yılda devam eden promosyonları kullanıcıya göster.
+
+Otomatik kopyalamak yerine:
+
+"2027'ye aktar"
+
+mantığı kullanılabilir.
+
+---
+
+14. FATURA VE BELGE DEVİR
+
+---
+
+Eski faturaları yeni döneme kopyalama.
+
+2026 faturaları 2026 arşivinde kalmalı.
+
+2027 yeni fatura numaralandırması mevcut mevzuat ve firma ayarlarına uygun olarak ayrı dönemden başlamalı.
+
+Ancak belge geçmişi ve referanslar korunmalı.
+
+---
+
+15. SATIŞ DEVİR
+
+---
+
+Satış kayıtlarını yeni döneme kopyalama.
+
+2026:
+
+satışlar_2026 / 2026 partition / arşiv DB
+
+2027:
+
+yeni satışlar
+
+olarak çalışmalı.
+
+2027 raporları 2027 dönemine göre hesaplanmalı.
+
+Geçmiş dönem raporları gerektiğinde arşivden okunmalı.
+
+---
+
+16. AUDIT
+
+---
+
+Yıl kapanışı mutlaka audit log oluşturmalı.
+
+Örnek:
+
+DONEM_KAPATMA_BASLATILDI
+DONEM_KONTROL
+DONEM_BACKUP
+DONEM_ARŞIV
+STOK_DEVIR
+CARI_DEVIR
+KASA_DEVIR
+BANKA_DEVIR
+DONEM_ACILIS
+DONEM_KAPATILDI
+
+Audit içinde:
+
+kullanıcı
+tarih
+cihaz
+şube
+kaynak dönem
+hedef dönem
+sonuç
+hata
+
+tut.
+
+---
+
+17. ATOMİKLİK
+
+---
+
+Devir işlemini tek büyük SQLite transaction içine almak zorunda değilsin.
+
+Çok büyük veri varsa aşamalı ve checkpoint'li çalış.
+
+Öneri:
+
+FAZ 1:
+Kontrol
+
+FAZ 2:
+Backup
+
+FAZ 3:
+Archive hazırlama
+
+FAZ 4:
+Stok snapshot
+
+FAZ 5:
+Cari snapshot
+
+FAZ 6:
+Kasa snapshot
+
+FAZ 7:
+Banka snapshot
+
+FAZ 8:
+Açılış kayıtları
+
+FAZ 9:
+Dönem kapanışı
+
+FAZ 10:
+Doğrulama
+
+Her fazın durumu DB'de tutulmalı.
+
+Uygulama kapanırsa işlem kaldığı yerden devam edebilmeli.
+
+---
+
+18. SNAPSHOT KULLAN
+
+---
+
+Devir için mümkün olduğunca:
+
+stok_kapanis_snapshot
+cari_kapanis_snapshot
+kasa_kapanis_snapshot
+banka_kapanis_snapshot
+
+gibi snapshot mantığı kullan.
+
+Snapshot:
+
+kaynak_donem
+tarih
+urun/cari/kasa/banka
+bakiye
+kaynak_hash
+
+alanlarını içerebilir.
+
+---
+
+19. ARŞİV DOĞRULAMA
+
+---
+
+Arşiv tamamlandıktan sonra:
+
+* kayıt sayısı
+* toplam satış
+* toplam satış tutarı
+* toplam stok hareketi
+* toplam cari hareket
+* toplam kasa
+* toplam banka
+* checksum/hash
+
+karşılaştır.
+
+Örneğin:
+
+2026 aktif DB:
+
+Satış sayısı: 500.000
+
+Arşiv:
+
+Satış sayısı: 500.000
+
+eşleşmeli.
+
+Eşleşmiyorsa dönem kapanmış sayılmamalı.
+
+---
+
+20. YENİ DÖNEM DOĞRULAMA
+
+---
+
+2027 açıldıktan sonra:
+
+stok açılışları
+cari açılışları
+kasa açılışları
+banka açılışları
+
+kontrol edilmeli.
+
+Örnek:
+
+2026 stok:
+125
+
+2027 stok açılış:
+125
+
+olmalı.
+
+Cari:
+
+2026 kapanış:
+30.000 Borç
+
+2027 açılış:
+30.000 Borç
+
+olmalı.
+
+---
+
+21. SUPABASE MİMARİSİ
+
+---
+
+Cloud tarafında eski veriyi rastgele DELETE etme.
+
+Önce mevcut Supabase yapısını analiz et.
+
+Yüksek veri hacimli tablolar için PostgreSQL partitioning seçeneğini değerlendir.
+
+Örneğin:
+
+satislar
+stok_hareket
+cari_hareket
+kasa_hareketleri
+banka_hareketleri
+
+için dönem bazlı partitioning değerlendir.
+
+Uygulamanın mevcut sorgularını mümkün olduğunca bozmadan tasarla.
+
+Eğer partitioning mevcut Supabase yapısında riskliyse alternatif olarak güvenli archive table yaklaşımını tasarla.
+
+Kararı kodlamadan önce raporla.
+
+---
+
+22. SUPABASE ARŞİV
+
+---
+
+Arşivlenen cloud verisi:
+
+READ ONLY
+
+olmalı.
+
+Normal mobil kullanıcı eski dönem verisini değiştirememeli.
+
+Eski dönem raporları:
+
+SELECT
+
+ile okunabilmeli.
+
+INSERT/UPDATE/DELETE
+
+olmamalı.
+
+RLS politikalarını buna göre tasarla.
+
+---
+
+23. DB ŞİŞMESİ
+
+---
+
+Amaç yalnızca veri silmek değil.
+
+Aktif operasyon DB'sini küçük tutmak.
+
+Yeni dönemde:
+
+* eski satış hareketleri
+* eski stok hareketleri
+* eski cari hareketleri
+* eski kasa hareketleri
+* eski banka hareketleri
+
+aktif çalışma DB'sinde tutulmamalı.
+
+Fakat master data korunmalı.
+
+---
+
+24. PERFORMANS
+
+---
+
+100.000 değil:
+
+1.000.000+
+satış
+
+10.000.000+
+stok hareketi
+
+senaryosunda düşün.
+
+Arşivleme sırasında:
+
+* RAM'e bütün tabloyu alma
+* büyük SELECT *
+* tek dev transaction
+* UI thread'i bloklama
+
+yapma.
+
+Batch işlemleri kullan.
+
+Örneğin:
+
+1000 / 5000 kayıtlık batch.
+
+Progress göster:
+
+"2026 satışları arşivleniyor: %63"
+
+---
+
+25. KULLANICI DENEYİMİ
+
+---
+
+Yıl sonu ekranında:
+
+🟢 Hazır
+🟡 Uyarı
+🔴 Kritik
+
+göster.
+
+Örneğin:
+
+✓ Stok mutabakatı
+✓ Cari mutabakatı
+✓ Kasa mutabakatı
+✓ Backup
+✓ Sync
+
+gibi.
+
+---
+
+26. DEVİR SONRASI ESKİ YILA ERİŞİM
+
+---
+
+Raporlar bölümüne:
+
+Dönem Seçimi
+
+ekle.
+
+Örneğin:
+
+2027
+2026
+2025
+2024
+
+2027:
+normal çalışma
+
+2026:
+salt okunur
+
+2025:
+salt okunur
+
+olmalı.
+
+Eski dönemde:
+
+SATIŞ EKLE
+TAHSİLAT EKLE
+ÖDEME
+STOK DÜZELTME
+SİLME
+
+gibi işlemler kapalı olmalı.
+
+---
+
+27. GERİ DÖNÜŞ / ROLLBACK
+
+---
+
+Devir sırasında hata olursa:
+
+* aktif dönem bozulmamalı
+* yarım açılış oluşmamalı
+* yarım arşiv oluşmamalı
+
+İşlem state machine ile takip edilmeli.
+
+Örneğin:
+
+INIT
+CHECKING
+BACKUP
+ARCHIVING
+SNAPSHOT
+OPENING
+VERIFYING
+COMPLETED
+FAILED
+ROLLBACK_REQUIRED
+
+---
+
+28. TEKRAR ÇALIŞTIRMA
+
+---
+
+Aynı yıl sonu işlemi iki kere çalıştırılırsa:
+
+2027'ye iki kere stok açılışı
+2027'ye iki kere cari açılışı
+2027'ye iki kere kasa açılışı
+
+oluşmamalı.
+
+Idempotent olmalı.
+
+Her devir işleminin:
+
+devir_id
+
+alanı olmalı.
+
+Unique constraint ile aynı kaynak dönem → hedef dönem işlemi iki kez oluşturulamamalı.
+
+---
+
+29. ÇOKLU ŞUBE
+
+---
+
+Çok şubeli sistemde devir:
+
+Şube bazında yapılmalı.
+
+Örneğin:
+
+Şube A
+2026 kapanış
+→ 2027 açılış
+
+Şube B
+2026 kapanış
+→ 2027 açılış
+
+Aynı dönemde farklı şubelerin kapanış durumları takip edilmeli.
+
+Genel şirket dönemi ancak bütün gerekli şubeler tamamlandığında kapanabilir.
+
+---
+
+30. ÇOKLU CİHAZ
+
+---
+
+Yıl sonu işlemi sırasında:
+
+* başka cihaz satış yapıyor mu?
+* başka cihaz sync yapıyor mu?
+* başka cihaz dönem açmaya çalışıyor mu?
+
+kontrol et.
+
+Dönem kapanışında distributed lock / server-side lock veya mevcut mimariye uygun güvenli kilitleme mekanizması oluştur.
+
+Aynı dönem iki cihaz tarafından aynı anda kapatılmamalı.
+
+---
+
+31. YEDEK
+
+---
+
+Devirden önce otomatik backup:
+
+SQLite DB
++
+kritik ayarlar
++
+gerekli konfigürasyon
+
+al.
+
+Backup doğrulaması yap.
+
+Mümkünse checksum oluştur.
+
+Backup başarılı olmadan kritik dönem kapatma işlemine geçme.
+
+---
+
+32. TESTLER
+
+---
+
+Test oluştur:
+
+1. Boş dönem
+2. Normal dönem
+3. Çok büyük dönem
+4. Negatif stok
+5. Açık cari
+6. Açık kasa
+7. Açık banka
+8. Bekleyen sync
+9. Sync conflict
+10. İnternet yok
+11. Uygulama kapanması
+12. Devir yarıda kalması
+13. Aynı devirin ikinci kez çalışması
+14. Çoklu şube
+15. Çoklu cihaz
+16. Arşiv doğrulama
+17. Stok devir doğrulama
+18. Cari devir doğrulama
+19. Kasa devir doğrulama
+20. Banka devir doğrulama
+
+---
+
+33. VERİ SAĞLIĞI
+
+---
+
+Devir sonrası otomatik Veri Sağlığı çalıştır.
+
+Kontrol:
+
+stok
+cari
+kasa
+banka
+satış
+sync
+foreign key
+global_id
+duplicate
+archive
+opening balances
+
+---
+
+34. DOSYA MİMARİSİ
+
+---
+
+Mevcut mimariyi analiz ederek uygun dosyaları oluştur.
+
+Örneğin uygun ise:
+
+lib/modeller/donem_model.dart
+lib/depolar/donem_deposu.dart
+lib/servisler/donem_devir_servisi.dart
+lib/servisler/donem_arsiv_servisi.dart
+lib/servisler/donem_mutabakat_servisi.dart
+lib/saglayicilar/donem_saglayici.dart
+lib/ekranlar/donem_yonetimi_ekrani.dart
+lib/ekranlar/yil_sonu_devir_ekrani.dart
+
+isimlerini mevcut proje yapısına uygun şekilde kullan.
+
+Mevcut benzer servis/depo varsa yenisini oluşturmak yerine mevcut yapıyı genişlet.
+
+---
+
+35. DATABASE MIGRATION
+
+---
+
+Yeni tablolar/kolonlar gerekiyorsa yeni migration oluştur.
+
+Eski migration'ı değiştirme.
+
+Mevcut kullanıcı DB'leri bozulmamalı.
+
+Migration sonrası:
+
+PRAGMA foreign_key_check
+
+ve mevcut veri sağlık kontrollerini çalıştır.
+
+---
+
+36. SONUÇ RAPORU
+
+---
+
+Kod değiştirmeden önce bana:
+
+1. Mevcut DB mimarisi
+2. Mevcut Supabase mimarisi
+3. Dönem bazlı arşiv için önerilen mimari
+4. Değişecek tablolar
+5. Yeni tablolar
+6. Yeni servisler
+7. Yeni ekranlar
+8. Migration planı
+9. Riskler
+10. Test planı
+
+raporunu çıkar.
+
+Sonra uygulamayı değiştir.
+
+---
+
+37. KESİNLİKLE YAPMA
+
+---
+
+❌ Eski yılı DELETE ile silme
+❌ 2026 hareketlerini 2027'ye kopyalama
+❌ Cari geçmişini kaybetme
+❌ Fatura geçmişini kaybetme
+❌ Stok hareketlerini silerek stok oluşturma
+❌ Eski dönem kayıtlarını UPDATE ederek yeni yıl gibi gösterme
+❌ Eski faturaların tarihini değiştirme
+❌ Audit kayıtlarını silme
+❌ Cloud verisini kontrolsüz silme
+❌ Devir işlemini idempotent olmayan şekilde yapma
+❌ Aynı devir işleminin iki kere çalışmasına izin verme
+❌ Yarım kalmış devir sonrası uygulamayı yeni döneme geçmiş gibi gösterme
+
+---
+
+38. HEDEF SONUÇ
+
+---
+
+BARKOPRO'da:
+
+2026
+
+KAPALI
+↓
+ARŞİV
+↓
+SALT OKUNUR
+
+2027
+
+AKTİF
+↓
+AÇILIŞ BAKİYELERİ
+↓
+YENİ SATIŞLAR
+↓
+YENİ STOK HAREKETLERİ
+↓
+YENİ CARİ HAREKETLER
+↓
+YENİ KASA/BANKA HAREKETLERİ
+
+şeklinde çalışan profesyonel bir dönem yönetim sistemi oluştur.
+
+HEDEF:
+
+Aktif SQLite DB küçük ve hızlı olacak.
+
+Cloud aktif veri seti gereksiz şekilde büyümeyecek.
+
+Geçmiş yıllar kaybolmayacak.
+
+Eski yıllar raporlanabilecek.
+
+Eski yıllar değiştirilemeyecek.
+
+Stok/cari/kasa/banka açılışları birebir doğrulanabilecek.
+
+Yıl sonu işlemi tekrar çalıştırılamayacak.
+
+Bir hata olursa güvenli şekilde devam edilebilecek veya rollback yapılabilecek.
+
+Sistemin mevcut satış, stok, cari, kasa, banka, fatura, sync, Riverpod ve Supabase mimarisini bozmadan bu yapıyı entegre et.
+sen daha iyisini bilrsin benim atladığım yer varsa yap.........

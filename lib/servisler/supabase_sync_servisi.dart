@@ -116,6 +116,17 @@ class SupabaseSyncServisi {
     // referans_id/referans_turu polimorfik (kolon_haritalama.dart'ta FK
     // hedefi yok) olduğu için sıra bağımsız, listenin sonuna eklendi.
     'onay_talepleri',
+
+    // Yıl Sonu Devir / Dönem Kapatma / Arşivleme sistemi FAZ 1
+    // (2026-09-16, kullanıcı onaylı mimari plan raporu). 'donemler'
+    // parent (diğer 6'sı ona FK ile bağlı) — en sonda eklenmesinin
+    // sebebi, snapshot tablolarının bağımlı olduğu subeler/urunler/
+    // cari/banka_hesaplar tabolarının bu noktada ZATEN senkron
+    // edilmiş olması (yukarıdaki onay_talepleri ile aynı gerekçe).
+    'donemler',
+    'donem_sube_durumlari', 'devir_checkpoint',
+    'stok_kapanis_snapshot', 'cari_kapanis_snapshot',
+    'kasa_kapanis_snapshot', 'banka_kapanis_snapshot',
   ];
 
   static const _globalIdVar = {
@@ -142,6 +153,10 @@ class SupabaseSyncServisi {
     'bekleyen_siparisler', 'bekleyen_siparis_kalem',
     'onay_talepleri',
 
+    // Yıl Sonu Devir / Dönem Kapatma / Arşivleme (2026-09-16):
+    'donemler', 'donem_sube_durumlari', 'devir_checkpoint',
+    'stok_kapanis_snapshot', 'cari_kapanis_snapshot',
+    'kasa_kapanis_snapshot', 'banka_kapanis_snapshot',
   };
 
   // 🔴 DÜZELTME: 'masa_siparisleri' önceden bu listede YOKTU — oysa
@@ -181,7 +196,9 @@ class SupabaseSyncServisi {
   // silinmesi) bu yeni eklenen ilişkilerde de yaşanır. Yeni parent'lar:
   // kategoriler, gider_kategoriler, vardiyalar, lot_seri, irsaliyeler,
   // faturalar, tedarikci_siparisler.
-  static const _idHaritasiKurulacakTablolar = ['cari', 'urunler', 'satislar', 'iade', 'masalar', 'masa_siparisleri', 'kullanicilar', 'kredi_kartlari', 'subeler', 'banka_hesaplar', 'bankalar', 'borclar', 'fiyat_gruplari', 'promosyon_tanim', 'kategoriler', 'gider_kategoriler', 'vardiyalar', 'lot_seri', 'irsaliyeler', 'faturalar', 'tedarikci_siparisler', 'bekleyen_siparisler'];
+  // 'donemler' eklendi (2026-09-16, Yıl Sonu Devir): donem_sube_
+  // durumlari/devir_checkpoint/4 kapanis_snapshot tablosunun FK hedefi.
+  static const _idHaritasiKurulacakTablolar = ['cari', 'urunler', 'satislar', 'iade', 'masalar', 'masa_siparisleri', 'kullanicilar', 'kredi_kartlari', 'subeler', 'banka_hesaplar', 'bankalar', 'borclar', 'fiyat_gruplari', 'promosyon_tanim', 'kategoriler', 'gider_kategoriler', 'vardiyalar', 'lot_seri', 'irsaliyeler', 'faturalar', 'tedarikci_siparisler', 'bekleyen_siparisler', 'donemler'];
 
   // 🔄 TEK DOĞRULUK KAYNAĞI: FK haritası artık KolonHaritalama'da
   // (hem manuel hem otomatik senkron yolu aynı haritayı kullanıyor —
@@ -225,6 +242,10 @@ class SupabaseSyncServisi {
     'bekleyen_siparisler', 'bekleyen_siparis_kalem',
     'onay_talepleri',
 
+    // Yıl Sonu Devir / Dönem Kapatma / Arşivleme (2026-09-16):
+    'donemler', 'donem_sube_durumlari', 'devir_checkpoint',
+    'stok_kapanis_snapshot', 'cari_kapanis_snapshot',
+    'kasa_kapanis_snapshot', 'banka_kapanis_snapshot',
   };
 
   static const Map<String, String> _uniqueAlan = {
@@ -300,6 +321,14 @@ class SupabaseSyncServisi {
     'bekleyen_siparis_kalem': 'global_id',
     'onay_talepleri': 'global_id',
 
+    // Yıl Sonu Devir / Dönem Kapatma / Arşivleme (2026-09-16):
+    'donemler': 'global_id',
+    'donem_sube_durumlari': 'global_id',
+    'devir_checkpoint': 'global_id',
+    'stok_kapanis_snapshot': 'global_id',
+    'cari_kapanis_snapshot': 'global_id',
+    'kasa_kapanis_snapshot': 'global_id',
+    'banka_kapanis_snapshot': 'global_id',
   };
 
   // 🔴🔴 Derin analizde bulundu: Bu oturumda soft-delete (is_deleted)

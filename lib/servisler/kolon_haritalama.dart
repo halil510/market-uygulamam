@@ -172,6 +172,17 @@ class KolonHaritalama {
     'kasa_hareketleri':       {'kullanici_id': 'kullanicilar', 'sube_id': 'subeler'},
     'personel':               {'kullanici_id': 'kullanicilar'},
     'audit_log':              {'kullanici_id': 'kullanicilar', 'sube_id': 'subeler'},
+
+    // Yıl Sonu Devir / Dönem Kapatma / Arşivleme (2026-09-16, kullanıcı
+    // onaylı mimari plan raporu). 'donemler' yeni bir parent tablo —
+    // aynı hata sınıfını (FK sütununun çevrilmeden ham yerel id ile
+    // gitmesi) baştan önlemek için tüm 6 çocuk tablo burada tanımlı.
+    'donem_sube_durumlari':   {'donem_id': 'donemler', 'sube_id': 'subeler'},
+    'devir_checkpoint':       {'kaynak_donem_id': 'donemler', 'hedef_donem_id': 'donemler'},
+    'stok_kapanis_snapshot':  {'donem_id': 'donemler', 'sube_id': 'subeler', 'urun_id': 'urunler'},
+    'cari_kapanis_snapshot':  {'donem_id': 'donemler', 'cari_id': 'cari'},
+    'kasa_kapanis_snapshot':  {'donem_id': 'donemler', 'sube_id': 'subeler'},
+    'banka_kapanis_snapshot': {'donem_id': 'donemler', 'banka_hesap_id': 'banka_hesaplar'},
   };
 
   static Map<String, String>? fkHarita(String tablo) => fkHaritasi[tablo];

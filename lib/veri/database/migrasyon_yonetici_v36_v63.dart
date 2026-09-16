@@ -894,3 +894,146 @@ Future<void> _v66danV67ye(Database db) async {
   await _calistir(db,
       'CREATE INDEX IF NOT EXISTS idx_carih_cari_silinmemis_tarih ON cari_hareket(cari_id, is_deleted, tarih)');
 }
+
+// ==================== v67 -> v68 ====================
+// YIL SONU DEVİR / DÖNEM KAPATMA / ARŞİVLEME SİSTEMİ — FAZ 1 (2026-09-16,
+// kullanıcı onaylı mimari plan raporu). Mevcut kurulumlar için 7 yeni
+// tablo — tanımlar donem_semasi.dart (fresh install) ile BİREBİR aynı,
+// tek doğruluk kaynağı orası; buradaki SQL'ler o dosyadan kopyalanmıştır.
+// Devir motoru mantığı (DevirYoneticiServisi) İLERİKİ bir fazda gelecek —
+// bu migrasyon SADECE şemayı hazırlar.
+Future<void> _v67denV68e(Database db) async {
+  await _calistir(db, '''
+    CREATE TABLE IF NOT EXISTS donemler (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      global_id TEXT UNIQUE,
+      donem_yili INTEGER NOT NULL UNIQUE,
+      baslangic_tarihi TEXT NOT NULL,
+      bitis_tarihi TEXT NOT NULL,
+      durum TEXT NOT NULL DEFAULT 'OPEN',
+      kapanis_tarihi TEXT,
+      kapanisi_yapan_kullanici_id INTEGER,
+      kapanis_cihazi TEXT,
+      backup_durumu TEXT NOT NULL DEFAULT 'bekliyor',
+      arsiv_durumu TEXT NOT NULL DEFAULT 'bekliyor',
+      devir_durumu TEXT NOT NULL DEFAULT 'bekliyor',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_updated TEXT
+    )
+  ''');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_donem_yili ON donemler(donem_yili)');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_donem_durum ON donemler(durum)');
+
+  await _calistir(db, '''
+    CREATE TABLE IF NOT EXISTS donem_sube_durumlari (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      global_id TEXT UNIQUE,
+      donem_id INTEGER NOT NULL,
+      sube_id INTEGER NOT NULL,
+      durum TEXT NOT NULL DEFAULT 'OPEN',
+      kapanis_tarihi TEXT,
+      kapanisi_yapan_kullanici_id INTEGER,
+      kapanis_cihazi TEXT,
+      backup_durumu TEXT NOT NULL DEFAULT 'bekliyor',
+      arsiv_durumu TEXT NOT NULL DEFAULT 'bekliyor',
+      devir_durumu TEXT NOT NULL DEFAULT 'bekliyor',
+      last_updated TEXT,
+      UNIQUE(donem_id, sube_id)
+    )
+  ''');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_donemsube_donem ON donem_sube_durumlari(donem_id)');
+
+  await _calistir(db, '''
+    CREATE TABLE IF NOT EXISTS devir_checkpoint (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      global_id TEXT UNIQUE,
+      devir_id TEXT NOT NULL UNIQUE,
+      kaynak_donem_id INTEGER NOT NULL,
+      hedef_donem_id INTEGER NOT NULL,
+      sube_id INTEGER NOT NULL DEFAULT 0,
+      durum TEXT NOT NULL DEFAULT 'INIT',
+      mevcut_faz INTEGER NOT NULL DEFAULT 0,
+      faz_ilerleme_json TEXT,
+      baslangic_zamani TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      son_guncelleme TEXT,
+      tamamlanma_zamani TEXT,
+      hata_mesaji TEXT,
+      last_updated TEXT,
+      UNIQUE(kaynak_donem_id, hedef_donem_id, sube_id)
+    )
+  ''');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_devir_durum ON devir_checkpoint(durum)');
+
+  await _calistir(db, '''
+    CREATE TABLE IF NOT EXISTS stok_kapanis_snapshot (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      global_id TEXT UNIQUE,
+      devir_id TEXT NOT NULL,
+      donem_id INTEGER NOT NULL,
+      sube_id INTEGER NOT NULL,
+      urun_id INTEGER NOT NULL,
+      miktar REAL NOT NULL,
+      kaynak_hash TEXT,
+      olusturma_tarihi TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_updated TEXT,
+      UNIQUE(donem_id, sube_id, urun_id)
+    )
+  ''');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_stoksnap_donem ON stok_kapanis_snapshot(donem_id, sube_id)');
+
+  await _calistir(db, '''
+    CREATE TABLE IF NOT EXISTS cari_kapanis_snapshot (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      global_id TEXT UNIQUE,
+      devir_id TEXT NOT NULL,
+      donem_id INTEGER NOT NULL,
+      cari_id INTEGER NOT NULL,
+      bakiye REAL NOT NULL,
+      kaynak_hash TEXT,
+      olusturma_tarihi TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_updated TEXT,
+      UNIQUE(donem_id, cari_id)
+    )
+  ''');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_carisnap_donem ON cari_kapanis_snapshot(donem_id)');
+
+  await _calistir(db, '''
+    CREATE TABLE IF NOT EXISTS kasa_kapanis_snapshot (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      global_id TEXT UNIQUE,
+      devir_id TEXT NOT NULL,
+      donem_id INTEGER NOT NULL,
+      sube_id INTEGER NOT NULL,
+      bakiye REAL NOT NULL,
+      kaynak_hash TEXT,
+      olusturma_tarihi TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_updated TEXT,
+      UNIQUE(donem_id, sube_id)
+    )
+  ''');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_kasasnap_donem ON kasa_kapanis_snapshot(donem_id)');
+
+  await _calistir(db, '''
+    CREATE TABLE IF NOT EXISTS banka_kapanis_snapshot (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      global_id TEXT UNIQUE,
+      devir_id TEXT NOT NULL,
+      donem_id INTEGER NOT NULL,
+      banka_hesap_id INTEGER NOT NULL,
+      bakiye REAL NOT NULL,
+      kaynak_hash TEXT,
+      olusturma_tarihi TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_updated TEXT,
+      UNIQUE(donem_id, banka_hesap_id)
+    )
+  ''');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_bankasnap_donem ON banka_kapanis_snapshot(donem_id)');
+}

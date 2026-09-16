@@ -12,7 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/sube_urun_deposu.dart';
-import '../../veri/database/veritabani.dart';
+import '../../depolar/sube_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -53,9 +53,7 @@ class _DepoTransferEkraniState extends ConsumerState<DepoTransferEkrani> {
   Future<void> _yukle() async {
     try {
       final u = await UrunDeposu().tumunuGetir();
-      final db = await Veritabani().db;
-      final subeler = await db.query('subeler',
-          where: 'is_deleted = 0 AND aktif = 1', orderBy: 'sube_adi ASC');
+      final subeler = await SubeDeposu().aktifOlanlariGetir();
       if (mounted) {
         setState(() {
           _urunler = u;

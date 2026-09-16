@@ -22,6 +22,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../veri/database/veritabani.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../servisler/log_servisi.dart';
 
 class SubeUrunDeposu {
@@ -207,19 +208,38 @@ class SubeUrunDeposu {
 
       await satirUpsertTxn(txn, kaynakSubeId, kaynakYeni);
       await satirUpsertTxn(txn, hedefSubeId, hedefYeni);
+      // Madde 5 sertleştirmesi: senkron kuyruğu kaydı business data ile
+      // AYNI transaction içinde, atomik olarak yazılıyor (bkz.
+      // SyncKuyrukYazici yorumu — yarıda kalan bir transfer buluta hiç
+      // gitmez, çünkü transaction'ın kendisi rollback olur).
+      for (final subeId in [kaynakSubeId, hedefSubeId]) {
+        final satir = await txn.query('sube_urun',
+            where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, subeId], limit: 1);
+        if (satir.isNotEmpty) {
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'sube_urun', veri: Map<String, dynamic>.from(satir.first));
+        }
+      }
 
-      await txn.insert('stok_hareket', {
+      final cikisSatiri = {
         'global_id': cikisGid, 'urun_id': urunId, 'hareket_turu': 'Şube Transfer Çıkış',
         'miktar': miktar, 'onceki_stok': kaynakStok, 'sonraki_stok': kaynakYeni,
         'tarih': now, 'referans_turu': 'sube_transfer', 'sube_id': kaynakSubeId,
         'aciklama': 'Şube #$hedefSubeId\'e transfer',
-      });
-      await txn.insert('stok_hareket', {
+      };
+      final cikisId = await txn.insert('stok_hareket', cikisSatiri);
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'stok_hareket', veri: {...cikisSatiri, 'id': cikisId});
+
+      final girisSatiri = {
         'global_id': girisGid, 'urun_id': urunId, 'hareket_turu': 'Şube Transfer Giriş',
         'miktar': miktar, 'onceki_stok': hedefStok, 'sonraki_stok': hedefYeni,
         'tarih': now, 'referans_turu': 'sube_transfer', 'sube_id': hedefSubeId,
         'aciklama': 'Şube #$kaynakSubeId\'den transfer',
-      });
+      };
+      final girisId = await txn.insert('stok_hareket', girisSatiri);
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'stok_hareket', veri: {...girisSatiri, 'id': girisId});
     });
 
     // Bulut senkronu — transaction commit olduktan SONRA (bkz.

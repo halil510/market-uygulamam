@@ -13,6 +13,7 @@ import '../modeller/kasa_hareket_model.dart';
 import '../modeller/banka_hareket_model.dart';
 import '../servisler/aktif_sube_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../veri/database/veritabani.dart';
 import 'package:uuid/uuid.dart';
 
@@ -44,6 +45,25 @@ class AlimIslemServisi {
   final _kasaDepo = KasaDeposu();
   final _bankaDepo = BankaHareketDeposu();
   final _stokDepo = StokDeposu();
+
+  /// cari_hareket satırını VE etkilediği cari satırını, ÇAĞIRANIN verilen
+  /// [txn] içinde senkron kuyruğuna yazar (Madde 5 sertleştirmesi).
+  Future<void> _cariveHareketiKuyrukla(
+      dynamic txn, String cariHareketGid, int cariId) async {
+    final cariHareketSatiri = await txn.query('cari_hareket',
+        where: 'global_id = ?', whereArgs: [cariHareketGid], limit: 1);
+    if (cariHareketSatiri.isNotEmpty) {
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'cari_hareket',
+          veri: Map<String, dynamic>.from(cariHareketSatiri.first));
+    }
+    final cariSatiri = await txn.query('cari',
+        where: 'id = ?', whereArgs: [cariId], limit: 1);
+    if (cariSatiri.isNotEmpty) {
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'cari', veri: Map<String, dynamic>.from(cariSatiri.first));
+    }
+  }
 
   /// [mevcutSiparisId] doluysa YENİ fiş AÇILMAZ, var olan 'beklemede'
   /// sipariş 'teslim_alindi'ya güncellenir (kalem bazında teslim_mik
@@ -122,6 +142,17 @@ class AlimIslemServisi {
           'last_updated': now,
         });
       }
+      // Madde 5 sertleştirmesi: senkron kuyruğu kaydı business data ile
+      // AYNI transaction içinde, atomik olarak yazılıyor (bkz.
+      // SyncKuyrukYazici yorumu — yarıda kalan bir alım buluta hiç gitmez,
+      // çünkü transaction'ın kendisi rollback olur).
+      final guncelAlimSatiri = await txn.query('tedarikci_siparisler',
+          where: 'id = ?', whereArgs: [alimId], limit: 1);
+      if (guncelAlimSatiri.isNotEmpty) {
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'tedarikci_siparisler',
+            veri: Map<String, dynamic>.from(guncelAlimSatiri.first));
+      }
 
       // 2. Kalemler + stok
       for (final k in kalemler) {
@@ -160,10 +191,17 @@ class AlimIslemServisi {
               'last_updated': now,
             });
           }
+          final guncelKalemSatiri = await txn.query('tedarikci_siparis_kalem',
+              where: 'global_id = ?', whereArgs: [kalemGidler.last], limit: 1);
+          if (guncelKalemSatiri.isNotEmpty) {
+            await SyncKuyrukYazici.ekleTxn(txn,
+                tablo: 'tedarikci_siparis_kalem',
+                veri: Map<String, dynamic>.from(guncelKalemSatiri.first));
+          }
         } else {
           final kalemGid = const Uuid().v4();
           kalemGidler.add(kalemGid);
-          await txn.insert('tedarikci_siparis_kalem', {
+          final kalemId = await txn.insert('tedarikci_siparis_kalem', {
             'global_id': kalemGid,
             'siparis_id': alimId,
             'urun_id': k.urunId,
@@ -174,6 +212,20 @@ class AlimIslemServisi {
             'toplam_tutar': k.miktar * k.alisFiyat,
             'last_updated': now,
           });
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'tedarikci_siparis_kalem',
+              veri: {
+                'id': kalemId,
+                'global_id': kalemGid,
+                'siparis_id': alimId,
+                'urun_id': k.urunId,
+                'siparis_mik': k.miktar,
+                'teslim_mik': k.miktar,
+                'birim_fiyat': k.alisFiyat,
+                'kdv_oran': 0,
+                'toplam_tutar': k.miktar * k.alisFiyat,
+                'last_updated': now,
+              });
         }
         // Stok güncelle
         final rows = await txn.query('urunler',
@@ -190,6 +242,13 @@ class AlimIslemServisi {
               where: 'id = ?',
               whereArgs: [k.urunId]);
           etkilenenUrunIdler.add(k.urunId);
+          final guncelUrunSatiri = await txn.query('urunler',
+              where: 'id = ?', whereArgs: [k.urunId], limit: 1);
+          if (guncelUrunSatiri.isNotEmpty) {
+            await SyncKuyrukYazici.ekleTxn(txn,
+                tablo: 'urunler',
+                veri: Map<String, dynamic>.from(guncelUrunSatiri.first));
+          }
           // Ana stok ARTTI (alım) — subeStokPayiUygula pozitif=düştü
           // bekliyor, bu yüzden negatif veriliyor.
           subePayiFarklari[k.urunId] =
@@ -216,11 +275,17 @@ class AlimIslemServisi {
               'kayit_tarihi': now,
               'last_updated': now,
             });
+            final lotSatiri = await txn.query('lot_seri',
+                where: 'id = ?', whereArgs: [lotId], limit: 1);
+            if (lotSatiri.isNotEmpty) {
+              await SyncKuyrukYazici.ekleTxn(txn,
+                  tablo: 'lot_seri', veri: Map<String, dynamic>.from(lotSatiri.first));
+            }
           }
 
           final stokGid = const Uuid().v4();
           stokHareketGidler.add(stokGid);
-          await txn.insert('stok_hareket', {
+          final stokSatiri = {
             'global_id': stokGid,
             'urun_id': k.urunId,
             'hareket_turu': 'Alim Giris',
@@ -235,7 +300,10 @@ class AlimIslemServisi {
             'kullanici_id': kullaniciId,
             'aciklama': 'Alım: $alimNo',
             'lot_id': lotId,
-          });
+          };
+          final stokHareketId = await txn.insert('stok_hareket', stokSatiri);
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'stok_hareket', veri: {...stokSatiri, 'id': stokHareketId});
         }
       }
 
@@ -284,6 +352,7 @@ class AlimIslemServisi {
         await txn.rawUpdate(
             'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
             [tedarikciId, tedarikciId]);
+        await _cariveHareketiKuyrukla(txn, cariHareketGid!, tedarikciId);
       } else if (tedarikciId != null && genelToplam > 0.005) {
         // Nakit/Kredi Kartı ile peşin ödense bile tedarikçinin cari
         // hareket geçmişinde görünsün — borc VE alacak AYNI tutarda
@@ -307,6 +376,7 @@ class AlimIslemServisi {
         await txn.rawUpdate(
             'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
             [tedarikciId, tedarikciId]);
+        await _cariveHareketiKuyrukla(txn, cariHareketGid!, tedarikciId);
       }
     });
 

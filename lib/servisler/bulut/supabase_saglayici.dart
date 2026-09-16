@@ -235,7 +235,8 @@ class SupabaseSaglayici implements IBulutSaglayici {
       body: jsonEncode([veri]),
     ).timeout(const Duration(seconds: 15));
     if (r.statusCode >= 400) {
-      throw Exception('$tablo upsert ${r.statusCode}: ${r.body.substring(0,r.body.length.clamp(0,200))}');
+      throw BulutIstekHatasi(r.statusCode,
+          '$tablo upsert: ${r.body.substring(0, r.body.length.clamp(0, 200))}');
     }
   }
 
@@ -273,6 +274,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
     if (veriler.isEmpty) return const BulutSonuc();
     int basarili = 0, hata = 0;
     final hatalar = <String>[];
+    int? sonStatusKodu;
 
     // Batch olarak gönder (max 200 kayıt/istek)
     const batchSize = 200;
@@ -320,6 +322,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
         ).timeout(const Duration(seconds: 30));
         if (r.statusCode >= 400) {
           hata += batch.length;
+          sonStatusKodu = r.statusCode;
           final msg = '$tablo batch ${r.statusCode}: ${r.body.substring(0,r.body.length.clamp(0,150))}';
           if (!hatalar.contains(msg)) hatalar.add(msg);
         } else {
@@ -327,10 +330,17 @@ class SupabaseSaglayici implements IBulutSaglayici {
         }
       } catch (e) {
         hata += batch.length;
+        // Ham ağ/zaman aşımı istisnaları (SocketException/TimeoutException
+        // vb.) statusKodu taşımaz — sonStatusKodu null kalır, bu da
+        // BulutSonuc.tur'un bunu GEÇİCİ saymasını sağlar (doğru davranış).
         hatalar.add('$tablo batch hata: $e');
       }
     }
-    return BulutSonuc(basarili: basarili, hata: hata, hataMesajlari: hatalar);
+    return BulutSonuc(
+        basarili: basarili,
+        hata: hata,
+        hataMesajlari: hatalar,
+        sonStatusKodu: sonStatusKodu);
   }
 
   @override
@@ -357,7 +367,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
     required String deger,
   }) async {
     final val = Uri.encodeComponent(deger);
-    await http.patch(
+    final r = await http.patch(
       Uri.parse('$_rest/$tablo?$uniqueAlan=eq.$val'),
       headers: _h,
       body: jsonEncode({
@@ -365,6 +375,14 @@ class SupabaseSaglayici implements IBulutSaglayici {
         'last_updated': DateTime.now().toUtc().toIso8601String(),
       }),
     ).timeout(const Duration(seconds: 10));
+    // 🔴 Madde 5 sertleştirmesi: bu fonksiyon ÖNCEDEN durum kodunu HİÇ
+    // kontrol etmiyordu — 401/403/404 gibi kalıcı bir hata bile "başarılı"
+    // sayılıp kuyruktan silinirdi, silme işlemi buluta HİÇ ulaşmamış
+    // olurdu ama BulutManager bunu asla fark edip yeniden denemezdi.
+    if (r.statusCode >= 400) {
+      throw BulutIstekHatasi(r.statusCode,
+          '$tablo sil: ${r.body.substring(0, r.body.length.clamp(0, 200))}');
+    }
   }
 
   @override

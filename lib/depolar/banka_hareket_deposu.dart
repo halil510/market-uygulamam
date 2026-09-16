@@ -4,6 +4,7 @@ import '../modeller/banka_hareket_model.dart';
 import '../veri/database/veritabani.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import 'package:uuid/uuid.dart';
 
 /// NOT: Hesap bakiyesi güncellemesi BURADA, uygulama kodu seviyesinde
@@ -58,6 +59,11 @@ class BankaHareketDeposu {
     m['sonraki_bakiye'] = yeniBakiye;
 
     final id = await txn.insert('banka_hareketler', m);
+    // Madde 5 sertleştirmesi: senkron kuyruğu kaydı business data ile
+    // AYNI transaction içinde, atomik olarak yazılıyor (bkz.
+    // SyncKuyrukYazici yorumu).
+    await SyncKuyrukYazici.ekleTxn(txn,
+        tablo: 'banka_hareketler', veri: {...m, 'id': id});
 
     await txn.update(
       'banka_hesaplar',
@@ -73,6 +79,13 @@ class BankaHareketDeposu {
       where: 'id = ?',
       whereArgs: [hareket.bankaHesapId],
     );
+    final guncelHesapSatiri = await txn.query('banka_hesaplar',
+        where: 'id = ?', whereArgs: [hareket.bankaHesapId], limit: 1);
+    if (guncelHesapSatiri.isNotEmpty) {
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'banka_hesaplar',
+          veri: Map<String, dynamic>.from(guncelHesapSatiri.first));
+    }
     return id;
   }
 

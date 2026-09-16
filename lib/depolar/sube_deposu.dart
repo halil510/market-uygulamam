@@ -20,6 +20,16 @@ class SubeDeposu {
     return rows.map((r) => Map<String, dynamic>.from(r)).toList();
   }
 
+  /// Madde 4 sertleştirmesi (depo_transfer_ekrani.dart): sadece
+  /// silinmemiş VE aktif şubeleri döner — transfer kaynağı/hedefi
+  /// seçiminde pasif/silinmiş bir şubeye işlem yapılmasın diye.
+  Future<List<Map<String, dynamic>>> aktifOlanlariGetir() async {
+    final db = await _d;
+    final rows = await db.query('subeler',
+        where: 'is_deleted = 0 AND aktif = 1', orderBy: 'sube_adi ASC');
+    return rows.map((r) => Map<String, dynamic>.from(r)).toList();
+  }
+
   /// [id] null ise yeni şube ekler, doluysa mevcut kaydı günceller.
   /// Şube kodu boş bırakılırsa zaman damgasından otomatik üretilir.
   Future<Map<String, dynamic>> ekleVeyaGuncelle({

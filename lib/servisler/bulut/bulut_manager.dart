@@ -35,6 +35,7 @@ import '../kolon_haritalama.dart';
 import '../../cekirdek/sabitler/db_sabitleri.dart';
 import '../../veri/database/veritabani.dart';
 import '../audit_log_servisi.dart';
+import '../log_servisi.dart';
 
 // ── Bulut durum ───────────────────────────────────────────────────────────────
 enum BulutDurum {
@@ -237,14 +238,72 @@ class BulutManager {
     return veri;
   }
 
+  // ── Madde 5 sertleştirmesi: exponential backoff + hata sınıflandırması ──
+  //
+  // Taban gecikme 10 saniye, her başarısız denemede İKİYE KATLANIR (10,
+  // 20, 40, 80, ... saniye), en fazla 30 dakikada bir denenecek şekilde
+  // TAVANLANIR — sürekli başarısız olan bir kayıt sunucuyu/ağı
+  // gereksizce bombalamaz, ama asla tamamen durmaz (sınırsız yeniden
+  // deneme — veri kaybı yok).
+  static const _backoffTabanSaniye = 10;
+  static const _backoffMaxSaniye = 1800; // 30 dakika
+
+  int _backoffSuresiSaniye(int denemeSayisi) {
+    if (denemeSayisi <= 0) return 0; // ilk deneme — hiç bekleme
+    final us = _backoffTabanSaniye * (1 << denemeSayisi.clamp(0, 12));
+    return us > _backoffMaxSaniye ? _backoffMaxSaniye : us;
+  }
+
+  /// Bu kuyruk satırının şu an (backoff penceresi geçmiş olduğu için)
+  /// yeniden denenmeye UYGUN olup olmadığını belirler. İlk deneme
+  /// (deneme_sayisi=0) veya son_deneme kaydı yoksa her zaman uygundur.
+  bool _satirSimdiDenenebilirMi(Map<String, dynamic> satir) {
+    final denemeSayisi = (satir['deneme_sayisi'] as int?) ?? 0;
+    if (denemeSayisi <= 0) return true;
+    final sonDenemeStr = satir['son_deneme'] as String?;
+    if (sonDenemeStr == null) return true;
+    final sonDeneme = DateTime.tryParse(sonDenemeStr);
+    if (sonDeneme == null) return true;
+    final gecenSaniye = DateTime.now().difference(sonDeneme).inSeconds;
+    return gecenSaniye >= _backoffSuresiSaniye(denemeSayisi);
+  }
+
+  /// Bir kuyruk satırını başarısız olarak işaretler. [tur] == kalici ise
+  /// (validation/auth — 4xx) durum 'kalici_hata'ya çevrilir: bu satır
+  /// `WHERE durum='beklemede'` sorgusundan bir daha HİÇ dönmez, yani
+  /// otomatik olarak süresiz yeniden denenip kuyruğu (ve gerçek ağ
+  /// hatalarının önünü) tıkamaz — ama satır SİLİNMEZ, kalıcı olarak
+  /// diskte durur (veri kaybı yok, sadece insan müdahalesi bekler) ve
+  /// LogServisi'ne düşer (görünürlük). Geçici (gecici — ağ/5xx) hata ise
+  /// durum 'beklemede' kalır, bir sonraki backoff penceresinde tekrar
+  /// denenir.
   Future<void> _kuyrukSatiriBasarisizIsaretle(
-      Database db, int id, Object hata, String zaman) async {
+    Database db,
+    int id,
+    Object hata,
+    String zaman, {
+    BulutHataTuru tur = BulutHataTuru.gecici,
+    String? tablo,
+  }) async {
     try {
-      await db.rawUpdate(
-        'UPDATE ${DbSabitler.syncQueue} SET deneme_sayisi = deneme_sayisi + 1, '
-        'son_deneme = ?, hata_mesaji = ? WHERE id = ?',
-        [zaman, hata.toString(), id],
-      );
+      if (tur == BulutHataTuru.kalici) {
+        await db.rawUpdate(
+          'UPDATE ${DbSabitler.syncQueue} SET deneme_sayisi = deneme_sayisi + 1, '
+          "son_deneme = ?, hata_mesaji = ?, durum = 'kalici_hata' WHERE id = ?",
+          [zaman, hata.toString(), id],
+        );
+        LogServisi().hata(
+          'BulutManager: kalıcı senkron hatası (${tablo ?? "?"}, sync_queue#$id) — otomatik yeniden denenmeyecek',
+          hata: hata,
+          ek: 'Düzeltme sonrası "Buluta Gönder" ile manuel tekrar denenebilir.',
+        );
+      } else {
+        await db.rawUpdate(
+          'UPDATE ${DbSabitler.syncQueue} SET deneme_sayisi = deneme_sayisi + 1, '
+          'son_deneme = ?, hata_mesaji = ? WHERE id = ?',
+          [zaman, hata.toString(), id],
+        );
+      }
     } catch (_) {
       // best-effort — görünürlük içindir, ana akışı bloklamamalı
     }
@@ -263,9 +322,9 @@ class BulutManager {
   Future<void> _isle() async {
     if (_gonderiliyor || _saglayici == null) return;
     _gonderiliyor = true;
-    durum.value = BulutDurum.gonderiliyor;
 
     int toplamBasarili = 0, toplamHata = 0;
+    var isYapildiMi = false;
     final tumHatalar = <String>[];
     final db = await Veritabani().db;
 
@@ -282,84 +341,103 @@ class BulutManager {
         limit: 500,
       );
 
-      if (bekleyenSatirlar.isEmpty) {
-        _bekleyenSayisiCache = 0;
-        return;
-      }
+      // Exponential backoff: daha önce en az bir kez başarısız olmuş bir
+      // satır, kendi bekleme penceresi dolmadan tekrar denenmez (bkz.
+      // _backoffSuresiSaniye). Henüz hiç denenmemiş satırlar (yeni
+      // eklenenler) her zaman bu turda işlenir. NOT: "işlenecek satır
+      // yok" durumunda erken return YAPILMAZ — bu, fonksiyonun altındaki
+      // paylaşılan durum.value/istatistik güncellemesini atlayıp
+      // durum'u kalıcı olarak "Senkronize ediliyor…"da bırakırdı.
+      final denenecekler =
+          bekleyenSatirlar.where(_satirSimdiDenenebilirMi).toList();
 
-      final gruplar = <String, List<Map<String, dynamic>>>{};
-      for (final satir in bekleyenSatirlar) {
-        gruplar.putIfAbsent(satir['tablo_adi'] as String, () => []).add(satir);
-      }
-
-      final now = DateTime.now().toIso8601String();
-
-      for (final entry in gruplar.entries) {
-        final tablo = entry.key;
-        final satirlar = entry.value;
-        final uniqueAlan = KolonHaritalama.uniqueAlan(tablo) ?? 'id';
-
-        // DELETE işlemleri
-        final silinenler =
-            satirlar.where((s) => s['islem_tipi'] == 'DELETE').toList();
-        for (final s in silinenler) {
-          final veri = _veriCoz(tablo, s);
-          try {
-            await _saglayici!.sil(
-              tablo: tablo,
-              uniqueAlan: uniqueAlan,
-              deger: veri['global_id']?.toString() ?? '',
-            );
-            await db.delete(DbSabitler.syncQueue,
-                where: 'id = ?', whereArgs: [s['id']]);
-            toplamBasarili++;
-          } catch (e) {
-            toplamHata++;
-            tumHatalar.add('❌ $tablo DELETE: $e');
-            await _kuyrukSatiriBasarisizIsaretle(db, s['id'] as int, e, now);
-          }
+      if (denenecekler.isNotEmpty) {
+        isYapildiMi = true;
+        durum.value = BulutDurum.gonderiliyor;
+        final gruplar = <String, List<Map<String, dynamic>>>{};
+        for (final satir in denenecekler) {
+          gruplar.putIfAbsent(satir['tablo_adi'] as String, () => []).add(satir);
         }
 
-        // UPSERT işlemleri — batch
-        final upsertSatirlari =
-            satirlar.where((s) => s['islem_tipi'] == 'UPSERT').toList();
-        if (upsertSatirlari.isNotEmpty) {
-          final upsertler =
-              upsertSatirlari.map((s) => _veriCoz(tablo, s)).toList();
-          try {
-            final sonuc = await _saglayici!.topluUpsert(
-              tablo: tablo,
-              veriler: upsertler,
-              uniqueAlan: uniqueAlan,
-            );
-            toplamBasarili += sonuc.basarili;
-            toplamHata += sonuc.hata;
-            tumHatalar.addAll(sonuc.hataMesajlari);
+        final now = DateTime.now().toIso8601String();
 
-            // 🔴 DÜZELTME (eski RAM kuyruğunda bulunan gizli veri kaybı):
-            // topluUpsert satır-bazlı başarı/hata döndürmüyor (sadece
-            // toplam sayaç) — bir satırı güvenle "gitti" sayıp
-            // kuyruktan silebileceğimiz TEK durum, TÜM grubun hatasız
-            // tamamlanmasıdır. Kısmi hata varsa (sonuc.hata>0) hangi
-            // satırın gerçekten gittiği bilinemez — veri kaybetmemek
-            // için TÜMÜ kuyrukta bırakılır (upsert idempotent olduğu
-            // için yeniden denemek güvenlidir, mükerrer satır oluşmaz).
-            if (sonuc.tamam) {
-              final idler = upsertSatirlari.map((s) => s['id'] as int).toList();
-              final ph = idler.map((_) => '?').join(',');
+        for (final entry in gruplar.entries) {
+          final tablo = entry.key;
+          final satirlar = entry.value;
+          final uniqueAlan = KolonHaritalama.uniqueAlan(tablo) ?? 'id';
+
+          // DELETE işlemleri
+          final silinenler =
+              satirlar.where((s) => s['islem_tipi'] == 'DELETE').toList();
+          for (final s in silinenler) {
+            final veri = _veriCoz(tablo, s);
+            try {
+              await _saglayici!.sil(
+                tablo: tablo,
+                uniqueAlan: uniqueAlan,
+                deger: veri['global_id']?.toString() ?? '',
+              );
               await db.delete(DbSabitler.syncQueue,
-                  where: 'id IN ($ph)', whereArgs: idler);
-            } else {
+                  where: 'id = ?', whereArgs: [s['id']]);
+              toplamBasarili++;
+            } catch (e) {
+              toplamHata++;
+              tumHatalar.add('❌ $tablo DELETE: $e');
+              final tur = e is BulutIstekHatasi ? e.tur : BulutHataTuru.gecici;
+              await _kuyrukSatiriBasarisizIsaretle(
+                  db, s['id'] as int, e, now, tur: tur, tablo: tablo);
+            }
+          }
+
+          // UPSERT işlemleri — batch
+          final upsertSatirlari =
+              satirlar.where((s) => s['islem_tipi'] == 'UPSERT').toList();
+          if (upsertSatirlari.isNotEmpty) {
+            final upsertler =
+                upsertSatirlari.map((s) => _veriCoz(tablo, s)).toList();
+            try {
+              final sonuc = await _saglayici!.topluUpsert(
+                tablo: tablo,
+                veriler: upsertler,
+                uniqueAlan: uniqueAlan,
+              );
+              toplamBasarili += sonuc.basarili;
+              toplamHata += sonuc.hata;
+              tumHatalar.addAll(sonuc.hataMesajlari);
+
+              // 🔴 DÜZELTME (eski RAM kuyruğunda bulunan gizli veri kaybı):
+              // topluUpsert satır-bazlı başarı/hata döndürmüyor (sadece
+              // toplam sayaç) — bir satırı güvenle "gitti" sayıp
+              // kuyruktan silebileceğimiz TEK durum, TÜM grubun hatasız
+              // tamamlanmasıdır. Kısmi hata varsa (sonuc.hata>0) hangi
+              // satırın gerçekten gittiği bilinemez — veri kaybetmemek
+              // için TÜMÜ kuyrukta bırakılır (upsert idempotent olduğu
+              // için yeniden denemek güvenlidir, mükerrer satır oluşmaz).
+              // Hata sınıflandırması (Madde 5): sonuc.tur — 4xx (kalıcı,
+              // ör. validation/auth) ise satırlar 'kalici_hata'ya
+              // geçirilip otomatik denemeden çıkarılır; 5xx/ağ hatası
+              // (geçici) ise backoff'la tekrar denenmek üzere kuyrukta
+              // kalır.
+              if (sonuc.tamam) {
+                final idler = upsertSatirlari.map((s) => s['id'] as int).toList();
+                final ph = idler.map((_) => '?').join(',');
+                await db.delete(DbSabitler.syncQueue,
+                    where: 'id IN ($ph)', whereArgs: idler);
+              } else {
+                for (final s in upsertSatirlari) {
+                  await _kuyrukSatiriBasarisizIsaretle(
+                      db, s['id'] as int, 'toplu upsert hata (HTTP ${sonuc.sonStatusKodu ?? "-"})', now,
+                      tur: sonuc.tur, tablo: tablo);
+                }
+              }
+            } catch (e) {
+              toplamHata += upsertler.length;
+              tumHatalar.add('❌ $tablo toplu upsert: $e');
+              final tur = e is BulutIstekHatasi ? e.tur : BulutHataTuru.gecici;
               for (final s in upsertSatirlari) {
                 await _kuyrukSatiriBasarisizIsaretle(
-                    db, s['id'] as int, 'toplu upsert kısmi hata', now);
+                    db, s['id'] as int, e, now, tur: tur, tablo: tablo);
               }
-            }
-          } catch (e) {
-            toplamHata += upsertler.length;
-            tumHatalar.add('❌ $tablo toplu upsert: $e');
-            for (final s in upsertSatirlari) {
-              await _kuyrukSatiriBasarisizIsaretle(db, s['id'] as int, e, now);
             }
           }
         }
@@ -378,17 +456,26 @@ class BulutManager {
     );
 
     await _bekleyenSayisiniYenile(db);
-    durum.value = _bekleyenSayisiCache == 0
-        ? (toplamHata > 0 ? BulutDurum.hata : BulutDurum.bagli)
-        : BulutDurum.bekliyor;
+    // İşlenecek bir şey yoktu (kuyruk boş ya da tamamen backoff
+    // penceresinde) — durum HİÇ 'gonderiliyor'a geçmedi, olduğu gibi
+    // (bagli/bekliyor/hata) bırakılır. Sadece bu turda gerçekten bir
+    // şey denendiyse yeni sonuca göre güncellenir.
+    if (isYapildiMi) {
+      durum.value = _bekleyenSayisiCache == 0
+          ? (toplamHata > 0 ? BulutDurum.hata : BulutDurum.bagli)
+          : BulutDurum.bekliyor;
+    }
 
     if (kDebugMode && toplamBasarili > 0) {
       debugPrint('BulutManager: ✅$toplamBasarili ❌$toplamHata bekleyen:$_bekleyenSayisiCache');
     }
 
-    // Kuyrukta hâlâ satır varsa (bu turda 500 limitine çarpıldıysa ya da
-    // hatalar nedeniyle kalan varsa) hemen bir tur daha dene.
-    if (_bekleyenSayisiCache > 0) _workerTetikle();
+    // Kuyrukta hâlâ satır varsa VE bu turda gerçekten bir şey denendiyse
+    // (500 limitine çarpıldıysa ya da hatalar nedeniyle kalan varsa)
+    // hemen bir tur daha dene. Sadece backoff nedeniyle bekleyen satırlar
+    // için 800ms'de bir gereksiz DB sorgusu yapmayı önler — onlar zaten
+    // periyodik 8 saniyelik timer'da tekrar değerlendirilecek.
+    if (isYapildiMi && _bekleyenSayisiCache > 0) _workerTetikle();
   }
 
   // ── Zorla gönder ───────────────────────────────────────────────────────────

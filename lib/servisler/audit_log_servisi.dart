@@ -38,7 +38,43 @@ class AuditLogServisi {
     'kullanicilar': ['ad_soyad', 'kullanici_adi'],
     'kasa_hareketleri': ['hareket_tipi'],
     'tedarikci_siparisler': ['siparis_no'],
+    // 🔴 DÜZELTME (Madde 18 — Audit Log denetimi, 2026-09-16): 'ayarlar'
+    // tablosu hiç yoktu, özet her zaman boş kalıyordu — KDV oranı,
+    // fatura no öneki gibi kritik ayar değişiklikleri "kim/ne zaman"
+    // dışında hiçbir bilgi taşımıyordu.
+    'ayarlar': ['anahtar'],
   };
+
+  /// Bazı kritik tablolar için tek bir alan yeterli açıklayıcı değil —
+  /// (Madde 18 denetimi, 2026-09-16) eski/yeni DEĞERİ tutan tam bir diff
+  /// sistemi kurmak (her upsert öncesi eski satırı okuyup karşılaştırma)
+  /// kapsamlı bir mimari değişiklik gerektirir; bunun yerine, en sık
+  /// istismar edilebilecek/denetlenmesi gereken alanlar için TEK satırlık,
+  /// düşük riskli bir zenginleştirme eklendi: fiyat, ayar değeri, rol ve
+  /// iptal gerekçesi artık özete ekleniyor (önceden sadece "bir şey
+  /// değişti" bilgisi vardı, "ne değişti" görünmüyordu).
+  String? _zenginlestir(String tablo, Map<String, dynamic> veri, String? ozet) {
+    switch (tablo) {
+      case 'urunler':
+        final fiyat = veri['satis_fiyati'];
+        if (fiyat == null) return ozet;
+        return '${ozet ?? 'Ürün'} — ₺$fiyat';
+      case 'ayarlar':
+        final deger = veri['deger'];
+        if (deger == null) return ozet;
+        return '${ozet ?? 'Ayar'} = $deger';
+      case 'kullanicilar':
+        final rol = veri['rol'];
+        if (rol == null) return ozet;
+        return '${ozet ?? 'Kullanıcı'} (rol: $rol)';
+      case 'satislar':
+        final neden = veri['iptal_nedeni'];
+        if (neden == null || neden.toString().trim().isEmpty) return ozet;
+        return '${ozet ?? 'Satış'} — neden: $neden';
+      default:
+        return ozet;
+    }
+  }
 
   Future<void> kaydet(String tablo, Map<String, dynamic> veri) async {
     if (_haricTutulanTablolar.contains(tablo)) return;
@@ -67,6 +103,7 @@ class AuditLogServisi {
           break;
         }
       }
+      ozet = _zenginlestir(tablo, veri, ozet);
 
       final cihazId = await SupabaseSyncServisi.cihazId();
 
@@ -94,6 +131,51 @@ class AuditLogServisi {
     } catch (e) {
       // Audit log yazımı ASLA ana işlemi bozmamalı — sessizce geç.
       if (kDebugMode) debugPrint('AuditLogServisi.kaydet hatası: $e');
+    }
+  }
+
+  // 🔴 DÜZELTME (Madde 18 — Audit Log denetimi, 2026-09-16): başarılı
+  // girişler audit_log'a HİÇ düşmüyordu — kullanici_deposu.dart.
+  // sonGirisGuncelle() bilinçli olarak BulutManager().upsert
+  // ('kullanicilar', ...) çağırmıyor (şifre hash'i dahil tüm satırı her
+  // girişte buluta göndermemek için, bkz. o metodun yorumu) — ama bu,
+  // "kim ne zaman giriş yaptı" bilgisinin de kaybolması anlamına
+  // geliyordu. Başarısız denemeler de sadece SharedPreferences'te
+  // (cihaza özel, kalıcı olmayan) bir sayaçta tutuluyordu. Bu metod
+  // SADECE audit_log'un kendi (hassas veri içermeyen) satırını yazar —
+  // kullanicilar tablosuna hiç dokunmaz, genel kaydet() akışından
+  // BAĞIMSIZDIR çünkü kaydet() aktörü AuthServisi().aktifId'den alır —
+  // başarısız bir girişte veya PIN ile kullanıcı değiştirmede aktif
+  // oturum HENÜZ o kullanıcı olmayabilir, bu yüzden kullaniciId/Adi
+  // açıkça parametre olarak alınır.
+  Future<void> girisKaydet({
+    required int? kullaniciId,
+    required String kullaniciAdi,
+    required bool basarili,
+  }) async {
+    try {
+      final db = await Veritabani().db;
+      final now = DateTime.now().toIso8601String();
+      final cihazId = await SupabaseSyncServisi.cihazId();
+      final kayit = {
+        'global_id': const Uuid().v4(),
+        'tablo_adi': 'kullanicilar',
+        'kayit_id': kullaniciId?.toString(),
+        'islem_turu': basarili ? 'Giriş' : 'Başarısız Giriş',
+        'ozet': kullaniciAdi,
+        'kullanici_id': kullaniciId,
+        'kullanici_adi': kullaniciAdi.isEmpty ? 'Bilinmiyor' : kullaniciAdi,
+        'cihaz_id': cihazId,
+        'tarih': now,
+        'last_updated': now,
+      };
+      final yeniId = await db.insert('audit_log', kayit);
+      final guncelSatir = await db.query('audit_log', where: 'id = ?', whereArgs: [yeniId], limit: 1);
+      if (guncelSatir.isNotEmpty) {
+        BulutManager().upsert('audit_log', Map<String, dynamic>.from(guncelSatir.first));
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('AuditLogServisi.girisKaydet hatası: $e');
     }
   }
 

@@ -1,7 +1,9 @@
 // lib/saglayicilar/riverpod/auth_provider.dart
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../servisler/auth_servisi.dart';
+import '../../servisler/audit_log_servisi.dart';
 import '../../modeller/kullanici_model.dart';
 import 'sepet_provider.dart';
 
@@ -74,13 +76,23 @@ class Auth extends _$Auth {
           // — hem veri sızıntısı hem yanlış audit/kasiyer ataması. Her
           // başarılı giriş/kullanıcı değişiminde sepet artık temizleniyor.
           ref.read(sepetProvider.notifier).temizle();
+          // 🔴 DÜZELTME (Madde 18 — Audit Log): başarılı girişler
+          // önceden audit_log'a hiç düşmüyordu (bkz. AuditLogServisi.
+          // girisKaydet yorumu).
+          unawaited(AuditLogServisi().girisKaydet(
+              kullaniciId: k.id, kullaniciAdi: k.adSoyad, basarili: true));
           return GirisSonucu.basarili;
         }
       }
       state = const AuthState.cikisYapildi();
+      unawaited(AuditLogServisi().girisKaydet(
+          kullaniciId: null, kullaniciAdi: kullaniciAdi, basarili: false));
       return GirisSonucu.hataliSifre;
     } on AuthKilitliException catch (e) {
-      state = AuthState.hata(e.mesaj); return GirisSonucu.kilitli;
+      state = AuthState.hata(e.mesaj);
+      unawaited(AuditLogServisi().girisKaydet(
+          kullaniciId: null, kullaniciAdi: kullaniciAdi, basarili: false));
+      return GirisSonucu.kilitli;
     } catch (e) {
       state = AuthState.hata(e.toString()); return GirisSonucu.hata;
     }
@@ -99,6 +111,8 @@ class Auth extends _$Auth {
         if (k != null) {
           state = AuthState.girisYapildi(k);
           ref.read(sepetProvider.notifier).temizle();
+          unawaited(AuditLogServisi().girisKaydet(
+              kullaniciId: k.id, kullaniciAdi: k.adSoyad, basarili: true));
           return GirisSonucu.basarili;
         }
       }

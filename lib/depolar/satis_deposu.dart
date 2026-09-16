@@ -1,4 +1,5 @@
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import 'package:flutter/foundation.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
 // lib/depolar/satis_deposu.dart
@@ -87,10 +88,18 @@ class SatisDeposu {
     }
     final satisId = await txn.insert('satislar', satisMap,
         conflictAlgorithm: ConflictAlgorithm.replace);
+    // Madde 5 sertleştirmesi: satış başlığı + her kalem, business data
+    // ile AYNI transaction'da senkron kuyruğuna yazılıyor (bkz.
+    // SyncKuyrukYazici yorumu — rollback olursa hiçbiri kuyrukta kalmaz).
+    await SyncKuyrukYazici.ekleTxn(txn,
+        tablo: 'satislar', veri: {...satisMap, 'id': satisId});
     for (final k in kalemler) {
       final km = k.copyWith(satisId: satisId).toMap();
       km.remove('id');
-      await txn.insert('satis_kalem', km);
+      km['global_id'] ??= const Uuid().v4();
+      final kalemId = await txn.insert('satis_kalem', km);
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'satis_kalem', veri: {...km, 'id': kalemId});
     }
     return satisId;
   }
@@ -269,7 +278,10 @@ class SatisDeposu {
       final km = k.copyWith(satisId: satisId).toMap();
       km.remove('id');
       km['global_id'] ??= const Uuid().v4();
-      await txn.insert('satis_kalem', km);
+      final kalemId = await txn.insert('satis_kalem', km);
+      // Madde 5 sertleştirmesi (bkz. satisEkleTxn'deki aynı gerekçe).
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'satis_kalem', veri: {...km, 'id': kalemId});
     }
 
     final mevcut = await txn.query('satislar',
@@ -287,6 +299,13 @@ class SatisDeposu {
       'aciklama': eskiAciklama.isEmpty ? not : '$eskiAciklama $not',
       'last_updated': now,
     }, where: 'id = ?', whereArgs: [satisId]);
+    final guncelSatisSatiri = await txn.query('satislar',
+        where: 'id = ?', whereArgs: [satisId], limit: 1);
+    if (guncelSatisSatiri.isNotEmpty) {
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'satislar',
+          veri: Map<String, dynamic>.from(guncelSatisSatiri.first));
+    }
 
     return stokFarklari;
   }

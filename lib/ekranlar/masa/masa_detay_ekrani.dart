@@ -19,12 +19,11 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/masa_odeme_servisi.dart';
 import '../../servisler/yazdirma_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
-import 'package:uuid/uuid.dart';
 import '../../veri/database/veritabani.dart';
 import '../satis/coklu_odeme_ekrani.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../depolar/cari_deposu.dart';
+import '../../depolar/adisyon_log_deposu.dart';
 
 class MasaDetayEkrani extends ConsumerStatefulWidget {
   final MasaModel masa;
@@ -77,22 +76,16 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
 
   Future<void> _adisyonLogKaydet(int siparisId) async {
     try {
-      final db = await Veritabani().db;
+      // Madde 2 sertleştirmesi: doğrudan Veritabani().db erişimi
+      // kaldırıldı — AdisyonLogDeposu repository katmanı üzerinden
+      // yazılıyor (kuyruk kaydı business data ile aynı transaction'da
+      // atomik, bkz. Madde 5 sertleştirmesi).
       final temizNo = _temizFisNo('ADY-${DateTime.now().millisecondsSinceEpoch}');
-      final gid = const Uuid().v4();
-      final now = DateTime.now().toIso8601String();
-      await db.insert('adisyon_log', {
-        'global_id': gid,
-        'siparis_id': siparisId,
-        'adisyon_no': temizNo,
-        'yazdiran_kullanici_id': AuthServisi().aktifId,
-        'yazdirma_zamani': now,
-        'last_updated': now,
-      });
-      // 🔴 Derin analizde bulundu: global_id/last_updated hiç
-      // ayarlanmıyordu, BulutManager hiç çağrılmıyordu.
-      final satir = await db.query('adisyon_log', where: 'global_id = ?', whereArgs: [gid], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('adisyon_log', Map<String, dynamic>.from(satir.first));
+      await AdisyonLogDeposu().kaydet(
+        siparisId: siparisId,
+        adisyonNo: temizNo,
+        yazdiranKullaniciId: AuthServisi().aktifId,
+      );
     } catch (e) {
       // Log hatasını görmezden gel, asıl işlem devam etsin
     }

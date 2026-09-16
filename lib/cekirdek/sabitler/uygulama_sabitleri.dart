@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      64; // v64: fis_seri'ye last_updated eklendi — fiş/irsaliye/sipariş sayacı artık buluta MAX-birleştirmeli senkronize oluyor (çoklu POS terminalinde çakışan numara riskini azaltır)
+      65; // v65: sync_queue'ya hata_mesaji eklendi — BulutManager artık RAM kuyruk yerine bu kalıcı tabloyu kullanıyor (Madde 5 sertleştirmesi, veri kaybı riski sıfırlandı)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

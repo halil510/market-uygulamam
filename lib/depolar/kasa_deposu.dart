@@ -1,4 +1,5 @@
 import '../servisler/bulut/bulut_manager.dart'; // sync hook
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 // lib/depolar/kasa_deposu.dart ✅ GELİŞTİRİLDİ - nakit/kart ayrımı, vardiya desteği
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
@@ -55,7 +56,12 @@ class KasaDeposu {
     hm['global_id'] ??= const Uuid().v4();
     hm['sube_id'] ??= AktifSubeServisi().subeId;
     hm['bakiye_sonrasi'] = yeniBakiye;
-    return await txn.insert('kasa_hareketleri', hm);
+    final id = await txn.insert('kasa_hareketleri', hm);
+    // Madde 5 sertleştirmesi: kuyruk kaydı business data ile AYNI
+    // transaction'da, atomik olarak yazılıyor (bkz. SyncKuyrukYazici).
+    await SyncKuyrukYazici.ekleTxn(txn,
+        tablo: 'kasa_hareketleri', veri: {...hm, 'id': id});
+    return id;
   }
 
   /// Verilen transaction içinde en son kasa bakiyesini döndürür.

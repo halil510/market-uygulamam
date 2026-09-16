@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 
 import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../servisler/auth_servisi.dart';
 import '../veri/database/veritabani.dart';
 import '../modeller/cari_model.dart';
@@ -341,6 +342,16 @@ class CariDeposu {
         FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
       ) WHERE id = ?
     ''', [hareket.cariId, hareket.cariId]);
+    // Madde 5 sertleştirmesi: hareket kaydı VE etkilediği cari bakiyesi
+    // AYNI transaction içinde kuyruğa yazılıyor — ikisi de business
+    // data ile atomik (bkz. SyncKuyrukYazici yorumu).
+    await SyncKuyrukYazici.ekleTxn(txn, tablo: 'cari_hareket', veri: hm);
+    final guncelCariSatiri = await txn.query('cari',
+        where: 'id = ?', whereArgs: [hareket.cariId], limit: 1);
+    if (guncelCariSatiri.isNotEmpty) {
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'cari', veri: Map<String, dynamic>.from(guncelCariSatiri.first));
+    }
     return globalId;
   }
 

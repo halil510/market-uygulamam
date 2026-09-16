@@ -951,13 +951,15 @@ extension _GecmisTabExt on _IadeEkraniState {
     );
     if (ok != true || !mounted) return;
     try {
-      final db = await Veritabani().db;
-    if (!mounted) return;
-      await db.update('iade', {'iade_nedeni': notCtrl.text.trim(), 'last_updated': DateTime.now().toIso8601String()},
-          where: 'id = ?', whereArgs: [iade['id']]);
-      final satir = await db.query('iade', where: 'id = ?', whereArgs: [iade['id']], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('iade', Map<String, dynamic>.from(satir.first));
-      if (mounted) BildirimServisi.basari(context, 'İade güncellendi ✓');
+      // Madde 2 sertleştirmesi: doğrudan Veritabani().db erişimi
+      // kaldırıldı — IadeDeposu repository katmanı üzerinden yazılıyor
+      // (kuyruk kaydı business data ile aynı transaction'da atomik).
+      await IadeDeposu().notGuncelle(
+        iadeId: iade['id'] as int,
+        iadeNedeni: notCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      BildirimServisi.basari(context, 'İade güncellendi ✓');
       _gecmisYukle();
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');

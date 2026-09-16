@@ -10,12 +10,21 @@ import '../../../cekirdek/sabitler/db_sabitleri.dart';
 class SyncSemasi {
   static Future<void> olustur(Database db) async {
 
+    // 🔴🔴🔴 MADDE 5 SERTLEŞTİRMESİ (ERP_DENETIM_KURALLARI.md): bu tablo
+    // ÖNCEDEN kuruluyordu ama HİÇBİR KOD ONA YAZMIYORDU — gerçek kuyruk
+    // BulutManager._kuyruk adlı RAM-only bir listeydi, uygulama çökerse
+    // henüz gönderilmemiş kayıtlar kalıcı olarak kayboluyordu. Artık
+    // BulutManager tamamen bu tabloyu kullanıyor (bkz. o dosya) —
+    // 'hata_mesaji' kolonu son başarısız deneme mesajını görünür kılmak
+    // için eklendi (mevcut cihazlar için ALTER TABLE migrasyonu: bkz.
+    // migrasyon_yonetici_v36_v63.dart._v64denV65e).
     await db.execute('''
       CREATE TABLE IF NOT EXISTS ${DbSabitler.syncQueue} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tablo_adi TEXT NOT NULL, kayit_global_id TEXT, kayit_id INTEGER,
         islem_tipi TEXT NOT NULL, veri_json TEXT NOT NULL,
         deneme_sayisi INTEGER DEFAULT 0, son_deneme DATETIME,
+        hata_mesaji TEXT,
         durum TEXT DEFAULT 'beklemede',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )

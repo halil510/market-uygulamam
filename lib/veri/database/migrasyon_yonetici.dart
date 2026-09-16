@@ -165,5 +165,9 @@ class MigrasyonYonetici {
 
     // v63'ten v64'e — fis_seri buluta senkronize oluyor (MAX-birleştirme)
     if (eskiVersiyon < 64) await _v63denV64e(db);
+
+    // v64'ten v65'e — sync_queue kalıcı senkron kuyruğuna hata_mesaji
+    // eklendi (Madde 5 sertleştirmesi — bkz. _v64denV65e yorumu).
+    if (eskiVersiyon < 65) await _v64denV65e(db);
   }
 }

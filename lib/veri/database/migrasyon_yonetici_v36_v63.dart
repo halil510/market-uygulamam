@@ -813,3 +813,17 @@ Future<void> _v62denV63e(Database db) async {
 Future<void> _v63denV64e(Database db) async {
   await _calistir(db, 'ALTER TABLE fis_seri ADD COLUMN last_updated TEXT');
 }
+
+// ==================== v64 -> v65 ====================
+// MASTER ERP DEEP AUDIT — Madde 5 (Senkronizasyon) sertleştirmesi:
+// 'sync_queue' tablosu ÖNCEDEN de kuruluyordu (bkz. sync_semasi.dart) ama
+// hiçbir kod ona yazmıyordu — gerçek kuyruk BulutManager._kuyruk adlı
+// RAM-only bir listeydi, uygulama çökerse henüz gönderilmemiş kayıtlar
+// kalıcı olarak kayboluyordu. BulutManager artık bu tabloyu tek kaynak
+// olarak kullanıyor; 'hata_mesaji' son başarısız deneme mesajını
+// görünür kılmak için eklendi (taze kurulumlar zaten sync_semasi.dart
+// üzerinden bu kolonla geliyor — bu migrasyon SADECE mevcut cihazlar
+// içindir).
+Future<void> _v64denV65e(Database db) async {
+  await _calistir(db, 'ALTER TABLE sync_queue ADD COLUMN hata_mesaji TEXT');
+}

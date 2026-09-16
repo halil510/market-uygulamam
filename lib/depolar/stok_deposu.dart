@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../servisler/aktif_sube_servisi.dart';
 import '../veri/database/veritabani.dart';
 import '../modeller/stok_hareket_model.dart';
@@ -206,7 +207,7 @@ class StokDeposu {
 
     await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
         where: 'id = ?', whereArgs: [urunId]);
-    await txn.insert('stok_hareket', {
+    final hareketSatiri = {
       'global_id': hareketGid,
       'urun_id': urunId,
       'hareket_turu': hareketTuru ?? 'Çıkış',
@@ -220,7 +221,21 @@ class StokDeposu {
       if (kullaniciId != null) 'kullanici_id': kullaniciId,
       if (aciklama != null) 'aciklama': aciklama,
       if (lotId != null) 'lot_id': lotId,
-    });
+    };
+    await txn.insert('stok_hareket', hareketSatiri);
+    // Madde 5 sertleştirmesi: senkron kuyruğu kaydı AYNI transaction
+    // içinde, business data ile atomik yazılıyor — dış transaction
+    // rollback olursa ikisi de birlikte geri alınır, commit olursa
+    // ikisi de birlikte kalıcı olur (bkz. SyncKuyrukYazici yorumu).
+    await SyncKuyrukYazici.ekleTxn(txn,
+        tablo: 'stok_hareket', veri: hareketSatiri);
+    final guncelUrunSatiri = await txn.query('urunler',
+        where: 'id = ?', whereArgs: [urunId], limit: 1);
+    if (guncelUrunSatiri.isNotEmpty) {
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'urunler',
+          veri: Map<String, dynamic>.from(guncelUrunSatiri.first));
+    }
   }
 
   /// FAZ 5 (Lot/SKT — kullanıcı onayıyla): satış anında `lot_takibi=1`
@@ -413,7 +428,7 @@ class StokDeposu {
 
     await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
         where: 'id = ?', whereArgs: [urunId]);
-    await txn.insert('stok_hareket', {
+    final hareketSatiri = {
       'global_id': hareketGid,
       'urun_id': urunId,
       'hareket_turu': hareketTuru ?? 'Giriş',
@@ -428,7 +443,18 @@ class StokDeposu {
       if (referansId != null) 'referans_id': referansId,
       if (referansTuru != null) 'referans_turu': referansTuru,
       if (lotId != null) 'lot_id': lotId,
-    });
+    };
+    await txn.insert('stok_hareket', hareketSatiri);
+    // Madde 5 sertleştirmesi (bkz. stokDusTxn'deki aynı gerekçe).
+    await SyncKuyrukYazici.ekleTxn(txn,
+        tablo: 'stok_hareket', veri: hareketSatiri);
+    final guncelUrunSatiri = await txn.query('urunler',
+        where: 'id = ?', whereArgs: [urunId], limit: 1);
+    if (guncelUrunSatiri.isNotEmpty) {
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'urunler',
+          veri: Map<String, dynamic>.from(guncelUrunSatiri.first));
+    }
   }
 
   /// [stokDusTxn]/[stokGirTxn] sonrası şube bazlı stok payını günceller.

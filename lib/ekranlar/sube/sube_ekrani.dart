@@ -5,10 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
-import '../../veri/database/veritabani.dart';
-import 'package:uuid/uuid.dart';
+import '../../depolar/sube_deposu.dart';
 
 class SubeEkrani extends ConsumerStatefulWidget {
   const SubeEkrani({super.key});
@@ -17,6 +15,7 @@ class SubeEkrani extends ConsumerStatefulWidget {
 }
 
 class _SubeEkraniState extends ConsumerState<SubeEkrani> {
+  final _depo = SubeDeposu();
   List<Map<String, dynamic>> _subeler = [];
   int _aktifSubeId = 1;
   bool _yukleniyor = true;
@@ -32,8 +31,7 @@ class _SubeEkraniState extends ConsumerState<SubeEkrani> {
     _yukleniyor = true;
     if (mounted) setState(() {});
     try {
-      final db = await Veritabani().db;
-      final rows = await db.query('subeler', orderBy: 'sube_adi');
+      final rows = await _depo.hepsiGetir();
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
       _subeler = rows;
@@ -88,31 +86,13 @@ class _SubeEkraniState extends ConsumerState<SubeEkrani> {
     );
     if (ok != true || !mounted) return;
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      final data = {
-        'sube_kodu': koduC.text.trim().isEmpty ? 'S${DateTime.now().millisecondsSinceEpoch}' : koduC.text.trim(),
-        'sube_adi': adiC.text.trim(),
-        'adres': adrC.text.trim(),
-        'telefon': telC.text.trim(),
-        'aktif': 1,
-        'updated_at': now,
-        'last_updated': now,
-      };
-      int subeId;
-      if (s == null) {
-        // 🔴🔴 Derin analizde bulundu: global_id atanmıyordu, ayrıca
-        // senkron sisteminin beklediği 'last_updated' hiç yoktu
-        // (sadece 'updated_at' vardı) — şubeler (çok şubeli
-        // işletmelerde en temel veri) hiç senkronize olmuyordu.
-        data['global_id'] = const Uuid().v4();
-        subeId = await db.insert('subeler', data);
-      } else {
-        subeId = s['id'] as int;
-        await db.update('subeler', data, where: 'id=?', whereArgs: [subeId]);
-      }
-      final satir = await db.query('subeler', where: 'id = ?', whereArgs: [subeId], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('subeler', Map<String, dynamic>.from(satir.first));
+      await _depo.ekleVeyaGuncelle(
+        id: s == null ? null : s['id'] as int,
+        kod: koduC.text.trim(),
+        ad: adiC.text.trim(),
+        adres: adrC.text.trim(),
+        telefon: telC.text.trim(),
+      );
       await _yukle();
       if (!mounted) return;
       BildirimServisi.basari(context, s == null ? 'Şube eklendi ✓' : 'Şube güncellendi ✓');

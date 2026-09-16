@@ -9,10 +9,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/aktif_sube_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
-import '../../veri/database/veritabani.dart';
 import '../../depolar/kasa_deposu.dart';
-import 'package:uuid/uuid.dart';
+import '../../depolar/vardiya_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -27,7 +25,7 @@ class VardiyaEkrani extends ConsumerStatefulWidget {
 
 class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     with SingleTickerProviderStateMixin {
-  final _db = Veritabani();
+  final _depo = VardiyaDeposu();
   final _fmt = DateFormat('dd.MM.yyyy HH:mm');
   late TabController _tab;
 
@@ -58,44 +56,21 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
-      final db = await _db.db;
       // 🔴🔴 KRİTİK DÜZELTME (komple derin analizde bulundu): bu sorgular
       // ÖNCEDEN hiç sube_id filtresi içermiyordu — çok şubeli kurulumda
       // "aktif vardiya" TÜM şubeler arasından rastgele (en son açılan)
       // vardiyayı gösteriyordu. Şube B'deki kasiyer "Vardiyayı Kapat"a
       // basınca aslında Şube A'nın açık vardiyasını kapatabiliyordu.
       final subeId = AktifSubeServisi().subeId;
-      final subeSarti = subeId != null ? ' AND v.sube_id = ?' : '';
-      final subeArgs = subeId != null ? [subeId] : <Object?>[];
-      final aktifRows = await db.rawQuery(
-          'SELECT v.*, k.ad_soyad FROM vardiyalar v '
-          'LEFT JOIN kullanicilar k ON v.kullanici_id = k.id '
-          'WHERE v.kapanis_tarihi IS NULL$subeSarti ORDER BY v.id DESC LIMIT 1',
-          subeArgs);
-      final gecmisRows = await db.rawQuery(
-          'SELECT v.*, k.ad_soyad FROM vardiyalar v '
-          'LEFT JOIN kullanicilar k ON v.kullanici_id = k.id '
-          'WHERE v.kapanis_tarihi IS NOT NULL$subeSarti ORDER BY v.id DESC LIMIT 30',
-          subeArgs);
+      final aktif = await _depo.aktifVardiyaGetir(subeId: subeId);
+      final gecmis = await _depo.gecmisVardiyalarGetir(subeId: subeId);
 
       // Aktif vardiya satış özeti
       Map<String, dynamic> ozet = {};
-      if (aktifRows.isNotEmpty) {
-        final bas = aktifRows.first['acilis_tarihi']?.toString();
+      if (aktif != null) {
+        final bas = aktif['acilis_tarihi']?.toString();
         if (bas != null) {
-          final satirlar = await db.rawQuery('''
-            SELECT
-              COUNT(*) as satis_sayisi,
-              COALESCE(SUM(genel_toplam),0) as toplam_ciro,
-              COALESCE(SUM(CASE WHEN odeme_yontemi='Nakit' THEN genel_toplam ELSE 0 END),0) as nakit,
-              COALESCE(SUM(CASE WHEN odeme_yontemi='Kredi Kartı' THEN genel_toplam ELSE 0 END),0) as kart,
-              COALESCE(SUM(CASE WHEN odeme_yontemi='Cari' THEN genel_toplam ELSE 0 END),0) as cari,
-              COALESCE(SUM(iskonto_tutar),0) as iskonto,
-              COALESCE(SUM(CASE WHEN iptal=1 THEN 1 ELSE 0 END),0) as iptal_sayisi
-            FROM satislar
-            WHERE datetime(tarih) >= datetime(?) AND iptal=0 AND is_deleted=0
-          ''', [bas]);
-          ozet = Map<String, dynamic>.from(satirlar.first);
+          ozet = await _depo.satisOzetiGetir(bas);
 
           // 🔴🔴 FAZ 1 madde 2 (kullanıcı onayıyla): ÖNCEDEN burada ham
           // 'bakiye_sonrasi' zinciri okunuyordu — bu, Nakit VE Kart
@@ -119,10 +94,8 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
 
       if (!mounted) return;
       setState(() {
-        _aktif = aktifRows.isNotEmpty
-            ? Map<String, dynamic>.from(aktifRows.first)
-            : null;
-        _gecmis = gecmisRows.map((r) => Map<String, dynamic>.from(r)).toList();
+        _aktif = aktif;
+        _gecmis = gecmis;
         _satisOzet = ozet;
         _yukleniyor = false;
       });
@@ -182,30 +155,18 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     if (bas == null || !mounted) return;
     setState(() => _islemAktif = true);
     try {
-      final db = await _db.db;
       final kullanici = await AuthServisi().mevcutKullanici();
-      final now = DateTime.now().toIso8601String();
-      final id = await db.insert('vardiyalar', {
-        'global_id': const Uuid().v4(),
-        'kullanici_id': kullanici?.id ?? 1,
-        // 🔴 Komple derin analizde bulundu: sube_id hiç yazılmıyordu —
-        // her vardiya kaydı şubesiz (NULL) oluşuyordu, çok şubeli
-        // kurulumda "aktif vardiya" sorgusu şubeler arasında karışıyordu.
-        'sube_id': AktifSubeServisi().subeId,
-        'acilis_tarihi': now,
-        'acilis_kasasi': bas,
-        'baslangic_bakiye': bas,
-        'durum': 'acik',
-        'last_updated': now,
-      });
-      // 🔴 Derin analizde bulundu: global_id atanmıyordu, BulutManager
-      // hiç çağrılmıyordu — vardiya açma/kapatma (çok terminalli gün
-      // sonu mutabakatı için kritik) hiç senkronize olmuyordu.
-      final satir = await db.query('vardiyalar',
-          where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty)
-        BulutManager()
-            .upsert('vardiyalar', Map<String, dynamic>.from(satir.first));
+      // 🔴 Komple derin analizde bulundu: sube_id hiç yazılmıyordu —
+      // her vardiya kaydı şubesiz (NULL) oluşuyordu, çok şubeli
+      // kurulumda "aktif vardiya" sorgusu şubeler arasında karışıyordu.
+      // 🔴 Ayrıca: global_id atanmıyordu, BulutManager hiç çağrılmıyordu
+      // — vardiya açma/kapatma (çok terminalli gün sonu mutabakatı için
+      // kritik) hiç senkronize olmuyordu. Bkz. VardiyaDeposu.ac().
+      await _depo.ac(
+        kullaniciId: kullanici?.id ?? 1,
+        subeId: AktifSubeServisi().subeId,
+        baslangicKasa: bas,
+      );
       await _yukle();
       if (mounted)
         BildirimServisi.basari(context,
@@ -355,27 +316,12 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     if (sonuc == null || !mounted) return;
     setState(() => _islemAktif = true);
     try {
-      final db = await _db.db;
-      final vardiyaId = _aktif!['id'];
-      final now = DateTime.now().toIso8601String();
-      await db.update(
-          'vardiyalar',
-          {
-            'kapanis_tarihi': now,
-            'kapanis_kasasi': sonuc['sayim'],
-            'bitis_bakiye': sonuc['sayim'],
-            'nakit_sayim': sonuc['sayim'],
-            'fark': sonuc['fark'],
-            'durum': 'kapali',
-            'last_updated': now,
-          },
-          where: 'id = ?',
-          whereArgs: [vardiyaId]);
-      final satir = await db.query('vardiyalar',
-          where: 'id = ?', whereArgs: [vardiyaId], limit: 1);
-      if (satir.isNotEmpty)
-        BulutManager()
-            .upsert('vardiyalar', Map<String, dynamic>.from(satir.first));
+      final vardiyaId = _aktif!['id'] as int;
+      await _depo.kapat(
+        vardiyaId: vardiyaId,
+        sayim: (sonuc['sayim'] as num).toDouble(),
+        fark: (sonuc['fark'] as num).toDouble(),
+      );
       await _yukle();
       if (mounted) BildirimServisi.basari(context, '✓ Vardiya kapatıldı');
     } catch (e) {
@@ -398,15 +344,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
         v['acilis_tarihi']?.toString(), v['kapanis_tarihi']?.toString());
 
     // Satış verisi
-    final db = await _db.db;
-    final ozet = (await db.rawQuery('''
-      SELECT COUNT(*) as sayi, COALESCE(SUM(genel_toplam),0) as ciro,
-        COALESCE(SUM(CASE WHEN odeme_yontemi='Nakit' THEN genel_toplam ELSE 0 END),0) as nakit,
-        COALESCE(SUM(CASE WHEN odeme_yontemi='Kredi Kartı' THEN genel_toplam ELSE 0 END),0) as kart,
-        COALESCE(SUM(CASE WHEN odeme_yontemi='Cari' THEN genel_toplam ELSE 0 END),0) as cari_toplam,
-        COALESCE(SUM(iskonto_tutar),0) as iskonto
-      FROM satislar WHERE datetime(tarih) >= datetime(?) AND iptal=0 AND is_deleted=0
-    ''', [v['acilis_tarihi']])).first;
+    final ozet = await _depo.pdfSatisOzetiGetir(v['acilis_tarihi'].toString());
 
     pdf.addPage(pw.Page(
       pageFormat: PdfPageFormat.a5,

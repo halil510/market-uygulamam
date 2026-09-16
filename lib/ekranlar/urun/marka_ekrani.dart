@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
-import '../../veri/database/veritabani.dart';
+import '../../depolar/marka_deposu.dart';
 
 class MarkaEkrani extends ConsumerStatefulWidget {
   const MarkaEkrani({super.key});
@@ -14,6 +13,7 @@ class MarkaEkrani extends ConsumerStatefulWidget {
 }
 
 class _MarkaEkraniState extends ConsumerState<MarkaEkrani> {
+  final _depo = MarkaDeposu();
   List<Map<String, dynamic>> _markalar = [];
   bool _yukleniyor = true;
 
@@ -27,31 +27,11 @@ class _MarkaEkraniState extends ConsumerState<MarkaEkrani> {
     _yukleniyor = true;
     if (mounted) setState(() {});
     try {
-      final db = await Veritabani().db;
-      final rows = await db.rawQuery(
-        'SELECT m.id, m.ad, m.aktif, COUNT(u.id) as urun_sayisi '
-        'FROM markalar m LEFT JOIN urunler u ON u.marka = m.ad AND u.is_deleted = 0 '
-        'WHERE m.aktif = 1 '
-        'GROUP BY m.id ORDER BY m.ad ASC',
-      );
-      _markalar = rows;
+      _markalar = await _depo.listele();
       _yukleniyor = false;
       if (mounted) setState(() {});
     } catch (_) {
-      // markalar tablosu yoksa urunler'den distinct al
-      try {
-        final db = await Veritabani().db;
-        final rows = await db.rawQuery(
-          "SELECT marka as ad, COUNT(*) as urun_sayisi FROM urunler "
-          "WHERE marka IS NOT NULL AND marka != '' AND is_deleted = 0 "
-          "GROUP BY marka ORDER BY marka ASC",
-        );
-        _markalar = rows;
-        _yukleniyor = false;
-        if (mounted) setState(() {});
-      } catch (e) {
-        if (mounted) setState(() => _yukleniyor = false);
-      }
+      if (mounted) setState(() => _yukleniyor = false);
     }
   }
 
@@ -71,13 +51,7 @@ class _MarkaEkraniState extends ConsumerState<MarkaEkrani> {
     );
     if (ok != true || ctrl.text.trim().isEmpty) return;
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      final id = await db.insert('markalar', {'ad': ctrl.text.trim(), 'aktif': 1, 'last_updated': now});
-      // 🔴 Derin analizde bulundu: last_updated hiç ayarlanmıyordu
-      // (sütun az önce eklendi), BulutManager hiç çağrılmıyordu.
-      final satir = await db.query('markalar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('markalar', Map<String, dynamic>.from(satir.first));
+      await _depo.ekle(ctrl.text.trim());
       await _yukle();
       if (mounted) BildirimServisi.basari(context, 'Marka eklendi');
     } catch (e) {
@@ -101,15 +75,12 @@ class _MarkaEkraniState extends ConsumerState<MarkaEkrani> {
     );
     if (ok != true || ctrl.text.trim().isEmpty) return;
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
       if (marka['id'] != null) {
-        await db.update('markalar', {'ad': ctrl.text.trim(), 'last_updated': now},
-            where: 'id = ?', whereArgs: [marka['id']]);
-        await db.update('urunler', {'marka': ctrl.text.trim()},
-            where: 'marka = ? AND is_deleted = 0', whereArgs: [marka['ad']]);
-        final satir = await db.query('markalar', where: 'id = ?', whereArgs: [marka['id']], limit: 1);
-        if (satir.isNotEmpty) BulutManager().upsert('markalar', Map<String, dynamic>.from(satir.first));
+        await _depo.duzenle(
+          id: marka['id'] as int,
+          eskiAd: marka['ad']?.toString() ?? '',
+          yeniAd: ctrl.text.trim(),
+        );
       }
       await _yukle();
       if (mounted) BildirimServisi.basari(context, 'Marka güncellendi');
@@ -136,16 +107,8 @@ class _MarkaEkraniState extends ConsumerState<MarkaEkrani> {
     );
     if (ok != true) return;
     try {
-      final db = await Veritabani().db;
       if (marka['id'] != null) {
-        // 🔴 DÜZELTME: Gerçek hard-delete yapılıyordu — markalar
-        // tablosunda zaten 'aktif' bayrağı vardı ama hiç kullanılmıyordu.
-        // Hard delete, silmenin buluta bildirilememesine yol açıyordu.
-        final now = DateTime.now().toIso8601String();
-        await db.update('markalar', {'aktif': 0, 'last_updated': now},
-            where: 'id = ?', whereArgs: [marka['id']]);
-        final satir = await db.query('markalar', where: 'id = ?', whereArgs: [marka['id']], limit: 1);
-        if (satir.isNotEmpty) BulutManager().upsert('markalar', Map<String, dynamic>.from(satir.first));
+        await _depo.sil(marka['id'] as int);
       }
       await _yukle();
       if (mounted) BildirimServisi.basari(context, 'Marka silindi');

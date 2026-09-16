@@ -10,10 +10,7 @@ import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../modeller/personel_model.dart';
-import '../../veri/database/veritabani.dart';
-import '../../servisler/bulut/bulut_manager.dart';
-import 'package:uuid/uuid.dart';
-import '../../cekirdek/sabitler/db_sabitleri.dart';
+import '../../depolar/personel_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/hata_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -23,13 +20,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
 final personellerProvider =
     FutureProvider.autoDispose<List<PersonelModel>>((ref) async {
-  final db   = await Veritabani().db;
-  final rows = await db.query(
-    DbSabitler.personel,
-    where: 'is_deleted = 0',
-    orderBy:  'ad_soyad ASC',
-  );
-  return rows.map(PersonelModel.fromMap).toList();
+  return PersonelDeposu().hepsiGetir();
 });
 
 // ── Ekran ─────────────────────────────────────────────────────────────────────
@@ -538,47 +529,25 @@ class _PersonelFormSheetState extends ConsumerState<_PersonelFormSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _yukleniyor = true);
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      final veri = {
-        'ad_soyad': _adCtrl.text.trim(),
-        // NOT: _deptCtrl formda "Departman" etiketiyle gösteriliyor ama
-        // PersonelModel.departman, 'pozisyon' sütununun bilinçli bir
-        // geriye-dönük-uyumluluk alias'ıdır (bkz. personel_model.dart
-        // "Geriye dönük uyumluluk için alias getter" notu) — gerçek
-        // veri hep 'pozisyon' sütununda tutulur, 'departman' sütunu
-        // (şemada var ama modelde hiç okunmuyor) kasıtlı olarak
-        // kullanılmaz. Bu satır DOĞRU şekilde 'pozisyon'a yazıyor.
-        'pozisyon': _deptCtrl.text.trim().isEmpty ? null : _deptCtrl.text.trim(),
+      // NOT: _deptCtrl formda "Departman" etiketiyle gösteriliyor ama
+      // PersonelModel.departman, 'pozisyon' sütununun bilinçli bir
+      // geriye-dönük-uyumluluk alias'ıdır (bkz. personel_model.dart
+      // "Geriye dönük uyumluluk için alias getter" notu) — gerçek
+      // veri hep 'pozisyon' sütununda tutulur, 'departman' sütunu
+      // (şemada var ama modelde hiç okunmuyor) kasıtlı olarak
+      // kullanılmaz. Bu satır DOĞRU şekilde 'pozisyon'a yazıyor.
+      await PersonelDeposu().kaydet(
+        id: widget.personel?.id,
+        adSoyad: _adCtrl.text.trim(),
+        pozisyon: _deptCtrl.text.trim().isEmpty ? null : _deptCtrl.text.trim(),
         // ÖNCEDEN: telefon ve email alanları formda toplanıyordu ama
         // kaydetme sırasında tamamen görmezden geliniyordu — kullanıcı
         // doldursa bile veri sessizce kayboluyordu.
-        'telefon':  _telCtrl.text.trim().isEmpty ? null : _telCtrl.text.trim(),
-        'email':    _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
-        'maas':     double.tryParse(_maasCtrl.text.replaceAll(',', '.')) ?? 0,
-        'aktif':    _aktif ? 1 : 0,
-        // 🔴 DÜZELTME (gerçek bulgu): 'notlar' HARDCODED null
-        // yazılıyordu — DÜZENLEME modunda mevcut bir not varsa bile
-        // sessizce siliniyordu (form bu alanı hiç göstermediği için
-        // kullanıcı bunu fark edemezdi). Artık düzenlemede dokunulmuyor.
-        if (widget.personel == null) 'notlar': null,
-        'last_updated': now,
-      };
-      int personelId;
-      if (widget.personel == null) {
-        // 🔴 Derin analizde bulundu: global_id hiç atanmıyordu,
-        // BulutManager hiç çağrılmıyordu — personel senkron sisteminde
-        // olduğu halde yeni personel eklemek/düzenlemek diğer
-        // cihazlara hiç yansımıyordu.
-        veri['global_id'] = const Uuid().v4();
-        personelId = await db.insert(DbSabitler.personel, veri);
-      } else {
-        personelId = widget.personel!.id!;
-        await db.update(DbSabitler.personel, veri,
-            where: 'id = ?', whereArgs: [personelId]);
-      }
-      final satir = await db.query(DbSabitler.personel, where: 'id = ?', whereArgs: [personelId], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert(DbSabitler.personel, Map<String, dynamic>.from(satir.first));
+        telefon: _telCtrl.text.trim().isEmpty ? null : _telCtrl.text.trim(),
+        email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+        maas: double.tryParse(_maasCtrl.text.replaceAll(',', '.')) ?? 0,
+        aktif: _aktif,
+      );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       // 🔴 Derin denetimde bulundu (P2): bu blokta catch yoktu — bir

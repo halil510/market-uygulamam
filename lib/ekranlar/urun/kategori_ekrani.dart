@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
-import '../../veri/database/veritabani.dart';
+import '../../depolar/kategori_deposu.dart';
 
 class KategoriEkrani extends ConsumerStatefulWidget {
   const KategoriEkrani({super.key});
@@ -15,6 +14,7 @@ class KategoriEkrani extends ConsumerStatefulWidget {
 }
 
 class _KategoriEkraniState extends ConsumerState<KategoriEkrani> {
+  final _depo = KategoriDeposu();
   List<Map<String, dynamic>> _kategoriler = [];
   bool _yukleniyor = true;
 
@@ -27,8 +27,7 @@ class _KategoriEkraniState extends ConsumerState<KategoriEkrani> {
   Future<void> _yukle() async {
     try {
       if (mounted) setState(() => _yukleniyor = true);
-      final db = await Veritabani().db;
-      final liste = await db.query('kategoriler', where: 'is_deleted = 0', orderBy: 'ad');
+      final liste = await _depo.hepsiGetir();
       if (!mounted) return;
       setState(() {
         _kategoriler = liste;
@@ -55,14 +54,7 @@ class _KategoriEkraniState extends ConsumerState<KategoriEkrani> {
       ),
     );
     if (onay != null && onay.isNotEmpty) {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      final id = await db.insert('kategoriler', {'ad': onay, 'last_updated': now});
-      // 🔴 Derin analizde bulundu: last_updated hiç ayarlanmıyordu,
-      // BulutManager hiç çağrılmıyordu — kategoriler sadece manuel
-      // senkronla buluta gidiyordu.
-      final satir = await db.query('kategoriler', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('kategoriler', Map<String, dynamic>.from(satir.first));
+      await _depo.ekle(onay);
       _yukle();
       if (mounted) BildirimServisi.basari(context, 'Kategori eklendi');
     }
@@ -92,12 +84,7 @@ class _KategoriEkraniState extends ConsumerState<KategoriEkrani> {
     );
     if (onay != true || !mounted) return;
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      await db.update('kategoriler', {'is_deleted': 1, 'last_updated': now},
-          where: 'id = ?', whereArgs: [id]);
-      final satir = await db.query('kategoriler', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('kategoriler', Map<String, dynamic>.from(satir.first));
+      await _depo.sil(id);
       _yukle();
       if (mounted) BildirimServisi.basari(context, 'Silindi');
     } catch (e) {

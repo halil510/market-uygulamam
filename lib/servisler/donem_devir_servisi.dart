@@ -1,23 +1,41 @@
 // lib/servisler/donem_devir_servisi.dart
-// Yıl Sonu Devir / Dönem Kapatma / Arşivleme sistemi — FAZ 2 (2026-09-16,
-// kullanıcı onaylı mimari plan raporu). Bu dosya devir motorunun İLK İKİ
-// fazını (Madde 17: Kontrol, Backup) gerçek olarak uygular.
+// Yıl Sonu Devir / Dönem Kapatma / Arşivleme sistemi — FAZ 3 (2026-09-16,
+// kullanıcı onaylı mimari plan raporu). Bu dosya devir motorunun İLK
+// YEDİ fazını (Madde 17: Kontrol, Backup, Archive hazırlama, Stok/Cari/
+// Kasa/Banka Snapshot) gerçek olarak uygular.
 //
-// 🔴 DÜRÜSTLÜK NOTU: Madde 17'nin tanımladığı 10 faz vardır (Kontrol →
-// Backup → Archive hazırlama → Stok/Cari/Kasa/Banka Snapshot → Açılış
-// Kayıtları → Dönem Kapanışı → Doğrulama). Bu dosya SADECE ilk ikisini
-// (Kontrol, Backup) içerir — 3-10 arası fazlar İLERİKİ fazlarda
-// eklenecek. devirBaslatVeyaDevamEt() bilerek FAZ 2'den SONRA durur;
-// checkpoint.durum='COMPLETED' asla burada set edilmez (Madde 28: bu
-// alan SADECE tüm devir bittiğinde 'tamamlandı' anlamına gelmeli).
+// 🔴 DÜRÜSTLÜK NOTU: Madde 17'nin tanımladığı 10 faz vardır. Bu dosya
+// SADECE ilk yedisini içerir — Açılış Kayıtları/Dönem Kapanışı/
+// Doğrulama (8-10) İLERİKİ bir fazda eklenecek. devirBaslatVeyaDevamEt()
+// bilerek FAZ 7'den SONRA durur; checkpoint.durum='COMPLETED' asla
+// burada set edilmez (Madde 28: bu alan SADECE tüm devir bittiğinde
+// 'tamamlandı' anlamına gelmeli).
 //
 // Resumable state-machine ilkesi (Madde 17/27): her faz kendi işini
 // BİTİRDİKTEN SONRA checkpoint'i ilerletir. Böylece bir kesinti (uygulama
 // çökmesi/güç kesintisi) olursa, bir sonraki çağrı kaldığı fazdan devam
-// eder — daha önce tamamlanmış bir faz TEKRAR çalıştırılmaz.
+// eder — daha önce tamamlanmış bir faz TEKRAR çalıştırılmaz. Snapshot
+// fazları AYRICA kendi içlerinde idempotent'tir (ConflictAlgorithm.replace,
+// UNIQUE kısıtına göre) — aynı faz iki kez çalışsa bile veri çoğalmaz.
+//
+// 🔴 BİLİNÇLİ TASARIM SINIRLAMASI (cari/banka company-wide fazlar):
+// devirBaslatVeyaDevamEt() TEK bir [subeId] alır ve TEK bir checkpoint
+// üzerinden ilerler. Ancak cari ve banka bakiyeleri bu uygulamada ŞUBE
+// BAZLI DEĞİL (cari_hareket/banka_hesaplar'da sube_id yok — bkz.
+// donem_semasi.dart baş yorumu) — yani CariSnapshot/BankaSnapshot
+// fazları kavramsal olarak "şirket geneli"dir. Çok şubeli bir devirde
+// (her şube için ayrı ayrı devirBaslatVeyaDevamEt çağrılırsa) bu iki faz
+// BİRDEN FAZLA KEZ çalışabilir — ama UPSERT (ConflictAlgorithm.replace)
+// idempotent olduğundan bu ZARARSIZDIR, sadece gereksiz tekrar
+// hesaplamadır. Tam bir "şirket geneli tek checkpoint" ayrımı (ayrı bir
+// devir_checkpoint.sube_id=0 akışı) İLERİKİ bir fazda değerlendirilebilir.
+import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 import '../depolar/donem_deposu.dart';
 import '../depolar/devir_checkpoint_deposu.dart';
 import '../depolar/vardiya_deposu.dart';
+import '../depolar/banka_hesap_deposu.dart';
+import '../depolar/cari_deposu.dart';
 import '../modeller/donem_model.dart';
 import '../modeller/devir_checkpoint_model.dart';
 import 'log_servisi.dart';
@@ -164,13 +182,213 @@ class DonemDevirServisi {
       }
     }
 
-    // 🔴 FAZ 3-10 (Archive hazırlama, Stok/Cari/Kasa/Banka Snapshot,
-    // Açılış Kayıtları, Dönem Kapanışı, Doğrulama) İLERİKİ fazlarda
-    // eklenecek. Checkpoint şu an mevcut_faz=2 (BACKUP tamamlandı)
-    // durumunda bırakılıyor — bir sonraki çağrı (devir motoru
-    // genişletildiğinde) buradan devam edecek. durum'u BİLEREK
-    // COMPLETED yapmıyoruz.
+    // ── FAZ 3: ARCHIVE HAZIRLAMA ────────────────────────────────────
+    // 🔴 DÜRÜSTLÜK NOTU: gerçek arşivleme (Supabase _arsiv tabloları,
+    // SQLite ikinci salt-okunur bağlantı) henüz kurulmadı (mimari plan
+    // raporundaki §1b/§3 — İLERİKİ bir fazda). Bu faz şu an SADECE
+    // FAZ 2'nin ürettiği tam yedeği "bu dönemin arşiv temeli" olarak
+    // işaretler — kayıt taşıma/silme YAPMAZ, kaynak veriye DOKUNMAZ.
+    if (checkpoint.mevcutFaz < DevirFaz.arsivHazirlama) {
+      checkpoint = checkpoint.copyWith(durum: DevirDurumu.archiving);
+      await _checkpointDepo.guncelle(checkpoint);
+      await _donemDepo.donemGuncelle(
+          kaynakDonem.copyWith(arsivDurumu: AltDurum.devamEdiyor));
+      checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.arsivHazirlama);
+      await _checkpointDepo.guncelle(checkpoint);
+    }
+
+    // ── FAZ 4: STOK SNAPSHOT ────────────────────────────────────────
+    if (checkpoint.mevcutFaz < DevirFaz.stokSnapshot) {
+      checkpoint = checkpoint.copyWith(durum: DevirDurumu.snapshotStok);
+      await _checkpointDepo.guncelle(checkpoint);
+      try {
+        await _stokSnapshotAl(
+            devirId: checkpoint.devirId, donemId: kaynakDonem.id!, subeId: subeId);
+        checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.stokSnapshot);
+        await _checkpointDepo.guncelle(checkpoint);
+      } catch (e, st) {
+        LogServisi().hata('DonemDevirServisi.fazStokSnapshot', hata: e, yigin: st);
+        checkpoint = checkpoint.copyWith(
+            durum: DevirDurumu.failed, hataMesaji: 'Stok snapshot başarısız: $e');
+        await _checkpointDepo.guncelle(checkpoint);
+        return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);
+      }
+    }
+
+    // ── FAZ 5: CARİ SNAPSHOT (şirket geneli — bkz. dosya baş yorumu) ──
+    if (checkpoint.mevcutFaz < DevirFaz.cariSnapshot) {
+      checkpoint = checkpoint.copyWith(durum: DevirDurumu.snapshotCari);
+      await _checkpointDepo.guncelle(checkpoint);
+      try {
+        await _cariSnapshotAl(devirId: checkpoint.devirId, donemId: kaynakDonem.id!);
+        checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.cariSnapshot);
+        await _checkpointDepo.guncelle(checkpoint);
+      } catch (e, st) {
+        LogServisi().hata('DonemDevirServisi.fazCariSnapshot', hata: e, yigin: st);
+        checkpoint = checkpoint.copyWith(
+            durum: DevirDurumu.failed, hataMesaji: 'Cari snapshot başarısız: $e');
+        await _checkpointDepo.guncelle(checkpoint);
+        return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);
+      }
+    }
+
+    // ── FAZ 6: KASA SNAPSHOT ────────────────────────────────────────
+    if (checkpoint.mevcutFaz < DevirFaz.kasaSnapshot) {
+      checkpoint = checkpoint.copyWith(durum: DevirDurumu.snapshotKasa);
+      await _checkpointDepo.guncelle(checkpoint);
+      try {
+        await _kasaSnapshotAl(
+            devirId: checkpoint.devirId, donemId: kaynakDonem.id!, subeId: subeId);
+        checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.kasaSnapshot);
+        await _checkpointDepo.guncelle(checkpoint);
+      } catch (e, st) {
+        LogServisi().hata('DonemDevirServisi.fazKasaSnapshot', hata: e, yigin: st);
+        checkpoint = checkpoint.copyWith(
+            durum: DevirDurumu.failed, hataMesaji: 'Kasa snapshot başarısız: $e');
+        await _checkpointDepo.guncelle(checkpoint);
+        return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);
+      }
+    }
+
+    // ── FAZ 7: BANKA SNAPSHOT (şirket geneli — bkz. dosya baş yorumu) ─
+    if (checkpoint.mevcutFaz < DevirFaz.bankaSnapshot) {
+      checkpoint = checkpoint.copyWith(durum: DevirDurumu.snapshotBanka);
+      await _checkpointDepo.guncelle(checkpoint);
+      try {
+        await _bankaSnapshotAl(devirId: checkpoint.devirId, donemId: kaynakDonem.id!);
+        checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.bankaSnapshot);
+        await _checkpointDepo.guncelle(checkpoint);
+      } catch (e, st) {
+        LogServisi().hata('DonemDevirServisi.fazBankaSnapshot', hata: e, yigin: st);
+        checkpoint = checkpoint.copyWith(
+            durum: DevirDurumu.failed, hataMesaji: 'Banka snapshot başarısız: $e');
+        await _checkpointDepo.guncelle(checkpoint);
+        return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);
+      }
+    }
+
+    // 🔴 FAZ 8-10 (Açılış Kayıtları, Dönem Kapanışı, Doğrulama) İLERİKİ
+    // fazlarda eklenecek. Checkpoint şu an mevcut_faz=7 (BANKA SNAPSHOT
+    // tamamlandı) durumunda bırakılıyor. durum'u BİLEREK COMPLETED
+    // yapmıyoruz.
     return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);
+  }
+
+  // ── FAZ 4 detay: stok snapshot ──────────────────────────────────────
+  // sube_urun (şube bazlı stok payı) tablosundan okur. NOT: bir ürünün
+  // bu şubede hiç sube_urun satırı yoksa (o şubeye hiç transfer/stok
+  // hareketi işlenmemişse) bu ürün snapshot'a DAHİL EDİLMEZ — bilinen,
+  // dokümante edilmiş bir sınırlama (çok şubeli kurulumlarda nadir).
+  Future<void> _stokSnapshotAl(
+      {required String devirId, required int donemId, required int subeId}) async {
+    final db = await Veritabani().db;
+    final rows = await db.rawQuery('''
+      SELECT su.urun_id AS urun_id, su.stok AS miktar
+      FROM sube_urun su
+      JOIN urunler u ON u.id = su.urun_id
+      WHERE su.sube_id = ? AND u.is_deleted = 0
+    ''', [subeId]);
+
+    await db.transaction((txn) async {
+      for (final r in rows) {
+        await txn.insert(
+          'stok_kapanis_snapshot',
+          {
+            'global_id': const Uuid().v4(),
+            'devir_id': devirId,
+            'donem_id': donemId,
+            'sube_id': subeId,
+            'urun_id': r['urun_id'],
+            'miktar': (r['miktar'] as num?)?.toDouble() ?? 0,
+            'olusturma_tarihi': DateTime.now().toIso8601String(),
+            'last_updated': DateTime.now().toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
+  // ── FAZ 5 detay: cari snapshot ──────────────────────────────────────
+  Future<void> _cariSnapshotAl({required String devirId, required int donemId}) async {
+    // Yüksek bir limit — "tümü" anlamına gelmesi için (varsayılan limit
+    // 500'dü, büyük cari defterlerinde sessizce kesilirdi).
+    final cariler = await CariDeposu().tumunuGetir(limit: 1000000);
+    final db = await Veritabani().db;
+    await db.transaction((txn) async {
+      for (final c in cariler) {
+        if (c.id == null) continue;
+        await txn.insert(
+          'cari_kapanis_snapshot',
+          {
+            'global_id': const Uuid().v4(),
+            'devir_id': devirId,
+            'donem_id': donemId,
+            'cari_id': c.id,
+            'bakiye': c.bakiye,
+            'olusturma_tarihi': DateTime.now().toIso8601String(),
+            'last_updated': DateTime.now().toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
+  // ── FAZ 6 detay: kasa snapshot ──────────────────────────────────────
+  // KasaDeposu.guncelBakiye() KASITLI olarak kullanılmadı — o metod
+  // AktifSubeServisi().subeId'ye (o anki seçili şube) bağımlı, ama devir
+  // BAŞKA bir şube için çalışıyor olabilir. Aynı formül (bakiye_sonrasi
+  // zincirinin son satırı) burada [subeId] parametresiyle açıkça
+  // tekrarlanıyor — bkz. KasaDeposu._sonBakiyeTxn ile AYNI mantık.
+  Future<void> _kasaSnapshotAl(
+      {required String devirId, required int donemId, required int subeId}) async {
+    final db = await Veritabani().db;
+    final rows = await db.rawQuery(
+      'SELECT bakiye_sonrasi FROM kasa_hareketleri '
+      'WHERE deleted_at IS NULL AND sube_id = ? ORDER BY tarih DESC, id DESC LIMIT 1',
+      [subeId],
+    );
+    final bakiye =
+        rows.isEmpty ? 0.0 : ((rows.first['bakiye_sonrasi'] as num?)?.toDouble() ?? 0.0);
+
+    await db.insert(
+      'kasa_kapanis_snapshot',
+      {
+        'global_id': const Uuid().v4(),
+        'devir_id': devirId,
+        'donem_id': donemId,
+        'sube_id': subeId,
+        'bakiye': bakiye,
+        'olusturma_tarihi': DateTime.now().toIso8601String(),
+        'last_updated': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  // ── FAZ 7 detay: banka snapshot ─────────────────────────────────────
+  Future<void> _bankaSnapshotAl({required String devirId, required int donemId}) async {
+    final hesaplar = await BankaHesapDeposu().tumunuGetir();
+    final db = await Veritabani().db;
+    await db.transaction((txn) async {
+      for (final h in hesaplar) {
+        if (h.id == null) continue;
+        await txn.insert(
+          'banka_kapanis_snapshot',
+          {
+            'global_id': const Uuid().v4(),
+            'devir_id': devirId,
+            'donem_id': donemId,
+            'banka_hesap_id': h.id,
+            'bakiye': h.bakiye,
+            'olusturma_tarihi': DateTime.now().toIso8601String(),
+            'last_updated': DateTime.now().toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
   }
 
   // ── FAZ 1 detay: kontrol listesi ────────────────────────────────────

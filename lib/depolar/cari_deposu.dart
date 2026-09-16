@@ -139,6 +139,18 @@ class CariDeposu {
     try {
       final db = await _d;
       final m = cari.toMap();
+      // 🔴 DÜZELTME (Madde 9 — Cari Mutabakat denetimi, 2026-09-16):
+      // 'bakiye' ÖNCEDEN bu profil-düzenleme metoduyla da yazılıyordu —
+      // ama kanonik bakiye cari_hareket toplamından bir DB trigger'ı
+      // (trg_cari_hareket_bakiye) ile hesaplanır, hiçbir uygulama
+      // kodunun doğrudan yazmaması gerekir. Somut bozulma senaryosu:
+      // kullanıcı bir cariyi düzenlemek için ekranı açar (bakiyesi o an
+      // belleğe okunur), form açıkken BAŞKA bir cihazdan/şubeden aynı
+      // cariye satış/tahsilat girilirse trigger bakiyeyi günceller —
+      // ama kullanıcı "Kaydet"e basınca elindeki BAYAT bakiye değeri bu
+      // TAZE değerin üzerine yazılır (kayıp güncelleme / stale-read
+      // race). 'bakiye' artık bu yazımdan tamamen çıkarıldı.
+      m.remove('bakiye');
       m['last_updated'] = DateTime.now().toIso8601String();
       await db.update('cari', m, where: 'id = ?', whereArgs: [cari.id]);
       final guncelSatir = await db.query('cari', where: 'id = ?', whereArgs: [cari.id], limit: 1);

@@ -172,15 +172,16 @@ class _DonemYonetimiEkraniState extends State<DonemYonetimiEkrani> {
     final onay = await OnayDialog.goster(context,
         baslik: 'Yıl Sonu Devrini Başlat',
         icerik: 'Bu işlem: (1) yıl sonu kontrollerini çalıştırır, (2) tam '
-            'bir yedek alır, (3) stok/cari/kasa/banka kapanış '
-            'değerlerinin anlık görüntüsünü kaydeder, (4) bu şubenin '
+            'bir yedek alır, (3) satış/stok/cari/kasa/banka '
+            'hareketlerini bu dönemin arşiv dosyasına KOPYALAR ve '
+            'kopyayı doğrular, (4) stok/cari/kasa/banka kapanış '
+            'değerlerinin anlık görüntüsünü kaydeder, (5) bu şubenin '
             'dönemini kapatır.\n\n'
-            'ÖNEMLİ: Bu sürümde gerçek veri arşivleme (eski yıl '
-            'kayıtlarının ayrı bir arşive taşınması) HENÜZ YOK — mevcut '
-            'satış/stok/cari hareketleriniz olduğu gibi kalır, hiçbir '
-            'şey silinmez veya taşınmaz. Kritik bir kontrol '
-            'başarısız olursa işlem güvenle durur, hiçbir veri '
-            'değişmez.',
+            'ÖNEMLİ: Bu sürümde arşivleme SADECE KOPYALAMADIR — mevcut '
+            'satış/stok/cari hareketleriniz aktif veritabanında OLDUĞU '
+            'GİBİ KALIR, hiçbir şey silinmez veya taşınmaz. Kritik bir '
+            'kontrol ya da arşiv doğrulaması başarısız olursa işlem '
+            'güvenle durur, hiçbir veri değişmez.',
         onayYazi: 'Devri Başlat', onayRengi: Colors.orange,
         ikon: Icons.warning_amber_rounded);
     if (!onay || !mounted) return;

@@ -1,8 +1,12 @@
 // lib/servisler/donem_devir_servisi.dart
-// Yıl Sonu Devir / Dönem Kapatma / Arşivleme sistemi — FAZ 4 (2026-09-16,
+// Yıl Sonu Devir / Dönem Kapatma / Arşivleme sistemi — FAZ 5 (2026-09-16,
 // kullanıcı onaylı mimari plan raporu). Bu dosya devir motorunun 10
 // fazının HEPSİNİ içerir (Madde 17) — ama son üçü (Açılış/Kapanış/
 // Doğrulama) BİLİNÇLİ olarak sınırlı bir kapsamda uygulanıyor, aşağıya bkz.
+//
+// FAZ 3 (Arşivleme) artık GERÇEK bir kopyalama yapıyor (DonemArsivServisi
+// — bkz. o dosyanın başı) — ama SADECE kopyalama, aktif tablolardan
+// SİLME YOK. Bu yüzden aşağıdaki kritik bulgu HÂLÂ tam olarak geçerli.
 //
 // 🔴🔴 KRİTİK MİMARİ BULGU (FAZ 4'te tespit edildi, kod yazmadan ÖNCE
 // düşünüldü): Madde 8/9/10/11 "açılış kaydı" için STOK_DEVIR/CARI_DEVIR/
@@ -10,13 +14,13 @@
 // örnekliyor. Ama bu uygulamada stok/cari/kasa/banka bakiyeleri
 // event-sourcing ile (stok_hareket/cari_hareket/kasa_hareketleri/
 // banka_hareketler toplamından) hesaplanıyor — TEK, sürekli büyüyen bir
-// defter, dönem sınırı YOK. Eğer FAZ 3 (gerçek arşivleme — eski yılın
-// satırlarını aktif tablodan çıkarma) henüz kurulmamışken buraya "yeni
-// dönem açılış hareketi" diye YENİ bir satır eklenirse, mutabakat
-// SUM'u bu satırı da sayar → bakiye ÇİFT SAYILIR (ör. 125 adet stok,
-// +125'lik bir "STOK_DEVIR" satırıyla birlikte 250 görünür). Bu,
-// tam olarak bu oturumun önceki fazlarında bulup düzelttiğimiz sınıf
-// bir hata olurdu — bilerek YAPILMADI.
+// defter, dönem sınırı YOK. Eski yılın satırları aktif tablodan HENÜZ
+// ÇIKARILMADIĞI (sadece kopyalandığı) sürece, buraya "yeni dönem açılış
+// hareketi" diye YENİ bir satır eklenirse, mutabakat SUM'u bu satırı da
+// sayar → bakiye ÇİFT SAYILIR (ör. 125 adet stok, +125'lik bir
+// "STOK_DEVIR" satırıyla birlikte 250 görünür). Bu, tam olarak bu
+// oturumun önceki fazlarında bulup düzelttiğimiz sınıf bir hata olurdu
+// — bilerek YAPILMADI.
 //
 // Bunun yerine: FAZ 4-7'nin snapshot'ları (kapanis_snapshot tabloları)
 // ZATEN kalıcı "bu tarihte bakiye buydu" kaydını taşıyor — canlı
@@ -54,6 +58,7 @@ import '../depolar/cari_deposu.dart';
 import '../depolar/sube_deposu.dart';
 import '../modeller/donem_model.dart';
 import '../modeller/devir_checkpoint_model.dart';
+import 'donem_arsiv_servisi.dart';
 import 'log_servisi.dart';
 import 'onay_merkezi_servisi.dart';
 import 'veri_sagligi_servisi.dart';
@@ -217,19 +222,47 @@ class DonemDevirServisi {
       }
     }
 
-    // ── FAZ 3: ARCHIVE HAZIRLAMA ────────────────────────────────────
-    // 🔴 DÜRÜSTLÜK NOTU: gerçek arşivleme (Supabase _arsiv tabloları,
-    // SQLite ikinci salt-okunur bağlantı) henüz kurulmadı (mimari plan
-    // raporundaki §1b/§3 — İLERİKİ bir fazda). Bu faz şu an SADECE
-    // FAZ 2'nin ürettiği tam yedeği "bu dönemin arşiv temeli" olarak
-    // işaretler — kayıt taşıma/silme YAPMAZ, kaynak veriye DOKUNMAZ.
+    // ── FAZ 3: GERÇEK ARŞİVLEME — SADECE KOPYALAMA ─────────────────────
+    // (2026-09-16, kullanıcı onayı: "aktif verinin arşive kopyalanmasını
+    // — SADECE kopyalama, silme yok — tasarlayıp kodlamaya başla").
+    // 🔴 KAPSAM: satislar/stok_hareket/cari_hareket/kasa_hareketleri/
+    // banka_hareketler tablolarından bu dönemin tarih aralığına düşen
+    // satırlar arsiv/<YIL>/barkopro_<YIL>.db dosyasına KOPYALANIR ve
+    // Madde 19'a göre (satır sayısı + toplam tutar) DOĞRULANIR. AKTİF
+    // TABLODAN HİÇBİR SATIR SİLİNMEZ/ÇIKARILMAZ — silme/taşıma alt-fazı
+    // (mimari plan §3b, DB şişmesini GERÇEKTEN azaltan adım) BİLİNÇLİ
+    // olarak KAPSAM DIŞI, ayrı bir onay turu bekliyor. Doğrulama
+    // başarısız olursa devir FAILED olur, "arşiv tamamlandı" işareti
+    // konmaz — bkz. DonemArsivServisi dosya başı yorumu.
     if (checkpoint.mevcutFaz < DevirFaz.arsivHazirlama) {
       checkpoint = checkpoint.copyWith(durum: DevirDurumu.archiving);
       await _checkpointDepo.guncelle(checkpoint);
       await _donemDepo.donemGuncelle(
           kaynakDonem.copyWith(arsivDurumu: AltDurum.devamEdiyor));
-      checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.arsivHazirlama);
-      await _checkpointDepo.guncelle(checkpoint);
+      try {
+        final sonuclar = await DonemArsivServisi().arsivleVeDogrula(
+          donemYili: kaynakDonem.donemYili,
+          subeId: subeId,
+          baslangic: kaynakDonem.baslangicTarihi,
+          bitis: kaynakDonem.bitisTarihi,
+        );
+        LogServisi().bilgi(
+          'DonemDevirServisi.fazArsiv tamamlandı (yıl ${kaynakDonem.donemYili}, şube $subeId)',
+          ek: sonuclar.map((s) => '${s.tablo}:${s.kopyalanan}').join(', '),
+        );
+        await _donemDepo.donemGuncelle(
+            kaynakDonem.copyWith(arsivDurumu: AltDurum.tamamlandi));
+        checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.arsivHazirlama);
+        await _checkpointDepo.guncelle(checkpoint);
+      } catch (e, st) {
+        LogServisi().hata('DonemDevirServisi.fazArsiv', hata: e, yigin: st);
+        await _donemDepo.donemGuncelle(
+            kaynakDonem.copyWith(arsivDurumu: AltDurum.hatali));
+        checkpoint = checkpoint.copyWith(
+            durum: DevirDurumu.failed, hataMesaji: 'Arşivleme başarısız: $e');
+        await _checkpointDepo.guncelle(checkpoint);
+        return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);
+      }
     }
 
     // ── FAZ 4: STOK SNAPSHOT ────────────────────────────────────────
@@ -336,12 +369,15 @@ class DonemDevirServisi {
     }
 
     // ── FAZ 10: DOĞRULAMA ───────────────────────────────────────────
-    // 🔴 KAPSAM NOTU: Madde 19'un istediği TAM arşiv doğrulaması
-    // (aktif DB satır sayısı == arşiv satır sayısı, checksum) gerçek
-    // arşivleme kurulmadan anlamlı değil — henüz o altyapı yok. Bu faz
-    // şu an SADECE FAZ 4-7'nin snapshot'larının GERÇEKTEN yazıldığını
-    // (satır sayıları makul mü) doğruluyor — hafif bir öz-tutarlılık
-    // kontrolü, tam arşiv doğrulaması DEĞİL.
+    // 🔴 KAPSAM NOTU: Madde 19'un istediği asıl arşiv doğrulaması (aktif
+    // DB satır sayısı == arşiv satır sayısı + toplam tutar eşleşmesi)
+    // artık FAZ 3 içinde, kopyalama SIRASINDA yapılıyor (bkz.
+    // DonemArsivServisi.arsivleVeDogrula — eşleşmezse zaten orada devir
+    // FAILED olur, buraya hiç gelinmez). Checksum/hash tabanlı doğrulama
+    // henüz YOK (basit COUNT+SUM kullanılıyor). Bu faz (FAZ 10) ONUN
+    // YERİNE GEÇMİYOR — ayrıca FAZ 4-7'nin snapshot'larının GERÇEKTEN
+    // yazıldığını (satır sayıları makul mü) doğrulayan, tamamlayıcı
+    // hafif bir öz-tutarlılık kontrolü.
     if (checkpoint.mevcutFaz < DevirFaz.dogrulama) {
       checkpoint = checkpoint.copyWith(durum: DevirDurumu.verifying);
       await _checkpointDepo.guncelle(checkpoint);

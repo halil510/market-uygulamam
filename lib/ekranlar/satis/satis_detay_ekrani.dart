@@ -171,6 +171,18 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
         return;
       }
 
+      // 🔴 DÜZELTME (Madde 21 — GİB/fatura araToplam bulgusu, 2026-09-16):
+      // araToplam ÖNCEDEN k.miktar*k.birimFiyat (KDV DAHİL, brüt) idi —
+      // oysa FaturaDetayModel'in kendi iç mantığı (bkz.
+      // faturalandirma_servisi.dart'ın varsayılan iskonto dalı, gib_servisi
+      // .dart'taki LineExtensionAmount/TaxableAmount) bu alanın KDV HARİÇ
+      // (matrah) olmasını varsayıyor. Yanlış (brüt) değer basılı faturada
+      // "Ara Toplam + KDV ≠ Genel Toplam" gibi tutarsız bir görünüme YOL
+      // AÇIYORDU ve e-Fatura XML'inde satır bazlı LineExtensionAmount
+      // toplamı, LegalMonetaryTotal'daki (doğru) matrah ile UYUŞMUYORDU —
+      // GİB şematron doğrulamasında reddedilme riski. k.toplamTutar (KDV
+      // dahil, doğru) ve k.kdvTutar (İÇİNDEN doğru ayıklanmış KDV payı)
+      // ARTIK doğru olduğundan, net araToplam bu ikisinden türetiliyor.
       final detaylar = s.kalemler!.map((k) => FaturaDetayModel(
         urunId: k.urunId,
         urunAdi: k.urunAdi,
@@ -181,7 +193,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
         iskontoTutari: k.iskontoTutar,
         kdvOrani: k.kdvOran,
         kdvTutari: k.kdvTutar,
-        araToplam: k.miktar * k.birimFiyat,
+        araToplam: k.toplamTutar - k.kdvTutar,
         toplamTutar: k.toplamTutar,
       )).toList();
 

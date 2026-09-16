@@ -299,11 +299,13 @@ class _SiparisDetayEkraniState extends State<_SiparisDetayEkrani> {
           iskontoTutari: (k['iskonto_tutar'] as num).toDouble(),
           kdvOrani: kdvOran,
           // 🔴 DÜZELTME (Madde 21, 2026-09-16): toplamTutar KDV DAHİL —
-          // kdvTutari İÇİNDEN ayıklanır, üzerine eklenmez. (araToplam
-          // burada KASITLI olarak dokunulmadı — fatura/GİB matrah
-          // zincirindeki ayrı, daha kapsamlı bir bulgu; henüz düzeltilmedi.)
+          // kdvTutari İÇİNDEN ayıklanır, üzerine eklenmez. araToplam da
+          // (GİB/fatura matrah zincirindeki ayrı bulgu artık BURADA DA
+          // düzeltildi, bkz. satis_detay_ekrani.dart'taki aynı düzeltme)
+          // artık KDV HARİÇ net tutar — brüt toplamTutar'dan kdvTutari
+          // çıkarılarak türetiliyor.
           kdvTutari: ParaUtils.kdvPayiCikar(toplamTutar, kdvOran),
-          araToplam: toplamMiktar * birimFiyat,
+          araToplam: toplamTutar - ParaUtils.kdvPayiCikar(toplamTutar, kdvOran),
           toplamTutar: toplamTutar,
         );
       }).toList();

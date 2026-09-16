@@ -264,6 +264,14 @@ class GibServisi {
 
     final satirlar = fatura.detaylar.map((k) {
       final kdvTutar = k.kdvTutari;
+      // 🔴 DÜZELTME (Madde 21, 2026-09-16): UBL-TR'de PriceAmount ×
+      // InvoicedQuantity = LineExtensionAmount ilişkisi (ikisi de KDV
+      // HARİÇ) beklenir. k.birimFiyat müşteriye gösterilen KDV DAHİL
+      // birim fiyat olduğundan (PDF/fiş basımında doğru kullanımı budur,
+      // bkz. yazdirma_servisi.dart), burada SADECE XML için ayrıca net
+      // birim fiyat türetiliyor — k.birimFiyat alanının kendisi
+      // değiştirilmedi.
+      final netBirimFiyat = k.miktar > 0 ? k.araToplam / k.miktar : k.birimFiyat;
       return '''
     <cac:InvoiceLine>
       <cbc:ID>${fatura.detaylar.indexOf(k) + 1}</cbc:ID>
@@ -288,7 +296,7 @@ class GibServisi {
         <cbc:Name>${_xmlEscape(k.urunAdi)}</cbc:Name>
       </cac:Item>
       <cac:Price>
-        <cbc:PriceAmount currencyID="TRY">${k.birimFiyat.toStringAsFixed(4)}</cbc:PriceAmount>
+        <cbc:PriceAmount currencyID="TRY">${netBirimFiyat.toStringAsFixed(4)}</cbc:PriceAmount>
       </cac:Price>
     </cac:InvoiceLine>''';
     }).join('\n');

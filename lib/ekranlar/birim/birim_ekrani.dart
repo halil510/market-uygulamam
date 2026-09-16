@@ -14,47 +14,24 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../veri/database/veritabani.dart';
-import '../../servisler/bulut/bulut_manager.dart';
+import '../../depolar/birim_deposu.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart' show basariMesaji, hataMesaji;
 
 class BirimEkrani extends ConsumerStatefulWidget {
   const BirimEkrani({super.key});
 
-  static const List<String> _varsayilan = [
-    'ADET', 'KG', 'GR', 'LİTRE', 'ML', 'PAKET', 'KOLİ', 'KUTU', 'ÇIFT', 'METRE', 'M²',
-  ];
+  static const List<String> _varsayilan = BirimDeposu.varsayilanlar;
 
   /// Diğer ekranlar (ör. ürün ekle) buradan birim listesi alır.
-  static Future<List<String>> birimListesiGetir() async {
-    try {
-      final db = await Veritabani().db;
-      final rows = await db.query('birimler', where: 'aktif = 1', columns: ['ad']);
-      final kayitli = rows.map((r) => r['ad'] as String).toList();
-      return {..._varsayilan, ...kayitli}.toList()..sort();
-    } catch (_) {
-      return _varsayilan.toList()..sort();
-    }
-  }
+  static Future<List<String>> birimListesiGetir() => BirimDeposu().hepsiGetir();
 
   /// Kullanıcı isteği: "Ölçü Birimleri ekranından her birime ayrı
   /// çarpan tanımlanabilsin" (ör. Paket=24, Koli=12). Bayilerden
   /// Sipariş Alma ekranı bu listeyi kullanır — bir birim seçildiğinde
   /// miktar otomatik olarak bu çarpanla ana birime (Adet) çevrilir.
-  static Future<List<(String ad, double carpan)>> birimListesiCarpanliGetir() async {
-    try {
-      final db = await Veritabani().db;
-      final rows = await db.query('birimler', where: 'aktif = 1', columns: ['ad', 'carpan']);
-      final kayitliMap = <String, double>{
-        for (final r in rows) r['ad'] as String: (r['carpan'] as num?)?.toDouble() ?? 1,
-      };
-      final tumAdlar = {..._varsayilan, ...kayitliMap.keys}.toList()..sort();
-      return tumAdlar.map((ad) => (ad, kayitliMap[ad] ?? 1.0)).toList();
-    } catch (_) {
-      return _varsayilan.map((ad) => (ad, 1.0)).toList();
-    }
-  }
+  static Future<List<(String ad, double carpan)>> birimListesiCarpanliGetir() =>
+      BirimDeposu().hepsiCarpanliGetir();
 
   @override
   ConsumerState<BirimEkrani> createState() => _BirimEkraniState();
@@ -62,6 +39,7 @@ class BirimEkrani extends ConsumerStatefulWidget {
 
 class _BirimEkraniState extends ConsumerState<BirimEkrani> {
   static const List<String> _varsayilan = BirimEkrani._varsayilan;
+  final _depo = BirimDeposu();
 
   List<String> _birimler = [];
   Map<String, double> _carpanlar = {};
@@ -130,19 +108,9 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
       return;
     }
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
       // Daha önce silinmiş (aktif=0) aynı adlı birim varsa geri aktifleştir,
       // yoksa yeni satır ekle — 'ad' UNIQUE olduğu için çakışmayı önler.
-      final mevcut = await db.query('birimler', where: 'ad = ?', whereArgs: [yeni], limit: 1);
-      if (mevcut.isNotEmpty) {
-        await db.update('birimler', {'aktif': 1, 'carpan': carpan, 'last_updated': now},
-            where: 'ad = ?', whereArgs: [yeni]);
-      } else {
-        await db.insert('birimler', {'ad': yeni, 'aktif': 1, 'carpan': carpan, 'last_updated': now});
-      }
-      final satir = await db.query('birimler', where: 'ad = ?', whereArgs: [yeni], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('birimler', Map<String, dynamic>.from(satir.first));
+      await _depo.ekleVeyaAktifEt(yeni, carpan);
       setState(() {
         _birimler = {..._birimler, yeni}.toList()..sort();
         _carpanlar[yeni] = carpan;
@@ -180,18 +148,9 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
     if (ok != true) return;
     final carpan = double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 1;
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      final mevcut = await db.query('birimler', where: 'ad = ?', whereArgs: [birim], limit: 1);
-      if (mevcut.isNotEmpty) {
-        await db.update('birimler', {'carpan': carpan, 'last_updated': now}, where: 'ad = ?', whereArgs: [birim]);
-      } else {
-        // Varsayılan listeden (henüz db satırı olmayan) bir birimin
-        // çarpanı ilk kez ayarlanıyor — satırı burada oluştur.
-        await db.insert('birimler', {'ad': birim, 'aktif': 1, 'carpan': carpan, 'last_updated': now});
-      }
-      final satir = await db.query('birimler', where: 'ad = ?', whereArgs: [birim], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('birimler', Map<String, dynamic>.from(satir.first));
+      // Varsayılan listeden (henüz db satırı olmayan) bir birimin çarpanı
+      // ilk kez ayarlanıyorsa BirimDeposu.carpanGuncelle satırı oluşturur.
+      await _depo.carpanGuncelle(birim, carpan);
       setState(() => _carpanlar[birim] = carpan);
       if (mounted) basariMesaji(context, '$birim çarpanı $carpan olarak güncellendi');
     } catch (e) {
@@ -225,12 +184,7 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
     final oncekiIndex = _birimler.indexOf(birim);
     setState(() => _birimler.remove(birim));
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      await db.update('birimler', {'aktif': 0, 'last_updated': now},
-          where: 'ad = ?', whereArgs: [birim]);
-      final satir = await db.query('birimler', where: 'ad = ?', whereArgs: [birim], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('birimler', Map<String, dynamic>.from(satir.first));
+      await _depo.sil(birim);
     } catch (e) {
       if (kDebugMode) debugPrint('Hata: $e');
       if (mounted) {

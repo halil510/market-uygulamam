@@ -3,8 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../veri/database/veritabani.dart';
-import '../../cekirdek/sabitler/db_sabitleri.dart';
+import '../../depolar/bildirim_deposu.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
 class _BildirimItem {
@@ -29,12 +28,8 @@ class _BildirimItem {
 }
 
 final bildirimlerProvider = FutureProvider.autoDispose<List<_BildirimItem>>((ref) async {
-  final db = await Veritabani().db;
-  try {
-    final rows = await db.query(DbSabitler.bildirimler,
-        orderBy: 'tarih DESC', limit: 100);
-    return rows.map(_BildirimItem.fromMap).toList();
-  } catch (_) { return []; }
+  final rows = await BildirimDeposu().sonBildirimler();
+  return rows.map(_BildirimItem.fromMap).toList();
 });
 
 final okunmamisSayiProvider = Provider.autoDispose<int>((ref) =>
@@ -59,22 +54,22 @@ class _BildirimMerkeziEkraniState extends ConsumerState<BildirimMerkeziEkrani> {
     };
   }
 
+  final _depo = BildirimDeposu();
+
   Future<void> _okunduIsaretle(int id) async {
-    try {  
-      final db = await Veritabani().db;
-      await db.update(DbSabitler.bildirimler, {'okundu': 1}, where: 'id=?', whereArgs: [id]);
+    try {
+      await _depo.okunduIsaretle(id);
       ref.invalidate(bildirimlerProvider);
-        } catch (e) {
+    } catch (e) {
       if (kDebugMode) if (mounted) debugPrint('Hata: $e');
     }
   }
 
   Future<void> _tumunuOku() async {
-    try {  
-      final db = await Veritabani().db;
-      await db.update(DbSabitler.bildirimler, {'okundu': 1});
+    try {
+      await _depo.tumunuOkunduIsaretle();
       ref.invalidate(bildirimlerProvider);
-        } catch (e) {
+    } catch (e) {
       if (kDebugMode) if (mounted) debugPrint('Hata: $e');
     }
   }

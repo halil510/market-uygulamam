@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/stok_deposu.dart';
 import '../../servisler/auth_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../modeller/urun_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
@@ -237,15 +236,11 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
         // last_updated güncellenmeli — yoksa "Buluta Gönder" bu değişikliği görmez
         data['last_updated'] = DateTime.now().toIso8601String();
 
-        // Direkt DB güncelle — sadece değişen alanlar
+        // Madde 2 sertleştirmesi: doğrudan _depo.db erişimi kaldırıldı —
+        // UrunDeposu.alanGuncelle() üzerinden yazılıyor (last_updated +
+        // BulutManager bildirimi orada merkezi olarak yapılıyor).
         try {
-          final db = await _depo.db;
-          await db.update('urunler', data, where: 'id = ?', whereArgs: [id]);
-          // 🔴 Derin analizde bulundu: last_updated bump ediliyordu
-          // (manuel senkron için) ama BulutManager hiç çağrılmıyordu —
-          // otomatik/anlık senkron bu toplu değişiklikleri hiç görmüyordu.
-          final satir = await db.query('urunler', where: 'id = ?', whereArgs: [id], limit: 1);
-          if (satir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(satir.first));
+          await _depo.alanGuncelle(id, data);
           basarili++;
         } catch (e) {
           if (kDebugMode) debugPrint('Toplu güncelleme satır hatası (id=$id): $e');

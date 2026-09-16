@@ -6,9 +6,8 @@ import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../veri/database/veritabani.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../depolar/cari_deposu.dart';
+import '../../depolar/tedarikci_siparis_deposu.dart';
 import '../../modeller/cari_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
@@ -26,6 +25,7 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
   final _cariDepo = CariDeposu();
+  final _siparisDepo = TedarikciSiparisDeposu();
   List<Map<String, dynamic>> _siparisler = [];
   bool _yukleniyor = true;
   String? _durumFiltre;
@@ -58,16 +58,7 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
 
     if (mounted) setState(() {});
     try {
-      final db = await Veritabani().db;
-      final durum = _aktifDurum;
-      final rows = await db.rawQuery(
-        'SELECT ts.*, c.unvan as tedarikci_adi '
-        'FROM tedarikci_siparisler ts '
-        'LEFT JOIN cari c ON ts.cari_id = c.id '
-        'WHERE ts.durum = ? '
-        'ORDER BY ts.siparis_tarihi DESC',
-        [durum],
-      );
+      final rows = await _siparisDepo.durumaGoreListele(_aktifDurum);
       if (mounted) setState(() { _siparisler = rows; _yukleniyor = false; });
     } catch (e) {
       if (mounted) setState(() => _yukleniyor = false);
@@ -96,11 +87,7 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
   // ekranı ise durum='teslim_alindi' yazıyor — üçü de anlamlı hale geldi.
   Future<void> _teslimAl(Map<String, dynamic> siparis) async {
     try {
-      final db = await Veritabani().db;
-      final kalemler = await db.rawQuery(
-        'SELECT * FROM tedarikci_siparis_kalem WHERE siparis_id = ?',
-        [siparis['id']],
-      );
+      final kalemler = await _siparisDepo.kalemleriGetir(siparis['id'] as int);
       if (kalemler.isEmpty) {
         if (mounted) BildirimServisi.uyari(context, 'Siparişte kalem yok');
         return;
@@ -142,15 +129,7 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
 
   Future<void> _durumDegistir(Map<String, dynamic> siparis, String yeniDurum) async {
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      await db.update('tedarikci_siparisler',
-          {'durum': yeniDurum, 'last_updated': now},
-          where: 'id = ?', whereArgs: [siparis['id']]);
-      // 🔴 Derin analizde bulundu: last_updated hiç ayarlanmıyordu,
-      // BulutManager hiç çağrılmıyordu.
-      final satir = await db.query('tedarikci_siparisler', where: 'id = ?', whereArgs: [siparis['id']], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('tedarikci_siparisler', Map<String, dynamic>.from(satir.first));
+      await _siparisDepo.durumGuncelle(siparis['id'] as int, yeniDurum);
       await _yukle();
       if (mounted) BildirimServisi.basari(context, 'Durum güncellendi');
     } catch (e) {
@@ -159,14 +138,7 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
   }
 
   Future<void> _siparisDetay(Map<String, dynamic> siparis) async {
-    final db = await Veritabani().db;
-    final kalemler = await db.rawQuery(
-      'SELECT tsk.*, u.urun_adi, u.birim_adi '
-      'FROM tedarikci_siparis_kalem tsk '
-      'LEFT JOIN urunler u ON tsk.urun_id = u.id '
-      'WHERE tsk.siparis_id = ?',
-      [siparis['id']],
-    );
+    final kalemler = await _siparisDepo.kalemleriDetayliGetir(siparis['id'] as int);
     if (!mounted) return;
     showModalBottomSheet(
       context: context,

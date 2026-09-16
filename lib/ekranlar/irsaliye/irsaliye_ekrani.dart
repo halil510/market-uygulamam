@@ -19,7 +19,6 @@ import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/auth_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../depolar/irsaliye_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../saglayicilar/riverpod/irsaliye_provider.dart';
@@ -595,25 +594,10 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
     if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
-      final db = await Veritabani().db;
-      final rows = await db.rawQuery('''
-        SELECT i.*, c.unvan as cari_adi,
-          COALESCE(NULLIF(c.vergi_no, ''), c.tc_kimlik) as cari_vergi_no,
-          c.vergi_dairesi as cari_vergi_dairesi,
-          ca.adres as cari_adres
-        FROM irsaliyeler i
-        LEFT JOIN cari c ON i.cari_id = c.id
-        LEFT JOIN cari_adres ca ON ca.cari_id = i.cari_id AND ca.varsayilan = 1
-        WHERE i.id = ?
-      ''', [widget.irsaliyeId]);
-      final kalemler = await db.rawQuery('''
-        SELECT ik.*, u.urun_adi as urun_adi_db FROM irsaliye_kalem ik
-        LEFT JOIN urunler u ON ik.urun_id = u.id
-        WHERE ik.irsaliye_id = ?
-      ''', [widget.irsaliyeId]);
+      final (bas, kalemler) = await IrsaliyeDeposu().detayGetir(widget.irsaliyeId);
       if (!mounted) return;
       setState(() {
-        _irsaliye  = rows.isNotEmpty ? rows.first : null;
+        _irsaliye  = bas;
         _kalemler  = kalemler;
         _yukleniyor = false;
       });
@@ -624,14 +608,9 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
 
   Future<void> _durumGuncelle(String yeniDurum) async {
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      await db.update('irsaliyeler', {'durum': yeniDurum, 'last_updated': now},
-          where: 'id=?', whereArgs: [widget.irsaliyeId]);
       // 🔴 Derin analizde bulundu: last_updated hiç ayarlanmıyordu,
-      // BulutManager hiç çağrılmıyordu.
-      final satir = await db.query('irsaliyeler', where: 'id = ?', whereArgs: [widget.irsaliyeId], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('irsaliyeler', Map<String, dynamic>.from(satir.first));
+      // BulutManager hiç çağrılmıyordu — bkz. IrsaliyeDeposu.durumGuncelle.
+      await IrsaliyeDeposu().durumGuncelle(widget.irsaliyeId, yeniDurum);
       await _yukle();
       if (!mounted) return;
       BildirimServisi.basari(context, 'Durum güncellendi: $yeniDurum');
@@ -667,36 +646,23 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
 
     setState(() => _islemDevam = true);
     try {
-      final db = await Veritabani().db;
+      final irsaliyeDepo = IrsaliyeDeposu();
       // Reddedilmiş bir denemeden sonra yeniden gönderiliyorsa deneme
       // sayacını artır (bkz. gib_servisi.dart'taki ETTN notu — faturalar
       // ile AYNI mantık).
-      if (_irsaliye!['e_irsaliye_durum'] == 'reddedildi') {
-        final mevcut = (_irsaliye!['e_irsaliye_deneme_no'] as int?) ?? 0;
-        await db.update('irsaliyeler', {'e_irsaliye_deneme_no': mevcut + 1},
-            where: 'id = ?', whereArgs: [widget.irsaliyeId]);
-        await _yukle();
-      }
-      await db.update('irsaliyeler', {'e_irsaliye_durum': 'gonderiliyor'},
-          where: 'id = ?', whereArgs: [widget.irsaliyeId]);
+      final oncekiReddedildi = _irsaliye!['e_irsaliye_durum'] == 'reddedildi';
+      await irsaliyeDepo.eIrsaliyeGonderimeHazirla(
+        widget.irsaliyeId,
+        oncekiReddedildi: oncekiReddedildi,
+        mevcutDenemeNo: (_irsaliye!['e_irsaliye_deneme_no'] as int?) ?? 0,
+      );
+      if (oncekiReddedildi) await _yukle();
 
       final gib = GibServisi();
       await gib.ayarlariYukle();
       final sonuc = await gib.irsaliyeGonder(irsaliye: _irsaliye!, kalemler: _kalemler);
-      final now = DateTime.now().toIso8601String();
-      if (sonuc.basarili) {
-        await db.update('irsaliyeler', {
-          'e_irsaliye_durum': 'gonderildi',
-          'e_irsaliye_uuid': sonuc.uuid,
-          'e_irsaliye_gonderim_tarihi': now,
-          'last_updated': now,
-        }, where: 'id = ?', whereArgs: [widget.irsaliyeId]);
-      } else {
-        await db.update('irsaliyeler', {'e_irsaliye_durum': 'hata', 'last_updated': now},
-            where: 'id = ?', whereArgs: [widget.irsaliyeId]);
-      }
-      final satir = await db.query('irsaliyeler', where: 'id = ?', whereArgs: [widget.irsaliyeId], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('irsaliyeler', Map<String, dynamic>.from(satir.first));
+      await irsaliyeDepo.eIrsaliyeSonucKaydet(widget.irsaliyeId,
+          basarili: sonuc.basarili, uuid: sonuc.uuid);
       await _yukle();
       if (!mounted) return;
       if (sonuc.basarili) {
@@ -720,12 +686,7 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
       await gib.ayarlariYukle();
       final durum = await gib.durumSorgula(uuid);
       if (durum != null) {
-        final db = await Veritabani().db;
-        final now = DateTime.now().toIso8601String();
-        await db.update('irsaliyeler', {'e_irsaliye_durum': durum, 'last_updated': now},
-            where: 'id = ?', whereArgs: [widget.irsaliyeId]);
-        final satir = await db.query('irsaliyeler', where: 'id = ?', whereArgs: [widget.irsaliyeId], limit: 1);
-        if (satir.isNotEmpty) BulutManager().upsert('irsaliyeler', Map<String, dynamic>.from(satir.first));
+        await IrsaliyeDeposu().eIrsaliyeDurumGuncelle(widget.irsaliyeId, durum);
         await _yukle();
       }
       if (mounted) BildirimServisi.basari(context, 'Durum: ${durum ?? "Bilinmiyor"}');

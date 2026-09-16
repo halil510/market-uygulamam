@@ -361,6 +361,63 @@ class UrunDeposu {
     }
   }
 
+  /// Madde 2 sertleştirmesi (toplu_islem_ekrani.dart): sadece belirtilen
+  /// alanları günceller — [guncelle] (tüm UrunModel'i yeniden yazan)
+  /// metodunun aksine, toplu fiyat/stok/alan düzenleme gibi kısmi
+  /// güncellemeler için. 'last_updated' otomatik damgalanır.
+  Future<void> alanGuncelle(int id, Map<String, dynamic> degisenAlanlar) async {
+    final db = await _d;
+    final data = Map<String, dynamic>.from(degisenAlanlar);
+    data['last_updated'] = DateTime.now().toIso8601String();
+    await db.update(DbSabitler.urunler, data, where: 'id = ?', whereArgs: [id]);
+    final satir = await db.query(DbSabitler.urunler, where: 'id = ?', whereArgs: [id], limit: 1);
+    if (satir.isNotEmpty) {
+      BulutManager().upsert('urunler', Map<String, dynamic>.from(satir.first));
+    }
+  }
+
+  // ── PLU PANELİ (Madde 2 sertleştirmesi — plu_yonetim_ekrani.dart) ──────
+
+  /// 'plu'/'plu_kart_boyut' kolonları yoksa ekler (migrasyon çalışmamış
+  /// eski bir cihaz için savunma amaçlı self-heal — IF NOT EXISTS'siz
+  /// ALTER TABLE olduğu için hata sessizce yutulur).
+  Future<void> pluKolonlariniGarantiEt() async {
+    final db = await _d;
+    try {
+      await db.execute('ALTER TABLE urunler ADD COLUMN plu INTEGER NOT NULL DEFAULT 0');
+    } catch (_) {/* zaten var */}
+    try {
+      await db.execute('ALTER TABLE urunler ADD COLUMN plu_kart_boyut INTEGER NOT NULL DEFAULT 2');
+    } catch (_) {/* zaten var */}
+  }
+
+  Future<List<UrunModel>> pluUrunleriGetir() async {
+    final db = await _d;
+    final rows = await db.rawQuery(
+      'SELECT * FROM urunler WHERE plu = 1 AND is_deleted = 0 '
+      'ORDER BY plu_sira ASC, urun_adi',
+    );
+    return rows.map(UrunModel.fromMap).toList();
+  }
+
+  /// Ürünü PLU paneline ekler — yeni eklenen ürün listenin SONUNA
+  /// gitsin diye mevcut en yüksek sıradan bir fazlası atanır.
+  Future<void> pluyaEkle(int urunId) async {
+    final db = await _d;
+    final maxRow = await db.rawQuery(
+        'SELECT MAX(plu_sira) as m FROM urunler WHERE plu = 1');
+    final yeniSira = ((maxRow.first['m'] as num?)?.toInt() ?? -1) + 1;
+    await alanGuncelle(urunId, {'plu': 1, 'plu_kart_boyut': 2, 'plu_sira': yeniSira});
+  }
+
+  Future<void> pludanCikar(int urunId) async {
+    await alanGuncelle(urunId, {'plu': 0});
+  }
+
+  Future<void> pluKartBoyutuDegistir(int urunId, int boyut) async {
+    await alanGuncelle(urunId, {'plu_kart_boyut': boyut});
+  }
+
   // ── TEK KAYIT SORGULARI ────────────────────────────────────────────────
 
   Future<UrunModel?> idileGetir(int id) async {
@@ -813,26 +870,6 @@ class UrunDeposu {
   // bu tuzağı fark etmeden kullanmasını önlemek için tamamen kaldırıldı;
   // stok değişikliği gereken her yer StokDeposu.stokDusTxn/stokGirTxn
   // kullanmalı.
-
-  /// PLU — barkodsuz veya plu=1 işaretli aktif ürünler
-  Future<List<UrunModel>> pluUrunleriGetir() async {
-    try {
-      final db = await _d;
-      // Sadece plu=1 işaretlenen ürünler (barkod zorunlu, barkodsuz kabul edilmez)
-      final rows = await db.rawQuery('''
-        SELECT * FROM urunler
-        WHERE aktif = 1
-          AND plu = 1
-          AND is_deleted = 0
-        ORDER BY ana_grup, plu_kart_boyut DESC, urun_adi
-        LIMIT 200
-      ''');
-      return rows.map(UrunModel.fromMap).toList();
-    } catch (e, st) {
-      LogServisi().hata('UrunDeposu.pluUrunleriGetir', hata: e, yigin: st);
-      return [];
-    }
-  }
 
   Future<String?> _globalIdGetir(int id) async {
     final db = await _d;

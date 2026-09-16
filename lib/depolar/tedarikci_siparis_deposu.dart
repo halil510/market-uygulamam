@@ -89,4 +89,56 @@ class TedarikciSiparisDeposu {
 
     return siparisId;
   }
+
+  // ── Madde 2 sertleştirmesi (tedarik_siparis_ekrani.dart) ────────────────
+
+  /// Belirli durumdaki siparişleri (tedarikçi unvanıyla birlikte) döner.
+  Future<List<Map<String, dynamic>>> durumaGoreListele(String durum) async {
+    final db = await Veritabani().db;
+    return db.rawQuery(
+      'SELECT ts.*, c.unvan as tedarikci_adi '
+      'FROM tedarikci_siparisler ts '
+      'LEFT JOIN cari c ON ts.cari_id = c.id '
+      'WHERE ts.durum = ? '
+      'ORDER BY ts.siparis_tarihi DESC',
+      [durum],
+    );
+  }
+
+  /// Bir siparişin ham kalemlerini döner (teslim alma akışı için).
+  Future<List<Map<String, dynamic>>> kalemleriGetir(int siparisId) async {
+    final db = await Veritabani().db;
+    return db.rawQuery(
+      'SELECT * FROM tedarikci_siparis_kalem WHERE siparis_id = ?',
+      [siparisId],
+    );
+  }
+
+  /// Bir siparişin kalemlerini ürün adı/birimiyle birlikte döner (detay
+  /// paneli için).
+  Future<List<Map<String, dynamic>>> kalemleriDetayliGetir(int siparisId) async {
+    final db = await Veritabani().db;
+    return db.rawQuery(
+      'SELECT tsk.*, u.urun_adi, u.birim_adi '
+      'FROM tedarikci_siparis_kalem tsk '
+      'LEFT JOIN urunler u ON tsk.urun_id = u.id '
+      'WHERE tsk.siparis_id = ?',
+      [siparisId],
+    );
+  }
+
+  /// Sipariş durumunu günceller (beklemede/teslim_alindi/iptal).
+  Future<void> durumGuncelle(int siparisId, String yeniDurum) async {
+    final db = await Veritabani().db;
+    final now = DateTime.now().toIso8601String();
+    await db.update('tedarikci_siparisler',
+        {'durum': yeniDurum, 'last_updated': now},
+        where: 'id = ?', whereArgs: [siparisId]);
+    final satir = await db.query('tedarikci_siparisler',
+        where: 'id = ?', whereArgs: [siparisId], limit: 1);
+    if (satir.isNotEmpty) {
+      BulutManager().upsert(
+          'tedarikci_siparisler', Map<String, dynamic>.from(satir.first));
+    }
+  }
 }

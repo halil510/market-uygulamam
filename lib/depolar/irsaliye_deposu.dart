@@ -203,4 +203,90 @@ class IrsaliyeDeposu {
 
     return irsaliyeId;
   }
+
+  // ── Madde 2 sertleştirmesi (irsaliye_ekrani.dart — detay ekranı) ────────
+
+  /// İrsaliye başlığını (cari/adres bilgileriyle birlikte) ve kalemlerini
+  /// döner — detay ekranının açılışında kullanılır.
+  Future<(Map<String, dynamic>?, List<Map<String, dynamic>>)> detayGetir(
+      int irsaliyeId) async {
+    final db = await Veritabani().db;
+    final basRows = await db.rawQuery('''
+      SELECT i.*, c.unvan as cari_adi,
+        COALESCE(NULLIF(c.vergi_no, ''), c.tc_kimlik) as cari_vergi_no,
+        c.vergi_dairesi as cari_vergi_dairesi,
+        ca.adres as cari_adres
+      FROM irsaliyeler i
+      LEFT JOIN cari c ON i.cari_id = c.id
+      LEFT JOIN cari_adres ca ON ca.cari_id = i.cari_id AND ca.varsayilan = 1
+      WHERE i.id = ?
+    ''', [irsaliyeId]);
+    final kalemler = await db.rawQuery('''
+      SELECT ik.*, u.urun_adi as urun_adi_db FROM irsaliye_kalem ik
+      LEFT JOIN urunler u ON ik.urun_id = u.id
+      WHERE ik.irsaliye_id = ?
+    ''', [irsaliyeId]);
+    return (basRows.isNotEmpty ? basRows.first : null, kalemler);
+  }
+
+  /// İrsaliye durumunu (beklemede/onaylandi/iptal vb.) günceller.
+  Future<void> durumGuncelle(int irsaliyeId, String yeniDurum) async {
+    final db = await Veritabani().db;
+    final now = DateTime.now().toIso8601String();
+    await db.update('irsaliyeler', {'durum': yeniDurum, 'last_updated': now},
+        where: 'id=?', whereArgs: [irsaliyeId]);
+    await _bildir(db, irsaliyeId);
+  }
+
+  /// e-İrsaliye gönderim denemesini başlatmadan önce, daha önce
+  /// reddedilmiş bir denemeyse deneme sayacını artırır ve durumu
+  /// 'gonderiliyor' işaretler.
+  Future<void> eIrsaliyeGonderimeHazirla(
+      int irsaliyeId, {required bool oncekiReddedildi, required int mevcutDenemeNo}) async {
+    final db = await Veritabani().db;
+    if (oncekiReddedildi) {
+      await db.update('irsaliyeler', {'e_irsaliye_deneme_no': mevcutDenemeNo + 1},
+          where: 'id = ?', whereArgs: [irsaliyeId]);
+    }
+    await db.update('irsaliyeler', {'e_irsaliye_durum': 'gonderiliyor'},
+        where: 'id = ?', whereArgs: [irsaliyeId]);
+  }
+
+  /// e-İrsaliye gönderim sonucunu (başarılı/başarısız) kaydeder.
+  Future<void> eIrsaliyeSonucKaydet(
+    int irsaliyeId, {
+    required bool basarili,
+    String? uuid,
+  }) async {
+    final db = await Veritabani().db;
+    final now = DateTime.now().toIso8601String();
+    if (basarili) {
+      await db.update('irsaliyeler', {
+        'e_irsaliye_durum': 'gonderildi',
+        'e_irsaliye_uuid': uuid,
+        'e_irsaliye_gonderim_tarihi': now,
+        'last_updated': now,
+      }, where: 'id = ?', whereArgs: [irsaliyeId]);
+    } else {
+      await db.update('irsaliyeler', {'e_irsaliye_durum': 'hata', 'last_updated': now},
+          where: 'id = ?', whereArgs: [irsaliyeId]);
+    }
+    await _bildir(db, irsaliyeId);
+  }
+
+  /// GİB'den sorgulanan güncel e-İrsaliye durumunu yazar.
+  Future<void> eIrsaliyeDurumGuncelle(int irsaliyeId, String durum) async {
+    final db = await Veritabani().db;
+    final now = DateTime.now().toIso8601String();
+    await db.update('irsaliyeler', {'e_irsaliye_durum': durum, 'last_updated': now},
+        where: 'id = ?', whereArgs: [irsaliyeId]);
+    await _bildir(db, irsaliyeId);
+  }
+
+  Future<void> _bildir(dynamic db, int irsaliyeId) async {
+    final satir = await db.query('irsaliyeler', where: 'id = ?', whereArgs: [irsaliyeId], limit: 1);
+    if (satir.isNotEmpty) {
+      BulutManager().upsert('irsaliyeler', Map<String, dynamic>.from(satir.first));
+    }
+  }
 }

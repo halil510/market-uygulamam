@@ -10,7 +10,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -25,10 +24,10 @@ import '../../depolar/satis_deposu.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/fatura_deposu.dart';
 import '../../depolar/cari_deposu.dart';
+import '../../depolar/cari_adres_deposu.dart';
 import '../../depolar/toptan_fiyat_deposu.dart';
 import '../../modeller/fiyat_grubu_model.dart';
 import '../../veri/database/veritabani.dart';
-import '../../servisler/bulut/bulut_manager.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../cari/fis_detay_ekrani.dart';
@@ -64,6 +63,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
   final _urunDepo = UrunDeposu();
   final _faturaDepo = FaturaDeposu();
   final _cariDepo = CariDeposu();
+  final _adresDepo = CariAdresDeposu();
 
   List<SatisModel> _satislar = [];
   List<FaturaModel> _faturalar = [];
@@ -113,7 +113,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
     );
     // Kullanıcı isteği: "Sevkiyat Adresleri" — bir cariye birden fazla
     // teslimat adresi tanımlanabilmesi.
-    final adresler = await db.query('cari_adres', where: 'cari_id = ?', whereArgs: [widget.cari.id], orderBy: 'varsayilan DESC');
+    final adresler = await _adresDepo.hepsiGetir(widget.cari.id!);
     // Kullanıcı isteği: "carinin raporları grafikleri" — son 6 ayın
     // aylık satış toplamı (Logo'daki cari analiz grafikleri gibi).
     final aylikSatis = await db.rawQuery('''
@@ -924,21 +924,15 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
     );
     if (kaydet != true || adresCtrl.text.trim().isEmpty) return;
 
-    final db = await Veritabani().db;
-    final now = DateTime.now().toIso8601String();
     final varsayilan = _adresler.isEmpty; // ilk eklenen adres otomatik varsayılan
-    final yeniId = await db.insert('cari_adres', {
-      'global_id': const Uuid().v4(),
-      'cari_id': widget.cari.id,
-      'adres_tipi': tip,
-      'adres': adresCtrl.text.trim(),
-      'ilce': ilceCtrl.text.trim().isEmpty ? null : ilceCtrl.text.trim(),
-      'il': ilCtrl.text.trim().isEmpty ? null : ilCtrl.text.trim(),
-      'varsayilan': varsayilan ? 1 : 0,
-      'last_updated': now,
-    });
-    final satir = await db.query('cari_adres', where: 'id = ?', whereArgs: [yeniId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('cari_adres', Map<String, dynamic>.from(satir.first));
+    await _adresDepo.ekle(
+      cariId: widget.cari.id!,
+      adresTipi: tip,
+      adres: adresCtrl.text.trim(),
+      ilce: ilceCtrl.text.trim(),
+      il: ilCtrl.text.trim(),
+      varsayilanMi: varsayilan,
+    );
     if (mounted) BildirimServisi.basari(context, 'Adres eklendi');
     _yukle();
   }
@@ -957,8 +951,10 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
       ),
     );
     if (onay != true) return;
-    final db = await Veritabani().db;
-    await db.delete('cari_adres', where: 'id = ?', whereArgs: [id]);
+    // Madde 2 sertleştirmesi: silme artık CariAdresDeposu.sil() üzerinden
+    // — bu, önceki (bildirimsiz hard-delete) haliyle karşılaştırınca
+    // buluta da bildiriyor (bkz. o metodun kendi yorumu).
+    await _adresDepo.sil(id);
     if (mounted) BildirimServisi.basari(context, 'Adres silindi');
     _yukle();
   }

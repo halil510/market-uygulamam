@@ -7,8 +7,6 @@ import '../../depolar/urun_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
-import '../../veri/database/veritabani.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
@@ -47,15 +45,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
   // DB'de plu kolonu yoksa ekle (migration çalışmamış olabilir)
   Future<void> _dbKolonEkle() async {
     try {
-      final db = await Veritabani().db;
-      try {
-        await db.execute(
-          'ALTER TABLE urunler ADD COLUMN plu INTEGER NOT NULL DEFAULT 0');
-      } catch (e) { /* ignore */ }
-      try {
-        await db.execute(
-          'ALTER TABLE urunler ADD COLUMN plu_kart_boyut INTEGER NOT NULL DEFAULT 2');
-      } catch (e) { /* ignore */ }
+      await _depo.pluKolonlariniGarantiEt();
     } catch (e) { /* ignore */ }
   }
 
@@ -63,12 +53,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
     if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
-      final db   = await Veritabani().db;
-      final rows = await db.rawQuery(
-        'SELECT * FROM urunler WHERE plu = 1 AND is_deleted = 0 '
-        'ORDER BY plu_sira ASC, urun_adi',
-      );
-      final liste = rows.map(UrunModel.fromMap).toList();
+      final liste = await _depo.pluUrunleriGetir();
       if (!mounted) return;
       setState(() { _pluUrunler = liste; _yukleniyor = false; });
     } catch (e) {
@@ -93,19 +78,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
 
   Future<void> _pluEkle(UrunModel u) async {
     try {
-      final db = await Veritabani().db;
-      // Yeni eklenen ürün listenin SONUNA gitsin diye mevcut en yüksek
-      // sıradan bir fazlası atanıyor (aksi halde varsayılan 0 ile en öne
-      // atlardı).
-      final maxRow = await db.rawQuery(
-          'SELECT MAX(plu_sira) as m FROM urunler WHERE plu = 1');
-      final yeniSira = ((maxRow.first['m'] as num?)?.toInt() ?? -1) + 1;
-      final now = DateTime.now().toIso8601String();
-      await db.update('urunler',
-        {'plu': 1, 'plu_kart_boyut': 2, 'plu_sira': yeniSira, 'last_updated': now},
-        where: 'id = ?', whereArgs: [u.id]);
-      final satir = await db.query('urunler', where: 'id = ?', whereArgs: [u.id], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(satir.first));
+      await _depo.pluyaEkle(u.id!);
       await _yukle();
       if (mounted) BildirimServisi.basari(context, '${u.urunAdi} PLU paneline eklendi');
     } catch (e) {
@@ -115,12 +88,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
 
   Future<void> _pluCikar(UrunModel u) async {
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      await db.update('urunler', {'plu': 0, 'last_updated': now},
-          where: 'id = ?', whereArgs: [u.id]);
-      final satir = await db.query('urunler', where: 'id = ?', whereArgs: [u.id], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(satir.first));
+      await _depo.pludanCikar(u.id!);
       await _yukle();
       if (mounted) BildirimServisi.basari(context, '${u.urunAdi} çıkarıldı');
     } catch (e) {
@@ -130,12 +98,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
 
   Future<void> _boyutDegistir(UrunModel u, int boyut) async {
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      await db.update('urunler', {'plu_kart_boyut': boyut, 'last_updated': now},
-          where: 'id = ?', whereArgs: [u.id]);
-      final satir = await db.query('urunler', where: 'id = ?', whereArgs: [u.id], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(satir.first));
+      await _depo.pluKartBoyutuDegistir(u.id!, boyut);
       await _yukle();
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');

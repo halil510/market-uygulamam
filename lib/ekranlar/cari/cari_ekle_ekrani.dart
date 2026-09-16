@@ -8,10 +8,8 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "../../modeller/cari_model.dart";
 import "../../depolar/cari_deposu.dart";
+import "../../depolar/cari_adres_deposu.dart";
 import "../../servisler/bildirim_servisi.dart";
-import "../../veri/database/veritabani.dart";
-import '../../servisler/bulut/bulut_manager.dart';
-import 'package:uuid/uuid.dart';
 import '../../tasarim_sistemi/ts_kart.dart';
 import '../../cekirdek/utils/vergi_no_dogrulayici.dart';
 import '../../modeller/fiyat_grubu_model.dart';
@@ -28,6 +26,7 @@ class CariEkleEkrani extends ConsumerStatefulWidget {
 class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
   final _formKey = GlobalKey<FormState>();
   final CariDeposu _depo = CariDeposu();
+  final _adresDepo = CariAdresDeposu();
   bool _kayit = false;
   String _cariTipi = 'Müşteri';
 
@@ -91,12 +90,8 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
 
   Future<void> _adresYukle(int cariId) async {
     try {
-      final db = await Veritabani().db;
-      final rows = await db.query('cari_adres',
-          where: 'cari_id = ?', whereArgs: [cariId],
-          orderBy: 'varsayilan DESC', limit: 1);
-      if (rows.isEmpty || !mounted) return;
-      final a = rows.first;
+      final a = await _adresDepo.varsayilanAdresGetir(cariId);
+      if (a == null || !mounted) return;
       setState(() {
         _adresCtrl.text     = (a['adres'] as String?) ?? '';
         _ilCtrl.text        = (a['il'] as String?) ?? '';
@@ -110,42 +105,14 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
 
   /// cari_adres tablosuna varsayılan adresi ekler/günceller (UPSERT).
   Future<void> _adresKaydet(int cariId) async {
-    final adres = _adresCtrl.text.trim();
-    final il    = _ilCtrl.text.trim();
-    final ilce  = _ilceCtrl.text.trim();
-    final posta = _postaKoduCtrl.text.trim();
-    // Hiçbir alan girilmemişse adres kaydı oluşturma
-    if (adres.isEmpty && il.isEmpty && ilce.isEmpty && posta.isEmpty) return;
-
     try {
-      final db = await Veritabani().db;
-      final mevcut = await db.query('cari_adres',
-          where: 'cari_id = ? AND varsayilan = 1', whereArgs: [cariId], limit: 1);
-      final data = {
-        'cari_id': cariId,
-        'adres_tipi': 'Fatura',
-        'adres': adres,
-        'il': il.isEmpty ? null : il,
-        'ilce': ilce.isEmpty ? null : ilce,
-        'posta_kodu': posta.isEmpty ? null : posta,
-        'varsayilan': 1,
-        'last_updated': DateTime.now().toIso8601String(),
-      };
-      if (mevcut.isNotEmpty) {
-        await db.update('cari_adres', data,
-            where: 'id = ?', whereArgs: [mevcut.first['id']]);
-      } else {
-        data['global_id'] = const Uuid().v4();
-        await db.insert('cari_adres', data);
-      }
-      // 🔴 Derin analizde bulundu: bu fonksiyon BulutManager'ı hiç
-      // çağırmıyordu — cari eklerken/düzenlerken kaydedilen adres
-      // sadece manuel senkronla buluta gidiyordu.
-      final satir = await db.query('cari_adres',
-          where: 'cari_id = ? AND varsayilan = 1', whereArgs: [cariId], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('cari_adres', Map<String, dynamic>.from(satir.first));
-      }
+      await _adresDepo.varsayilanAdresKaydet(
+        cariId: cariId,
+        adres: _adresCtrl.text.trim(),
+        il: _ilCtrl.text.trim(),
+        ilce: _ilceCtrl.text.trim(),
+        postaKodu: _postaKoduCtrl.text.trim(),
+      );
     } catch (e) {
       if (kDebugMode) debugPrint('Adres kaydetme hatası: $e');
     }

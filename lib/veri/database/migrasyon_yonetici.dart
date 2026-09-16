@@ -169,5 +169,10 @@ class MigrasyonYonetici {
     // v64'ten v65'e — sync_queue kalıcı senkron kuyruğuna hata_mesaji
     // eklendi (Madde 5 sertleştirmesi — bkz. _v64denV65e yorumu).
     if (eskiVersiyon < 65) await _v64denV65e(db);
+
+    // v65'ten v66'ya — kritik hareket tablolarında eksik indeksler
+    // tamamlandı, vardiyalar.deleted_at eklendi (Madde 3 sertleştirmesi
+    // — bkz. _v65denV66ya yorumu).
+    if (eskiVersiyon < 66) await _v65denV66ya(db);
   }
 }

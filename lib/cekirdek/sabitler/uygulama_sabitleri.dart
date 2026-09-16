@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      65; // v65: sync_queue'ya hata_mesaji eklendi — BulutManager artık RAM kuyruk yerine bu kalıcı tabloyu kullanıyor (Madde 5 sertleştirmesi, veri kaybı riski sıfırlandı)
+      66; // v66: kritik hareket tablolarında (kasa/stok/cari/iade/fatura/irsaliye/tedarik/vardiya) eksik indeksler + vardiyalar.deleted_at eklendi (Madde 3 sertleştirmesi)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

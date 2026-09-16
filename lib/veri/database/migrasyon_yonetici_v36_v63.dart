@@ -827,3 +827,55 @@ Future<void> _v63denV64e(Database db) async {
 Future<void> _v64denV65e(Database db) async {
   await _calistir(db, 'ALTER TABLE sync_queue ADD COLUMN hata_mesaji TEXT');
 }
+
+// ==================== v65 -> v66 ====================
+// MASTER ERP DEEP AUDIT — Madde 3 (Veritabanı Denetimi): "kritik hareket
+// tabloları" (satış/stok/cari/kasa/iade/fatura/tedarik/vardiya) PRIMARY
+// KEY/global_id/UNIQUE/last_updated/is_deleted/deleted_at/sube_id
+// açısından tarandı — bu alanların hepsi zaten mevcuttu. Bulunan GERÇEK
+// eksikler INDEX tarafındaydı: bu tablolardaki en sık çalışan sorgu
+// kalıpları (kasa bakiye hesabı, iade/fatura/irsaliye detay ekranları,
+// tedarikçi sipariş listesi, vardiya aktif/geçmiş sorgusu) hiç
+// indekslenmemiş sütunlarda filtreleme yapıyordu — veri büyüdükçe tam
+// tablo taraması (full table scan) kaçınılmazdı. Liste, taze kurulum
+// tarafının (IndexSemasi._indeksler) BİREBİR aynısıdır — bkz. o
+// dosyadaki "Madde 3" notu.
+//
+// 🔴 BİLİNÇLİ OLARAK YAPILMAYAN: yeni FOREIGN KEY eklenmedi. İki sebep:
+// (1) SQLite ALTER TABLE'ın kendisi mevcut bir tabloya FK constraint
+// eklemeyi DESTEKLEMEZ (tablo yeniden oluşturulup veri kopyalanmadan
+// mümkün değil — "mevcut verileri bozmadan güvenli" ilkesiyle çelişir).
+// (2) Bu kod tabanında (bkz. SatisDeposu.satisEkleTxn'deki cari_id/
+// sube_id/kasiyer_id doğrulama notu) FK ihlalleri ÇOK ŞUBELİ/ÇOK
+// CİHAZLI SENKRONDA gerçek production hatalarına yol açtığı için
+// KASITLI OLARAK stok_hareket/kasa_hareketleri gibi tablolarda hareket
+// satırlarının referans kolonlarına hiç FK konulmamış — bir cihazda
+// henüz senkronlanmamış bir kullanıcı/şube/lot'a referans veren bir
+// hareket, FK varsa INSERT anında patlar. Yeni FK eklemek bu bilinçli
+// tasarımı bozar ve aynı hata sınıfını yeniden üretir.
+Future<void> _v65denV66ya(Database db) async {
+  const indeksler = [
+    'CREATE INDEX IF NOT EXISTS idx_kasa_sube_silinmemis ON kasa_hareketleri(sube_id, deleted_at)',
+    'CREATE INDEX IF NOT EXISTS idx_kasa_referans ON kasa_hareketleri(referans_id, referans_turu)',
+    'CREATE INDEX IF NOT EXISTS idx_stokh_referans ON stok_hareket(referans_id, referans_turu)',
+    'CREATE INDEX IF NOT EXISTS idx_carih_fis ON cari_hareket(fis_id, cari_id)',
+    'CREATE INDEX IF NOT EXISTS idx_iade_kalem_iade ON iade_kalem(iade_id)',
+    'CREATE INDEX IF NOT EXISTS idx_fatura_detay_fatura ON fatura_detaylari(fatura_id)',
+    'CREATE INDEX IF NOT EXISTS idx_irsaliye_kalem_irsaliye ON irsaliye_kalem(irsaliye_id)',
+    'CREATE INDEX IF NOT EXISTS idx_tedsip_durum ON tedarikci_siparisler(durum)',
+    'CREATE INDEX IF NOT EXISTS idx_tedsip_cari ON tedarikci_siparisler(cari_id)',
+    'CREATE INDEX IF NOT EXISTS idx_tedsip_kalem_siparis ON tedarikci_siparis_kalem(siparis_id)',
+    'CREATE INDEX IF NOT EXISTS idx_vardiya_sube_kapanis ON vardiyalar(sube_id, kapanis_tarihi)',
+    'CREATE INDEX IF NOT EXISTS idx_vardiya_kullanici ON vardiyalar(kullanici_id)',
+  ];
+  for (final sql in indeksler) {
+    await _calistir(db, sql);
+  }
+
+  // 'vardiyalar' tablosunda deleted_at/is_deleted hiç yoktu — Madde 3
+  // kontrol listesinin istediği soft-delete alanı tamamlandı. Şu an
+  // hiçbir kod bir vardiyayı silmiyor (audit amaçlı kalıcı kayıt) — bu
+  // sütun ileride bir "yanlışlıkla açılan vardiyayı iptal et" özelliği
+  // için hazırlık, nullable olduğu için mevcut hiçbir sorguyu etkilemez.
+  await _calistir(db, 'ALTER TABLE vardiyalar ADD COLUMN deleted_at DATETIME');
+}

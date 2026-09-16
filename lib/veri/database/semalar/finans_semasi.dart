@@ -49,7 +49,7 @@ class FinansSemasi {
         kapanis_kasasi REAL, baslangic_bakiye REAL NOT NULL DEFAULT 0,
         bitis_bakiye REAL, nakit_sayim REAL, kart_toplam REAL, fark REAL,
         notlar TEXT, durum TEXT NOT NULL DEFAULT 'acik',
-        last_updated DATETIME,
+        last_updated DATETIME, deleted_at DATETIME,
         FOREIGN KEY(kullanici_id) REFERENCES ${DbSabitler.kullanicilar}(id)
       )
     ''');

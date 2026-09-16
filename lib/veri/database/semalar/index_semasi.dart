@@ -91,5 +91,36 @@ class IndexSemasi {
     // hızlı satış ekranı her açılışta bu tabloyu sorguladığı için
     // kullanıcı bazlı erişim indekslendi.
     "CREATE INDEX IF NOT EXISTS idx_favori_kullanici ON favori_urunler(kullanici_id, sira)",
+
+    // 🔴🔴 MASTER ERP DEEP AUDIT — Madde 3 (Veritabanı Denetimi, 2026-09-16):
+    // aşağıdaki indeksler "kritik hareket tabloları" taramasında eksik
+    // bulundu — mevcut cihazlar için AYNI liste migrasyon_yonetici_
+    // v36_v63.dart._v65denV66ya() içinde de tekrarlanır (bu dosyanın
+    // kendi üstteki notundaki "sadece migrasyonda / sadece taze
+    // kurulumda" kayması bir daha yaşanmasın diye iki yol da aynı anda
+    // güncellendi).
+    // ── KASA (en sık çalışan sorgu: her satış/iade/tahsilat bakiye
+    //    hesabı için 'deleted_at IS NULL AND sube_id = ?' okuyor) ────────
+    "CREATE INDEX IF NOT EXISTS idx_kasa_sube_silinmemis ON kasa_hareketleri(sube_id, deleted_at)",
+    "CREATE INDEX IF NOT EXISTS idx_kasa_referans ON kasa_hareketleri(referans_id, referans_turu)",
+    // ── STOK HAREKET (iade/irsaliye akışları referans_id+referans_turu
+    //    ile ilgili satırı bulur) ─────────────────────────────────────
+    "CREATE INDEX IF NOT EXISTS idx_stokh_referans ON stok_hareket(referans_id, referans_turu)",
+    // ── CARİ HAREKET (iade düzenleme/silme fis_id+cari_id ile arar) ─────
+    "CREATE INDEX IF NOT EXISTS idx_carih_fis ON cari_hareket(fis_id, cari_id)",
+    // ── İADE KALEM / FATURA DETAY / İRSALİYE KALEM (her detay ekranı
+    //    parent id'ye göre sorguluyordu, HİÇ indekslenmemişti) ──────────
+    "CREATE INDEX IF NOT EXISTS idx_iade_kalem_iade ON iade_kalem(iade_id)",
+    "CREATE INDEX IF NOT EXISTS idx_fatura_detay_fatura ON fatura_detaylari(fatura_id)",
+    "CREATE INDEX IF NOT EXISTS idx_irsaliye_kalem_irsaliye ON irsaliye_kalem(irsaliye_id)",
+    // ── TEDARİKÇİ SİPARİŞ (liste ekranı her sekme değişiminde 'durum'a
+    //    göre filtreliyor, kalemler siparis_id ile sorgulanıyor) ────────
+    "CREATE INDEX IF NOT EXISTS idx_tedsip_durum ON tedarikci_siparisler(durum)",
+    "CREATE INDEX IF NOT EXISTS idx_tedsip_cari ON tedarikci_siparisler(cari_id)",
+    "CREATE INDEX IF NOT EXISTS idx_tedsip_kalem_siparis ON tedarikci_siparis_kalem(siparis_id)",
+    // ── VARDİYA (aktif/geçmiş vardiya sorgusu sube_id+kapanis_tarihi'ne
+    //    göre filtreliyor) ───────────────────────────────────────────────
+    "CREATE INDEX IF NOT EXISTS idx_vardiya_sube_kapanis ON vardiyalar(sube_id, kapanis_tarihi)",
+    "CREATE INDEX IF NOT EXISTS idx_vardiya_kullanici ON vardiyalar(kullanici_id)",
   ];
 }

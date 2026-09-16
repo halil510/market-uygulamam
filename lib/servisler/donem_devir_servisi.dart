@@ -98,11 +98,17 @@ class DonemDevirServisi {
   final _checkpointDepo = DevirCheckpointDeposu();
   final _veriSagligi = VeriSagligiServisi();
 
+  /// Devri BAŞLATMADAN, sadece FAZ 1'in kontrol listesini çalıştırır —
+  /// Dönem Yönetimi ekranındaki "Yıl Sonu Kontrolü" butonu için (Madde
+  /// 3): kullanıcı devri başlatmadan önce durumu görebilmeli.
+  Future<List<DevirKontrolSonucu>> kontrolleriCalistir({required int subeId}) =>
+      _fazKontrolCalistir(subeId: subeId);
+
   /// Kaynak dönemden (şu an açık olan) bir sonraki yıla devri başlatır
   /// veya (yarıda kalmış bir checkpoint varsa) kaldığı yerden devam
   /// ettirir. [subeId] devir-özgü, şube bazlı kontroller (açık vardiya,
   /// açık masa siparişi) için kullanılır — stok/kasa snapshot fazları
-  /// (İLERİKİ FAZ) da aynı [subeId] ile çalışacak.
+  /// da aynı [subeId] ile çalışır.
   Future<DevirSonucu> devirBaslatVeyaDevamEt({required int subeId}) async {
     final kaynakDonem = await _donemDepo.aktifDonemGetir();
     if (kaynakDonem == null) {

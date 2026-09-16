@@ -1001,6 +1001,15 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                   onTap: () => context.push('/ayarlar/veri-sagligi'),
                 ),
                 ListTile(
+                  leading: const Icon(Icons.event_repeat_outlined,
+                      color: Colors.indigo),
+                  title: const Text('Dönem Yönetimi / Yıl Sonu Devir'),
+                  subtitle: const Text(
+                      'Yıl sonu kontrolü, yedekleme, dönem kapatma'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/ayarlar/donem-yonetimi'),
+                ),
+                ListTile(
                   leading: const Icon(Icons.storefront_outlined,
                       color: Colors.brown),
                   title: const Text('Fiyat Grupları (Bayi/Toptan)'),

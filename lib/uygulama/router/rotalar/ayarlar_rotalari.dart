@@ -20,6 +20,7 @@ import '../../../ekranlar/ayarlar/site_icerik_ekrani.dart';
 import '../../../ekranlar/ayarlar/audit_log_ekrani.dart';
 import '../../../ekranlar/ayarlar/sync_cakismalari_ekrani.dart';
 import '../../../ekranlar/ayarlar/veri_sagligi_ekrani.dart';
+import '../../../ekranlar/ayarlar/donem_yonetimi_ekrani.dart';
 import '../../../ekranlar/toptan/fiyat_gruplari_ekrani.dart';
 import '../../../ekranlar/ayarlar/gib_ayar_ekrani.dart';
 import '../../../ekranlar/ayarlar/log_ekrani.dart';
@@ -91,6 +92,11 @@ List<GoRoute> ayarlarRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
           name: 'ayarlar_veri_sagligi',
           parentNavigatorKey: rootNavigatorKey,
           builder: (_, __) => const VeriSagligiEkrani()),
+      GoRoute(
+          path: '/ayarlar/donem-yonetimi',
+          name: 'ayarlar_donem_yonetimi',
+          parentNavigatorKey: rootNavigatorKey,
+          builder: (_, __) => const DonemYonetimiEkrani()),
       GoRoute(
           path: '/toptan/fiyat-gruplari',
           name: 'fiyat_gruplari',

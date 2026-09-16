@@ -876,6 +876,14 @@ class Veritabani {
     await prefs.setString('supabase_sync_$tablo', time.toIso8601String());
   }
 
+  /// Madde 2 sertleştirmesi (ayarlar_ekrani.dart — "Veritabanını Dışa
+  /// Aktar"): veritabanı dosyasının diskteki tam yolu — ekranın
+  /// doğrudan `(await Veritabani().db).path` okuması yerine.
+  Future<String> dbYolu() async {
+    final database = await db;
+    return database.path;
+  }
+
   Future<void> kapat() async {
     if (_db != null) {
       await _db!.close();

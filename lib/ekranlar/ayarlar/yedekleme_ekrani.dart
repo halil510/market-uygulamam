@@ -6,8 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../servisler/yedekleme_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
-import '../../veri/database/veritabani.dart';
+import '../../depolar/ayarlar_deposu.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
@@ -19,6 +18,7 @@ class YedeklemeEkrani extends ConsumerStatefulWidget {
 
 class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
   final _servis = YedeklemeServisi();
+  final _ayarlarDepo = AyarlarDeposu();
 
   List<YedekBilgi> _yedekler     = [];
   DateTime?        _sonOtomatik;
@@ -38,11 +38,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
     try {
       final liste = await _servis.yedekListesi();
       final son   = await _servis.sonOtomatikYedekTarihi();
-      final db    = await Veritabani().db;
-      final rows  = await db.query('ayarlar',
-          where: "anahtar = 'yedek_sikligi'");
-      final sikligi = rows.isEmpty
-          ? 'gunluk' : rows.first['deger'] as String? ?? 'gunluk';
+      final sikligi = await _ayarlarDepo.getir('yedek_sikligi') ?? 'gunluk';
       if (!mounted) return;
       setState(() {
         _yedekler    = liste;
@@ -88,16 +84,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
 
   Future<void> _sikligiFDegistir(String deger) async {
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      await db.rawInsert(
-        'INSERT OR REPLACE INTO ayarlar(anahtar, deger, guncelleme, last_updated) VALUES(?,?,?,?)',
-        ['yedek_sikligi', deger, now, now],
-      );
-      // 🔴 Derin analizde bulundu: 'ayarlar' tablosu senkron
-      // sisteminde olduğu halde bu yazım BulutManager'ı hiç çağırmıyordu.
-      final satir = await db.query('ayarlar', where: 'anahtar = ?', whereArgs: ['yedek_sikligi'], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('ayarlar', Map<String, dynamic>.from(satir.first));
+      await _ayarlarDepo.kaydet('yedek_sikligi', deger);
       if (!mounted) return;
       setState(() => _sikligi = deger);
       BildirimServisi.basari(context, 'Yedek sıklığı kaydedildi');

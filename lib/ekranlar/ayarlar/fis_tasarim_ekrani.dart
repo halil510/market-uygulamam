@@ -9,8 +9,7 @@ import 'package:printing/printing.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
-import '../../veri/database/veritabani.dart';
-import '../../servisler/bulut/bulut_manager.dart';
+import '../../depolar/ayarlar_deposu.dart';
 
 class FisTasarimEkrani extends ConsumerStatefulWidget {
   /// true ise kendi Scaffold/AppBar'ını çizmez — Yazdırma Merkezi içine
@@ -24,6 +23,7 @@ class FisTasarimEkrani extends ConsumerStatefulWidget {
 class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
+  final _ayarlarDepo = AyarlarDeposu();
   // 🔴 DÜZELTME (derin analizde bulundu): Bu ekranda hiçbir çift
   // tıklama koruması YOKTU — ne bir durum değişkeni ne buton devre
   // dışı bırakma. Hızlı çift tıklamada 22 ayarın hepsi iki kez (yarışan
@@ -88,20 +88,21 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
     super.dispose();
   }
 
+  static const _ayarAnahtarlari = [
+    'fis_kagit', 'fis_font_baslik', 'fis_font_satir', 'fis_font_toplam',
+    'firma_adi', 'firma_adres', 'firma_telefon', 'fis_vergi_no_goster', 'fis_fis_no_goster',
+    'fis_tarih_goster', 'fis_kasiyer_goster', 'fis_urun_kodu_goster', 'fis_barkod_goster',
+    'fis_kdv_detay_goster', 'fis_alt_toplamlar_goster', 'fis_odeme_yontemi_goster',
+    'fis_para_ustu_goster', 'fis_tesekkur_goster', 'fis_qr_kod_goster', 'fis_otomatik_yazdir',
+    'fis_baslik_metin', 'fis_alt_yazi', 'fis_tesekkur_metni', 'fis_kopya_sayisi',
+    'fis_besleme_kagit',
+    'fis_cari_bakiye_goster', 'fis_yaziyla_tutar', 'fis_alt_barkod_goster',
+    'fis_cari_goster',
+  ];
+
   Future<void> _yukle() async {
     try {
-      final db = await Veritabani().db;
-      final rows = await db.query('ayarlar', where:
-          "anahtar IN ('fis_kagit','fis_font_baslik','fis_font_satir','fis_font_toplam',"
-          "'firma_adi','firma_adres','firma_telefon','fis_vergi_no_goster','fis_fis_no_goster',"
-          "'fis_tarih_goster','fis_kasiyer_goster','fis_urun_kodu_goster','fis_barkod_goster',"
-          "'fis_kdv_detay_goster','fis_alt_toplamlar_goster','fis_odeme_yontemi_goster',"
-          "'fis_para_ustu_goster','fis_tesekkur_goster','fis_qr_kod_goster','fis_otomatik_yazdir',"
-          "'fis_baslik_metin','fis_alt_yazi','fis_tesekkur_metni','fis_kopya_sayisi',"
-          "'fis_besleme_kagit',"
-          "'fis_cari_bakiye_goster','fis_yaziyla_tutar','fis_alt_barkod_goster',"
-          "'fis_cari_goster')");
-      final m = {for (final r in rows) r['anahtar'] as String: r['deger'] as String};
+      final m = await _ayarlarDepo.coguGetir(_ayarAnahtarlari);
       if (!mounted) return;
       setState(() {
         _fisGenislik      = (m['fis_kagit'] ?? '80mm') == '58mm' ? 58 : 80;
@@ -140,18 +141,8 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
     }
   }
 
-  Future<void> _ayarKaydet(String anahtar, String deger) async {
-    final db = await Veritabani().db;
-    final now = DateTime.now().toIso8601String();
-    await db.rawInsert(
-      'INSERT OR REPLACE INTO ayarlar(anahtar, deger, guncelleme, last_updated) VALUES(?,?,?,?)',
-      [anahtar, deger, now, now],
-    );
-    // 🔴 Derin analizde bulundu: last_updated hiç ayarlanmıyordu,
-    // BulutManager hiç çağrılmıyordu.
-    final satir = await db.query('ayarlar', where: 'anahtar = ?', whereArgs: [anahtar], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('ayarlar', Map<String, dynamic>.from(satir.first));
-  }
+  Future<void> _ayarKaydet(String anahtar, String deger) =>
+      _ayarlarDepo.kaydet(anahtar, deger);
 
   Future<void> _kaydet() async {
     if (_kayit) return;

@@ -376,6 +376,16 @@ class UrunDeposu {
     }
   }
 
+  /// Madde 2 sertleştirmesi (ayarlar_ekrani.dart — "Pasif ürünleri
+  /// aktif yap" toplu bakım aracı). Soft-delete edilmemiş (is_deleted=0)
+  /// ama pasif (aktif=0) TÜM ürünleri tek seferde aktif yapar. Döner:
+  /// etkilenen satır sayısı.
+  Future<int> tumPasifleriAktifYap() async {
+    final db = await _d;
+    return db.rawUpdate(
+        'UPDATE ${DbSabitler.urunler} SET aktif = 1 WHERE aktif = 0 AND is_deleted = 0');
+  }
+
   // ── PLU PANELİ (Madde 2 sertleştirmesi — plu_yonetim_ekrani.dart) ──────
 
   /// 'plu'/'plu_kart_boyut' kolonları yoksa ekler (migrasyon çalışmamış

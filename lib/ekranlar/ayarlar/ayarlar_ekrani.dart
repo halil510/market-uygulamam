@@ -18,7 +18,7 @@ import '../../servisler/auth_servisi.dart';
 import '../../depolar/kullanici_deposu.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
+import '../../depolar/ayarlar_deposu.dart';
 import '../../servisler/excel_servisi.dart';
 import '../../saglayicilar/riverpod/masa_modu_provider.dart';
 import '../../depolar/urun_deposu.dart';
@@ -39,6 +39,8 @@ class AyarlarEkrani extends ConsumerStatefulWidget {
 }
 
 class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
+  final _ayarlarDepo = AyarlarDeposu();
+  final _urunDepo = UrunDeposu();
   Map<String, String> _ayarlar = {};
   bool _yukleniyor = true;
 
@@ -51,13 +53,10 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
   Future<void> _yukle() async {
     if (mounted) setState(() => _yukleniyor = true);
     try {
-      final db = await Veritabani().db;
-      final rows = await db.query(DbSabitler.ayarlar);
+      final ayarlar = await _ayarlarDepo.hepsiGetir();
       if (mounted) {
         setState(() {
-          _ayarlar = {
-            for (final r in rows) r['anahtar'] as String: r['deger'] as String
-          };
+          _ayarlar = ayarlar;
           _yukleniyor = false;
         });
       }
@@ -71,20 +70,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
 
   Future<void> _ayarGuncelle(String anahtar, String deger) async {
     try {
-      final db = await Veritabani().db;
-      final now = DateTime.now().toIso8601String();
-      await db.rawInsert(
-        'INSERT OR REPLACE INTO ayarlar(anahtar, deger, guncelleme, last_updated) VALUES(?,?,?,?)',
-        [anahtar, deger, now, now],
-      );
-      // 🔴 Derin analizde bulundu: bu genel ayar güncelleme fonksiyonu
-      // (uygulama genelinde birçok ayar için kullanılıyor) last_updated
-      // hiç ayarlamıyordu, BulutManager hiç çağrılmıyordu.
-      final satir = await db.query('ayarlar',
-          where: 'anahtar = ?', whereArgs: [anahtar], limit: 1);
-      if (satir.isNotEmpty)
-        BulutManager()
-            .upsert('ayarlar', Map<String, dynamic>.from(satir.first));
+      await _ayarlarDepo.kaydet(anahtar, deger);
       if (mounted) setState(() => _ayarlar[anahtar] = deger);
     } catch (e) {
       if (kDebugMode) debugPrint('Ayar kaydetme hatası: $e');
@@ -705,9 +691,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
 
   Future<void> _pasifleriAktifYap() async {
     try {
-      final db = await Veritabani().db;
-      final sonuc = await db.rawUpdate(
-          'UPDATE ${DbSabitler.urunler} SET aktif = 1 WHERE aktif = 0 AND is_deleted = 0');
+      final sonuc = await _urunDepo.tumPasifleriAktifYap();
       if (mounted) {
         BildirimServisi.basari(context, '$sonuc ürün aktif yapıldı');
         await _yukle();
@@ -719,13 +703,13 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
 
   Future<void> _dbDisariAktar() async {
     try {
-      final db = await Veritabani().db;
-      final dbDosya = File(db.path);
+      final dbYolu = await Veritabani().dbYolu();
+      final dbDosya = File(dbYolu);
       if (!await dbDosya.exists()) {
         if (mounted) BildirimServisi.hata(context, 'DB dosyası bulunamadı');
         return;
       }
-      await Share.shareXFiles([XFile(db.path)], text: 'MarketPlus Veritabanı');
+      await Share.shareXFiles([XFile(dbYolu)], text: 'MarketPlus Veritabanı');
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }

@@ -8,8 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
-import '../../veri/database/veritabani.dart';
+import '../../depolar/ayarlar_deposu.dart';
 import '../../widgetlar/ortak/yukleniyor_widget.dart';
 import '../../cekirdek/utils/vergi_no_dogrulayici.dart';
 
@@ -20,6 +19,7 @@ class GibAyarEkrani extends ConsumerStatefulWidget {
 }
 
 class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
+  final _ayarlarDepo = AyarlarDeposu();
   final _apiUrlCtrl        = TextEditingController();
   final _kullaniciAdiCtrl  = TextEditingController();
   final _sifreCtrl         = TextEditingController();
@@ -50,11 +50,10 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
 
     if (mounted) setState(() {});
     try {
-      final db   = await Veritabani().db;
-      final rows = await db.query('ayarlar',
-          where: "anahtar IN ('gib_api_url','gib_kullanici_adi',"
-              "'firma_vergi_no','firma_vergi_dairesi','gib_test_modu')");
-      final map  = {for (final r in rows) r['anahtar'] as String: r['deger'] as String};
+      final map = await _ayarlarDepo.coguGetir(const [
+        'gib_api_url', 'gib_kullanici_adi',
+        'firma_vergi_no', 'firma_vergi_dairesi', 'gib_test_modu',
+      ]);
       // ÖNCEDEN gib_sifre ve gib_mali_muhur_sifre SQLite'ta DÜZ METİN
       // olarak saklanıyordu — GİB'e giriş yapmak için kullanılan gerçek
       // bir şifre, cihaza fiziksel/dosya erişimi olan biri tarafından
@@ -108,7 +107,6 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
     _kaydediyor = true;
     if (mounted) setState(() {});
     try {
-      final db = await Veritabani().db;
       // Hassas olmayan ayarlar SQLite'ta kalıyor (mevcut davranış).
       final ayarlar = {
         'gib_api_url':          _apiUrlCtrl.text.trim(),
@@ -121,23 +119,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
       const secure = FlutterSecureStorage();
       await secure.write(key: 'gib_sifre', value: _sifreCtrl.text.trim());
       await secure.write(key: 'gib_mali_muhur_sifre', value: _maliMuhurSifreCtrl.text.trim());
-      for (final e in ayarlar.entries) {
-        final existing = await db.query('ayarlar',
-            where: 'anahtar = ?', whereArgs: [e.key]);
-        final now = DateTime.now().toIso8601String();
-        if (existing.isNotEmpty) {
-          await db.update('ayarlar', {'deger': e.value, 'guncelleme': now, 'last_updated': now},
-              where: 'anahtar = ?', whereArgs: [e.key]);
-        } else {
-          await db.insert('ayarlar', {'anahtar': e.key, 'deger': e.value, 'guncelleme': now, 'last_updated': now});
-        }
-        // 🔴 Derin analizde bulundu: bu 5 ayar (GİB API adresi, vergi
-        // no/dairesi dahil) hiç last_updated almıyordu ve BulutManager
-        // hiç çağrılmıyordu — birden fazla cihazlı işletmelerde diğer
-        // cihazlar bu ayarları hiç görmüyordu.
-        final satir = await db.query('ayarlar', where: 'anahtar = ?', whereArgs: [e.key], limit: 1);
-        if (satir.isNotEmpty) BulutManager().upsert('ayarlar', Map<String, dynamic>.from(satir.first));
-      }
+      await _ayarlarDepo.topluKaydet(ayarlar);
       if (!mounted) return;
       BildirimServisi.basari(context, 'GİB ayarları kaydedildi ✓');
     } catch (e) {

@@ -16,8 +16,7 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/yazdirma_servisi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
-import '../../veri/database/veritabani.dart';
-import '../../servisler/bulut/bulut_manager.dart';
+import '../../depolar/ayarlar_deposu.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 
 // ─── Renk sabitleri ───────────────────────────────────────────────────────────
@@ -39,6 +38,7 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
     with SingleTickerProviderStateMixin {
   final _yazdirma = YazdirmaServisi();
   final _depo     = YaziciDeposu();
+  final _ayarlarDepo = AyarlarDeposu();
   late TabController _tab;
 
   List<YaziciModel>     _kayitlilar   = [];
@@ -84,10 +84,8 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
     setState(() => _yukleniyor = true);
     try {
       final liste = await _depo.tumunuGetir();
-      final db    = await Veritabani().db;
-      final rows  = await db.query('ayarlar', where:
-          "anahtar IN ('firma_adi','firma_adres','firma_telefon','fis_alt_yazi','fis_kagit','fis_kdv')");
-      final m = {for (final r in rows) r['anahtar'] as String: r['deger'] as String};
+      final m = await _ayarlarDepo.coguGetir(
+          const ['firma_adi', 'firma_adres', 'firma_telefon', 'fis_alt_yazi', 'fis_kagit', 'fis_kdv']);
       if (!mounted) return;
       setState(() {
         _kayitlilar          = liste;
@@ -104,18 +102,7 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
     }
   }
 
-  Future<void> _ayarKaydet(String k, String v) async {
-    final db = await Veritabani().db;
-    final now = DateTime.now().toIso8601String();
-    await db.rawInsert(
-      'INSERT OR REPLACE INTO ayarlar(anahtar, deger, guncelleme, last_updated) VALUES(?,?,?,?)',
-      [k, v, now, now],
-    );
-    // 🔴 Derin analizde bulundu: last_updated hiç ayarlanmıyordu,
-    // BulutManager hiç çağrılmıyordu.
-    final satir = await db.query('ayarlar', where: 'anahtar = ?', whereArgs: [k], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('ayarlar', Map<String, dynamic>.from(satir.first));
-  }
+  Future<void> _ayarKaydet(String k, String v) => _ayarlarDepo.kaydet(k, v);
 
   Future<void> _fisAyarlariKaydet() async {
     try {

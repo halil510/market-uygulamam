@@ -42,14 +42,16 @@ class _SepetKalemi {
       required this.fiyatSonucu});
 
   double get kdvOran => double.tryParse(urun.kdvOran) ?? 18;
-  // 🔴 DÜZELTME: Önceki hâli "birim fiyat KDV DAHİL" varsayıp ters
-  // çıkarma yapıyordu — bu, ekranda gösterilen özet ile gerçekte
-  // satışa/faturaya kaydedilen tutarların UYUŞMAMASINA yol açıyordu.
-  // Projenin kurulu kuralı (bkz. sepet_model.dart): toplamTutar =
-  // müşteriden tahsil edilen tutarın ta kendisi; kdvTutar bundan
-  // ÇARPILARAK (raporlama amaçlı) türetilir.
+  // 🔴 DÜZELTME (Madde 21 — Para Hesaplamaları denetimi, 2026-09-16):
+  // birim fiyat GERÇEKTEN KDV DAHİL (kullanıcı onayıyla doğrulandı,
+  // bkz. sepet_model.dart baş yorumu) — önceki yorumdaki "ters çıkarma
+  // yanlıştı" iddiası hatalıydı, aslen doğru olan bölme tabanlı çıkarma
+  // yanlışlıkla çarpma tabanlı (KDV'yi üzerine ekleyen) bir formülle
+  // değiştirilmişti. toplamTutar = müşteriden tahsil edilen tutarın ta
+  // kendisi (bu her zaman doğruydu, değişmedi); kdvTutari artık bu
+  // tutarın İÇİNDEN doğru şekilde ayıklanıyor.
   double get toplamTutar => miktar * fiyatSonucu.birimFiyat;
-  double get kdvTutari => toplamTutar * (kdvOran / 100);
+  double get kdvTutari => ParaUtils.kdvPayiCikar(toplamTutar, kdvOran);
   // Stoktan gerçekte düşülecek miktar (koli ise adede çevrilir).
   double get stokMiktari => (birim == 'koli' && urun.koliIciMiktar > 0)
       ? miktar * urun.koliIciMiktar
@@ -390,12 +392,13 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
 
       final satisKalemler = _sepet.map((k) {
         final kdvOran = double.tryParse(k.urun.kdvOran) ?? 18;
-        // 🔴 DÜZELTME: Projenin kurulu KDV kuralı (bkz. sepet_model.dart
-        // içindeki açık dokümantasyon): 'toplamTutar' MÜŞTERİDEN TAHSİL
-        // EDİLEN tutarın ta kendisidir (üzerine ayrıca KDV eklenmez) —
-        // kdvTutar, bu tutardan SADECE raporlama/fatura kırılımı için
-        // ÇARPILARAK hesaplanır (ters çıkarma DEĞİL).
-        final kdvTutar = k.toplamTutar * (kdvOran / 100);
+        // 🔴 DÜZELTME (Madde 21 — Para Hesaplamaları denetimi,
+        // 2026-09-16): birim fiyat GERÇEKTEN KDV DAHİL (kullanıcı
+        // onayıyla doğrulandı). 'toplamTutar' müşteriden tahsil edilen
+        // tutarın ta kendisi (değişmedi) — kdvTutar artık bu tutarın
+        // İÇİNDEN doğru şekilde (bölerek) ayıklanıyor, üzerine
+        // eklenmiyor.
+        final kdvTutar = ParaUtils.kdvPayiCikar(k.toplamTutar, kdvOran);
         final birimFiyatStokBazli = k.fiyatSonucu.birimFiyat /
             (k.birim == 'koli' && k.urun.koliIciMiktar > 0
                 ? k.urun.koliIciMiktar
@@ -412,8 +415,13 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
           iskontoTutar: 0,
           kdvOran: kdvOran,
           kdvTutar: kdvTutar,
-          netFiyat:
-              birimFiyatStokBazli, // KDV hariç net birim fiyat (iskonto yok)
+          // NOT: bu alan KDV'den ayıklanmış değil, sadece koli/adet
+          // birim dönüşümü uygulanmış (KDV DAHİL) birim fiyattır —
+          // isim yanıltıcı ama diğer çağıranlarla (bkz. yazdirma_servisi.
+          // dart'ta netFiyat kullanımı) aynı "iskontolu/dönüştürülmüş
+          // görüntülenecek fiyat" anlamında kullanılıyor, davranış
+          // korunuyor.
+          netFiyat: birimFiyatStokBazli,
           alisFiyat: k.urun.alisFiyat,
           alisFiyatKdv: k.urun.alisFiyatKdvDahil,
         );

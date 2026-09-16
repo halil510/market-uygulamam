@@ -531,13 +531,15 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     }
     if (_c['kod']!.text.isEmpty) _c['kod']!.text = _c['barkod']?.text ?? '';
 
-    if (ilk.containsKey('kdv_dahil_satis') && ilk['kdv_dahil_satis'] == true) {
-      final kdvOran = double.tryParse(_kdvOran) ?? 18;
-      final satisKdvli = ParaUtils.sayiCoz(_c['satisFiyati']?.text ?? '') ?? 0;
-      if (satisKdvli > 0) {
-        _c['satisFiyati']?.text = (satisKdvli / (1 + kdvOran / 100)).toStringAsFixed(3);
-      }
-    }
+    // 🔴 DÜZELTME (Madde 21 — Para Hesaplamaları denetimi, 2026-09-16):
+    // BURADA ÖNCEDEN, AI 'kdv_dahil_satis: true' dediğinde (yani okuduğu
+    // fiyatın zaten KDV dahil olduğunu bildirdiğinde) o fiyattan KDV
+    // ÇIKARILIP satisFiyati'na öyle yazılıyordu. Ama satisFiyati alanı
+    // GERÇEKTE KDV DAHİL saklanıyor (kullanıcı onayıyla doğrulandı, bkz.
+    // sepet_model.dart baş yorumu) — yani AI zaten doğru (KDV dahil)
+    // fiyatı okumuşken, kod bunu KDV oranı kadar (~%18-20) DÜŞÜRÜP
+    // yanlış kaydediyordu. AI'nin okuduğu KDV dahil fiyat zaten doğru
+    // formatta olduğundan artık hiçbir dönüşüm yapılmıyor.
 
     if (!mounted) return;   // AI/resim await'leri sonrası
     setState(() {});
@@ -593,13 +595,10 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
       if (bilgi.containsKey('alan2')) _c['alan2']?.text = bilgi['alan2'] as String? ?? '';
       if (bilgi.containsKey('alis_fiyat')) _c['alisFiyat']?.text = (bilgi['alis_fiyat'] as num?)?.toString() ?? '';
       if (bilgi.containsKey('satis_fiyati')) _c['satisFiyati']?.text = (bilgi['satis_fiyati'] as num?)?.toString() ?? '';
-      if (bilgi.containsKey('kdv_dahil_satis') && bilgi['kdv_dahil_satis'] == true) {
-        final kdvOran = double.tryParse(_kdvOran) ?? 18;
-        final satisKdvli = ParaUtils.sayiCoz(_c['satisFiyati']?.text ?? '') ?? 0;
-        if (satisKdvli > 0) {
-          _c['satisFiyati']?.text = (satisKdvli / (1 + kdvOran / 100)).toStringAsFixed(3);
-        }
-      }
+      // 🔴 DÜZELTME (Madde 21, 2026-09-16): satisFiyati zaten KDV dahil
+      // saklanıyor — AI'nin 'kdv_dahil_satis: true' dediği, zaten doğru
+      // formattaki fiyattan KDV çıkarıp yanlışlıkla düşüren blok
+      // kaldırıldı (bkz. yukarıdaki _faturadanUrunOku'daki aynı düzeltme).
       _c['barkod']!.text = b;
       if (_c['kod']!.text.isEmpty) _c['kod']!.text = b;
       setState(() {});
@@ -696,13 +695,9 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     }
     if (_c['kod']!.text.isEmpty) _c['kod']!.text = _c['barkod']?.text ?? '';
 
-    if (ilk.containsKey('kdv_dahil_satis') && ilk['kdv_dahil_satis'] == true) {
-      final kdvOran = double.tryParse(_kdvOran) ?? 18;
-      final satisKdvli = ParaUtils.sayiCoz(_c['satisFiyati']?.text ?? '') ?? 0;
-      if (satisKdvli > 0) {
-        _c['satisFiyati']?.text = (satisKdvli / (1 + kdvOran / 100)).toStringAsFixed(3);
-      }
-    }
+    // 🔴 DÜZELTME (Madde 21, 2026-09-16): satisFiyati zaten KDV dahil
+    // saklanıyor — AI'nin 'kdv_dahil_satis: true' dediği, zaten doğru
+    // formattaki fiyattan KDV çıkarıp yanlışlıkla düşüren blok kaldırıldı.
 
     if (!mounted) return;   // AI await'leri sonrası
     setState(() {});

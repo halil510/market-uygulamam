@@ -32,6 +32,17 @@ class ParaUtils {
   static double kdvHaricFiyat(double kdvliFiyat, double oran) =>
       kdvliFiyat / (1 + oran / 100);
 
+  /// [kdvliTutar] KDV DAHİL bir tutarın İÇİNDEKİ KDV payını döner.
+  /// Projede satış fiyatları KDV DAHİL saklanır (bkz. sepet_model.dart
+  /// baş yorumu, 2026-09-16 kullanıcı onayıyla doğrulandı) — KDV tutarı,
+  /// fiyatın ÜZERİNE eklenerek değil, İÇİNDEN ayıklanarak (bölünerek)
+  /// hesaplanır. `kdvHesapla` (çarpma tabanlı) KDV HARİÇ bir taban
+  /// fiyattan KDV üretmek içindir, KDV DAHİL bir tutardan kırılım
+  /// çıkarmak için KULLANILMAMALIDIR — karıştırılmasınlar diye ayrı
+  /// bir fonksiyon olarak tanımlandı.
+  static double kdvPayiCikar(double kdvliTutar, double oran) =>
+      kdvliTutar - kdvHaricFiyat(kdvliTutar, oran);
+
   static double karOrani(double alis, double satis) {
     if (alis <= 0) return 0;
     return ((satis - alis) / alis) * 100;

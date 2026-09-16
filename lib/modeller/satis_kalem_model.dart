@@ -1,4 +1,6 @@
 // lib/modeller/satis_kalem_model.dart
+import '../cekirdek/utils/para_utils.dart';
+
 class SatisKalemModel {
   final int? id;
   final int satisId;
@@ -84,7 +86,9 @@ class SatisKalemModel {
     final mik = miktar ?? this.miktar;
     final indTutar = fiy * mik * (isk / 100);
     final netF = fiy * (1 - isk / 100);
-    final kdvT = netF * mik * (kdvOran / 100);
+    // 🔴 DÜZELTME (Madde 21, 2026-09-16): birimFiyat KDV DAHİL — kdvTutar
+    // toplam tutarın İÇİNDEN ayıklanır, üzerine eklenmez.
+    final kdvT = ParaUtils.kdvPayiCikar(netF * mik, kdvOran);
     return SatisKalemModel(
       id: id, satisId: satisId ?? this.satisId, urunId: urunId,
       urunAdi: urunAdi, barkod: barkod,

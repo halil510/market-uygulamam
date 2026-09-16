@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../veri/database/veritabani.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../cekirdek/utils/para_utils.dart';
 import '../modeller/cari_model.dart';
 import '../modeller/satis_model.dart';
 import '../modeller/satis_kalem_model.dart';
@@ -53,7 +54,11 @@ class BekleyenSiparisKalemGirdi {
   double get birimFiyatIskontolu => birimFiyat * (1 - iskontoOran / 100);
   double get toplamTutar => toplamMiktar * birimFiyatIskontolu;
   double get iskontoTutar => toplamMiktar * birimFiyat * (iskontoOran / 100);
-  double get kdvTutar => toplamTutar * (kdvOran / 100);
+  // 🔴 DÜZELTME (Madde 21 — Para Hesaplamaları denetimi, 2026-09-16):
+  // birimFiyat GERÇEKTEN KDV DAHİL (bkz. sepet_model.dart baş yorumu,
+  // kullanıcı onayıyla doğrulandı) — kdvTutar, toplamTutar İÇİNDEN
+  // ayıklanmalı, üzerine eklenmemeli.
+  double get kdvTutar => ParaUtils.kdvPayiCikar(toplamTutar, kdvOran);
   double get alisToplam => toplamMiktar * alisFiyat;
 }
 
@@ -193,7 +198,9 @@ class BekleyenSiparisDeposu {
       final toplamMiktar = (k['toplam_miktar'] as num).toDouble();
       final toplamTutar = (k['toplam_tutar'] as num).toDouble();
       final kdvOran = (k['kdv_oran'] as num).toDouble();
-      final kdvTutar = toplamTutar * (kdvOran / 100);
+      // 🔴 DÜZELTME (Madde 21, 2026-09-16): toplamTutar KDV DAHİL —
+      // kdvTutar İÇİNDEN ayıklanır, üzerine eklenmez.
+      final kdvTutar = ParaUtils.kdvPayiCikar(toplamTutar, kdvOran);
       return SatisKalemModel(
         satisId: 0,
         urunId: k['urun_id'] as int,

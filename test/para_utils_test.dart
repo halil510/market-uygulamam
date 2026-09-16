@@ -149,5 +149,24 @@ void main() {
       final dahil = ParaUtils.kdvDahilFiyat(haric, 20);
       expect(ParaUtils.kdvHaricFiyat(dahil, 20), closeTo(haric, 0.001));
     });
+
+    // Madde 21 (2026-09-16): satış fiyatları projede KDV DAHİL saklanır
+    // — kdvPayiCikar bu dahil tutarın içindeki KDV payını (üzerine
+    // ekleyerek DEĞİL, içinden bölerek) çıkarır.
+    test('kdvPayiCikar KDV dahil tutarın içindeki payı doğru ayıklar', () {
+      // 120 TL KDV dahil, %20 KDV → net 100, KDV payı 20
+      expect(ParaUtils.kdvPayiCikar(120, 20), closeTo(20.0, 0.001));
+      expect(ParaUtils.kdvPayiCikar(100, 0), 0);
+    });
+
+    test('kdvPayiCikar, kdvHesapla ile KARIŞTIRILMAMALI (farklı sonuç verirler)', () {
+      // kdvHesapla KDV HARİÇ bir tabana KDV üretir (100*0.20=20) — bu
+      // örnekte tesadüfen kdvPayiCikar ile aynı çıkar çünkü 120'nin
+      // içindeki pay da 20'dir; asıl fark taban farklı bir tutarda ortaya
+      // çıkar: kdvHesapla(120,20)=24 (YANLIŞ, üzerine ekler) vs
+      // kdvPayiCikar(120,20)=20 (DOĞRU, içinden ayıklar).
+      expect(ParaUtils.kdvHesapla(120, 20), closeTo(24.0, 0.001));
+      expect(ParaUtils.kdvPayiCikar(120, 20), closeTo(20.0, 0.001));
+    });
   });
 }

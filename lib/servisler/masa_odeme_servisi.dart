@@ -25,6 +25,7 @@ import '../modeller/cari_hareket_model.dart';
 import '../modeller/masa_siparis_model.dart';
 import '../servisler/auth_servisi.dart';
 import '../servisler/aktif_sube_servisi.dart';
+import '../cekirdek/utils/para_utils.dart';
 
 class MasaOdemeSonuc {
   final int satisId;
@@ -85,8 +86,11 @@ class MasaOdemeServisi {
               iskontoOran: 0,
               iskontoTutar: 0,
               kdvOran: k.kdvOran,
-              kdvTutar: k.toplam - (k.toplam / (1 + k.kdvOran / 100)),
-              netFiyat: k.toplam / (1 + k.kdvOran / 100),
+              // toplam KDV DAHİL (bkz. sepet_model.dart baş yorumu) —
+              // kdvTutar/netFiyat ParaUtils.kdvPayiCikar/kdvHaricFiyat ile
+              // aynı bölme tabanlı formülü artık merkezi olarak kullanıyor.
+              kdvTutar: ParaUtils.kdvPayiCikar(k.toplam, k.kdvOran),
+              netFiyat: ParaUtils.kdvHaricFiyat(k.toplam, k.kdvOran),
               alisFiyat: 0,
               alisFiyatKdv: 0,
             ))

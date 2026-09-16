@@ -81,14 +81,26 @@ class _UrunDetayEkraniState extends ConsumerState<UrunDetayEkrani>
           appBar: TsAppBar(
         baslikWidget: Text(urun.urunAdi, style: const TextStyle(fontSize: 15)),
         aksiyonlar: [
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, color: Colors.white),
-                onPressed: () => context.push('/urun/ekle', extra: urun)
-                    .then((_) => ref.invalidate(urunDetayProvider(widget.urunId))),
+              // 🔴 DÜZELTME (Madde 14 — Fiyat Onayı denetimi, 2026-09-16):
+              // bu ekran, projedeki genel "sadece Admin/Müdür düzenler/
+              // siler, Kasiyer sadece görüntüler" kuralına (bkz. ts_yetki.
+              // dart başı yorumu) UYMUYORDU — ürün listesindeki toplu
+              // silme/ekleme butonları TsYetkili ile sarılıyken, buradaki
+              // tekil düzenle/sil butonları HİÇ gate'lenmemişti. Pratik
+              // sonucu: herhangi bir kasiyer bu ekrandan satış fiyatını
+              // (ve her şeyi) serbestçe değiştirebiliyordu.
+              TsYetkili(
+                child: IconButton(
+                  icon: const Icon(Icons.edit_outlined, color: Colors.white),
+                  onPressed: () => context.push('/urun/ekle', extra: urun)
+                      .then((_) => ref.invalidate(urunDetayProvider(widget.urunId))),
+                ),
               ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                onPressed: () => _sil(urun),
+              TsYetkili(
+                child: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () => _sil(urun),
+                ),
               ),
             ],
         alt: TabBar(

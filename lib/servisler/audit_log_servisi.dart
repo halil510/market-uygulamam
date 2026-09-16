@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../veri/database/veritabani.dart';
 import 'auth_servisi.dart';
+import 'aktif_sube_servisi.dart';
 import 'supabase_sync_servisi.dart';
 import 'bulut/bulut_manager.dart';
 
@@ -53,11 +54,19 @@ class AuditLogServisi {
   /// düşük riskli bir zenginleştirme eklendi: fiyat, ayar değeri, rol ve
   /// iptal gerekçesi artık özete ekleniyor (önceden sadece "bir şey
   /// değişti" bilgisi vardı, "ne değişti" görünmüyordu).
-  String? _zenginlestir(String tablo, Map<String, dynamic> veri, String? ozet) {
+  String? _zenginlestir(String tablo, Map<String, dynamic> veri, String? ozet,
+      {Map<String, dynamic>? eskiVeri}) {
     switch (tablo) {
       case 'urunler':
         final fiyat = veri['satis_fiyati'];
         if (fiyat == null) return ozet;
+        // 🔴 DÜZELTME (Madde 14 — Fiyat Onayı denetimi, 2026-09-16): eski
+        // fiyat ÖNCEDEN hiç kaydedilmiyordu, sadece yeni değer görünüyordu
+        // — "ne değişti" sorusuna cevap yoktu, "şu an ne" cevabı vardı.
+        final eskiFiyat = eskiVeri?['satis_fiyati'];
+        if (eskiFiyat != null && eskiFiyat != fiyat) {
+          return '${ozet ?? 'Ürün'} — ₺$eskiFiyat → ₺$fiyat';
+        }
         return '${ozet ?? 'Ürün'} — ₺$fiyat';
       case 'ayarlar':
         final deger = veri['deger'];
@@ -76,7 +85,7 @@ class AuditLogServisi {
     }
   }
 
-  Future<void> kaydet(String tablo, Map<String, dynamic> veri) async {
+  Future<void> kaydet(String tablo, Map<String, dynamic> veri, {Map<String, dynamic>? eskiVeri}) async {
     if (_haricTutulanTablolar.contains(tablo)) return;
     try {
       final kullanici = AuthServisi();
@@ -103,7 +112,7 @@ class AuditLogServisi {
           break;
         }
       }
-      ozet = _zenginlestir(tablo, veri, ozet);
+      ozet = _zenginlestir(tablo, veri, ozet, eskiVeri: eskiVeri);
 
       final cihazId = await SupabaseSyncServisi.cihazId();
 
@@ -115,6 +124,14 @@ class AuditLogServisi {
         'ozet': ozet,
         'kullanici_id': kullanici.aktifId,
         'kullanici_adi': kullanici.aktifAd.isEmpty ? 'Bilinmiyor' : kullanici.aktifAd,
+        // 🔴 DÜZELTME (Madde 18/14 denetimi, 2026-09-16): audit_log
+        // şemasında sube_id sütunu VARDI ama hiçbir zaman doldurulmuyordu
+        // — hangi şubede yapıldığı bilgisi HER satırda sessizce kayboluyordu.
+        // Kaydın kendi sube_id'si varsa (satislar/stok_hareket/kasa_
+        // hareketleri gibi işlem tabloları) o tercih edilir — o satırın
+        // GERÇEKTEN ait olduğu şube budur; yoksa (urunler/cari gibi şube
+        // bazlı olmayan tablolar) kullanıcının o an ÇALIŞTIĞI şubeye düşülür.
+        'sube_id': veri['sube_id'] ?? AktifSubeServisi().subeId,
         'cihaz_id': cihazId,
         'tarih': now,
         'last_updated': now,

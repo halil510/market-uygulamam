@@ -120,7 +120,11 @@ class BulutManager {
   }
 
   // ── Kuyruğa ekle ───────────────────────────────────────────────────────────
-  void upsert(String tablo, Map<String,dynamic> ham) {
+  /// [eskiVeri] SADECE audit log zenginleştirmesi için — ör. fiyat
+  /// değişikliğinde eski değeri de kaydedebilmek (Madde 18/14 denetimi,
+  /// 2026-09-16). Opsiyonel — çağıranların ÇOĞU bunu hiç vermez, geriye
+  /// dönük uyumlu.
+  void upsert(String tablo, Map<String,dynamic> ham, {Map<String, dynamic>? eskiVeri}) {
     // Kullanıcı isteği: "audit sistemi — kim ne yaptı ne zaman."
     // BulutManager.upsert() artık projedeki NEREDEYSE TÜM anlamlı veri
     // değişikliğinin geçtiği merkezi nokta — audit log'u buraya
@@ -128,7 +132,7 @@ class BulutManager {
     // _saglayici==null kontrolünden ÖNCE) audit log çalışsın diye en
     // başa konuldu — audit, tamamen YEREL bir özellik olarak da
     // değerli.
-    AuditLogServisi().kaydet(tablo, ham);
+    AuditLogServisi().kaydet(tablo, ham, eskiVeri: eskiVeri);
 
     if (_saglayici == null) return;
     final veri = Map<String, dynamic>.from(ham);

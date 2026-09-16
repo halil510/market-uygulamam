@@ -10,6 +10,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 import '../servisler/log_servisi.dart';
+import '../servisler/auth_servisi.dart';
 import '../veri/database/veritabani.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
 import '../modeller/urun_model.dart';
@@ -285,15 +286,31 @@ class UrunDeposu {
       // Bu, senkronizasyon sırasında "fiyatı kim en son değiştirdi"
       // sorusunu, TÜM kaydın zaman damgasından BAĞIMSIZ olarak doğru
       // cevaplamamızı sağlıyor.
+      double? eskiSatis;
+      double? eskiAlis;
       if (urun.id != null) {
         final eski = await db.query(DbSabitler.urunler,
             columns: ['satis_fiyati', 'alis_fiyat'],
             where: 'id = ?', whereArgs: [urun.id]);
         if (eski.isNotEmpty) {
-          final eskiSatis = (eski.first['satis_fiyati'] as num?)?.toDouble() ?? 0;
-          final eskiAlis  = (eski.first['alis_fiyat'] as num?)?.toDouble() ?? 0;
+          eskiSatis = (eski.first['satis_fiyati'] as num?)?.toDouble() ?? 0;
+          eskiAlis  = (eski.first['alis_fiyat'] as num?)?.toDouble() ?? 0;
           if (eskiSatis != urun.satisFiyati || eskiAlis != urun.alisFiyat) {
             m['fiyat_guncelleme_tarih'] = now;
+            // 🔴 DÜZELTME (Madde 14 — Fiyat Onayı denetimi, 2026-09-16):
+            // UI katmanında (urun_detay_ekrani.dart) artık TsYetkili ile
+            // sadece Admin/Müdür bu forma ulaşabiliyor — ama bu SADECE
+            // widget guard. Deep-link veya ileride eklenecek başka bir
+            // giriş noktası bu kontrolü atlayabilir (Madde 15: "route
+            // guard/widget guard/service guard/repository guard uyumlu
+            // mu?"). Burası REPOSITORY GUARD katmanı — fiyat gerçekten
+            // değiştiyse ve aktif kullanıcı Müdür/Admin DEĞİLSE, işlem
+            // tamamen reddedilir (sessizce eski fiyata dönmek yerine —
+            // bu, arayüzdeki bir hatayı gizler, kullanıcıyı yanıltır).
+            if (!AuthServisi().isMudur) {
+              throw StateError(
+                  'Fiyat değişikliği için yetkiniz yok — sadece Müdür/Admin fiyat değiştirebilir.');
+            }
           }
         } else {
           m['fiyat_guncelleme_tarih'] = now; // yeni kayıt gibi davran
@@ -344,7 +361,8 @@ class UrunDeposu {
 
       await db.update(DbSabitler.urunler, m,
           where: 'id = ?', whereArgs: [urun.id]);
-      BulutManager().upsert('urunler', m);
+      BulutManager().upsert('urunler', m,
+          eskiVeri: eskiSatis != null ? {'satis_fiyati': eskiSatis, 'alis_fiyat': eskiAlis} : null);
     } catch (e, st) {
       LogServisi().hata('UrunDeposu.guncelle', hata: e, yigin: st);
       rethrow;

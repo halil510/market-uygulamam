@@ -81,6 +81,16 @@ Future<void> _baslatApp() async {
     await BildirimServisi.init();
     await BildirimZamanlayici().baslat();
     await Veritabani().db; // migration burada çalışır
+    // 🔴 DÜZELTME (Madde 27 — Yedekleme denetimi, 2026-09-16): "Otomatik
+    // Yedekleme", BildirimZamanlayici içinde sadece uygulama süreci CANLI
+    // İKEN çalışan bir Timer ile her gün 23:30'da tetikleniyordu. Bir
+    // market/POS uygulaması akşam kapandıktan sonra genelde kapatıldığı
+    // için bu saat pratikte hemen hiç yakalanmıyor, "Son Otomatik Yedek"
+    // kullanıcıya güven verse de yedek fiilen alınmıyor olabiliyordu.
+    // Artık DB hazır olur olmaz (migration bittikten SONRA) açılışta bir
+    // "kaçırılmış yedek var mı" kontrolü de yapılıyor — arka planda,
+    // UI'ı bloklamadan.
+    unawaited(BildirimZamanlayici().kacirilanYedekKontrolEt());
     await BorcBildirimServisi().baslat();
 
     runApp(

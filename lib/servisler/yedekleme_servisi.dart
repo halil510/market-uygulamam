@@ -182,9 +182,46 @@ class YedeklemeServisi {
         }
         rethrow;
       }
+
+      // 🔴 DÜZELTME (Madde 27 — Yedekleme denetimi, 2026-09-16): her
+      // restore işlemi kendi '.geri_yukleme_oncesi_*.bak' güvenlik
+      // kopyasını oluşturuyordu ama HİÇBİR YERDE temizlenmiyordu —
+      // zamanla (her restore'da market.db boyutunda bir dosya daha
+      // eklenerek) sınırsız birikip depolamayı doldurabilirdi. Son
+      // birkaçı (olası manuel kurtarma ihtiyacı için) tutulup gerisi
+      // siliniyor.
+      await _eskiGuvenlikYedekleriniTemizle(hedef);
     } catch (e, st) {
       LogServisi().hata('YedeklemeServisi.geriYukle', hata: e, yigin: st);
       rethrow;
+    }
+  }
+
+  // ── Eski restore-öncesi güvenlik yedeklerini temizle ─────────────────
+  // ('$hedef.geri_yukleme_oncesi_*.bak' — bkz. yedekiGeriYukle yorumu)
+  static const _maxGuvenlikYedegi = 3;
+  Future<void> _eskiGuvenlikYedekleriniTemizle(String hedef) async {
+    try {
+      final dir = Directory(p.dirname(hedef));
+      final onek = '${p.basename(hedef)}.geri_yukleme_oncesi_';
+      final dosyalar = dir
+          .listSync()
+          .whereType<File>()
+          .where((f) => p.basename(f.path).startsWith(onek) &&
+              f.path.endsWith('.bak'))
+          .toList()
+        ..sort((a, b) => b.path.compareTo(a.path)); // en yeni ilk (isimde zaman damgası var)
+
+      if (dosyalar.length <= _maxGuvenlikYedegi) return;
+      for (final f in dosyalar.sublist(_maxGuvenlikYedegi)) {
+        try {
+          await f.delete();
+        } catch (_) {
+          // Tek bir dosya silinemezse akışı bozmasın
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('Güvenlik yedeği temizleme hatası: $e');
     }
   }
 

@@ -127,6 +127,17 @@ class BildirimZamanlayici {
     }
   }
 
+  // 🔴 DÜZELTME (Madde 27 — Yedekleme denetimi, 2026-09-16): aşağıdaki
+  // Timer tabanlı 23:30 zamanlaması SADECE uygulama süreci o saatte
+  // CANLI iken çalışır — market/POS uygulamaları genelde akşam kapanış
+  // sonrası kapatıldığından bu saat pratikte hemen hiç yakalanmıyordu,
+  // yani "Otomatik Yedekleme" fiilen çalışmıyor olabiliyordu. Bu public
+  // metod, uygulama AÇILIŞINDA (ana.dart, Veritabani().db hazır olduktan
+  // sonra) çağrılır — "kaçırılmış" bir yedek varsa hemen, arka planda
+  // (UI'ı bloklamadan) alınır. Aynı yedekGerekliMi() aralık kontrolünü
+  // kullandığından, günde/haftada bir kereden fazla tetiklenmez.
+  Future<void> kacirilanYedekKontrolEt() => _otomatikYedekKontrol();
+
   // ── Otomatik yedek ────────────────────────────────────────────────────
   // Her gün 23:30'da kontrol eder — yedek gerekiyorsa alır
   // Ayardan "yedek_sıklık" okunur: 'gunluk' veya 'haftalik'

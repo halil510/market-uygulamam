@@ -284,6 +284,52 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
     }
   }
 
+  // ── Önizleme (eski → yeni) — Toplu Fiyat Güncelleme ekranındaki
+  // önizleme desenine paralel, 2026-09-16 (kullanıcı isteği: "modern
+  // yapıya sok"). Bir alan seçilip değer girildiğinde, ürün listesinde
+  // her satırın SAĞ tarafında "eski değer → yeni değer" gösterilir —
+  // kullanıcı Güncelle'ye basmadan ÖNCE etkiyi görür.
+  String _degerGoster(String alanId, num deger) => switch (alanId) {
+    'alisFiyat' || 'alisFiyatKdvDahil' || 'satisFiyati' || 'indirimli_fiyat' =>
+      ParaUtils.formatla(deger.toDouble()),
+    'indirimOrani' || 'kdvOran' || 'puan_orani' => '%${deger.toStringAsFixed(0)}',
+    'stok' || 'minimum_stok' => deger.toStringAsFixed(0),
+    _ => deger.toString(),
+  };
+
+  String _mevcutDegerGoster(UrunModel u, String alanId) {
+    if (alanId == 'kdvOran') return '%${u.kdvOran}';
+    if (alanId == 'birimAdi') return u.birimAdi;
+    final metin = switch (alanId) {
+      'anaGrup' => u.anaGrup,
+      'altGrup' => u.altGrup,
+      'alan1'   => u.alan1,
+      'alan2'   => u.alan2,
+      'marka'   => u.marka,
+      'mensei'  => u.mensei,
+      _ => null,
+    };
+    if (metin != null) return metin.isEmpty ? '—' : metin;
+    final sayisal = _mevcutDeger(u, alanId);
+    return sayisal == null ? '—' : _degerGoster(alanId, sayisal);
+  }
+
+  /// Seçili alan + girilen değere göre [u] için yeni değeri ÖNİZLEME
+  /// amaçlı hesaplar. Hesaplama mantığı _topluGuncelle() ile AYNI
+  /// olmalı (sadece görüntüleme, yazma yapmaz) — sonuç null ise henüz
+  /// önizlenecek geçerli bir durum yok demektir.
+  String? _yeniDegerGoster(UrunModel u) {
+    if (_alan == null) return null;
+    final degerMetin = _degerCtrl.text.trim().replaceAll(',', '.');
+    if (degerMetin.isEmpty) return null;
+    if (!_alan!.sayisal) return degerMetin;
+    final sayisalDeger = double.tryParse(degerMetin);
+    if (sayisalDeger == null) return null;
+    final eski = _alan!.id == 'stok' ? u.stok : (_mevcutDeger(u, _alan!.id) ?? 0);
+    final yeni = _hesapla(eski, sayisalDeger).clamp(0, double.infinity);
+    return _degerGoster(_alan!.id, yeni);
+  }
+
   double? _mevcutDeger(UrunModel u, String alanId) => switch (alanId) {
     'alisFiyat'         => u.alisFiyat,
     'alisFiyatKdvDahil' => u.alisFiyatKdvDahil,
@@ -357,6 +403,22 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
       body: TabBarView(controller: _tab, children: [
         // ── Tab 1: Ürün Listesi ───────────────────────────────────────────────
         Column(children: [
+          // Önizleme banner'ı — bir alan seçilip değer girildiğinde bu
+          // listedeki satırların neden "eski → yeni" gösterdiğini açıklar.
+          if (_alan != null && _degerCtrl.text.trim().isNotEmpty)
+            Container(
+              width: double.infinity,
+              color: _alan!.renk.withAlpha(20),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(children: [
+                Icon(Icons.visibility_outlined, size: 15, color: _alan!.renk),
+                const SizedBox(width: 6),
+                Expanded(child: Text(
+                  'Önizleme: ${_alan!.label} — ${_islemAcikla(_degerCtrl.text.trim().replaceAll(',', '.'))}',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: _alan!.renk),
+                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+              ]),
+            ),
           // Arama + seç butonları
           Container(color: Colors.white, padding: const EdgeInsets.all(12),
             child: Column(children: [
@@ -439,13 +501,31 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                           Text('${u.anaGrup ?? '—'} · Stok: ${u.stok.toStringAsFixed(0)}',
                               style: TextStyle(fontSize: 11, color: context.textSecondary)),
                         ])),
-                        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                          Text(ParaUtils.formatla(u.satisFiyati),
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                          if (u.alisFiyat > 0)
-                            Text('Alış: ${ParaUtils.formatla(u.alisFiyat)}',
-                                style: TextStyle(fontSize: 10, color: context.textSecondary)),
-                        ]),
+                        Builder(builder: (_) {
+                          final yeni = _alan != null ? _yeniDegerGoster(u) : null;
+                          if (yeni == null) {
+                            return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                              Text(ParaUtils.formatla(u.satisFiyati),
+                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                              if (u.alisFiyat > 0)
+                                Text('Alış: ${ParaUtils.formatla(u.alisFiyat)}',
+                                    style: TextStyle(fontSize: 10, color: context.textSecondary)),
+                            ]);
+                          }
+                          // Önizleme: seçili alan için eski → yeni
+                          final eski = _mevcutDegerGoster(u, _alan!.id);
+                          return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                            Text(eski,
+                                style: TextStyle(fontSize: 11, color: context.textSecondary,
+                                    decoration: TextDecoration.lineThrough)),
+                            Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.arrow_forward, size: 12, color: _alan!.renk),
+                              const SizedBox(width: 3),
+                              Text(yeni, style: TextStyle(fontWeight: FontWeight.w700,
+                                  fontSize: 13, color: _alan!.renk)),
+                            ]),
+                          ]);
+                        }),
                       ]),
                     ),
                   );
@@ -587,6 +667,9 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                 prefixIcon: Icon(_alan!.ikon ?? Icons.edit_outlined, color: _alan!.renk),
               ),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              // Ürünler sekmesindeki "eski → yeni" önizlemesi bu metne
+              // bağlı olduğundan yazarken canlı güncellenmesi gerekiyor.
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 16),
 

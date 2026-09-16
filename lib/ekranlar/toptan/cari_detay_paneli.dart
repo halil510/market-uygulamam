@@ -349,6 +349,9 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
         return;
       }
 
+      // 🔴 DÜZELTME (Madde 21 — GİB/fatura araToplam bulgusu devamı,
+      // 2026-09-16): araToplam KDV DAHİL (brüt) doluyordu — bkz.
+      // satis_detay_ekrani.dart'taki aynı düzeltme. Net (matrah) olmalı.
       final detaylar = tamSatis.kalemler!.map((k) => FaturaDetayModel(
             urunId: k.urunId,
             urunAdi: k.urunAdi,
@@ -359,7 +362,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
             iskontoTutari: k.iskontoTutar,
             kdvOrani: k.kdvOran,
             kdvTutari: k.kdvTutar,
-            araToplam: k.miktar * k.birimFiyat,
+            araToplam: k.toplamTutar - k.kdvTutar,
             toplamTutar: k.toplamTutar,
           )).toList();
 

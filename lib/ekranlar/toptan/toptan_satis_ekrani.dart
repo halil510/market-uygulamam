@@ -612,6 +612,9 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
         return;
       }
 
+      // 🔴 DÜZELTME (Madde 21 — GİB/fatura araToplam bulgusu devamı,
+      // 2026-09-16): araToplam KDV DAHİL (brüt) doluyordu — bkz.
+      // satis_detay_ekrani.dart'taki aynı düzeltme. Net (matrah) olmalı.
       final detaylar = satisKalemler
           .map((k) => FaturaDetayModel(
                 urunId: k.urunId,
@@ -623,7 +626,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
                 iskontoTutari: k.iskontoTutar,
                 kdvOrani: k.kdvOran,
                 kdvTutari: k.kdvTutar,
-                araToplam: k.miktar * k.birimFiyat,
+                araToplam: k.toplamTutar - k.kdvTutar,
                 toplamTutar: k.toplamTutar,
               ))
           .toList();

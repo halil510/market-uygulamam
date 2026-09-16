@@ -765,6 +765,13 @@ extension _GecmisTabExt on _IadeEkraniState {
         // Ürünün gerçek KDV oranı kullanılır (urunler.kdv_oran); bulunamazsa %20 varsayılır.
         final kdvOran = (k['urun_kdv_oran'] as num?)?.toDouble() ?? 20.0;
         final kdvTutar = araToplam * kdvOran / (100 + kdvOran);
+        // 🔴 DÜZELTME (Madde 21 — GİB/fatura araToplam bulgusu devamı,
+        // 2026-09-16): araToplam (yerel değişken, satır 764) KDV DAHİL
+        // (brüt) — kdvTutar burada zaten DOĞRU (bölme ile eşdeğer)
+        // formülle ayıklanmıştı, ama FaturaDetayModel.araToplam alanına
+        // brüt değer YAZILIYORDU; bu alan NET (matrah) olmalı (bkz.
+        // satis_detay_ekrani.dart'taki aynı düzeltme). toplamTutar zaten
+        // doğru (brüt).
         return FaturaDetayModel(
           urunId: k['urun_id'] as int?,
           urunAdi: (k['urun_adi'] ?? k['urun_adi_db'] ?? '-').toString(),
@@ -772,7 +779,7 @@ extension _GecmisTabExt on _IadeEkraniState {
           birimFiyat: birimFiyat,
           kdvOrani: kdvOran,
           kdvTutari: kdvTutar,
-          araToplam: araToplam,
+          araToplam: araToplam - kdvTutar,
           toplamTutar: araToplam,
         );
       }).toList();

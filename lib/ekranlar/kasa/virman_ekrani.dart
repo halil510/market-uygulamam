@@ -1,12 +1,19 @@
 // lib/ekranlar/kasa/virman_ekrani.dart — Hesaplar arası virman
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../depolar/kasa_deposu.dart';
+import '../../depolar/banka_hesap_deposu.dart';
+import '../../depolar/banka_hareket_deposu.dart';
+import '../../depolar/kredi_karti_deposu.dart';
 import '../../saglayicilar/riverpod/kasa_rapor_provider.dart';
 import '../../modeller/kasa_hareket_model.dart';
+import '../../modeller/banka_hesap_model.dart';
+import '../../modeller/banka_hareket_model.dart';
+import '../../modeller/kredi_karti_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
+import '../../servisler/bulut/bulut_manager.dart';
+import '../../veri/database/veritabani.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
@@ -24,13 +31,33 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
   String _kaynakHesap = 'Kasa';
   String _hedefHesap  = 'Banka';
   bool _islem = false;
+  bool _yukleniyor = true;
 
+  // 🔴 DÜZELTME (Madde 11 — Kredi Kartı/Banka Mutabakatı denetimi,
+  // 2026-09-16): bu ekran ÖNCEDEN "Banka" veya "Kredi Kartı" taraf
+  // olduğunda O TARAFA HİÇ YAZMIYORDU — sadece Kasa tarafı (varsa)
+  // kaydediliyordu, diğer taraf sessizce hiçbir yere işlenmiyordu.
+  // Kasa↔Banka/Kredi Kartı virmanlarında (en sık kullanılan senaryo)
+  // kullanıcıya "✓ virman yapıldı" BAŞARI mesajı gösterilirken banka
+  // hesabı/kart limiti GERÇEKTE HİÇ değişmiyordu — para sessizce
+  // kayboluyordu. Artık Kasa/Banka/Kredi Kartı arasındaki HER ikili
+  // kombinasyon TEK transaction'da, HER İKİ tarafı da güncelleyerek
+  // yazılıyor. "Havale/EFT" ve "Diğer" bu uygulamada bakiyesi takip
+  // edilen gerçek bir hesap DEĞİL (salt kategori etiketi) — bunlar
+  // taraf olduğunda dürüstçe "kısmi kaydedildi" uyarısı gösterilmeye
+  // devam ediyor (yanlış bir "hesap" icat edilmedi).
+  static const _gercekHesaplar = {'Kasa', 'Banka', 'Kredi Kartı'};
   static const _hesaplar = ['Kasa', 'Banka', 'Kredi Kartı', 'Havale/EFT', 'Diğer'];
+
+  List<BankaHesapModel> _bankaHesaplari = [];
+  List<KrediKartiModel> _krediKartlari  = [];
+  BankaHesapModel? _seciliBanka;
+  KrediKartiModel? _seciliKart;
 
   @override
   void initState() {
     super.initState();
-    _kasaBakiyeYukle();
+    _verileriYukle();
   }
 
   @override
@@ -40,14 +67,30 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
     super.dispose();
   }
 
-  Future<void> _kasaBakiyeYukle() async {
+  Future<void> _verileriYukle() async {
+    setState(() => _yukleniyor = true);
     try {
-      final b = await _depo.guncelBakiye();
-      if (mounted) setState(() => _kasaBakiye = b);
+      final bakiye  = await _depo.guncelBakiye();
+      final bankalar = await BankaHesapDeposu().tumunuGetir();
+      final kartlar  = await KrediKartiDeposu().tumunuGetir();
+      if (!mounted) return;
+      setState(() {
+        _kasaBakiye = bakiye;
+        _bankaHesaplari = bankalar;
+        _krediKartlari  = kartlar;
+        _seciliBanka ??= bankalar.isNotEmpty ? bankalar.first : null;
+        _seciliKart  ??= kartlar.isNotEmpty ? kartlar.first : null;
+        _yukleniyor = false;
+      });
     } catch (_) {
-      // sessizce geç — bakiye kartı 0 gösterir, ekranı bloklamaz
+      // sessizce geç — kartlar/eşleri boş gelirse ilgili uyarı zaten
+      // gösteriliyor, ekranı bloklamaz
+      if (mounted) setState(() => _yukleniyor = false);
     }
   }
+
+  bool get _bankaGerekli => _kaynakHesap == 'Banka' || _hedefHesap == 'Banka';
+  bool get _kartGerekli  => _kaynakHesap == 'Kredi Kartı' || _hedefHesap == 'Kredi Kartı';
 
   Future<void> _virmanYap() async {
     final tutar = double.tryParse(_tutarCtrl.text.replaceAll(',', '.')) ?? 0;
@@ -67,6 +110,26 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
           'Kasa bakiyesi (${ParaUtils.formatla(_kasaBakiye)}) yetersiz');
       return;
     }
+    if (_bankaGerekli && _seciliBanka == null) {
+      BildirimServisi.uyari(context, 'Bir banka hesabı seçin');
+      return;
+    }
+    if (_kaynakHesap == 'Banka' && _seciliBanka != null &&
+        tutar > _seciliBanka!.bakiye + 0.01) {
+      BildirimServisi.uyari(context,
+          '${_seciliBanka!.hesapAdi} bakiyesi (${ParaUtils.formatla(_seciliBanka!.bakiye)}) yetersiz');
+      return;
+    }
+    if (_kartGerekli && _seciliKart == null) {
+      BildirimServisi.uyari(context, 'Bir kredi kartı seçin');
+      return;
+    }
+    if (_kaynakHesap == 'Kredi Kartı' && _seciliKart != null &&
+        tutar > _seciliKart!.kalanLimit + 0.01) {
+      BildirimServisi.uyari(context,
+          '${_seciliKart!.kartAdi} kalan limiti (${ParaUtils.formatla(_seciliKart!.kalanLimit)}) yetersiz');
+      return;
+    }
 
     setState(() => _islem = true);
     try {
@@ -75,24 +138,69 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
           ? '$_kaynakHesap → $_hedefHesap Virman'
           : _aciklamaCtrl.text;
 
-      // ÖNCEDEN: Kasa hiçbir tarafta seçili olmasa bile (ör. Banka →
-      // Kredi Kartı) kasa hareketleri tablosuna "Virman Çıkış" + "Virman
-      // Giriş" kaydı ekleniyordu. Net bakiye etkisi sıfırdı (biri artırır
-      // biri azaltır) ama kasa hareket geçmişinde kasayla hiç ilgisi
-      // olmayan "hayalet" kayıtlar oluşuyordu. Artık sadece Kasa gerçekten
-      // taraflardan biriyse kasa hareketi kaydediliyor.
       final kasaDahil = _kaynakHesap == 'Kasa' || _hedefHesap == 'Kasa';
+      final ikiTarafDaGercek =
+          _gercekHesaplar.contains(_kaynakHesap) && _gercekHesaplar.contains(_hedefHesap);
+
+      final db = await Veritabani().db;
+      int? kartHareketId;
+      await db.transaction((txn) async {
+        if (_kaynakHesap == 'Kasa') {
+          await _depo.hareketEkleTxn(txn, KasaHareketModel(
+            hareketTipi: 'Virman Çıkış', tutar: tutar, tarih: now,
+            aciklama: '$acik (Çıkış)', referansTuru: 'virman'));
+        } else if (_hedefHesap == 'Kasa') {
+          await _depo.hareketEkleTxn(txn, KasaHareketModel(
+            hareketTipi: 'Virman Giriş', tutar: tutar, tarih: now,
+            aciklama: '$acik (Giriş)', referansTuru: 'virman'));
+        }
+        if (_kaynakHesap == 'Banka' && _seciliBanka != null) {
+          await BankaHareketDeposu().ekleTxn(txn, BankaHareketModel(
+            bankaHesapId: _seciliBanka!.id!, islemTipi: 'Giden',
+            tutar: tutar, tarih: now, aciklama: '$acik (Çıkış)'));
+        } else if (_hedefHesap == 'Banka' && _seciliBanka != null) {
+          await BankaHareketDeposu().ekleTxn(txn, BankaHareketModel(
+            bankaHesapId: _seciliBanka!.id!, islemTipi: 'Gelen',
+            tutar: tutar, tarih: now, aciklama: '$acik (Giriş)'));
+        }
+        if (_kaynakHesap == 'Kredi Kartı' && _seciliKart != null) {
+          // Kart KAYNAK ise: para kart borcundan çıkıp başka hesaba
+          // gidiyor demektir — bu bir "avans" gibi kartın kullanılan
+          // limitini ARTIRIR (delta pozitif = harcama).
+          kartHareketId = await KrediKartiDeposu().limitDegistirTxn(
+              txn, _seciliKart!.id!, tutar, aciklama: '$acik (Avans)');
+        } else if (_hedefHesap == 'Kredi Kartı' && _seciliKart != null) {
+          // Kart HEDEF ise: kart ÖDENİYOR demektir — kullanılan limit
+          // AZALIR (delta negatif = ödeme).
+          kartHareketId = await KrediKartiDeposu().limitDegistirTxn(
+              txn, _seciliKart!.id!, -tutar, aciklama: '$acik (Ödeme)');
+        }
+      });
+
+      // KrediKartiDeposu.limitDegistirTxn kendi durable sync_queue
+      // yazımını yapmıyor (bkz. KrediKartiDeposu.nakitOdemeYap'taki AYNI
+      // desen) — bu yüzden transaction kapandıktan SONRA, o dosyadaki
+      // established pattern'le aynı şekilde elle bildiriliyor. Kasa ve
+      // Banka tarafları kendi ekleTxn'leri içinde ZATEN atomik/durable
+      // (SyncKuyrukYazici) olduğundan burada tekrar bildirilmiyor.
+      if (_seciliKart != null && (_kaynakHesap == 'Kredi Kartı' || _hedefHesap == 'Kredi Kartı')) {
+        final kartSatir = await db.query('kredi_kartlari',
+            where: 'id = ?', whereArgs: [_seciliKart!.id], limit: 1);
+        if (kartSatir.isNotEmpty) {
+          BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
+        }
+        if (kartHareketId != null) {
+          final kartHareketSatir = await db.query('kredi_karti_hareket',
+              where: 'id = ?', whereArgs: [kartHareketId], limit: 1);
+          if (kartHareketSatir.isNotEmpty) {
+            BulutManager().upsert('kredi_karti_hareket',
+                Map<String, dynamic>.from(kartHareketSatir.first));
+          }
+        }
+      }
+
       if (kasaDahil) {
         if (_kaynakHesap == 'Kasa') {
-          await _depo.hareketEkle(KasaHareketModel(
-            hareketTipi: 'Virman Çıkış',
-            tutar: tutar, tarih: now,
-            aciklama: '$acik (Çıkış)',
-            referansTuru: 'virman',
-          ));
-          // FAZ 9 — Onay Merkezi (bildirim tipi): kasa çıkışı ENGELLENMEDİ,
-          // zaten yapıldı — sadece eşik aşımı sonradan incelenebilsin
-          // diye kayda düşülüyor.
           OnayMerkeziServisi().kaydet(
             tur: OnayTuru.kasaCikisi,
             tutar: tutar,
@@ -101,37 +209,34 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
             aciklama: '$_kaynakHesap → $_hedefHesap: $acik',
           );
         }
-        if (_hedefHesap == 'Kasa') {
-          await _depo.hareketEkle(KasaHareketModel(
-            hareketTipi: 'Virman Giriş',
-            tutar: tutar, tarih: now,
-            aciklama: '$acik (Giriş)',
-            referansTuru: 'virman',
-          ));
-        }
-        await _kasaBakiyeYukle();
+        await _kasaBakiyeYukleTek();
       }
       // ÖNCEDEN Kasa Raporu ekranı (başka bir sekmede/ekranda açıksa)
       // virman sonrası eski veriyi göstermeye devam ederdi. Cari
       // bakiyesinde bulunan AYNI sınıf soruna karşı önlem.
       ref.invalidate(kasaRaporProvider);
+      await _verileriYukle();
 
       _tutarCtrl.clear();
       _aciklamaCtrl.clear();
       if (mounted) {
-        // 🔴 Derin analizde bulundu: kasa taraf olmadığında (ör.
-        // Banka → Kredi Kartı) önce "✓ virman yapıldı" başarı mesajı
-        // gösterilip HEMEN ARDINDAN "aslında hiçbir yere kaydedilmedi"
-        // uyarısı veriliyordu — kısa süreliğine yanıltıcıydı. Artık bu
-        // durumda başarı mesajı hiç gösterilmiyor, sadece açıklayıcı
-        // uyarı gösteriliyor.
-        if (kasaDahil) {
+        if (ikiTarafDaGercek) {
           BildirimServisi.basari(context, '${ParaUtils.formatla(tutar)} virman yapıldı ✓');
+        } else if (kasaDahil || _bankaGerekli || _kartGerekli) {
+          // Bir taraf gerçek bir hesap (Kasa/Banka/Kredi Kartı), diğeri
+          // (Havale/EFT, Diğer) bakiyesi takip edilen bir varlık DEĞİL —
+          // sadece gerçek taraf kaydedildi, kullanıcı yanlış bir "tam
+          // virman" izlenimine kapılmasın diye açıkça bilgilendiriliyor.
+          BildirimServisi.uyari(context,
+              '${ParaUtils.formatla(tutar)} tutarındaki hareket sadece '
+              '$_kaynakHesap/$_hedefHesap tarafında (gerçek hesabı olan) '
+              'kaydedildi. "Havale/EFT" ve "Diğer" bu uygulamada bakiyesi '
+              'takip edilen bir hesap değildir.');
         } else {
           BildirimServisi.uyari(context,
-              'Kasa bu virmanda taraf olmadığı için kasa hareket '
-              'geçmişine kaydedilmedi. Banka/kart hesapları arası hareket '
-              'için ilgili hesap ekranından işlem yapın.');
+              'Bu iki kategori arasında (Havale/EFT, Diğer) bakiyesi '
+              'takip edilen bir hesap olmadığından hiçbir yere '
+              'kaydedilmedi.');
         }
       }
     } catch (e) {
@@ -141,11 +246,20 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
     }
   }
 
+  Future<void> _kasaBakiyeYukleTek() async {
+    try {
+      final b = await _depo.guncelBakiye();
+      if (mounted) setState(() => _kasaBakiye = b);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: TsRenk.arkaplan(context),
     appBar: const TsAppBar(baslik: 'Virman', gradyanli: true),
-    body: ListView(padding: const EdgeInsets.all(TsBosluk.lg), children: [
+    body: _yukleniyor
+        ? const Center(child: CircularProgressIndicator())
+        : ListView(padding: const EdgeInsets.all(TsBosluk.lg), children: [
       // Kasa bakiye kartı
       Container(
         padding: const EdgeInsets.all(20),
@@ -206,8 +320,82 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
           ]),
         ]),
       ),
-      const SizedBox(height: TsBosluk.md),
 
+      // Banka hesabı seçimi — Kasa/Kredi Kartı seçicileriyle AYNI desen
+      // (tahsilat_odeme_ekrani.dart, borc_odeme_bottom_sheet.dart).
+      if (_bankaGerekli) ...[
+        const SizedBox(height: TsBosluk.md),
+        if (_bankaHesaplari.isNotEmpty)
+          DropdownButtonFormField<BankaHesapModel>(
+            initialValue: _seciliBanka,
+            decoration: const InputDecoration(
+                labelText: 'Hangi Banka Hesabı?', border: OutlineInputBorder()),
+            items: _bankaHesaplari
+                .map((h) => DropdownMenuItem(
+                    value: h,
+                    child: Text('${h.hesapAdi} (${ParaUtils.formatla(h.bakiye)})',
+                        overflow: TextOverflow.ellipsis)))
+                .toList(),
+            onChanged: (v) => setState(() => _seciliBanka = v),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+                color: Colors.orange.shade50, borderRadius: BorderRadius.circular(10)),
+            child: Text('Kayıtlı banka hesabı bulunamadı. Önce Banka Hesapları ekranından bir hesap ekleyin.',
+                style: TextStyle(fontSize: 11, color: Colors.orange.shade800)),
+          ),
+      ],
+
+      // Kredi kartı seçimi
+      if (_kartGerekli) ...[
+        const SizedBox(height: TsBosluk.md),
+        if (_krediKartlari.isNotEmpty)
+          DropdownButtonFormField<KrediKartiModel>(
+            initialValue: _seciliKart,
+            decoration: const InputDecoration(
+                labelText: 'Hangi Kredi Kartı?', border: OutlineInputBorder()),
+            items: _krediKartlari
+                .map((k) => DropdownMenuItem(
+                    value: k,
+                    child: Text('${k.kartAdi} (Kalan: ${ParaUtils.formatla(k.kalanLimit)})',
+                        overflow: TextOverflow.ellipsis)))
+                .toList(),
+            onChanged: (v) => setState(() => _seciliKart = v),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+                color: Colors.orange.shade50, borderRadius: BorderRadius.circular(10)),
+            child: Text('Kayıtlı kredi kartı bulunamadı. Önce Kredi Kartları ekranından bir kart ekleyin.',
+                style: TextStyle(fontSize: 11, color: Colors.orange.shade800)),
+          ),
+      ],
+
+      // "Havale/EFT" veya "Diğer" taraf olduğunda gerçek hesap olmadığını
+      // önceden (işlem yapmadan) açıklayan bilgi notu.
+      if ((!_gercekHesaplar.contains(_kaynakHesap) || !_gercekHesaplar.contains(_hedefHesap)))
+        Padding(
+          padding: const EdgeInsets.only(top: TsBosluk.md),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+                color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+              const SizedBox(width: 8),
+              Expanded(child: Text(
+                '"Havale/EFT" ve "Diğer" bu uygulamada bakiyesi takip edilen '
+                'bir hesap değildir — sadece Kasa/Banka/Kredi Kartı tarafı '
+                '(varsa) kaydedilir.',
+                style: TextStyle(fontSize: 11, color: Colors.blue.shade800))),
+            ]),
+          ),
+        ),
+
+      const SizedBox(height: TsBosluk.md),
       TsInput(
         etiket: 'Virman Tutarı (₺)',
         controller: _tutarCtrl,

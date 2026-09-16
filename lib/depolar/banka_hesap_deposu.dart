@@ -79,21 +79,18 @@ class BankaHesapDeposu {
     }
   }
 
-  Future<void> bakiyeGuncelle(int id, double yeniBakiye) async {
-    try {
-      final db = await _d;
-      await db.update('banka_hesaplar',
-          {'bakiye': yeniBakiye, 'last_updated': DateTime.now().toIso8601String()},
-          where: 'id = ?', whereArgs: [id]);
-      final satir = await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(satir.first));
-      }
-    } catch (e, st) {
-      LogServisi().hata('BankaHesapDeposu.bakiyeGuncelle', hata: e, yigin: st);
-      rethrow;
-    }
-  }
+  // 🔴 Derin analizde bulundu (Madde 11 — Kredi Kartı/Banka Mutabakatı
+  // denetimi, 2026-09-16): bakiyeGuncelle(id, yeniBakiye) burada
+  // duruyordu ama projede HİÇBİR YERDEN çağrılmıyordu (ölü kod) — ve
+  // çağrılsaydı TEHLİKELİYDİ: 'bakiye'yi banka_hareketler tablosuna hiç
+  // hareket kaydı düşmeden doğrudan değiştiriyordu. Bakiye,
+  // BankaHareketDeposu.ekleTxn ile stok/cari/kasa'daki gibi
+  // event-sourcing modeliyle yönetiliyor — bu fonksiyonla değiştirilen
+  // bir bakiye, bir sonraki bakiyeMutabakatYap() turunda (aşağıda,
+  // Veri Sağlığı Merkezi'nden tetiklenebiliyor) sessizce eski değerine
+  // geri dönerdi. İleride birinin bu tuzağı fark etmeden kullanmasını
+  // önlemek için tamamen kaldırıldı; bakiye değişikliği gereken her yer
+  // BankaHareketDeposu.ekle/ekleTxn kullanmalı.
 
   /// Veri Sağlığı Merkezi (protokol §13): hesabın 'bakiye' alanı, KENDİ
   /// hareket geçmişinin son 'sonraki_bakiye' değeriyle uyumlu mu?

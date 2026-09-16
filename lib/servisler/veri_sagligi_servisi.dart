@@ -14,6 +14,7 @@ import 'package:sqflite/sqflite.dart';
 import '../depolar/banka_hesap_deposu.dart';
 import '../depolar/cari_deposu.dart';
 import '../depolar/kasa_deposu.dart';
+import '../depolar/kredi_karti_deposu.dart';
 import '../depolar/stok_deposu.dart';
 import '../depolar/sync_cakisma_deposu.dart';
 import '../servisler/bulut/bulut_manager.dart';
@@ -61,6 +62,7 @@ class VeriSagligiServisi {
       _stokMutabakat(),
       _kasaMutabakat(),
       _bankaMutabakat(),
+      _krediKartiMutabakat(),
       _satisKasaTutarliligi(),
       _satisStokTutarliligi(),
       _duplicateBarkod(),
@@ -163,6 +165,26 @@ class VeriSagligiServisi {
           : '$sayi banka hesabının bakiyesi kendi hareket geçmişiyle uyuşmuyor.',
       sayi: sayi,
       duzelt: sayi > 0 ? () => BankaHesapDeposu().bakiyeMutabakatYap() : null,
+    );
+  }
+
+  // ── Kredi Kartı Mutabakat ────────────────────────────────────────────
+  // 🔴 DÜZELTME (Madde 11 — Kredi Kartı/Banka Mutabakatı denetimi,
+  // 2026-09-16): KrediKartiDeposu.limitMutabakatYap() (stok/cari/kasa/
+  // banka ile AYNI olgun desende, hareket-bazlı yeniden hesaplama)
+  // ÖNCEDEN sadece senkron sonrası akışlardan (sync_ekrani.dart,
+  // bulut_sync_ekrani.dart) elle çağrılıyordu — Veri Sağlığı
+  // Merkezi'nde HİÇ görünmüyordu, kullanıcı tek tıkla sapmayı
+  // göremiyor/düzeltemiyordu.
+  Future<SaglikKontrolSonucu> _krediKartiMutabakat() async {
+    final sayi = await KrediKartiDeposu().uyumsuzlukSayisi();
+    return SaglikKontrolSonucu(
+      id: 'kredi_karti_mutabakat', baslik: 'Kredi Kartı Mutabakat', kategori: 'Mutabakat',
+      durum: sayi == 0 ? SaglikDurum.yesil : (sayi <= 3 ? SaglikDurum.sari : SaglikDurum.kirmizi),
+      mesaj: sayi == 0 ? 'Tüm kredi kartı limit kullanımları hareket geçmişiyle uyumlu.'
+          : '$sayi kredi kartının kullanılan limiti hareket geçmişiyle uyuşmuyor.',
+      sayi: sayi,
+      duzelt: sayi > 0 ? () => KrediKartiDeposu().limitMutabakatYap() : null,
     );
   }
 

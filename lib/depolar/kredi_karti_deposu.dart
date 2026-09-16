@@ -244,6 +244,31 @@ class KrediKartiDeposu {
     return (rows.first['toplam'] as num?)?.toDouble() ?? 0;
   }
 
+  /// [limitMutabakatYap]'ın SALT OKUNUR ön kontrolü — Veri Sağlığı
+  /// Merkezi'nde "düzelt" onayından önce kaç kartın kullanılan limiti
+  /// hareket geçmişiyle uyuşmadığını göstermek için (Madde 11
+  /// denetimi, 2026-09-16 — CariDeposu.bakiyeUyumsuzlukSayisi,
+  /// StokDeposu.mutabakatUyumsuzlukSayisi ile AYNI desen; önceden bu
+  /// mutabakat aracının böyle bir sayım metodu olmadığından Veri
+  /// Sağlığı Merkezi'ne hiç eklenememişti).
+  Future<int> uyumsuzlukSayisi() async {
+    try {
+      final db = await _d;
+      final kartlar = await db.query('kredi_kartlari', where: 'aktif = 1');
+      var uyumsuz = 0;
+      for (final k in kartlar) {
+        final kartId = k['id'] as int;
+        final eskiKullanilan = (k['kullanilan_limit'] as num?)?.toDouble() ?? 0;
+        final dogruKullanilan = await _kullanilanLimitHesapla(kartId);
+        if ((eskiKullanilan - dogruKullanilan).abs() > 0.01) uyumsuz++;
+      }
+      return uyumsuz;
+    } catch (e, st) {
+      LogServisi().hata('KrediKartiDeposu.uyumsuzlukSayisi', hata: e, yigin: st);
+      return 0;
+    }
+  }
+
   /// Senkronizasyon sonrası çağrılması önerilir — her kartın
   /// "kullanilan_limit"ini kendi hareketlerinin gerçek toplamından
   /// yeniden hesaplar (stok/borç mutabakatıyla aynı mimari).
@@ -281,24 +306,16 @@ class KrediKartiDeposu {
     }
   }
 
-  Future<void> limitGuncelle(int id, double kullanilanLimit) async {
-    try {
-      final db = await _d;
-      final kart = await idileGetir(id);
-      if (kart == null) return;
-      final kalan = (kart.kartLimit - kullanilanLimit).clamp(0, double.infinity);  // <-- DÜZELTİLDİ
-      await db.update('kredi_kartlari', {
-        'kullanilan_limit': kullanilanLimit,
-        'kalan_limit': kalan,
-        'last_updated': DateTime.now().toIso8601String(),
-      }, where: 'id = ?', whereArgs: [id]);
-      final satir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(satir.first));
-      }
-    } catch (e, st) {
-      LogServisi().hata('KrediKartiDeposu.limitGuncelle', hata: e, yigin: st);
-      rethrow;
-    }
-  }
+  // 🔴 Derin analizde bulundu (Madde 11 — Kredi Kartı/Banka Mutabakatı
+  // denetimi, 2026-09-16): limitGuncelle(id, kullanilanLimit) burada
+  // duruyordu ama projede HİÇBİR YERDEN çağrılmıyordu (ölü kod) — ve
+  // çağrılsaydı TEHLİKELİYDİ: 'kullanilan_limit'i kredi_karti_hareket
+  // tablosuna hiç hareket kaydı düşmeden doğrudan değiştiriyordu. Limit
+  // kullanımı, limitDegistirTxn ile stok/cari/kasa/banka'daki gibi
+  // event-sourcing modeliyle yönetiliyor — bu fonksiyonla değiştirilen
+  // bir limit, bir sonraki limitMutabakatYap() turunda (Veri Sağlığı
+  // Merkezi'nden tetiklenebiliyor) sessizce eski değerine geri dönerdi.
+  // İleride birinin bu tuzağı fark etmeden kullanmasını önlemek için
+  // tamamen kaldırıldı; limit değişikliği gereken her yer
+  // limitDegistir/limitDegistirTxn kullanmalı.
 }

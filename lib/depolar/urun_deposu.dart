@@ -579,12 +579,7 @@ class UrunDeposu {
       // 🔴 Derin analizde bulundu (şu an kullanılmıyor ama gelecek için
       // düzeltildi): last_updated hiç bump edilmiyordu, BulutManager
       // hiçbir ürün için çağrılmıyordu.
-      for (final id in tumIdler) {
-        final satir = await db.query(DbSabitler.urunler, where: 'id = ?', whereArgs: [id], limit: 1);
-        if (satir.isNotEmpty) {
-          BulutManager().upsert('urunler', Map<String, dynamic>.from(satir.first));
-        }
-      }
+      await _topluBulutSenkronuGonder(tumIdler);
     } catch (e, st) {
       LogServisi().hata('UrunDeposu.qrMenuSecimleriniKaydet', hata: e, yigin: st);
       rethrow;
@@ -781,6 +776,7 @@ class UrunDeposu {
     final db = await _d;
     final kolon = tip == 'alis' ? 'alis_fiyat' : 'satis_fiyati';
     final now = DateTime.now().toIso8601String();
+    final guncellenenIds = <int>[];
     for (final id in ids) {
       try {
         // 🔴 DÜZELTME: Bu fonksiyon (toplu fiyat güncelleme — tek
@@ -809,14 +805,17 @@ class UrunDeposu {
             [1 + (oran / 100), now, now, id],
           );
         }
-        final satir = await db.query(DbSabitler.urunler, where: 'id = ?', whereArgs: [id], limit: 1);
-        if (satir.isNotEmpty) {
-          BulutManager().upsert('urunler', Map<String, dynamic>.from(satir.first));
-        }
+        guncellenenIds.add(id);
       } catch (e) {
         if (kDebugMode) debugPrint('topluFiyatGuncelle id=$id hata: $e');
       }
     }
+    // 🔴 Madde 25 (N+1 sertleştirmesi, 2026-09-16): önceden her id için
+    // ayrı ayrı SELECT + upsert çağrılıyordu (yüzlerce/binlerce ürünü
+    // etkileyen bir toplu işlemde N ayrı sorgu). Artık güncellenen
+    // id'ler TEK (parçalı) IN (...) sorgusuyla toplu okunup buluta
+    // bildiriliyor — bkz. _topluBulutSenkronuGonder.
+    await _topluBulutSenkronuGonder(guncellenenIds);
   }
 
   /// PLU Yönetimi ekranından taşındı — bkz.
@@ -833,13 +832,7 @@ class UrunDeposu {
             where: 'id = ?', whereArgs: [siraliUrunIdler[i]]);
       }
     });
-    for (final id in siraliUrunIdler) {
-      final satir = await db.query(DbSabitler.urunler,
-          where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert(DbSabitler.urunler, Map<String, dynamic>.from(satir.first));
-      }
-    }
+    await _topluBulutSenkronuGonder(siraliUrunIdler);
   }
 
   /// Toplu Fiyat Güncelleme ekranından taşındı — bkz.
@@ -860,14 +853,33 @@ class UrunDeposu {
         guncellenenIds.add(entry.key);
       }
     });
-    for (final id in guncellenenIds) {
-      final satir = await db.query(DbSabitler.urunler,
-          where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert(DbSabitler.urunler, Map<String, dynamic>.from(satir.first));
+    await _topluBulutSenkronuGonder(guncellenenIds);
+    return guncellenenIds;
+  }
+
+  /// Verilen id listesindeki ürünleri TEK (parçalı) SELECT ile çekip her
+  /// birini buluta bildirir. 🔴 Madde 25 (N+1 sertleştirmesi, 2026-09-16):
+  /// dört toplu-yazma fonksiyonu (qrMenuSecimleriniKaydet,
+  /// topluFiyatGuncelle, pluSiralamaKaydet, topluFiyatUygula) aynı hatalı
+  /// deseni tekrarlıyordu — "toplu yaz, sonra bulut senkronu için her
+  /// kaydı tek tek tekrar oku" (N ayrı SELECT). Ürün kataloğu binlerce
+  /// satır olabildiğinden bu, büyük toplu işlemlerde ciddi bir I/O
+  /// yükü ve gecikme birikimiydi. SQLite'ın IN(...) değişken sayısı
+  /// sınırına takılmamak için 500'lük parçalar halinde sorgulanır.
+  Future<void> _topluBulutSenkronuGonder(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final db = await _d;
+    const parcaBoyutu = 500;
+    for (var i = 0; i < ids.length; i += parcaBoyutu) {
+      final bitis = (i + parcaBoyutu < ids.length) ? i + parcaBoyutu : ids.length;
+      final parca = ids.sublist(i, bitis);
+      final yerTutucular = List.filled(parca.length, '?').join(',');
+      final satirlar = await db.query(DbSabitler.urunler,
+          where: 'id IN ($yerTutucular)', whereArgs: parca);
+      for (final satir in satirlar) {
+        BulutManager().upsert(DbSabitler.urunler, Map<String, dynamic>.from(satir));
       }
     }
-    return guncellenenIds;
   }
 
   // 🔴 Derin analizde bulundu: stokGuncelle(id, yeniStok) burada duruyordu

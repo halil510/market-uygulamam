@@ -52,6 +52,7 @@ import 'widgets/kamera_paneli.dart';
 import 'coklu_odeme_ekrani.dart';
 import 'plu_ekrani.dart';
 import '../../servisler/aktif_sube_servisi.dart';
+import '../../servisler/barkod_servisi.dart';
 
 part 'hizli_satis_ekrani_barkod.dart';
 part 'hizli_satis_ekrani_odeme.dart';

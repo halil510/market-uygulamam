@@ -332,10 +332,28 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     try {
       final barkod = await _barkodSrv.barkodTara(context);
       if (barkod == null || barkod.isEmpty) return;
-      final urun = await _urunDepo.barkodlaGetir(barkod);
+
+      // 🔴 DÜZELTME (Madde 34 — Barkod/POS denetimi, 2026-09-20): tartılan
+      // (değişken ağırlıklı) bir ürün satışta terazi barkoduyla (13 hane,
+      // prefix 20-29, gömülü ürün kodu+ağırlık) sorunsuz ekleniyordu, ama
+      // AYNI barkod İade ekranında hiç çözülmüyordu — tam barkod dizesi
+      // urunler.barkod'a karşı LİTERAL aranıyordu, hiçbir zaman eşleşmezdi
+      // ("Ürün bulunamadı"). Aynı fiziksel ürün/etiket, satışta çalışıp
+      // iadede çalışmayan tutarsız bir davranış sergiliyordu.
+      final tartim = BarkodServisi.tartimBarkodCoz(barkod);
+      final aranacakKod = tartim?.urunKodu ?? barkod;
+      final urun = await _urunDepo.barkodlaGetir(aranacakKod);
       if (!mounted) return;
       if (urun != null) {
         _secilenUrunAyarla(urun);
+        // Terazi barkodundaki gömülü ağırlığı ön-doldur (satış akışındaki
+        // AYNI davranış) — kasiyer yine de elle düzeltebilir.
+        if (tartim != null && mounted) {
+          setState(() {
+            _miktar = tartim.miktarKg;
+            _miktarCtrl.text = tartim.miktarKg.toStringAsFixed(3);
+          });
+        }
       } else {
         _msg('Ürün bulunamadı: $barkod', err: true);
       }

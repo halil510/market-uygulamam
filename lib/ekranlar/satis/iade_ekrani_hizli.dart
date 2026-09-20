@@ -23,7 +23,14 @@ extension _HizliTabExt on _IadeEkraniState {
   Future<void> _hizliBarkod() async {
     final barkod = await _barkodSrv.barkodTara(context);
     if (barkod == null || barkod.isEmpty) return;
-    final urun = await _urunDepo.barkodlaGetir(barkod);
+    // 🔴 DÜZELTME (Madde 34 — Barkod/POS denetimi, 2026-09-20): terazi
+    // barkodu (13 hane, gömülü ürün kodu+ağırlık) ÖNCEDEN burada da
+    // literal aranıyordu, hiç eşleşmiyordu — bkz. _barkodOku()'daki AYNI
+    // düzeltme. Bu akış adet-bazlı olduğundan (_HizliItem.adet: int),
+    // gömülü ağırlık ÖN-DOLDURULMUYOR — sadece doğru ürünü bulmak için
+    // kullanılıyor.
+    final aranacakKod = BarkodServisi.tartimBarkodCoz(barkod)?.urunKodu ?? barkod;
+    final urun = await _urunDepo.barkodlaGetir(aranacakKod);
     if (!mounted) return;
     if (urun != null) {
       setState(() {

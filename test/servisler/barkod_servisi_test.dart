@@ -113,4 +113,42 @@ void main() {
       expect(BarkodServisi.tartimBarkodCoz('2112345012340'), isNull);
     });
   });
+
+  // Madde 34 (Barkod/POS) denetimi, 2026-09-20: gs1128Coz() önceden
+  // yazılmıştı ama HİÇBİR YERDEN çağrılmıyordu (ölü kod) — artık
+  // hizli_satis_ekrani_barkod.dart'ta gerçek GS1-128 tarama akışında
+  // kullanılıyor. Bu testler o fonksiyonun DOĞRU parse ettiğini
+  // doğruluyor (daha önce hiç test edilmemişti).
+  group('BarkodServisi.gs1128Coz — GS1-128 Application Identifier ayrıştırma', () {
+    test('sabit uzunluklu AI(01) GTIN doğru ayıklanır', () {
+      final sonuc = BarkodServisi.gs1128Coz('(01)08691234567890');
+      expect(sonuc['AI_01'], equals('08691234567890'));
+    });
+
+    test('AI(01) GTIN + AI(17) SKT + değişken uzunluklu AI(10) LOT birlikte doğru ayrıştırılır', () {
+      final sonuc = BarkodServisi.gs1128Coz('(01)08691234567890(17)261231(10)LOT123');
+      expect(sonuc['AI_01'], equals('08691234567890'));
+      expect(sonuc['AI_17'], equals('261231'));
+      expect(sonuc['AI_10'], equals('LOT123'));
+    });
+
+    test('parantezsiz (ham GS1-128 tarayıcı çıktısı) da aynı şekilde çözülür', () {
+      // '(01)08691234567890(17)261231(10)LOT123' ile AYNI veri, sadece
+      // parantezler kaldırılmış hali (bazı tarayıcılar FNC1'i böyle iletir).
+      final sonuc = BarkodServisi.gs1128Coz('01086912345678901726123110LOT123');
+      expect(sonuc['AI_01'], equals('08691234567890'));
+      expect(sonuc['AI_17'], equals('261231'));
+      expect(sonuc['AI_10'], equals('LOT123'));
+    });
+
+    test('14 haneli GTIN, baştaki dolgu sıfırı çıkarılınca geçerli bir EAN-13 (Türkiye prefix) olur '
+        '— hizli_satis_ekrani_barkod.dart\'taki arama kademesinin dayandığı varsayım', () {
+      final sonuc = BarkodServisi.gs1128Coz('(01)08691234567890');
+      final gtin = sonuc['AI_01']!;
+      expect(gtin.length, 14);
+      final ean13Adayi = gtin.substring(1);
+      expect(ean13Adayi, equals('8691234567890'));
+      expect(BarkodServisi.barkodTurunuBul(ean13Adayi), equals(BarkodTuru.ean13Turkiye));
+    });
+  });
 }

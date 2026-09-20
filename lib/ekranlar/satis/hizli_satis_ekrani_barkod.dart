@@ -325,16 +325,58 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
       return;
     }
 
+    // 🔴 DÜZELTME (Madde 34 — Barkod/POS denetimi, 2026-09-20): burada
+    // ÖNCEDEN barkod_servisi.dart'taki KANONİK tartimBarkodCoz()'un
+    // BAĞIMSIZ, kontrol basamağı doğrulaması OLMAYAN bir kopyası vardı.
+    // Sonuç: bozuk/hatalı bir taramadan gelen (ör. tarayıcı bir hane
+    // yanlış okudu) 13 haneli, prefix 20-29 ile başlayan HERHANGİ bir
+    // dizi, EAN-13 kontrol basamağı hiç doğrulanmadan ağırlık/ürün kodu
+    // olarak GÜVENİLİYOR ve doğrudan sepete ekleniyordu — bu miktar
+    // stok_hareket/kasa/cari'yi gerçek bir satışta etkiler. Artık
+    // BarkodServisi.tartimBarkodCoz() kullanılıyor (ean13Gecerli()
+    // kontrolü dahil) — geçersiz kontrol basamaklı bir tarama artık
+    // SESSİZCE kabul edilmiyor, aşağıdaki normal barkod arama yoluna
+    // düşüyor (muhtemelen "Ürün Bulunamadı" — bu, YANLIŞ bir miktarı
+    // sessizce kabul etmekten çok daha güvenli bir başarısızlık şekli).
     if (b.length == 13) {
-      final prefix = int.tryParse(b.substring(0, 2)) ?? 0;
-      if (prefix >= 20 && prefix <= 29) {
-        final urunKodu  = b.substring(2, 7);
-        final agirlikStr = b.substring(7, 12);
-        final agirlik   = (int.tryParse(agirlikStr) ?? 0) / 1000.0;
-        final urun      = await _urunDepo.barkodlaGetir(urunKodu);
+      final tartim = BarkodServisi.tartimBarkodCoz(b);
+      if (tartim != null) {
+        final urun = await _urunDepo.barkodlaGetir(tartim.urunKodu);
         if (!mounted) return;
-        if (urun != null && agirlik > 0) {
-          ref.read(sepetProvider.notifier).ekleAsync(urun, miktar: agirlik);
+        if (urun != null) {
+          ref.read(sepetProvider.notifier).ekleAsync(urun, miktar: tartim.miktarKg);
+          return;
+        }
+      }
+    }
+
+    // 🔴 EKLENDİ (Madde 34 — Barkod/POS denetimi, 2026-09-20): GS1-128/
+    // GS1-DataMatrix çözücü (barkod_servisi.dart gs1128Coz/barkodTurunuBul)
+    // ZATEN yazılmıştı ama HİÇ ÇAĞRILMIYORDU — gerçek bir GS1 barkodu
+    // (ör. "(01)08691234567890(17)261231(10)LOT123") literal bir dize
+    // olarak urunler.barkod'a karşı aranıyordu, hiçbir zaman eşleşmez ve
+    // "Ürün Bulunamadı" verirdi. Artık AI(01) (GTIN) ayıklanıp aranıyor
+    // — GTIN-14, EAN-13 kökenli ürünlerde baştaki dolgu sıfırıyla
+    // birlikte 14 hane olduğundan, hem tam GTIN hem son-13-hane (EAN-13
+    // karşılığı) denenir.
+    if (BarkodServisi.barkodTurunuBul(b) == BarkodTuru.gs1128) {
+      final ai = BarkodServisi.gs1128Coz(b);
+      final gtin = ai['AI_01'] ?? ai['AI_02'];
+      if (gtin != null && gtin.isNotEmpty) {
+        var gs1Urun = await _urunDepo.barkodlaGetir(gtin);
+        if (gs1Urun == null && gtin.length == 14) {
+          gs1Urun = await _urunDepo.barkodlaGetir(gtin.substring(1));
+        }
+        if (!mounted) return;
+        if (gs1Urun != null) {
+          if (_kgBirimMi(gs1Urun.birimAdi)) {
+            await _kgIleEkle(gs1Urun);
+          } else {
+            await ref.read(sepetProvider.notifier).ekleAsync(gs1Urun);
+          }
+          Future.microtask(() {
+            if (_sepetScroll.hasClients) _sepetScroll.jumpTo(0);
+          });
           return;
         }
       }

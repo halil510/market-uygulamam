@@ -541,6 +541,15 @@ class UrunModel {
     String? lastUpdated,
     String? syncStatus,
     bool? isDeleted,
+    // 🔴 DÜZELTME (Madde 20 — Model Tutarlılığı denetimi, 2026-09-20):
+    // plu/pluKartBoyut de tıpkı yukarıdaki 11 alan gibi copyWith'e HİÇ
+    // aktarılmıyordu — UrunDeposu.guncelle() bunu elle bir DB-okuma ile
+    // telafi ediyordu (bkz. o dosyadaki "plu ve plu_kart_boyut korunur"
+    // yorumu) ama guncelle()'yi ATLAYIP doğrudan .copyWith() çağıran
+    // HERHANGİ bir yer bu iki alanı sessizce sıfırlıyordu (plu→0,
+    // pluKartBoyut→2).
+    int? plu,
+    int? pluKartBoyut,
   }) => UrunModel(
     id: id ?? this.id,
     globalId: globalId ?? this.globalId,
@@ -642,6 +651,8 @@ class UrunModel {
     hacim: hacim ?? this.hacim,
     evrakKontrolAktif: evrakKontrolAktif ?? this.evrakKontrolAktif,
     netAlisFiyat: netAlisFiyat ?? this.netAlisFiyat,
+    plu: plu ?? this.plu,
+    pluKartBoyut: pluKartBoyut ?? this.pluKartBoyut,
   );
 
   // Excel dışa aktarma için satır oluştur

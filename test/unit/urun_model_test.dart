@@ -59,5 +59,32 @@ void main() {
       expect(u2.aktif, isFalse);
       expect(u2.urunAdi, equals('Test'));
     });
+
+    // 🔴 DÜZELTME (Madde 20 — Model Tutarlılığı denetimi, 2026-09-20):
+    // plu/pluKartBoyut copyWith'in ne parametre listesinde ne de
+    // constructor çağrısında YOKTU — ilgisiz bir alanı değiştiren HER
+    // copyWith() çağrısı bu iki alanı sessizce sıfırlıyordu.
+    test('copyWith ilgisiz bir alanı değiştirirken plu/pluKartBoyut KORUNUR '
+        '(önceden sessizce 0/2\'ye sıfırlanıyordu)', () {
+      final u = UrunModel(
+        urunAdi: 'PLU Ürünü', satisFiyati: 100,
+        birimAdi: 'Adet', kdvOran: '20',
+        plu: 1, pluKartBoyut: 3,
+      );
+      final u2 = u.copyWith(satisFiyati: 120);
+      expect(u2.plu, equals(1));
+      expect(u2.pluKartBoyut, equals(3));
+    });
+
+    test('copyWith ile plu/pluKartBoyut doğrudan da güncellenebilir', () {
+      final u = UrunModel(
+        urunAdi: 'Test', satisFiyati: 100,
+        birimAdi: 'Adet', kdvOran: '20',
+        plu: 0, pluKartBoyut: 2,
+      );
+      final u2 = u.copyWith(plu: 1, pluKartBoyut: 1);
+      expect(u2.plu, equals(1));
+      expect(u2.pluKartBoyut, equals(1));
+    });
   });
 }

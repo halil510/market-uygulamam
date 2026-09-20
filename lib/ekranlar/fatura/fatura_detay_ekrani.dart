@@ -23,6 +23,28 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/gib_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 
+// Fatura GİB'e (bir kez) başarıyla iletildi mi — 'gonderildi' (henüz GİB
+// onayı sorgulanmamış) VEYA 'onaylandi' (GİB onayı sorgulanmış ve
+// onaylanmış) ikisi de "artık tekrar gönderilemez" anlamına gelir.
+// 'reddedildi'/'hata' BİLEREK bu listede DEĞİL — ikisi de kullanıcının
+// düzeltip yeniden gönderebilmesi gereken durumlar (bkz. ETTN yeniden
+// üretme notu — gib_servisi.dart _ettnFaturaIcin). 'gib_iptal' de
+// BİLEREK dışında değil ama zaten UI'da ayrı ele alınıyor.
+//
+// 🔴 DÜZELTME (Madde 23 denetimi, 2026-09-20): 'gonderiliyor' BİLEREK
+// EKLENDİ. Önceden bu durum bu listede YOKTU — bu, tam olarak "gönderim
+// isteği GİB'e gitti ama yanıt uygulama tarafında hiç işlenemedi" (ör.
+// gönderim sırasında çökme) senaryosunda "Durum Sorgula" butonunun
+// DEVRE DIŞI kalmasına yol açıyordu — kullanıcı GİB'in gerçekte ne
+// yaptığını SORGULAYAMIYOR, sadece kör kör tekrar "Gönder"e
+// basabiliyordu. Artık bu durumda Sorgula AÇIK, Gönder KAPALI —
+// kullanıcı önce gerçek durumu öğrenmeye zorlanıyor. Test edilebilirlik
+// için top-level saf fonksiyon olarak tutulur (bkz. test/ekranlar/
+// fatura_gonderilmis_mi_test.dart).
+bool eFaturaGonderilmisMi(String? durum) =>
+    durum == 'gonderildi' || durum == 'onaylandi' || durum == 'gib_iptal' ||
+    durum == 'gonderiliyor';
+
 class FaturaDetayEkrani extends ConsumerStatefulWidget {
   final int faturaId;
   const FaturaDetayEkrani({super.key, required this.faturaId});
@@ -148,15 +170,6 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
     }
   }
 
-  // Fatura GİB'e (bir kez) başarıyla iletildi mi — 'gonderildi' (henüz
-  // GİB onayı sorgulanmamış) VEYA 'onaylandi' (GİB onayı sorgulanmış ve
-  // onaylanmış) ikisi de "artık tekrar gönderilemez" anlamına gelir.
-  // 'reddedildi'/'hata' BİLEREK bu listede DEĞİL — ikisi de kullanıcının
-  // düzeltip yeniden gönderebilmesi gereken durumlar (bkz. ETTN yeniden
-  // üretme notu — gib_servisi.dart _ettnFaturaIcin). 'gib_iptal' de
-  // BİLEREK dışında değil ama zaten UI'da ayrı ele alınıyor (aşağı).
-  bool _eFaturaGonderilmis(String? durum) =>
-      durum == 'gonderildi' || durum == 'onaylandi' || durum == 'gib_iptal';
 
   IconData _durumIkonu(String? durum) => switch (durum) {
         'onaylandi' => Icons.verified_outlined,
@@ -190,7 +203,20 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
 
   // ── Durum Sorgula ──────────────────────────────────────────────────────────
   Future<void> _durumSorgula() async {
-    if (_fatura?.eFaturaUuid == null) {
+    // 🔴 DÜZELTME (Madde 23 denetimi, 2026-09-20): 'gonderiliyor'
+    // durumundaki bir faturanın eFaturaUuid'si DB'de null olabilir (bkz.
+    // eFaturaDurumGuncelle(..., 'gonderiliyor') çağrısının UUID'siz
+    // yapılması) — ama ETTN DETERMİNİSTİK olduğundan (GibServisi.
+    // ettnHesapla), hiç saklanmamış olsa bile yeniden hesaplanabilir.
+    // Sadece GERÇEKTEN hiç gönderilmemiş (durum='hazir'/null) faturalar
+    // için "Henüz gönderim yapılmamış" uyarısı hâlâ doğru.
+    final ettnGecici = _fatura?.eFaturaUuid;
+    final String ettn;
+    if (ettnGecici != null) {
+      ettn = ettnGecici;
+    } else if (_fatura != null && _fatura!.eFaturaDurum == 'gonderiliyor') {
+      ettn = GibServisi().ettnHesapla(_fatura!);
+    } else {
       BildirimServisi.uyari(context, 'Henüz gönderim yapılmamış');
       return;
     }
@@ -204,7 +230,7 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
     try {
       final gib = GibServisi();
       await gib.ayarlariYukle();
-      final durum = await gib.durumSorgula(_fatura!.eFaturaUuid!);
+      final durum = await gib.durumSorgula(ettn);
       if (!mounted) return;
       Navigator.pop(context);
       showDialog(context: context, builder: (ctx) => AlertDialog(
@@ -214,14 +240,17 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
           Icon(_durumIkonu(durum), color: _durumRengi(durum), size: 40),
           const SizedBox(height: 12),
           Text(_durumEtiketi(durum), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          Text('UUID: ${_fatura!.eFaturaUuid!.substring(0, 8)}...',
+          Text('UUID: ${ettn.substring(0, 8)}...',
               style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
         ]),
         actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam'))],
       ));
-      // Durumu güncelle
+      // Durumu güncelle — [ettn] burada da AYRICA persist edilir: 'gonderiliyor'
+      // durumunda DB'de hâlâ null olabilen eFaturaUuid, bu sorgulamayla
+      // birlikte kalıcı olarak doldurulmuş olur (bir daha yeniden
+      // hesaplamaya gerek kalmaz).
       if (durum != null) {
-        await _depo.eFaturaDurumGuncelle(_fatura!.id!, durum, uuid: _fatura!.eFaturaUuid);
+        await _depo.eFaturaDurumGuncelle(_fatura!.id!, durum, uuid: ettn);
         await _yukle();
       }
     } catch (e) {
@@ -1060,17 +1089,17 @@ appBar: TsAppBar(
           // İKİNCİ KEZ GİB'e gönderilebiliyordu — mükerrer gönderim riski.
           IconButton(
               icon: const Icon(Icons.refresh_outlined),
-              onPressed: _eFaturaGonderilmis(f.eFaturaDurum) ? _durumSorgula : null,
+              onPressed: eFaturaGonderilmisMi(f.eFaturaDurum) ? _durumSorgula : null,
               tooltip: 'Durum Sorgula',
             ),
             IconButton(
               icon: Icon(_durumIkonu(f.eFaturaDurum), color: _durumRengi(f.eFaturaDurum)),
-              tooltip: _eFaturaGonderilmis(f.eFaturaDurum)
+              tooltip: eFaturaGonderilmisMi(f.eFaturaDurum)
                   ? 'e-Fatura ${_durumEtiketi(f.eFaturaDurum)}'
                   : f.eFaturaDurum == 'reddedildi'
                       ? 'GİB Reddetti — Yeniden Gönder'
                       : 'e-Fatura Gönder',
-              onPressed: (_eFaturaGonderilmis(f.eFaturaDurum) || _islemDevam) ? null : _efaturaGonder),
+              onPressed: (eFaturaGonderilmisMi(f.eFaturaDurum) || _islemDevam) ? null : _efaturaGonder),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             tooltip: 'Diğer',

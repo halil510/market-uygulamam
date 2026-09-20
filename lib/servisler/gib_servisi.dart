@@ -240,6 +240,17 @@ class GibServisi {
     return _ettnUret2(ad, fatura.eFaturaDenemeNo);
   }
 
+  /// Madde 23 (Fatura/E-Belge) denetimi, 2026-09-20: `_ettnFaturaIcin`nin
+  /// PUBLIC sarmalayıcısı. Bir fatura 'gonderiliyor' durumundayken
+  /// (gönderim isteği GİB'e yollandı ama yanıt uygulama tarafında hiç
+  /// işlenemedi — ör. gönderim sırasında uygulama çöktü) `eFaturaUuid`
+  /// hâlâ null'dır (bkz. eFaturaDurumGuncelle(..., 'gonderiliyor')
+  /// çağrısının UUID'siz yapılması, fatura_detay_ekrani.dart). Ama ETTN
+  /// DETERMİNİSTİK olduğundan (bkz. _ettnUret2 — aynı fatura+deneme_no
+  /// HER ZAMAN aynı ETTN'i üretir), durum sorgulamak için hiç saklanmış
+  /// bir UUID'ye ihtiyaç YOK — burada yeniden hesaplanabilir.
+  String ettnHesapla(FaturaModel fatura) => _ettnFaturaIcin(fatura);
+
   /// Türkçe ödeme şeklini UBL/UNCL4461 standart koduna çevirir — UBL-TR
   /// XML'inde PaymentMeans bölümü için.
   String _odemeSekliKodu(String? odemeSekli) => switch (odemeSekli) {

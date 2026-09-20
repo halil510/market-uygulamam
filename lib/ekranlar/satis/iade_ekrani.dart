@@ -27,7 +27,6 @@ import '../../modeller/satis_kalem_model.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../depolar/satis_deposu.dart';
-import '../../depolar/stok_deposu.dart';
 import '../../depolar/iade_deposu.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../veri/database/veritabani.dart';
@@ -60,16 +59,10 @@ part 'iade_ekrani_hizli.dart';
 class _R {
   static const primary = TsRenk.primary;
   static const orange = TsRenk.uyari;
-  static const green = TsRenk.basarili;
-  static const red = TsRenk.hata;
   static const blue = TsRenk.bilgi;
-  static const shadow = Color(0x10000000);
 
   static Color bg(BuildContext c) => TsRenk.arkaplan(c);
-  static Color card(BuildContext c) => TsRenk.kart(c);
-  static Color textD(BuildContext c) => TsRenk.metinBirincil(c);
   static Color textL(BuildContext c) => TsRenk.metinIkincil(c);
-  static Color border(BuildContext c) => TsRenk.ayirac(c);
 }
 
 // ─── Hızlı mod öğesi ─────────────────────────────────────────────────────────
@@ -100,7 +93,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   final _urunDepo = UrunDeposu();
   final _cariDepo = CariDeposu();
   final _satisDepo = SatisDeposu();
-  final _stokDepo = StokDeposu();
   final _barkodSrv = BarkodServisi();
   final _excelSrv = ExcelServisi();
 
@@ -129,7 +121,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   String _iadeOdemeYontemi = 'Nakit';
 
   // Hızlı mod
-  bool _hizli = false;
   final Map<int, _HizliItem> _hizliMap = {};
 
   // İade listesi (bu oturumda yapılanlar)
@@ -143,14 +134,12 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   int?
       _duzenlemeModu_iadeId; // null = yeni iade, int = mevcut iade üzerinde çalışıyoruz
   String? _duzenlemeModu_fisNo;
-  CariModel? _duzenlemeModu_cari;
 
   // Arama
   List<UrunModel> _aramaListesi = [];
   Timer? _debounce;
 
   // Fiş arama
-  String _fisNo = '';
   SatisModel? _bulunanSatis;
   // urun_id -> bu satıştan bugüne kadar bu üründen kaç adet iade edilmiş.
   // Fiş sekmesinde aynı kalemin birden fazla kez iade edilmesini
@@ -184,7 +173,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     _verileriYukle();
 
     if (widget.baslangicUrunleri?.isNotEmpty == true) {
-      _hizli = true;
       for (final u in widget.baslangicUrunleri!) {
         if (u.id == null) continue;
         _hizliMap.containsKey(u.id)
@@ -290,7 +278,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
           .fisNoUret('iade', subeId: AktifSubeServisi().subeId ?? 1);
       if (mounted)
         setState(() {
-          _fisNo = '';
           _oturumFisNo = no;
         });
     } catch (_) {
@@ -317,12 +304,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     setState(() {
       _duzenlemeModu_iadeId = null;
       _duzenlemeModu_fisNo = null;
-      _duzenlemeModu_cari = null;
       _oturumIadeId = null;
       _oturumFisNo = '';
       _iadeListesi.clear();
       _secilenCari = null;
-      _fisNo = '';
     });
     _yeniFisNoOlustur(); // Yeni oturum için yeni fiş no
     _formSifirla();

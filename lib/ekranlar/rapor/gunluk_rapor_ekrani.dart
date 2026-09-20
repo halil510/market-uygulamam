@@ -18,7 +18,6 @@ import 'dart:io';
 import '../../modeller/satis_model.dart';
 import '../../depolar/satis_deposu.dart';
 import '../../depolar/gider_deposu.dart';
-import '../../depolar/kasa_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 
@@ -31,7 +30,6 @@ class GunlukRaporEkrani extends ConsumerStatefulWidget {
 class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
   final _satisDepo = SatisDeposu();
   final _giderDepo = GiderDeposu();
-  final _kasaDepo  = KasaDeposu();
 
   DateTime _baslangic = DateTime.now();
   DateTime _bitis     = DateTime.now();

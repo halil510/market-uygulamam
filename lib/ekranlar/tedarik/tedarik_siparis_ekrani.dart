@@ -28,7 +28,6 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
   final _siparisDepo = TedarikciSiparisDeposu();
   List<Map<String, dynamic>> _siparisler = [];
   bool _yukleniyor = true;
-  String? _durumFiltre;
 
   @override
   void initState() {

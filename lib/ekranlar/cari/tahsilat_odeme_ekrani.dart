@@ -54,22 +54,6 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _yukle());
   }
 
-  String _bakiyeYazisi() {
-    if (_cari == null) return '';
-    final bakiye = _cari!.bakiye;
-    final musteri = _cari!.cariTipi == 'Müşteri' ||
-        _cari!.cariTipi == 'Hem Müşteri Hem Tedarikçi';
-    if (musteri) {
-      if (bakiye > 0) return 'Alacağımız: ${ParaUtils.formatla(bakiye)}';
-      if (bakiye < 0) return 'Fazla Ödedi: ${ParaUtils.formatla(bakiye.abs())}';
-      return 'Dengede';
-    } else {
-      if (bakiye < 0) return 'Borcumuz: ${ParaUtils.formatla(bakiye.abs())}';
-      if (bakiye > 0) return 'Fazla Ödedik: ${ParaUtils.formatla(bakiye)}';
-      return 'Dengede';
-    }
-  }
-
   Future<void> _yukle() async {
     try {
       final c = await _depo.idileGetir(widget.cariId);

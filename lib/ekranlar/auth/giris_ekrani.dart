@@ -776,7 +776,6 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
   Widget _buildNumTusu(String t, bool kilitli) {
     final isSil = t == '⌫';
     final isTemizle = t == 'C';
-    final isRakam = !isSil && !isTemizle;
 
     return Material(
       color: isTemizle

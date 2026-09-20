@@ -959,15 +959,4 @@ class UrunDeposu {
   // stok değişikliği gereken her yer StokDeposu.stokDusTxn/stokGirTxn
   // kullanmalı.
 
-  Future<String?> _globalIdGetir(int id) async {
-    final db = await _d;
-    final rows = await db.query(
-      DbSabitler.urunler,
-      columns: ['global_id'],
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    return rows.isEmpty ? null : rows.first['global_id'] as String?;
-  }
-
 }

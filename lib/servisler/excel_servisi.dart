@@ -936,7 +936,6 @@ class ExcelServisi {
     final adIdx     = _findColumn(kolonlar, 'urunAdi');
     final miktarIdx = _findColumn(kolonlar, 'minMiktar');
     final oranIdx   = _findColumn(kolonlar, 'iskontoOran');
-    final fiyatIdx  = _findColumn(kolonlar, 'birimFiyat');
 
     final db = await Veritabani().db;
     int basarili = 0, hata = 0;

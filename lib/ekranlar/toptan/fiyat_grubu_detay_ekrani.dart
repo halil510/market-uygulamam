@@ -16,7 +16,6 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../depolar/toptan_fiyat_deposu.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../modeller/fiyat_grubu_model.dart';
-import '../../modeller/fiyat_kademesi_model.dart';
 import '../../modeller/urun_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../servisler/bildirim_servisi.dart';
@@ -40,14 +39,10 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
   Map<int, double> _ozelFiyatlar = {}; // urunId -> fiyat (bu grup için)
   bool _araniyor = false;
 
-  List<FiyatKademesiModel> _kademeler = [];
-  bool _kademelerYukleniyor = true;
-
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 2, vsync: this);
-    _kademeleriYukle();
     _aramaCtrl.addListener(_aramaDegisti);
   }
 
@@ -56,18 +51,6 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
     _tab.dispose();
     _aramaCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _kademeleriYukle() async {
-    // Bu ekranda sadece BU GRUBA özel kademeleri gösteriyoruz —
-    // genel (tüm bayilere geçerli) kademeler ürün detayından yönetilir.
-    setState(() => _kademelerYukleniyor = true);
-    final tumUrunKademeleri = <FiyatKademesiModel>[];
-    // Not: kademeleriGetir() ürün bazlı çalışıyor; bu grup için TÜM
-    // ürünlerdeki kademeleri görmek amacıyla, arama sonucu geldikçe
-    // ilgili ürünlerin kademeleri de ayrıca çekilecek. Başlangıçta
-    // liste boş — kullanıcı bir ürün arayıp kademe eklediğinde dolar.
-    if (mounted) setState(() { _kademeler = tumUrunKademeleri; _kademelerYukleniyor = false; });
   }
 
   Timer? _debounce;

@@ -6,7 +6,6 @@ class AiAnlayici {
   // Context hafızası
   static String? _sonUrun;
   static String? _sonMusteri;
-  static String? _sonKategori;
   static AiIntent? _sonIntent;
 
   static AiSoru anla(String soru) {

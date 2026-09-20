@@ -168,7 +168,6 @@ class _AlacakBorcGrafigi extends StatelessWidget {
     }
     final maxDeger = [alacak, borc].reduce((a, b) => a > b ? a : b);
     final net = alacak - borc;
-    final netRenk = net >= 0 ? TsRenk.basarili : TsRenk.hata;
 
     return TsKart(
       child: Column(

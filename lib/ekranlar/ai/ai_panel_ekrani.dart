@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../servisler/ai_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -29,8 +28,6 @@ class _AiPanelEkraniState extends ConsumerState<AiPanelEkrani>
   List<Map<String, dynamic>> _promosyon = [];
   List<Map<String, dynamic>> _enCokSatan = [];
   List<Map<String, dynamic>> _cariRisk = [];
-
-  final _fmt = NumberFormat('#,##0.00 ₺', 'tr_TR');
 
   @override
   void initState() {

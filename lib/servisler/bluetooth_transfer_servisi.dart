@@ -14,10 +14,6 @@ class BluetoothTransferServisi {
 
   final _sync = SyncServisi();
 
-  // Service UUID - MarketPlus'a özel
-  static final _serviceUuid = Guid('12345678-1234-1234-1234-123456789012');
-  static final _charUuid    = Guid('87654321-4321-4321-4321-210987654321');
-
   // Callbacks
   Function(String ip, String cihazAdi)? onCihazBulundu;
   Function(String cihazAdi)? onCihazKayboldu;

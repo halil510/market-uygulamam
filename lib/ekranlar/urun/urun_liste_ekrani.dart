@@ -369,13 +369,6 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
     );
   }
 
-  // ── Seçili sil ────────────────────────────────────────────────────────────
-  Future<void> _seciliSil() async {
-    final durum = ref.read(urunlerProvider);
-    // UrunListeNotifier'da secim yoktu — basit bir dialog
-    hataMesaji(context, 'Toplu silme için toplu işlem ekranını kullanın');
-  }
-
   // ── Excel aktar ───────────────────────────────────────────────────────────
   Future<void> _excelAktar({bool sutunSec = false}) async {
     final durum = ref.read(urunlerProvider);
@@ -1182,23 +1175,3 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
       );
 }
 
-class _IkonButon extends StatelessWidget {
-  final IconData icon;
-  final Color renk, bg;
-  final VoidCallback onTap;
-  const _IkonButon(
-      {required this.icon,
-      required this.renk,
-      required this.bg,
-      required this.onTap});
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(7),
-          decoration:
-              BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, size: 16, color: renk),
-        ),
-      );
-}

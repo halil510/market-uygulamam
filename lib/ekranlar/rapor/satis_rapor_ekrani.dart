@@ -23,10 +23,6 @@ class _SatisRaporFiltre {
   _SatisRaporFiltre({required this.bas, required this.bit, this.donem = 'Bugün'});
   _SatisRaporFiltre.bugun() : bas = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
         bit = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 23, 59, 59), donem = 'Bugün';
-  _SatisRaporFiltre.buAy() :
-        bas = DateTime(DateTime.now().year, DateTime.now().month, 1),
-        bit = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 23, 59, 59),
-        donem = 'Bu Ay';
 }
 
 final _satisRaporFiltreProvider = StateProvider<_SatisRaporFiltre>(

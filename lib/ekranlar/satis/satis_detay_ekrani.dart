@@ -53,14 +53,6 @@ class _SatisDetayIcerik extends ConsumerStatefulWidget {
 }
 
 class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
-  String _kisaFisNo(String? fisNo) {
-    if (fisNo == null) return 'Satış Detayı';
-    if (fisNo.length == 16) {
-      return '${fisNo.substring(0, 3)}-${(int.tryParse(fisNo.substring(7)) ?? 0).toString().padLeft(6, '0')}';
-    }
-    return fisNo;
-  }
-
   bool _islemYapiliyor = false;
   final _fmt = DateFormat('dd.MM.yyyy HH:mm');
 

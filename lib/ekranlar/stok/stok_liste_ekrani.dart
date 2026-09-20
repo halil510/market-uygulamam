@@ -11,7 +11,6 @@ import 'package:go_router/go_router.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../modeller/urun_model.dart';
-import '../../servisler/barkod_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/excel_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
@@ -26,7 +25,6 @@ class StokListeEkrani extends ConsumerStatefulWidget {
 class _StokListeEkraniState extends ConsumerState<StokListeEkrani>
     with SingleTickerProviderStateMixin {
   final _depo      = UrunDeposu();
-  final _barkodSrv = BarkodServisi();
   final _excelSrv  = ExcelServisi();
 
   late TabController _tab;

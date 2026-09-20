@@ -54,39 +54,6 @@ class _BorcTakipEkraniState extends ConsumerState<BorcTakipEkrani> {
     }
   }
 
-  String _turEtiket(String tur) {
-    switch (tur) {
-      case 'kredi_karti': return 'Kredi Kartı';
-      case 'vergi': return 'Vergi';
-      case 'sgk': return 'SGK';
-      case 'kira': return 'Kira';
-      case 'fatura': return 'Fatura';
-      default: return tur;
-    }
-  }
-
-  Color _turRenk(String tur) {
-    switch (tur) {
-      case 'kredi_karti': return Colors.blue.shade700;
-      case 'vergi': return Colors.red.shade700;
-      case 'sgk': return Colors.orange.shade700;
-      case 'kira': return Colors.purple.shade700;
-      case 'fatura': return Colors.teal.shade700;
-      default: return context.textSecondary;
-    }
-  }
-
-  IconData _turIkon(String tur) {
-    switch (tur) {
-      case 'kredi_karti': return Icons.credit_card;
-      case 'vergi': return Icons.account_balance;
-      case 'sgk': return Icons.health_and_safety;
-      case 'kira': return Icons.home;
-      case 'fatura': return Icons.receipt;
-      default: return Icons.payment;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final borclarAsync = ref.watch(tumBorclarProvider);

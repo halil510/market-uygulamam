@@ -35,7 +35,6 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
   final _btCihazlar = <String, String>{}; // ip → cihazAdi
   bool _btTarama   = false;
   String _btSeciliIp = '';
-  String _btSeciliAd = '';
   String _btDurum  = '';
   int _btProgress  = 0;
   bool _btIslemde  = false;
@@ -103,18 +102,8 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
   }
 
 
-  Future<void> _btBaglan(String ip, String ad) async {
-    if (mounted) setState(() {
-      _btSeciliIp = ip;
-      _btSeciliAd = ad;
-      _btDurum = "$ad'a bağlanıyor...";
-    });
-    // IP alındı, WiFi üzerinden bağlantı hazır
-    if (mounted) setState(() => _btDurum = '✅ $ad bağlı - Veri Al veya Gönder');
-  }
-
   Future<void> _btVeriAl(String ip, String ad) async {
-    if (mounted) setState(() { _btSeciliIp = ip; _btSeciliAd = ad; _btIslemde = true; _btDurum = ''; });
+    if (mounted) setState(() { _btSeciliIp = ip; _btIslemde = true; _btDurum = ''; });
     await _bt.veriAl(ip);
   }
 

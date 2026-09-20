@@ -825,11 +825,4 @@ class SatisDeposu {
       if (cariSon.isNotEmpty) BulutManager().upsert('cari', Map<String, dynamic>.from(cariSon.first));
     }
   }
-  Future<String?> _satisGlobalId(int id) async {
-    final db = await _d;
-    final r = await db.query(DbSabitler.satislar,
-        columns: ['global_id'], where: 'id = ?', whereArgs: [id]);
-    return r.isEmpty ? null : r.first['global_id'] as String?;
-  }
-
 }

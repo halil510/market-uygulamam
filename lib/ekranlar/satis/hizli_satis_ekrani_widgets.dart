@@ -30,22 +30,6 @@ extension _HizliSatisWidgetExt on _HizliSatisEkraniState {
     },
   );
 
-  Widget _koseAksesuari(Alignment konum) {
-    final isTop  = konum == Alignment.topLeft  || konum == Alignment.topRight;
-    final isLeft = konum == Alignment.topLeft  || konum == Alignment.bottomLeft;
-    const c = BorderSide(color: Colors.greenAccent, width: 3);
-    const n = BorderSide.none;
-    return Positioned(
-      top: isTop ? -1 : null, bottom: !isTop ? -1 : null,
-      left: isLeft ? -1 : null, right: !isLeft ? -1 : null,
-      child: Container(width: 20, height: 20,
-        decoration: BoxDecoration(border: Border(
-          top: isTop ? c : n, bottom: !isTop ? c : n,
-          left: isLeft ? c : n, right: !isLeft ? c : n,
-        ))),
-    );
-  }
-
   Widget _aramaSonucListesi() => ConstrainedBox(
     constraints: const BoxConstraints(maxHeight: 220),
     child: Container(

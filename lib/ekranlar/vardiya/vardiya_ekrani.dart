@@ -11,6 +11,8 @@ import '../../servisler/auth_servisi.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../depolar/kasa_deposu.dart';
 import '../../depolar/vardiya_deposu.dart';
+import '../../depolar/kullanici_deposu.dart';
+import '../../cekirdek/enumlar/kullanici_rolu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -183,6 +185,94 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     }
   }
 
+  /// Madde 12 denetimi (2026-09-16) — "Müdür Onayı" adımı. Kapatan
+  /// kişinin kendi hesabı DEĞİL, farklı bir Müdür/Admin'in kullanıcı
+  /// adı+şifresi doğrulanır (KullaniciDeposu.girisKontrol — mevcut giriş
+  /// mekanizmasıyla AYNI, oturum DEĞİŞTİRMEZ). Onaylayan kullanıcı Müdür/
+  /// Admin değilse veya bilgiler yanlışsa kapanış GERÇEKLEŞMEZ. İptal
+  /// edilirse veya onaylanamazsa null döner.
+  Future<int?> _yoneticiOnayIste() async {
+    final kadCtrl = TextEditingController();
+    final sifreCtrl = TextEditingController();
+    String? hata;
+    bool dogrulaniyor = false;
+    return showDialog<int>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) {
+          Future<void> dogrula() async {
+            final kad = kadCtrl.text.trim();
+            final sifre = sifreCtrl.text;
+            if (kad.isEmpty || sifre.isEmpty) {
+              setS(() => hata = 'Kullanıcı adı ve şifre gerekli.');
+              return;
+            }
+            setS(() { dogrulaniyor = true; hata = null; });
+            final kullanici = await KullaniciDeposu().girisKontrol(kad, sifre);
+            if (kullanici == null) {
+              setS(() { dogrulaniyor = false; hata = 'Kullanıcı adı veya şifre hatalı.'; });
+              return;
+            }
+            if (kullanici.rol != KullaniciRolu.admin.label &&
+                kullanici.rol != KullaniciRolu.mudur.label) {
+              setS(() { dogrulaniyor = false; hata = '"${kullanici.adSoyad}" Müdür/Admin değil, onaylayamaz.'; });
+              return;
+            }
+            if (ctx.mounted) Navigator.pop(ctx, kullanici.id);
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(children: [
+              Icon(Icons.admin_panel_settings_outlined, color: Colors.deepPurple),
+              SizedBox(width: 8),
+              Text('Müdür Onayı Gerekli'),
+            ]),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text(
+                'Vardiyayı kapatmak için bir Müdür/Admin kimlik bilgilerini girmeli.',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: kadCtrl,
+                autofocus: true,
+                decoration: const InputDecoration(
+                    labelText: 'Kullanıcı Adı', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: sifreCtrl,
+                obscureText: true,
+                onSubmitted: (_) => dogrula(),
+                decoration: const InputDecoration(
+                    labelText: 'Şifre', border: OutlineInputBorder()),
+              ),
+              if (hata != null) ...[
+                const SizedBox(height: 8),
+                Text(hata!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+            ]),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('İptal')),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                    foregroundColor: Colors.white, backgroundColor: Colors.deepPurple),
+                onPressed: dogrulaniyor ? null : dogrula,
+                child: dogrulaniyor
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Onayla'),
+              ),
+            ],
+          );
+      }),
+    );
+  }
+
   Future<void> _vardiyaKapat() async {
     if (_aktif == null || _islemAktif) return;
     final nakit = (_satisOzet['nakit'] as num?)?.toDouble() ?? 0;
@@ -324,6 +414,19 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     );
 
     if (sonuc == null || !mounted) return;
+
+    // 🔴 DÜZELTME (Madde 12 denetimi — Müdür Onayı, 2026-09-16, kullanıcı
+    // onaylı UX: "Anında PIN onayı"): vardiyayı FİİLEN kapatan kişi
+    // Müdür/Admin DEĞİLSE, kapanış burada bir yöneticinin kimlik
+    // bilgileriyle onaylanmadan TAMAMLANMAZ. Kapatan zaten Müdür/Admin'se
+    // (kendi yetkisi yeterli) bu adım atlanır — Sayım Onayı'ndaki AYNI
+    // ilke ("yetkili kendi işini onaylamaz").
+    int? onaylayanId;
+    if (!AuthServisi().isMudur) {
+      onaylayanId = await _yoneticiOnayIste();
+      if (onaylayanId == null || !mounted) return; // onay verilmedi/iptal
+    }
+
     setState(() => _islemAktif = true);
     try {
       final vardiyaId = _aktif!['id'] as int;
@@ -331,6 +434,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
         vardiyaId: vardiyaId,
         sayim: (sonuc['sayim'] as num).toDouble(),
         fark: (sonuc['fark'] as num).toDouble(),
+        onaylayanKullaniciId: onaylayanId,
       );
       await _yukle();
       if (mounted) BildirimServisi.basari(context, '✓ Vardiya kapatıldı');
@@ -634,6 +738,17 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
                 '${bas != null ? _fmt.format(bas) : '—'}  →  ${bit != null ? _fmt.format(bit) : '—'}',
                 style:
                     TextStyle(fontSize: 11, color: TsRenk.arkaplan(context))),
+            // Madde 12 denetimi (2026-09-16) — Müdür Onayı: kapatan kişi
+            // Müdür/Admin değilse burada kim onayladığı görünür.
+            if (v['onaylayan_adi'] != null) ...[
+              const SizedBox(height: 2),
+              Row(children: [
+                Icon(Icons.verified_user_outlined, size: 12, color: Colors.deepPurple.shade300),
+                const SizedBox(width: 4),
+                Text('Onaylayan: ${v['onaylayan_adi']}',
+                    style: TextStyle(fontSize: 10, color: Colors.deepPurple.shade300)),
+              ]),
+            ],
             const SizedBox(height: 8),
             Row(children: [
               _gecmisChip(

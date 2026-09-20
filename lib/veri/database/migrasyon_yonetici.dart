@@ -184,5 +184,9 @@ class MigrasyonYonetici {
     // stok/cari/kasa/banka_kapanis_snapshot tabloları (bkz. _v67denV68e
     // yorumu — kullanıcı onaylı mimari plan raporu, 2026-09-16).
     if (eskiVersiyon < 68) await _v67denV68e(db);
+
+    // Madde 12 denetimi: vardiyalar.onaylayan_kullanici_id/onaylanma_tarihi
+    // (Kasa Kapanış — Müdür Onayı, bkz. _v68denV69a yorumu, 2026-09-16).
+    if (eskiVersiyon < 69) await _v68denV69a(db);
   }
 }

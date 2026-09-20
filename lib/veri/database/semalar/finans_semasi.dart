@@ -49,6 +49,9 @@ class FinansSemasi {
         kapanis_kasasi REAL, baslangic_bakiye REAL NOT NULL DEFAULT 0,
         bitis_bakiye REAL, nakit_sayim REAL, kart_toplam REAL, fark REAL,
         notlar TEXT, durum TEXT NOT NULL DEFAULT 'acik',
+        -- Madde 12 denetimi (2026-09-16) — Kasa Kapanış Müdür Onayı:
+        -- kapatan kişi Müdür/Admin değilse, onaylayan yöneticinin kimliği.
+        onaylayan_kullanici_id INTEGER, onaylanma_tarihi DATETIME,
         last_updated DATETIME, deleted_at DATETIME,
         FOREIGN KEY(kullanici_id) REFERENCES ${DbSabitler.kullanicilar}(id)
       )

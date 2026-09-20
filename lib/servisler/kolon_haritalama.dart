@@ -162,7 +162,7 @@ class KolonHaritalama {
     'kullanicilar':           {'sube_id': 'subeler'},
     'kategoriler':            {'ust_kategori_id': 'kategoriler'},
     'urunler':                {'kategori_id': 'kategoriler'},
-    'vardiyalar':             {'kullanici_id': 'kullanicilar', 'sube_id': 'subeler'},
+    'vardiyalar':             {'kullanici_id': 'kullanicilar', 'sube_id': 'subeler', 'onaylayan_kullanici_id': 'kullanicilar'},
     // 'kasa_hareketleri.referans_id', 'stok_hareket.referans_id' ve
     // 'puan_hareket.referans_id' KASITLI OLARAK haritaya EKLENMEDİ —
     // bunlar polimorfik alanlar (yanlarında 'referans_turu'/'islem_tipi'

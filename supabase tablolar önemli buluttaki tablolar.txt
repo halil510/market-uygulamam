@@ -1,6 +1,12 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- MARKETPLUS — SUPABASE ŞEMASI  (KENDİ KENDİNİ ONARAN SÜRÜM)
--- 67 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-16
+-- 67 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-20
+--
+-- 2026-09-20 GÜNCELLEMESİ — ERP Denetim Madde 12 (Kasa Kapanış — Müdür
+-- Onayı). vardiyalar tablosuna 2 yeni sütun: onaylayan_kullanici_id,
+-- onaylanma_tarihi (yerel SQLite migrasyon v68→v69 ile BİREBİR aynı).
+-- Vardiyayı kapatan kişi Müdür/Admin değilse, kapanış anında bir
+-- yöneticinin kimlik bilgileriyle onayladığı kullanıcı burada tutulur.
 --
 -- 2026-09-16 GÜNCELLEMESİ — Yıl Sonu Devir / Dönem Kapatma / Arşivleme
 -- sistemi FAZ 1 (kullanıcı onaylı mimari plan raporu, ERP_DENETIM_
@@ -1173,6 +1179,8 @@ CREATE TABLE IF NOT EXISTS vardiyalar (
   fark DOUBLE PRECISION,
   notlar TEXT,
   durum TEXT,
+  onaylayan_kullanici_id BIGINT,
+  onaylanma_tarihi TIMESTAMPTZ,
   last_updated TIMESTAMPTZ
 );
 
@@ -2153,6 +2161,8 @@ ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS kart_toplam DOUBLE PRECISION;
 ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS fark DOUBLE PRECISION;
 ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS notlar TEXT;
 ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS durum TEXT;
+ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS onaylayan_kullanici_id BIGINT;
+ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS onaylanma_tarihi TIMESTAMPTZ;
 ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE zaman_fiyat ADD COLUMN IF NOT EXISTS urun_id BIGINT;
 ALTER TABLE zaman_fiyat ADD COLUMN IF NOT EXISTS gun_listesi TEXT;

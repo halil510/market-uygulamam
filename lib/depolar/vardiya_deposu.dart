@@ -29,7 +29,8 @@ class VardiyaDeposu {
     return rows.isNotEmpty ? Map<String, dynamic>.from(rows.first) : null;
   }
 
-  /// Kapanmış vardiyaların geçmişi (en yeniden eskiye).
+  /// Kapanmış vardiyaların geçmişi (en yeniden eskiye). [onaylayan_adi]:
+  /// Madde 12 denetimi — kapanışı onaylayan yöneticinin adı (varsa).
   Future<List<Map<String, dynamic>>> gecmisVardiyalarGetir({
     int? subeId,
     int limit = 30,
@@ -38,8 +39,9 @@ class VardiyaDeposu {
     final subeSarti = subeId != null ? ' AND v.sube_id = ?' : '';
     final args = <Object?>[if (subeId != null) subeId, limit];
     final rows = await db.rawQuery(
-        'SELECT v.*, k.ad_soyad FROM vardiyalar v '
+        'SELECT v.*, k.ad_soyad, o.ad_soyad AS onaylayan_adi FROM vardiyalar v '
         'LEFT JOIN kullanicilar k ON v.kullanici_id = k.id '
+        'LEFT JOIN kullanicilar o ON v.onaylayan_kullanici_id = o.id '
         'WHERE v.kapanis_tarihi IS NOT NULL$subeSarti ORDER BY v.id DESC LIMIT ?',
         args);
     return rows.map((r) => Map<String, dynamic>.from(r)).toList();
@@ -107,10 +109,17 @@ class VardiyaDeposu {
   }
 
   /// Açık vardiyayı kapatır (nakit sayım + fark ile).
+  ///
+  /// [onaylayanKullaniciId]: Madde 12 denetimi (2026-09-16) — vardiyayı
+  /// FİİLEN kapatan kişi Müdür/Admin DEĞİLSE, kapanış anında kimlik
+  /// bilgileriyle onaylayan yöneticinin id'si (bkz. vardiya_ekrani.dart
+  /// _yoneticiOnayIste). Kapatan zaten Müdür/Admin'se null kalır — kendi
+  /// yetkisi zaten yeterli, ayrıca onay istenmez.
   Future<Map<String, dynamic>> kapat({
     required int vardiyaId,
     required double sayim,
     required double fark,
+    int? onaylayanKullaniciId,
   }) async {
     final db = await _d;
     final now = DateTime.now().toIso8601String();
@@ -124,6 +133,10 @@ class VardiyaDeposu {
           'fark': fark,
           'durum': 'kapali',
           'last_updated': now,
+          if (onaylayanKullaniciId != null) ...{
+            'onaylayan_kullanici_id': onaylayanKullaniciId,
+            'onaylanma_tarihi': now,
+          },
         },
         where: 'id = ?',
         whereArgs: [vardiyaId]);

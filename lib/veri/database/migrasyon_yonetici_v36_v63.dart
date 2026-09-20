@@ -1037,3 +1037,16 @@ Future<void> _v67denV68e(Database db) async {
   await _calistir(db,
       'CREATE INDEX IF NOT EXISTS idx_bankasnap_donem ON banka_kapanis_snapshot(donem_id)');
 }
+
+// Madde 12 denetimi (2026-09-16, kullanıcı onaylı UX: "Anında PIN
+// onayı") — Kasa Kapanış'ta "Müdür Onayı" alanı. Vardiyayı kapatan
+// kişi Müdür/Admin değilse, kapanış anında bir yöneticinin kimlik
+// bilgileriyle (KullaniciDeposu.girisKontrol) onayladığı kullanıcı
+// burada kaydedilir — Müdür/Admin kendi vardiyasını kapatırken bu
+// adım atlanır (zaten yetkili).
+Future<void> _v68denV69a(Database db) async {
+  await _calistir(
+      db, 'ALTER TABLE vardiyalar ADD COLUMN onaylayan_kullanici_id INTEGER');
+  await _calistir(
+      db, 'ALTER TABLE vardiyalar ADD COLUMN onaylanma_tarihi TEXT');
+}

@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      68; // v68: Yıl Sonu Devir/Dönem Kapatma/Arşivleme FAZ 1 — donemler, donem_sube_durumlari, devir_checkpoint, stok/cari/kasa/banka_kapanis_snapshot tabloları eklendi (henüz sadece şema, devir motoru mantığı ileriki fazda)
+      69; // v69: Kasa Kapanış — Müdür Onayı (vardiyalar.onaylayan_kullanici_id/onaylanma_tarihi, Madde 12 denetimi)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

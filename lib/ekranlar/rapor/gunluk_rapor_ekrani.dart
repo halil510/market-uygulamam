@@ -88,12 +88,26 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
       final results = await Future.wait([
         _satisDepo.tariheGoreGetir(_baslangic, _bitis),
         _giderDepo.aralikToplamGider(_baslangic, _bitis),
-        // Gercek maliyet: satis_kalem.miktar * urunler.alis_fiyat
+        // 🔴 DÜZELTME (Madde 24 — Raporlar denetimi, 2026-09-20): maliyet
+        // HER ZAMAN urunler.alis_fiyat'ın (ürünün GÜNCEL alış fiyatı)
+        // kullanıyordu — satış anındaki TARİHSEL maliyeti DEĞİL. Bir
+        // ürünün alış fiyatı satıştan SONRA güncellenirse (ör. tedarikçi
+        // zammı), bu rapor o tarihe her dönüldüğünde SESSİZCE farklı bir
+        // "Net Kâr" göstermeye başlıyordu — Kâr/Zarar raporu (kar_zarar_
+        // provider.dart) ise satis_kalem.alis_fiyat'ta (satış anında
+        // satır'a kalıcı olarak damgalanan tarihsel maliyet) SAKLANAN
+        // değeri doğru kullanıyordu. AYNI tarih için iki rapor farklı
+        // Net Kâr gösterebiliyordu. Artık AYNI formül (sk.alis_fiyat
+        // varsa o, yoksa — eski/migrasyon-öncesi satırlar için — güncel
+        // urunler.alis_fiyat'a düşülür).
         db.rawQuery('''
-          SELECT COALESCE(SUM(sk.miktar * u.alis_fiyat), 0) as maliyet
+          SELECT COALESCE(SUM(
+            CASE WHEN sk.alis_fiyat > 0 THEN sk.miktar * sk.alis_fiyat
+                 ELSE sk.miktar * COALESCE(u.alis_fiyat, 0) END
+          ), 0) as maliyet
           FROM satis_kalem sk
           JOIN satislar s ON sk.satis_id = s.id
-          JOIN urunler u ON sk.urun_id = u.id
+          LEFT JOIN urunler u ON sk.urun_id = u.id
           WHERE s.tarih BETWEEN ? AND ?
             AND s.iptal = 0 AND s.is_deleted = 0 $subeKosulu
         ''', [bas, bit, if (subeId != null) subeId]),

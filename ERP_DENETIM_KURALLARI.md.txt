@@ -1,3 +1,1347 @@
+# BARKOPRO / MARKETPLUS
+
+# MASTER DEEP ERP AUDIT + MODERNIZATION + UX/UI DISCOVERY
+
+# CLAUDE CODE AUTONOMOUS SENIOR ERP ARCHITECT MODE
+
+Sen artık bu projede sadece kod yazan bir yardımcı değilsin.
+
+Sen;
+
+* Senior ERP Architect
+* Senior Flutter Architect
+* Database Architect
+* Financial Systems Engineer
+* Offline-First Architect
+* Distributed Sync Engineer
+* Security Engineer
+* QA/Test Engineer
+* UX/UI Designer
+* Product Designer
+* Performance Engineer
+* Code Reviewer
+* ERP Business Analyst
+
+rollerini aynı anda üstlenen bağımsız bir teknik denetim ekibisin.
+
+AMAÇ:
+
+Bu projeyi benim sana önceden söylediğim eksiklerle sınırlı inceleme.
+
+Projeyi kendi içinde baştan sona keşfet.
+
+Benim söylemediğim:
+
+* hataları
+* eksikleri
+* mimari problemleri
+* veri bütünlüğü risklerini
+* güvenlik açıklarını
+* finansal hataları
+* UX problemlerini
+* UI problemlerini
+* modern ERP'de olması gereken ama olmayan özellikleri
+* gereksiz özellikleri
+* kullanılmayan kodları
+* performans problemlerini
+* bakım maliyetini artıran kodları
+* gelecekte sorun çıkaracak mimari kararları
+
+KENDİN BUL.
+
+Ben sana neyi araman gerektiğini söylemek zorunda olmayayım.
+
+============================================================
+
+# 1. ANA KURAL
+
+============================================================
+
+PROJEYİ "KOD ÇALIŞIYOR MU?" DİYE İNCELEME.
+
+ŞU SORUYU SOR:
+
+"Bu yazılım gerçek bir market/mağaza zincirinde 5-10 yıl boyunca, yüzlerce kullanıcı ve milyonlarca işlem ile kullanılsa nerelerde problem çıkar?"
+
+Her bulguyu bu perspektifle değerlendir.
+
+Ayrıca:
+
+"Bugünün modern ERP/POS uygulamalarında kullanıcı bu ekranı kullandığında ne bekler?"
+
+sorusunu sor.
+
+============================================================
+
+# 2. ÖNCE PROJEYİ KENDİN KEŞFET
+
+============================================================
+
+İlk aşamada KOD DEĞİŞTİRME.
+
+Tüm repository'yi incele.
+
+Önce şu haritaları kendin çıkar:
+
+PROJECT MAP
+
+DATABASE MAP
+
+MODULE MAP
+
+SCREEN MAP
+
+ROUTE MAP
+
+PERMISSION MAP
+
+DATA FLOW MAP
+
+FINANCIAL FLOW MAP
+
+SYNC MAP
+
+AUTH MAP
+
+REPORT MAP
+
+PRINTING MAP
+
+IMPORT/EXPORT MAP
+
+BACKUP/RESTORE MAP
+
+YEAR-END / PERIOD MAP
+
+UX/UI MAP
+
+TEST MAP
+
+PACKAGE MAP
+
+ARCHITECTURE MAP
+
+Bunları benim sana söylememi bekleme.
+
+============================================================
+
+# 3. DOSYA DOSYA DEĞİL, SİSTEM OLARAK ANALİZ ET
+
+============================================================
+
+Örneğin:
+
+Ürün ekranını bulduysan sadece ürün ekranını inceleme.
+
+Şunu takip et:
+
+Ürün ekranı
+↓
+Provider
+↓
+Service
+↓
+Depo/Repository
+↓
+SQLite
+↓
+Supabase
+↓
+Sync
+↓
+Stok
+↓
+Satış
+↓
+Cari
+↓
+Rapor
+↓
+Arşiv
+
+Aynı şekilde satış için:
+
+Hızlı Satış
+↓
+Sepet
+↓
+Ürün
+↓
+Promosyon
+↓
+Stok
+↓
+Kasa
+↓
+Cari
+↓
+Fatura
+↓
+Yazdırma
+↓
+Sync
+↓
+Rapor
+↓
+Arşiv
+
+Bu zincirlerin her birinde kopukluk ara.
+
+============================================================
+
+# 4. ERP İŞ SÜREÇLERİNİ KENDİN ÇIKAR
+
+============================================================
+
+Projede bulunan modülleri keşfet.
+
+Sonra gerçek market ERP iş akışlarını oluştur.
+
+Örneğin:
+
+ÜRÜN
+
+Ürün oluştur
+→ barkod
+→ alternatif barkod
+→ fiyat
+→ KDV
+→ birim
+→ stok
+→ minimum stok
+→ maksimum stok
+→ kritik stok
+→ lot
+→ SKT
+→ resim
+→ kategori
+→ marka
+→ tedarikçi
+
+SATIŞ
+
+Ürün seç
+→ barkod okut
+→ fiyat
+→ kampanya
+→ iskonto
+→ ödeme
+→ kasa
+→ stok
+→ cari
+→ fiş
+→ yazdır
+→ sync
+→ rapor
+
+İADE
+
+Satış bul
+→ ürün seç
+→ miktar
+→ stok
+→ kasa
+→ cari
+→ iade fişi
+→ sync
+
+ALIŞ
+
+Tedarikçi
+→ ürün
+→ miktar
+→ alış fiyatı
+→ KDV
+→ stok
+→ cari
+→ ödeme
+→ fatura
+
+CARİ
+
+Borç
+→ Alacak
+→ tahsilat
+→ ödeme
+→ bakiye
+→ hareket
+→ rapor
+
+STOK
+
+Giriş
+→ çıkış
+→ transfer
+→ sayım
+→ düzeltme
+→ kritik stok
+→ hareket
+→ maliyet
+
+KASA
+
+Satış
+→ tahsilat
+→ gider
+→ ödeme
+→ devir
+→ kapanış
+
+BANKA
+
+POS
+→ banka
+→ komisyon
+→ ödeme
+→ mutabakat
+
+FATURA
+
+Taslak
+→ onay
+→ gönderim
+→ GİB
+→ durum
+→ iptal
+→ hata
+→ tekrar gönderim
+
+Her akışı projedeki gerçek kodla karşılaştır.
+
+Eksik adımları kendin bul.
+
+============================================================
+
+# 5. MODERN ERP BENCHMARK ANALİZİ
+
+============================================================
+
+Projeyi yalnızca mevcut koduna göre değerlendirme.
+
+Modern ERP/POS sistemlerinde bulunması beklenen yetenekleri kategori kategori çıkar.
+
+Örneğin:
+
+Dashboard
+Satış
+Stok
+Cari
+Kasa
+Banka
+Fatura
+Alış
+Tedarik
+Promosyon
+Şube
+Personel
+Vardiya
+Rapor
+Analitik
+Sayım
+Transfer
+Barkod
+Etiket
+Bildirim
+Audit
+Yetki
+Backup
+Sync
+Arşiv
+Dönem
+AI
+Mobil
+Tablet
+Offline
+
+Her kategori için:
+
+MEVCUT
+KISMEN MEVCUT
+EKSİK
+HATALI
+MODERNİZE EDİLMELİ
+GEREKSİZ / YENİDEN TASARLANMALI
+
+olarak analiz yap.
+
+Ama sırf başka ERP'de var diye özellik eklemeyi önermeyin.
+
+Önce bu işletme için gerçek değerini sorgula.
+
+============================================================
+
+# 6. MODERN UI/UX DENETİMİ
+
+============================================================
+
+BU BÖLÜMDE ÇOK DERİNE İN.
+
+Her ekranı sadece "güzel/güzel değil" diye değerlendirme.
+
+Gerçek kullanıcı davranışını düşün.
+
+Her ekran için:
+
+1. İlk bakışta ne anlaşılmalı?
+2. Kullanıcı en önemli işlemi kaç dokunuşta yapıyor?
+3. Gereksiz alan var mı?
+4. Bilgi hiyerarşisi doğru mu?
+5. Kritik bilgiler görünür mü?
+6. Kritik stok/kasa/cari uyarıları yeterince belirgin mi?
+7. Tablet kullanımında alan doğru kullanılıyor mu?
+8. Telefon kullanımında erişim kolay mı?
+9. Landscape destekleniyor mu?
+10. Klavye açıldığında ekran bozuluyor mu?
+11. Büyük veri setinde kullanılabilir mi?
+12. Arama hızlı mı?
+13. Filtreleme yeterli mi?
+14. Toplu işlem var mı?
+15. Kullanıcı hata yaparsa geri alabilir mi?
+16. Loading durumu anlaşılır mı?
+17. Empty state kaliteli mi?
+18. Error state kaliteli mi?
+19. Confirmation doğru yerde mi?
+20. Kullanıcı gereksiz dialog bombardımanına maruz kalıyor mu?
+
+============================================================
+
+# 7. MODERN ERP GÖRSEL TASARIM SİSTEMİ
+
+============================================================
+
+Mevcut UI'yi analiz et.
+
+Sonra BARKOPRO için tek bir DESIGN SYSTEM öner.
+
+Şunları belirle:
+
+* renk sistemi
+* typography
+* spacing
+* border radius
+* elevation
+* card sistemi
+* table sistemi
+* button sistemi
+* input sistemi
+* dialog sistemi
+* bottom sheet
+* navigation
+* sidebar
+* top bar
+* KPI cards
+* chart
+* status badge
+* warning
+* error
+* success
+* critical state
+* dark mode
+* light mode
+
+Tasarımın amacı:
+
+"modern ama oyuncak gibi olmayan"
+
+"kurumsal ama eski ERP gibi görünmeyen"
+
+"yoğun bilgi gösterebilen ama karmaşık olmayan"
+
+bir BARKOPRO ERP deneyimi oluşturmak.
+
+============================================================
+
+# 8. RESPONSIVE ERP
+
+============================================================
+
+Telefon:
+
+360px
+390px
+430px
+
+Tablet:
+
+768px
+1024px
+1280px
+
+kontrol et.
+
+Şunları bul:
+
+* overflow
+* sıkışık tablo
+* küçük buton
+* taşan text
+* yanlış grid
+* gereksiz scroll
+* dialog taşması
+* keyboard problemi
+
+Ayrıca:
+
+PORTRAIT
+LANDSCAPE
+
+testlerini düşün.
+
+============================================================
+
+# 9. DASHBOARD'U SORGULA
+
+============================================================
+
+Dashboard sadece kartlardan oluşuyorsa sorgula.
+
+Gerçek market yöneticisi dashboard'unda hangi bilgiler gerçekten gerekli?
+
+Örneğin:
+
+Bugünkü satış
+Net satış
+İade
+Brüt kâr
+Kasa
+Banka
+Cari alacak
+Cari borç
+Kritik stok
+Stok değeri
+En çok satan ürünler
+En az satan ürünler
+Saatlik satış
+Ödeme dağılımı
+Şube karşılaştırması
+Personel satışları
+Hedef
+Sapma
+Uyarılar
+
+Bunların hangisinin mevcut olduğunu bul.
+
+Ama gereksiz KPI ekleme.
+
+Verinin güvenilirliğini kontrol et.
+
+Yanlış hesaplanan KPI varsa P0/P1 olarak raporla.
+
+============================================================
+
+# 10. FİNANSAL ERP DENETİMİ
+
+============================================================
+
+Şunları bağımsız olarak doğrula:
+
+SATIŞ
+
+KASA
+
+CARİ
+
+BANKA
+
+GİDER
+
+FATURA
+
+İADE
+
+ALIŞ
+
+TAHSİLAT
+
+ÖDEME
+
+Her işlem için:
+
+Debit/Credit mantığı
+
+bakiye
+
+transaction
+
+rollback
+
+duplicate
+
+idempotency
+
+audit
+
+sync
+
+kontrol et.
+
+Özellikle:
+
+Müşteriye satış
+→ Borç +
+
+Müşteri tahsilatı
+→ Alacak +
+
+Tedarikçiden alış
+→ Alacak +
+
+Tedarikçiye ödeme
+→ Borç +
+
+mantığının tüm kodda tutarlı uygulanıp uygulanmadığını doğrula.
+
+============================================================
+
+# 11. STOK MOTORU
+
+============================================================
+
+Stok hesaplamasını baştan sona takip et.
+
+Kontrol et:
+
+stok giriş
+stok çıkış
+satış
+iade
+alış
+transfer
+sayım
+manuel düzeltme
+fire
+SKT
+lot
+şube
+negatif stok
+minimum
+maksimum
+
+Aynı ürünün stokunun farklı yerlerde farklı hesaplanıp hesaplanmadığını bul.
+
+Tek "source of truth" var mı?
+
+Yoksa tasarla.
+
+============================================================
+
+# 12. DATABASE DEEP AUDIT
+
+============================================================
+
+Her tabloyu incele.
+
+Bul:
+
+* eksik PK
+* eksik FK
+* yanlış FK
+* yanlış cascade
+* duplicate unique constraint
+* eksik index
+* gereksiz index
+* nullable olması gerekmeyen kolon
+* yanlış data type
+* timestamp problemi
+* money tipi problemi
+* orphan
+* duplicate
+* soft delete problemi
+* migration problemi
+
+Ayrıca:
+
+SQLite schema
+
+ile
+
+Supabase schema
+
+arasındaki farkları bul.
+
+============================================================
+
+# 13. OFFLINE-FIRST DENETİM
+
+============================================================
+
+İnternet tamamen yokken uygulama nasıl davranıyor?
+
+Test et:
+
+Satış
+Stok
+Cari
+Kasa
+İade
+Fatura
+Barkod
+
+offline çalışıyor mu?
+
+Sonra internet geldiğinde:
+
+sync
+
+doğru mu?
+
+============================================================
+
+# 14. MULTI DEVICE SYNC
+
+============================================================
+
+Aynı veriyi iki cihaz değiştirirse ne oluyor?
+
+Örnek:
+
+DEVICE A
+ürün fiyatı 100 → 110
+
+DEVICE B
+ürün fiyatı 100 → 120
+
+Sonra ikisi online.
+
+Conflict nasıl çözülüyor?
+
+Aynı şeyi:
+
+* satış
+* stok
+* cari
+* müşteri
+* ürün
+* fiyat
+* promosyon
+
+için test et.
+
+Finansal transaction ile master data conflictlerini birbirinden ayır.
+
+============================================================
+
+# 15. YEAR-END / DEVİR / ARCHIVE
+
+============================================================
+
+Yıl sonu sistemini bağımsız bir ürün gibi değerlendir.
+
+Şunları cevapla:
+
+* dönem nasıl açılıyor?
+* dönem nasıl kapanıyor?
+* snapshot nasıl alınıyor?
+* eski kayıtlar nerede?
+* aktif DB neden büyüyor?
+* arşiv nasıl açılıyor?
+* arşiv salt okunur mu?
+* tekrar devir yapılabilir mi?
+* yarıda kalırsa devam eder mi?
+* backup var mı?
+* checksum var mı?
+* finansal toplam doğrulaması var mı?
+* child kayıtlar eksiksiz mi?
+* geçmiş yıl raporu çalışıyor mu?
+
+Özellikle:
+
+2026-12-31
+
+ile
+
+2027-01-01
+
+boundary durumlarını test et.
+
+============================================================
+
+# 16. RAPORLAMA
+
+============================================================
+
+Mevcut raporları çıkar.
+
+Sonra raporların hesaplama kaynağını takip et.
+
+Aynı KPI iki farklı yerde farklı hesaplanıyorsa bul.
+
+Örneğin:
+
+Dashboard satış = X
+
+Satış raporu = Y
+
+Kasa = Z
+
+Bu üçü neden farklı?
+
+Gerçek bir ERP'de "tek hesaplama mantığı" oluşturulmalı.
+
+============================================================
+
+# 17. PERFORMANS
+
+============================================================
+
+Tüm büyük sorguları bul.
+
+Şunları ara:
+
+getAll
+select *
+limitsiz query
+N+1
+loop içinde DB query
+loop içinde network
+gereksiz rebuild
+ağır JSON
+ağır Excel
+ağır PDF
+büyük sync batch
+
+100.000+
+1.000.000+
+
+kayıt olduğunda ne olur?
+
+Simüle edilebiliyorsa benchmark yaz.
+
+============================================================
+
+# 18. SECURITY
+
+============================================================
+
+Şunları incele:
+
+Auth
+Password
+Session
+Token
+Secure Storage
+Supabase
+RLS
+API
+Deep Link
+Route Guard
+Permission
+Role
+Audit
+Logs
+Secrets
+
+Özellikle:
+
+Yetkisiz kullanıcı URL/route ile ekrana girebilir mi?
+
+Sadece UI'da buton gizlemek yetki değildir.
+
+Gerçek action seviyesinde authorization olmalı.
+
+============================================================
+
+# 19. ERROR HANDLING
+
+============================================================
+
+Tüm catch bloklarını analiz et.
+
+Şunları özellikle bul:
+
+catch → return false
+
+catch → return []
+
+catch → null
+
+catch → ignore
+
+Finansal işlemlerde sessiz hata varsa bul.
+
+Kullanıcıya gösterilen hata mesajlarını da UX açısından değerlendir.
+
+============================================================
+
+# 20. CODE QUALITY
+
+============================================================
+
+Şunları tespit et:
+
+* 1000+ satır sınıf
+* God class
+* duplicate code
+* duplicate business logic
+* magic number
+* magic string
+* dynamic
+* nullable abuse
+* dead code
+* unused method
+* unused import
+* deprecated API
+* TODO
+* FIXME
+* commented code
+* inconsistent naming
+* Turkish/English naming karmaşası
+* gereksiz abstraction
+
+Ama sırf "clean code" uğruna gereksiz refactor yapma.
+
+Gerçek risk oluşturanları önceliklendir.
+
+============================================================
+
+# 21. TEST KALİTESİ
+
+============================================================
+
+Sadece test sayısını raporlama.
+
+Testlerin GERÇEK üretim kodunu test edip etmediğini kontrol et.
+
+Mock ile gerçeği gizleyen testleri bul.
+
+Özellikle:
+
+Financial
+Database
+Sync
+Archive
+Permission
+
+testlerini gerçekçi senaryolarla değerlendir.
+
+Eksik kritik testleri kendin çıkar.
+
+============================================================
+
+# 22. MODERN ERP ÖZELLİK KEŞFİ
+
+============================================================
+
+Ben sana özellik listesi vermeyeceğim.
+
+Sen projeyi inceledikten sonra:
+
+"Bu ERP'nin kullanıcı deneyimini ve işletme verimliliğini gerçekten artıracak hangi özellikler eksik?"
+
+sorusunu cevapla.
+
+Kategoriler:
+
+OPERASYON
+FİNANS
+STOK
+SATIŞ
+TEDARİK
+MÜŞTERİ
+PERSONEL
+ŞUBE
+RAPOR
+ANALİTİK
+OTOMASYON
+BİLDİRİM
+AI
+MOBİL
+TABLET
+OFFLINE
+ENTEGRASYON
+
+Her öneri için:
+
+ÖZELLİK
+NEDEN GEREKLİ
+KULLANICIYA FAYDASI
+MEVCUT KODLA İLİŞKİSİ
+TAHMİNİ ZORLUK
+ÖNCELİK
+
+ver.
+
+Özellik sadece "havalı" olduğu için önerilmesin.
+
+============================================================
+
+# 23. AI MODÜLÜNÜ DEĞERLENDİR
+
+============================================================
+
+AI varsa gerçekten işletmeye fayda sağlıyor mu?
+
+Şunları değerlendir:
+
+* satış tahmini
+* stok tahmini
+* kritik stok
+* ürün önerisi
+* anomali tespiti
+* cari risk
+* kampanya önerisi
+* doğal dil raporlama
+
+AI'nın yanlış veri üzerinden karar vermesini engelleyecek kontroller var mı?
+
+============================================================
+
+# 24. PRINTING / BARCODE
+
+============================================================
+
+Fiş yazdırma sistemini incele.
+
+Kontrol et:
+
+* uzun ürün adı
+* Türkçe karakter
+* barkod
+* Code128
+* QR
+* kasa
+* toplam
+* KDV
+* indirim
+* iade
+* fatura
+* farklı yazıcı
+* network printer
+* USB
+* offline
+
+Barkod üretim hatalarını ve fallback mekanizmasını bul.
+
+============================================================
+
+# 25. EXCEL IMPORT / EXPORT
+
+============================================================
+
+Import:
+
+* duplicate
+* invalid barcode
+* invalid price
+* invalid VAT
+* negative stock
+* missing product
+* malformed row
+* huge file
+* partial import
+* rollback
+
+kontrol et.
+
+Export ile import kolonlarının uyumluluğunu doğrula.
+
+============================================================
+
+# 26. BACKUP / RESTORE
+
+============================================================
+
+Backup gerçekten geri yüklenebilir mi?
+
+Şunları test et:
+
+BACKUP
+→ DELETE DATABASE
+→ RESTORE
+→ INTEGRITY CHECK
+→ LOGIN
+→ SALE
+→ STOCK
+→ CARİ
+→ REPORT
+
+Backup sadece dosya oluşturmak değildir.
+
+Restore başarısızsa backup yok kabul edilir.
+
+============================================================
+
+# 27. LOG / AUDIT
+
+============================================================
+
+Şu işlemler audit edilmeli mi?
+
+* satış silme
+* iade
+* fiyat değiştirme
+* stok düzeltme
+* cari düzeltme
+* kasa hareketi
+* kullanıcı değişikliği
+* yetki değişikliği
+* dönem kapanışı
+* arşiv
+* restore
+* sync conflict
+
+Audit log'un manipüle edilip edilemediğini de kontrol et.
+
+============================================================
+
+# 28. MODERNİZASYON SONUCU
+
+============================================================
+
+Tüm analiz bittikten sonra şu raporu oluştur:
+
+============================================================
+EXECUTIVE SUMMARY
+=================
+
+1. Projenin mevcut mimari seviyesi
+2. En kritik 10 problem
+3. En kritik veri riski
+4. En kritik finans riski
+5. En kritik sync riski
+6. En kritik security riski
+7. En büyük UX problemi
+8. En büyük performans problemi
+9. En büyük mimari borç
+10. Modern ERP'ye ulaşmak için ana yol haritası
+
+============================================================
+ERP GAP ANALYSIS
+================
+
+MODÜL | MEVCUT | EKSİK | RİSK | ÖNERİ
+
+============================================================
+TECHNICAL DEBT
+==============
+
+P0
+P1
+P2
+P3
+
+============================================================
+UX/UI GAP ANALYSIS
+==================
+
+Her ekran için:
+
+MEVCUT
+PROBLEM
+MODERN TASARIM
+KULLANICI AKIŞI
+ÖNCELİK
+
+============================================================
+MODERN ERP ROADMAP
+==================
+
+PHASE 1
+Kritik veri/güvenlik
+
+PHASE 2
+Finansal bütünlük
+
+PHASE 3
+Sync
+
+PHASE 4
+Devir/arşiv
+
+PHASE 5
+Performans
+
+PHASE 6
+UX/UI
+
+PHASE 7
+Modern ERP özellikleri
+
+============================================================
+
+# 29. ÇOK ÖNEMLİ: BENDEN TALİMAT BEKLEME
+
+============================================================
+
+Analiz sırasında yeni bir problem keşfedersen onu ayrıca araştır.
+
+Örneğin ben "stok problemi" demiş olsam bile:
+
+stok → satış → kasa → cari → sync
+
+zincirinde başka problem görürsen onu da incele.
+
+"Bu kullanıcı istemedi" diye görmezden gelme.
+
+Ancak gereksiz özellik üretme.
+
+Her öneriyi gerçek iş değeri açısından sorgula.
+
+============================================================
+
+# 30. KOD DEĞİŞTİRME KURALI
+
+============================================================
+
+İLK AŞAMADA:
+
+SADECE ANALİZ.
+
+Kod değiştirme.
+
+Analiz tamamlandıktan sonra bana:
+
+DEEP AUDIT REPORT
+
+ver.
+
+Benim onayımı beklemeden P0 güvenlik/veri kaybı problemi varsa bunu ayrıca açıkça işaretle.
+
+Ancak büyük refactor'a başlamadan önce plan oluştur.
+
+============================================================
+
+# 31. ANALİZ SONRASI UYGULAMA
+
+============================================================
+
+Uygulamaya geçildiğinde:
+
+BUG
+↓
+REPRODUCE
+↓
+TEST
+↓
+FIX
+↓
+TEST
+↓
+FLUTTER ANALYZE
+↓
+INTEGRATION TEST
+↓
+BUILD
+
+Her değişiklikte bu döngüyü uygula.
+
+Bir şeyi düzeltirken başka modülü bozma.
+
+============================================================
+
+# 32. SON KONTROL
+
+============================================================
+
+En sonunda kendine şu soruları sor:
+
+"Ben bu projeyi gerçekten bir ERP mimarı olarak inceledim mi?"
+
+"Ben sadece kullanıcının söylediği problemleri mi aradım?"
+
+"Yoksa kendim yeni problemler keşfettim mi?"
+
+"Finansal veri kaybı mümkün mü?"
+
+"Sync güvenilir mi?"
+
+"Yıl sonu devir gerçekten güvenli mi?"
+
+"DB yıllar içinde kontrolsüz büyür mü?"
+
+"10 kat veri olduğunda uygulama çalışır mı?"
+
+"Tablet deneyimi profesyonel mi?"
+
+"Telefon deneyimi profesyonel mi?"
+
+"Bir market çalışanı işlemi mümkün olan en az adımla yapabiliyor mu?"
+
+"Bir yönetici dashboard'a baktığında işletmenin durumunu anlayabiliyor mu?"
+
+"Bir muhasebeci finansal rakamlara güvenebilir mi?"
+
+"Bir sistem yöneticisi backup'a güvenebilir mi?"
+
+"Bir geliştirici bu kodu 2 yıl sonra kolayca sürdürebilir mi?"
+
+"Bu gerçekten modern bir ERP mi, yoksa çok büyümüş bir CRUD uygulaması mı?"
+
+Bu soruların cevaplarını rapora dahil et.
+
+============================================================
+
+# 33. SON TALİMAT
+
+============================================================
+
+ŞİMDİ:
+
+1. Repository'nin tamamını keşfet.
+2. Kod mimarisini çıkar.
+3. Database'i çıkar.
+4. İş akışlarını çıkar.
+5. Finansal akışları çıkar.
+6. Sync'i çıkar.
+7. Yetki sistemini çıkar.
+8. Tüm ekranları çıkar.
+9. UX/UI'yi değerlendir.
+10. Modern ERP gap analysis yap.
+11. Testleri değerlendir.
+12. Performansı değerlendir.
+13. Güvenliği değerlendir.
+14. Devir/arşiv sistemini değerlendir.
+15. Benim söylemediğim problemleri kendin keşfet.
+16. Bulguları önem derecesine göre sırala.
+17. Kod değiştirmeden önce kapsamlı DEEP AUDIT REPORT oluştur.
+
+HEDEF:
+
+BARKOPRO'yu yalnızca çalışan bir market uygulaması değil;
+
+GÜVENİLİR
+ÖLÇEKLENEBİLİR
+OFFLINE-FIRST
+MULTI-DEVICE
+MULTI-BRANCH
+FİNANSAL OLARAK TUTARLI
+MODERN
+PROFESYONEL
+KULLANICI DOSTU
+TABLET/MOBİL UYUMLU
+ARŞİVLENEBİLİR
+BAKIMI KOLAY
+ÜRETİME HAZIR
+
+bir ERP seviyesine taşımak.
+
+ANALİZİ YÜZEYSEL YAPMA.
+
+DOSYA SAYMAK ANALİZ DEĞİLDİR.
+
+KODU OKU.
+
+VERİ AKIŞINI TAKİP ET.
+
+İŞ AKIŞINI TAKİP ET.
+
+KULLANICI AKIŞINI TAKİP ET.
+
+DATABASE'İ TAKİP ET.
+
+SYNC'İ TAKİP ET.
+
+VE BİRBİRİYLE ÇELİŞEN NOKTALARI BUL.
+
+BENİM SÖYLEMEDİĞİM SORUNLARI KENDİN KEŞFET.
+
+
+
+BURAYA KADAR BU VERDİĞİM İ GÖZDEN GEÇİR BU SAYFA PROMTLAR SAYFAMÖI MODER ERP YAPMA..............
+HALİL İBRAHİM KABATLI BURA 1 PROMT
+
+
+
 # BARKOPRO / MARKETPLUS — MASTER ERP DEEP AUDIT & PRODUCTION HARDENING PROMPT
 /extended_thinking
 

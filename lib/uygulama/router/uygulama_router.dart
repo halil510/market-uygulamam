@@ -24,6 +24,7 @@ import 'rotalar/urun_rotalari.dart';
 import '../../ekranlar/stok/stok_liste_ekrani.dart';
 import '../../ekranlar/stok/depo_transfer_ekrani.dart';
 import '../../ekranlar/stok/stok_sayim_ekrani.dart';
+import '../../ekranlar/stok/sayim_onay_ekrani.dart';
 import '../../ekranlar/stok/stok_hareket_ekrani.dart';
 import '../../ekranlar/cari/cari_liste_ekrani.dart';
 import 'rotalar/cari_rotalari.dart';
@@ -217,6 +218,7 @@ class UygulamaRouter {
             GoRoute(path: '/satis/iade', name: 'satis_iade', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const YetkiKoruma(yetkiKodu: 'satis_iade', ekranAdi: 'İade', child: IadeEkrani())),
             GoRoute(path: '/stok', name: 'stok', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const YetkiKoruma(yetkiKodu: 'stok', ekranAdi: 'Stok', child: StokListeEkrani())),
             GoRoute(path: '/stok/sayim', name: 'stok_sayim', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const StokSayimEkrani()),
+            GoRoute(path: '/stok/sayim-onay', name: 'stok_sayim_onay', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const MudurYetkiKorumasi(ekranAdi: 'Sayım Onayı', child: SayimOnayEkrani())),
             GoRoute(path: '/stok/hareket', name: 'stok_hareket', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const StokHareketEkrani()),
             GoRoute(path: '/rapor/gunluk', name: 'rapor_gunluk', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const GunlukRaporEkrani()),
             GoRoute(path: '/rapor/satis', name: 'rapor_satis', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const SatisRaporEkrani()),

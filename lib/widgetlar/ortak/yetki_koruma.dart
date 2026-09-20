@@ -106,3 +106,70 @@ class YetkiKoruma extends ConsumerWidget {
     return child;
   }
 }
+
+/// MudurYetkiKorumasi — YetkiKoruma ile AYNI "Erişim Kısıtlı" tam ekranı
+/// gösterir, ama granüler bir yetkiKodu yerine basitçe Admin/Müdür
+/// kontrolü yapar (ts_yetki.dart'taki TsYetkili/TsYetki.duzenleyebilirMi
+/// ile AYNI kural). Madde 14/15 denetimi (2026-09-16): TsYetkili SADECE
+/// bir butonu gizler — bir ekranın kendisini deep-link'ten korumaz. Bu
+/// widget, ROUTE seviyesinde (ekranın KENDİSİ, nereden gelinirse
+/// gelinsin) aynı korumayı sağlar. Sadece Admin/Müdür-only tam bir ekran
+/// (ör. bir onay ekranı) gerektiğinde, GoRoute builder'ında
+/// YetkiKoruma yerine bunu kullan.
+class MudurYetkiKorumasi extends ConsumerWidget {
+  final String ekranAdi;
+  final Widget child;
+
+  const MudurYetkiKorumasi({super.key, required this.ekranAdi, required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final yetkili = ref.watch(authProvider.select((s) => s.isMudur));
+    if (yetkili) return child;
+
+    return Scaffold(
+      backgroundColor: context.scaffoldBg,
+      appBar: TsAppBar(baslikWidget: Text(ekranAdi)),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 80, height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.red.withAlpha(context.isDark ? 40 : 25),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.lock_outline, color: Colors.red.shade700, size: 40),
+              ),
+              const SizedBox(height: 24),
+              Text('Erişim Kısıtlı',
+                  style: TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.w800, color: context.textPrimary)),
+              const SizedBox(height: 8),
+              Text(
+                '"$ekranAdi" ekranına erişim yetkiniz yok.\nSadece Müdür/Admin erişebilir.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: context.textSecondary, height: 1.5),
+              ),
+              const SizedBox(height: 32),
+              FilledButton.icon(
+                onPressed: () => context.go('/'),
+                icon: const Icon(Icons.home_outlined),
+                label: const Text('Ana Sayfaya Dön'),
+                style: FilledButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: AppRenkler.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

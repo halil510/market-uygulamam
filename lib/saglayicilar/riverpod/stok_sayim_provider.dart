@@ -67,7 +67,13 @@ class StokSayimDurum {
 
 class SayimSonucu {
   final bool basarili; final String mesaj; final int guncellenen;
-  const SayimSonucu({required this.basarili, required this.mesaj, this.guncellenen = 0});
+  // Madde 13 denetimi (2026-09-16): true ise stok HENÜZ değişmedi —
+  // sayım Müdür onayına gönderildi, stok ancak onaylandığında değişir.
+  final bool onayaGonderildi;
+  const SayimSonucu({
+    required this.basarili, required this.mesaj, this.guncellenen = 0,
+    this.onayaGonderildi = false,
+  });
 }
 
 /// Saf/statik yardımcılar — DB/Riverpod'dan bağımsız, doğrudan test edilebilir.
@@ -173,6 +179,16 @@ class StokSayim extends _$StokSayim {
 
   void sayimiSifirla() => state = state.copyWith(sayimMiktarlari: {});
 
+  // 🔴🔴 DÜZELTME (Madde 13 — Sayım Onay Sistemi denetimi, 2026-09-16):
+  // ÖNCEDEN her kullanıcı "Uygula"ya bastığı anda stok DOĞRUDAN
+  // değişiyordu — hiçbir onay adımı yoktu (dokümanın kendi sözleriyle
+  // tam olarak kaçınılması gereken anti-pattern: "Stok sayımı
+  // yapıldığında doğrudan stok değiştirme"). Artık: Müdür/Admin
+  // sayıyorsa (zaten yetkili kişi) doğrudan uygulanır — ama sıradan bir
+  // kullanıcı (kasiyer/personel) sayıyorsa, sayım SADECE 'gecici_sayim'
+  // tablosunda BEKLER (stok DEĞİŞMEZ), bir Müdür/Admin Sayım Onayı
+  // ekranından ("Onaya gönder → Yetkili onayı → Stok düzeltme hareketi
+  // → Audit → Sync" akışı) açıkça onaylamadan hiçbir şey yazılmaz.
   Future<SayimSonucu> uygula() async {
     if (state.sayimMiktarlari.isEmpty) {
       return const SayimSonucu(basarili: false, mesaj: 'Sayım girişi yapılmadı');
@@ -180,6 +196,7 @@ class StokSayim extends _$StokSayim {
     state = state.copyWith(uygulamaIsleniyor: true);
     try {
       final kullaniciId = AuthServisi().aktifKullanici?.id ?? 0;
+      final yetkili = AuthServisi().isMudur;
       for (final e in state.sayimMiktarlari.entries) {
         final u = state.urunler.firstWhere((x) => x.id == e.key,
             orElse: () => throw Exception('Ürün bulunamadı'));
@@ -189,13 +206,25 @@ class StokSayim extends _$StokSayim {
         final yeniToplam = StokSayimHesap.yeniToplamHesapla(
             toplamStok: u.stok, subeStok: subeStok, sayilan: e.value);
         await _stokDepo.geciciSayimEkleGuncelle(
-            e.key, state.mevcutStok(u), yeniToplam);
+            e.key, state.mevcutStok(u), yeniToplam, kullaniciId: kullaniciId);
       }
-      await _stokDepo.geciciSayimUygula(kullaniciId);
       final count = state.sayimMiktarlari.length;
-      state = state.copyWith(uygulamaIsleniyor: false, sayimMiktarlari: {});
-      await yukle(sifirla: true);
-      return SayimSonucu(basarili: true, mesaj: '$count ürün güncellendi', guncellenen: count);
+      if (yetkili) {
+        await _stokDepo.geciciSayimUygula(kullaniciId);
+        state = state.copyWith(uygulamaIsleniyor: false, sayimMiktarlari: {});
+        await yukle(sifirla: true);
+        return SayimSonucu(basarili: true, mesaj: '$count ürün güncellendi', guncellenen: count);
+      } else {
+        // Stoğa HİÇ dokunulmadı — sadece 'gecici_sayim'de bekliyor.
+        state = state.copyWith(uygulamaIsleniyor: false, sayimMiktarlari: {});
+        await yukle(sifirla: true);
+        return SayimSonucu(
+          basarili: true,
+          mesaj: '$count ürün Müdür onayına gönderildi — onaylanana kadar stok değişmedi',
+          guncellenen: count,
+          onayaGonderildi: true,
+        );
+      }
     } catch (e) {
       state = state.copyWith(uygulamaIsleniyor: false);
       return SayimSonucu(basarili: false, mesaj: e.toString());

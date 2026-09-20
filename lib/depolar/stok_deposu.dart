@@ -478,7 +478,7 @@ class StokDeposu {
   }
 
   Future<void> stokDuzelt(
-      int urunId, double yeniMiktar, int kullaniciId) async {
+      int urunId, double yeniMiktar, int kullaniciId, {String? aciklama}) async {
     // 🔴 Not: 'onceki' burada (transaction dışında) tanımlanıyor ki
     // fonksiyonun SONUNDA (sube_urun güncellemesi için) da kullanılabilsin
     // — bu oturumda satis_deposu.dart'ta bulduğum "transaction içinde
@@ -507,7 +507,7 @@ class StokDeposu {
           'tarih': now,
           'last_updated': now,
           'kullanici_id': kullaniciId,
-          'aciklama': 'Stok sayım düzeltme',
+          'aciklama': aciklama ?? 'Stok sayım düzeltme',
         });
       });
       final guncelUrun = await db.query('urunler',
@@ -570,8 +570,12 @@ class StokDeposu {
     }
   }
 
+  /// [kullaniciId] SADECE bu satırı SAYAN kişiyi kaydeder — sayımı
+  /// UYGULAYAN (onaylayan) kişi DEĞİL. Madde 13 denetimi (2026-09-16):
+  /// bu sütun şemada zaten VARDI ama hiç doldurulmuyordu, "kim saydı"
+  /// bilgisi kayboluyordu.
   Future<void> geciciSayimEkleGuncelle(
-      int urunId, double mevcutStok, double yeniStok) async {
+      int urunId, double mevcutStok, double yeniStok, {int? kullaniciId}) async {
     try {
       final db = await _d;
       await db.insert(
@@ -580,6 +584,7 @@ class StokDeposu {
             'urun_id': urunId,
             'mevcut_stok': mevcutStok,
             'yeni_stok': yeniStok,
+            'kullanici_id': kullaniciId,
           },
           conflictAlgorithm: ConflictAlgorithm.replace);
     } catch (e, st) {
@@ -588,11 +593,16 @@ class StokDeposu {
     }
   }
 
+  /// Sayan kullanıcının adını da döner (Madde 13 — Sayım Onay ekranı
+  /// "kim saydı" göstermek için).
   Future<List<Map<String, dynamic>>> geciciSayimListesi() async {
     try {
       final db = await _d;
       return await db.rawQuery(
-        'SELECT g.*, u.urun_adi, u.barkod, u.birim_adi FROM gecici_sayim g JOIN urunler u ON g.urun_id = u.id',
+        'SELECT g.*, u.urun_adi, u.barkod, u.birim_adi, k.ad_soyad AS sayan_adi '
+        'FROM gecici_sayim g '
+        'JOIN urunler u ON g.urun_id = u.id '
+        'LEFT JOIN kullanicilar k ON g.kullanici_id = k.id',
       );
     } catch (e, st) {
       LogServisi().hata('Stok.metod', hata: e, yigin: st);
@@ -600,12 +610,21 @@ class StokDeposu {
     }
   }
 
-  Future<void> geciciSayimUygula(int kullaniciId) async {
+  /// [onaylayanKullaniciId]: bekleyen sayımı UYGULAYAN (onaylayan) kişi.
+  /// Madde 13 denetimi (2026-09-16): her hareketin aciklama'sına, o
+  /// satırı SAYAN kişi de yazılır ("Sayan: X, Onaylayan: Y") — sayan ve
+  /// onaylayan farklı kişilerse tam denetim izi (audit trail) korunur.
+  Future<void> geciciSayimUygula(int onaylayanKullaniciId) async {
     try {
       final liste = await geciciSayimListesi();
       for (final row in liste) {
+        final sayanAdi = row['sayan_adi'] as String?;
+        final aciklama = (sayanAdi != null && sayanAdi.trim().isNotEmpty)
+            ? 'Stok sayım düzeltme (Sayan: $sayanAdi)'
+            : null;
         await stokDuzelt(row['urun_id'] as int,
-            (row['yeni_stok'] as num).toDouble(), kullaniciId);
+            (row['yeni_stok'] as num).toDouble(), onaylayanKullaniciId,
+            aciklama: aciklama);
       }
       await geciciSayimTemizle();
     } catch (e, st) {
@@ -623,4 +642,8 @@ class StokDeposu {
       rethrow;
     }
   }
+
+  /// Bekleyen (onaya sunulmuş) sayımı, HİÇBİR stok değişikliği yapmadan
+  /// temizler — Madde 13: yetkili sayımı reddedebilmeli.
+  Future<void> geciciSayimReddet() => geciciSayimTemizle();
 }

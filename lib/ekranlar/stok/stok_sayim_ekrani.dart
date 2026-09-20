@@ -13,10 +13,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:go_router/go_router.dart';
 import '../../saglayicilar/riverpod/stok_sayim_provider.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../servisler/excel_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/auth_servisi.dart';
 import '../../modeller/urun_model.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -279,16 +281,23 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
       return;
     }
 
+    // 🔴 DÜZELTME (Madde 13 denetimi, 2026-09-16): Müdür/Admin DEĞİLSE
+    // bu işlem artık stoğu DEĞİL — sadece bekleyen bir onay talebini
+    // değiştirir. Diyalog metni buna göre dürüst olmalı ("geri alınamaz"
+    // demek YANLIŞ, çünkü Müdür reddedebilir).
+    final yetkili = AuthServisi().isMudur;
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        
-        title: const Text('Sayımı Uygula'),
-        content: Text(
-          '${durum.sayimMiktarlari.length} ürün için stok güncelleme yapılacak.\n'
-          'Bu işlem geri alınamaz. Devam etmek istiyor musunuz?',
-        ),
+
+        title: Text(yetkili ? 'Sayımı Uygula' : 'Sayımı Onaya Gönder'),
+        content: Text(yetkili
+            ? '${durum.sayimMiktarlari.length} ürün için stok güncelleme yapılacak.\n'
+              'Bu işlem geri alınamaz. Devam etmek istiyor musunuz?'
+            : '${durum.sayimMiktarlari.length} ürün için sayım Müdür onayına '
+              'gönderilecek. Onaylanana kadar stok DEĞİŞMEYECEK. Devam etmek '
+              'istiyor musunuz?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -327,6 +336,17 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
       appBar: TsAppBar(
         baslik: 'Stok Sayımı',
         aksiyonlar: [
+          // Madde 13 denetimi (2026-09-16): kasiyer/personelin gönderdiği
+          // bekleyen sayımları onaylama ekranına giriş — sadece Müdür/
+          // Admin görür (TsYetkili), ekranın kendisi de ayrıca
+          // MudurYetkiKorumasi ile route seviyesinde korunuyor.
+          TsYetkili(
+            child: IconButton(
+              icon: const Icon(Icons.fact_check_outlined),
+              tooltip: 'Bekleyen Sayımları Onayla',
+              onPressed: () => context.push('/stok/sayim-onay'),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.download_outlined),
             onPressed: _excelIceAl,

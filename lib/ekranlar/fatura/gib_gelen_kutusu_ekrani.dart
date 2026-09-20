@@ -41,9 +41,22 @@ class _GibGelenKutusuEkraniState extends State<GibGelenKutusuEkrani> {
       });
       return;
     }
-    final liste = await _gib.gelenFaturalariGetir();
-    if (!mounted) return;
-    setState(() { _faturalar = liste; _yukleniyor = false; });
+    // 🔴 DÜZELTME (GİB Fatura denetimi, 2026-09-20): gelenFaturalariGetir()
+    // artık gerçek bir ağ/API hatasında exception fırlatıyor (önceden
+    // sessizce [] dönüyordu) — burada yakalanıp _hata alanı dolduruluyor,
+    // böylece "gelen fatura yok" ile "sorgu başarısız oldu" ekranda
+    // artık AYRIŞIYOR.
+    try {
+      final liste = await _gib.gelenFaturalariGetir();
+      if (!mounted) return;
+      setState(() { _faturalar = liste; _yukleniyor = false; });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _yukleniyor = false;
+        _hata = 'Gelen kutusu sorgulanamadı: $e';
+      });
+    }
   }
 
   Future<void> _yanitla(Map<String, dynamic> fatura, bool kabul) async {

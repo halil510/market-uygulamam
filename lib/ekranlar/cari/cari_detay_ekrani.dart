@@ -80,7 +80,13 @@ List<CariHareketModel> cariHareketleriniGrupla(List<CariHareketModel> ham) {
       fisTipi: h.fisTipi,
       fisId: fisId,
       fisNo: h.fisNo,
-      aciklama: 'Karma Satış: ${h.fisNo ?? fisId} (ödeme dağılımı için dokunun)',
+      // 🔴 DÜZELTME (Cari/Fiş denetimi, 2026-09-20): metin ÖNCEDEN "ödeme
+      // dağılımı için dokunun" diyordu ama bu karta dokunmak (satisMi ==
+      // true dalı, aşağıda _hareketFaturalandir) HER ZAMAN faturalama
+      // akışını başlatıyordu — ödeme dağılımı hiç gösterilmiyordu (o
+      // sadece Satış Detayı ekranında var). Metin artık gerçek davranışı
+      // yansıtıyor.
+      aciklama: 'Karma Satış: ${h.fisNo ?? fisId} (fatura oluşturmak için dokunun)',
       borc: net > 0 ? net : 0,
       alacak: net < 0 ? -net : 0,
       odemeTuru: 'Karma',

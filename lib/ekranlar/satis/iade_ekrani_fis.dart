@@ -66,6 +66,34 @@ extension _FisTabExt on _IadeEkraniState {
       return;
     }
 
+    // 🔴🔴 DÜZELTME (Madde 23 — Fatura/E-Belge denetimi, 2026-09-20):
+    // satis_detay_ekrani.dart'taki "satış iptali" akışıyla AYNI kontrolün
+    // simetriği — ÖNCEDEN fiş üzerinden iade, bu satışa ait GİB'e
+    // GÖNDERİLMİŞ/ONAYLANMIŞ bir e-Fatura olup olmadığını hiç kontrol
+    // etmiyordu. Bir kalemi iade etmek fişin tutarını/kalemlerini fiilen
+    // değiştirir ama onaylı e-Fatura'ya hiç dokunmaz — kullanıcı resmi bir
+    // iade faturası/düzeltme gerektiğini bilmeden sessizce devam edebilirdi.
+    final faturaId =
+        await FaturalandirmaServisi.mevcutFaturaId(satisId: _bulunanSatis!.id!);
+    if (faturaId != null && mounted) {
+      final fatura = await FaturaDeposu().idileGetir(faturaId);
+      final gibeGonderildi = fatura != null &&
+          (fatura.eFaturaDurum == 'gonderildi' || fatura.eFaturaDurum == 'onaylandi');
+      if (gibeGonderildi && mounted) {
+        final devamEt = await OnayDialog.goster(context,
+            baslik: 'Bu Fişin Onaylı Bir e-Faturası Var',
+            icerik:
+                'Bu satış için GİB\'e gönderilmiş ve onaylanmış bir e-Fatura '
+                '(${fatura.faturaNo ?? ''}) mevcut. Bu kalemi iade etmek '
+                'faturayı OTOMATİK OLARAK düzeltmez/iptal ETMEZ — resmi bir '
+                'iade faturası/düzeltme GİB tarafında ayrıca düzenlenmelidir. '
+                'İadeye yine de devam etmek istiyor musunuz?',
+            onayYazi: 'Yine de İade Et', onayRengi: _R.orange,
+            ikon: Icons.warning_amber_rounded);
+        if (!devamEt || !mounted) return;
+      }
+    }
+
     // 🔴🔴 FAZ 1 madde 1 (kullanıcı onayıyla): iade artık orijinal
     // satışın ödeme yöntemini dikkate alıyor — kart/banka ile ödenmiş
     // bir satışın iadesi kasadan nakit ÇIKARMIYOR (POS cihazından ayrıca

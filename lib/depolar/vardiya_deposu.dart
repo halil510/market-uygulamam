@@ -49,38 +49,119 @@ class VardiyaDeposu {
 
   /// Aktif vardiya özeti — satış sayısı/ciro/ödeme yöntemi kırılımı,
   /// [baslangicTarihi]'nden (vardiyanın açılış anı) bu yana.
+  // 🔴 DÜZELTME (Karma/çoklu ödeme denetimi, 2026-09-20 — kullanıcı
+  // bulgusu: "gün sonu çoklu ödeme doğru olmamış"): nakit/kart/cari
+  // ÖNCEDEN satislar.odeme_yontemi TEK ALAN string'iyle eşleştiriliyordu
+  // — Karma ödemeli bir satışın odeme_yontemi'si 'Karma' olduğu için bu
+  // üç CASE'in HİÇBİRİNE eşleşmiyordu, yani o satışın gerçek nakit/kart/
+  // cari payları kırılımdan TAMAMEN KAYBOLUYORDU (toplam_ciro'da vardı,
+  // Nakit/Kredi K. KPI kartlarında yoktu). Aynı ekranda "Beklenen Kasa"
+  // (KasaDeposu.nakitDegisimi, kasa_hareketleri tabanlı — Karma satışların
+  // nakit payını ZATEN doğru içeriyordu) ile bu ekrandaki "Nakit Satışlar"
+  // KPI'ı arasında sessiz bir tutarsızlık vardı. Artık nakit/kart, her
+  // satış için ödeme yöntemi bazında ZATEN itemize edilmiş olan
+  // kasa_hareketleri'nden (bkz. SatisTamamlamaServisi — Karma ödemede her
+  // yöntem için ayrı satır), cari ise cari_hareket'ten (SADECE gerçek borç
+  // satırı — self-cancelling bilgi satırı HARİÇ) hesaplanıyor. Bu,
+  // SatisDeposu.odemeDagilimiGetir() ile AYNI, zaten doğrulanmış kaynak/
+  // mantık — tek fark burada TEK bir satış değil, bir zaman aralığı
+  // toplanıyor.
   Future<Map<String, dynamic>> satisOzetiGetir(String baslangicTarihi) async {
     final db = await _d;
     final rows = await db.rawQuery('''
       SELECT
         COUNT(*) as satis_sayisi,
         COALESCE(SUM(genel_toplam),0) as toplam_ciro,
-        COALESCE(SUM(CASE WHEN odeme_yontemi='Nakit' THEN genel_toplam ELSE 0 END),0) as nakit,
-        COALESCE(SUM(CASE WHEN odeme_yontemi='Kredi Kartı' THEN genel_toplam ELSE 0 END),0) as kart,
-        COALESCE(SUM(CASE WHEN odeme_yontemi='Cari' THEN genel_toplam ELSE 0 END),0) as cari,
         COALESCE(SUM(iskonto_tutar),0) as iskonto,
         COALESCE(SUM(CASE WHEN iptal=1 THEN 1 ELSE 0 END),0) as iptal_sayisi
       FROM satislar
       WHERE datetime(tarih) >= datetime(?) AND iptal=0 AND is_deleted=0
     ''', [baslangicTarihi]);
-    return Map<String, dynamic>.from(rows.first);
+    final ozet = Map<String, dynamic>.from(rows.first);
+
+    final kasaRows = await db.rawQuery('''
+      SELECT kh.odeme_yontemi, COALESCE(SUM(kh.tutar),0) as tutar
+      FROM kasa_hareketleri kh
+      JOIN satislar s ON s.id = kh.referans_id AND kh.referans_turu = 'satis'
+      WHERE datetime(s.tarih) >= datetime(?) AND s.iptal=0 AND s.is_deleted=0
+        AND kh.deleted_at IS NULL
+      GROUP BY kh.odeme_yontemi
+    ''', [baslangicTarihi]);
+    double nakit = 0, kart = 0, digerKasa = 0;
+    for (final r in kasaRows) {
+      final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+      switch (r['odeme_yontemi'] as String?) {
+        case 'Nakit':       nakit += tutar; break;
+        case 'Kredi Kartı': kart  += tutar; break;
+        default:            digerKasa += tutar; break;
+      }
+    }
+
+    final cariRows = await db.rawQuery('''
+      SELECT COALESCE(SUM(ch.borc),0) as tutar
+      FROM cari_hareket ch
+      JOIN satislar s ON s.id = ch.fis_id
+      WHERE ch.fis_tipi = 'Satış' AND ch.alacak = 0 AND ch.borc > 0 AND ch.is_deleted = 0
+        AND datetime(s.tarih) >= datetime(?) AND s.iptal=0 AND s.is_deleted=0
+    ''', [baslangicTarihi]);
+    final cari = (cariRows.first['tutar'] as num?)?.toDouble() ?? 0;
+
+    ozet['nakit'] = nakit;
+    ozet['kart']  = kart;
+    ozet['cari']  = cari;
+    ozet['diger'] = digerKasa;
+    return ozet;
   }
 
   /// PDF vardiya raporu için özet — [satisOzetiGetir] ile AYNI zaman
   /// penceresini sorgular ama farklı kolon adları/alan seti döner (PDF
   /// şablonunun beklediği anahtarlarla birebir); davranış değişmesin
   /// diye bilerek AYRI bir metod olarak tutuldu.
+  // 🔴 DÜZELTME (Karma/çoklu ödeme denetimi, 2026-09-20): [satisOzetiGetir]
+  // üzerindeki AYNI gerekçe/düzeltme burada da geçerli — bu metod PDF
+  // vardiya raporunda kullanıldığından, Karma satışların basılı raporda
+  // da nakit/kart/cari kırılımından kaybolmaması için aynı kasa_hareketleri/
+  // cari_hareket tabanlı hesaplamaya geçirildi. Anahtar adları (PDF
+  // şablonunun beklediği 'sayi'/'ciro'/'cari_toplam') DEĞİŞMEDİ.
   Future<Map<String, dynamic>> pdfSatisOzetiGetir(String baslangicTarihi) async {
     final db = await _d;
     final rows = await db.rawQuery('''
       SELECT COUNT(*) as sayi, COALESCE(SUM(genel_toplam),0) as ciro,
-        COALESCE(SUM(CASE WHEN odeme_yontemi='Nakit' THEN genel_toplam ELSE 0 END),0) as nakit,
-        COALESCE(SUM(CASE WHEN odeme_yontemi='Kredi Kartı' THEN genel_toplam ELSE 0 END),0) as kart,
-        COALESCE(SUM(CASE WHEN odeme_yontemi='Cari' THEN genel_toplam ELSE 0 END),0) as cari_toplam,
         COALESCE(SUM(iskonto_tutar),0) as iskonto
       FROM satislar WHERE datetime(tarih) >= datetime(?) AND iptal=0 AND is_deleted=0
     ''', [baslangicTarihi]);
-    return Map<String, dynamic>.from(rows.first);
+    final ozet = Map<String, dynamic>.from(rows.first);
+
+    final kasaRows = await db.rawQuery('''
+      SELECT kh.odeme_yontemi, COALESCE(SUM(kh.tutar),0) as tutar
+      FROM kasa_hareketleri kh
+      JOIN satislar s ON s.id = kh.referans_id AND kh.referans_turu = 'satis'
+      WHERE datetime(s.tarih) >= datetime(?) AND s.iptal=0 AND s.is_deleted=0
+        AND kh.deleted_at IS NULL
+      GROUP BY kh.odeme_yontemi
+    ''', [baslangicTarihi]);
+    double nakit = 0, kart = 0;
+    for (final r in kasaRows) {
+      final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+      switch (r['odeme_yontemi'] as String?) {
+        case 'Nakit':       nakit += tutar; break;
+        case 'Kredi Kartı': kart  += tutar; break;
+      }
+    }
+
+    final cariRows = await db.rawQuery('''
+      SELECT COALESCE(SUM(ch.borc),0) as tutar
+      FROM cari_hareket ch
+      JOIN satislar s ON s.id = ch.fis_id
+      WHERE ch.fis_tipi = 'Satış' AND ch.alacak = 0 AND ch.borc > 0 AND ch.is_deleted = 0
+        AND datetime(s.tarih) >= datetime(?) AND s.iptal=0 AND s.is_deleted=0
+    ''', [baslangicTarihi]);
+    final cariToplam = (cariRows.first['tutar'] as num?)?.toDouble() ?? 0;
+
+    ozet['nakit'] = nakit;
+    ozet['kart']  = kart;
+    ozet['cari_toplam'] = cariToplam;
+    return ozet;
   }
 
   /// Yeni vardiya açar.

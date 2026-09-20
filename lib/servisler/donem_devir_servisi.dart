@@ -630,6 +630,19 @@ class DonemDevirServisi {
     return sonuclar;
   }
 
+  // 🔴 DÜZELTME (Yıl Sonu Devir denetimi, 2026-09-20 — "devir hiç
+  // olmuyor" kök nedeni): bu kontrol ÖNCEDEN CRITICAL (kirmizi)
+  // döndüğünde FAZ 1 devri anında `failed` yapıp durduruyordu (bkz.
+  // _fazKontrolCalistir çağıranı, satır ~182: sadece kirmizi = engelliyorMu).
+  // Gerçek POS kullanımında kasiyer günü vardiya AÇARAK başlar ve bu
+  // uygulamada satış yapmak için vardiya açık olma ZORUNLULUĞU bile
+  // yoktur — yani NEREDEYSE HER ZAMAN açık bir vardiya vardır ve devir
+  // sihirbazı HER TIKLANDIĞINDA aynı noktada, "Kritik kontrol(ler)
+  // başarısız: Açık Vardiya" ile hemen bitiyordu. Kullanıcı bunu "sistem
+  // çalışmıyor" olarak deneyimliyordu. Artık _acikMasaSiparisiKontrol
+  // ile AYNI desen kullanılıyor: bilgilendirme amaçlı WARNING (sari) —
+  // devri ENGELLEMEZ, ama kullanıcı bilinçli olsun diye gösterilir
+  // (kasa mutabakatı gerçekten etkilenebilir, bu risk mesajda kalıyor).
   Future<DevirKontrolSonucu> _acikVardiyaKontrol(int subeId) async {
     try {
       final vardiya = await VardiyaDeposu()
@@ -638,9 +651,9 @@ class DonemDevirServisi {
       return DevirKontrolSonucu(
         id: 'acik_vardiya',
         baslik: 'Açık Vardiya',
-        durum: acik ? SaglikDurum.kirmizi : SaglikDurum.yesil,
+        durum: acik ? SaglikDurum.sari : SaglikDurum.yesil,
         mesaj: acik
-            ? 'Kapatılmamış bir vardiya var — kasa mutabakatı güvenilir olmayabilir, devirden önce vardiyayı kapatın.'
+            ? 'Kapatılmamış bir vardiya var — kasa mutabakatı güvenilir olmayabilir. Mümkünse devirden önce vardiyayı kapatın (zorunlu değil).'
             : 'Açık vardiya yok.',
         sayi: acik ? 1 : 0,
       );

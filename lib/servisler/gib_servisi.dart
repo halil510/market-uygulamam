@@ -862,6 +862,20 @@ $satirlar
     return ham; // tanınmayan değer — olduğu gibi, teşhis için korunuyor
   }
 
+  // 🔴 DÜZELTME (GİB Fatura denetimi, 2026-09-20): ÖNCEDEN hem HTTP
+  // hatası (statusCode != 200) hem ağ/timeout istisnası SESSİZCE
+  // yutulup AYNI şekilde null döndürülüyordu — çağıran ekran (bkz.
+  // fatura_detay_ekrani.dart _durumEtiketi) null'ı "Beklemede" olarak
+  // gösteriyordu. Sonuç: kullanıcı "GİB'e sorduk, hâlâ bekliyor" ile
+  // "sorgu GİB'e hiç ulaşamadı" durumlarını AYIRT EDEMİYORDU — resmi
+  // belge takibi için yanıltıcı. Artık gerçek bir hata (HTTP hatası veya
+  // istisna) fırlatılıyor — HER İKİ çağıran taraf (fatura_detay_ekrani.dart,
+  // irsaliye_ekrani.dart) zaten bu çağrıyı try/catch içine alıp
+  // BildirimServisi.hata(...) ile açık bir hata mesajı gösteriyor, yani
+  // bu değişiklik yeni bir crash riski YARATMIYOR — sadece önceden
+  // sessizce yutulan hatayı kullanıcıya görünür kılıyor. "Yapılandırılmamış"
+  // (ayarliMi==false) durumu davranışsal olarak DEĞİŞMEDİ — hâlâ null
+  // döner (bu bir sorgu hatası değil, bir ön-koşul eksikliği).
   Future<String?> durumSorgula(String uuid) async {
     await ayarlariYukle();
     if (!ayarliMi) return null;
@@ -874,8 +888,11 @@ $satirlar
         final body = r.data as Map<String, dynamic>?;
         return _durumNormallestir(body?['status']?.toString());
       }
-    } catch (e) { if (kDebugMode) debugPrint('[HATA] ' + e.toString()); }
-    return null;
+      throw Exception('GİB durum sorgusu başarısız (HTTP ${r.statusCode})');
+    } catch (e) {
+      if (kDebugMode) debugPrint('[HATA] ' + e.toString());
+      rethrow;
+    }
   }
 
   /// GİB'e gönderilmiş bir e-Fatura/e-Arşivi iptal eder. GİB kuralları
@@ -969,29 +986,31 @@ $satirlar
   /// yanıtlamanız gerekir (GİB Tebliği — yanıtlanmazsa süre sonunda
   /// otomatik kabul sayılır, ama yanıt vermemek yine de önerilmez).
   /// Bu fonksiyon entegratörünüzün "gelen kutusu" servisini sorgular.
+  // 🔴 DÜZELTME (GİB Fatura denetimi, 2026-09-20): ÖNCEDEN ağ/API hatası
+  // sessizce yutulup BOŞ liste döndürülüyordu — gib_gelen_kutusu_ekrani.dart
+  // bunu "gerçekten gelen fatura yok" ile "sorgu başarısız oldu" arasında
+  // AYIRT EDEMİYORDU, her ikisi de aynı boş-durum mesajını gösteriyordu.
+  // Artık gerçek bir hata (HTTP hatası veya istisna) fırlatılıyor — çağıran
+  // ekran try/catch ile yakalayıp _hata alanını dolduruyor.
   Future<List<Map<String, dynamic>>> gelenFaturalariGetir({int gunSayisi = 30}) async {
     if (!ayarliMi) return [];
-    try {
-      final bitis = DateTime.now();
-      final baslangic = bitis.subtract(Duration(days: gunSayisi));
-      final response = await _dio.get(
-        '$_apiUrl/einvoice/inbox',
-        queryParameters: {
-          'startDate': DateFormat('yyyy-MM-dd').format(baslangic),
-          'endDate': DateFormat('yyyy-MM-dd').format(bitis),
-        },
-        options: Options(headers: {'Authorization': _authHeader}),
-      ).timeout(const Duration(seconds: 15));
+    final bitis = DateTime.now();
+    final baslangic = bitis.subtract(Duration(days: gunSayisi));
+    final response = await _dio.get(
+      '$_apiUrl/einvoice/inbox',
+      queryParameters: {
+        'startDate': DateFormat('yyyy-MM-dd').format(baslangic),
+        'endDate': DateFormat('yyyy-MM-dd').format(bitis),
+      },
+      options: Options(headers: {'Authorization': _authHeader}),
+    ).timeout(const Duration(seconds: 15));
 
-      if (response.statusCode == 200 && response.data is Map) {
-        final icerik = (response.data as Map)['Content'];
-        if (icerik is List) return icerik.cast<Map<String, dynamic>>();
-      }
-      return [];
-    } catch (e) {
-      if (kDebugMode) debugPrint('Gelen fatura listesi alınamadı (entegratör API\'si farklı olabilir): $e');
+    if (response.statusCode == 200 && response.data is Map) {
+      final icerik = (response.data as Map)['Content'];
+      if (icerik is List) return icerik.cast<Map<String, dynamic>>();
       return [];
     }
+    throw Exception('GİB gelen kutusu sorgusu başarısız (HTTP ${response.statusCode})');
   }
 
   /// GİB'in yasal olarak zorunlu kıldığı "Uygulama Yanıtı" — gelen bir

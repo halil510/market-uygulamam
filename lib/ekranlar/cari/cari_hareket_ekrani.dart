@@ -21,6 +21,7 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import 'fis_detay_ekrani.dart';
 import '../../tasarim_sistemi/ts_kart.dart';
+import 'cari_detay_ekrani.dart' show cariHareketleriniGrupla;
 
 class CariHareketEkrani extends ConsumerStatefulWidget {
   final int cariId;
@@ -93,8 +94,19 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   // sahip), sadece patolojik uç durumda ekranı çökertmek yerine "son
   // 5000 hareket" gösterir. Ayrıca repository katmanını atlayan
   // doğrudan SQL erişimi de bu vesileyle kapatıldı.
-  Future<List<CariHareketModel>> _hareketleriGetir() =>
-      _depo.hareketleriniGetir(widget.cariId, limit: 5000);
+  // 🔴 DÜZELTME (Cari/Fiş denetimi, 2026-09-20): Cari Detay ekranındaki
+  // karma-ödeme çift-fiş-görünümü bug'ı (commit 7ac1d0a) sadece o
+  // ekranda düzeltilmişti — AYNI ham veriyi gösteren bu "Tüm Hareketler"
+  // ekranı (Cari Detay'daki FAB üzerinden erişilir) cariHareketleriniGrupla()'yı
+  // hiç uygulamıyordu, yani karma ödemeli bir satış burada HÂLÂ 2 ayrı
+  // "Satış" kartı olarak görünüyordu. Artık aynı gruplama burada da
+  // uygulanıyor — _toplamBorc/_toplamAlacak (ve Excel/CSV/PDF export'ları)
+  // de bu gruplanmış liste üzerinden hesaplandığı için, "Toplam Borç"
+  // artık self-cancelling bilgi satırı yüzünden şişmiyor.
+  Future<List<CariHareketModel>> _hareketleriGetir() async {
+    final ham = await _depo.hareketleriniGetir(widget.cariId, limit: 5000);
+    return cariHareketleriniGrupla(ham);
+  }
 
   void _filtrele() {
     var list = List<CariHareketModel>.from(_tumHareketler);

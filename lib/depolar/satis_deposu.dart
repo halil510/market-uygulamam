@@ -418,13 +418,20 @@ class SatisDeposu {
     );
   }
 
+  // 🔴 DÜZELTME (Cari/Fiş denetimi, 2026-09-20): is_deleted=1 (silinmiş)
+  // satışlar iptal=0 filtresinden kaçıp burada listeleniyordu — sil()
+  // ikisini birlikte set ettiği için pratikte nadiren tetiklenen bir
+  // tutarsızlıktı, ama Fiş Detay/cari_hareket_ekrani.dart'taki diğer
+  // sorgularla aynı filtre disiplinine getirildi. `limit` parametresi de
+  // ölüydü (hiç SQL'e uygulanmıyordu) — artık gerçekten uygulanıyor.
   Future<List<SatisModel>> cariSatislari(int cariId, {int limit = 100}) async {
     final db = await _d;
     final rows = await db.rawQuery(
       'SELECT s.*, c.unvan as cari_adi '
       'FROM satislar s LEFT JOIN cari c ON s.cari_id = c.id '
-      'WHERE s.cari_id = ? AND s.iptal = 0 ORDER BY s.tarih DESC',
-      [cariId],
+      'WHERE s.cari_id = ? AND s.iptal = 0 AND s.is_deleted = 0 '
+      'ORDER BY s.tarih DESC LIMIT ?',
+      [cariId, limit],
     );
     return rows.map((r) => SatisModel.fromMap(r)).toList();
   }

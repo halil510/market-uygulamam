@@ -20,6 +20,8 @@ import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
 import '../../modeller/fatura_model.dart';
 import '../../servisler/faturalandirma_servisi.dart';
+import '../../depolar/fatura_deposu.dart';
+import '../../widgetlar/ortak/onay_dialog.dart';
 import '../../modeller/satis_model.dart';
 import '../../modeller/satis_kalem_model.dart';
 import '../../depolar/urun_deposu.dart';

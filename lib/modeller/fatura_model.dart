@@ -187,6 +187,13 @@ class FaturaModel {
     if (odemeSekli != null) 'odeme_sekli': odemeSekli,
     if (eFaturaUuid != null) 'e_fatura_uuid': eFaturaUuid,
     'e_fatura_durum': eFaturaDurum ?? 'hazir',
+    // 🔴 DÜZELTME (GİB Fatura denetimi, 2026-09-20): eFaturaDenemeNo
+    // toMap()'e hiç yazılmıyordu (unutulmuş) — şu an zararsız (tek yazma
+    // yolu FaturaDeposu.eFaturaYenidenGondermeyeHazirla, ham db.update ile
+    // ayrı yazıyor) ama ileride toMap() başka bir güncelleme akışında
+    // kullanılırsa deneme sayacı sessizce sıfırlanabilirdi — savunma
+    // amaçlı eklendi.
+    'e_fatura_deneme_no': eFaturaDenemeNo,
     if (eFaturaHtml != null) 'e_fatura_html': eFaturaHtml,
     if (eFaturaXml != null) 'e_fatura_xml': eFaturaXml,
     if (gonderimTarihi != null) 'gonderim_tarihi': gonderimTarihi!.toIso8601String(),

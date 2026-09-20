@@ -220,6 +220,15 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
       BildirimServisi.uyari(context, 'Henüz gönderim yapılmamış');
       return;
     }
+    // 🔴 DÜZELTME (GİB Fatura denetimi, 2026-09-20 — loading dialog
+    // sızıntısı): ÖNCEDEN diyalog kapatma `if (!mounted) return;`
+    // ardından `Navigator.pop(context)` ile yapılıyordu — kullanıcı ağ
+    // isteği sürerken bu ekrandan geri giderse (widget unmount olur),
+    // `mounted=false` olduğu için pop HİÇ ÇAĞRILMIYOR ve barrierDismissible:
+    // false olan "GİB sorgulanıyor..." diyaloğu ekranda ASILI KALABİLİYORDU.
+    // Artık kök navigator'a bu widget'ın mounted durumundan BAĞIMSIZ bir
+    // referans tutuluyor — dialog her koşulda kapatılabiliyor.
+    final navigator = Navigator.of(context, rootNavigator: true);
     showDialog(context: context, barrierDismissible: false,
       builder: (_) => AlertDialog(
         content: Row(children: [
@@ -231,8 +240,8 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
       final gib = GibServisi();
       await gib.ayarlariYukle();
       final durum = await gib.durumSorgula(ettn);
+      if (navigator.mounted) navigator.pop();
       if (!mounted) return;
-      Navigator.pop(context);
       showDialog(context: context, builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('GİB Durum'),
@@ -254,7 +263,8 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
         await _yukle();
       }
     } catch (e) {
-      if (mounted) { Navigator.pop(context); BildirimServisi.hata(context, 'Hata: $e'); }
+      if (navigator.mounted) navigator.pop();
+      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }
   }
 
@@ -289,6 +299,9 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
     if (onay != true || !mounted) return;
 
     setState(() => _islemDevam = true);
+    // bkz. _durumSorgula() üzerindeki loading-dialog sızıntısı notu — aynı
+    // düzeltme burada da uygulanıyor.
+    final navigator = Navigator.of(context, rootNavigator: true);
     showDialog(context: context, barrierDismissible: false,
       builder: (_) => const AlertDialog(
         content: Row(children: [
@@ -300,8 +313,8 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
       final gib = GibServisi();
       await gib.ayarlariYukle();
       final basarili = await gib.iptalEt(uuid: _fatura!.eFaturaUuid!);
+      if (navigator.mounted) navigator.pop();
       if (!mounted) return;
-      Navigator.pop(context);
       if (basarili) {
         await _depo.eFaturaDurumGuncelle(_fatura!.id!, 'gib_iptal', uuid: _fatura!.eFaturaUuid);
         await _yukle();
@@ -311,9 +324,8 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
             'İptal başarısız — entegratörünüzün iptal süresini/desteğini kontrol edin');
       }
     } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      BildirimServisi.hata(context, 'Hata: $e');
+      if (navigator.mounted) navigator.pop();
+      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     } finally {
       if (mounted) setState(() => _islemDevam = false);
     }
@@ -427,7 +439,9 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
       ));
     if (onay != true || !mounted) return;
 
-    // Gönder
+    // Gönder — bkz. _durumSorgula() üzerindeki loading-dialog sızıntısı
+    // notu, aynı düzeltme.
+    final navigator = Navigator.of(context, rootNavigator: true);
     showDialog(context: context, barrierDismissible: false,
       builder: (_) => AlertDialog(
         content: Row(children: [
@@ -454,8 +468,8 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
       // "Durum Sorgula" ile netleştirebilir.
       await _depo.eFaturaDurumGuncelle(gonderilecekFatura.id!, 'gonderiliyor');
       final sonuc = await gib.gonder(fatura: gonderilecekFatura, tip: tip);
+      if (navigator.mounted) navigator.pop(); // loading dialog kapat
       if (!mounted) return;
-      Navigator.pop(context); // loading dialog kapat
 
       if (sonuc.basarili) {
         // DB güncelle
@@ -493,9 +507,8 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
           ));
       }
     } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      BildirimServisi.hata(context, 'Hata: $e');
+      if (navigator.mounted) navigator.pop();
+      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }
   }
 

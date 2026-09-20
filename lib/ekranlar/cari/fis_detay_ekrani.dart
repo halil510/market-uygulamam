@@ -122,10 +122,15 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
         _kalemler = List<Map<String, dynamic>>.from(kalemler);
 
       } else if (tip == 'İade' || tip == 'Satış İade' || tip == 'Iade' || tip == 'Alım İadesi') {
+        // 🔴 DÜZELTME (Cari/Fiş denetimi, 2026-09-20): 'Satış' dalı
+        // is_deleted=0 filtreliyordu ama bu dal iade.deleted_at'i hiç
+        // kontrol etmiyordu — silinmiş bir iade kaydına fisId ile
+        // erişilirse (ör. eski bir cari_hareket satırından) detay yine
+        // gösterilebiliyordu.
         final rows = await db.rawQuery(
           'SELECT ia.*, c.unvan as cari_adi '
           'FROM iade ia LEFT JOIN cari c ON ia.cari_id = c.id '
-          'WHERE ia.id = ?',
+          'WHERE ia.id = ? AND ia.deleted_at IS NULL',
           [id],
         );
         if (!mounted) return;
@@ -154,12 +159,16 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
         _kalemler = List<Map<String, dynamic>>.from(kalemler);
 
       } else if (tip == 'Alım' || tip == 'Tedarik' || tip == 'Sipariş') {
+        // 🔴 DÜZELTME (Cari/Fiş denetimi, 2026-09-20): tedarikci_siparisler
+        // tablosunun is_deleted sütunu var (bkz. tedarik_semasi.dart) ama
+        // burada hiç filtrelenmiyordu — 'Satış'/'İade' dallarındaki soft-
+        // delete filtresiyle tutarsızdı.
         final rows = await db.rawQuery(
           'SELECT ts.*, ts.siparis_no as fis_no, ts.siparis_tarihi as tarih, '
           'ts.toplam_tutar as genel_toplam, c.unvan as cari_adi '
           'FROM tedarikci_siparisler ts '
           'LEFT JOIN cari c ON ts.cari_id = c.id '
-          'WHERE ts.id = ?',
+          'WHERE ts.id = ? AND (ts.is_deleted IS NULL OR ts.is_deleted = 0)',
           [id],
         );
         if (!mounted) return;

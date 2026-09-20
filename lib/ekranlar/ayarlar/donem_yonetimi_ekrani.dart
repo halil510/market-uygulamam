@@ -15,6 +15,7 @@
 // DonemDevirServisi'nin ürettiği sonucu (checkpoint + kontrol listesi)
 // olduğu gibi gösterir.
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../depolar/donem_deposu.dart';
 import '../../depolar/sube_deposu.dart';
 import '../../modeller/donem_model.dart';
@@ -142,7 +143,7 @@ class _DonemYonetimiEkraniState extends State<DonemYonetimiEkrani> {
       setState(() => _sonKontrolSonuclari = sonuclar);
       final kritik = sonuclar.where((k) => k.engelliyorMu).length;
       if (kritik > 0) {
-        BildirimServisi.uyari(context, '$kritik kritik sorun bulundu — aşağıda listelendi');
+        _kritikSorunSnackbariGoster('$kritik kritik sorun bulundu — aşağıda listelendi');
       } else {
         BildirimServisi.basari(context, 'Kontrol tamamlandı, kritik sorun yok ✓');
       }
@@ -151,6 +152,36 @@ class _DonemYonetimiEkraniState extends State<DonemYonetimiEkrani> {
     } finally {
       if (mounted) setState(() => _isleniyor = false);
     }
+  }
+
+  // 🔴 DÜZELTME (Yıl Sonu Devir denetimi, 2026-09-20): devir/kontrol FAZ
+  // 1'i, VeriSagligiServisi.tumKontrolleriCalistir()'in TÜM kontrollerini
+  // (kasa/banka/cari/stok mutabakatı, DB bütünlüğü vb.) SIFIR TOLERANSLA
+  // devralıyor — bu KASITLI ve doğru (rules doc Madde 4: "CRITICAL hata
+  // varsa devir başlatılmamalı"). Ancak önceden kullanıcıya sadece bir
+  // toast + aşağıda gömülü bir liste gösteriliyordu; hangi ekrana gidip
+  // sorunu ÇÖZECEĞİ (Veri Sağlığı Merkezi, çoğu kalemde "Tek Tıkla
+  // Düzelt" içerir) belirtilmiyordu. Artık kritik sonuç anında doğrudan
+  // /ayarlar/veri-sagligi'ye götüren bir aksiyon butonu sunuluyor.
+  void _kritikSorunSnackbariGoster(String mesaj) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(children: [
+          const Icon(Icons.error_outline, color: Colors.white),
+          const SizedBox(width: 8),
+          Expanded(child: Text(mesaj)),
+        ]),
+        backgroundColor: const Color(0xFFE63946),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Veri Sağlığına Git',
+          textColor: Colors.white,
+          onPressed: () => context.push('/ayarlar/veri-sagligi'),
+        ),
+      ),
+    );
   }
 
   Future<void> _yedekAl() async {
@@ -195,7 +226,7 @@ class _DonemYonetimiEkraniState extends State<DonemYonetimiEkrani> {
       if (sonuc.checkpoint.tamamlandiMi) {
         BildirimServisi.basari(context, 'Devir tamamlandı ✓ (${sonuc.checkpoint.devirId})');
       } else if (sonuc.checkpoint.basarisizMi) {
-        BildirimServisi.hata(context,
+        _kritikSorunSnackbariGoster(
             sonuc.checkpoint.hataMesaji ?? 'Devir başarısız oldu.');
       } else {
         BildirimServisi.uyari(context,

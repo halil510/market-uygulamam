@@ -2,6 +2,18 @@
 -- MARKETPLUS — SUPABASE ŞEMASI  (KENDİ KENDİNİ ONARAN SÜRÜM)
 -- 67 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-20
 --
+-- 2026-09-20 GÜNCELLEMESİ — ERP Denetim Madde 21 & 22 (Supabase Arşiv
+-- Mimarisi). Bu dosyaya YENİ TABLO EKLENMEDİ — yüksek hacimli hareket
+-- tabloları (satislar, satis_kalem, stok_hareket, cari_hareket,
+-- kasa_hareketleri, banka_hareketler) için 6 ayrı, salt-okunur *_arsiv
+-- tablosu + arşivleme fonksiyonları + RLS AYRI bir dosyada:
+-- 'supabase_arsiv_plani.sql' (proje kök dizini). Bilinçli olarak ayrı
+-- tutuldu — bu script, yerel Yıl Sonu Devir motoru bir dönemi TAMAMEN
+-- kapatıp arşivledikten SONRA, elle/manuel çalıştırılan opsiyonel bir
+-- ek adımdır; bu ana şema dosyasının "her zaman baştan sona çalıştır"
+-- modeline (BÖLÜM 1-9) uymuyor. Aktif tablolara (satislar, stok_hareket
+-- vb.) TEK SATIR bile dokunmuyor — sadece ekliyor.
+--
 -- 2026-09-20 GÜNCELLEMESİ — ERP Denetim Madde 12 (Kasa Kapanış — Müdür
 -- Onayı). vardiyalar tablosuna 2 yeni sütun: onaylayan_kullanici_id,
 -- onaylanma_tarihi (yerel SQLite migrasyon v68→v69 ile BİREBİR aynı).

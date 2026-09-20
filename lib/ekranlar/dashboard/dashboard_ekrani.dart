@@ -1167,6 +1167,32 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
             ],
           ),
           const SizedBox(height: 12),
+          // 🔴 EKLENDİ (Madde 31 — Dashboard denetimi, 2026-09-20): doküman
+          // "sadece toplam satış göstermemeli" diyor — bugüne kadar kâr,
+          // marj ve cari alacak/borç HİÇ gösterilmiyordu.
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.4,
+            children: [
+              _statKart('Bugünkü Kâr', ParaUtils.formatla(data.netKar),
+                  Icons.trending_up, const Color(0xFF00695C)),
+              _statKart('Brüt Marj', '%${data.brutMarjOrani.toStringAsFixed(1)}',
+                  Icons.percent, const Color(0xFF00838F)),
+              _statKart('Toplam Alacak', ParaUtils.formatla(data.toplamAlacak),
+                  Icons.arrow_downward, const Color(0xFF2E7D32)),
+              _statKart('Toplam Borç', ParaUtils.formatla(data.toplamBorc),
+                  Icons.arrow_upward, const Color(0xFFD84315)),
+            ],
+          ),
+          if (data.onayBekleyen > 0 || data.syncBekleyen > 0 || data.riskliCariSayisi > 0) ...[
+            const SizedBox(height: 12),
+            _bekleyenlerSatiri(data),
+          ],
+          const SizedBox(height: 12),
           if (data.haftaData.isNotEmpty) _grafikBolumu(data),
           const SizedBox(height: 12),
           if (data.kritikUrunler.isNotEmpty) _kritikStokBolumu(data),
@@ -1182,6 +1208,50 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
   // artık dashboard dışındaki ekranlarda da tekrar kullanılabilir.
   Widget _statKart(String baslik, String deger, IconData ikon, Color renk) =>
       TsKpiKart(baslik: baslik, deger: deger, ikon: ikon, renk: renk);
+
+  // 🔴 EKLENDİ (Madde 31 — Dashboard denetimi, 2026-09-20): "Onay bekleyen
+  // işlemler / Sync bekleyen / Riskli cariler" — dokümanın istediği
+  // "dikkat gerektiren" sayaçlar. Sadece sayı > 0 iken görünür (0 iken
+  // dashboard'u gereksiz uyarı rozetleriyle kirletmesin diye).
+  Widget _bekleyenlerSatiri(DashboardVeri d) => Row(children: [
+        if (d.onayBekleyen > 0)
+          Expanded(child: _uyariRozeti(
+              '${d.onayBekleyen} onay bekliyor', Icons.verified_user_outlined,
+              Colors.deepOrange, () => context.push('/onay-merkezi'))),
+        if (d.onayBekleyen > 0 && (d.syncBekleyen > 0 || d.riskliCariSayisi > 0))
+          const SizedBox(width: 8),
+        if (d.syncBekleyen > 0)
+          Expanded(child: _uyariRozeti(
+              '${d.syncBekleyen} sync bekliyor', Icons.cloud_sync_outlined,
+              Colors.blueGrey, () => context.push('/ayarlar/bulut-sync'))),
+        if (d.syncBekleyen > 0 && d.riskliCariSayisi > 0) const SizedBox(width: 8),
+        if (d.riskliCariSayisi > 0)
+          Expanded(child: _uyariRozeti(
+              '${d.riskliCariSayisi} riskli cari', Icons.shield_outlined,
+              Colors.red, () => context.push('/risk-merkezi'))),
+      ]);
+
+  Widget _uyariRozeti(String metin, IconData ikon, Color renk, VoidCallback onTap) =>
+      _TapScale(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: Color.fromARGB(20, renk.red, renk.green, renk.blue),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Color.fromARGB(60, renk.red, renk.green, renk.blue)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(ikon, size: 16, color: renk),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(metin,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: renk),
+                  overflow: TextOverflow.ellipsis),
+            ),
+          ]),
+        ),
+      );
 
   Widget _grafikBolumu(DashboardVeri d) {
     if (d.haftaData.isEmpty) return const SizedBox.shrink();

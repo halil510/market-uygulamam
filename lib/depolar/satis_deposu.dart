@@ -458,7 +458,12 @@ class SatisDeposu {
       "SELECT COUNT(*) as satis_sayisi, SUM(genel_toplam) as ciro, "
       "SUM(iskonto_tutar) as iskonto, "
       "SUM(CASE WHEN odeme_yontemi = 'Nakit' THEN odenen_tutar ELSE 0 END) as nakit, "
-      "SUM(CASE WHEN odeme_yontemi = 'Kredi Kartı' THEN odenen_tutar ELSE 0 END) as kart "
+      "SUM(CASE WHEN odeme_yontemi = 'Kredi Kartı' THEN odenen_tutar ELSE 0 END) as kart, "
+      // Madde 31 (Dashboard) denetimi, 2026-09-20: Cari için odenen_tutar
+      // DEĞİL genel_toplam kullanılır — gunluk_rapor_ekrani.dart'taki
+      // AYNI kırılım desenine hizalı (Cari satışta odenen_tutar tipik
+      // olarak 0'dır, ödenmemiş tam tutar veresiye yazılır).
+      "SUM(CASE WHEN odeme_yontemi = 'Cari' THEN genel_toplam ELSE 0 END) as cari "
       "FROM satislar "
       // 🔴 KRİTİK DÜZELTME (derin analiz — gün sonu raporu / kasa özeti):
       // SQLite'ın DATE('now') fonksiyonu VARSAYILAN OLARAK UTC kullanır.
@@ -489,7 +494,30 @@ class SatisDeposu {
       'iskonto':      (r['iskonto']      as num?)?.toDouble() ?? 0,
       'nakit':        (r['nakit']        as num?)?.toDouble() ?? 0,
       'kart':         (r['kart']         as num?)?.toDouble() ?? 0,
+      'cari':         (r['cari']         as num?)?.toDouble() ?? 0,
     };
+  }
+
+  /// Madde 31 (Dashboard) + Madde 24 (Raporlar) denetimi, 2026-09-20:
+  /// bugünün maliyeti (COGS) — Kâr/Zarar raporu ve (düzeltilmiş) Gün
+  /// Sonu raporuyla BİREBİR AYNI formül (satış anındaki TARİHSEL maliyet
+  /// — satis_kalem.alis_fiyat — varsa o, yoksa güncel urunler.alis_fiyat'a
+  /// düşülür). Dashboard'daki "Bugünkü Kâr"ın bu değeri KULLANMASI
+  /// gerekiyordu — önceden hiç kullanmıyordu (sadece ciro-gider'di).
+  Future<double> gunlukMaliyet() async {
+    final db = await _d;
+    final rows = await db.rawQuery('''
+      SELECT COALESCE(SUM(
+        CASE WHEN sk.alis_fiyat > 0 THEN sk.miktar * sk.alis_fiyat
+             ELSE sk.miktar * COALESCE(u.alis_fiyat, 0) END
+      ), 0) as maliyet
+      FROM satis_kalem sk
+      JOIN satislar s ON sk.satis_id = s.id
+      LEFT JOIN urunler u ON sk.urun_id = u.id
+      WHERE DATE(s.tarih) = DATE('now','localtime')
+        AND s.iptal = 0 AND s.is_deleted = 0
+    ''');
+    return (rows.first['maliyet'] as num?)?.toDouble() ?? 0;
   }
 
   Future<List<Map<String, dynamic>>> haftaGrafikVerisi() async {

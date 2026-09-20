@@ -4,22 +4,26 @@
 // listeler. Sorgu HER ZAMAN cari_id = widget.cariId ile filtrelenir —
 // bir bayi başka bir bayinin siparişini asla göremez (bkz. dosya başı
 // notu, bu ekranın var oluş amacı budur).
+//
+// 🔴 DÜZELTME (Madde 2 mimari denetimi — katman ihlali temizliği):
+// önceden bu ekran veritabani.dart'ı doğrudan import edip db.query
+// çağırıyordu (repository katmanını atlıyordu). Artık BekleyenSiparisDeposu
+// üzerinden okuyor — 'durum: null' ile TÜM durumlar (bekliyor/onaylandi/
+// iptal) tek listede gelsin diye depo metoduna nullable durum desteği
+// eklendi (bkz. bekleyen_siparis_deposu.dart). Davranış değişmedi.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../veri/database/veritabani.dart';
+import '../../depolar/bekleyen_siparis_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
 final _bayiSiparislerimProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, cariId) async {
-  final db = await Veritabani().db;
-  return db.query(
-    'bekleyen_siparisler',
-    where: 'cari_id = ? AND deleted_at IS NULL',
-    whereArgs: [cariId],
-    orderBy: 'tarih DESC',
+  return BekleyenSiparisDeposu().bekleyenSiparisleriGetir(
+    cariId: cariId,
+    durum: null,
   );
 });
 

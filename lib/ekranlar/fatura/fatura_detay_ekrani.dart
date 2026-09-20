@@ -21,6 +21,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../veri/database/veritabani.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/gib_servisi.dart';
+import '../../servisler/fatura_ebelge_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 
 // Fatura GİB'e (bir kez) başarıyla iletildi mi — 'gonderildi' (henüz GİB
@@ -54,6 +55,10 @@ class FaturaDetayEkrani extends ConsumerStatefulWidget {
 
 class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
   final _depo = FaturaDeposu();
+  // Madde 2 mimari denetimi: e-Belge (taslak/onay/gönderim/hata) durum
+  // makinesinin ETTN/DB/GİB orkestrasyonu artık burada DEĞİL, bu serviste
+  // — ekran sadece dialog/loading/bildirim göstermekten sorumlu.
+  final _eBelge = FaturaEBelgeServisi();
   FaturaModel? _fatura;
   bool _yukleniyor = true;
   // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): ne ödeme kaydetme ne
@@ -210,13 +215,8 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
     // ettnHesapla), hiç saklanmamış olsa bile yeniden hesaplanabilir.
     // Sadece GERÇEKTEN hiç gönderilmemiş (durum='hazir'/null) faturalar
     // için "Henüz gönderim yapılmamış" uyarısı hâlâ doğru.
-    final ettnGecici = _fatura?.eFaturaUuid;
-    final String ettn;
-    if (ettnGecici != null) {
-      ettn = ettnGecici;
-    } else if (_fatura != null && _fatura!.eFaturaDurum == 'gonderiliyor') {
-      ettn = GibServisi().ettnHesapla(_fatura!);
-    } else {
+    final ettn = _fatura != null ? _eBelge.ettnBelirle(_fatura!) : null;
+    if (ettn == null) {
       BildirimServisi.uyari(context, 'Henüz gönderim yapılmamış');
       return;
     }
@@ -237,9 +237,11 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
           Text('GİB sorgulanıyor...'),
         ])));
     try {
-      final gib = GibServisi();
-      await gib.ayarlariYukle();
-      final durum = await gib.durumSorgula(ettn);
+      // Durumu sorgular VE (varsa) DB'ye yazar — [ettn] burada da AYRICA
+      // persist edilir: 'gonderiliyor' durumunda DB'de hâlâ null olabilen
+      // eFaturaUuid, bu sorgulamayla birlikte kalıcı olarak doldurulmuş
+      // olur (bir daha yeniden hesaplamaya gerek kalmaz).
+      final durum = await _eBelge.durumSorgula(_fatura!, ettn);
       if (navigator.mounted) navigator.pop();
       if (!mounted) return;
       showDialog(context: context, builder: (ctx) => AlertDialog(
@@ -254,12 +256,7 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
         ]),
         actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam'))],
       ));
-      // Durumu güncelle — [ettn] burada da AYRICA persist edilir: 'gonderiliyor'
-      // durumunda DB'de hâlâ null olabilen eFaturaUuid, bu sorgulamayla
-      // birlikte kalıcı olarak doldurulmuş olur (bir daha yeniden
-      // hesaplamaya gerek kalmaz).
       if (durum != null) {
-        await _depo.eFaturaDurumGuncelle(_fatura!.id!, durum, uuid: ettn);
         await _yukle();
       }
     } catch (e) {
@@ -310,13 +307,10 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
           Text('GİB\'e iptal isteği gönderiliyor...'),
         ])));
     try {
-      final gib = GibServisi();
-      await gib.ayarlariYukle();
-      final basarili = await gib.iptalEt(uuid: _fatura!.eFaturaUuid!);
+      final basarili = await _eBelge.iptalEt(_fatura!);
       if (navigator.mounted) navigator.pop();
       if (!mounted) return;
       if (basarili) {
-        await _depo.eFaturaDurumGuncelle(_fatura!.id!, 'gib_iptal', uuid: _fatura!.eFaturaUuid);
         await _yukle();
         if (mounted) BildirimServisi.basari(context, 'GİB\'de iptal edildi');
       } else {
@@ -347,10 +341,9 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
   }
 
   Future<void> _efaturaGonderIc() async {
-    final gib = GibServisi();
-    await gib.ayarlariYukle();
-    
-    if (!gib.ayarliMi) {
+    final ayarliMi = await _eBelge.ayarlariYukleVeKontrolEt();
+
+    if (!ayarliMi) {
       if (!mounted) return;
       showDialog(context: context, builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -380,9 +373,7 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
     // olabilir. Artık biliniyorsa önerilen seçenek vurgulanıyor;
     // kullanıcı yine de istediğini seçebilir (mükellefiyet durumu
     // değişmiş olabilir, bu yüzden otomatik/sessiz karar VERİLMİYOR).
-    final bilinenDurum = _fatura!.cariMukellefDurumu;
-    final onerilenTip = bilinenDurum == 'efatura' ? EFaturaTipi.eFatura
-        : bilinenDurum == 'earsiv' ? EFaturaTipi.eArsiv : null;
+    final onerilenTip = _eBelge.onerilenTip(_fatura!);
     if (!mounted) return;   // mükellef sorgusu await'i sonrası
     final tip = await showDialog<EFaturaTipi>(context: context,
       builder: (ctx) => AlertDialog(
@@ -451,47 +442,18 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
         ])));
 
     try {
-      // 🔴 GÜNCELLEME (e-Belge durum makinesi): daha önce REDDEDİLMİŞ bir
-      // faturayı yeniden gönderiyorsak, önce deneme sayacını artır ki
-      // GibServisi yeni, çakışmayan bir ETTN üretsin (bkz. FaturaDeposu.
-      // eFaturaYenidenGondermeyeHazirla / gib_servisi.dart _ettnFaturaIcin).
-      var gonderilecekFatura = _fatura!;
-      if (_fatura!.eFaturaDurum == 'reddedildi') {
-        await _depo.eFaturaYenidenGondermeyeHazirla(_fatura!.id!);
-        final tazelenen = await _depo.idileGetir(_fatura!.id!);
-        if (tazelenen != null) gonderilecekFatura = tazelenen;
-      }
-      // Ağ isteğinden ÖNCE 'gonderiliyor' olarak işaretle — uygulama tam bu
-      // sırada kapanır/çökerse (ör. pil bitmesi, işletim sistemi
-      // öldürmesi) fatura sessizce 'hazir/reddedildi' görünmeye devam
-      // etmez, kullanıcı gerçekten belirsiz bir denemenin farkında olur ve
-      // "Durum Sorgula" ile netleştirebilir.
-      await _depo.eFaturaDurumGuncelle(gonderilecekFatura.id!, 'gonderiliyor');
-      final sonuc = await gib.gonder(fatura: gonderilecekFatura, tip: tip);
+      // Reddedilmişse yeniden gönderime hazırlar, ağ isteğinden ÖNCE
+      // 'gonderiliyor' işaretler, sonucu DB'ye yazar — hepsi
+      // FaturaEBelgeServisi.gonder() içinde (bkz. o metodun yorumu).
+      final sonuc = await _eBelge.gonder(_fatura!, tip);
       if (navigator.mounted) navigator.pop(); // loading dialog kapat
       if (!mounted) return;
 
       if (sonuc.basarili) {
-        // DB güncelle
-        await _depo.eFaturaDurumGuncelle(
-          _fatura!.id!, 'gonderildi',
-          uuid: sonuc.uuid,
-        );
         await _yukle();
         if (mounted) BildirimServisi.basari(context,
             '${tip == EFaturaTipi.eFatura ? "e-Fatura" : "e-Arşiv"} gönderildi ✓');
       } else {
-        // 🔴 DÜZELTME (erp_roadmap madde 38 — e-Belge durum makinesi):
-        // ÖNCEDEN gönderim başarısız olduğunda DB'ye HİÇBİR ŞEY
-        // yazılmıyordu — fatura sessizce 'hazir' (Beklemede) görünmeye
-        // devam ediyordu, tek iz sadece o an gösterilen ve kapanan bir
-        // diyalogdu. Fatura listesi zaten 'hata' durumunu kırmızı
-        // "Gönderim Hatası" rozetiyle göstermeye HAZIRDI (bkz.
-        // fatura_liste_ekrani.dart) — sadece bu yazma adımı eksikti.
-        // efatura_log tablosu zaten (gib_servisi.dart içinde) bu
-        // başarısız denemeyi kaydediyordu, ama fatura kaydının kendisi
-        // hiç işaretlenmiyordu.
-        await _depo.eFaturaDurumGuncelle(_fatura!.id!, 'hata');
         await _yukle();
         if (mounted) showDialog(context: context,
           builder: (ctx) => AlertDialog(

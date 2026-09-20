@@ -134,11 +134,19 @@ class BekleyenSiparisDeposu {
     return siparisId;
   }
 
+  /// [durum] null verilirse durum filtrelenmez — bayinin kendi sipariş
+  /// geçmişini (bekliyor+onaylandi+iptal hepsi) tek listede göstermek için
+  /// kullanılır (bkz. BayiSiparislerimEkrani, Madde 2 katman ihlali
+  /// temizliği: önceden bu ekran doğrudan db.query çağırıyordu).
   Future<List<Map<String, dynamic>>> bekleyenSiparisleriGetir(
-      {int? cariId, String durum = 'bekliyor'}) async {
+      {int? cariId, String? durum = 'bekliyor'}) async {
     final db = await Veritabani().db;
-    final where = <String>['s.durum = ?', 's.deleted_at IS NULL'];
-    final args = <Object?>[durum];
+    final where = <String>['s.deleted_at IS NULL'];
+    final args = <Object?>[];
+    if (durum != null) {
+      where.add('s.durum = ?');
+      args.add(durum);
+    }
     if (cariId != null) {
       where.add('s.cari_id = ?');
       args.add(cariId);

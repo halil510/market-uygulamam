@@ -13,7 +13,7 @@ import 'package:printing/printing.dart';
 import '../../modeller/satis_model.dart';
 import '../../servisler/yazdirma_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../veri/database/veritabani.dart';
+import '../../depolar/ayarlar_deposu.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 class FisOnizlemeEkrani extends ConsumerStatefulWidget {
   final SatisModel satis;
@@ -50,12 +50,11 @@ class _FisOnizlemeEkraniState extends ConsumerState<FisOnizlemeEkrani> {
   }
 
   Future<void> _yukle() async {
-    try {  
-      final db = await Veritabani().db;
-      final rows = await db.query('ayarlar',
-          where: "anahtar IN ('firma_adi','firma_adres','firma_telefon','fis_alt_yazi','fis_kdv','fis_fatno',"
-                 "'fis_cari_goster','fis_cari_bakiye_goster','fis_alt_barkod_goster')");
-      final map = {for (final r in rows) r['anahtar'] as String: r['deger'] as String};
+    try {
+      final map = await AyarlarDeposu().coguGetir(const [
+        'firma_adi', 'firma_adres', 'firma_telefon', 'fis_alt_yazi', 'fis_kdv',
+        'fis_fatno', 'fis_cari_goster', 'fis_cari_bakiye_goster', 'fis_alt_barkod_goster',
+      ]);
       final bagli = await _yazdirma.btBagliMi;
       if (mounted) setState(() { _ayarlar = map; _btBagliMi = bagli; });
         } catch (e) {

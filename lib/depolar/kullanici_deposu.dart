@@ -74,6 +74,17 @@ class KullaniciDeposu {
     return KullaniciModel.fromMap(rows.first);
   }
 
+  /// Bir cari'ye (bayiye) bağlı, silinmemiş portal girişini getirir —
+  /// Madde 2 mimari denetimi: cari_detay_ekrani.dart önceden bu sorguyu
+  /// doğrudan kendisi çalıştırıyordu (bkz. _bayiGirisiYonet).
+  Future<KullaniciModel?> bayiCariIleGetir(int cariId) async {
+    final db = await _d;
+    final rows = await db.query('kullanicilar',
+        where: 'bayi_cari_id = ? AND is_deleted = 0', whereArgs: [cariId], limit: 1);
+    if (rows.isEmpty) return null;
+    return KullaniciModel.fromMap(rows.first);
+  }
+
   Future<KullaniciModel?> idileGetir(int id) async {
     try {
       final db = await _d;

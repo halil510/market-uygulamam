@@ -26,8 +26,8 @@ import '../../depolar/fatura_deposu.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../depolar/cari_adres_deposu.dart';
 import '../../depolar/toptan_fiyat_deposu.dart';
+import '../../depolar/irsaliye_deposu.dart';
 import '../../modeller/fiyat_grubu_model.dart';
-import '../../veri/database/veritabani.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../cari/fis_detay_ekrani.dart';
@@ -99,38 +99,21 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
 
   Future<void> _yukle() async {
     setState(() => _yukleniyor = true);
-    final db = await Veritabani().db;
     final satislar = await _satisDepo.cariSatislari(widget.cari.id!, limit: 50);
     final faturalar = await _faturaDepo.listele(cariId: widget.cari.id, limit: 50);
     final tumHareketler = await _cariDepo.hareketleriniGetir(widget.cari.id!, limit: 100);
     final tahsilatlar = tumHareketler.where((h) => _tahsilatTipleri.contains(h.fisTipi)).toList();
     // Kullanıcı isteği: "İrsaliye sekmesi" — Logo/Netsis cari kartında
     // standart bir menü seçeneği.
-    final irsaliyeler = await db.rawQuery(
-      "SELECT * FROM irsaliyeler WHERE cari_id = ? AND deleted_at IS NULL "
-      "ORDER BY tarih DESC LIMIT 50",
-      [widget.cari.id],
-    );
+    final irsaliyeler = await IrsaliyeDeposu().cariIrsaliyeleriGetir(widget.cari.id!);
     // Kullanıcı isteği: "Sevkiyat Adresleri" — bir cariye birden fazla
     // teslimat adresi tanımlanabilmesi.
     final adresler = await _adresDepo.hepsiGetir(widget.cari.id!);
     // Kullanıcı isteği: "carinin raporları grafikleri" — son 6 ayın
     // aylık satış toplamı (Logo'daki cari analiz grafikleri gibi).
-    final aylikSatis = await db.rawQuery('''
-      SELECT strftime('%Y-%m', tarih) AS ay, SUM(genel_toplam) AS toplam
-      FROM satislar
-      WHERE cari_id = ? AND iptal = 0 AND is_deleted = 0
-        AND tarih >= date('now', 'localtime', '-6 months')
-      GROUP BY ay ORDER BY ay ASC
-    ''', [widget.cari.id]);
+    final aylikSatis = await _satisDepo.cariAylikSatisGetir(widget.cari.id!);
     // En çok alınan ürünler (miktar bazlı, ilk 6).
-    final enCokAlinanlar = await db.rawQuery('''
-      SELECT sk.urun_adi, SUM(sk.miktar) AS toplam_miktar, SUM(sk.toplam_tutar) AS toplam_tutar
-      FROM satis_kalem sk
-      JOIN satislar s ON sk.satis_id = s.id
-      WHERE s.cari_id = ? AND s.iptal = 0 AND s.is_deleted = 0
-      GROUP BY sk.urun_adi ORDER BY toplam_tutar DESC LIMIT 6
-    ''', [widget.cari.id]);
+    final enCokAlinanlar = await _satisDepo.cariEnCokAlinanlarGetir(widget.cari.id!);
     FiyatGrubuModel? grup;
     if (widget.cari.fiyatGrubuId != null) {
       grup = await ToptanFiyatDeposu().grupGetir(widget.cari.fiyatGrubuId!);
@@ -188,10 +171,8 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
   ///    kurulmuş SatisDeposu.sil() (stok/kasa/cari ters kayıtları içeren)
   ///    kullanılır — tekerlek yeniden icat edilmedi.
   Future<void> _silmeyeCalis(SatisModel s) async {
-    final db = await Veritabani().db;
-    final faturaVarMi = await db.query('faturalar',
-        where: 'satis_id = ? AND (deleted_at IS NULL)', whereArgs: [s.id], limit: 1);
-    if (faturaVarMi.isNotEmpty) {
+    final faturaVarMi = await _faturaDepo.satisIcinFaturaVarMi(s.id!);
+    if (faturaVarMi) {
       if (!mounted) return;
       await showDialog(
         context: context,
@@ -250,17 +231,15 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
 
   Future<void> _iadeEt(SatisModel s) async {
     try {
-      final db = await Veritabani().db;
-      final kalemler = await db.query('satis_kalem', where: 'satis_id = ?', whereArgs: [s.id]);
+      final satisDetay = await _satisDepo.idileGetir(s.id!);
+      final kalemler = satisDetay?.kalemler ?? const [];
       if (kalemler.isEmpty) {
         if (mounted) BildirimServisi.uyari(context, 'Bu satışta iade edilecek kalem bulunamadı');
         return;
       }
       final urunler = <UrunModel>[];
       for (final k in kalemler) {
-        final urunId = k['urun_id'] as int?;
-        if (urunId == null) continue;
-        final u = await _urunDepo.idileGetir(urunId);
+        final u = await _urunDepo.idileGetir(k.urunId);
         if (u != null) urunler.add(u);
       }
       if (!mounted) return;

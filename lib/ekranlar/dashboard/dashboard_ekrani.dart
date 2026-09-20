@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../servisler/supabase_sync_servisi.dart';
 import '../../veri/database/veritabani.dart';
+import '../../depolar/sube_deposu.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../saglayicilar/riverpod/dashboard_provider.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
@@ -349,9 +350,7 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
   /// Admin/Müdür kullanıcıların şubeler arasında geçiş yapmasını veya
   /// "Tüm Şubeler" görünümünü seçmesini sağlayan dialog.
   Future<void> _subeSecDialogGoster() async {
-    final db = await Veritabani().db;
-    final subeler =
-        await db.query('subeler', where: 'aktif = 1', orderBy: 'sube_adi ASC');
+    final subeler = await SubeDeposu().aktifOlanlariGetir();
     if (!mounted) return;
 
     final secilen = await showDialog<({int? id, String ad})>(

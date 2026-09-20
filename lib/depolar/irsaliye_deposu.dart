@@ -229,6 +229,17 @@ class IrsaliyeDeposu {
     return (basRows.isNotEmpty ? basRows.first : null, kalemler);
   }
 
+  /// Bir cariye ait irsaliyeleri (en yeni önce) getirir — cari 360
+  /// panelinin "İrsaliyeler" sekmesi için (bkz. cari_detay_paneli.dart).
+  Future<List<Map<String, dynamic>>> cariIrsaliyeleriGetir(int cariId, {int limit = 50}) async {
+    final db = await Veritabani().db;
+    return db.rawQuery(
+      "SELECT * FROM irsaliyeler WHERE cari_id = ? AND deleted_at IS NULL "
+      "ORDER BY tarih DESC LIMIT ?",
+      [cariId, limit],
+    );
+  }
+
   /// İrsaliye durumunu (beklemede/onaylandi/iptal vb.) günceller.
   Future<void> durumGuncelle(int irsaliyeId, String yeniDurum) async {
     final db = await Veritabani().db;

@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
-import '../../veri/database/veritabani.dart';
 import '../../depolar/lot_deposu.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 
@@ -45,14 +44,7 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
     _yukleniyor = true;
     if (mounted) setState(() {});
     try {
-      final db = await Veritabani().db;
-      final rows = await db.rawQuery('''
-        SELECT ls.*, u.urun_adi, u.barkod as urun_barkod
-        FROM lot_seri ls
-        JOIN urunler u ON ls.urun_id = u.id
-        ${widget.urunId != null ? "WHERE ls.urun_id = ?" : ""}
-        ORDER BY ls.son_kullanma_tarihi ASC, ls.lot_no ASC
-      ''', widget.urunId != null ? [widget.urunId] : []);
+      final rows = await LotDeposu().tumunuGetir(urunId: widget.urunId);
       if (!mounted) return;
       setState(() {
         _lotlar = rows;

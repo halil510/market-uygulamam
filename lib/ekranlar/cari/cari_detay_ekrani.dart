@@ -22,7 +22,6 @@ import '../../depolar/kullanici_deposu.dart';
 import '../../modeller/kullanici_model.dart';
 import '../../cekirdek/utils/sifre_hash.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
-import '../../veri/database/veritabani.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 
@@ -307,12 +306,10 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
   // ihtiyacı yok, erişimi tamamen bayi_cari_id ile router seviyesinde
   // kısıtlanıyor).
   Future<void> _bayiGirisiYonet(BuildContext context, CariModel c) async {
-    final db = await Veritabani().db;
-    final mevcut = await db.query('kullanicilar',
-        where: 'bayi_cari_id = ? AND is_deleted = 0', whereArgs: [c.id], limit: 1);
+    final mevcut = await KullaniciDeposu().bayiCariIleGetir(c.id!);
 
-    if (mevcut.isNotEmpty) {
-      final k = mevcut.first;
+    if (mevcut != null) {
+      final k = mevcut;
       if (!context.mounted) return;
       await showDialog(
         context: context,
@@ -321,8 +318,8 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
           title: const Text('Bayi Girişi'),
           content: Text(
             'Bu bayinin zaten bir portal girişi var.\n\n'
-            'Kullanıcı adı: ${k['kullanici_adi']}\n'
-            'Durum: ${(k['aktif'] as int? ?? 1) == 1 ? 'Aktif' : 'Pasif'}\n\n'
+            'Kullanıcı adı: ${k.kullaniciAdi}\n'
+            'Durum: ${k.aktif ? 'Aktif' : 'Pasif'}\n\n'
             'Şifreyi sıfırlamak için kullanıcı yönetimi ekranından bu '
             'kullanıcıyı düzenleyin.',
           ),

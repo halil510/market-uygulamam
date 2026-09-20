@@ -35,7 +35,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../veri/database/veritabani.dart';
+import '../../depolar/fis_detay_deposu.dart';
 
 class FisDetayEkrani extends ConsumerStatefulWidget {
   final int fisId;
@@ -54,7 +54,7 @@ class FisDetayEkrani extends ConsumerStatefulWidget {
 }
 
 class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
-  final _db  = Veritabani();
+  final _depo = FisDetayDeposu();
   final _fmt = DateFormat('dd.MM.yyyy HH:mm');
 
   Map<String, dynamic>? _fis;
@@ -73,139 +73,10 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
     setState(() { _yukleniyor = true; _hata = null; });
 
     try {
-      final db  = await _db.db;
-      final tip = widget.fisTipi;
-      final id  = widget.fisId;
-
-      // 🔴 DÜZELTME: "Toptan Satış" fişleri de tam olarak aynı
-      // satislar/satis_kalem tablolarını kullanıyor — ama bu kontrol
-      // sadece BİREBİR 'Satış' string'ini kabul ediyordu, bu yüzden
-      // toptan satışların kalem detayı hiç gösterilmiyordu.
-      //
-      // 🔴 DÜZELTME (kullanıcı bulgusu — devamı): Aynı eksiklik
-      // 'Toptan Satış (Sipariş)' (bekleyen sipariş onayından gelen
-      // satış — masa_odeme_servisi.dart'taki 'Masa Satış' ile birebir
-      // aynı satislar/satis_kalem şemasını kullanıyor) ve 'Masa Satış'
-      // için de vardı. İkisi de bu üç tabloyu kullanıyor, sorgu aynı
-      // kalıyor — sadece kabul edilen fisTipi listesi genişletildi.
-      if (tip == 'Satış' || tip == 'Toptan Satış' ||
-          tip == 'Toptan Satış (Sipariş)' || tip == 'Masa Satış') {
-        final rows = await db.rawQuery(
-          'SELECT s.*, c.unvan as cari_adi '
-          'FROM satislar s LEFT JOIN cari c ON s.cari_id = c.id '
-          'WHERE s.id = ? AND s.is_deleted = 0',
-          [id],
-        );
-        if (!mounted) return;
-        _fis = rows.isNotEmpty ? rows.first : null;
-
-        final kalemler = await db.rawQuery('''
-          SELECT
-            sk.id,
-            sk.urun_adi,
-            sk.barkod,
-            sk.miktar,
-            sk.birim_fiyat,
-            sk.iskonto_oran,
-            sk.iskonto_tutar,
-            sk.kdv_oran,
-            sk.kdv_tutar,
-            sk.net_fiyat,
-            sk.toplam_tutar,
-            COALESCE(u.birim_adi, 'Adet') as birim_adi
-          FROM satis_kalem sk
-          LEFT JOIN urunler u ON sk.urun_id = u.id
-          WHERE sk.satis_id = ?
-          ORDER BY sk.id
-        ''', [id]);
-        if (!mounted) return;
-        _kalemler = List<Map<String, dynamic>>.from(kalemler);
-
-      } else if (tip == 'İade' || tip == 'Satış İade' || tip == 'Iade' || tip == 'Alım İadesi') {
-        // 🔴 DÜZELTME (Cari/Fiş denetimi, 2026-09-20): 'Satış' dalı
-        // is_deleted=0 filtreliyordu ama bu dal iade.deleted_at'i hiç
-        // kontrol etmiyordu — silinmiş bir iade kaydına fisId ile
-        // erişilirse (ör. eski bir cari_hareket satırından) detay yine
-        // gösterilebiliyordu.
-        final rows = await db.rawQuery(
-          'SELECT ia.*, c.unvan as cari_adi '
-          'FROM iade ia LEFT JOIN cari c ON ia.cari_id = c.id '
-          'WHERE ia.id = ? AND ia.deleted_at IS NULL',
-          [id],
-        );
-        if (!mounted) return;
-        _fis = rows.isNotEmpty ? rows.first : null;
-
-        final kalemler = await db.rawQuery('''
-          SELECT
-            ik.id,
-            ik.urun_adi,
-            ik.miktar,
-            ik.birim_fiyat,
-            ik.toplam           as toplam_tutar,
-            COALESCE(u.birim_adi, 'Adet') as birim_adi,
-            0.0                 as iskonto_oran,
-            0.0                 as iskonto_tutar,
-            0.0                 as kdv_oran,
-            0.0                 as kdv_tutar,
-            0.0                 as net_fiyat,
-            NULL                as barkod
-          FROM iade_kalem ik
-          LEFT JOIN urunler u ON ik.urun_id = u.id
-          WHERE ik.iade_id = ?
-          ORDER BY ik.id
-        ''', [id]);
-        if (!mounted) return;
-        _kalemler = List<Map<String, dynamic>>.from(kalemler);
-
-      } else if (tip == 'Alım' || tip == 'Tedarik' || tip == 'Sipariş') {
-        // 🔴 DÜZELTME (Cari/Fiş denetimi, 2026-09-20): tedarikci_siparisler
-        // tablosunun is_deleted sütunu var (bkz. tedarik_semasi.dart) ama
-        // burada hiç filtrelenmiyordu — 'Satış'/'İade' dallarındaki soft-
-        // delete filtresiyle tutarsızdı.
-        final rows = await db.rawQuery(
-          'SELECT ts.*, ts.siparis_no as fis_no, ts.siparis_tarihi as tarih, '
-          'ts.toplam_tutar as genel_toplam, c.unvan as cari_adi '
-          'FROM tedarikci_siparisler ts '
-          'LEFT JOIN cari c ON ts.cari_id = c.id '
-          'WHERE ts.id = ? AND (ts.is_deleted IS NULL OR ts.is_deleted = 0)',
-          [id],
-        );
-        if (!mounted) return;
-        _fis = rows.isNotEmpty ? rows.first : null;
-
-        final kalemler = await db.rawQuery('''
-          SELECT
-            tsk.id,
-            COALESCE(u.urun_adi, 'Bilinmiyor') as urun_adi,
-            u.barkod,
-            tsk.siparis_mik       as miktar,
-            tsk.birim_fiyat,
-            0.0                   as iskonto_oran,
-            0.0                   as iskonto_tutar,
-            COALESCE(tsk.kdv_oran, 0) as kdv_oran,
-            (tsk.siparis_mik * tsk.birim_fiyat * COALESCE(tsk.kdv_oran, 0) / 100.0) as kdv_tutar,
-            tsk.birim_fiyat       as net_fiyat,
-            tsk.toplam_tutar,
-            COALESCE(u.birim_adi, 'Adet') as birim_adi
-          FROM tedarikci_siparis_kalem tsk
-          LEFT JOIN urunler u ON tsk.urun_id = u.id
-          WHERE tsk.siparis_id = ?
-          ORDER BY tsk.id
-        ''', [id]);
-        if (!mounted) return;
-        _kalemler = List<Map<String, dynamic>>.from(kalemler);
-
-      } else {
-        // Tahsilat, ödeme, virman vb. — sadece cari_hareket satırı
-        final rows = await db.rawQuery(
-          'SELECT * FROM cari_hareket WHERE id = ?',
-          [id],
-        );
-        if (!mounted) return;
-        _fis = rows.isNotEmpty ? rows.first : null;
-        _kalemler = [];
-      }
+      final sonuc = await _depo.getir(fisId: widget.fisId, fisTipi: widget.fisTipi);
+      if (!mounted) return;
+      _fis = sonuc.fis;
+      _kalemler = sonuc.kalemler;
 
       if (!mounted) return;
       // 🔴🔴 KRİTİK DÜZELTME: Bu, başarılı yükleme yolundaki TEK

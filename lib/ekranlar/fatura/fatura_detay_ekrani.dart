@@ -18,7 +18,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/fatura_deposu.dart';
 import '../../modeller/fatura_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../veri/database/veritabani.dart';
+import '../../depolar/ayarlar_deposu.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/gib_servisi.dart';
 import '../../servisler/fatura_ebelge_servisi.dart';
@@ -492,10 +492,9 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
       out['imzaYolu']     = prefs.getString('fatura_imza_yolu') ?? '';
       out['qrGoster']     = (prefs.getBool('fatura_barkod') ?? true).toString();
       if (out['vergiNo']!.isEmpty || out['adres']!.isEmpty) {
-        final db = await Veritabani().db;
-        final rows = await db.query('ayarlar', where:
-            "anahtar IN ('firma_adi','firma_adres','firma_vergi_no','firma_vergi_dairesi')");
-        final m = {for (final r in rows) r['anahtar'] as String: (r['deger'] ?? '') as String};
+        final m = await AyarlarDeposu().coguGetir(const [
+          'firma_adi', 'firma_adres', 'firma_vergi_no', 'firma_vergi_dairesi',
+        ]);
         if (out['adres']!.isEmpty) out['adres'] = m['firma_adres'] ?? '';
         if (out['vergiNo']!.isEmpty) out['vergiNo'] = m['firma_vergi_no'] ?? '';
         if (out['vergiDairesi']!.isEmpty) out['vergiDairesi'] = m['firma_vergi_dairesi'] ?? '';

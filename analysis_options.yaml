@@ -22,6 +22,12 @@ analyzer:
     - "build/**"
     - "**/*.bak"                    # ➕ EKLENDİ — eski yedek dosyaları
     - "**/*_ESKI*.dart"             # ➕ EKLENDİ
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
 
   errors:
     # Üretim kodunda kalan print() çağrılarını uyarı olarak işaretle

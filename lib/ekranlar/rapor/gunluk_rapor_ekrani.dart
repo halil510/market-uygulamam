@@ -19,9 +19,7 @@ import '../../modeller/satis_model.dart';
 import '../../depolar/satis_deposu.dart';
 import '../../depolar/gider_deposu.dart';
 import '../../depolar/kasa_deposu.dart';
-import '../../veri/database/veritabani.dart';
 import '../../cekirdek/utils/para_utils.dart';
-import '../../servisler/aktif_sube_servisi.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 
 class GunlukRaporEkrani extends ConsumerStatefulWidget {
@@ -72,10 +70,6 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
 
     if (mounted) setState(() {});
     try {
-      final db = await Veritabani().db;
-      final bas = _baslangic.toIso8601String();
-      final bit = _bitis.toIso8601String();
-
       // 🔴 Derin denetimde bulundu (P1): maliyet (COGS) sorgusunda
       // sube_id filtresi yoktu — üstteki tariheGoreGetir() zaten aktif
       // şubeye göre filtrelerken, bu sorgu HER ZAMAN tüm şubelerin
@@ -83,40 +77,28 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
       // bu yüzden yanlış hesaplanıyordu (bir şubenin karı, diğer TÜM
       // şubelerin maliyetiyle kirleniyordu). tariheGoreGetir()'deki
       // AYNI desenle hizalandı.
-      final subeId = AktifSubeServisi().subeId;
-      final subeKosulu = subeId != null ? 'AND s.sube_id = ?' : '';
+      //
+      // 🔴 DÜZELTME (Madde 24 — Raporlar denetimi, 2026-09-20): maliyet
+      // HER ZAMAN urunler.alis_fiyat'ın (ürünün GÜNCEL alış fiyatı)
+      // kullanıyordu — satış anındaki TARİHSEL maliyeti DEĞİL. Bir
+      // ürünün alış fiyatı satıştan SONRA güncellenirse (ör. tedarikçi
+      // zammı), bu rapor o tarihe her dönüldüğünde SESSİZCE farklı bir
+      // "Net Kâr" göstermeye başlıyordu — Kâr/Zarar raporu (kar_zarar_
+      // provider.dart) ise satis_kalem.alis_fiyat'ta (satış anında
+      // satır'a kalıcı olarak damgalanan tarihsel maliyet) SAKLANAN
+      // değeri doğru kullanıyordu. AYNI tarih için iki rapor farklı
+      // Net Kâr gösterebiliyordu. Artık AYNI formül (sk.alis_fiyat
+      // varsa o, yoksa — eski/migrasyon-öncesi satırlar için — güncel
+      // urunler.alis_fiyat'a düşülür) — bkz. SatisDeposu.maliyetToplami.
       final results = await Future.wait([
         _satisDepo.tariheGoreGetir(_baslangic, _bitis),
         _giderDepo.aralikToplamGider(_baslangic, _bitis),
-        // 🔴 DÜZELTME (Madde 24 — Raporlar denetimi, 2026-09-20): maliyet
-        // HER ZAMAN urunler.alis_fiyat'ın (ürünün GÜNCEL alış fiyatı)
-        // kullanıyordu — satış anındaki TARİHSEL maliyeti DEĞİL. Bir
-        // ürünün alış fiyatı satıştan SONRA güncellenirse (ör. tedarikçi
-        // zammı), bu rapor o tarihe her dönüldüğünde SESSİZCE farklı bir
-        // "Net Kâr" göstermeye başlıyordu — Kâr/Zarar raporu (kar_zarar_
-        // provider.dart) ise satis_kalem.alis_fiyat'ta (satış anında
-        // satır'a kalıcı olarak damgalanan tarihsel maliyet) SAKLANAN
-        // değeri doğru kullanıyordu. AYNI tarih için iki rapor farklı
-        // Net Kâr gösterebiliyordu. Artık AYNI formül (sk.alis_fiyat
-        // varsa o, yoksa — eski/migrasyon-öncesi satırlar için — güncel
-        // urunler.alis_fiyat'a düşülür).
-        db.rawQuery('''
-          SELECT COALESCE(SUM(
-            CASE WHEN sk.alis_fiyat > 0 THEN sk.miktar * sk.alis_fiyat
-                 ELSE sk.miktar * COALESCE(u.alis_fiyat, 0) END
-          ), 0) as maliyet
-          FROM satis_kalem sk
-          JOIN satislar s ON sk.satis_id = s.id
-          LEFT JOIN urunler u ON sk.urun_id = u.id
-          WHERE s.tarih BETWEEN ? AND ?
-            AND s.iptal = 0 AND s.is_deleted = 0 $subeKosulu
-        ''', [bas, bit, if (subeId != null) subeId]),
+        _satisDepo.maliyetToplami(_baslangic, _bitis),
       ]);
 
-      final satislar    = results[0] as List<SatisModel>;
-      final gider       = results[1] as double;
-      final maliyetRows = results[2] as List<Map<String, dynamic>>;
-      final maliyet     = (maliyetRows.first['maliyet'] as num?)?.toDouble() ?? 0;
+      final satislar = results[0] as List<SatisModel>;
+      final gider    = results[1] as double;
+      final maliyet  = results[2] as double;
 
       double toplam = 0, nakit = 0, kart = 0, cari = 0, havale = 0, diger = 0;
       for (final s in satislar) {
@@ -206,43 +188,15 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
   if (mounted) setState(() {});
 
   try {
-    final db = await Veritabani().db;
-    final bas = _baslangic.toIso8601String();
-    final bit = _bitis.toIso8601String();
-    
     // ★★★★★ DÜZELTİLMİŞ SQL SORGUSU - cari_adi yerine cari.unvan ★★★★★
     // 🔴 Derin denetimde bulundu (P1): burada da sube_id filtresi
     // yoktu — ekrandaki özet doğru şubeye göre filtrelenirken, Excel
     // dışa aktarımı sessizce TÜM şubelerin satış kalemlerini
     // içeriyordu (hem ekranla uyuşmayan bir rapor hem de diğer
-    // şubelerin verisinin sızması).
-    final subeIdExcel = AktifSubeServisi().subeId;
-    final subeKosuluExcel = subeIdExcel != null ? 'AND s.sube_id = ?' : '';
-    final sorguSonucu = await db.rawQuery('''
-      SELECT
-        s.fis_no,
-        s.tarih,
-        c.unvan as cari_unvan,
-        s.odeme_yontemi,
-        sk.barkod,
-        sk.urun_adi,
-        sk.miktar,
-        sk.birim_fiyat,
-        sk.iskonto_tutar,
-        sk.kdv_oran,
-        sk.kdv_tutar,
-        sk.net_fiyat,
-        sk.toplam_tutar,
-        sk.urun_id
-      FROM satislar s
-      INNER JOIN satis_kalem sk ON s.id = sk.satis_id
-      LEFT JOIN cari c ON s.cari_id = c.id
-      WHERE s.tarih BETWEEN ? AND ?
-        AND s.iptal = 0
-        AND s.is_deleted = 0 $subeKosuluExcel
-      ORDER BY s.tarih, s.id
-    ''', [bas, bit, if (subeIdExcel != null) subeIdExcel]);
-    
+    // şubelerin verisinin sızması). Artık SatisDeposu.gunSonuDetayGetir
+    // aktif şubeye göre filtreliyor (bkz. o metodun yorumu).
+    final sorguSonucu = await _satisDepo.gunSonuDetayGetir(_baslangic, _bitis);
+
     if (sorguSonucu.isEmpty) {
       if (mounted) {
         hataMesaji(context, 'Bu tarih aralığında satış kalemi bulunamadı');

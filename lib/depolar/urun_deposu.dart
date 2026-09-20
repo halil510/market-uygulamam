@@ -433,6 +433,21 @@ class UrunDeposu {
     return rows.map(UrunModel.fromMap).toList();
   }
 
+  /// PLU ekranının (POS hızlı satış paneli) ihtiyacı: ana_grup ÖNCE
+  /// sıralanır ki "Tümü" sekmesinde ürünler kategori kategori bir arada
+  /// görünsün (pluUrunleriGetir()'in düz plu_sira sıralaması burada
+  /// grupları birbirine karıştırırdı — bilerek AYRI bir metod). Madde 2
+  /// mimari denetimi: plu_ekrani.dart önceden bu sorguyu doğrudan
+  /// kendisi çalıştırıyordu.
+  Future<List<UrunModel>> pluUrunleriGrupluGetir() async {
+    final db = await _d;
+    final rows = await db.rawQuery(
+      'SELECT * FROM urunler WHERE plu = 1 AND is_deleted = 0 '
+      'ORDER BY ana_grup, plu_sira ASC, urun_adi',
+    );
+    return rows.map(UrunModel.fromMap).toList();
+  }
+
   /// Ürünü PLU paneline ekler — yeni eklenen ürün listenin SONUNA
   /// gitsin diye mevcut en yüksek sıradan bir fazlası atanır.
   Future<void> pluyaEkle(int urunId) async {

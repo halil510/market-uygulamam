@@ -410,6 +410,109 @@ class SatisDeposu {
     return (res.first['adet'] as int?) ?? 0;
   }
 
+  /// Tarih aralığındaki satılan malın maliyetini (COGS) hesaplar — satır
+  /// bazında TARİHSEL maliyet (satis_kalem.alis_fiyat, satış anında
+  /// kalıcı olarak damgalanan) kullanılır; eski/migrasyon-öncesi
+  /// satırlar için (0 ise) güncel urunler.alis_fiyat'a düşülür. Aktif
+  /// şubeye göre filtrelenir (bkz. tariheGoreGetir'deki AYNI desen).
+  /// Madde 2 mimari denetimi: gunluk_rapor_ekrani.dart önceden bu
+  /// sorguyu doğrudan kendisi çalıştırıyordu.
+  Future<double> maliyetToplami(DateTime bas, DateTime bit) async {
+    final db = await _d;
+    final subeId = AktifSubeServisi().subeId;
+    final subeKosulu = subeId != null ? 'AND s.sube_id = ?' : '';
+    final rows = await db.rawQuery('''
+      SELECT COALESCE(SUM(
+        CASE WHEN sk.alis_fiyat > 0 THEN sk.miktar * sk.alis_fiyat
+             ELSE sk.miktar * COALESCE(u.alis_fiyat, 0) END
+      ), 0) as maliyet
+      FROM satis_kalem sk
+      JOIN satislar s ON sk.satis_id = s.id
+      LEFT JOIN urunler u ON sk.urun_id = u.id
+      WHERE s.tarih BETWEEN ? AND ?
+        AND s.iptal = 0 AND s.is_deleted = 0 $subeKosulu
+    ''', [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId]);
+    return (rows.first['maliyet'] as num?)?.toDouble() ?? 0;
+  }
+
+  /// Gün Sonu Excel dışa aktarımı için detaylı satış kalemleri (fiş no,
+  /// cari unvanı, ürün, miktar, fiyat...) — tarihe göre, aktif şubeye
+  /// göre filtrelenir. Madde 2 mimari denetimi: gunluk_rapor_ekrani.dart
+  /// önceden bu sorguyu doğrudan kendisi çalıştırıyordu.
+  Future<List<Map<String, dynamic>>> gunSonuDetayGetir(DateTime bas, DateTime bit) async {
+    final db = await _d;
+    final subeId = AktifSubeServisi().subeId;
+    final subeKosulu = subeId != null ? 'AND s.sube_id = ?' : '';
+    return db.rawQuery('''
+      SELECT
+        s.fis_no,
+        s.tarih,
+        c.unvan as cari_unvan,
+        s.odeme_yontemi,
+        sk.barkod,
+        sk.urun_adi,
+        sk.miktar,
+        sk.birim_fiyat,
+        sk.iskonto_tutar,
+        sk.kdv_oran,
+        sk.kdv_tutar,
+        sk.net_fiyat,
+        sk.toplam_tutar,
+        sk.urun_id
+      FROM satislar s
+      INNER JOIN satis_kalem sk ON s.id = sk.satis_id
+      LEFT JOIN cari c ON s.cari_id = c.id
+      WHERE s.tarih BETWEEN ? AND ?
+        AND s.iptal = 0
+        AND s.is_deleted = 0 $subeKosulu
+      ORDER BY s.tarih, s.id
+    ''', [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId]);
+  }
+
+  /// Bir carinin son 6 ayının aylık satış toplamlarını (ay bazında
+  /// gruplanmış) döner — cari 360 panelindeki analiz grafiği için (bkz.
+  /// cari_detay_paneli.dart). Madde 2 mimari denetimi.
+  Future<List<Map<String, dynamic>>> cariAylikSatisGetir(int cariId) async {
+    final db = await _d;
+    return db.rawQuery('''
+      SELECT strftime('%Y-%m', tarih) AS ay, SUM(genel_toplam) AS toplam
+      FROM satislar
+      WHERE cari_id = ? AND iptal = 0 AND is_deleted = 0
+        AND tarih >= date('now', 'localtime', '-6 months')
+      GROUP BY ay ORDER BY ay ASC
+    ''', [cariId]);
+  }
+
+  /// Bir carinin en çok satın aldığı ürünleri (miktar bazlı, ilk [limit])
+  /// döner — cari 360 panelindeki "En Çok Alınanlar" bloğu için. Madde 2
+  /// mimari denetimi.
+  Future<List<Map<String, dynamic>>> cariEnCokAlinanlarGetir(int cariId, {int limit = 6}) async {
+    final db = await _d;
+    return db.rawQuery('''
+      SELECT sk.urun_adi, SUM(sk.miktar) AS toplam_miktar, SUM(sk.toplam_tutar) AS toplam_tutar
+      FROM satis_kalem sk
+      JOIN satislar s ON sk.satis_id = s.id
+      WHERE s.cari_id = ? AND s.iptal = 0 AND s.is_deleted = 0
+      GROUP BY sk.urun_adi ORDER BY toplam_tutar DESC LIMIT ?
+    ''', [cariId, limit]);
+  }
+
+  /// Bugünkü toplam toptan satış cirosu (iptal hariç) — toptan
+  /// dashboard'unun ciro kartı için. Madde 2 mimari denetimi:
+  /// toptan_dashboard_ekrani.dart önceden bu sorguyu doğrudan kendisi
+  /// çalıştırıyordu.
+  Future<double> bugunkuToptanCiro() async {
+    final db = await _d;
+    final bugun = DateTime.now();
+    final baslangic = DateTime(bugun.year, bugun.month, bugun.day).toIso8601String();
+    final res = await db.rawQuery(
+      "SELECT COALESCE(SUM(genel_toplam),0) AS toplam FROM satislar "
+      "WHERE fis_tipi = 'Toptan Satış' AND iptal = 0 AND tarih >= ?",
+      [baslangic],
+    );
+    return (res.first['toplam'] as num?)?.toDouble() ?? 0;
+  }
+
   Future<List<SatisModel>> bugunkunSatislar() async {
     final now = DateTime.now();
     return tariheGoreGetir(

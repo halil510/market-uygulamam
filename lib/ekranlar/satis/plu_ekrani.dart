@@ -7,7 +7,7 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
-import '../../veri/database/veritabani.dart';
+import '../../depolar/urun_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
 
@@ -44,20 +44,16 @@ class _PluEkraniState extends ConsumerState<PluEkrani> {
 
   Future<void> _yukle() async {
     try {
-      final db = await Veritabani().db;
       // NOT: Önceden burada her ekran açılışında "ALTER TABLE urunler ADD
       // COLUMN plu..." çalıştırılıyordu — ama bu kolonlar zaten hem taze
       // kurulum şemasında (urun_semasi.dart) hem de doğru migration
       // adımında (v9→v10, migrasyon_yonetici.dart) ekleniyor. UI
       // ekranının kendi başına şema değişikliği yapması gereksiz ve
       // yanlış katmanda bir sorumluluktu — kaldırıldı.
-      final rows = await db.rawQuery(
-        'SELECT * FROM urunler WHERE plu = 1 AND is_deleted = 0 '
-        'ORDER BY ana_grup, plu_sira ASC, urun_adi',
-      );
+      final urunler = await UrunDeposu().pluUrunleriGrupluGetir();
       if (!mounted) return;
       setState(() {
-        _urunler    = rows.map(UrunModel.fromMap).toList();
+        _urunler    = urunler;
         _yukleniyor = false;
       });
     } catch (_) {

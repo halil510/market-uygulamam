@@ -21,6 +21,7 @@ import '../../modeller/satis_kalem_model.dart';
 import '../../modeller/fatura_model.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/cari_deposu.dart';
+import '../../depolar/satis_deposu.dart';
 import '../../veri/database/veritabani.dart';
 import '../../servisler/fiyat_hesaplama_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
@@ -102,15 +103,12 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
   /// körüne kopyalamak yerine bilinçli olarak TAZE fiyat kullanılır.
   Future<void> _eskiSiparisiCogalt(int satisId) async {
     try {
-      final db = await Veritabani().db;
-      final kalemler = await db
-          .query('satis_kalem', where: 'satis_id = ?', whereArgs: [satisId]);
+      final eskiSatis = await SatisDeposu().idileGetir(satisId);
+      final kalemler = eskiSatis?.kalemler ?? const [];
       for (final k in kalemler) {
-        final urunId = k['urun_id'] as int?;
-        if (urunId == null) continue;
-        final urun = await _urunDepo.idileGetir(urunId);
+        final urun = await _urunDepo.idileGetir(k.urunId);
         if (urun == null) continue;
-        final miktar = (k['miktar'] as num?)?.toDouble() ?? 1;
+        final miktar = k.miktar;
         final fiyatSonucu = await _fiyatServisi.hesapla(
           urun: urun,
           cari: _secilenBayi,

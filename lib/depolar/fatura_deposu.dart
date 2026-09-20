@@ -11,6 +11,17 @@ class FaturaDeposu {
   final Veritabani _db = Veritabani();
   Future<Database> get _d async => _db.db;
 
+  /// Bir satışın zaten faturalandırılıp faturalandırılmadığını kontrol
+  /// eder — muhasebe kuralı gereği kesilmiş bir faturaya sahip satış
+  /// doğrudan silinemez (bkz. cari_detay_paneli.dart._silmeyeCalis).
+  /// Madde 2 mimari denetimi.
+  Future<bool> satisIcinFaturaVarMi(int satisId) async {
+    final db = await _d;
+    final rows = await db.query('faturalar',
+        where: 'satis_id = ? AND (deleted_at IS NULL)', whereArgs: [satisId], limit: 1);
+    return rows.isNotEmpty;
+  }
+
   /// ÖNCEDEN CİDDİ BİR HUKUKİ UYUMLULUK RİSKİ VARDI: fatura numarası,
   /// gerçek bir artan sayaç yerine "şu anki zaman damgası mod 1 milyar"
   /// ile üretiliyordu (fatura_ekle_ekrani.dart, initState). Bu SIRALI

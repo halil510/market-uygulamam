@@ -3,17 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../depolar/kasa_deposu.dart';
 import '../../depolar/banka_hesap_deposu.dart';
-import '../../depolar/banka_hareket_deposu.dart';
 import '../../depolar/kredi_karti_deposu.dart';
 import '../../saglayicilar/riverpod/kasa_rapor_provider.dart';
-import '../../modeller/kasa_hareket_model.dart';
 import '../../modeller/banka_hesap_model.dart';
-import '../../modeller/banka_hareket_model.dart';
 import '../../modeller/kredi_karti_model.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../servisler/onay_merkezi_servisi.dart';
-import '../../servisler/bulut/bulut_manager.dart';
-import '../../veri/database/veritabani.dart';
+import '../../servisler/virman_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
@@ -27,6 +22,7 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
   final _tutarCtrl = TextEditingController();
   final _aciklamaCtrl = TextEditingController();
   final _depo = KasaDeposu();
+  final _virmanServisi = VirmanServisi();
   double _kasaBakiye = 0;
   String _kaynakHesap = 'Kasa';
   String _hedefHesap  = 'Banka';
@@ -133,7 +129,6 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
 
     setState(() => _islem = true);
     try {
-      final now = DateTime.now();
       final acik = _aciklamaCtrl.text.isEmpty
           ? '$_kaynakHesap → $_hedefHesap Virman'
           : _aciklamaCtrl.text;
@@ -142,73 +137,16 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
       final ikiTarafDaGercek =
           _gercekHesaplar.contains(_kaynakHesap) && _gercekHesaplar.contains(_hedefHesap);
 
-      final db = await Veritabani().db;
-      int? kartHareketId;
-      await db.transaction((txn) async {
-        if (_kaynakHesap == 'Kasa') {
-          await _depo.hareketEkleTxn(txn, KasaHareketModel(
-            hareketTipi: 'Virman Çıkış', tutar: tutar, tarih: now,
-            aciklama: '$acik (Çıkış)', referansTuru: 'virman'));
-        } else if (_hedefHesap == 'Kasa') {
-          await _depo.hareketEkleTxn(txn, KasaHareketModel(
-            hareketTipi: 'Virman Giriş', tutar: tutar, tarih: now,
-            aciklama: '$acik (Giriş)', referansTuru: 'virman'));
-        }
-        if (_kaynakHesap == 'Banka' && _seciliBanka != null) {
-          await BankaHareketDeposu().ekleTxn(txn, BankaHareketModel(
-            bankaHesapId: _seciliBanka!.id!, islemTipi: 'Giden',
-            tutar: tutar, tarih: now, aciklama: '$acik (Çıkış)'));
-        } else if (_hedefHesap == 'Banka' && _seciliBanka != null) {
-          await BankaHareketDeposu().ekleTxn(txn, BankaHareketModel(
-            bankaHesapId: _seciliBanka!.id!, islemTipi: 'Gelen',
-            tutar: tutar, tarih: now, aciklama: '$acik (Giriş)'));
-        }
-        if (_kaynakHesap == 'Kredi Kartı' && _seciliKart != null) {
-          // Kart KAYNAK ise: para kart borcundan çıkıp başka hesaba
-          // gidiyor demektir — bu bir "avans" gibi kartın kullanılan
-          // limitini ARTIRIR (delta pozitif = harcama).
-          kartHareketId = await KrediKartiDeposu().limitDegistirTxn(
-              txn, _seciliKart!.id!, tutar, aciklama: '$acik (Avans)');
-        } else if (_hedefHesap == 'Kredi Kartı' && _seciliKart != null) {
-          // Kart HEDEF ise: kart ÖDENİYOR demektir — kullanılan limit
-          // AZALIR (delta negatif = ödeme).
-          kartHareketId = await KrediKartiDeposu().limitDegistirTxn(
-              txn, _seciliKart!.id!, -tutar, aciklama: '$acik (Ödeme)');
-        }
-      });
-
-      // KrediKartiDeposu.limitDegistirTxn kendi durable sync_queue
-      // yazımını yapmıyor (bkz. KrediKartiDeposu.nakitOdemeYap'taki AYNI
-      // desen) — bu yüzden transaction kapandıktan SONRA, o dosyadaki
-      // established pattern'le aynı şekilde elle bildiriliyor. Kasa ve
-      // Banka tarafları kendi ekleTxn'leri içinde ZATEN atomik/durable
-      // (SyncKuyrukYazici) olduğundan burada tekrar bildirilmiyor.
-      if (_seciliKart != null && (_kaynakHesap == 'Kredi Kartı' || _hedefHesap == 'Kredi Kartı')) {
-        final kartSatir = await db.query('kredi_kartlari',
-            where: 'id = ?', whereArgs: [_seciliKart!.id], limit: 1);
-        if (kartSatir.isNotEmpty) {
-          BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
-        }
-        if (kartHareketId != null) {
-          final kartHareketSatir = await db.query('kredi_karti_hareket',
-              where: 'id = ?', whereArgs: [kartHareketId], limit: 1);
-          if (kartHareketSatir.isNotEmpty) {
-            BulutManager().upsert('kredi_karti_hareket',
-                Map<String, dynamic>.from(kartHareketSatir.first));
-          }
-        }
-      }
+      await _virmanServisi.virmanYap(
+        kaynakHesap: _kaynakHesap,
+        hedefHesap: _hedefHesap,
+        tutar: tutar,
+        aciklama: acik,
+        seciliBanka: _seciliBanka,
+        seciliKart: _seciliKart,
+      );
 
       if (kasaDahil) {
-        if (_kaynakHesap == 'Kasa') {
-          OnayMerkeziServisi().kaydet(
-            tur: OnayTuru.kasaCikisi,
-            tutar: tutar,
-            esikTutar: OnayEsikleri.kasaCikisiTutari,
-            referansTuru: 'virman',
-            aciklama: '$_kaynakHesap → $_hedefHesap: $acik',
-          );
-        }
         await _kasaBakiyeYukleTek();
       }
       // ÖNCEDEN Kasa Raporu ekranı (başka bir sekmede/ekranda açıksa)

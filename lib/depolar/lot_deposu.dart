@@ -14,6 +14,21 @@ import '../veri/database/veritabani.dart';
 class LotDeposu {
   final _stokDepo = StokDeposu();
 
+  /// Lot/Seri listesini (ürün adı/barkod JOIN'li) getirir — [urunId]
+  /// verilirse sadece o ürünün lotları. Madde 2 mimari denetimi:
+  /// lot_seri_ekrani.dart önceden bu sorguyu doğrudan kendisi
+  /// çalıştırıyordu.
+  Future<List<Map<String, dynamic>>> tumunuGetir({int? urunId}) async {
+    final db = await Veritabani().db;
+    return db.rawQuery('''
+      SELECT ls.*, u.urun_adi, u.barkod as urun_barkod
+      FROM lot_seri ls
+      JOIN urunler u ON ls.urun_id = u.id
+      ${urunId != null ? "WHERE ls.urun_id = ?" : ""}
+      ORDER BY ls.son_kullanma_tarihi ASC, ls.lot_no ASC
+    ''', urunId != null ? [urunId] : []);
+  }
+
   /// [existingLotId] null ise yeni lot eklenir, doluysa günceller.
   /// [eskiMiktar] güncelleme durumunda önceki miktar (fark hesaplamak
   /// için) — yeni eklemede 0 kabul edilir.

@@ -13,7 +13,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../modeller/cari_model.dart';
 import '../../depolar/cari_deposu.dart';
-import '../../veri/database/veritabani.dart';
+import '../../depolar/satis_deposu.dart';
 import 'toptan_satis_ekrani.dart';
 import 'cari_detay_paneli.dart';
 
@@ -63,15 +63,7 @@ class _ToptanDashboardEkraniState extends State<ToptanDashboardEkrani> {
 
     double bugunCiro = 0;
     try {
-      final db = await Veritabani().db;
-      final bugun = DateTime.now();
-      final baslangic = DateTime(bugun.year, bugun.month, bugun.day).toIso8601String();
-      final res = await db.rawQuery(
-        "SELECT COALESCE(SUM(genel_toplam),0) AS toplam FROM satislar "
-        "WHERE fis_tipi = 'Toptan Satış' AND iptal = 0 AND tarih >= ?",
-        [baslangic],
-      );
-      bugunCiro = (res.first['toplam'] as num?)?.toDouble() ?? 0;
+      bugunCiro = await SatisDeposu().bugunkuToptanCiro();
     } catch (_) { /* ciro okunamadı — 0 gösterilir, ekran yine de açılır */ }
 
     if (!mounted) return;

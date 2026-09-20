@@ -89,6 +89,11 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
           // kullanılıyor (bkz. _vardiyaKapat()).
           ozet['nakit_degisimi'] =
               await KasaDeposu().nakitDegisimi(DateTime.parse(bas));
+          // Madde 12 denetimi (2026-09-16): "Diğer Nakit Hareketler" artık
+          // tek bir lump-sum satır değil, Tahsilat/Gider/Ödeme/Virman
+          // olarak kalem kalem ayrılıyor (bkz. _vardiyaKapat dialog).
+          ozet['nakit_kirilim'] =
+              await KasaDeposu().nakitDegisimiKirilim(DateTime.parse(bas));
         }
       }
 
@@ -192,6 +197,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     final nakitDegisimi =
         (_satisOzet['nakit_degisimi'] as num?)?.toDouble() ?? nakit;
     final beklenenNakit = basBakiye + nakitDegisimi;
+    final kirilim = (_satisOzet['nakit_kirilim'] as Map<String, double>?) ?? const {};
 
     final sayimCtrl =
         TextEditingController(text: beklenenNakit.toStringAsFixed(2));
@@ -221,9 +227,13 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
                 child: Column(children: [
                   _OzetSatir('Başlangıç Kasası', ParaUtils.formatla(basBakiye)),
                   _OzetSatir('Nakit Satışlar', ParaUtils.formatla(nakit)),
-                  if ((nakitDegisimi - nakit).abs() > 0.005)
-                    _OzetSatir('Diğer Nakit Hareketler (tahsilat/gider/ödeme/virman)',
-                        ParaUtils.formatla(nakitDegisimi - nakit)),
+                  // Madde 12 denetimi (2026-09-16): ÖNCEDEN tek bir "Diğer
+                  // Nakit Hareketler" satırında toplanıyordu — artık
+                  // Tahsilat/Gider/Ödeme/Virman AYRI kalemler olarak
+                  // gösteriliyor (sıfır olan kategori gizlenir).
+                  for (final kategori in ['Tahsilat', 'Gider', 'Ödeme', 'Virman', 'Diğer'])
+                    if ((kirilim[kategori] ?? 0).abs() > 0.005)
+                      _OzetSatir(kategori, ParaUtils.formatla(kirilim[kategori]!)),
                   _OzetSatir('Beklenen Kasa', ParaUtils.formatla(beklenenNakit),
                       bold: true),
                   _OzetSatir('Anlık Kasa Bak.', ParaUtils.formatla(kasaBak)),

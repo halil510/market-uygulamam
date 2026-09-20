@@ -176,6 +176,48 @@ class KasaDeposu {
     }
   }
 
+  /// [nakitDegisimi]'nin AYNI toplamını, tek bir "diğer nakit hareket"
+  /// satırı yerine Madde 12 denetiminin (2026-09-16) istediği gibi
+  /// kalem kalem (Tahsilat/Gider/Ödeme/Virman/Diğer) döner — Kasa
+  /// Kapanış ekranında Vardiya Kapat özetinde gösterilmek üzere. 'Satış'
+  /// ve 'AçılışKasa' HARİÇ tutulur (özette zaten ayrı satırlar var).
+  /// Her kategorinin NETİ döner (ör. 'Gider' = -Gider + Gider İptali).
+  Future<Map<String, double>> nakitDegisimiKirilim(DateTime baslangic) async {
+    try {
+      final db = await _d;
+      final girisler = KasaHareketModel.girisTipleri;
+      final icYer = List.filled(girisler.length, '?').join(',');
+      final subeId = AktifSubeServisi().subeId;
+      final subeSarti = subeId != null ? ' AND sube_id = ?' : '';
+      final args = [...girisler, baslangic.toIso8601String(), if (subeId != null) subeId];
+      final rows = await db.rawQuery('''
+        SELECT
+          CASE
+            WHEN hareket_tipi = 'Tahsilat' THEN 'Tahsilat'
+            WHEN hareket_tipi IN ('Gider','Gider İptali') THEN 'Gider'
+            WHEN hareket_tipi IN ('Ödeme','Ödeme Girişi') THEN 'Ödeme'
+            WHEN hareket_tipi IN ('Virman Giriş','Virman Çıkış') THEN 'Virman'
+            ELSE 'Diğer'
+          END AS kategori,
+          COALESCE(SUM(
+            CASE WHEN hareket_tipi IN ($icYer) THEN tutar ELSE -tutar END
+          ), 0) AS net
+        FROM kasa_hareketleri
+        WHERE deleted_at IS NULL AND (odeme_yontemi IS NULL OR odeme_yontemi = 'Nakit')
+          AND datetime(tarih) >= datetime(?)$subeSarti
+          AND hareket_tipi NOT IN ('Satış', 'AçılışKasa')
+        GROUP BY kategori
+      ''', args);
+      return {
+        for (final r in rows)
+          (r['kategori'] as String): (r['net'] as num?)?.toDouble() ?? 0,
+      };
+    } catch (e, st) {
+      LogServisi().hata('Kasa.nakitDegisimiKirilim', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
   Future<List<KasaHareketModel>> hareketleriniGetir({
     int limit = 100,
     DateTime? baslangic,

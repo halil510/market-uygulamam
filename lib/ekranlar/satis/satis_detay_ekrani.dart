@@ -62,6 +62,21 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
   bool _islemYapiliyor = false;
   final _fmt = DateFormat('dd.MM.yyyy HH:mm');
 
+  // Kullanıcı bulgusu (2026-09-20): Karma ödemede "Ödeme Yöntemi" alanı
+  // sadece düz "Karma" yazıyordu, hangi yöntemden ne kadar ödendiği
+  // görünmüyordu. bkz. SatisDeposu.odemeDagilimiGetir.
+  List<Map<String, dynamic>>? _odemeDagilimi;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.satis.odemeYontemi == 'Karma' && widget.satis.id != null) {
+      SatisDeposu().odemeDagilimiGetir(widget.satis.id!).then((v) {
+        if (mounted) setState(() => _odemeDagilimi = v);
+      });
+    }
+  }
+
   Future<void> _iptal() async {
     final onay = await showDialog<String>(context: context,
       builder: (ctx) {
@@ -271,7 +286,39 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
         _Kart(children: [
           _Satir('Fiş No',        s.fisNo ?? '—'),
           _Satir('Tarih',         _fmt.format(s.tarih)),
-          _Satir('Ödeme Yöntemi', s.odemeYontemi ?? '—'),
+          // Karma ödemede artık düz "Karma" yazısı yerine (veya onunla
+          // birlikte) yöntem+tutar dağılımı gösteriliyor.
+          if (s.odemeYontemi != 'Karma')
+            _Satir('Ödeme Yöntemi', s.odemeYontemi ?? '—')
+          else ...[
+            _Satir('Ödeme Yöntemi', 'Karma'),
+            if (_odemeDagilimi == null)
+              const Padding(
+                padding: EdgeInsets.only(top: 4, bottom: 2),
+                child: SizedBox(
+                    width: 14, height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(top: 2, bottom: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: _odemeDagilimi!
+                      .map((d) => Padding(
+                            padding: const EdgeInsets.only(left: 12, top: 2),
+                            child: Row(children: [
+                              Icon(Icons.subdirectory_arrow_right,
+                                  size: 14, color: TsRenk.metinIkincil(context)),
+                              const SizedBox(width: 4),
+                              Text('${d['yontem']}: ${ParaUtils.formatla(d['tutar'] as double)}',
+                                  style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
+                            ]),
+                          ))
+                      .toList(),
+                ),
+              ),
+          ],
           if (s.cariAdi != null) _Satir('Müşteri', s.cariAdi!),
           if (s.kasiyerId != null) _Satir('Kasiyer', s.kasiyerId.toString()),
         ]),

@@ -124,6 +124,52 @@ class SatisDeposu {
     }
   }
 
+  /// Kullanıcı bulgusu (2026-09-20): Karma ödemeli bir satışın detay
+  /// ekranında "Ödeme Yöntemi" alanı sadece düz "Karma" yazıyordu — hangi
+  /// yöntemden ne kadar ödendiği (ör. 50 Nakit + 50 Cari) görünmüyordu.
+  /// Bu, satış için kayıtlı gerçek ödeme dağılımını döner:
+  ///   - Nakit/Kart/Havale vb. paylar: kasa_hareketleri'nden (her yöntem
+  ///     SatisTamamlamaServisi.tamamla() tarafından zaten AYRI bir
+  ///     satırda tutuluyor — bkz. o dosyanın FAZ 1 madde 2 yorumu).
+  ///   - Cari (veresiye) payı: cari_hareket'teki GERÇEK borç satırından
+  ///     (borc>0 VE alacak=0) — Karma+Cari satışlarda ayrıca yazılan,
+  ///     bakiyeyi etkilemeyen self-cancelling "bilgi" satırı (borc=alacak)
+  ///     BİLEREK HARİÇ tutulur, o satır bir ödeme yöntemi değildir.
+  /// Karma olmayan (tek yöntemli) satışlarda da çalışır — tek elemanlı
+  /// bir liste döner.
+  Future<List<Map<String, dynamic>>> odemeDagilimiGetir(int satisId) async {
+    try {
+      final db = await _d;
+      final sonuc = <Map<String, dynamic>>[];
+
+      final kasaRows = await db.rawQuery('''
+        SELECT odeme_yontemi, COALESCE(SUM(tutar), 0) AS tutar
+        FROM kasa_hareketleri
+        WHERE referans_id = ? AND referans_turu = 'satis' AND deleted_at IS NULL
+        GROUP BY odeme_yontemi
+      ''', [satisId]);
+      for (final r in kasaRows) {
+        final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+        if (tutar <= 0.005) continue;
+        sonuc.add({'yontem': r['odeme_yontemi'] as String? ?? '—', 'tutar': tutar});
+      }
+
+      final cariRows = await db.rawQuery('''
+        SELECT COALESCE(SUM(borc), 0) AS tutar
+        FROM cari_hareket
+        WHERE fis_id = ? AND fis_tipi = 'Satış' AND alacak = 0 AND borc > 0 AND is_deleted = 0
+      ''', [satisId]);
+      final cariTutar = (cariRows.first['tutar'] as num?)?.toDouble() ?? 0;
+      if (cariTutar > 0.005) {
+        sonuc.add({'yontem': 'Cari', 'tutar': cariTutar});
+      }
+
+      return sonuc;
+    } catch (e, st) {
+      LogServisi().hata('SatisDeposu.odemeDagilimiGetir', hata: e, yigin: st);
+      rethrow;
+    }
+  }
 
   // ══════════════════════════════════════════════════════════════════════
   // 🆕 FİŞ GERİ ÇAĞIRMA — fiş numarasıyla satış bul

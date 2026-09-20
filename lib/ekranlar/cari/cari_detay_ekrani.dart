@@ -26,6 +26,70 @@ import '../../veri/database/veritabani.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 
+/// Karma ödemeli bir satışta hem Cari hem Cari-dışı (Nakit/Kart/Havale)
+/// payı varsa, SatisTamamlamaServisi.tamamla() AYNI satış (fis_id) için
+/// 2 ayrı cari_hareket satırı yazar: gerçek Cari borcu (borc>0, alacak=0)
+/// + bakiyeyi etkilemeyen bilgi amaçlı satır (borc=alacak, self-
+/// cancelling — o payın Nakit/Kart/Havale ile ANINDA ödendiğini
+/// kaydeder). Kullanıcı bulgusu (2026-09-20): bu, Cari Hareketler
+/// listesinde AYNI satışın 2 ayrı "Satış" kartı gibi görünmesine yol
+/// açıyordu — kafa karıştırıcı.
+///
+/// Bu SAF fonksiyon, aynı fis_id + fis_tipi='Satış' satırlarını TEK bir
+/// karta birleştirir. borc/alacak toplanır — bu, net bakiye etkisini
+/// DOĞRU tutar (self-cancelling satırın borc=alacak'ı zaten birbirini
+/// götürür), ama HAM toplamları (100 borç + 50 alacak gibi) DEĞİL,
+/// sadece NET etkiyi (borç YA DA alacak, ikisi asla aynı anda değil)
+/// gösterir — iki ayrı tutarın aynı kartta görünmesi kafa karıştırırdı.
+/// Tam ödeme dağılımı (50 Nakit + 50 Cari gibi) artık Satış Detayı
+/// ekranında gösteriliyor — bu liste sadece NET etkiyi özetler.
+/// 'Satış' olmayan hareketler (Tahsilat, Ödeme, Toptan Satış vb.) ve
+/// tek satırlı 'Satış' kayıtları DEĞİŞTİRİLMEDEN geçer.
+List<CariHareketModel> cariHareketleriniGrupla(List<CariHareketModel> ham) {
+  final gruplar = <int, List<CariHareketModel>>{};
+  for (final h in ham) {
+    if (h.fisTipi == 'Satış' && h.fisId != null) {
+      (gruplar[h.fisId!] ??= []).add(h);
+    }
+  }
+
+  final sonuc = <CariHareketModel>[];
+  final islenmisFisIdler = <int>{};
+  for (final h in ham) {
+    if (h.fisTipi != 'Satış' || h.fisId == null) {
+      sonuc.add(h);
+      continue;
+    }
+    final fisId = h.fisId!;
+    if (islenmisFisIdler.contains(fisId)) continue;
+    islenmisFisIdler.add(fisId);
+
+    final grup = gruplar[fisId]!;
+    if (grup.length == 1) {
+      sonuc.add(h);
+      continue;
+    }
+
+    final borcToplam = grup.fold(0.0, (s, g) => s + g.borc);
+    final alacakToplam = grup.fold(0.0, (s, g) => s + g.alacak);
+    final net = borcToplam - alacakToplam;
+    sonuc.add(CariHareketModel(
+      id: h.id,
+      cariId: h.cariId,
+      tarih: h.tarih,
+      fisTipi: h.fisTipi,
+      fisId: fisId,
+      fisNo: h.fisNo,
+      aciklama: 'Karma Satış: ${h.fisNo ?? fisId} (ödeme dağılımı için dokunun)',
+      borc: net > 0 ? net : 0,
+      alacak: net < 0 ? -net : 0,
+      odemeTuru: 'Karma',
+      kullanici: h.kullanici,
+    ));
+  }
+  return sonuc;
+}
+
 class CariDetayEkrani extends ConsumerWidget {
   final int cariId;
   const CariDetayEkrani({super.key, required this.cariId});
@@ -64,7 +128,7 @@ class _CariDetayIcerik extends ConsumerStatefulWidget {
 class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
-  List<dynamic> _hareketler = [];
+  List<CariHareketModel> _hareketler = [];
   bool _yukl = false;
   final _fmt = DateFormat('dd.MM.yyyy HH:mm');
 
@@ -126,7 +190,18 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
     setState(() => _yukl = true);
     try {
       final h = await CariDeposu().hareketleriniGetir(widget.cari.id!);
-      if (mounted) setState(() { _hareketler = h; _yukl = false; });
+      // 🔴 DÜZELTME (kullanıcı bulgusu, 2026-09-20): Karma ödemeli bir
+      // satışta hem Cari hem Cari-dışı (Nakit/Kart/Havale) payı varsa,
+      // SatisTamamlamaServisi.tamamla() AYNI satış için 2 ayrı
+      // cari_hareket satırı yazıyor (gerçek Cari borcu + bakiyeyi
+      // etkilemeyen bilgi amaçlı satır — bkz. o dosyanın yorumu). Bu,
+      // burada AYNI satışın 2 ayrı "Satış" kartı gibi görünmesine yol
+      // açıyordu — kullanıcı: "listeye bakınca 2 tane fiş görünce kafa
+      // karışıklığı oluyor". cariHareketleriniGrupla() aynı fis_id'ye
+      // sahip 'Satış' satırlarını TEK karta birleştirir (net bakiye
+      // etkisi korunur); tam ödeme dağılımı artık Satış Detayı'nda
+      // gösteriliyor (bkz. satis_detay_ekrani.dart).
+      if (mounted) setState(() { _hareketler = cariHareketleriniGrupla(h); _yukl = false; });
     } catch (e) {
       if (kDebugMode) debugPrint('CariDetay hareketYukle hata: $e');
       if (mounted) setState(() => _yukl = false);

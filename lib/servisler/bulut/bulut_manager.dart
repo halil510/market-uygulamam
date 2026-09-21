@@ -230,6 +230,17 @@ class BulutManager {
     if (tablo == 'personel') {
       veri.remove('ise_baslama_tarihi');
     }
+    // 🔴 DÜZELTME (2026-09-21): satislar.sync_cakisma_kopyasi SADECE
+    // yerel SQLite'ta var (DB v73, Veritabani._cakismaKorumasiUygula
+    // tarafından damgalanır — bkz. o fonksiyonun yorumu) — Supabase
+    // şemasında bu sütun YOK ve BİLİNÇLİ olarak eklenmedi (salt yerel,
+    // cihaza özgü bir "incelemeyi bekliyor" işareti; senkronize edilmesi
+    // gerekmiyor, her cihaz kendi çakışmasını kendi tespit eder). Yukarıdaki
+    // yorumdaki UYARI tam burada geçerli: silinmezse PostgREST bu satırı
+    // (ve aynı turdaki TÜM satislar toplu-upsert'ini) reddeder.
+    if (tablo == 'satislar') {
+      veri.remove('sync_cakisma_kopyasi');
+    }
     // 🔴🔴 KRİTİK, SON HAT DÜZELTMESİ (kullanıcı bulgusu — AYNI Supabase
     // hatası tekrar tekrar geldi: "kredi_kartlari NOT NULL ihlali,
     // kart_no_maskeli"): bu alan ASLA null/boş olarak buluta

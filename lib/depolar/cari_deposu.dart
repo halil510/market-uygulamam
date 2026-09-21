@@ -267,6 +267,49 @@ class CariDeposu {
     }
   }
 
+  /// Cari kodundan TAM eşleşmeyle cari bulur — Excel içe aktarımda
+  /// "bu cari kodu zaten kayıtlı mı" (güncelle-veya-yeni-ekle) kararı
+  /// için. cari_kodu sütunu COLLATE NOCASE olduğundan bu eşleşme
+  /// otomatik olarak büyük/küçük harf duyarsızdır.
+  Future<CariModel?> kodlaGetir(String kod) async {
+    try {
+      final db = await _d;
+      final rows = await db.query('cari',
+          where: 'cari_kodu = ? AND is_deleted = 0', whereArgs: [kod], limit: 1);
+      return rows.isEmpty ? null : CariModel.fromMap(rows.first);
+    } catch (e, st) {
+      LogServisi().hata('Cari.kodlaGetir', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
+  /// Excel dışa aktarım için: TÜM carileri (pasif dahil), her birinin
+  /// toplam borç/alacak tutarı (cari_hareket'ten SUM) ve varsayılan
+  /// adresiyle birlikte döner. cari.bakiye zaten (borç-alacak) olduğu
+  /// için ayrıca hesaplamaya gerek yok, satır olarak da dönüyor.
+  Future<List<Map<String, dynamic>>> tumunuBorcAlacakAdresIle() async {
+    try {
+      final db = await _d;
+      return await db.rawQuery('''
+        SELECT c.*,
+          COALESCE(h.toplam_borc, 0) AS toplam_borc,
+          COALESCE(h.toplam_alacak, 0) AS toplam_alacak,
+          ca.adres AS adres
+        FROM cari c
+        LEFT JOIN (
+          SELECT cari_id, SUM(borc) AS toplam_borc, SUM(alacak) AS toplam_alacak
+          FROM cari_hareket WHERE is_deleted = 0 GROUP BY cari_id
+        ) h ON h.cari_id = c.id
+        LEFT JOIN cari_adres ca ON ca.cari_id = c.id AND ca.varsayilan = 1
+        WHERE c.is_deleted = 0
+        ORDER BY c.unvan ASC
+      ''');
+    } catch (e, st) {
+      LogServisi().hata('Cari.tumunuBorcAlacakAdresIle', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
   // 🔴 DÜZELTME (performans denetiminde bulundu): urunler.ara()'nın
   // aksine bu fonksiyonun hiç LIMIT'i yoktu — büyük bir cari tabanında
   // (binlerce müşteri/tedarikçi) kısa/genel bir arama terimi TÜM

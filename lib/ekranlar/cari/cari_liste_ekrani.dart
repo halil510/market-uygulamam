@@ -15,6 +15,8 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/gib_servisi.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../depolar/bekleyen_siparis_deposu.dart';
+import '../../servisler/excel_servisi.dart';
+import '../../widgetlar/cari/cari_excel_ice_aktar_yardimcisi.dart';
 
 class CariListeEkrani extends ConsumerStatefulWidget {
   /// AI Chat'ten "cari X'e git" gibi bir komutla gelindiğinde, ekran
@@ -138,6 +140,26 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
     }
   }
 
+  // ── Excel dışa aktar ────────────────────────────────────────────────────
+  // Kullanıcı isteği (2026-09-21): "cari listede excel içe alma dışa
+  // verme olsun... tüm carileri dışa verme mümkün mü". TÜM cariler
+  // (pasif dahil) tek dosyada — CariDeposu.tumunuBorcAlacakAdresIle()
+  // her cari için gerçek toplam borç/alacağı (cari_hareket'ten) ve
+  // varsayılan adresini de getirir.
+  Future<void> _excelDisaAktar() async {
+    try {
+      final satirlar = await CariDeposu().tumunuBorcAlacakAdresIle();
+      if (satirlar.isEmpty) {
+        if (mounted) BildirimServisi.uyari(context, 'Dışa aktarılacak cari bulunamadı');
+        return;
+      }
+      final yol = await ExcelServisi().carileriExcelEAktar(satirlar);
+      await ExcelServisi().paylasExcel(yol);
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Excel hatası: $e');
+    }
+  }
+
   List<CariModel> _filtrele(List<CariModel> liste) {
     if (_bakiyeFiltre == 'Tümü') return liste;
     return liste.where((c) {
@@ -184,6 +206,30 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
         aksiyonlar: [
           IconButton(icon: const Icon(Icons.refresh, color: Colors.white),
               onPressed: () => ref.read(carilerProvider.notifier).yukle()),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (v) {
+              if (v == 'excel') _excelDisaAktar();
+              if (v == 'excel_ice') {
+                CariExcelIceAktarYardimcisi.iceAktar(context,
+                    onTamamlandi: () => ref.read(carilerProvider.notifier).yukle());
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                  value: 'excel_ice',
+                  child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.upload_file, size: 18, color: Colors.green),
+                      title: Text('Excel\'den İçe Aktar', style: TextStyle(fontSize: 13)))),
+              PopupMenuItem(
+                  value: 'excel',
+                  child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.download, size: 18, color: AppRenkler.primary),
+                      title: Text('Tüm Carileri Excel\'e Aktar', style: TextStyle(fontSize: 13)))),
+            ],
+          ),
         ],
         alt: PreferredSize(
           preferredSize: const Size.fromHeight(96),

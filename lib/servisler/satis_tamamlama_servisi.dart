@@ -57,6 +57,43 @@ class SatisTamamlamaServisi {
   final _kasaDepo = KasaDeposu();
   final _cariDepo = CariDeposu();
 
+  // 🔴🔴 KRİTİK DÜZELTME (kendi-keşif turu — Promosyon modülü denetimi,
+  // kullanıcı onayıyla): satis_kalem.iskonto_oran/iskonto_tutar HER
+  // ZAMAN 0 yazılıyordu — sepetteki GERÇEK indirim (promosyon, DB
+  // kayıtlı indirimli fiyat, ürün indirim oranı, elle indirim — bkz.
+  // SepetProvider._fiyatHesapla) doğrudan k.birimFiyat'a gömülüyor ama
+  // kalem satırına hiç YAZILMIYORDU. Somut etki: Gün Sonu Excel
+  // raporundaki "İndirim" sütunu (bkz. gunluk_rapor_ekrani.dart)
+  // promosyon uygulanan satışlarda bile HER ZAMAN 0 gösteriyordu —
+  // işletme promosyonların gerçek etkisini raporlardan asla göremiyordu.
+  // Artık kalemin GERÇEKTEN ne kadar indirimli satıldığı, ürünün güncel
+  // katalog fiyatı (k.urun.satisFiyati) ile fiilen tahsil edilen birim
+  // fiyat (k.birimFiyat) arasındaki farktan hesaplanıp yazılıyor —
+  // sepetin/fiyat hesaplama mantığının KENDİSİNE hiç dokunulmadı, sadece
+  // KAYIT anında bu fark artık kayboluyor.
+  SatisKalemModel _kalemOlustur(SepetKalem k, {required int satisId}) {
+    final bazFiyat = k.urun.satisFiyati;
+    final indirimBirim = bazFiyat > k.birimFiyat ? bazFiyat - k.birimFiyat : 0.0;
+    final iskontoOran = bazFiyat > 0 ? (indirimBirim / bazFiyat * 100) : 0.0;
+    final iskontoTutar = indirimBirim * k.miktar;
+    return SatisKalemModel(
+      satisId: satisId,
+      urunId: k.urun.id!,
+      urunAdi: k.urun.urunAdi,
+      barkod: k.urun.barkod,
+      miktar: k.miktar,
+      birimFiyat: k.birimFiyat,
+      toplamTutar: k.toplamTutar,
+      iskontoOran: iskontoOran,
+      iskontoTutar: iskontoTutar,
+      kdvOran: double.tryParse(k.urun.kdvOran) ?? 18,
+      kdvTutar: k.kdvTutar,
+      netFiyat: k.netFiyat,
+      alisFiyat: k.urun.alisFiyat,
+      alisFiyatKdv: k.urun.alisFiyatKdvDahil,
+    );
+  }
+
   /// Sepeti bir satışa dönüştürür: fiş no üretir, satış+kalemleri
   /// kaydeder, stok düşer, ödeme yöntemine göre kasa/cari hareketi
   /// oluşturur — hepsi TEK transaction'da. Commit sonrası bulut
@@ -76,24 +113,8 @@ class SatisTamamlamaServisi {
         musteri != null ? 'cari_satis' : 'satis',
         subeId: subeId ?? 1);
 
-    final satisKalemler = kalemler
-        .map((k) => SatisKalemModel(
-              satisId: 0,
-              urunId: k.urun.id!,
-              urunAdi: k.urun.urunAdi,
-              barkod: k.urun.barkod,
-              miktar: k.miktar,
-              birimFiyat: k.birimFiyat,
-              toplamTutar: k.toplamTutar,
-              iskontoOran: 0,
-              iskontoTutar: 0,
-              kdvOran: double.tryParse(k.urun.kdvOran) ?? 18,
-              kdvTutar: k.kdvTutar,
-              netFiyat: k.netFiyat,
-              alisFiyat: k.urun.alisFiyat,
-              alisFiyatKdv: k.urun.alisFiyatKdvDahil,
-            ))
-        .toList();
+    final satisKalemler =
+        kalemler.map((k) => _kalemOlustur(k, satisId: 0)).toList();
 
     final satis = SatisModel(
       fisNo: fisNo,
@@ -396,22 +417,7 @@ class SatisTamamlamaServisi {
     final tutarFarki = yeniToplam - eskiToplam;
 
     final yeniSatisKalemleri = yeniKalemler
-        .map((k) => SatisKalemModel(
-              satisId: satis.id!,
-              urunId: k.urun.id!,
-              urunAdi: k.urun.urunAdi,
-              barkod: k.urun.barkod,
-              miktar: k.miktar,
-              birimFiyat: k.birimFiyat,
-              toplamTutar: k.toplamTutar,
-              iskontoOran: 0,
-              iskontoTutar: 0,
-              kdvOran: double.tryParse(k.urun.kdvOran) ?? 18,
-              kdvTutar: k.kdvTutar,
-              netFiyat: k.netFiyat,
-              alisFiyat: k.urun.alisFiyat,
-              alisFiyatKdv: k.urun.alisFiyatKdvDahil,
-            ))
+        .map((k) => _kalemOlustur(k, satisId: satis.id!))
         .toList();
 
     final db = await Veritabani().db;

@@ -9,6 +9,8 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../depolar/ayarlar_deposu.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../saglayicilar/riverpod/auth_provider.dart';
+import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 
 class YedeklemeEkrani extends ConsumerStatefulWidget {
   const YedeklemeEkrani({super.key});
@@ -115,6 +117,23 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
       ),
     );
     if (onay != true || !mounted) return;
+
+    // 🔴 DEEP_AUDIT_REPORT madde 7 (Reauth kapsamı): yedek geri yükleme
+    // TÜM aktif veritabanının üzerine yazan, geri dönüşü zor bir işlem —
+    // ama önceden sadece basit bir onay diyaloğu vardı, cari/borç silme
+    // gibi yeniden kimlik doğrulama (Madde 15) istemiyordu. Masada
+    // bırakılmış açık bir oturumda yanlışlıkla tetiklenirse tüm günün
+    // verisi kaybolabilirdi.
+    final onaylandi = await yoneticiSifresiIleOnayIste(
+      context,
+      baslik: 'Yedek Geri Yükleme Onayı',
+      aciklama: '${y.tarihStr} tarihli yedek geri yüklenecek — mevcut '
+          'TÜM veriler bu yedekle DEĞİŞTİRİLECEK. Devam etmek için '
+          'şifrenizi girin.',
+    );
+    if (!onaylandi || !mounted) return;
+    if (!ref.read(authProvider).isMudur) return; // savunma: eylem anında ikinci kez doğrula
+
     try {
       await _servis.yedekiGeriYukle(y.yol);
       if (mounted) BildirimServisi.basari(context,

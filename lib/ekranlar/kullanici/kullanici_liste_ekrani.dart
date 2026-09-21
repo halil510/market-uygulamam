@@ -10,6 +10,8 @@ import '../../modeller/kullanici_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/auth_servisi.dart';
+import '../../saglayicilar/riverpod/auth_provider.dart';
+import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 
 class KullaniciListeEkrani extends ConsumerStatefulWidget {
   const KullaniciListeEkrani({super.key});
@@ -69,6 +71,21 @@ class _KullaniciListeEkraniState extends ConsumerState<KullaniciListeEkrani> {
       ),
     );
     if (ok != true) return;
+
+    // 🔴 DEEP_AUDIT_REPORT madde 7 (Reauth kapsamı): kullanıcı silme
+    // cari/borç silmeyle AYNI risk sınıfında (geri dönüşü zor, o
+    // kullanıcının geçmiş işlemlerindeki kasiyer/kullanıcı bağlantısı
+    // kaybolur) ama reauth istemiyordu.
+    if (!mounted) return;
+    final onaylandi = await yoneticiSifresiIleOnayIste(
+      context,
+      baslik: 'Kullanıcı Silme Onayı',
+      aciklama: '${k.adSoyad} kalıcı olarak silinecek. Devam etmek için '
+          'şifrenizi girin.',
+    );
+    if (!onaylandi || !mounted) return;
+    if (!ref.read(authProvider).isMudur) return; // savunma: eylem anında ikinci kez doğrula
+
     await _depo.sil(k.id!);
     await _yukle();
     if (mounted) BildirimServisi.basari(context, 'Kullanıcı silindi');

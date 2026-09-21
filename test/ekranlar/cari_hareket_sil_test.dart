@@ -42,6 +42,11 @@ Future<void> _silHareketSimulasyonu(Database db, {
     if ((guncel['is_deleted'] as int? ?? 0) == 1) {
       throw Exception('Bu hareket zaten iptal edilmiş');
     }
+    final mevcutFisTipi = guncel['fis_tipi'] as String? ?? '';
+    if (mevcutFisTipi.endsWith('İptali')) {
+      throw Exception(
+          'Bu kayıt zaten bir iptal/ters kaydıdır, tekrar iptal edilemez.');
+    }
     final now = DateTime.now().toIso8601String();
 
     await txn.update('cari_hareket', {'is_deleted': 1, 'last_updated': now},
@@ -110,6 +115,32 @@ void main() {
         () => _silHareketSimulasyonu(db, hareketId: hareketId, cariId: cariId),
         throwsException,
       );
+    });
+
+    // 🔴 DÜZELTME (kullanıcı bulgusu, 2026-09-21 — ekran görüntüsü: cari
+    // kartında "Tahsilat İptali İptali İptali" diye üç kere üst üste
+    // yapışmış, tutarı ₺0,00 bir hareket): bir iptal kaydının (fis_tipi
+    // "İptali" ile biten satır) ÜZERİNE tekrar bu akış çalıştırılabiliyordu
+    // — her seferinde bir öncekini gizleyip üzerine "İptali" ekleyen yeni,
+    // ₺0 tutarlı bir hayalet satır oluşuyordu.
+    test('bir iptal/ters kaydı TEKRAR iptal edilmeye çalışılırsa hata fırlatır '
+        '("İptali İptali İptali" birikmesini önler)', () async {
+      final cariId = await TestVeritabani.ornekCariEkle(db, unvan: 'Test Müşteri');
+      final tersHareketId = await db.insert('cari_hareket', {
+        'cari_id': cariId, 'fis_tipi': 'Tahsilat İptali', 'aciklama': 'İptal: X',
+        'borc': 0, 'alacak': 0, 'is_deleted': 0,
+      });
+
+      expect(
+        () => _silHareketSimulasyonu(db, hareketId: tersHareketId, cariId: cariId),
+        throwsException,
+      );
+
+      final satir = await db.query('cari_hareket', where: 'id = ?', whereArgs: [tersHareketId]);
+      expect(satir.first['is_deleted'], 0,
+          reason: 'reddedilen istek ters kaydı soft-delete ETMEMELİ');
+      expect(satir.first['fis_tipi'], 'Tahsilat İptali',
+          reason: 'fis_tipi\'ne ikinci bir "İptali" eklenmemeli');
     });
 
     test('is_deleted=0 filtresi sayesinde silinen hareket listede tekrar görünmez', () async {

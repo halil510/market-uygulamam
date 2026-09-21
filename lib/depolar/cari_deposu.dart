@@ -572,6 +572,23 @@ class CariDeposu {
         if ((guncel['is_deleted'] as int? ?? 0) == 1) {
           throw Exception('Bu hareket zaten iptal edilmiş');
         }
+        // 🔴 DÜZELTME (kullanıcı bulgusu, 2026-09-21 — ekran görüntüsü:
+        // cari kartında "Tahsilat İptali İptali İptali" diye üç kere
+        // üst üste yapışmış, tutarı ₺0,00 bir hareket): bu fonksiyon
+        // KENDİSİNİN oluşturduğu ters kayıt (fis_tipi sonu "İptali" ile
+        // biten satır) üzerinde TEKRAR çağrılabiliyordu — is_deleted
+        // kontrolü SADECE aynı kaydı ikinci kez iptal etmeyi engelliyordu,
+        // bir iptal kaydının ÜZERİNE bina edilen YENİ bir iptal kaydını
+        // engellemiyordu. Kullanıcı, aynı satırı temizlemeye çalışırken
+        // her tıklamada bir öncekini gizleyip üzerine "İptali" ekleyen
+        // yeni, ₺0 tutarlı bir hayalet satır oluşuyordu. Bir ters kayıt
+        // zaten bakiyeye 0 etki eder (borc=alacak=0) — onu "iptal etmek"
+        // anlamsızdır, artık açıkça engelleniyor.
+        final mevcutFisTipi = guncel['fis_tipi'] as String? ?? '';
+        if (mevcutFisTipi.endsWith('İptali')) {
+          throw Exception(
+              'Bu kayıt zaten bir iptal/ters kaydıdır, tekrar iptal edilemez.');
+        }
         final now = DateTime.now().toIso8601String();
 
         await txn.update('cari_hareket',

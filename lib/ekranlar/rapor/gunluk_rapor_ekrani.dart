@@ -710,7 +710,18 @@ double _toDouble(dynamic value) {
                   ))
                 else
                   ..._satislar.map((s) {
-                    final idStr = s.fisNo ?? s.id?.toString().padLeft(6, '0') ?? '-';
+                    // DÜZELTME (kullanıcı bulgusu, 2026-09-21): burada fis_no
+                    // HAM haliyle gösteriliyordu — bir senkron çakışması
+                    // kopyası ("...-SYNC<hash>") geldiğinde Satış Listesi'nde
+                    // olduğu gibi okunabilir "⚠" işaretli kısa forma değil,
+                    // anlamsız uzun bir koda düşüyordu (bkz. ParaUtils.
+                    // kisaFisNo). Artık Gün Sonu Raporu da AYNI okunabilir
+                    // formatı kullanıyor — kullanıcı, tam da toplamları
+                    // kontrol ettiği bu ekranda, şişmiş bir tutarın bir
+                    // senkron çakışması kopyasından geldiğini hemen görebilir.
+                    final idStr = ParaUtils.kisaFisNo(s.fisNo) != 'FİŞ'
+                        ? ParaUtils.kisaFisNo(s.fisNo)
+                        : (s.id?.toString().padLeft(6, '0') ?? '-');
                     Color odemeRenk = TsRenk.ayirac(context);
                     if (s.odemeYontemi == 'Nakit') odemeRenk = TsRenk.zemin(TsRenk.basarili, opaklik: 0.18);
                     if (s.odemeYontemi == 'Kredi Kartı') odemeRenk = TsRenk.zemin(TsRenk.bilgi, opaklik: 0.18);

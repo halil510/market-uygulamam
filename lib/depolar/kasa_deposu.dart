@@ -361,23 +361,35 @@ class KasaDeposu {
             where: 'id = ?', whereArgs: [id]);
         etkilenenIdler.add(id);
 
-        // Sonraki bakiyeleri yeniden hesapla (silinenler hariç)
-        final rows = await txn.query('kasa_hareketleri',
-            where: 'deleted_at IS NULL', orderBy: 'tarih ASC, id ASC');
-        double bakiye = 0;
+        // 🔴🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 2): yeniden hesaplama ÖNCEDEN
+        // TÜM şubelerin hareketlerini TEK bir zincirde karıştırıyordu —
+        // "düzelt" aksiyonu aslında farklı şubelerin bakiyelerini
+        // birbirine karıştırarak veriyi BOZUYORDU. Artık her şube (ve
+        // sube_id NULL olan eski kayıtlar) KENDİ bağımsız zincirinde,
+        // sıfırdan yeniden hesaplanıyor.
+        final subeRows = await txn.rawQuery(
+            'SELECT DISTINCT sube_id FROM kasa_hareketleri WHERE deleted_at IS NULL');
         final girisler = KasaHareketModel.girisTipleri; // merkezi kaynak
-        for (final r in rows) {
-          final tip = r['hareket_tipi'] as String? ?? '';
-          final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
-          bakiye = girisler.contains(tip) ? bakiye + tutar : bakiye - tutar;
-          // 🔴🔴 ÖNEMLİ DÜZELTME 2: Bu döngü, bir silme sonrası TÜM
-          // sonraki kayıtların bakiyesini yeniden hesaplıyor —
-          // potansiyel olarak YÜZLERCE kayıt. Önceden last_updated
-          // HİÇ bümlenmiyordu.
-          await txn.update('kasa_hareketleri',
-              {'bakiye_sonrasi': bakiye, 'last_updated': now},
-              where: 'id = ?', whereArgs: [r['id']]);
-          etkilenenIdler.add(r['id'] as int);
+        for (final sr in subeRows) {
+          final subeId = sr['sube_id'] as int?;
+          final rows = subeId != null
+              ? await txn.query('kasa_hareketleri',
+                  where: 'deleted_at IS NULL AND sube_id = ?',
+                  whereArgs: [subeId],
+                  orderBy: 'tarih ASC, id ASC')
+              : await txn.query('kasa_hareketleri',
+                  where: 'deleted_at IS NULL AND sube_id IS NULL',
+                  orderBy: 'tarih ASC, id ASC');
+          double bakiye = 0;
+          for (final r in rows) {
+            final tip = r['hareket_tipi'] as String? ?? '';
+            final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+            bakiye = girisler.contains(tip) ? bakiye + tutar : bakiye - tutar;
+            await txn.update('kasa_hareketleri',
+                {'bakiye_sonrasi': bakiye, 'last_updated': now},
+                where: 'id = ?', whereArgs: [r['id']]);
+            etkilenenIdler.add(r['id'] as int);
+          }
         }
       });
       for (final eid in etkilenenIdler) {
@@ -404,21 +416,36 @@ class KasaDeposu {
       var duzeltilen = 0;
       final duzeltilenIdler = <int>[];
       await db.transaction((txn) async {
-        final rows = await txn.query('kasa_hareketleri',
-            where: 'deleted_at IS NULL', orderBy: 'tarih ASC, id ASC');
-        double bakiye = 0;
+        // 🔴🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 2): bkz. hareketSil()'deki
+        // aynı gerekçe — her şube (ve sube_id NULL grubu) BAĞIMSIZ
+        // zincirde yeniden hesaplanmalı, aksi halde bu "düzelt" aksiyonu
+        // şubeleri karıştırıp veriyi bozar.
+        final subeRows = await txn.rawQuery(
+            'SELECT DISTINCT sube_id FROM kasa_hareketleri WHERE deleted_at IS NULL');
         final girisler = KasaHareketModel.girisTipleri;
-        for (final r in rows) {
-          final tip = r['hareket_tipi'] as String? ?? '';
-          final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
-          bakiye = girisler.contains(tip) ? bakiye + tutar : bakiye - tutar;
-          final mevcut = (r['bakiye_sonrasi'] as num?)?.toDouble();
-          if (mevcut == null || (mevcut - bakiye).abs() > 0.01) {
-            await txn.update('kasa_hareketleri',
-                {'bakiye_sonrasi': bakiye, 'last_updated': now},
-                where: 'id = ?', whereArgs: [r['id']]);
-            duzeltilen++;
-            duzeltilenIdler.add(r['id'] as int);
+        for (final sr in subeRows) {
+          final subeId = sr['sube_id'] as int?;
+          final rows = subeId != null
+              ? await txn.query('kasa_hareketleri',
+                  where: 'deleted_at IS NULL AND sube_id = ?',
+                  whereArgs: [subeId],
+                  orderBy: 'tarih ASC, id ASC')
+              : await txn.query('kasa_hareketleri',
+                  where: 'deleted_at IS NULL AND sube_id IS NULL',
+                  orderBy: 'tarih ASC, id ASC');
+          double bakiye = 0;
+          for (final r in rows) {
+            final tip = r['hareket_tipi'] as String? ?? '';
+            final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+            bakiye = girisler.contains(tip) ? bakiye + tutar : bakiye - tutar;
+            final mevcut = (r['bakiye_sonrasi'] as num?)?.toDouble();
+            if (mevcut == null || (mevcut - bakiye).abs() > 0.01) {
+              await txn.update('kasa_hareketleri',
+                  {'bakiye_sonrasi': bakiye, 'last_updated': now},
+                  where: 'id = ?', whereArgs: [r['id']]);
+              duzeltilen++;
+              duzeltilenIdler.add(r['id'] as int);
+            }
           }
         }
       });
@@ -440,17 +467,31 @@ class KasaDeposu {
   Future<int> bakiyeUyumsuzlukSayisi() async {
     try {
       final db = await _d;
-      final rows = await db.query('kasa_hareketleri',
-          where: 'deleted_at IS NULL', orderBy: 'tarih ASC, id ASC');
-      double bakiye = 0;
-      var uyumsuz = 0;
+      // 🔴🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 2): bkz. hareketSil()'deki aynı
+      // gerekçe — şube ayrımı yapılmadan sayılırsa gerçekte tutarlı olan
+      // şube zincirleri "uyumsuz" sayılabilir (yanlış pozitif).
+      final subeRows = await db.rawQuery(
+          'SELECT DISTINCT sube_id FROM kasa_hareketleri WHERE deleted_at IS NULL');
       final girisler = KasaHareketModel.girisTipleri;
-      for (final r in rows) {
-        final tip = r['hareket_tipi'] as String? ?? '';
-        final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
-        bakiye = girisler.contains(tip) ? bakiye + tutar : bakiye - tutar;
-        final mevcut = (r['bakiye_sonrasi'] as num?)?.toDouble();
-        if (mevcut == null || (mevcut - bakiye).abs() > 0.01) uyumsuz++;
+      var uyumsuz = 0;
+      for (final sr in subeRows) {
+        final subeId = sr['sube_id'] as int?;
+        final rows = subeId != null
+            ? await db.query('kasa_hareketleri',
+                where: 'deleted_at IS NULL AND sube_id = ?',
+                whereArgs: [subeId],
+                orderBy: 'tarih ASC, id ASC')
+            : await db.query('kasa_hareketleri',
+                where: 'deleted_at IS NULL AND sube_id IS NULL',
+                orderBy: 'tarih ASC, id ASC');
+        double bakiye = 0;
+        for (final r in rows) {
+          final tip = r['hareket_tipi'] as String? ?? '';
+          final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+          bakiye = girisler.contains(tip) ? bakiye + tutar : bakiye - tutar;
+          final mevcut = (r['bakiye_sonrasi'] as num?)?.toDouble();
+          if (mevcut == null || (mevcut - bakiye).abs() > 0.01) uyumsuz++;
+        }
       }
       return uyumsuz;
     } catch (e, st) {

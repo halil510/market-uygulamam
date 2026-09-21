@@ -173,7 +173,16 @@ class ExcelServisi {
     final basliklar = [
       'Id', 'Kod', 'Barkod', 'Barkodlar', 'Ürün Adı', 'Alternatif ürün adı',
       'Birim Adı', 'Net Alış Fiyat', 'Alış fiyat', 'Alış fiyat kdv dahil',
-      'Satış fiyatı', 'Stok', 'Stok değeri', 'Toplam Maliyet', 'Toplam Stok',
+      // 🔴 Derin analizde bulundu (kendi-keşif turu — Excel modülü
+      // denetimi): 'Alış fiyat' ile 'Alış fiyat kdv dahil' ayrı
+      // sütunlarla net biçimde ayrılmışken, satış fiyatının KDV DAHİL
+      // saklandığı (projenin genel kuralı) başlıkta hiç belirtilmiyordu
+      // — dışa aktarılan dosyayı düzenleyip geri içe aktaran kullanıcı
+      // net fiyat sandığı bir değeri yanlışlıkla KDV dahil kaydedebilirdi.
+      // BASLIK_ESLEME['satisFiyati'] zaten bu yeni metni de eşleştirir
+      // (normalize edilmiş alt-string karşılaştırması), geri içe
+      // aktarma BOZULMAZ.
+      'Satış fiyatı (KDV Dahil)', 'Stok', 'Stok değeri', 'Toplam Maliyet', 'Toplam Stok',
       'Toplam stok değeri', 'Alış KDV Oran', 'KDV Oran', 'Ana Grup', 'Alt Grup',
       'Aktif', 'Seri no takibi', 'Alan1', 'Alan2', 'Para Birimi',
       'Minimum Stok', 'Maximum Stok', 'Alan3', 'Alan4', 'Renk', 'Beden',
@@ -746,7 +755,9 @@ class ExcelServisi {
     }
     final dir = await getApplicationDocumentsDirectory();
     final yol = '${dir.path}/iadeler_${DateTime.now().millisecondsSinceEpoch}.xlsx';
-    final bytes = excel.encode();
+    // bkz. dosya başındaki not (FAZ 5) — encode() UI thread'i donduran
+    // senkron bir adım, isolate'e taşınıyor.
+    final bytes = await compute(_encodeExcelIsolate, excel);
     if (bytes != null) {
       await File(yol).writeAsBytes(bytes);
       return yol;
@@ -929,7 +940,7 @@ class ExcelServisi {
       ]);
     }
 
-    final bytes = excel.encode()!;
+    final bytes = (await compute(_encodeExcelIsolate, excel))!;
     final dir   = await getTemporaryDirectory();
     final path  = '${dir.path}/stok_sayim_${DateTime.now().millisecondsSinceEpoch}.xlsx';
     await File(path).writeAsBytes(bytes);
@@ -1062,7 +1073,7 @@ class ExcelServisi {
       ]);
     }
 
-    final bytes = excel.encode()!;
+    final bytes = (await compute(_encodeExcelIsolate, excel))!;
     final dir   = await getTemporaryDirectory();
     final path  = dir.path + '/promosyon_' + DateTime.now().millisecondsSinceEpoch.toString() + '.xlsx';
     await File(path).writeAsBytes(bytes);
@@ -1112,7 +1123,7 @@ class ExcelServisi {
       ]);
     }
 
-    final bytes = excel.encode()!;
+    final bytes = (await compute(_encodeExcelIsolate, excel))!;
     final dir   = await getTemporaryDirectory();
     final path  = dir.path + '/gunsonu_' + DateTime.now().millisecondsSinceEpoch.toString() + '.xlsx';
     await File(path).writeAsBytes(bytes);
@@ -1178,7 +1189,7 @@ class ExcelServisi {
       ]);
     }
 
-    final bytes = excel.encode()!;
+    final bytes = (await compute(_encodeExcelIsolate, excel))!;
     final dir   = await getTemporaryDirectory();
     final path  = dir.path + '/iade_alma_' + DateTime.now().millisecondsSinceEpoch.toString() + '.xlsx';
     await File(path).writeAsBytes(bytes);

@@ -185,8 +185,14 @@ class BulutManager {
         durum.value = BulutDurum.bekliyor;
       }
       _workerTetikle();
-    } catch (e) {
+    } catch (e, st) {
+      // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 8): bu hata ÖNCEDEN sadece
+      // kDebugMode'da debugPrint ile yazılıyordu — release build'de
+      // sync kuyruğuna yazım sessizce başarısız olabiliyor, hiçbir
+      // yerde iz bırakmıyordu (kullanıcı "senkron olmuyor" derse teşhis
+      // imkansızdı). Artık LogServisi'ne (release'de de kalıcı) düşüyor.
       if (kDebugMode) debugPrint('BulutManager._kuyrukaYaz hatası ($tablo): $e');
+      LogServisi().hata('BulutManager._kuyrukaYaz($tablo)', hata: e, yigin: st);
     }
   }
 

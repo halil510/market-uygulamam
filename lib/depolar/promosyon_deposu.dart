@@ -101,7 +101,13 @@ class PromosyonDeposu {
         'SELECT p.*, u.urun_adi FROM promosyonlar p LEFT JOIN urunler u ON p.urun_id = u.id '
         'WHERE p.urun_id = ? AND p.aktif = 1 AND p.deleted_at IS NULL '
         'AND (u.id IS NULL OR u.is_deleted = 0) '
-        'AND (p.bitis_tarihi IS NULL OR p.bitis_tarihi >= ?) '
+        // 🔴 Derin analizde bulundu (kendi-keşif turu): bitis_tarihi saat
+        // bilgisi olmadan (00:00:00) saklanıyor — düz string karşılaştırma
+        // ('>=  şimdi') bitiş gününün BAŞLAMASIYLA promosyonu anında
+        // "süresi dolmuş" sayıyordu (bkz. PromosyonModel.gecerli'deki AYNI
+        // düzeltme). DATE() ile saat bilgisi atılıp sadece gün bazında
+        // karşılaştırılıyor — bitiş GÜNÜNÜN TAMAMI geçerli sayılır.
+        'AND (p.bitis_tarihi IS NULL OR DATE(p.bitis_tarihi) >= DATE(?)) '
         'ORDER BY p.iskonto_oran DESC',
         [urunId, now],
       );

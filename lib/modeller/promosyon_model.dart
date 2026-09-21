@@ -15,7 +15,17 @@ class PromosyonModel {
     if (!aktif) return false;
     final now = DateTime.now();
     if (baslangicTarihi != null && now.isBefore(baslangicTarihi!)) return false;
-    if (bitisTarihi != null && now.isAfter(bitisTarihi!)) return false;
+    if (bitisTarihi != null) {
+      // 🔴 Derin analizde bulundu (kendi-keşif turu): showDatePicker saat
+      // bilgisi olmadan (00:00:00) bir tarih döndürüyor — "21 Eylül'e
+      // kadar geçerli" diye seçilen bir bitiş, 21 Eylül'ün başlamasıyla
+      // (00:00:01'den itibaren) ANINDA "süresi dolmuş" sayılıyordu,
+      // promosyon aslında hiç 21 Eylül'de uygulanmıyordu. Artık bitiş
+      // GÜNÜNÜN TAMAMI (23:59:59.999'a kadar) geçerli sayılıyor.
+      final b = bitisTarihi!;
+      final gunSonu = DateTime(b.year, b.month, b.day, 23, 59, 59, 999);
+      if (now.isAfter(gunSonu)) return false;
+    }
     return true;
   }
 

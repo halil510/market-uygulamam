@@ -183,6 +183,26 @@ class YedeklemeServisi {
         rethrow;
       }
 
+      // 🔴🔴 KRİTİK DÜZELTME (DEEP_AUDIT_REPORT madde 5 — "Restore sonrası
+      // bütünlük/veri sağlığı kontrolü yok"): yukarıdaki "SQLite format 3"
+      // imza kontrolü sadece dosyanın SQLite BİÇİMİNDE BAŞLADIĞINI
+      // kanıtlar — içeriğin (ör. yarıda kesilmiş bir kopyalama/ZIP nedeniyle
+      // sayfa düzeyinde bozuk) SAĞLAM olduğunu KANITLAMAZ. Restore
+      // buradan sonra sessizce "başarılı" dönüyordu; kullanıcı bozuk bir
+      // veritabanıyla çalışmaya devam edip gerçek sorunu çok daha sonra,
+      // çok daha karışık bir durumda (ör. bir satış ortasında) keşfedebilirdi.
+      // Artık yazılan dosya PRAGMA integrity_check ile TÜM sayfaları
+      // taranarak doğrulanıyor; bozuksa restore İPTAL sayılır ve mevcut
+      // (restore öncesi) veritabanı güvenlik yedeğinden GERİ YÜKLENİR.
+      if (!await _butunlukKontrolEt(hedef)) {
+        if (await File(guvenlikYedegi).exists()) {
+          await File(guvenlikYedegi).copy(hedef);
+        }
+        throw Exception(
+            'Yedek dosyası bozuk (bütünlük kontrolü başarısız) — geri '
+            'yükleme İPTAL edildi, önceki verileriniz korundu.');
+      }
+
       // 🔴 DÜZELTME (Madde 27 — Yedekleme denetimi, 2026-09-16): her
       // restore işlemi kendi '.geri_yukleme_oncesi_*.bak' güvenlik
       // kopyasını oluşturuyordu ama HİÇBİR YERDE temizlenmiyordu —
@@ -194,6 +214,26 @@ class YedeklemeServisi {
     } catch (e, st) {
       LogServisi().hata('YedeklemeServisi.geriYukle', hata: e, yigin: st);
       rethrow;
+    }
+  }
+
+  /// [dbYolu]'ndaki dosyayı SALT-OKUNUR, İZOLE bir bağlantıyla açıp
+  /// PRAGMA integrity_check çalıştırır — uygulamanın paylaşılan
+  /// Veritabani() singleton'ına HİÇ dokunmaz (onCreate/onUpgrade
+  /// migrasyonlarını erken tetiklemez), sadece dosyanın sayfa düzeyinde
+  /// sağlam olup olmadığını doğrular.
+  Future<bool> _butunlukKontrolEt(String dbYolu) async {
+    Database? kontrolDb;
+    try {
+      kontrolDb = await openDatabase(dbYolu, readOnly: true);
+      final rows = await kontrolDb.rawQuery('PRAGMA integrity_check');
+      final sonuc = rows.isNotEmpty ? rows.first.values.first.toString() : 'unknown';
+      return sonuc == 'ok';
+    } catch (e) {
+      LogServisi().hata('YedeklemeServisi._butunlukKontrolEt', hata: e);
+      return false;
+    } finally {
+      await kontrolDb?.close();
     }
   }
 

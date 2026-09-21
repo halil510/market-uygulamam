@@ -38,12 +38,15 @@ class GlobalAramaServisi {
 
     final sonuclar = <GlobalAramaSonucu>[];
 
+    // 🔴 Kullanıcı bulgusu: ürünün alternatif barkodları (`barkodlar`)
+    // Global Arama'da da hiç taranmıyordu — bkz. UrunDeposu.ara()
+    // üzerindeki aynı düzeltme notu.
     final urunler = await db.rawQuery(
       '''SELECT id, urun_adi, barkod, satis_fiyati FROM urunler
-         WHERE (urun_adi LIKE ? OR barkod LIKE ? OR kod LIKE ?)
+         WHERE (urun_adi LIKE ? OR barkod LIKE ? OR barkodlar LIKE ? OR kod LIKE ?)
            AND is_deleted = 0
          ORDER BY urun_adi ASC LIMIT ?''',
-      [q, q, q, _kategoriBasinaLimit],
+      [q, q, q, q, _kategoriBasinaLimit],
     );
     sonuclar.addAll(urunler.map((r) => GlobalAramaSonucu(
           tur: GlobalAramaTuru.urun,

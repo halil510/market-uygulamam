@@ -379,12 +379,14 @@ class AiSohbetServisi {
       return 'Hangi ürünün stoğunu öğrenmek istersiniz? (Örn: "süt stok")';
     }
     final db   = await Veritabani().db;
+    // bkz. UrunDeposu.ara() üzerindeki kullanıcı bulgusu notu —
+    // alternatif barkodlar (`barkodlar`) da aranıyor.
     final rows = await db.rawQuery('''
       SELECT urun_adi, barkod, stok, satis_fiyati, ana_grup
       FROM urunler
-      WHERE (urun_adi LIKE ? OR barkod LIKE ?) AND is_deleted=0
+      WHERE (urun_adi LIKE ? OR barkod LIKE ? OR barkodlar LIKE ?) AND is_deleted=0
       LIMIT 5
-    ''', ['%$aramaMetni%', '%$aramaMetni%']);
+    ''', ['%$aramaMetni%', '%$aramaMetni%', '%$aramaMetni%']);
     if (rows.isEmpty) return '"$aramaMetni" ile eşleşen ürün bulunamadı.';
     final sb = StringBuffer('📦 Stok Bilgisi:\n');
     for (final r in rows) {
@@ -472,12 +474,14 @@ class AiSohbetServisi {
   Future<String> _urunAraCevap(String? arama) async {
     if (arama == null || arama.trim().isEmpty) return 'Aramak istediğiniz ürünü belirtin.';
     final db   = await Veritabani().db;
+    // bkz. UrunDeposu.ara() üzerindeki kullanıcı bulgusu notu —
+    // alternatif barkodlar (`barkodlar`) da aranıyor.
     final rows = await db.rawQuery('''
       SELECT urun_adi, barkod, stok, satis_fiyati, alis_fiyat, ana_grup
       FROM urunler
-      WHERE (urun_adi LIKE ? OR barkod LIKE ? OR kod LIKE ?) AND is_deleted=0
+      WHERE (urun_adi LIKE ? OR barkod LIKE ? OR barkodlar LIKE ? OR kod LIKE ?) AND is_deleted=0
       LIMIT 10
-    ''', ['%$arama%', '%$arama%', '%$arama%']);
+    ''', ['%$arama%', '%$arama%', '%$arama%', '%$arama%']);
     if (rows.isEmpty) return '"$arama" aramasında ürün bulunamadı.';
     final sb = StringBuffer('🔍 "$arama" Arama Sonuçları\n');
     for (final r in rows) {

@@ -722,11 +722,13 @@ class UrunDeposu {
     }
     if (aramaMetni != null && aramaMetni.isNotEmpty) {
       final q = '%$aramaMetni%';
+      // bkz. ara() üzerindeki aynı kullanıcı bulgusu notu — alternatif
+      // barkodlar (`barkodlar`) da aranıyor.
       whereParts.add(
-        '(urun_adi LIKE ? OR barkod LIKE ? OR kod LIKE ?'
+        '(urun_adi LIKE ? OR barkod LIKE ? OR barkodlar LIKE ? OR kod LIKE ?'
         ' OR ana_grup LIKE ? OR alternatif_urun_adi LIKE ? OR marka LIKE ?)',
       );
-      args.addAll([q, q, q, q, q, q]);
+      args.addAll([q, q, q, q, q, q, q]);
     }
     final orderBy = switch (siralama) {
       'stok_azalan'     => 'stok DESC',
@@ -771,13 +773,20 @@ class UrunDeposu {
     // getiriyordu, listeye aynı ürünler tekrar tekrar ekleniyordu
     // (arama sonucu 50'den fazla eşleşme varsa). Artık gerçek
     // sayfalama destekleniyor.
+    // 🔴 Kullanıcı bulgusu: bir ürünün EK/alternatif barkodları
+    // (`barkodlar` — virgülle ayrılmış) taranmıyordu. Kamera ile okutma
+    // (barkodlaGetir) zaten ikisini de kontrol ediyordu — arama kutusuna
+    // ELLE yazılan/okutulan bir alternatif barkod ise hiç bulamıyordu.
+    // Diğer alanlarla AYNI serbest (substring) eşleşme kullanılıyor —
+    // barkodlaGetir()'deki sıkı virgül-sınırlı eşleşme burada uygun
+    // değil, bu bir metin arama kutusu.
     final rows = await db.rawQuery(
       'SELECT * FROM ${DbSabitler.urunler}'
-      ' WHERE (urun_adi LIKE ? OR barkod LIKE ? OR kod LIKE ?'
+      ' WHERE (urun_adi LIKE ? OR barkod LIKE ? OR barkodlar LIKE ? OR kod LIKE ?'
       '       OR alternatif_urun_adi LIKE ? OR marka LIKE ?)'
       '   AND is_deleted = 0$aktifFiltre$toptanFiltre'
       ' ORDER BY urun_adi ASC LIMIT ? OFFSET ?',
-      [q, q, q, q, q, limit, offset],
+      [q, q, q, q, q, q, limit, offset],
     );
     return rows.map(UrunModel.fromMap).toList();
   }

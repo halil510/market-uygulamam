@@ -60,6 +60,20 @@ class YetkiTanimlari {
     // yetki kontrolüne bağlı değildi — kasiyer/personel/depocu deep-link
     // ile kasa bakiyesi/açılış-kapanış mutabakatını görebiliyordu.
     'vardiya': {'label': 'Vardiya/Kasa Kapanış', 'grup': 'Diğer'},
+    // 🔴 DEEP_AUDIT_REPORT FAZ 7 (madde 2, 2026-09-21): "Ayarlar alt-
+    // ekranları (yedek/sync/audit-log/GİB/log) tek 'ayarlar' koduna
+    // bağlı — granüler yetki yok" — bir müdür rolü VARSAYILAN olarak
+    // 'ayarlar' HARİÇ tutulduğundan (yukarıdaki mudur case'ine bkz.),
+    // pratikte yedek alma/sync tanılama gibi GÜNLÜK, düşük riskli
+    // işlemlere bile hiç erişemiyordu — ya hiçbiri ya "Veritabanını
+    // Temizle" dahil HEPSİ. Artık bağımsız kodlar (uygulama_router.dart
+    // artık "en özel eşleşme kazanır" mantığıyla çalışıyor, bkz. o
+    // dosyadaki _routeYetkiler yorumu).
+    'ayarlar_yedek': {'label': 'Yedekleme/Veri Sağlığı/Yıl Sonu Devir', 'grup': 'Sistem'},
+    'ayarlar_sync': {'label': 'Senkron Tanılama', 'grup': 'Sistem'},
+    'ayarlar_audit_log': {'label': 'Audit Log (Kim Ne Yaptı)', 'grup': 'Sistem'},
+    'ayarlar_gib': {'label': 'GİB/E-Fatura Ayarları', 'grup': 'Sistem'},
+    'ayarlar_log': {'label': 'Uygulama Logları', 'grup': 'Sistem'},
   };
 
   // Rol bazlı varsayılan yetkiler

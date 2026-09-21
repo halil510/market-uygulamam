@@ -305,6 +305,28 @@ class UygulamaRouter {
     // etkisi yoktu. Artık ikisi de 'kullanici' kullanıyor.
     '/kullanici': 'kullanici',
     '/ayarlar': 'ayarlar',
+    // 🔴 DEEP_AUDIT_REPORT FAZ 7 (madde 2, 2026-09-21): önceden TÜM
+    // /ayarlar/* alt ekranları (yedek/sync/audit-log/GİB/log dahil) tek
+    // 'ayarlar' koduna bağlıydı — bir müdür bunlardan HİÇBİRİNE
+    // erişemiyordu (varsayılan olarak 'ayarlar' hariç tutuluyor), tek
+    // çözüm tam 'ayarlar' vermekti ki bu "Veritabanını Temizle" gibi çok
+    // daha riskli işlemleri de açardı. Aşağıdaki satırlar artık AYRI
+    // kodlarla bağımsız verilebiliyor — bunun çalışması için redirect
+    // mantığı "en uzun (en özel) eşleşen anahtar kazanır" olacak şekilde
+    // güncellendi (bkz. bu dosyanın altındaki redirect fonksiyonu).
+    // Aksi halde genel '/ayarlar' girdisi her zaman EK OLARAK eşleşip
+    // (satis/satis_liste'deki kümülatif desenin aksine burada) istenmeyen
+    // bir "ikisi de gerekli" sonucu doğururdu.
+    '/ayarlar/yedek': 'ayarlar_yedek',
+    '/ayarlar/veri-sagligi': 'ayarlar_yedek',
+    '/ayarlar/donem-yonetimi': 'ayarlar_yedek',
+    '/ayarlar/sync': 'ayarlar_sync',
+    '/ayarlar/bulut-sync': 'ayarlar_sync',
+    '/ayarlar/sync-cakismalari': 'ayarlar_sync',
+    '/ayarlar/hata-izleme': 'ayarlar_sync',
+    '/ayarlar/audit-log': 'ayarlar_audit_log',
+    '/ayarlar/gib': 'ayarlar_gib',
+    '/ayarlar/log': 'ayarlar_log',
     '/personel': 'ayarlar',
     // 🔴 Derin denetimde bulundu (P2): Şube yönetimi, Finans Merkezi,
     // Onay Merkezi ve Risk Merkezi rotalarının hiçbiri bu haritada
@@ -397,10 +419,30 @@ class UygulamaRouter {
     // Artık sadece admin muaf; müdür de diğer roller gibi
     // _routeYetkiler haritasına göre kontrol ediliyor.
     if (auth.girisYapildi && !auth.isAdmin) {
+      // 🔴 DEEP_AUDIT_REPORT FAZ 7 (madde 2, 2026-09-21): önceden TÜM
+      // eşleşen prefix'ler kontrol edilip herhangi biri eksikse
+      // engelleniyordu ("hepsi gerekli" — satis/satis_liste gibi bilerek
+      // kümülatif tutulan çiftler için doğruydu). Ama /ayarlar/yedek
+      // gibi alt rotalar için bu, genel '/ayarlar' girdisinin HER ZAMAN
+      // ek bir zorunluluk olarak devreye girmesi anlamına geliyordu —
+      // granüler kodların (ayarlar_yedek vb.) bağımsız çalışmasını
+      // imkansız kılardı. Artık SADECE en uzun (en özel) eşleşen
+      // anahtarın kodu kontrol ediliyor — '/ayarlar/yedek' rotası artık
+      // sadece 'ayarlar_yedek' istiyor, genel 'ayarlar' gerekmiyor;
+      // '/ayarlar/icerik' gibi özel bir girdisi olmayan rotalar hâlâ
+      // genel '/ayarlar' girdisine düşüyor (fallback, davranış aynı).
+      String? enOzelAnahtar;
+      String? gerekliYetki;
       for (final e in _routeYetkiler.entries) {
-        if (gidilen.startsWith(e.key) && !ref.read(authProvider.notifier).yetkiVarSync(e.value)) {
-          return '/';
+        if (gidilen.startsWith(e.key) &&
+            (enOzelAnahtar == null || e.key.length > enOzelAnahtar.length)) {
+          enOzelAnahtar = e.key;
+          gerekliYetki = e.value;
         }
+      }
+      if (gerekliYetki != null &&
+          !ref.read(authProvider.notifier).yetkiVarSync(gerekliYetki)) {
+        return '/';
       }
     }
     return null;

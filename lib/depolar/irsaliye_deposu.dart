@@ -241,12 +241,105 @@ class IrsaliyeDeposu {
   }
 
   /// İrsaliye durumunu (beklemede/onaylandi/iptal vb.) günceller.
+  ///
+  /// 🔴🔴 KRİTİK DÜZELTME (kendi-keşif turu — irsaliye modülü denetimi):
+  /// ÖNCEDEN bu metod SADECE 'durum' kolonunu değiştiriyordu — 'İptal'e
+  /// geçişte STOK HİÇ GERİ ALINMIYORDU. 'Çıkış' tipi bir irsaliyeyle
+  /// (olustur() — stoğa dokunan yol) düşürülen stok, irsaliye iptal
+  /// edilse bile KALICI OLARAK düşük kalıyordu. Artık 'İptal'e geçişte
+  /// bu irsaliyeye ait stok_hareket satırları (referans_turu='irsaliye')
+  /// bulunup TERSİNE çevriliyor. olusturSevkKaydi() (bekleyen sipariş
+  /// onayı sonrası, stoğa hiç dokunmayan yol) ile oluşan irsaliyelerde
+  /// zaten böyle bir stok_hareket satırı olmadığından güvenle hiçbir
+  /// şey yapmaz. Zaten 'İptal' olan bir irsaliye tekrar 'İptal'
+  /// edilirse (idempotency) TEKRAR tersine çevrilmez.
   Future<void> durumGuncelle(int irsaliyeId, String yeniDurum) async {
     final db = await Veritabani().db;
     final now = DateTime.now().toIso8601String();
+
+    if (yeniDurum == 'İptal') {
+      final mevcut = await db.query('irsaliyeler',
+          columns: ['durum'], where: 'id = ?', whereArgs: [irsaliyeId], limit: 1);
+      if (mevcut.isNotEmpty && mevcut.first['durum'] != 'İptal') {
+        await _stokEtkisiniTersineCevir(db, irsaliyeId, now);
+      }
+    }
+
     await db.update('irsaliyeler', {'durum': yeniDurum, 'last_updated': now},
         where: 'id=?', whereArgs: [irsaliyeId]);
     await _bildir(db, irsaliyeId);
+  }
+
+  Future<void> _stokEtkisiniTersineCevir(
+      dynamic db, int irsaliyeId, String now) async {
+    final hareketler = await db.query('stok_hareket',
+        where: 'referans_turu = ? AND referans_id = ?',
+        whereArgs: ['irsaliye', irsaliyeId]);
+    if (hareketler.isEmpty) return;
+
+    final etkilenenUrunIdler = <int>{};
+    final subePayiFarklari = <int, double>{};
+    final stokHareketGidler = <String>[];
+
+    await db.transaction((txn) async {
+      for (final h in hareketler) {
+        final urunId = h['urun_id'] as int;
+        final onceki = (h['onceki_stok'] as num?)?.toDouble() ?? 0;
+        final sonraki = (h['sonraki_stok'] as num?)?.toDouble() ?? 0;
+        final tersDelta = onceki - sonraki; // orijinal değişimin tersi
+
+        final urunRows = await txn.query('urunler',
+            columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
+        if (urunRows.isEmpty) continue;
+        final mevcutStok = (urunRows.first['stok'] as num).toDouble();
+        final yeniStok = (mevcutStok + tersDelta).clamp(0, double.infinity);
+        await txn.update('urunler', {'stok': yeniStok, 'last_updated': now},
+            where: 'id = ?', whereArgs: [urunId]);
+        etkilenenUrunIdler.add(urunId);
+        // subeStokPayiUygula "ana stok yönü"nü pozitif=düştü bekliyor —
+        // tersDelta pozitifse (stok arttı) subePayi NEGATİF olmalı.
+        subePayiFarklari[urunId] = (subePayiFarklari[urunId] ?? 0) - tersDelta;
+
+        final stokGid = const Uuid().v4();
+        stokHareketGidler.add(stokGid);
+        await txn.insert('stok_hareket', {
+          'global_id': stokGid,
+          'urun_id': urunId,
+          'hareket_turu': 'İrsaliye İptal',
+          'miktar': tersDelta.abs(),
+          'onceki_stok': mevcutStok,
+          'sonraki_stok': yeniStok,
+          'tarih': now,
+          'last_updated': now,
+          'referans_id': irsaliyeId,
+          'referans_turu': 'irsaliye_iptal',
+        });
+      }
+    });
+
+    try {
+      for (final urunId in etkilenenUrunIdler) {
+        final s = await db.query('urunler',
+            where: 'id = ?', whereArgs: [urunId], limit: 1);
+        if (s.isNotEmpty) {
+          BulutManager().upsert('urunler', Map<String, dynamic>.from(s.first));
+        }
+      }
+      for (final gid in stokHareketGidler) {
+        final s = await db.query('stok_hareket',
+            where: 'global_id = ?', whereArgs: [gid], limit: 1);
+        if (s.isNotEmpty) {
+          BulutManager()
+              .upsert('stok_hareket', Map<String, dynamic>.from(s.first));
+        }
+      }
+    } catch (_) {
+      // Bulut bildirimi hatası asıl işlemi engellemez.
+    }
+
+    for (final girdi in subePayiFarklari.entries) {
+      await _stokDepo.subeStokPayiUygula(girdi.key, girdi.value);
+    }
   }
 
   /// e-İrsaliye gönderim denemesini başlatmadan önce, daha önce

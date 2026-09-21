@@ -8,12 +8,16 @@
 // [Devir Sihirbazını Başlat] [Arşivleri Gör] [Geçmiş Dönemler].
 //
 // 🔴 DÜRÜSTLÜK NOTU: "Arşivleri Gör" butonu KASITLI olarak devre dışı —
-// gerçek arşivleme (Supabase _arsiv tabloları, SQLite ikinci salt-okunur
-// bağlantı) henüz kurulmadı. Sahte/boş bir ekran açmak yerine, dokunca
-// bunu açıkça söylüyor. "Devir Sihirbazını Başlat" bir tam sihirbaz
-// (çok adımlı wizard UI) DEĞİL — şube seçip onaylayan tek bir diyalog;
-// DonemDevirServisi'nin ürettiği sonucu (checkpoint + kontrol listesi)
-// olduğu gibi gösterir.
+// yerel arşiv dosyaları (arsiv/<YIL>/barkopro_<YIL>.db, bkz.
+// ArsivVeritabaniYoneticisi) artık gerçekten yazılıyor VE aktif tablodan
+// silme de devrede (2026-09-21, DonemArsivServisi.aktifTablolardanSilVe
+// AcilisYaz), ama bu arşivleri UYGULAMA İÇİNDEN görüntüleyen bir ekran
+// henüz yok. Ayrıca Supabase _arsiv tabloları (supabase_arsiv_plani.sql)
+// hâlâ sadece SQL script olarak yazılı — Supabase'de elle çalıştırılmadı.
+// Sahte/boş bir ekran açmak yerine, dokunca bunu açıkça söylüyor. "Devir
+// Sihirbazını Başlat" bir tam sihirbaz (çok adımlı wizard UI) DEĞİL —
+// şube seçip onaylayan tek bir diyalog; DonemDevirServisi'nin ürettiği
+// sonucu (checkpoint + kontrol listesi) olduğu gibi gösterir.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../depolar/donem_deposu.dart';
@@ -206,11 +210,15 @@ class _DonemYonetimiEkraniState extends State<DonemYonetimiEkrani> {
             'bir yedek alır, (3) satış/stok/cari/kasa/banka '
             'hareketlerini bu dönemin arşiv dosyasına KOPYALAR ve '
             'kopyayı doğrular, (4) stok/cari/kasa/banka kapanış '
-            'değerlerinin anlık görüntüsünü kaydeder, (5) bu şubenin '
-            'dönemini kapatır.\n\n'
-            'ÖNEMLİ: Bu sürümde arşivleme SADECE KOPYALAMADIR — mevcut '
-            'satış/stok/cari hareketleriniz aktif veritabanında OLDUĞU '
-            'GİBİ KALIR, hiçbir şey silinmez veya taşınmaz. Kritik bir '
+            'değerlerinin anlık görüntüsünü kaydeder, (5) doğrulanan '
+            'satırları AKTİF veritabanından çıkarıp yerine tek bir '
+            '"kalan bakiye" açılış kaydı yazar, (6) bu şubenin dönemini '
+            'kapatır.\n\n'
+            'ÖNEMLİ: (5) adımı geri dönüşü olmayan bir işlemdir — silinen '
+            'satırlar SADECE arşiv dosyasında ve Supabase\'de (bulutta) '
+            'kalır, aktif veritabanında görünmez olur. Cari/stok/kasa '
+            'bakiyeleriniz DEĞİŞMEZ (tek açılış kaydı eski toplamı korur), '
+            'sadece geçmiş hareket detayı arşive taşınır. Kritik bir '
             'kontrol ya da arşiv doğrulaması başarısız olursa işlem '
             'güvenle durur, hiçbir veri değişmez.',
         onayYazi: 'Devri Başlat', onayRengi: Colors.orange,

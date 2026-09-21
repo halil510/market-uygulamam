@@ -443,20 +443,30 @@ class SatisDeposu {
   }
 
   /// Tarih aralığındaki satılan malın maliyetini (COGS) hesaplar — satır
-  /// bazında TARİHSEL maliyet (satis_kalem.alis_fiyat, satış anında
-  /// kalıcı olarak damgalanan) kullanılır; eski/migrasyon-öncesi
-  /// satırlar için (0 ise) güncel urunler.alis_fiyat'a düşülür. Aktif
-  /// şubeye göre filtrelenir (bkz. tariheGoreGetir'deki AYNI desen).
-  /// Madde 2 mimari denetimi: gunluk_rapor_ekrani.dart önceden bu
-  /// sorguyu doğrudan kendisi çalıştırıyordu.
+  /// bazında TARİHSEL maliyet (satis_kalem.alis_fiyat_kdv, satış anında
+  /// kalıcı olarak damgalanan KDV DAHİL alış maliyeti) kullanılır;
+  /// eski/migrasyon-öncesi VEYA masa satışı satırları için (0 ise) güncel
+  /// urunler.alis_fiyat_kdv_dahil'e düşülür. Aktif şubeye göre filtrelenir
+  /// (bkz. tariheGoreGetir'deki AYNI desen). Madde 2 mimari denetimi:
+  /// gunluk_rapor_ekrani.dart önceden bu sorguyu doğrudan kendisi
+  /// çalıştırıyordu.
+  ///
+  /// 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22): bu sorgu
+  /// ÖNCEDEN satir bazlı maliyeti KDV HARİÇ (sk.alis_fiyat / u.alis_fiyat)
+  /// hesaplıyordu, ama ciro tarafı (satislar.genel_toplam, bu değerin
+  /// çıkarıldığı yer) HER ZAMAN KDV DAHİL'dir (satis_fiyati KDV DAHİL
+  /// saklanır — doğrulanmış proje kuralı). KDV dahil ciro'dan KDV hariç
+  /// maliyet çıkarmak, Net Kâr'ı maliyetin KDV payı kadar OLDUĞUNDAN
+  /// FAZLA gösteriyordu. Artık ikisi de KDV DAHİL — elma elmayla
+  /// kıyaslanıyor.
   Future<double> maliyetToplami(DateTime bas, DateTime bit) async {
     final db = await _d;
     final subeId = AktifSubeServisi().subeId;
     final subeKosulu = subeId != null ? 'AND s.sube_id = ?' : '';
     final rows = await db.rawQuery('''
       SELECT COALESCE(SUM(
-        CASE WHEN sk.alis_fiyat > 0 THEN sk.miktar * sk.alis_fiyat
-             ELSE sk.miktar * COALESCE(u.alis_fiyat, 0) END
+        CASE WHEN sk.alis_fiyat_kdv > 0 THEN sk.miktar * sk.alis_fiyat_kdv
+             ELSE sk.miktar * COALESCE(u.alis_fiyat_kdv_dahil, 0) END
       ), 0) as maliyet
       FROM satis_kalem sk
       JOIN satislar s ON sk.satis_id = s.id
@@ -644,16 +654,21 @@ class SatisDeposu {
 
   /// Madde 31 (Dashboard) + Madde 24 (Raporlar) denetimi, 2026-09-20:
   /// bugünün maliyeti (COGS) — Kâr/Zarar raporu ve (düzeltilmiş) Gün
-  /// Sonu raporuyla BİREBİR AYNI formül (satış anındaki TARİHSEL maliyet
-  /// — satis_kalem.alis_fiyat — varsa o, yoksa güncel urunler.alis_fiyat'a
-  /// düşülür). Dashboard'daki "Bugünkü Kâr"ın bu değeri KULLANMASI
-  /// gerekiyordu — önceden hiç kullanmıyordu (sadece ciro-gider'di).
+  /// Sonu raporuyla BİREBİR AYNI formül. Dashboard'daki "Bugünkü Kâr"ın
+  /// bu değeri KULLANMASI gerekiyordu — önceden hiç kullanmıyordu (sadece
+  /// ciro-gider'di).
+  ///
+  /// 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22): maliyetToplami()
+  /// ile AYNI hata — KDV HARİÇ maliyet (alis_fiyat), KDV DAHİL ciroya
+  /// (genel_toplam) karşı çıkarılıyordu. Artık ikisi de KDV DAHİL
+  /// (alis_fiyat_kdv / urunler.alis_fiyat_kdv_dahil) — bkz. o metodun
+  /// yorumu.
   Future<double> gunlukMaliyet() async {
     final db = await _d;
     final rows = await db.rawQuery('''
       SELECT COALESCE(SUM(
-        CASE WHEN sk.alis_fiyat > 0 THEN sk.miktar * sk.alis_fiyat
-             ELSE sk.miktar * COALESCE(u.alis_fiyat, 0) END
+        CASE WHEN sk.alis_fiyat_kdv > 0 THEN sk.miktar * sk.alis_fiyat_kdv
+             ELSE sk.miktar * COALESCE(u.alis_fiyat_kdv_dahil, 0) END
       ), 0) as maliyet
       FROM satis_kalem sk
       JOIN satislar s ON sk.satis_id = s.id

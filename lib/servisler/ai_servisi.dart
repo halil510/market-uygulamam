@@ -33,7 +33,7 @@ class AiServisi {
       ''', [bas, bit])).first;
 
       final m = (await db.rawQuery('''
-        SELECT COALESCE(SUM(sk.miktar * COALESCE(sk.alis_fiyat,0)),0) as mal
+        SELECT COALESCE(SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)),0) as mal
         FROM satis_kalem sk JOIN satislar st ON sk.satis_id=st.id
         WHERE st.tarih BETWEEN ? AND ? AND st.iptal=0 AND st.is_deleted=0
       ''', [bas, bit])).first;

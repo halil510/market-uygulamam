@@ -6,6 +6,15 @@
 // deseni), BİREBİR aynı SQL gerçek şema üzerinde doğrulanıyor. Sorgular
 // DATE('now','localtime') kullandığından, test satırları BUGÜNÜN
 // tarihiyle ekleniyor.
+//
+// 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22): gunlukMaliyet()
+// (ve maliyetToplami() / kar_zarar_provider.dart'taki eşleniği) ÖNCEDEN
+// KDV HARİÇ alış maliyetini (sk.alis_fiyat) KDV DAHİL ciro'dan (genel_
+// toplam) çıkarıyordu — Net Kâr'ı maliyetin KDV payı kadar OLDUĞUNDAN
+// FAZLA gösteriyordu. Artık ikisi de KDV DAHİL: satis_kalem.alis_fiyat_kdv
+// (satış anında damgalanan tarihsel KDV dahil maliyet), yoksa güncel
+// urunler.alis_fiyat_kdv_dahil'e düşülür. Bu dosya bu YENİ formülü
+// doğrular.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import '../helper/test_initializer.dart';
@@ -13,8 +22,8 @@ import '../helper/test_initializer.dart';
 Future<double> _gunlukMaliyet(Database db) async {
   final rows = await db.rawQuery('''
     SELECT COALESCE(SUM(
-      CASE WHEN sk.alis_fiyat > 0 THEN sk.miktar * sk.alis_fiyat
-           ELSE sk.miktar * COALESCE(u.alis_fiyat, 0) END
+      CASE WHEN sk.alis_fiyat_kdv > 0 THEN sk.miktar * sk.alis_fiyat_kdv
+           ELSE sk.miktar * COALESCE(u.alis_fiyat_kdv_dahil, 0) END
     ), 0) as maliyet
     FROM satis_kalem sk
     JOIN satislar s ON sk.satis_id = s.id
@@ -61,15 +70,29 @@ void main() {
   }
 
   group('gunlukMaliyet', () {
-    test('bugünkü satışların tarihsel maliyeti (sk.alis_fiyat) toplanır', () async {
+    test('bugünkü satışların tarihsel KDV DAHİL maliyeti (sk.alis_fiyat_kdv) toplanır', () async {
       final urunId = await TestVeritabani.ornekUrunEkle(db, alisFiyat: 999); // güncel fiyat KULLANILMAMALI
       final satisId = await satisEkle();
       await db.insert('satis_kalem', {
         'satis_id': satisId, 'urun_id': urunId, 'urun_adi': 'Test',
-        'miktar': 2, 'birim_fiyat': 100, 'alis_fiyat': 60, 'toplam_tutar': 200,
+        'miktar': 2, 'birim_fiyat': 100, 'alis_fiyat': 50, 'alis_fiyat_kdv': 60, 'toplam_tutar': 200,
       });
 
-      expect(await _gunlukMaliyet(db), 120.0, reason: '2 × 60 (tarihsel) = 120, 999 (güncel) DEĞİL');
+      expect(await _gunlukMaliyet(db), 120.0,
+          reason: '2 × 60 (tarihsel, KDV DAHİL) = 120 — 999 (güncel) DEĞİL, 50 (KDV hariç) DEĞİL');
+    });
+
+    test('eski/masa satışı satırı (alis_fiyat_kdv=0) güncel urunler.alis_fiyat_kdv_dahil\'e düşer, KDV hariç alis_fiyat\'a DEĞİL', () async {
+      final urunId = await TestVeritabani.ornekUrunEkle(db, alisFiyat: 999);
+      await db.update('urunler', {'alis_fiyat_kdv_dahil': 70},
+          where: 'id = ?', whereArgs: [urunId]);
+      final satisId = await satisEkle();
+      await db.insert('satis_kalem', {
+        'satis_id': satisId, 'urun_id': urunId, 'urun_adi': 'Test',
+        'miktar': 1, 'birim_fiyat': 100, 'alis_fiyat_kdv': 0, 'toplam_tutar': 100,
+      });
+
+      expect(await _gunlukMaliyet(db), 70.0);
     });
 
     test('dünkü satış bugünkü maliyete dahil edilmez', () async {
@@ -80,7 +103,7 @@ void main() {
       });
       await db.insert('satis_kalem', {
         'satis_id': satisId, 'urun_id': urunId, 'urun_adi': 'Test',
-        'miktar': 1, 'birim_fiyat': 100, 'alis_fiyat': 50, 'toplam_tutar': 100,
+        'miktar': 1, 'birim_fiyat': 100, 'alis_fiyat_kdv': 60, 'toplam_tutar': 100,
       });
 
       expect(await _gunlukMaliyet(db), 0.0);

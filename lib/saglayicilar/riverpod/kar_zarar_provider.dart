@@ -85,8 +85,15 @@ Future<KarZararVeri> karZarar(KarZararRef ref) async {
       COALESCE(SUM(iskonto_tutar),0) as iskonto, COALESCE(SUM(kdv_tutar),0) as kdv
       FROM satislar WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?)
       AND iptal=0 AND is_deleted=0 $satisSubeKosuluDuzSatislar''', [bas, bit, ...subeArgs]),
-    db.rawQuery('''SELECT COALESCE(SUM(CASE WHEN sk.alis_fiyat>0 THEN sk.miktar*sk.alis_fiyat
-      ELSE sk.miktar*COALESCE(u.alis_fiyat,0) END),0) as maliyet
+    // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22): maliyet
+    // ÖNCEDEN KDV HARİÇ (sk.alis_fiyat) hesaplanıyordu, ama ciro
+    // (SUM(genel_toplam), yukarıda) HER ZAMAN KDV DAHİL'dir — Net Kâr
+    // maliyetin KDV payı kadar OLDUĞUNDAN FAZLA görünüyordu. Artık
+    // ikisi de KDV DAHİL (bkz. SatisDeposu.maliyetToplami'ndeki AYNI
+    // düzeltme — bu sorgu o metodun BİREBİR aynısı, iki rapor arasında
+    // tutarlılık için kasıtlı olarak kopyalanmış).
+    db.rawQuery('''SELECT COALESCE(SUM(CASE WHEN sk.alis_fiyat_kdv>0 THEN sk.miktar*sk.alis_fiyat_kdv
+      ELSE sk.miktar*COALESCE(u.alis_fiyat_kdv_dahil,0) END),0) as maliyet
       FROM satis_kalem sk JOIN satislar s ON sk.satis_id=s.id LEFT JOIN urunler u ON sk.urun_id=u.id
       WHERE datetime(s.tarih) BETWEEN datetime(?) AND datetime(?) AND s.iptal=0 AND s.is_deleted=0
       $satisSubeKosulu''', [bas, bit, ...subeArgs]),

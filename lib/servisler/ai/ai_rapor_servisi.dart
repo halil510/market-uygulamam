@@ -74,7 +74,7 @@ class AiRaporServisi {
       ''', [_bas(bas), _bit(bit)])).first;
 
       final maliyet = (await db.rawQuery('''
-        SELECT COALESCE(SUM(sk.miktar * COALESCE(sk.alis_fiyat,0)),0) as mal
+        SELECT COALESCE(SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)),0) as mal
         FROM satis_kalem sk
         JOIN satislar s ON sk.satis_id = s.id
         WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0 $subeKosuluJoin
@@ -151,7 +151,7 @@ class AiRaporServisi {
         SELECT sk.urun_adi,
                SUM(sk.miktar) as miktar,
                SUM(sk.toplam_tutar) as tutar,
-               SUM(sk.miktar * COALESCE(sk.alis_fiyat, 0)) as maliyet
+               SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)) as maliyet
         FROM satis_kalem sk
         JOIN satislar s ON sk.satis_id = s.id
         WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0
@@ -207,7 +207,7 @@ class AiRaporServisi {
       ''', [_bas(bas), _bit(bit)])).first;
 
       final maliyet = (await db.rawQuery('''
-        SELECT COALESCE(SUM(sk.miktar * COALESCE(sk.alis_fiyat,0)),0) as mal
+        SELECT COALESCE(SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)),0) as mal
         FROM satis_kalem sk JOIN satislar s ON sk.satis_id=s.id
         WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0
       ''', [_bas(bas), _bit(bit)])).first;
@@ -299,7 +299,7 @@ class AiRaporServisi {
         SELECT COALESCE(u.$kolon, 'Diğer') as grup,
                SUM(sk.miktar) as miktar,
                SUM(sk.toplam_tutar) as tutar,
-               SUM(sk.miktar * COALESCE(sk.alis_fiyat, 0)) as maliyet,
+               SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)) as maliyet,
                COUNT(DISTINCT s.id) as satis
         FROM satis_kalem sk
         JOIN satislar s ON sk.satis_id = s.id
@@ -365,7 +365,7 @@ class AiRaporServisi {
           FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0
         ''', [_bas(b), _bit(e)])).first;
         final m = (await db.rawQuery('''
-          SELECT COALESCE(SUM(sk.miktar * COALESCE(sk.alis_fiyat,0)),0) as mal
+          SELECT COALESCE(SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)),0) as mal
           FROM satis_kalem sk JOIN satislar st ON sk.satis_id = st.id
           WHERE st.tarih BETWEEN ? AND ? AND st.iptal=0 AND st.is_deleted=0
         ''', [_bas(b), _bit(e)])).first;

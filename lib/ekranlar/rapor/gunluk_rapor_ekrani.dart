@@ -79,16 +79,16 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
       //
       // 🔴 DÜZELTME (Madde 24 — Raporlar denetimi, 2026-09-20): maliyet
       // HER ZAMAN urunler.alis_fiyat'ın (ürünün GÜNCEL alış fiyatı)
-      // kullanıyordu — satış anındaki TARİHSEL maliyeti DEĞİL. Bir
-      // ürünün alış fiyatı satıştan SONRA güncellenirse (ör. tedarikçi
-      // zammı), bu rapor o tarihe her dönüldüğünde SESSİZCE farklı bir
-      // "Net Kâr" göstermeye başlıyordu — Kâr/Zarar raporu (kar_zarar_
-      // provider.dart) ise satis_kalem.alis_fiyat'ta (satış anında
-      // satır'a kalıcı olarak damgalanan tarihsel maliyet) SAKLANAN
-      // değeri doğru kullanıyordu. AYNI tarih için iki rapor farklı
-      // Net Kâr gösterebiliyordu. Artık AYNI formül (sk.alis_fiyat
-      // varsa o, yoksa — eski/migrasyon-öncesi satırlar için — güncel
-      // urunler.alis_fiyat'a düşülür) — bkz. SatisDeposu.maliyetToplami.
+      // kullanıyordu — satış anındaki TARİHSEL maliyeti DEĞİL. Kâr/Zarar
+      // raporuyla (kar_zarar_provider.dart) AYNI formüle hizalandı — bkz.
+      // SatisDeposu.maliyetToplami.
+      //
+      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22): o "AYNI
+      // formül" KDV HARİÇ alış maliyetini KDV DAHİL ciro'dan (genel_toplam,
+      // aşağıda `toplam`) çıkarıyordu — Net Kâr'ı maliyetin KDV payı kadar
+      // OLDUĞUNDAN FAZLA gösteriyordu. maliyetToplami() artık KDV DAHİL
+      // alış maliyetini (satis_kalem.alis_fiyat_kdv) kullanıyor — bkz. o
+      // metodun güncel yorumu.
       final results = await Future.wait([
         _satisDepo.tariheGoreGetir(_baslangic, _bitis),
         _giderDepo.aralikToplamGider(_baslangic, _bitis),

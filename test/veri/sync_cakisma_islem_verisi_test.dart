@@ -37,13 +37,30 @@ Future<bool> _kayitUygulaVeyaAtla(
         yerelSonGuncelleme: yerelZaman,
         sonBasariliGonderim: sonGonderFiligrani);
     if (gercekCakisma) {
-      await db.insert('sync_cakismalar', {
+      // Veritabani._cakismaKaydetGerekirse ile AYNI dedup mantığı
+      // (DEEP_AUDIT kendi-keşif turu, 2026-09-21): aynı (tablo,
+      // global_id) için çözülmemiş bir çakışma varsa GÜNCELLE, yoksa EKLE.
+      final globalId = temiz['global_id']?.toString();
+      final mevcut = globalId != null
+          ? await db.query('sync_cakismalar',
+              columns: ['id'],
+              where: 'tablo = ? AND kayit_global_id = ? AND cozuldu = 0',
+              whereArgs: [tablo, globalId],
+              limit: 1)
+          : const <Map<String, dynamic>>[];
+      final satirVerisi = {
         'tablo': tablo,
-        'kayit_global_id': temiz['global_id']?.toString(),
+        'kayit_global_id': globalId,
         'alan_farklari': '{}',
         'tarih': DateTime.now().toIso8601String(),
         'cozuldu': 0,
-      });
+      };
+      if (mevcut.isNotEmpty) {
+        await db.update('sync_cakismalar', satirVerisi,
+            where: 'id = ?', whereArgs: [mevcut.first['id']]);
+      } else {
+        await db.insert('sync_cakismalar', satirVerisi);
+      }
     }
   }
 
@@ -92,6 +109,36 @@ void main() {
       final cakismalar = await db.query('sync_cakismalar');
       expect(cakismalar, hasLength(1),
           reason: 'çakışma yine de görünür/denetlenebilir olmalı');
+    });
+
+    test(
+        'ÇÖZÜLMEMİŞ bir çakışma sonraki sync turlarında MÜKERRER kayıt '
+        'oluşturmaz (dedup)', () async {
+      final yerelSonGuncelleme = DateTime(2026, 9, 21, 10, 5);
+      final sonGonderFiligrani = DateTime(2026, 9, 21, 10, 0);
+
+      final id = await db.insert('kasa_hareketleri', {
+        'global_id': 'kasa-dedup', 'hareket_tipi': 'Satış', 'tutar': 100,
+        'bakiye_sonrasi': 500,
+        'last_updated': yerelSonGuncelleme.toIso8601String(),
+      });
+      final yerelSatir =
+          (await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [id])).first;
+      final gelen = {
+        'global_id': 'kasa-dedup', 'hareket_tipi': 'Satış', 'tutar': 100,
+        'bakiye_sonrasi': 999,
+        'last_updated': DateTime(2026, 9, 21, 10, 6).toIso8601String(),
+      };
+
+      // Kullanıcı çözmeden AYNI çakışma 3 kez daha (periyodik sync) tetiklenir.
+      for (var i = 0; i < 3; i++) {
+        await _kayitUygulaVeyaAtla(
+            db, 'kasa_hareketleri', yerelSatir, gelen, sonGonderFiligrani);
+      }
+
+      final cakismalar = await db.query('sync_cakismalar');
+      expect(cakismalar, hasLength(1),
+          reason: 'aynı çözülmemiş çakışma tekrar tekrar birikmemeli');
     });
 
     test('stok_hareket (işlem verisi): aynı senaryo, aynı sonuç', () async {

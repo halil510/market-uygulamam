@@ -596,15 +596,39 @@ class Veritabani {
       }
 
       final now = DateTime.now().toIso8601String();
-      await database.insert(DbSabitler.syncCakismalar, {
+      final globalId = gelenSatir['global_id']?.toString();
+      // 🔴 DEEP_AUDIT (kendi-keşif turu, 2026-09-21): ÖNCEDEN her turda
+      // koşulsuz INSERT yapılıyordu — kullanıcı bir çakışmayı hemen
+      // çözmezse, her periyodik sync turunda AYNI (tablo, global_id)
+      // için mükerrer "sync_cakismalar" satırı birikiyordu (FAZ 3'ün
+      // "işlem verisi otomatik uygulanmaz" davranışıyla artık daha da
+      // görünür — satır bir daha asla kendiliğinden "çözülmüş" olmuyor).
+      // Artık aynı kayıt için ÇÖZÜLMEMİŞ bir çakışma zaten varsa, yeni
+      // satır eklemek yerine o satır GÜNCELLENİYOR (en güncel alan
+      // farkları/kayıtlarla) — kullanıcı "Sync Çakışmaları" ekranında
+      // tek, güncel bir kayıt görür.
+      final mevcutCakisma = globalId != null
+          ? await database.query(DbSabitler.syncCakismalar,
+              columns: ['id'],
+              where: 'tablo = ? AND kayit_global_id = ? AND cozuldu = 0',
+              whereArgs: [tablo, globalId],
+              limit: 1)
+          : const <Map<String, dynamic>>[];
+      final satirVerisi = {
         'tablo': tablo,
-        'kayit_global_id': gelenSatir['global_id']?.toString(),
+        'kayit_global_id': globalId,
         'alan_farklari': jsonEncode(farklar),
         'yerel_kayit': jsonEncode(yerelSatir),
         'gelen_kayit': jsonEncode(gelenSatir),
         'tarih': now,
         'cozuldu': 0,
-      });
+      };
+      if (mevcutCakisma.isNotEmpty) {
+        await database.update(DbSabitler.syncCakismalar, satirVerisi,
+            where: 'id = ?', whereArgs: [mevcutCakisma.first['id']]);
+      } else {
+        await database.insert(DbSabitler.syncCakismalar, satirVerisi);
+      }
       return true;
     } catch (e, st) {
       // Çakışma kaydı BEST-EFFORT'tur — burada bir hata olsa bile asıl

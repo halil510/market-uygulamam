@@ -19,6 +19,8 @@ import '../../modeller/cari_hareket_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/satis_iptal_servisi.dart';
 import '../../servisler/alim_islem_servisi.dart';
+import '../../servisler/iade_islem_servisi.dart';
+import '../../veri/database/veritabani.dart';
 import '../../saglayicilar/riverpod/satis_provider.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
@@ -182,6 +184,15 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   bool _alimKokenliMi(CariHareketModel h) =>
       h.fisTipi == 'Alım' && h.fisId != null && h.fisId! > 0;
 
+  // 🆕 (kullanıcı bulgusu, 2026-09-22): 'İade'/'Alım İadesi' de AYNI
+  // sorunu taşıyordu — genel amaçlı hareketIptalEt() İade kavramından
+  // habersiz (stok geri düşmez, kasa referans_turu='cari_hareket' arar
+  // ama iade referans_turu='iade' ile yazar — asla eşleşmez).
+  bool _iadeKokenliMi(CariHareketModel h) =>
+      (h.fisTipi == 'İade' || h.fisTipi == 'Alım İadesi') &&
+      h.fisId != null &&
+      h.fisId! > 0;
+
   String _silHareketMesaji(CariHareketModel h) {
     // 🔴 DÜZELTME (kullanıcı isteği, 2026-09-21): bir satıştan otomatik
     // türeyen hareket önceden SADECE cari kaydını iptal ediyordu — asıl
@@ -201,6 +212,12 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
           'Silersen bağlı ALIM da iptal edilecek: stok geri düşülecek, '
           'ödeme yöntemine göre kasa/banka tersine çevrilecek ve bu alım '
           'Alım Listesi\'nde "İptal" olarak işaretlenecek. Emin misiniz?';
+    }
+    if (_iadeKokenliMi(h)) {
+      return 'Bu hareket "${h.fisNo ?? h.fisId}" numaralı iadeden geliyor. '
+          'Silersen bağlı İADE de iptal edilecek: stok geri düşülecek, '
+          'nakit iadeyse kasa tersine çevrilecek ve bu iade İade '
+          'Geçmişi\'nde "İptal" olarak işaretlenecek. Emin misiniz?';
     }
     final gercekParaOlabilir = h.fisTipi == 'Tahsilat' || h.fisTipi == 'Ödeme';
     final otomatikTersCevrilebilir =
@@ -257,6 +274,34 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
         ref.read(carilerProvider.notifier).yukle();
         await _yukle();
         if (mounted) BildirimServisi.basari(context, 'Alım iptal edildi');
+        return;
+      }
+
+      if (_iadeKokenliMi(h)) {
+        // İade-kökenli hareket: sadece cari_hareket'i silmek iadeyi
+        // (dolayısıyla stok/kasayı) etkilenmemiş bırakırdı. Asıl iade
+        // IadeIslemServisi().gecmisFisIadeSil() ile silinir — o metod
+        // TÜM kalemlerini iade_kalem'den kendi sorguluyor, burada sadece
+        // iadeId/toplam/cariId/fisNo gerekiyor (bkz. o metodun doc yorumu).
+        final db = await Veritabani().db;
+        final iadeRows = await db.query('iade', where: 'id = ?', whereArgs: [h.fisId]);
+        if (iadeRows.isEmpty) {
+          throw Exception('Bu iade bulunamadı (silinmiş olabilir).');
+        }
+        final kalemler = await db.query('iade_kalem',
+            where: 'iade_id = ?', whereArgs: [h.fisId]);
+        await IadeIslemServisi().gecmisFisIadeSil(
+          iadeId: h.fisId!,
+          kalemler: kalemler,
+          toplamTutar: (iadeRows.first['toplam_tutar'] as num?)?.toDouble() ?? 0,
+          cariId: h.cariId,
+          fisNo: h.fisNo,
+        );
+        if (!mounted) return;
+        ref.invalidate(cariDetayProvider(widget.cariId));
+        ref.read(carilerProvider.notifier).yukle();
+        await _yukle();
+        if (mounted) BildirimServisi.basari(context, 'İade iptal edildi');
         return;
       }
 

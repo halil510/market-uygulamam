@@ -1120,11 +1120,23 @@ class IadeIslemServisi {
   /// "İade Geçmişi" sekmesinden TÜM fişi (bir iade kaydının tüm
   /// kalemleri) silme/iptal etme — bkz. iade_ekrani_gecmis.dart.
   /// _gecmisIadeSil (taşındığı yer). Her kalem için stok geri alınır,
-  /// tek bir kasa ters kaydı (toplam tutar) yazılır, cari hareketleri
-  /// soft-delete edilir, iade 'iptal' durumuna işaretlenir.
+  /// GERÇEK yazılmış kasa satırı (varsa) tersine çevrilir, cari
+  /// hareketleri soft-delete edilir, iade 'iptal' durumuna işaretlenir.
   ///
   /// [kalemler] çağıranın önceden çektiği ham `iade_kalem` satırları
   /// (en az 'urun_id' ve 'miktar' anahtarlarını içermeli).
+  ///
+  /// 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22 — Satış/Alım
+  /// silmede bulunan AYNI hata sınıfı): kasa reversal'ı ÖNCEDEN [toplamTutar]
+  /// parametresine bakıp KOŞULSUZ bir "Iade Iptali" (nakit GİRİŞ) kasa
+  /// kaydı ekliyordu — orijinal iade GERÇEKTEN nakit olarak mı verilmişti
+  /// (topluIadeKaydet/fisKalemIadeKaydet/manuelKalemEkle SADECE
+  /// nakitIade==true iken kasa satırı yazar) hiç kontrol edilmiyordu.
+  /// Kart/Banka veya Cari'ye işlenmiş bir iade fişi silinince, HİÇ VAR
+  /// OLMAMIŞ bir nakit giriş kaydı OLUŞTURULUYOR, kasa mutabakatını
+  /// bozuyordu. Artık tahmin yok: bu iadenin GERÇEKTEN yazdığı
+  /// kasa_hareketleri satırı (varsa) sorgulanıp SADECE o satırın GERÇEK
+  /// tutarıyla tersine çevriliyor.
   Future<void> gecmisFisIadeSil({
     required int iadeId,
     required List<Map<String, dynamic>> kalemler,
@@ -1137,6 +1149,16 @@ class IadeIslemServisi {
     String? kasaGid;
 
     await db.transaction((txn) async {
+      // 🆕 İkinci bir giriş noktası eklendi (cari_hareket_ekrani.dart,
+      // 2026-09-22) — aynı iade artık İade Geçmişi'nden VEYA Cari
+      // Hareketler'den silinebiliyor. Zaten iptal edilmiş bir fişi
+      // TEKRAR işlemek stoğu/kasayı İKİNCİ KEZ tersine çevirirdi
+      // (AlimIslemServisi.sil()'deki AYNI korumayla hizalandı).
+      final guncelIade = await txn.query('iade',
+          where: 'id = ?', whereArgs: [iadeId], limit: 1);
+      if (guncelIade.isNotEmpty && guncelIade.first['durum'] == 'iptal') {
+        throw Exception('Bu iade zaten iptal edilmiş.');
+      }
       for (final k in kalemler) {
         final urunId = k['urun_id'] as int?;
         final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;
@@ -1171,24 +1193,31 @@ class IadeIslemServisi {
         }
       }
 
-      kasaGid = const Uuid().v4();
-      final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) + toplamTutar;
-      final kasaSatiri = {
-        'global_id': kasaGid,
-        'hareket_tipi': 'Iade Iptali',
-        'tutar': toplamTutar, // Pozitif: kasa artar (iade geri alındı)
-        'bakiye_sonrasi': kasaBakiye,
-        'referans_id': iadeId,
-        'referans_turu': 'iade_iptal',
-        'tarih': now,
-        // 🔴 Derin analizde bulundu: sube_id eksikti (bkz. oturumIadeSil'deki
-        // aynı düzeltmenin gerekçesi).
-        'sube_id': AktifSubeServisi().subeId,
-        'aciklama': 'Iade silindi: $fisNo',
-      };
-      final kasaId = await txn.insert('kasa_hareketleri', kasaSatiri);
-      await SyncKuyrukYazici.ekleTxn(txn,
-          tablo: 'kasa_hareketleri', veri: {...kasaSatiri, 'id': kasaId});
+      final orijinalKasaSatirlari = await txn.query('kasa_hareketleri',
+          where: 'referans_id = ? AND referans_turu = ? AND deleted_at IS NULL',
+          whereArgs: [iadeId, 'iade']);
+      for (final k in orijinalKasaSatirlari) {
+        final kasaTutar = (k['tutar'] as num?)?.toDouble() ?? 0;
+        if (kasaTutar <= 0) continue;
+        kasaGid = const Uuid().v4();
+        final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) + kasaTutar;
+        final kasaSatiri = {
+          'global_id': kasaGid,
+          'hareket_tipi': 'Iade Iptali',
+          'tutar': kasaTutar, // Pozitif: kasa artar (iade geri alındı)
+          'bakiye_sonrasi': kasaBakiye,
+          'referans_id': iadeId,
+          'referans_turu': 'iade_iptal',
+          'tarih': now,
+          // 🔴 Derin analizde bulundu: sube_id eksikti (bkz. oturumIadeSil'deki
+          // aynı düzeltmenin gerekçesi).
+          'sube_id': AktifSubeServisi().subeId,
+          'aciklama': 'Iade silindi: $fisNo',
+        };
+        final kasaId = await txn.insert('kasa_hareketleri', kasaSatiri);
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'kasa_hareketleri', veri: {...kasaSatiri, 'id': kasaId});
+      }
 
       if (cariId != null) {
         await txn.rawUpdate(

@@ -182,6 +182,21 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
     }
   }
 
+  // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu — "hızlı satıştan Nakit ile
+  // satış yaptım, Satış Listesi'ne aynı sepet İKİ KEZ eklendi"): bu
+  // dialog, HÂLÂ AKTİF olan _odemeYontemiSec() akışının (ki kendi
+  // _islemBasladi()'sını zaten çağırmıştı) İÇİNDE açılıyor — "Tamam"a
+  // basılınca dialog kapanır ama _satisiTamamla() (asıl satışı yazan
+  // çağrı) henüz BAŞLAMAMIŞTIR, _odemeYontemiSec() içindeki await
+  // zincirinde biraz daha sürer. Önceden burada (ve İptal/geri tuşunda)
+  // _islemAktif SESSİZCE false'a çekiliyordu — bu, "Tamam"a basıp
+  // _satisiTamamla() tamamlanmadan ÖNCEKİ kısa pencerede kullanıcı
+  // tekrar "Ödeme Al"a basarsa (veya kuyruktaki bir barkod işlenirse)
+  // _islemAktif kontrolünün bunu ENGELLEMEMESİNE yol açıyordu — AYNI
+  // sepet ikinci kez satışa dönüşebiliyordu (çift stok düşümü, çift
+  // fiş). _islemAktif artık burada DOKUNULMUYOR — tek sahibi
+  // _odemeYontemiSec()'in kendi finally{_islemBitti()} bloğu (akış
+  // iptalle de, satışla da bitse, en sonda ZATEN çağrılıyor).
   Future<double?> _nakitAlintiSor(double toplam) async {
     _dialogAcik = true;
     final ctrl = TextEditingController();
@@ -190,7 +205,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       barrierDismissible: false,
       builder: (ctx) => PopScope(
         canPop: true,
-        onPopInvokedWithResult: (didPop, result) { _dialogAcik = false; _islemAktif = false; },
+        onPopInvokedWithResult: (didPop, result) { _dialogAcik = false; },
         child: AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Nakit Ödeme'),
@@ -233,14 +248,14 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
           ]),
           actions: [
             TextButton(
-              onPressed: () { _dialogAcik = false; _islemAktif = false; Navigator.pop(ctx); },
+              onPressed: () { _dialogAcik = false; Navigator.pop(ctx); },
               child: const Text('İptal'),
             ),
             FilledButton(
               onPressed: () {
                 final txt = ctrl.text.trim().replaceAll(',', '.');
                 final val = txt.isEmpty ? toplam : double.tryParse(txt);
-                _dialogAcik = false; _islemAktif = false;
+                _dialogAcik = false;
                 Navigator.pop(ctx, val);
               },
               child: const Text('Tamam'),

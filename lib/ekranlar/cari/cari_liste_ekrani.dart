@@ -244,6 +244,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
                     borderRadius: BorderRadius.circular(20)),
                 child: TextField(
                   controller: _araCtrl,
+                  cursorColor: Colors.white,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Ad, kod, telefon ara...',
@@ -253,6 +254,23 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
                         ? IconButton(icon: const Icon(Icons.clear, color: Colors.white70, size: 16),
                             onPressed: () { _araCtrl.clear(); ref.read(cariFiltresiProvider.notifier).aramaGuncelle(''); })
                         : null,
+                    // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22):
+                    // uygulama genelinde ThemeData.inputDecorationTheme
+                    // TÜM TextField'lara VARSAYILAN olarak `filled: true,
+                    // fillColor: AppRenkler.background` (açık temada
+                    // neredeyse beyaz, #F8F9FE) uyguluyor — bu alan bunu
+                    // hiç EZMEDİĞİ için, dıştaki Container'ın (gradyan
+                    // üstünde görünmesi için tasarlanmış) yarı saydam beyaz
+                    // arkaplanının ÜSTÜNE, TextField'ın KENDİ neredeyse-
+                    // beyaz dolgusu biniyordu — beyaz yazı, neredeyse beyaz
+                    // dolgunun üstünde YAZARKEN görünmüyordu (arama
+                    // ÇALIŞIYORDU, sadece yazı görünmüyordu — kullanıcı
+                    // bulgusuyla birebir eşleşiyor). Diğer tüm liste
+                    // ekranları (satis_liste_ekrani.dart, personel_liste_
+                    // ekrani.dart vb.) bu global varsayılanı BİLİNÇLİ
+                    // OLARAK ezip kendi fillColor'unu veriyordu — burada
+                    // unutulmuştu.
+                    filled: false,
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(vertical: 11),
                   ),

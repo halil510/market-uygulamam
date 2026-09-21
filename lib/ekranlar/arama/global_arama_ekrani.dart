@@ -149,6 +149,14 @@ class _GlobalAramaEkraniState extends State<GlobalAramaEkrani> {
           decoration: InputDecoration(
             hintText: 'Ara, ya da konuşarak sor...',
             hintStyle: const TextStyle(color: Colors.white70, fontSize: 14),
+            // 🔴🔴 KRİTİK DÜZELTME (cari_liste_ekrani.dart'taki AYNI
+            // kullanıcı bulgusunun, 2026-09-22, yan etkisi): global
+            // inputDecorationTheme TÜM TextField'lara varsayılan olarak
+            // `filled: true, fillColor: AppRenkler.background` (açık
+            // temada neredeyse beyaz) uyguluyor — bu alan bunu hiç
+            // ezmediği için beyaz yazı, gradyanlı AppBar'ın ÜSTÜNE binen
+            // neredeyse-beyaz bir dolgu üstünde görünmez oluyordu.
+            filled: false,
             border: InputBorder.none,
             suffixIcon: Row(
               mainAxisSize: MainAxisSize.min,

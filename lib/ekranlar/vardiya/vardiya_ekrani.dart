@@ -636,10 +636,14 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
           const SizedBox(height: 10),
           // KPI grid
+          // 🔴 DEEP_AUDIT_REPORT FAZ 6 (UX/UI, 2026-09-21): sabit
+          // crossAxisCount:2 tablet/yatay modda gereksiz boşluk
+          // bırakıyordu — diğer ekranlarla (Dashboard) tutarlı hale
+          // getirmek için TsResponsive'e taşındı.
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
+            crossAxisCount: TsResponsive.izgaraKolonSayisi(context),
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
             childAspectRatio: 1.7,

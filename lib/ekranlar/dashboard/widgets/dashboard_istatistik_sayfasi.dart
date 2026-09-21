@@ -66,10 +66,14 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
             ]),
           ),
           const SizedBox(height: 14),
+          // 🔴 DEEP_AUDIT_REPORT FAZ 6 (UX/UI, 2026-09-21): sabit
+          // crossAxisCount:2 tablet/yatay modda gereksiz boşluk
+          // bırakıyordu — Vardiya ekranındaki aynı düzeltmeyle tutarlı
+          // hale getirildi.
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
+            crossAxisCount: TsResponsive.izgaraKolonSayisi(context),
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             childAspectRatio: 1.4,
@@ -91,7 +95,7 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
+            crossAxisCount: TsResponsive.izgaraKolonSayisi(context),
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             childAspectRatio: 1.4,

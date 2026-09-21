@@ -217,10 +217,25 @@ class Veritabani {
     unawaited(_fisSeriBulutlaUyumla());
     final database = await db;
     late final int yeniNo;
+    // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu — ekran görüntüsü:
+    // "DatabaseException(FOREIGN KEY constraint failed (code 787 ...))
+    // sql 'INSERT INTO fis_seri(sube_id, fis_tipi, son_fis_no)
+    // VALUES(?, ?, ?)' args [1, satis, 1]"): fis_seri.sube_id,
+    // subeler(id)'ye FK ile bağlı — bu fonksiyon HER ZAMAN subeId (ya da
+    // varsayılan 1) ile INSERT/UPDATE deniyordu. O id'de GERÇEKTEN bir
+    // şube yoksa (ör. "Veritabanını Temizle" sonrası oluşan bir
+    // ara/yarış durumu, ya da subeler tablosu her nasılsa boşaldıysa)
+    // INSERT anında FK ihlaliyle patlıyor ve kullanıcı HİÇ SATIŞ
+    // YAPAMAZ hale geliyordu — satış ekranı sürekli "Satış hatası"
+    // veriyordu. Artık kullanılan sube_id'nin GERÇEKTEN var olduğu
+    // doğrulanıyor; yoksa mevcut ilk şubeye, o da yoksa yeni oluşturulan
+    // bir "Merkez Şube"ye düşülüyor — kendi kendini onaran, satışı asla
+    // engellemeyen bir yol.
+    final gecerliSubeId = await _gecerliSubeIdGetir(database, subeId);
     final sonuc = await database.transaction((txn) async {
       final result = await txn.rawQuery(
         'SELECT son_fis_no FROM ${DbSabitler.fisSeri} WHERE sube_id = ? AND fis_tipi = ?',
-        [subeId, tip],
+        [gecerliSubeId, tip],
       );
       final sonNo =
           result.isNotEmpty ? (result.first['son_fis_no'] as int) : 0;
@@ -229,12 +244,12 @@ class Veritabani {
         // Satır yoksa ekle
         await txn.rawInsert(
           'INSERT INTO ${DbSabitler.fisSeri}(sube_id, fis_tipi, son_fis_no) VALUES(?, ?, ?)',
-          [subeId, tip, yeniNo],
+          [gecerliSubeId, tip, yeniNo],
         );
       } else {
         await txn.rawUpdate(
           'UPDATE ${DbSabitler.fisSeri} SET son_fis_no = ? WHERE sube_id = ? AND fis_tipi = ?',
-          [yeniNo, subeId, tip],
+          [yeniNo, gecerliSubeId, tip],
         );
       }
       final now = DateTime.now();
@@ -256,8 +271,33 @@ class Veritabani {
       final siraNo = yeniNo.toString().padLeft(9, '0');
       return '$prefix$yil$siraNo'; // GIB standartı: 16 karakter
     });
-    unawaited(_fisSeriBulutaPushla(subeId, tip, yeniNo));
+    unawaited(_fisSeriBulutaPushla(gecerliSubeId, tip, yeniNo));
     return sonuc;
+  }
+
+  /// [istenenSubeId] gerçekten subeler tablosunda varsa aynen döner;
+  /// yoksa mevcut ilk şubeye, hiç şube yoksa yeni oluşturulan bir
+  /// "Merkez Şube"ye düşer. bkz. fisNoUret üzerindeki kritik düzeltme
+  /// notu — bu, fis_seri.sube_id FK ihlalini kalıcı olarak önler.
+  Future<int> _gecerliSubeIdGetir(Database database, int istenenSubeId) async {
+    final istenen = await database.query(DbSabitler.subeler,
+        columns: ['id'], where: 'id = ?', whereArgs: [istenenSubeId], limit: 1);
+    if (istenen.isNotEmpty) return istenenSubeId;
+
+    final ilkSube =
+        await database.query(DbSabitler.subeler, columns: ['id'], orderBy: 'id', limit: 1);
+    if (ilkSube.isNotEmpty) return ilkSube.first['id'] as int;
+
+    final yeniId = await database.insert(
+        DbSabitler.subeler, {'sube_kodu': 'MERKEZ', 'sube_adi': 'Merkez Şube'},
+        conflictAlgorithm: ConflictAlgorithm.ignore);
+    if (yeniId > 0) return yeniId;
+
+    // ignore nedeniyle 0 döndüyse (aynı sube_kodu'yla BAŞKA bir satır
+    // araya girmiş) — o satırı bul.
+    final tekrar =
+        await database.query(DbSabitler.subeler, columns: ['id'], orderBy: 'id', limit: 1);
+    return tekrar.isNotEmpty ? tekrar.first['id'] as int : istenenSubeId;
   }
 
   static DateTime? _sonFisSeriUyum;

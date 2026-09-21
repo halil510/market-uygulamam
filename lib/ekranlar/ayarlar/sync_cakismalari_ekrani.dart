@@ -56,23 +56,34 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
   String _tabloAdi(String tablo) => _tabloEtiketleri[tablo] ?? tablo;
 
   Future<void> _cozGelen(SyncCakismaModel c) async {
+    // 🔴 FAZ 3 (madde 4, 2026-09-21): "işlem verisi" (satış/stok/kasa/
+    // banka hareketi vb.) tablolarında artık otomatik LWW üzerine yazma
+    // yok — bu buton ARTIK GERÇEKTEN veri değiştiriyor (bkz.
+    // SyncCakismaDeposu.gelenIleCoz). "Master veri"de (urunler/cari vb.)
+    // zaten uygulanmıştı, tekrar yazmak zararsız — metin artık ikisi
+    // için de doğru, tek/genel bir ifadeyle.
     final onay = await OnayDialog.goster(context,
-        baslik: 'Buluttaki değer kalsın mı?',
-        icerik: 'Bu kayıt zaten buluttan gelen değerle güncellenmiş durumda. '
-            'Onaylarsanız çakışma "çözüldü" olarak işaretlenir, veri değişmez.',
-        onayYazi: 'Evet, buluttaki değer kalsın', ikon: Icons.cloud_done_outlined);
+        baslik: 'Buluttaki değer uygulansın mı?',
+        icerik: 'Onaylarsanız bu kayıt buluttan gelen değerle güncellenir '
+            '(bu cihazdaki değişikliğiniz kaybolur) ve çakışma "çözüldü" '
+            'olarak işaretlenir.',
+        onayYazi: 'Evet, buluttaki değeri uygula', ikon: Icons.cloud_done_outlined);
     if (!onay || c.id == null) return;
     await _depo.gelenIleCoz(c.id!, kullanici: AuthServisi().aktifAd);
     if (mounted) _yukle();
   }
 
   Future<void> _cozYerel(SyncCakismaModel c) async {
+    // 🔴 FAZ 3 (madde 4, 2026-09-21): metin artık "üzerine yazılmıştı"
+    // diye VARSAYMIYOR — "işlem verisi" tablolarında artık hiç otomatik
+    // üzerine yazma olmuyor (yerel zaten korunmuş durumda olabilir), bu
+    // eylem yine de güvenli/idempotent: yerel_kayit'i tabloya yazar.
     final onay = await OnayDialog.goster(context,
-        baslik: 'Yerel (eski) değer geri yüklensin mi?',
-        icerik: 'Buluttan gelen değer, bu cihazdaki değişikliğinizin üzerine '
-            'yazmıştı. Onaylarsanız kaydınız geri yüklenir ve bir sonraki '
-            'senkronda buluta gönderilir.',
-        onayYazi: 'Evet, benim değerimi geri yükle',
+        baslik: 'Bu cihazdaki değer kalsın mı?',
+        icerik: 'Onaylarsanız bu kayıt bu cihazdaki (yerel) değerle '
+            'güncellenir/korunur ve bir sonraki senkronda buluta '
+            'gönderilir.',
+        onayYazi: 'Evet, bu cihazdaki değeri uygula',
         onayRengi: Colors.orange.shade800, ikon: Icons.history);
     if (!onay || c.id == null) return;
     await _depo.yerelIleCoz(c.id!, kullanici: AuthServisi().aktifAd);

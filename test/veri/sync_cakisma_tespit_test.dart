@@ -108,4 +108,30 @@ void main() {
       expect(sonuc, isTrue);
     });
   });
+
+  // FAZ 3 (DEEP_AUDIT_REPORT madde 4, 2026-09-21, kullanıcı onaylı
+  // mimari karar): işlem/hareket verisi tablolarının sınıflandırması.
+  group('SyncCakismaTespit.islemVerisiMi', () {
+    test('finansal/hareket ledger tabloları işlem verisi sayılır', () {
+      for (final t in [
+        'satislar', 'satis_kalem', 'stok_hareket', 'cari_hareket',
+        'kasa_hareketleri', 'banka_hareketler', 'kredi_karti_hareket',
+        'iade', 'iade_kalem', 'puan_hareket', 'borc_odemeler',
+        'audit_log', 'onay_talepleri', 'adisyon_log', 'garson_cagri_log',
+        'masa_hareket_log', 'vardiyalar',
+      ]) {
+        expect(SyncCakismaTespit.islemVerisiMi(t), isTrue, reason: t);
+      }
+    });
+
+    test('güncel-durum (master) tabloları işlem verisi SAYILMAZ', () {
+      for (final t in [
+        'urunler', 'cari', 'kullanicilar', 'subeler', 'kategoriler',
+        'ayarlar', 'masalar', 'masa_siparisleri', 'borclar',
+        'banka_hesaplar', 'promosyonlar', 'donem_kilit',
+      ]) {
+        expect(SyncCakismaTespit.islemVerisiMi(t), isFalse, reason: t);
+      }
+    });
+  });
 }

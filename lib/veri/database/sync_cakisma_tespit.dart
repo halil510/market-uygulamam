@@ -58,4 +58,59 @@ class SyncCakismaTespit {
     if (sonBasariliGonderim == null || yerelSonGuncelleme == null) return true;
     return yerelSonGuncelleme.isAfter(sonBasariliGonderim);
   }
+
+  // ── FAZ 3 (DEEP_AUDIT_REPORT, madde 4 — kullanıcı onayıyla,
+  //    2026-09-21) ──────────────────────────────────────────────────
+  // "İşlem/hareket verisi" — geri dönüşü olmayan tarihsel kayıtlar
+  // (satış, stok/kasa/banka hareketi, iade, puan, audit log vb.).
+  // "Master veri"nin (urunler, cari, kullanıcılar vb. — GÜNCEL DURUM
+  // varlıkları, "en son düzenleyen kazanır" semantiği doğru olan)
+  // AKSİNE, bu tablolarda "daha yeni" olan taraf "daha doğru" anlamına
+  // GELMEZ — iki cihaz aynı satırı bağımsız zincirlerle (bakiye_sonrasi,
+  // onceki_stok/sonraki_stok) hesaplamış olabilir; körü körüne üzerine
+  // yazmak o zinciri sessizce tutarsız bırakabilir. Bu yüzden bu
+  // tablolarda GERÇEK bir çakışma (gercekCakismaMi==true) tespit
+  // edilirse Veritabani.supaKayitlariGuncelle() otomatik LWW üzerine
+  // yazmayı UYGULAMAZ — yerel kayıt olduğu gibi kalır, çakışma yine
+  // sync_cakismalar'a düşer (mevcut mekanizma DEĞİŞMEDİ), kullanıcı
+  // "Sync Çakışmaları" ekranından (artık gerçekten veri değiştiren)
+  // "Buluttaki değer kalsın" ile bilinçli olarak uygulayabilir.
+  //
+  // Kapsam kararı (madde madde gerekçe):
+  // - satislar/satis_kalem/iade/iade_kalem: fiş/kalem — finansal olay.
+  // - stok_hareket/kasa_hareketleri/banka_hareketler/kredi_karti_hareket:
+  //   zincirli (chain) bakiye hesaplarına sahip ledger'lar — en riskli
+  //   sınıf, madde 4'ün asıl hedefi.
+  // - puan_hareket/borc_odemeler: aynı ledger deseni (sadakat puanı,
+  //   borç ödeme geçmişi).
+  // - audit_log/onay_talepleri/adisyon_log/garson_cagri_log/
+  //   masa_hareket_log: saf ekleme-log'ları, üzerine yazma anlamsız.
+  // - vardiyalar: açılış/kapanış kasa mutabakatı taşıyan bir olay kaydı
+  //   (satislar/iade ile aynı sınıf — "fiş" niteliğinde).
+  // BİLİNÇLİ OLARAK master sayılanlar: 'cari'/'borclar' (bakiye ALANI
+  // ayrıca sürekli yeniden hesaplanan/mutabakat edilen bir toplam —
+  // CariDeposu.bakiyeMutabakatYap gibi), 'masalar'/'masa_siparisleri'
+  // (açık bir sepetin GÜNCEL durumu, tarihsel bir olay değil),
+  // 'donem_kilit'/'devir_checkpoint'/kapanis_snapshot'lar (zaten
+  // donem_kilit ile tek-cihaz korumalı, çakışma pratikte imkansıza
+  // yakın).
+  static const Set<String> islemTablolari = {
+    'satislar', 'satis_kalem',
+    'stok_hareket',
+    'cari_hareket',
+    'kasa_hareketleri',
+    'banka_hareketler',
+    'kredi_karti_hareket',
+    'iade', 'iade_kalem',
+    'puan_hareket',
+    'borc_odemeler',
+    'audit_log',
+    'onay_talepleri',
+    'adisyon_log',
+    'garson_cagri_log',
+    'masa_hareket_log',
+    'vardiyalar',
+  };
+
+  static bool islemVerisiMi(String tablo) => islemTablolari.contains(tablo);
 }

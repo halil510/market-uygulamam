@@ -552,9 +552,15 @@ class Veritabani {
   /// çağrılır. Yerel ve gelen satır arasında metadata dışı gerçek bir alan
   /// farkı varsa 'sync_cakismalar' tablosuna kalıcı bir kayıt düşer —
   /// kaybedecek olan yerel değer(ler) böylece kaybolmadan önce arşivlenmiş
-  /// olur. Bu fonksiyon LWW SONUCUNU DEĞİŞTİRMEZ, sadece görünürlük ekler.
-  /// Fark tespiti saf/test edilebilir SyncCakismaTespit'te (bkz. o dosya).
-  Future<void> _cakismaKaydetGerekirse(
+  /// olur. Fark tespiti saf/test edilebilir SyncCakismaTespit'te (bkz. o
+  /// dosya).
+  ///
+  /// 🔴 FAZ 3 (madde 4, 2026-09-21): ÖNCEDEN bu fonksiyon LWW SONUCUNU
+  /// HİÇ DEĞİŞTİRMİYORDU, sadece görünürlük ekliyordu — artık dönüş
+  /// değeri (gerçek bir çakışma kaydedildi mi) çağırana taşınıyor ki
+  /// "işlem verisi" tablolarında (bkz. SyncCakismaTespit.islemVerisiMi)
+  /// otomatik üzerine yazmayı DURDURABİLSİN.
+  Future<bool> _cakismaKaydetGerekirse(
     Database database,
     String tablo,
     Map<String, dynamic> yerelSatir,
@@ -562,7 +568,7 @@ class Veritabani {
   ) async {
     try {
       final farklar = SyncCakismaTespit.farklariBul(yerelSatir, gelenSatir);
-      if (farklar.isEmpty) return; // gerçek bir fark yok, çakışma sayılmaz
+      if (farklar.isEmpty) return false; // gerçek bir fark yok, çakışma sayılmaz
 
       // 🔴🔴 KÖK NEDEN DÜZELTMESİ (kullanıcı bulgusu — "sync çakışma var
       // diyor"): ÖNCEDEN buraya, yerel satır ile gelen satır sadece
@@ -586,7 +592,7 @@ class Veritabani {
       if (!SyncCakismaTespit.gercekCakismaMi(
           yerelSonGuncelleme: yerelZaman,
           sonBasariliGonderim: gonderFiligrani)) {
-        return; // yerel sürüm zaten buluta gönderilmişti — kayıp riski yok
+        return false; // yerel sürüm zaten buluta gönderilmişti — kayıp riski yok
       }
 
       final now = DateTime.now().toIso8601String();
@@ -599,10 +605,12 @@ class Veritabani {
         'tarih': now,
         'cozuldu': 0,
       });
+      return true;
     } catch (e, st) {
       // Çakışma kaydı BEST-EFFORT'tur — burada bir hata olsa bile asıl
       // senkron akışını (gelen değerin uygulanmasını) DURDURMAMALI.
       LogServisi().hata('Veritabani._cakismaKaydetGerekirse', hata: e, yigin: st);
+      return false;
     }
   }
 
@@ -736,10 +744,21 @@ class Veritabani {
             }
             // 🆕 SYNC ÇAKIŞMASI KAYDI (protokol §12): Üzerine yazmadan ÖNCE,
             // yerel ve gelen satır arasında (metadata dışı) gerçek bir alan
-            // farkı varsa çakışma tablosuna düşülüyor. Senkron DAVRANIŞI
-            // (LWW ile gelen kazanır) DEĞİŞMİYOR — sadece artık görünür ve
-            // "Sync Çakışmaları" ekranından denetlenebilir/geri alınabilir.
-            await _cakismaKaydetGerekirse(database, tablo, yerelSatir, temiz);
+            // farkı varsa çakışma tablosuna düşülüyor.
+            // 🔴 FAZ 3 (madde 4, 2026-09-21, kullanıcı onaylı mimari
+            // karar): "master veri" (urunler, cari vb.) için davranış
+            // DEĞİŞMEDİ — LWW ile gelen kazanır. Ama "işlem verisi"
+            // (satış/stok/kasa/banka hareketi vb. — bkz. SyncCakismaTespit.
+            // islemTablolari dosya başı gerekçesi) için GERÇEK bir
+            // çakışma tespit edilirse artık otomatik üzerine YAZILMAZ —
+            // yerel kayıt korunur, kullanıcı "Sync Çakışmaları"
+            // ekranından bilinçli olarak karar verir.
+            final gercekCakisma = await _cakismaKaydetGerekirse(
+                database, tablo, yerelSatir, temiz);
+            if (gercekCakisma && SyncCakismaTespit.islemVerisiMi(tablo)) {
+              atlanan++;
+              continue;
+            }
           }
           await database.update(
             tablo,

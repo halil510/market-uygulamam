@@ -52,10 +52,31 @@ class SyncCakismaDeposu {
     }
   }
 
-  /// Çakışmayı "gelen" (buluttan gelip zaten uygulanmış olan) değerle
-  /// çözülmüş işaretler — veriye dokunmaz, sadece kaydı kapatır.
-  Future<void> gelenIleCoz(int id, {required String kullanici}) =>
-      _cozumIsaretle(id, tip: 'gelen', kullanici: kullanici);
+  /// Çakışmayı "gelen" (buluttan gelen) değerle çözer.
+  ///
+  /// 🔴 FAZ 3 (madde 4, 2026-09-21): ÖNCEDEN bu fonksiyon veriye hiç
+  /// dokunmuyordu — TÜM tablolarda LWW zaten otomatik uygulanmış
+  /// olduğu varsayılıyordu, burası sadece kaydı "çözüldü" işaretliyordu.
+  /// Artık "işlem verisi" tablolarında (bkz. SyncCakismaTespit.
+  /// islemVerisiMi) Veritabani.supaKayitlariGuncelle() gerçek bir
+  /// çakışmada otomatik üzerine YAZMIYOR — yani gelen_kayit henüz hiç
+  /// uygulanmamış olabilir. Bu fonksiyon artık [yerelIleCoz] ile AYNI
+  /// desende, gelen_kayit'i gerçekten tabloya yazıyor. "Master veri"
+  /// tablolarında (LWW zaten uygulanmıştı) bu, AYNI içeriği tekrar
+  /// yazmak anlamına gelir — zararsız (idempotent).
+  Future<void> gelenIleCoz(int id, {required String kullanici}) async {
+    final db = await _d;
+    final rows = await db.query(DbSabitler.syncCakismalar, where: 'id = ?', whereArgs: [id], limit: 1);
+    if (rows.isEmpty) return;
+    final c = SyncCakismaModel.fromMap(rows.first);
+    if (c.gelenKayit != null && c.kayitGlobalId != null) {
+      final uygulanacak = Map<String, dynamic>.from(c.gelenKayit!);
+      uygulanacak.remove('id');
+      await db.update(c.tablo, uygulanacak,
+          where: 'global_id = ?', whereArgs: [c.kayitGlobalId]);
+    }
+    await _cozumIsaretle(id, tip: 'gelen', kullanici: kullanici);
+  }
 
   /// Çakışmayı "yerel" (üzerine yazılmadan önceki) değerle çözer —
   /// kaydedilmiş eski satırı ilgili tabloya GERİ YAZAR ve kaydı kapatır.

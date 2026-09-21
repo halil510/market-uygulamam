@@ -110,5 +110,76 @@ void main() {
     test('boş liste boş döner', () {
       expect(cariHareketleriniGrupla([]), isEmpty);
     });
+
+    // Kullanıcı isteği (2026-09-21): bir satış silinince (SatisDeposu.sil())
+    // orijinal "Satış" kaydı silinmez (audit için), sadece net etkisini
+    // sıfırlayan bir "Satış İptali" ters kaydı eklenir. Öncesinde bu ikisi
+    // ayrı ayrı, "... İptali" yazan kafa karıştırıcı satırlar olarak
+    // müşteri ekstresinde kalıyordu. Artık net etkisi sıfır olan böyle bir
+    // grup ekrandan TAMAMEN kaldırılıyor — sanki satış hiç olmamış gibi.
+    test('tamamen iptal edilmiş satış (Satış + Satış İptali, net 0) listede HİÇ görünmez', () {
+      final ham = [
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış', fisId: 400, fisNo: 'F4',
+            borc: 100, alacak: 0),
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış İptali', fisId: 400, fisNo: 'F4',
+            borc: 0, alacak: 100),
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Tahsilat', alacak: 999),
+      ];
+
+      final sonuc = cariHareketleriniGrupla(ham);
+
+      expect(sonuc, hasLength(1), reason: 'sadece ilgisiz Tahsilat kalmalı');
+      expect(sonuc.first.fisTipi, 'Tahsilat');
+    });
+
+    test('net SIFIR olmayan (ör. kısmi/tutarsız) bir iptal grubu GÜVENLİ TARAFTA kalır — gizlenmez', () {
+      // Bu senaryoda "Satış İptali" tutarı orijinal borcu tam karşılamıyor
+      // (net = 100 - 70 = 30) — emin olunamayan bir durum, bu yüzden
+      // fonksiyon dokunmadan göstermeye devam etmeli.
+      final ham = [
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış', fisId: 500, fisNo: 'F5',
+            borc: 100, alacak: 0),
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış İptali', fisId: 500, fisNo: 'F5',
+            borc: 0, alacak: 70),
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış', fisId: 600, fisNo: 'F6',
+            borc: 20, alacak: 0),
+      ];
+
+      final sonuc = cariHareketleriniGrupla(ham);
+
+      // F5 grubu net sıfır olmadığı için HİÇBİRİ gizlenmez (orijinal
+      // "Satış" + "Satış İptali" iki ayrı satır olarak kalır, tıpkı
+      // gruplama öncesi gibi), F6 zaten etkilenmemiştir.
+      expect(sonuc, hasLength(3));
+      expect(sonuc.map((h) => h.fisId), containsAll([500, 600]));
+    });
+
+    test('iptal edilmiş satışın izi sadece o fişe ait — diğer satışları etkilemez', () {
+      final ham = [
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış', fisId: 700, fisNo: 'F7',
+            borc: 50, alacak: 0),
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış İptali', fisId: 700, fisNo: 'F7',
+            borc: 0, alacak: 50),
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış', fisId: 800, fisNo: 'F8',
+            borc: 75, alacak: 0),
+      ];
+
+      final sonuc = cariHareketleriniGrupla(ham);
+
+      expect(sonuc, hasLength(1));
+      expect(sonuc.first.fisId, 800);
+      expect(sonuc.first.borc, 75.0);
+    });
+
+    test('tek başına "Satış İptali" (Satış satırı olmadan) gizlenmez — güvenli taraf göstermektir', () {
+      final ham = [
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış İptali', fisId: 900, fisNo: 'F9',
+            borc: 0, alacak: 50),
+      ];
+
+      final sonuc = cariHareketleriniGrupla(ham);
+
+      expect(sonuc, hasLength(1));
+    });
   });
 }

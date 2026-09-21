@@ -44,7 +44,47 @@ import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 /// ekranında gösteriliyor — bu liste sadece NET etkiyi özetler.
 /// 'Satış' olmayan hareketler (Tahsilat, Ödeme, Toptan Satış vb.) ve
 /// tek satırlı 'Satış' kayıtları DEĞİŞTİRİLMEDEN geçer.
-List<CariHareketModel> cariHareketleriniGrupla(List<CariHareketModel> ham) {
+/// Satış-aile fiş tipleri: bir satıştan otomatik türeyen ve o satış
+/// silindiğinde (SatisDeposu.sil()) oluşan orijinal + ters-kayıt tipleri.
+const _satisAileTipleri = {
+  'Satış', 'Toptan Satış', 'Satış İptali', 'Toptan Satış İptali', 'Tahsilat İptali',
+};
+
+/// Bir satış silindiğinde SatisDeposu.sil() orijinal "Satış" cari_hareket
+/// kaydını SİLMEZ (audit için is_deleted=0 kalır) — sadece net etkisini
+/// sıfırlayan bir "Satış İptali" (+varsa "Tahsilat İptali") ters kaydı
+/// EKLER. Kullanıcı isteği (2026-09-21): iptal edilmiş bir satışın izi
+/// (audit) veritabanında kalsın ama müşteri ekstresinde "... İptali" yazan
+/// kafa karıştırıcı satırlar GÖRÜNMESİN — silinen fiş sanki hiç
+/// olmamış gibi. Bu fonksiyon aynı fis_id'ye ait satış-ailesi satırların
+/// NET etkisi sıfırsa (gerçekten tam iptal edilmişse) o grubu listeden
+/// tamamen çıkarır; net sıfır değilse (kısmi/karma durum, emin
+/// olunamayan bir senaryo) hiçbir şeye dokunmaz — güvenli taraf hep
+/// "göster" yönündedir.
+List<CariHareketModel> _iptalEdilmisSatislariGizle(
+    List<CariHareketModel> ham) {
+  final fisGruplari = <int, List<CariHareketModel>>{};
+  for (final h in ham) {
+    if (h.fisId == null || !_satisAileTipleri.contains(h.fisTipi)) continue;
+    (fisGruplari[h.fisId!] ??= []).add(h);
+  }
+  final iptalEdilmisFisIdler = <int>{};
+  fisGruplari.forEach((fisId, grup) {
+    final satisVarMi =
+        grup.any((g) => g.fisTipi == 'Satış' || g.fisTipi == 'Toptan Satış');
+    final iptalVarMi = grup.any((g) => g.fisTipi.endsWith('İptali'));
+    if (!satisVarMi || !iptalVarMi) return;
+    final net = grup.fold(0.0, (s, g) => s + g.borc - g.alacak);
+    if (net.abs() < 0.01) iptalEdilmisFisIdler.add(fisId);
+  });
+  if (iptalEdilmisFisIdler.isEmpty) return ham;
+  return ham
+      .where((h) => h.fisId == null || !iptalEdilmisFisIdler.contains(h.fisId))
+      .toList();
+}
+
+List<CariHareketModel> cariHareketleriniGrupla(List<CariHareketModel> hamGiris) {
+  final ham = _iptalEdilmisSatislariGizle(hamGiris);
   final gruplar = <int, List<CariHareketModel>>{};
   for (final h in ham) {
     if (h.fisTipi == 'Satış' && h.fisId != null) {

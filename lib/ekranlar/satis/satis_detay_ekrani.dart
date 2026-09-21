@@ -13,8 +13,7 @@ import '../../cekirdek/utils/hata_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../modeller/fatura_model.dart';
 import '../../servisler/faturalandirma_servisi.dart';
-import '../../depolar/fatura_deposu.dart';
-import '../../widgetlar/ortak/onay_dialog.dart';
+import '../../servisler/satis_iptal_servisi.dart';
 
 class SatisDetayEkrani extends ConsumerWidget {
   final int satisId;
@@ -97,48 +96,14 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
       });
     if (onay == null || !mounted) return;
 
-    // 🔴🔴 DÜZELTME (Madde 23 — Fatura/E-Belge denetimi, 2026-09-20):
-    // ÖNCEDEN satış iptali, bu satışa ait GİB'e GÖNDERİLMİŞ/ONAYLANMIŞ
-    // bir e-Fatura olup olmadığını hiç kontrol etmiyordu — satış sessizce
-    // iptal edilir, resmi olarak onaylanmış e-Fatura ise hiç
-    // dokunulmadan, artık iptal edilmiş bir satışa referans veren
-    // "öksüz" bir belge olarak kalırdı. e-Fatura'nın kendisini iptal
-    // etmek AYRI ve resmi bir GİB işlemi (bkz. fatura_detay_ekrani.dart
-    // _gibIptalEt) — burada OTOMATİK yapılmaz, sadece kullanıcı AÇIKÇA
-    // uyarılır ve isterse faturayı önce kendisi halletsin diye durur.
-    final faturaId = await FaturalandirmaServisi.mevcutFaturaId(satisId: widget.satis.id);
-    if (faturaId != null && mounted) {
-      final fatura = await FaturaDeposu().idileGetir(faturaId);
-      final gibeGonderildi = fatura != null &&
-          (fatura.eFaturaDurum == 'gonderildi' || fatura.eFaturaDurum == 'onaylandi');
-      if (gibeGonderildi && mounted) {
-        final devamEt = await OnayDialog.goster(context,
-            baslik: 'Bu Satışın Onaylı Bir e-Faturası Var',
-            icerik:
-                'Bu satış için GİB\'e gönderilmiş ve onaylanmış bir e-Fatura '
-                '(${fatura.faturaNo ?? ''}) mevcut. Satışı iptal etmek bu '
-                'faturayı OTOMATİK OLARAK iptal ETMEZ — resmi GİB iptali '
-                'ayrıca fatura ekranından yapılmalıdır. Satışı yine de iptal '
-                'etmek istiyor musunuz?',
-            onayYazi: 'Yine de İptal Et', onayRengi: Colors.red,
-            ikon: Icons.warning_amber_rounded);
-        if (!devamEt || !mounted) return;
-      }
-    }
-
+    // e-Fatura/GİB güvenlik kontrolü + fiili silme artık SatisIptalServisi'nde
+    // — Cari Detay'dan satış-kökenli bir hareket silinirken de AYNI kod
+    // yolu kullanılıyor (bkz. cari_hareket_ekrani.dart _silHareket).
     setState(() => _islemYapiliyor = true);
     try {
-      // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): Bu, uygulamadaki
-      // ANA "Satış İptal Et" düğmesi — önceden SatisDeposu().satisIptal()
-      // çağırıyordu. Bu fonksiyon SADECE satışın 'iptal' bayrağını
-      // işaretler; STOK GERİ YÜKLENMEZ, MÜŞTERİNİN CARİ BORCU GERİ
-      // ALINMAZ, KASA HAREKETİ GERİ ALINMAZ. SatisDeposu.sil() ise TAM
-      // OLARAK bunları yapan kapsamlı geri alma fonksiyonu — ve zaten
-      // parametre olarak bir 'neden' de kabul ediyor (iptal_nedeni
-      // olarak kaydediliyor). Bu düzeltilmeden önce, HER satış iptali
-      // stoğu yapay olarak düşük, müşteri bakiyesini yanlış ve kasayı
-      // fazla gösteren bir duruma yol açıyordu.
-      await SatisDeposu().sil(widget.satis.id!, neden: onay);
+      final silindi = await SatisIptalServisi.guvenliSil(
+          context, widget.satis.id!, neden: onay);
+      if (!silindi) return;
       ref.invalidate(satisDetayiProvider(widget.satis.id!));
       ref.read(satislarProvider.notifier).yukle();
       if (mounted) { BildirimServisi.basari(context, 'Satış iptal edildi'); context.pop(); }

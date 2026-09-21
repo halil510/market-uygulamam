@@ -17,6 +17,8 @@ import '../../depolar/cari_deposu.dart';
 import '../../modeller/cari_model.dart';
 import '../../modeller/cari_hareket_model.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/satis_iptal_servisi.dart';
+import '../../saglayicilar/riverpod/satis_provider.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import 'fis_detay_ekrani.dart';
@@ -166,7 +168,25 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   /// Swipe-silme akışındaki TEK onay diyaloğunun (bkz. Dismissible.confirmDismiss
   /// aşağıda) içeriği — hareketin türüne göre bağlı kasa hareketinin ne
   /// olacağını açıklar.
+  bool _satisKokenliMi(CariHareketModel h) =>
+      (h.fisTipi == 'Satış' || h.fisTipi == 'Toptan Satış') &&
+      h.fisId != null &&
+      h.fisId! > 0;
+
   String _silHareketMesaji(CariHareketModel h) {
+    // 🔴 DÜZELTME (kullanıcı isteği, 2026-09-21): bir satıştan otomatik
+    // türeyen hareket önceden SADECE cari kaydını iptal ediyordu — asıl
+    // satış Satış Listesi'nde aktif kalıyor, stok/kasa/ciro hiç
+    // etkilenmiyordu ("bedava satış" tutarsızlığı). Artık bu hareketi
+    // silmek asıl satışı da siler (stok geri yükleme + kasa/banka
+    // tersine çevirme + cari ters kaydı hep birlikte, tek işlemde) —
+    // hangi taraftan silinirse silinsin sonuç aynı ve tutarlı olur.
+    if (_satisKokenliMi(h)) {
+      return 'Bu hareket "${h.fisNo ?? h.fisId}" numaralı satıştan geliyor. '
+          'Silersen bağlı SATIŞ da iptal edilecek: stok geri yüklenecek, '
+          'ödeme yöntemine göre kasa/banka tersine çevrilecek ve bu satış '
+          'Satış Listesi\'nden de kalkacak. Emin misiniz?';
+    }
     final gercekParaOlabilir = h.fisTipi == 'Tahsilat' || h.fisTipi == 'Ödeme';
     final otomatikTersCevrilebilir =
         gercekParaOlabilir && h.odemeTuru == 'Nakit';
@@ -193,6 +213,24 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   Future<void> _silHareket(CariHareketModel h) async {
     if (h.id == null) return;
     try {
+      if (_satisKokenliMi(h)) {
+        // Satış-kökenli hareket: sadece cari_hareket'i silmek satışı
+        // (dolayısıyla stok/kasa/ciroyu) etkilenmemiş bırakırdı. Asıl
+        // satış SatisIptalServisi ile silinir — satis_detay_ekrani.dart
+        // ile AYNI kod yolu (e-Fatura/GİB kontrolü dahil).
+        final silindi = await SatisIptalServisi.guvenliSil(
+            context, h.fisId!,
+            neden: 'Cari hareketinden silindi');
+        if (!silindi) return;
+        if (!mounted) return;
+        ref.invalidate(cariDetayProvider(widget.cariId));
+        ref.read(carilerProvider.notifier).yukle();
+        ref.read(satislarProvider.notifier).yukle();
+        await _yukle();
+        if (mounted) BildirimServisi.basari(context, 'Satış iptal edildi');
+        return;
+      }
+
       // Tüm iptal mantığı (soft-delete + audit ters kayıt + bakiye
       // yeniden hesaplama + bağlı kasa hareketi ters çevirme + bulut
       // senkron) artık CariDeposu.hareketIptalEt'te — bkz. o metodun

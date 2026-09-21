@@ -105,16 +105,34 @@ class Sepet extends _$Sepet {
 
   // Ürün bazlı promosyon cache: {urunId → [PromosyonModel, ...]}
   // Her ürün ilk kez sepete eklendiğinde DB'den doldurulur.
+  //
+  // 🔴 Derin analizde bulundu (kendi-keşif turu, Promosyon modülü
+  // denetimi): Sepet @Riverpod(keepAlive:true) olduğu için bu cache
+  // ÖNCEDEN sonsuza dek (uygulama yeniden başlatılana kadar) yaşıyordu
+  // — bir ürün BİR KEZ sepete eklenip promosyonu önbelleğe alındıktan
+  // sonra, yönetici o promosyonu Promosyon ekranından kapatsa/değiştirse
+  // bile, POS ekranı kapatılıp açılsa DAHİ fiyat hesaplaması eski
+  // (bayat) promosyonu uygulamaya devam ediyordu. Artık her girdinin
+  // BİR SÜRE geçerliliği var — süresi dolduysa DB'den yeniden okunur.
+  // Anlık değil ama sınırlı (en fazla birkaç dakikalık) bayatlık kabul
+  // edilebilir bir ödünleşim (her sepete-ekleme'de DB'ye gitmek yerine).
   final Map<int, List<PromosyonModel>> _promoCache = {};
+  final Map<int, DateTime> _promoCacheZaman = {};
+  static const _promoCacheGecerlilik = Duration(minutes: 5);
 
   Future<void> _promoCacheYukle(int urunId) async {
-    if (_promoCache.containsKey(urunId)) return;
+    final sonYukleme = _promoCacheZaman[urunId];
+    if (sonYukleme != null &&
+        DateTime.now().difference(sonYukleme) < _promoCacheGecerlilik) {
+      return;
+    }
     try {
       final liste = await PromosyonDeposu().urunPromosyonlari(urunId);
       _promoCache[urunId] = liste;
     } catch (_) {
       _promoCache[urunId] = [];
     }
+    _promoCacheZaman[urunId] = DateTime.now();
   }
 
   Future<void> ekleAsync(UrunModel urun, {double? miktar, double? fiyatOverride}) async {

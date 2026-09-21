@@ -137,7 +137,7 @@ class MasaOdemeServisi {
     // satis_tamamlama_servisi.dart'taki AYNI düzeltme — karma ödemede
     // her yöntem için AYRI, odeme_yontemi etiketli kasa hareketi.
     final kasaGlobalIdleri = <String>[];
-    String? cariGlobalId;
+    final cariGlobalIdleri = <String>[];
     final now = tarih.toIso8601String();
 
     // Cari hareketi — veresiye kısmı
@@ -167,6 +167,34 @@ class MasaOdemeServisi {
         final y = k['yontem'] as String;
         gruplar[y] = (gruplar[y] ?? 0) + (k['tutar'] as num).toDouble();
       }
+      // 🔴 Derin analizde bulundu (kendi-keşif turu — Masa modülü
+      // denetimi): SatisTamamlamaServisi.tamamla() (Hızlı Satış) bir
+      // müşteri bağlıyken Nakit/Kart payı için de bakiyeyi ETKİLEMEYEN
+      // (borc=alacak, self-cancelling) bir "bilgi" cari_hareket satırı
+      // yazar — böylece o satış müşterinin Cari ekstresinde/geçmişinde
+      // görünür. Masa akışı bunu HİÇ yapmıyordu: bir müşteriye bağlı
+      // masa hesabı Nakit/Kart ile (kısmen veya tamamen) ödenirse,
+      // kasada/satışta doğru işlenir ama o müşterinin cari geçmişinde
+      // HİÇ görünmezdi. Artık Hızlı Satış ile AYNI desen uygulanıyor.
+      final digerTutar = gruplar.values.fold(0.0, (s, v) => s + v);
+      if (efektifCariId != null && digerTutar > 0.005) {
+        final yontemler = gruplar.keys.join('+');
+        cariGlobalIdleri.add(await _cariDepo.hareketEkleTxn(
+            txn,
+            CariHareketModel(
+              cariId: efektifCariId,
+              tarih: tarih,
+              fisTipi: 'Satış',
+              fisId: satisId,
+              fisNo: fisNo,
+              aciklama:
+                  '$yontemler Masa Satış: $masaAdi ($fisNo) — bakiyeyi etkilemez',
+              borc: digerTutar,
+              alacak: digerTutar,
+              odemeTuru: yontemler,
+              kullanici: kullanici?.adSoyad,
+            )));
+      }
       for (final girdi in gruplar.entries) {
         if (girdi.value <= 0.005) continue;
         final kid = const Uuid().v4();
@@ -187,7 +215,7 @@ class MasaOdemeServisi {
       }
 
       if (efektifCariId != null && cariTutar > 0.005) {
-        cariGlobalId = await _cariDepo.hareketEkleTxn(
+        cariGlobalIdleri.add(await _cariDepo.hareketEkleTxn(
             txn,
             CariHareketModel(
               cariId: efektifCariId,
@@ -200,7 +228,7 @@ class MasaOdemeServisi {
               alacak: 0,
               odemeTuru: 'Cari',
               kullanici: kullanici?.adSoyad,
-            ));
+            )));
       }
 
       // Masayı kapat — aynı transaction içinde, siparisKapat()'ın
@@ -266,13 +294,15 @@ class MasaOdemeServisi {
           BulutManager().upsert(
               'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
       }
-      if (cariGlobalId != null) {
+      for (final gid in cariGlobalIdleri) {
         final cariHareketSatir = await db.query('cari_hareket',
-            where: 'global_id = ?', whereArgs: [cariGlobalId], limit: 1);
+            where: 'global_id = ?', whereArgs: [gid], limit: 1);
         if (cariHareketSatir.isNotEmpty) {
           BulutManager().upsert('cari_hareket',
               Map<String, dynamic>.from(cariHareketSatir.first));
         }
+      }
+      if (cariGlobalIdleri.isNotEmpty) {
         final cariSatir = await db.query('cari',
             where: 'id = ?', whereArgs: [efektifCariId], limit: 1);
         if (cariSatir.isNotEmpty)

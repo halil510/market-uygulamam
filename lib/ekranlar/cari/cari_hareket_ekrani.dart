@@ -18,6 +18,7 @@ import '../../modeller/cari_model.dart';
 import '../../modeller/cari_hareket_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/satis_iptal_servisi.dart';
+import '../../servisler/alim_islem_servisi.dart';
 import '../../saglayicilar/riverpod/satis_provider.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
@@ -173,6 +174,14 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       h.fisId != null &&
       h.fisId! > 0;
 
+  // 🆕 (kullanıcı bulgusu, 2026-09-22): 'Alım' (tedarikçiden mal alımı)
+  // da satış-kökenli hareketle AYNI sorunu taşıyordu — sadece cari
+  // kaydını iptal etmek asıl alımı (Alım Listesi'ndeki 'teslim_alindi'
+  // kaydı) etkilenmemiş bırakırdı: stok geri düşmez, kasa/banka geri
+  // gelmez, silinen alım Alım Listesi'nde AYNEN görünmeye devam ederdi.
+  bool _alimKokenliMi(CariHareketModel h) =>
+      h.fisTipi == 'Alım' && h.fisId != null && h.fisId! > 0;
+
   String _silHareketMesaji(CariHareketModel h) {
     // 🔴 DÜZELTME (kullanıcı isteği, 2026-09-21): bir satıştan otomatik
     // türeyen hareket önceden SADECE cari kaydını iptal ediyordu — asıl
@@ -186,6 +195,12 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
           'Silersen bağlı SATIŞ da iptal edilecek: stok geri yüklenecek, '
           'ödeme yöntemine göre kasa/banka tersine çevrilecek ve bu satış '
           'Satış Listesi\'nden de kalkacak. Emin misiniz?';
+    }
+    if (_alimKokenliMi(h)) {
+      return 'Bu hareket "${h.fisNo ?? h.fisId}" numaralı alımdan geliyor. '
+          'Silersen bağlı ALIM da iptal edilecek: stok geri düşülecek, '
+          'ödeme yöntemine göre kasa/banka tersine çevrilecek ve bu alım '
+          'Alım Listesi\'nde "İptal" olarak işaretlenecek. Emin misiniz?';
     }
     final gercekParaOlabilir = h.fisTipi == 'Tahsilat' || h.fisTipi == 'Ödeme';
     final otomatikTersCevrilebilir =
@@ -231,6 +246,20 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
         return;
       }
 
+      if (_alimKokenliMi(h)) {
+        // Alım-kökenli hareket: sadece cari_hareket'i silmek alımı
+        // (dolayısıyla stok/kasa/bankayı) etkilenmemiş bırakırdı. Asıl
+        // alım AlimIslemServisi().sil() ile silinir — stok geri düşme +
+        // kasa/banka tersine çevirme + cari ters kaydı tek transaction'da.
+        await AlimIslemServisi().sil(h.fisId!, neden: 'Cari hareketinden silindi');
+        if (!mounted) return;
+        ref.invalidate(cariDetayProvider(widget.cariId));
+        ref.read(carilerProvider.notifier).yukle();
+        await _yukle();
+        if (mounted) BildirimServisi.basari(context, 'Alım iptal edildi');
+        return;
+      }
+
       // Tüm iptal mantığı (soft-delete + audit ters kayıt + bakiye
       // yeniden hesaplama + bağlı kasa hareketi ters çevirme + bulut
       // senkron) artık CariDeposu.hareketIptalEt'te — bkz. o metodun
@@ -238,6 +267,14 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       await _depo.hareketIptalEt(h);
 
       if (!mounted) return;
+      // 🔴 DÜZELTME (kullanıcı bulgusu, 2026-09-22): bu dal (Tahsilat/
+      // Ödeme/İskonto/vb.) satış-kökenli daldan farklı olarak
+      // cariDetayProvider'ı hiç invalidate ETMİYORDU — bu ekranın kendi
+      // _yukle()'si taze okuduğu için BURADA doğru görünse de, kullanıcı
+      // sildikten sonra ana Cari Detay ekranına dönerse orada bayat
+      // (silme öncesi) bakiye görünebiliyordu.
+      ref.invalidate(cariDetayProvider(widget.cariId));
+      ref.read(carilerProvider.notifier).yukle();
       await _yukle();
       if (mounted) BildirimServisi.basari(context, 'Hareket iptal edildi');
     } catch (e) {

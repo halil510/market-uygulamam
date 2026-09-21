@@ -467,4 +467,209 @@ class AlimIslemServisi {
       await _stokDepo.subeStokPayiUygula(girdi.key, girdi.value);
     }
   }
+
+  /// Bir Alım'ı (teslim alınmış tedarikçi siparişini) GÜVENLİ şekilde
+  /// siler — stok geri düşer, kasa/banka (varsa) tersine çevrilir, cari
+  /// hareketi tersine çevrilir. SatisDeposu.sil()'in (2026-09-21
+  /// düzeltmesi) BİREBİR aynı deseni kullanır: hangi tutarın
+  /// "gerçekleştiğini" satislar/tedarikci_siparisler alanlarından
+  /// TAHMİN ETMEZ — bu alımın GERÇEKTEN yazdığı kasa_hareketleri/
+  /// cari_hareket satırlarını sorgulayıp TAM TERSİNİ yazar.
+  ///
+  /// 🔴🔴 KRİTİK BULGU (kullanıcı bulgusu, 2026-09-22): bu fonksiyon
+  /// ÖNCEDEN HİÇ YOKTU — Cari Hareketler ekranından bir "Alım" satırı
+  /// silinince genel amaçlı CariDeposu.hareketIptalEt()'e düşüyordu:
+  ///  1) tedarikci_siparisler'e hiç dokunmuyordu — silinen alım Alım
+  ///     Listesi'nin "Teslim Alınan" sekmesinde AYNEN görünmeye devam
+  ///     ediyordu.
+  ///  2) Stok hiç geri düşülmüyordu — alınan mal stokta kalıyordu.
+  ///  3) Kasa/Banka ters çevirmesi referans_turu='cari_hareket' arıyordu
+  ///     ama alimKaydet() referans_turu='alim' yazıyordu — asla
+  ///     eşleşmiyordu, Nakit/Havale ile yapılmış bir alım silinince
+  ///     kasadan/bankadan çıkan para GERİ GELMİYORDU.
+  /// Cari bakiye matematiği (SUM ile yeniden hesaplama) kendi başına
+  /// doğruydu, ama stok/kasa tarafı sessizce bozuk kaldığı için genel
+  /// tablo tutarsız görünüyordu.
+  Future<void> sil(int alimId, {String? neden}) async {
+    final db = await Veritabani().db;
+    int? cariId;
+    final kasaHareketIdleri = <int>[];
+    int? bankaHareketId;
+    final subePayiFarklari = <int, double>{};
+
+    await db.transaction((txn) async {
+      // 1. Alım başlığını al
+      final alimRows = await txn.query('tedarikci_siparisler',
+          where: 'id = ?', whereArgs: [alimId]);
+      if (alimRows.isEmpty) return;
+      final alim = alimRows.first;
+      if (alim['durum'] != 'teslim_alindi') {
+        throw Exception(
+            'Sadece teslim alınmış (stok/kasa/cariyi etkilemiş) bir alım bu şekilde silinebilir.');
+      }
+      cariId = alim['cari_id'] as int?;
+      final alimNo = alim['siparis_no'] as String? ?? '#$alimId';
+      final now = DateTime.now().toIso8601String();
+
+      // 2. Alımı iptal'e çevir — Alım Listesi'nin "Teslim Alınan"
+      // sekmesinden düşer, "İptal" sekmesine geçer (durumaGoreListele()
+      // zaten durum'a göre filtreliyor, ek bir sorgu değişikliği
+      // gerekmiyor). is_deleted=1 ayrıca senkron için (bkz.
+      // supabase_sync_servisi.dart tablo haritası: tedarikci_siparisler
+      // → is_deleted).
+      await txn.update(
+          'tedarikci_siparisler',
+          {
+            'durum': 'iptal',
+            'is_deleted': 1,
+            'last_updated': now,
+            'notlar': neden ?? 'Alım silindi',
+          },
+          where: 'id = ?',
+          whereArgs: [alimId]);
+
+      // 3. Stok geri düş
+      final kalemler = await txn.query('tedarikci_siparis_kalem',
+          where: 'siparis_id = ?', whereArgs: [alimId]);
+      for (final k in kalemler) {
+        final urunId = k['urun_id'] as int?;
+        final miktar = (k['teslim_mik'] as num?)?.toDouble() ?? 0;
+        if (urunId == null || miktar <= 0) continue;
+        final urunRows = await txn.query('urunler',
+            columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
+        final onceki = urunRows.isNotEmpty
+            ? (urunRows.first['stok'] as num).toDouble() : 0.0;
+        final sonraki = onceki - miktar;
+        await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
+            where: 'id = ?', whereArgs: [urunId]);
+        await txn.insert('stok_hareket', {
+          'urun_id':       urunId,
+          'hareket_turu':  'Alım İptali',
+          'miktar':        miktar,
+          'onceki_stok':   onceki,
+          'sonraki_stok':  sonraki,
+          'referans_id':   alimId,
+          'referans_turu': 'alim_iptal',
+          'tarih':         now,
+          'last_updated':  now,
+          'aciklama':      'Alım iptali — Fiş $alimNo',
+        });
+        // Ana stok AZALDI (alım iptali) — subeStokPayiUygula
+        // pozitif=düştü bekliyor (alimKaydet()'teki AYNI mantığın tersi).
+        subePayiFarklari[urunId] = (subePayiFarklari[urunId] ?? 0) + miktar;
+      }
+
+      // 4. Kasa/Banka hareketini tersine çevir — bu alımın GERÇEKTEN
+      // yazdığı satırları sorgulayıp (odenen tutara/ödeme yöntemine göre
+      // TAHMİN ETMEDEN) tersini yazıyoruz.
+      final kasaRows = await txn.query('kasa_hareketleri',
+          where: 'referans_id = ? AND referans_turu = ? AND deleted_at IS NULL',
+          whereArgs: [alimId, 'alim']);
+      for (final k in kasaRows) {
+        final tutar = (k['tutar'] as num?)?.toDouble() ?? 0;
+        if (tutar <= 0) continue;
+        final kid = await _kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
+          hareketTipi:  'Alım İptali',
+          tutar:        tutar,
+          referansId:   alimId,
+          referansTuru: 'alim_iptal',
+          tarih:        DateTime.parse(now),
+          aciklama:     'Alım iptali: $alimNo',
+        ));
+        kasaHareketIdleri.add(kid);
+      }
+      final bankaRows = await txn.query('banka_hareketler',
+          where:
+              'referans_id = ? AND referans_turu = ? AND (is_deleted IS NULL OR is_deleted = 0)',
+          whereArgs: [alimId, 'alim']);
+      for (final b in bankaRows) {
+        final tutar = (b['tutar'] as num?)?.toDouble() ?? 0;
+        final bankaHesapId = b['banka_hesap_id'] as int?;
+        if (tutar <= 0 || bankaHesapId == null) continue;
+        bankaHareketId = await _bankaDepo.ekleTxn(txn, BankaHareketModel(
+          bankaHesapId: bankaHesapId,
+          islemTipi:    'Gelen',
+          tutar:        tutar,
+          referansId:   alimId,
+          referansTuru: 'alim_iptal',
+          tarih:        DateTime.parse(now),
+          aciklama:     'Alım iptali: $alimNo',
+        ));
+      }
+
+      // 5. Cari hareketi tersine çevir — SatisDeposu.sil() ile AYNI
+      // sorgu-tabanlı desen: bu alımın GERÇEKTEN yazdığı cari_hareket
+      // satırları (fis_id + fis_tipi='Alım') sorgulanıp toplam borç/
+      // alacağın TAM TERSİ TEK bir "Alım İptali" kaydıyla sıfırlanıyor.
+      if (cariId != null) {
+        final orijinalCariSatirlari = await txn.query('cari_hareket',
+            where: 'fis_id = ? AND cari_id = ? AND fis_tipi = ? AND is_deleted = 0',
+            whereArgs: [alimId, cariId, 'Alım']);
+        final toplamBorc = orijinalCariSatirlari.fold(
+            0.0, (s, r) => s + ((r['borc'] as num?)?.toDouble() ?? 0));
+        final toplamAlacak = orijinalCariSatirlari.fold(
+            0.0, (s, r) => s + ((r['alacak'] as num?)?.toDouble() ?? 0));
+        if (toplamBorc > 0.005 || toplamAlacak > 0.005) {
+          await txn.insert('cari_hareket', {
+            'global_id':  const Uuid().v4(),
+            'cari_id':    cariId,
+            'tarih':      now,
+            'last_updated': now,
+            'fis_tipi':   'Alım İptali',
+            'fis_id':     alimId,
+            'fis_no':     alimNo,
+            'aciklama':   'Alım iptali: $alimNo',
+            'borc':       toplamAlacak,
+            'alacak':     toplamBorc,
+            'odeme_turu': 'Cari',
+          });
+        }
+        await txn.rawUpdate(
+            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), last_updated = ? WHERE id = ?',
+            [cariId, now, cariId]);
+      }
+    });
+
+    // Transaction kapandıktan sonra buluta bildir.
+    try {
+      final alimSatir = await db.query('tedarikci_siparisler',
+          where: 'id = ?', whereArgs: [alimId], limit: 1);
+      if (alimSatir.isNotEmpty) {
+        BulutManager().upsert(
+            'tedarikci_siparisler', Map<String, dynamic>.from(alimSatir.first));
+      }
+      for (final kasaHareketId in kasaHareketIdleri) {
+        final s = await db.query('kasa_hareketleri',
+            where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
+        if (s.isNotEmpty) {
+          BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(s.first));
+        }
+      }
+      if (bankaHareketId != null) {
+        final s = await db.query('banka_hareketler',
+            where: 'id = ?', whereArgs: [bankaHareketId], limit: 1);
+        if (s.isNotEmpty) {
+          BulutManager().upsert('banka_hareketler', Map<String, dynamic>.from(s.first));
+        }
+      }
+      if (cariId != null) {
+        final cariHareketSon = await db.query('cari_hareket',
+            where: 'fis_id = ? AND cari_id = ? AND fis_tipi = ?',
+            whereArgs: [alimId, cariId, 'Alım İptali'], orderBy: 'id DESC', limit: 1);
+        for (final satir in cariHareketSon) {
+          BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(satir));
+        }
+        final cariSon = await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
+        if (cariSon.isNotEmpty) {
+          BulutManager().upsert('cari', Map<String, dynamic>.from(cariSon.first));
+        }
+      }
+    } catch (_) {
+      // Bulut bildirimi hatası asıl işlemi engellemez.
+    }
+
+    for (final girdi in subePayiFarklari.entries) {
+      await _stokDepo.subeStokPayiUygula(girdi.key, girdi.value);
+    }
+  }
 }

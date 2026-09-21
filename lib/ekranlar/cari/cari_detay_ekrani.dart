@@ -52,37 +52,60 @@ const _satisAileTipleri = {
   'Satış', 'Toptan Satış', 'Satış İptali', 'Toptan Satış İptali', 'Tahsilat İptali',
 };
 
-/// Bir satış silindiğinde SatisDeposu.sil() orijinal "Satış" cari_hareket
-/// kaydını SİLMEZ (audit için is_deleted=0 kalır) — sadece net etkisini
-/// sıfırlayan bir "Satış İptali" (+varsa "Tahsilat İptali") ters kaydı
-/// EKLER. Kullanıcı isteği (2026-09-21): iptal edilmiş bir satışın izi
-/// (audit) veritabanında kalsın ama müşteri ekstresinde "... İptali" yazan
-/// kafa karıştırıcı satırlar GÖRÜNMESİN — silinen fiş sanki hiç
-/// olmamış gibi. Bu fonksiyon aynı fis_id'ye ait satış-ailesi satırların
-/// NET etkisi sıfırsa (gerçekten tam iptal edilmişse) o grubu listeden
-/// tamamen çıkarır; net sıfır değilse (kısmi/karma durum, emin
-/// olunamayan bir senaryo) hiçbir şeye dokunmaz — güvenli taraf hep
-/// "göster" yönündedir.
+/// Alım-aile fiş tipleri: bir tedarikçi alımından türeyen ve o alım
+/// silindiğinde (AlimIslemServisi.sil(), 2026-09-22) oluşan orijinal +
+/// ters-kayıt tipleri. Satış ailesinden AYRI tutuluyor çünkü 'fis_id',
+/// Satış için satislar.id, Alım için tedarikci_siparisler.id'dir — bu
+/// iki id UZAYI ÇAKIŞABİLİR (ikisi de 1'den başlar), aynı fis_id'ye
+/// sahip bir Satış ile bir Alım'ı TEK grupta birleştirmek net hesabını
+/// bozardı (bkz. aşağıdaki _fisAilesi/anahtar mantığı).
+const _alimAileTipleri = {
+  'Alım', 'Alım İptali',
+};
+
+/// [h] hangi aileye ait (varsa) — 's' (Satış) / 'a' (Alım) / null
+/// (aile-dışı, ör. Tahsilat/Ödeme).
+String? _fisAilesi(CariHareketModel h) {
+  if (_satisAileTipleri.contains(h.fisTipi)) return 's';
+  if (_alimAileTipleri.contains(h.fisTipi)) return 'a';
+  return null;
+}
+
+/// Bir satış silindiğinde SatisDeposu.sil() (bir alım silindiğinde
+/// AlimIslemServisi.sil()) orijinal "Satış"/"Alım" cari_hareket kaydını
+/// SİLMEZ (audit için is_deleted=0 kalır) — sadece net etkisini
+/// sıfırlayan bir "... İptali" ters kaydı EKLER. Kullanıcı isteği
+/// (2026-09-21, Alım'a genişletildi 2026-09-22): iptal edilmiş bir
+/// satışın/alımın izi (audit) veritabanında kalsın ama müşteri
+/// ekstresinde "... İptali" yazan kafa karıştırıcı satırlar GÖRÜNMESİN —
+/// silinen fiş sanki hiç olmamış gibi. Bu fonksiyon AYNI aileden VE AYNI
+/// fis_id'ye ait satırların NET etkisi sıfırsa (gerçekten tam iptal
+/// edilmişse) o grubu listeden tamamen çıkarır; net sıfır değilse
+/// (kısmi/karma durum, emin olunamayan bir senaryo) hiçbir şeye
+/// dokunmaz — güvenli taraf hep "göster" yönündedir.
 List<CariHareketModel> _iptalEdilmisSatislariGizle(
     List<CariHareketModel> ham) {
-  final fisGruplari = <int, List<CariHareketModel>>{};
+  final gruplar = <String, List<CariHareketModel>>{};
   for (final h in ham) {
-    if (h.fisId == null || !_satisAileTipleri.contains(h.fisTipi)) continue;
-    (fisGruplari[h.fisId!] ??= []).add(h);
+    final aile = _fisAilesi(h);
+    if (h.fisId == null || aile == null) continue;
+    (gruplar['$aile:${h.fisId}'] ??= []).add(h);
   }
-  final iptalEdilmisFisIdler = <int>{};
-  fisGruplari.forEach((fisId, grup) {
-    final satisVarMi =
-        grup.any((g) => g.fisTipi == 'Satış' || g.fisTipi == 'Toptan Satış');
+  final gizlenecekAnahtarlar = <String>{};
+  gruplar.forEach((anahtar, grup) {
+    final asliVarMi = grup.any((g) =>
+        g.fisTipi == 'Satış' || g.fisTipi == 'Toptan Satış' || g.fisTipi == 'Alım');
     final iptalVarMi = grup.any((g) => g.fisTipi.endsWith('İptali'));
-    if (!satisVarMi || !iptalVarMi) return;
+    if (!asliVarMi || !iptalVarMi) return;
     final net = grup.fold(0.0, (s, g) => s + g.borc - g.alacak);
-    if (net.abs() < 0.01) iptalEdilmisFisIdler.add(fisId);
+    if (net.abs() < 0.01) gizlenecekAnahtarlar.add(anahtar);
   });
-  if (iptalEdilmisFisIdler.isEmpty) return ham;
-  return ham
-      .where((h) => h.fisId == null || !iptalEdilmisFisIdler.contains(h.fisId))
-      .toList();
+  if (gizlenecekAnahtarlar.isEmpty) return ham;
+  return ham.where((h) {
+    final aile = _fisAilesi(h);
+    if (h.fisId == null || aile == null) return true;
+    return !gizlenecekAnahtarlar.contains('$aile:${h.fisId}');
+  }).toList();
 }
 
 /// CariDeposu.hareketIptalEt() bir Tahsilat/Ödeme iptal edildiğinde

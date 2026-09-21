@@ -222,5 +222,43 @@ void main() {
 
       expect(sonuc, hasLength(2));
     });
+
+    // Kullanıcı bulgusu (2026-09-22): AlimIslemServisi.sil() eklendi —
+    // bir Alım silinince Satış'la AYNI desende (audit izi DB'de kalır,
+    // ekranda net-sıfır grup gizlenir) davranmalı.
+    test('tamamen iptal edilmiş Alım (Alım + Alım İptali, net 0) listede HİÇ görünmez', () {
+      final ham = [
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Alım', fisId: 300, fisNo: 'AL1',
+            borc: 0, alacak: 150),
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Alım İptali', fisId: 300, fisNo: 'AL1',
+            borc: 150, alacak: 0),
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Tahsilat', alacak: 999),
+      ];
+
+      final sonuc = cariHareketleriniGrupla(ham);
+
+      expect(sonuc, hasLength(1), reason: 'sadece ilgisiz Tahsilat kalmalı');
+      expect(sonuc.first.fisTipi, 'Tahsilat');
+    });
+
+    // KRİTİK: Satış'ın fis_id'si satislar.id, Alım'ın fis_id'si
+    // tedarikci_siparisler.id'dir — bu iki id uzayı ÇAKIŞABİLİR (ikisi de
+    // 1'den başlar). Aynı fis_id'ye sahip bir Satış ile bir Alım YANLIŞLIKLA
+    // aynı grupta birleşip net hesabını bozmamalı.
+    test('AYNI fis_id\'ye sahip bir Satış ile bir Alım birbirine KARIŞMAZ (farklı id uzayları)', () {
+      final ham = [
+        // fis_id=5: tamamen iptal edilmiş bir SATIŞ (net 0 — gizlenmeli)
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış', fisId: 5, fisNo: 'S5', borc: 80, alacak: 0),
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış İptali', fisId: 5, fisNo: 'S5', borc: 0, alacak: 80),
+        // fis_id=5: HÂLÂ AKTİF (iptal edilmemiş) bir ALIM — görünmeye devam etmeli
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Alım', fisId: 5, fisNo: 'AL5', borc: 0, alacak: 200),
+      ];
+
+      final sonuc = cariHareketleriniGrupla(ham);
+
+      expect(sonuc, hasLength(1), reason: 'sadece aktif Alım kalmalı, Satış grubu gizlenmeli');
+      expect(sonuc.first.fisTipi, 'Alım');
+      expect(sonuc.first.alacak, 200.0);
+    });
   });
 }

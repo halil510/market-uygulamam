@@ -275,7 +275,7 @@ class KasaDeposu {
       // hareket tipleri günlük özet toplamına hiç dahil edilmiyordu.
       final res = await db.rawQuery("""
         SELECT 
-          COALESCE(SUM(CASE WHEN hareket_tipi IN ('Satış','Tahsilat','AçılışKasa','Giriş','Virman Giriş','Iade Iptali','İade İptali','Ödeme Girişi','Gider İptali') THEN tutar ELSE 0 END), 0) as giris,
+          COALESCE(SUM(CASE WHEN hareket_tipi IN ('Satış','Tahsilat','AçılışKasa','Giriş','Virman Giriş','Iade Iptali','İade İptali','Ödeme Girişi','Gider İptali','Alım İptali') THEN tutar ELSE 0 END), 0) as giris,
           COALESCE(SUM(CASE WHEN hareket_tipi IN ('Gider','Ödeme','KapanışKasa') THEN tutar ELSE 0 END), 0) as cikis,
           COALESCE(SUM(CASE WHEN hareket_tipi = 'Satış' AND referans_turu = 'satis' THEN tutar ELSE 0 END), 0) as nakit_satis,
           COALESCE(SUM(CASE WHEN hareket_tipi = 'Tahsilat' THEN tutar ELSE 0 END), 0) as tahsilat
@@ -329,7 +329,7 @@ class KasaDeposu {
       final subeKosulu = subeId != null ? ' AND sube_id = ?' : '';
       final res = await db.rawQuery("""
         SELECT
-          COALESCE(SUM(CASE WHEN hareket_tipi IN ('Satış','Tahsilat','AçılışKasa','Giriş','Virman Giriş','Iade Iptali','İade İptali','Ödeme Girişi','Gider İptali') THEN tutar ELSE 0 END), 0) as giris,
+          COALESCE(SUM(CASE WHEN hareket_tipi IN ('Satış','Tahsilat','AçılışKasa','Giriş','Virman Giriş','Iade Iptali','İade İptali','Ödeme Girişi','Gider İptali','Alım İptali') THEN tutar ELSE 0 END), 0) as giris,
           COALESCE(SUM(CASE WHEN hareket_tipi IN ('Gider','Ödeme','KapanışKasa') THEN tutar ELSE 0 END), 0) as cikis
         FROM kasa_hareketleri
         WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND deleted_at IS NULL$subeKosulu

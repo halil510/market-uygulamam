@@ -16,6 +16,11 @@ class KasaHareketModel {
     'İade İptali',
     'Ödeme Girişi',
     'Gider İptali',
+    // 🆕 (kullanıcı bulgusu, 2026-09-22 — Alım silme akışı eklendi):
+    // 'Alım' kendisi ÇIKIŞ'tır (mal alırken kasadan para çıkar), bu
+    // yüzden burada YOK — ama bir Alım'ın İPTALİ (silinmesi) kasaya
+    // parayı GERİ koyar, dolayısıyla GİRİŞ'tir.
+    'Alım İptali',
   };
   static bool girisMi(String hareketTipi) => girisTipleri.contains(hareketTipi);
 

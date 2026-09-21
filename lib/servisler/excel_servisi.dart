@@ -688,8 +688,14 @@ class ExcelServisi {
     // içinde topluca yapılıyor (bkz. yukarıdaki not).
     if (bekleyenSatirlar.isNotEmpty) {
       final sonuc = await depo.topluEkleGuncelle(bekleyenSatirlar);
-      eklenen = sonuc['eklenen'] ?? 0;
-      guncellenen = sonuc['guncellenen'] ?? 0;
+      eklenen = (sonuc['eklenen'] as int?) ?? 0;
+      guncellenen = (sonuc['guncellenen'] as int?) ?? 0;
+      // bkz. UrunDeposu.topluEkleGuncelle üzerindeki kritik düzeltme
+      // notu — transaction içinde sessizce atlanan satırlar artık
+      // burada da 'hatalı' sayısına ve listesine yansıtılıyor.
+      final topluHatalari = (sonuc['hatalar'] as List?)?.cast<String>() ?? const [];
+      hatali += topluHatalari.length;
+      hataListesi.addAll(topluHatalari);
     }
 
     return IceriAktarSonuc(

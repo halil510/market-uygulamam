@@ -30,10 +30,20 @@ class UrunDeposu {
   /// performans-kritik senaryolar için TEK bir transaction içinde
   /// çalışan, çok daha hızlı bir alternatif sunuyor. Stok değişikliği
   /// takibi (event sourcing) burada da korunuyor.
-  Future<Map<String, int>> topluEkleGuncelle(
+  Future<Map<String, dynamic>> topluEkleGuncelle(
       List<({UrunModel urun, int? mevcutId})> satirlar) async {
     final db = await _d;
     var eklenen = 0, guncellenen = 0;
+    // 🔴🔴 KRİTİK DÜZELTME (kendi-keşif turu — Excel modülü denetimi):
+    // bir satır aşağıdaki catch'e düşünce (ör. mükerrer barkod/kod)
+    // ÖNCEDEN sadece LogServisi'ne yazılıp SESSİZCE atlanıyordu —
+    // dönen {'eklenen','guncellenen'} sayıları bu satırı hiç
+    // YANSITMIYORDU. Sonuç: kullanıcı "Toplam 500 satır, 480 eklendi,
+    // 5 hatalı" görüyordu ama aslında 15 satır burada sessizce
+    // başarısız olmuş, ne dialogda ne hata listesinde hiç görünmüyordu.
+    // Artık bu satırlar da toplanıp çağırana (ExcelServisi —
+    // IceriAktarSonuc.hatalar'a eklenir) döndürülüyor.
+    final basarisizSatirlar = <String>[];
     // ÖNCEDEN BURADA CİDDİ BİR HATA VARDI: TÜM satırlar TEK bir
     // transaction'a konmuştu — bu, hız için doğruydu AMA eğer
     // Excel'de TEK BİR satır bile sorunlu ise (örn. mükerrer barkod,
@@ -145,9 +155,17 @@ class UrunDeposu {
       } catch (e) {
         LogServisi().hata('UrunDeposu.topluEkleGuncelle (satır atlandı)', hata: e);
         // Bu satır atlanıyor, döngü DEVAM EDİYOR — diğer satırlar etkilenmiyor.
+        final tanimlayici = (s.urun.barkod?.isNotEmpty ?? false)
+            ? s.urun.barkod!
+            : (s.urun.urunAdi.isNotEmpty ? s.urun.urunAdi : '?');
+        basarisizSatirlar.add('$tanimlayici: $e');
       }
     }
-    return {'eklenen': eklenen, 'guncellenen': guncellenen};
+    return {
+      'eklenen': eklenen,
+      'guncellenen': guncellenen,
+      'hatalar': basarisizSatirlar,
+    };
   }
 
   // ── CRUD ────────────────────────────────────────────────────────────────

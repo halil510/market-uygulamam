@@ -35,6 +35,12 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
   List<Map<String, dynamic>> _gecmis = [];
   Map<String, dynamic> _satisOzet = {};
   bool _yukleniyor = true;
+  // FAZ 6 (DEEP_AUDIT_REPORT, 2026-09-21): "Geçmiş" sekmesi önceden
+  // sadece en son 30 kaydı gösterip daha eskilere ulaşmanın hiçbir yolunu
+  // sunmuyordu. Artık "Daha Fazla Yükle" ile sayfalanabiliyor.
+  static const _gecmisSayfaBoyutu = 30;
+  bool _gecmisDahaVarMi = true;
+  bool _gecmisDahaYukleniyor = false;
   // 🔴 Derin denetimde bulundu (P2): vardiya aç/kapat, kod tabanındaki
   // neredeyse tek istisna olarak çift-dokunma korumasına sahip değildi
   // — hızlı art arda dokunma (onay diyaloğu render olmadan önce) aynı
@@ -65,7 +71,8 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
       // basınca aslında Şube A'nın açık vardiyasını kapatabiliyordu.
       final subeId = AktifSubeServisi().subeId;
       final aktif = await _depo.aktifVardiyaGetir(subeId: subeId);
-      final gecmis = await _depo.gecmisVardiyalarGetir(subeId: subeId);
+      final gecmis = await _depo.gecmisVardiyalarGetir(
+          subeId: subeId, limit: _gecmisSayfaBoyutu);
 
       // Aktif vardiya satış özeti
       Map<String, dynamic> ozet = {};
@@ -105,10 +112,30 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
         _gecmis = gecmis;
         _satisOzet = ozet;
         _yukleniyor = false;
+        _gecmisDahaVarMi = gecmis.length >= _gecmisSayfaBoyutu;
       });
     } catch (e) {
       if (kDebugMode) debugPrint('VardiyaEkrani _yukle hata: $e');
       if (mounted) setState(() => _yukleniyor = false);
+    }
+  }
+
+  Future<void> _gecmisDahaFazlaYukle() async {
+    if (_gecmisDahaYukleniyor || !_gecmisDahaVarMi) return;
+    setState(() => _gecmisDahaYukleniyor = true);
+    try {
+      final subeId = AktifSubeServisi().subeId;
+      final sonraki = await _depo.gecmisVardiyalarGetir(
+          subeId: subeId, limit: _gecmisSayfaBoyutu, offset: _gecmis.length);
+      if (!mounted) return;
+      setState(() {
+        _gecmis = [..._gecmis, ...sonraki];
+        _gecmisDahaVarMi = sonraki.length >= _gecmisSayfaBoyutu;
+        _gecmisDahaYukleniyor = false;
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('VardiyaEkrani _gecmisDahaFazlaYukle hata: $e');
+      if (mounted) setState(() => _gecmisDahaYukleniyor = false);
     }
   }
 
@@ -700,9 +727,25 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
       ]));
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: _gecmis.length,
+      itemCount: _gecmis.length + (_gecmisDahaVarMi ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
+        if (i >= _gecmis.length) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: _gecmisDahaYukleniyor
+                  ? const SizedBox(
+                      width: 22, height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : TextButton.icon(
+                      onPressed: _gecmisDahaFazlaYukle,
+                      icon: const Icon(Icons.expand_more),
+                      label: const Text('Daha Fazla Yükle'),
+                    ),
+            ),
+          );
+        }
         final v = _gecmis[i];
         final bas = DateTime.tryParse(v['acilis_tarihi']?.toString() ?? '');
         final bit = DateTime.tryParse(v['kapanis_tarihi']?.toString() ?? '');

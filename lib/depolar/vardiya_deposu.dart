@@ -31,18 +31,24 @@ class VardiyaDeposu {
 
   /// Kapanmış vardiyaların geçmişi (en yeniden eskiye). [onaylayan_adi]:
   /// Madde 12 denetimi — kapanışı onaylayan yöneticinin adı (varsa).
+  /// [offset]: DEEP_AUDIT_REPORT FAZ 6 (2026-09-21) — ekran önceden HER
+  /// ZAMAN sadece en son [limit] kaydı gösterip daha eskilere ulaşmanın
+  /// hiçbir yolunu sunmuyordu (sorgu limitliydi ama sayfalama yoktu).
+  /// Artık vardiya_ekrani.dart "Daha Fazla Yükle" ile bu parametreyi
+  /// kullanarak bir sonraki sayfayı çekebiliyor.
   Future<List<Map<String, dynamic>>> gecmisVardiyalarGetir({
     int? subeId,
     int limit = 30,
+    int offset = 0,
   }) async {
     final db = await _d;
     final subeSarti = subeId != null ? ' AND v.sube_id = ?' : '';
-    final args = <Object?>[if (subeId != null) subeId, limit];
+    final args = <Object?>[if (subeId != null) subeId, limit, offset];
     final rows = await db.rawQuery(
         'SELECT v.*, k.ad_soyad, o.ad_soyad AS onaylayan_adi FROM vardiyalar v '
         'LEFT JOIN kullanicilar k ON v.kullanici_id = k.id '
         'LEFT JOIN kullanicilar o ON v.onaylayan_kullanici_id = o.id '
-        'WHERE v.kapanis_tarihi IS NOT NULL$subeSarti ORDER BY v.id DESC LIMIT ?',
+        'WHERE v.kapanis_tarihi IS NOT NULL$subeSarti ORDER BY v.id DESC LIMIT ? OFFSET ?',
         args);
     return rows.map((r) => Map<String, dynamic>.from(r)).toList();
   }

@@ -18,6 +18,7 @@ import '../depolar/kredi_karti_deposu.dart';
 import '../depolar/stok_deposu.dart';
 import '../depolar/sync_cakisma_deposu.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/log_servisi.dart';
 import '../servisler/yedekleme_servisi.dart';
 import '../veri/database/veritabani.dart';
 
@@ -97,6 +98,12 @@ class VeriSagligiServisi {
   }
 
   // ── Foreign Key ─────────────────────────────────────────────────────
+  // 🔴 DÜZELTME (2026-09-21): bu kontrol ÖNCEDEN sadece SAYIYORDU —
+  // düzelt callback'i yoktu. Yıl Sonu Devir'in FAZ 1 kontrolü bu sonucu
+  // CRITICAL bulduğunda devri anında durduruyordu (haklı olarak — bu
+  // GERÇEK bir bütünlük sorunu), ama kullanıcının bunu DÜZELTECEK hiçbir
+  // aracı yoktu — devir kalıcı olarak tıkanıyordu. Artık diğer
+  // mutabakat kontrolleriyle AYNI desende bir 'duzelt' aksiyonu var.
   Future<SaglikKontrolSonucu> _foreignKeyKontrol() async {
     const id = 'fk';
     const baslik = 'Foreign Key Bütünlüğü';
@@ -109,11 +116,68 @@ class VeriSagligiServisi {
             durum: SaglikDurum.yesil, mesaj: 'İlişkisel bütünlük ihlali yok.', sayi: 0);
       }
       return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.kirmizi, mesaj: '${rows.length} foreign key ihlali bulundu.', sayi: rows.length);
+          durum: SaglikDurum.kirmizi, mesaj: '${rows.length} foreign key ihlali bulundu.',
+          sayi: rows.length, duzelt: _yabanciAnahtarTemizle);
     } catch (e) {
       return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
           durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
     }
+  }
+
+  /// `PRAGMA foreign_key_check`'in bulduğu her ihlali TEK TEK, kolon
+  /// bazında en güvenli yöntemle giderir:
+  /// - Kolon NULL'a izin veriyorsa: sadece o kolonu NULL yapar (satır
+  ///   KORUNUR, sadece geçersiz referans koparılır — veri kaybı yok).
+  /// - Kolon NOT NULL ise (satır zorunlu bir üst kayda bağlı ama o kayıt
+  ///   artık yok — ör. bir cari_hareket, var olmayan bir cari_id'ye
+  ///   işaret ediyor): 🔴 ÖNEMLİ — `is_deleted` işaretlemek `PRAGMA
+  ///   foreign_key_check`'i TATMİN ETMEZ (pragma is_deleted'i bilmez,
+  ///   ham kolon değerine bakar) — bu yüzden soft-delete YETERSİZ, kontrol
+  ///   sonsuza dek kırmızı kalır. Satırın zaten atfedilebileceği geçerli
+  ///   bir üst kayıt YOK (kendi içinde anlamsız/yetim) — LogServisi'ne
+  ///   TAM içeriğiyle kaydedilip (denetim izi) ardından silinir. Bu,
+  ///   geçerli bir işlemi geri almak DEĞİL — hiçbir zaman doğru
+  ///   hesaplanamayacak, bozuk bir satırı temizlemektir.
+  Future<int> _yabanciAnahtarTemizle() async {
+    final db = await _db;
+    var duzeltilen = 0;
+    await db.transaction((txn) async {
+      final ihlaller = await txn.rawQuery('PRAGMA foreign_key_check');
+      for (final ihlal in ihlaller) {
+        final tablo = ihlal['table'] as String?;
+        final rowid = ihlal['rowid'];
+        final fkid = ihlal['fkid'] as int?;
+        if (tablo == null || rowid == null || fkid == null) continue;
+
+        final fkListesi = await txn.rawQuery('PRAGMA foreign_key_list("$tablo")');
+        final fkEslesme = fkListesi.where((f) => (f['id'] as int?) == fkid);
+        if (fkEslesme.isEmpty) continue;
+        final kolon = fkEslesme.first['from'] as String?;
+        if (kolon == null) continue;
+
+        final tabloBilgisi = await txn.rawQuery('PRAGMA table_info("$tablo")');
+        final kolonBilgisiListesi = tabloBilgisi.where((c) => c['name'] == kolon);
+        final notNull = kolonBilgisiListesi.isNotEmpty &&
+            (kolonBilgisiListesi.first['notnull'] as int?) == 1;
+
+        if (!notNull) {
+          await txn.rawUpdate(
+              'UPDATE "$tablo" SET "$kolon" = NULL WHERE rowid = ?', [rowid]);
+          duzeltilen++;
+        } else {
+          final satirlar =
+              await txn.rawQuery('SELECT * FROM "$tablo" WHERE rowid = ?', [rowid]);
+          if (satirlar.isNotEmpty) {
+            LogServisi().hata(
+                'VeriSagligi.fkTemizle — yetim satır silindi ($tablo.$kolon)',
+                hata: satirlar.first);
+          }
+          await txn.rawDelete('DELETE FROM "$tablo" WHERE rowid = ?', [rowid]);
+          duzeltilen++;
+        }
+      }
+    });
+    return duzeltilen;
   }
 
   // ── Cari Mutabakat ──────────────────────────────────────────────────

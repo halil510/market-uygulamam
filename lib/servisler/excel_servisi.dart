@@ -1,6 +1,7 @@
 // lib/servisler/excel_servisi.dart
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:excel/excel.dart' hide Border;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -12,6 +13,23 @@ import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
 import 'package:uuid/uuid.dart';
 import '../cekirdek/utils/excel_guvenlik_utils.dart';
+
+// 🔴 DEEP_AUDIT_REPORT FAZ 5 (Performans, 2026-09-21): Excel.decodeBytes()
+// büyük dosyalarda (100.000+ satır) UZUN, TAMAMEN SENKRON bir işlemdir —
+// içinde hiç `await` olmadığı için ana thread'i (UI isolate) bu süre
+// boyunca tamamen bloke eder (ANR riski). Aşağıdaki satır bazlı içe
+// aktarım döngüsü zaten periyodik `await Future.delayed(Duration.zero)`
+// ile UI'a nefes aldırıyor (bu yüzden ANR'nin asıl kaynağı O DEĞİL) —
+// ama decodeBytes() öncesindeki bu TEK büyük senkron adım öyle. `compute()`
+// ile ayrı bir Isolate'e taşınarak ana thread'in dosya boyutundan
+// BAĞIMSIZ olarak duyarlı kalması sağlanıyor. `Excel` nesnesi (ve alt
+// Sheet/Row/Cell'leri) platform kanalı/closure içermeyen düz Dart
+// nesneleri olduğu için isolate sınırından güvenle taşınabiliyor.
+Excel _decodeExcelIsolate(List<int> bytes) => Excel.decodeBytes(bytes);
+
+// Aynı gerekçe (yukarı bkz.) encode() için de geçerli — büyük ürün/satış
+// kataloglarında serileştirme de uzun, tamamen senkron bir CPU işidir.
+List<int>? _encodeExcelIsolate(Excel excel) => excel.encode();
 
 class IceriAktarSonuc {
   final int eklenen;
@@ -281,7 +299,7 @@ class ExcelServisi {
 
     final dir = await getApplicationDocumentsDirectory();
     final yol = '${dir.path}/urunler_${DateTime.now().millisecondsSinceEpoch}.xlsx';
-    final bytes = excel.encode();
+    final bytes = await compute(_encodeExcelIsolate, excel);
     if (bytes != null) {
       await File(yol).writeAsBytes(bytes);
       return yol;
@@ -297,7 +315,7 @@ class ExcelServisi {
     List<int> bytes, {
     void Function(int islemde, int toplam)? onProgress,
   }) async {
-    final excel = Excel.decodeBytes(bytes);
+    final excel = await compute(_decodeExcelIsolate, bytes);
     if (excel.tables.isEmpty) {
       throw Exception('Excel dosyasında sayfa bulunamadı');
     }
@@ -699,7 +717,7 @@ class ExcelServisi {
     }
     final dir = await getApplicationDocumentsDirectory();
     final yol = '${dir.path}/satislar_${DateTime.now().millisecondsSinceEpoch}.xlsx';
-    final bytes = excel.encode();
+    final bytes = await compute(_encodeExcelIsolate, excel);
     if (bytes != null) {
       await File(yol).writeAsBytes(bytes);
       return yol;
@@ -741,7 +759,7 @@ class ExcelServisi {
   // ──────────────────────────────────────────────────────────────────────────
   // Excel'i okuyup sayım listesi olarak döndürür (stoku GÜNCELLEMEZ)
   Future<List<Map<String, dynamic>>> stokSayimListesiIceAl(Uint8List bytes) async {
-    final excel = Excel.decodeBytes(bytes);
+    final excel = await compute(_decodeExcelIsolate, bytes);
     final sheet = excel.sheets.values.first;
     if (sheet.rows.isEmpty) return [];
 
@@ -777,7 +795,7 @@ class ExcelServisi {
   }
 
   Future<Map<String, dynamic>> stokSayimExcelIceAl(Uint8List bytes) async {
-    final excel = Excel.decodeBytes(bytes);
+    final excel = await compute(_decodeExcelIsolate, bytes);
     final sheet = excel.sheets.values.first;
     if (sheet.rows.isEmpty) return {'basarili': 0, 'hata': 0, 'hatalar': <String>[]};
 
@@ -919,7 +937,7 @@ class ExcelServisi {
   // DB: promosyonlar(urun_id, promosyon_adi, iskonto_oran, min_miktar, aktif)
   // ──────────────────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> promosyonExcelIceAl(Uint8List bytes) async {
-    final excel = Excel.decodeBytes(bytes);
+    final excel = await compute(_decodeExcelIsolate, bytes);
     final sheet = excel.sheets.values.first;
     if (sheet.rows.isEmpty) return {'basarili': 0, 'hata': 0, 'hatalar': <String>[]};
 

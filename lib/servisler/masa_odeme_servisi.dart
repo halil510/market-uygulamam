@@ -254,6 +254,10 @@ class MasaOdemeServisi {
             BulutManager().upsert(
                 'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
         }
+        // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): satis_tamamlama_servisi
+        // ile AYNI desen — masa satışı da şube bazlı stok payını
+        // (sube_urun) güncellemeliydi, hiç yapılmıyordu.
+        await _stokDepo.subeStokPayiUygula(k.urunId, k.miktar);
       }
       for (final gid in kasaGlobalIdleri) {
         final kasaSatir = await db.query('kasa_hareketleri',

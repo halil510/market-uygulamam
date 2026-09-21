@@ -7,6 +7,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../depolar/kasa_deposu.dart';
+import '../depolar/stok_deposu.dart';
 import '../modeller/urun_model.dart';
 import '../modeller/cari_model.dart';
 import '../servisler/aktif_sube_servisi.dart';
@@ -23,6 +24,7 @@ class IadeKalemGirdi {
 
 class IadeIslemServisi {
   final _kasaDepo = KasaDeposu();
+  final _stokDepo = StokDeposu();
 
   /// Hızlı Barkod İade sekmesindeki "Toplu iade" akışı — bkz.
   /// iade_ekrani_hizli.dart._hizliOnaylaVeKaydet (taşındığı yer).
@@ -196,6 +198,10 @@ class IadeIslemServisi {
           BulutManager().upsert(
               'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
         }
+        // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): şube bazlı stok payı
+        // (sube_urun) hiç güncellenmiyordu. İade = stok ARTIŞI, bu yüzden
+        // negatif fark (subeStokPayiUygula'nın "ana stok yönü" kuralı).
+        await _stokDepo.subeStokPayiUygula(item.urun.id!, -item.adet.toDouble());
       }
       if (toplamIade > 0) {
         final kasaSatir = await db.query('kasa_hareketleri',
@@ -468,6 +474,10 @@ class IadeIslemServisi {
           BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(s.first));
         }
       }
+      // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): şube bazlı stok payı hiç
+      // güncellenmiyordu. Lotlara dağılmış olsa da toplam ürün bazında
+      // TEK kalemMiktar artışı (sube_urun lot izlemez).
+      await _stokDepo.subeStokPayiUygula(urunId, -kalanMiktar);
       for (final lotId in guncellenenLotIdleri) {
         final l = await db.query('lot_seri', where: 'id = ?', whereArgs: [lotId], limit: 1);
         if (l.isNotEmpty) {
@@ -640,6 +650,9 @@ class IadeIslemServisi {
           BulutManager()
               .upsert('stok_hareket', Map<String, dynamic>.from(stokSatir.first));
         }
+        // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): iade iptali = stok
+        // AZALIŞI (pozitif fark — subeStokPayiUygula'nın beklediği yön).
+        await _stokDepo.subeStokPayiUygula(urunId, miktar);
       }
       if (kasaGid != null) {
         final kasaSatir = await db.query('kasa_hareketleri',
@@ -843,6 +856,9 @@ class IadeIslemServisi {
           BulutManager()
               .upsert('stok_hareket', Map<String, dynamic>.from(stokSatir.first));
         }
+        // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): şube payı hiç
+        // güncellenmiyordu. fark>0 = ana stok ARTTI, bu yüzden ters işaret.
+        await _stokDepo.subeStokPayiUygula(urunId, -fark);
       }
       if (kasaGid != null) {
         final kasaSatir = await db.query('kasa_hareketleri',
@@ -1070,6 +1086,8 @@ class IadeIslemServisi {
         BulutManager()
             .upsert('stok_hareket', Map<String, dynamic>.from(stokSatir.first));
       }
+      // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): ek kalem = stok ARTIŞI.
+      await _stokDepo.subeStokPayiUygula(urunId, -miktar);
       final kasaSatir = await db.query('kasa_hareketleri',
           where: 'referans_id = ? AND referans_turu = ?',
           whereArgs: [iadeId, 'iade'],
@@ -1218,6 +1236,12 @@ class IadeIslemServisi {
         if (urunSatir.isNotEmpty) {
           BulutManager()
               .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
+        }
+        // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): tüm fiş iptali = her
+        // kalem için stok AZALIŞI (pozitif fark).
+        final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;
+        if (miktar > 0) {
+          await _stokDepo.subeStokPayiUygula(urunId, miktar);
         }
       }
       final stokSatirlar = await db.query('stok_hareket',
@@ -1476,6 +1500,8 @@ class IadeIslemServisi {
         BulutManager()
             .upsert('stok_hareket', Map<String, dynamic>.from(stokSatir.first));
       }
+      // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): manuel iade = stok ARTIŞI.
+      await _stokDepo.subeStokPayiUygula(urunId, -miktar);
       final kasaSatir = await db.query('kasa_hareketleri',
           where: 'referans_id = ? AND referans_turu = ?',
           whereArgs: [iadeId, 'iade'],

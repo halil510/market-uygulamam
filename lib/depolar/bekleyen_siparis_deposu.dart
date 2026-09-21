@@ -322,6 +322,11 @@ class BekleyenSiparisDeposu {
             BulutManager().upsert(
                 'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
         }
+        // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): satis_tamamlama_servisi
+        // ile AYNI desen — bekleyen sipariş onayı da şube bazlı stok
+        // payını (sube_urun) güncellemeliydi, hiç yapılmıyordu.
+        await StokDeposu().subeStokPayiUygula(
+            urunId, (k['toplam_miktar'] as num).toDouble());
       }
       final cariHareketSatir = await db.query('cari_hareket',
           where: 'global_id = ?', whereArgs: [cariGlobalId], limit: 1);

@@ -176,6 +176,8 @@ class BankaBorcSemasi {
         tarih DATETIME DEFAULT CURRENT_TIMESTAMP,
         last_updated DATETIME,
         is_deleted INTEGER NOT NULL DEFAULT 0,
+        referans_id INTEGER,
+        referans_turu TEXT,
         FOREIGN KEY(kredi_karti_id) REFERENCES ${DbSabitler.krediKartlari}(id) ON DELETE CASCADE
       )
     ''');
@@ -197,6 +199,8 @@ class BankaBorcSemasi {
         sonraki_bakiye REAL,
         last_updated DATETIME,
         is_deleted INTEGER NOT NULL DEFAULT 0,
+        referans_id INTEGER,
+        referans_turu TEXT,
         FOREIGN KEY(banka_hesap_id) REFERENCES ${DbSabitler.bankaHesaplar}(id),
         FOREIGN KEY(kredi_karti_id) REFERENCES ${DbSabitler.krediKartlari}(id)
       )
@@ -230,6 +234,11 @@ class BankaBorcSemasi {
     try { await db.execute('CREATE INDEX IF NOT EXISTS idx_banka_hareket_hesap ON ${DbSabitler.bankaHareketler}(banka_hesap_id)'); } catch (_) { /* indeks zaten varsa veya tablo o sürümde yoksa atlanır — kurulumu bloklamaz */ }
     try { await db.execute('CREATE INDEX IF NOT EXISTS idx_banka_hareket_tarih ON ${DbSabitler.bankaHareketler}(tarih)'); } catch (_) { /* indeks zaten varsa veya tablo o sürümde yoksa atlanır — kurulumu bloklamaz */ }
     try { await db.execute('CREATE INDEX IF NOT EXISTS idx_banka_hareket_kart ON ${DbSabitler.bankaHareketler}(kredi_karti_id)'); } catch (_) { /* indeks zaten varsa veya tablo o sürümde yoksa atlanır — kurulumu bloklamaz */ }
+    // DEEP_AUDIT (kendi-keşif turu, 2026-09-21): cari hareket iptalinde
+    // banka/kredi kartı tarafını bulup tersine çevirebilmek için (bkz.
+    // CariDeposu.hareketIptalEt) eklenen referans_id/referans_turu için.
+    try { await db.execute('CREATE INDEX IF NOT EXISTS idx_banka_hareket_referans ON ${DbSabitler.bankaHareketler}(referans_turu, referans_id)'); } catch (_) { /* atlanır */ }
+    try { await db.execute('CREATE INDEX IF NOT EXISTS idx_kk_hareket_referans ON kredi_karti_hareket(referans_turu, referans_id)'); } catch (_) { /* atlanır */ }
     try { await db.execute('CREATE INDEX IF NOT EXISTS idx_borc_odeme_borc ON ${DbSabitler.borcOdemeler}(borc_id)'); } catch (_) { /* indeks zaten varsa veya tablo o sürümde yoksa atlanır — kurulumu bloklamaz */ }
     try { await db.execute('CREATE INDEX IF NOT EXISTS idx_borc_odeme_tarih ON ${DbSabitler.borcOdemeler}(tarih)'); } catch (_) { /* indeks zaten varsa veya tablo o sürümde yoksa atlanır — kurulumu bloklamaz */ }
   

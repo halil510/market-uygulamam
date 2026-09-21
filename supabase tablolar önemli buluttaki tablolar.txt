@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- MARKETPLUS — SUPABASE ŞEMASI  (KENDİ KENDİNİ ONARAN SÜRÜM)
--- 68 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-21 (donem_kilit — çoklu cihaz kilidi, FAZ 4)
+-- 68 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-21 (banka_hareketler/kredi_karti_hareket referans_id/referans_turu — cari hareket iptali artık bu tarafları da tersine çevirebiliyor)
 --
 -- 2026-09-20 GÜNCELLEMESİ — ERP Denetim Madde 21 & 22 (Supabase Arşiv
 -- Mimarisi). Bu dosyaya YENİ TABLO EKLENMEDİ — yüksek hacimli hareket
@@ -169,7 +169,9 @@ CREATE TABLE IF NOT EXISTS banka_hareketler (
   onceki_bakiye DOUBLE PRECISION,
   sonraki_bakiye DOUBLE PRECISION,
   last_updated TEXT,
-  is_deleted BOOLEAN
+  is_deleted BOOLEAN,
+  referans_id BIGINT,
+  referans_turu TEXT
 );
 
 -- [ 5/58] banka_hesaplar
@@ -615,7 +617,9 @@ CREATE TABLE IF NOT EXISTS kredi_karti_hareket (
   aciklama TEXT,
   tarih TIMESTAMPTZ,
   last_updated TIMESTAMPTZ,
-  is_deleted BOOLEAN
+  is_deleted BOOLEAN,
+  referans_id BIGINT,
+  referans_turu TEXT
 );
 
 -- [30/58] kredi_kartlari
@@ -1426,6 +1430,8 @@ ALTER TABLE banka_hareketler ADD COLUMN IF NOT EXISTS onceki_bakiye DOUBLE PRECI
 ALTER TABLE banka_hareketler ADD COLUMN IF NOT EXISTS sonraki_bakiye DOUBLE PRECISION;
 ALTER TABLE banka_hareketler ADD COLUMN IF NOT EXISTS last_updated TEXT;
 ALTER TABLE banka_hareketler ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN;
+ALTER TABLE banka_hareketler ADD COLUMN IF NOT EXISTS referans_id BIGINT;
+ALTER TABLE banka_hareketler ADD COLUMN IF NOT EXISTS referans_turu TEXT;
 ALTER TABLE banka_hesaplar ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE banka_hesaplar ADD COLUMN IF NOT EXISTS banka_id BIGINT;
 ALTER TABLE banka_hesaplar ADD COLUMN IF NOT EXISTS hesap_adi TEXT;
@@ -1761,6 +1767,8 @@ ALTER TABLE kredi_karti_hareket ADD COLUMN IF NOT EXISTS aciklama TEXT;
 ALTER TABLE kredi_karti_hareket ADD COLUMN IF NOT EXISTS tarih TIMESTAMPTZ;
 ALTER TABLE kredi_karti_hareket ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE kredi_karti_hareket ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN;
+ALTER TABLE kredi_karti_hareket ADD COLUMN IF NOT EXISTS referans_id BIGINT;
+ALTER TABLE kredi_karti_hareket ADD COLUMN IF NOT EXISTS referans_turu TEXT;
 ALTER TABLE kredi_kartlari ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE kredi_kartlari ADD COLUMN IF NOT EXISTS banka_id BIGINT;
 ALTER TABLE kredi_kartlari ADD COLUMN IF NOT EXISTS kart_adi TEXT;
@@ -2978,6 +2986,8 @@ CREATE INDEX IF NOT EXISTS idx_irsaliyeler_cari_id ON irsaliyeler(cari_id);
 CREATE INDEX IF NOT EXISTS idx_irsaliyeler_kullanici_id ON irsaliyeler(kullanici_id);
 CREATE INDEX IF NOT EXISTS idx_kasa_hareketleri_last_updated ON kasa_hareketleri(last_updated);
 CREATE INDEX IF NOT EXISTS idx_kasa_hareketleri_referans_id ON kasa_hareketleri(referans_id);
+CREATE INDEX IF NOT EXISTS idx_banka_hareketler_referans_id ON banka_hareketler(referans_id);
+CREATE INDEX IF NOT EXISTS idx_kredi_karti_hareket_referans_id ON kredi_karti_hareket(referans_id);
 CREATE INDEX IF NOT EXISTS idx_kasa_hareketleri_kullanici_id ON kasa_hareketleri(kullanici_id);
 CREATE INDEX IF NOT EXISTS idx_kasa_hareketleri_sube_id ON kasa_hareketleri(sube_id);
 CREATE INDEX IF NOT EXISTS idx_kategoriler_last_updated ON kategoriler(last_updated);

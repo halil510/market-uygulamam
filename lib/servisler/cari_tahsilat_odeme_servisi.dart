@@ -107,6 +107,13 @@ class CariTahsilatOdemeServisi {
                 tutar: tutar,
                 aciklama: '$cariUnvan - $islemTipi',
                 tarih: DateTime.now(),
+                // 🔴 DEEP_AUDIT (kendi-keşif turu, 2026-09-21):
+                // CariDeposu.hareketIptalEt() bu hareketi bulup tersine
+                // çevirebilsin diye (kasa dalıyla AYNI desen — nakit
+                // tahsilat/ödeme zaten bunu yapıyordu, banka/kredi kartı
+                // tarafı eksikti).
+                referansId: cariHareketLocalId,
+                referansTuru: 'cari_hareket',
               ));
         } else if (odemeTuru == 'Kredi Kartı') {
           // 🔴 Derin analizde bulundu: yön (paraCikiyor) hiç dikkate
@@ -123,7 +130,11 @@ class CariTahsilatOdemeServisi {
           // (tahsilat/iade — kart kullanımını azaltır) negatif delta veriliyor.
           krediHareketId = await _krediKartiDepo.limitDegistirTxn(
               txn, krediKartiId!, paraCikiyor ? tutar : -tutar,
-              aciklama: '$cariUnvan - $islemTipi');
+              aciklama: '$cariUnvan - $islemTipi',
+              // 🔴 DEEP_AUDIT (kendi-keşif turu, 2026-09-21): bkz. Banka
+              // dalındaki aynı gerekçe.
+              referansId: cariHareketLocalId,
+              referansTuru: 'cari_hareket');
         }
       }
     });

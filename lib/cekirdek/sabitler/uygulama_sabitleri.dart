@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      71; // v71: lot_seri(urun_id, aktif) index — FEFO sorgusu full-scan yapıyordu (FAZ 5, 2026-09-21)
+      72; // v72: banka_hareketler/kredi_karti_hareket referans_id/referans_turu — cari hareket iptali artık bu tarafları da tersine çevirebiliyor (2026-09-21)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

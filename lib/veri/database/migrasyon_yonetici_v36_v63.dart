@@ -1081,3 +1081,24 @@ Future<void> _v70denV71e(Database db) async {
   await _calistir(db,
       'CREATE INDEX IF NOT EXISTS idx_lot_seri_urun_aktif ON lot_seri(urun_id, aktif)');
 }
+
+// v71'den v72'ye — DEEP_AUDIT (kendi-keşif turu, 2026-09-21): cari
+// hareket iptali ÖNCEDEN sadece kasa (nakit) tarafını bulup tersine
+// çevirebiliyordu — banka_hareketler/kredi_karti_hareket'te bunu
+// mümkün kılacak referans_id/referans_turu kolonu hiç yoktu (bilinçli,
+// dokümante edilmiş bir sınırlamaydı — bkz. CariDeposu.hareketIptalEt
+// eski yorumu). Artık ekleniyor.
+Future<void> _v71denV72ye(Database db) async {
+  await _calistir(
+      db, 'ALTER TABLE banka_hareketler ADD COLUMN referans_id INTEGER');
+  await _calistir(
+      db, 'ALTER TABLE banka_hareketler ADD COLUMN referans_turu TEXT');
+  await _calistir(
+      db, 'ALTER TABLE kredi_karti_hareket ADD COLUMN referans_id INTEGER');
+  await _calistir(
+      db, 'ALTER TABLE kredi_karti_hareket ADD COLUMN referans_turu TEXT');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_banka_hareket_referans ON banka_hareketler(referans_turu, referans_id)');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_kk_hareket_referans ON kredi_karti_hareket(referans_turu, referans_id)');
+}

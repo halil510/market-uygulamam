@@ -13,7 +13,11 @@ class BankaHareketModel {
   final double? oncekiBakiye;
   final double? sonrakiBakiye;
   final String? kategori;
-  
+  // DEEP_AUDIT (kendi-keşif turu, 2026-09-21): CariDeposu.hareketIptalEt()
+  // bu hareketi bulup tersine çevirebilsin diye — kasa_hareketleri'ndeki
+  // referans_id/referans_turu ile AYNI desen.
+  final int? referansId;
+  final String? referansTuru;
 
   const BankaHareketModel({
     this.id,
@@ -29,6 +33,8 @@ class BankaHareketModel {
     this.karsiHesap,
     this.oncekiBakiye,
     this.sonrakiBakiye,
+    this.referansId,
+    this.referansTuru,
   });
 
   factory BankaHareketModel.fromMap(Map<String, dynamic> m) => BankaHareketModel(
@@ -44,6 +50,8 @@ class BankaHareketModel {
     karsiHesap: m['karsi_hesap'] as String?,
     oncekiBakiye: m['onceki_bakiye'] != null ? (m['onceki_bakiye'] as num).toDouble() : null,
     sonrakiBakiye: m['sonraki_bakiye'] != null ? (m['sonraki_bakiye'] as num).toDouble() : null,
+    referansId: m['referans_id'] as int?,
+    referansTuru: m['referans_turu'] as String?,
   );
 
   Map<String, dynamic> toMap() => {
@@ -59,5 +67,7 @@ class BankaHareketModel {
     if (karsiHesap != null) 'karsi_hesap': karsiHesap,
     if (oncekiBakiye != null) 'onceki_bakiye': oncekiBakiye,
     if (sonrakiBakiye != null) 'sonraki_bakiye': sonrakiBakiye,
+    if (referansId != null) 'referans_id': referansId,
+    if (referansTuru != null) 'referans_turu': referansTuru,
   };
 }

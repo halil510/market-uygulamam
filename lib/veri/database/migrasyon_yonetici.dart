@@ -196,5 +196,10 @@ class MigrasyonYonetici {
     // v70'den v71'e — lot_seri(urun_id, aktif) index (FAZ 5 performans,
     // bkz. _v70denV71e yorumu, 2026-09-21).
     if (eskiVersiyon < 71) await _v70denV71e(db);
+
+    // v71'den v72'ye — banka_hareketler/kredi_karti_hareket referans_id/
+    // referans_turu (cari hareket iptali reversal, bkz. _v71denV72ye
+    // yorumu, 2026-09-21).
+    if (eskiVersiyon < 72) await _v71denV72ye(db);
   }
 }

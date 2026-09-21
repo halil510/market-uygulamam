@@ -205,7 +205,8 @@ class KrediKartiDeposu {
 
   /// [limitDegistir] ile aynı mantık, VERİLEN transaction içinde çalışır.
   /// Kart bulunamazsa null döner (sessizce atlar — önceki davranışla aynı).
-  Future<int?> limitDegistirTxn(dynamic txn, int id, double delta, {String aciklama = ''}) async {
+  Future<int?> limitDegistirTxn(dynamic txn, int id, double delta,
+      {String aciklama = '', int? referansId, String? referansTuru}) async {
     final kartRows = await txn.query('kredi_kartlari', where: 'id = ? AND aktif = 1', whereArgs: [id]);
     if (kartRows.isEmpty) return null;
     final kart = KrediKartiModel.fromMap(kartRows.first);
@@ -218,6 +219,10 @@ class KrediKartiDeposu {
       'aciklama': aciklama,
       'tarih': DateTime.now().toIso8601String(),
       'last_updated': DateTime.now().toIso8601String(),
+      // DEEP_AUDIT (kendi-keşif turu, 2026-09-21): CariDeposu.
+      // hareketIptalEt() bu hareketi bulup tersine çevirebilsin diye.
+      if (referansId != null) 'referans_id': referansId,
+      if (referansTuru != null) 'referans_turu': referansTuru,
     });
 
     final toplamRows = await txn.rawQuery('''

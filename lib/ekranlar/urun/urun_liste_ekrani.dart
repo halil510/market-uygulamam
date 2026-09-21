@@ -58,10 +58,18 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
   // "kolon yönetimi" ise kart üzerinde HANGİ EK ALANLARIN görüneceğini
   // seçebilme olarak karşılanıyor. Varsayılan: hiçbiri (mevcut görünüm
   // BİREBİR korunuyor, sadece isteyen kullanıcı ek bilgi ekleyebiliyor).
+  // Kullanıcı isteği (2026-09-21): "kartda gösterilecek alanları
+  // çoğalt" — mevcut 3 alana (barkod/marka/kdv) 6 yeni seçenek eklendi.
   static const _ekAlanEtiketleri = {
     'barkod': 'Barkod',
     'marka': 'Marka',
     'kdv': 'KDV Oranı',
+    'kod': 'Ürün Kodu',
+    'minStok': 'Min. Stok',
+    'karTutari': 'Kâr Tutarı',
+    'stokDegeri': 'Stok Değeri',
+    'rafNo': 'Raf No',
+    'uretici': 'Üretici',
   };
   Set<String> _ekAlanlar = {};
 
@@ -965,6 +973,46 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                                     color: TsRenk.metinIkincil(context))),
                           if (_ekAlanlar.contains('kdv'))
                             Text('KDV: %${u.kdvOran}',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: TsRenk.metinIkincil(context))),
+                          if (_ekAlanlar.contains('kod') &&
+                              u.kod != null &&
+                              u.kod!.isNotEmpty)
+                            Text('Kod: ${u.kod}',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: TsRenk.metinIkincil(context))),
+                          if (_ekAlanlar.contains('minStok') &&
+                              u.minimumStok > 0)
+                            Text(
+                                'Min. Stok: ${u.minimumStok.toStringAsFixed(u.minimumStok == u.minimumStok.roundToDouble() ? 0 : 1)}',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: TsRenk.metinIkincil(context))),
+                          if (_ekAlanlar.contains('karTutari'))
+                            Text(
+                                'Kâr: ${ParaUtils.formatla(u.satisFiyati - u.alisFiyatKdvDahil)}',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: TsRenk.metinIkincil(context))),
+                          if (_ekAlanlar.contains('stokDegeri'))
+                            Text(
+                                'Stok Değeri: ${ParaUtils.formatla(u.stok * u.alisFiyatKdvDahil)}',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: TsRenk.metinIkincil(context))),
+                          if (_ekAlanlar.contains('rafNo') &&
+                              u.rafNumarasi != null &&
+                              u.rafNumarasi!.isNotEmpty)
+                            Text('Raf: ${u.rafNumarasi}',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: TsRenk.metinIkincil(context))),
+                          if (_ekAlanlar.contains('uretici') &&
+                              u.uretici != null &&
+                              u.uretici!.isNotEmpty)
+                            Text('Üretici: ${u.uretici}',
                                 style: TextStyle(
                                     fontSize: 10.5,
                                     color: TsRenk.metinIkincil(context))),

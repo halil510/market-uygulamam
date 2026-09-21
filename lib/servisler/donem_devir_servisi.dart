@@ -45,6 +45,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../depolar/donem_deposu.dart';
 import '../depolar/devir_checkpoint_deposu.dart';
+import '../depolar/donem_kilit_deposu.dart';
 import '../depolar/vardiya_deposu.dart';
 import '../depolar/banka_hesap_deposu.dart';
 import '../depolar/cari_deposu.dart';
@@ -54,6 +55,7 @@ import '../modeller/devir_checkpoint_model.dart';
 import 'donem_arsiv_servisi.dart';
 import 'log_servisi.dart';
 import 'onay_merkezi_servisi.dart';
+import 'supabase_sync_servisi.dart';
 import 'veri_sagligi_servisi.dart';
 import 'yedekleme_servisi.dart';
 import '../veri/database/veritabani.dart';
@@ -94,6 +96,7 @@ class DevirSonucu {
 class DonemDevirServisi {
   final _donemDepo = DonemDeposu();
   final _checkpointDepo = DevirCheckpointDeposu();
+  final _kilitDepo = DonemKilitDeposu();
   final _veriSagligi = VeriSagligiServisi();
 
   /// Devri BAŞLATMADAN, sadece FAZ 1'in kontrol listesini çalıştırır —
@@ -107,7 +110,39 @@ class DonemDevirServisi {
   /// ettirir. [subeId] devir-özgü, şube bazlı kontroller (açık vardiya,
   /// açık masa siparişi) için kullanılır — stok/kasa snapshot fazları
   /// da aynı [subeId] ile çalışır.
+  ///
+  /// 🔴 FAZ 4 (2026-09-21, çoklu cihaz kilidi): asıl devir mantığına
+  /// (aşağıdaki [_devirCalistir]) girmeden ÖNCE (donem_id, sube_id)
+  /// çifti için bir kilit alınır — iki cihaz AYNI dönem/şubeyi eşzamanlı
+  /// devretmeye çalışırsa (ör. iki kasiyer telefonu, ikisi de "Devir
+  /// Sihirbazını Başlat"a basar) ikinci çağrı hemen ve açıkça reddedilir,
+  /// sessizce veri karıştırmaz. Kilit try/finally ile HER durumda
+  /// (başarı/hata/exception) bırakılır.
   Future<DevirSonucu> devirBaslatVeyaDevamEt({required int subeId}) async {
+    final kaynakDonemOn = await _donemDepo.aktifDonemGetir();
+    if (kaynakDonemOn == null) {
+      throw StateError(
+          'Açık bir dönem bulunamadı — önce Dönem Yönetimi ekranından bir dönem açılmalı.');
+    }
+    if (kaynakDonemOn.id == null) {
+      throw StateError('Kaynak dönem kaydı geçersiz (id yok).');
+    }
+    final cihazId = await SupabaseSyncServisi.cihazId();
+    final kilitAlindi = await _kilitDepo.kilitAl(
+        donemId: kaynakDonemOn.id!, subeId: subeId, cihazId: cihazId);
+    if (!kilitAlindi) {
+      throw StateError(
+          'Bu dönem/şube için devir başka bir cihazda devam ediyor. Lütfen bekleyip tekrar deneyin.');
+    }
+    try {
+      return await _devirCalistir(subeId: subeId);
+    } finally {
+      await _kilitDepo.kilitBirak(
+          donemId: kaynakDonemOn.id!, subeId: subeId, cihazId: cihazId);
+    }
+  }
+
+  Future<DevirSonucu> _devirCalistir({required int subeId}) async {
     final kaynakDonem = await _donemDepo.aktifDonemGetir();
     if (kaynakDonem == null) {
       throw StateError(

@@ -646,6 +646,7 @@ class Veritabani {
       'donemler', 'donem_sube_durumlari', 'devir_checkpoint',
       'stok_kapanis_snapshot', 'cari_kapanis_snapshot',
       'kasa_kapanis_snapshot', 'banka_kapanis_snapshot',
+      'donem_kilit', // çoklu cihaz kilidi (2026-09-21, FAZ 4)
     };
     final conflict = globalIdTablosu.contains(tablo)
         ? ConflictAlgorithm.replace

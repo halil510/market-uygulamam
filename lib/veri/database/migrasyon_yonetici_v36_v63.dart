@@ -1050,3 +1050,24 @@ Future<void> _v68denV69a(Database db) async {
   await _calistir(
       db, 'ALTER TABLE vardiyalar ADD COLUMN onaylanma_tarihi TEXT');
 }
+
+// v69'dan v70'e — Yıl Sonu Devir çoklu cihaz kilidi (2026-09-21,
+// kullanıcı onayı, FAZ 4). Tanım donem_semasi.dart (fresh install) ile
+// BİREBİR aynı, tek doğruluk kaynağı orası.
+Future<void> _v69danV70e(Database db) async {
+  await _calistir(db, '''
+    CREATE TABLE IF NOT EXISTS donem_kilit (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      global_id TEXT UNIQUE,
+      donem_id INTEGER NOT NULL,
+      sube_id INTEGER NOT NULL DEFAULT 0,
+      cihaz_id TEXT NOT NULL,
+      kilit_zamani TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      son_yenileme TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_updated TEXT,
+      UNIQUE(donem_id, sube_id)
+    )
+  ''');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_donemkilit_donem ON donem_kilit(donem_id)');
+}

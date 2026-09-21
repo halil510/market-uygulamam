@@ -85,4 +85,7 @@ class DbSabitler {
   static const String cariKapanisSnapshot   = 'cari_kapanis_snapshot';
   static const String kasaKapanisSnapshot   = 'kasa_kapanis_snapshot';
   static const String bankaKapanisSnapshot  = 'banka_kapanis_snapshot';
+  // Çoklu cihaz kilidi (2026-09-21, FAZ 4 — aynı dönem/şube devrini iki
+  // cihazın eşzamanlı başlatmasını önler).
+  static const String donemKilit            = 'donem_kilit';
 }

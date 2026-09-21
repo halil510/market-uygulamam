@@ -127,6 +127,9 @@ class SupabaseSyncServisi {
     'donem_sube_durumlari', 'devir_checkpoint',
     'stok_kapanis_snapshot', 'cari_kapanis_snapshot',
     'kasa_kapanis_snapshot', 'banka_kapanis_snapshot',
+    // Çoklu cihaz kilidi (2026-09-21, FAZ 4) — donemler'e FK bağımlı
+    // değil ama aynı gruba ait, sıra bağımsız.
+    'donem_kilit',
   ];
 
   static const _globalIdVar = {
@@ -157,6 +160,7 @@ class SupabaseSyncServisi {
     'donemler', 'donem_sube_durumlari', 'devir_checkpoint',
     'stok_kapanis_snapshot', 'cari_kapanis_snapshot',
     'kasa_kapanis_snapshot', 'banka_kapanis_snapshot',
+    'donem_kilit', // çoklu cihaz kilidi (2026-09-21, FAZ 4)
   };
 
   // 🔴 DÜZELTME: 'masa_siparisleri' önceden bu listede YOKTU — oysa
@@ -246,6 +250,7 @@ class SupabaseSyncServisi {
     'donemler', 'donem_sube_durumlari', 'devir_checkpoint',
     'stok_kapanis_snapshot', 'cari_kapanis_snapshot',
     'kasa_kapanis_snapshot', 'banka_kapanis_snapshot',
+    'donem_kilit', // çoklu cihaz kilidi (2026-09-21, FAZ 4)
   };
 
   static const Map<String, String> _uniqueAlan = {

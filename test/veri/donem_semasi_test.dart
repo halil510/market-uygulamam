@@ -25,6 +25,7 @@ void main() {
       'cari_kapanis_snapshot',
       'kasa_kapanis_snapshot',
       'banka_kapanis_snapshot',
+      'donem_kilit',
     ]) {
       test('$tablo tablosu mevcut ve sorgulanabilir', () async {
         final rows = await db.query(tablo);
@@ -172,6 +173,27 @@ void main() {
             {'devir_id': 'd-1', 'donem_id': 1, 'banka_hesap_id': 7, 'bakiye': 0}),
         throwsA(anything),
       );
+    });
+  });
+
+  group('donem_kilit — UNIQUE(donem_id, sube_id)', () {
+    test('aynı donem_id+sube_id ikinci kez eklenemez', () async {
+      await db.insert('donem_kilit',
+          {'donem_id': 1, 'sube_id': 1, 'cihaz_id': 'cihaz-A'});
+      expect(
+        () => db.insert('donem_kilit',
+            {'donem_id': 1, 'sube_id': 1, 'cihaz_id': 'cihaz-B'}),
+        throwsA(anything),
+      );
+    });
+
+    test('farklı sube_id ile aynı donem_id serbestçe eklenebilir', () async {
+      await db.insert('donem_kilit',
+          {'donem_id': 1, 'sube_id': 1, 'cihaz_id': 'cihaz-A'});
+      await db.insert('donem_kilit',
+          {'donem_id': 1, 'sube_id': 2, 'cihaz_id': 'cihaz-B'});
+      final rows = await db.query('donem_kilit');
+      expect(rows, hasLength(2));
     });
   });
 }

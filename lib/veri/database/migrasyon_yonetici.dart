@@ -188,5 +188,9 @@ class MigrasyonYonetici {
     // Madde 12 denetimi: vardiyalar.onaylayan_kullanici_id/onaylanma_tarihi
     // (Kasa Kapanış — Müdür Onayı, bkz. _v68denV69a yorumu, 2026-09-16).
     if (eskiVersiyon < 69) await _v68denV69a(db);
+
+    // v69'dan v70'e — Yıl Sonu Devir çoklu cihaz kilidi (donem_kilit,
+    // bkz. _v69danV70e yorumu, 2026-09-21).
+    if (eskiVersiyon < 70) await _v69danV70e(db);
   }
 }

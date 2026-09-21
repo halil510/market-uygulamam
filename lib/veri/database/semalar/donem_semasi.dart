@@ -5,7 +5,8 @@
 // bölümü + onaylanan mimari plan raporu).
 //
 // Bu dosya SADECE şema (tablo tanımı) içerir — devir motoru mantığı
-// (DevirYoneticiServisi) İLERİKİ bir fazda eklenecek. 7 yeni tablo:
+// (DevirYoneticiServisi) İLERİKİ bir fazda eklenecek. 8 tablo (7'si FAZ 1,
+// donem_kilit 2026-09-21'de çoklu cihaz kilidi için eklendi):
 //   donemler                  — yıllık dönem kaydı (genel/özet durum)
 //   donem_sube_durumlari      — şube bazlı kapanış ilerlemesi (Madde 29)
 //   devir_checkpoint          — 10 fazlı devir motorunun resumable
@@ -165,5 +166,26 @@ class DonemSemasi {
     ''');
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_bankasnap_donem ON ${DbSabitler.bankaKapanisSnapshot}(donem_id)');
+
+    // Çoklu cihaz kilidi (2026-09-21) — lease tabanlı: (donem_id,
+    // sube_id) başına EN FAZLA bir aktif kilit satırı olabilir (UNIQUE).
+    // 'son_yenileme' TTL'den eskiyse (cihaz çökmüş/ağ kopmuş) kilit
+    // "stale" sayılır, başka bir cihaz devralabilir — bkz.
+    // DonemKilitDeposu.kilitAl.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${DbSabitler.donemKilit} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        global_id TEXT UNIQUE,
+        donem_id INTEGER NOT NULL,
+        sube_id INTEGER NOT NULL DEFAULT 0,
+        cihaz_id TEXT NOT NULL,
+        kilit_zamani TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        son_yenileme TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_updated TEXT,
+        UNIQUE(donem_id, sube_id)
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_donemkilit_donem ON ${DbSabitler.donemKilit}(donem_id)');
   }
 }

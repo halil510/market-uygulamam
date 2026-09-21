@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- MARKETPLUS — SUPABASE ŞEMASI  (KENDİ KENDİNİ ONARAN SÜRÜM)
--- 67 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-20
+-- 68 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-21 (donem_kilit — çoklu cihaz kilidi, FAZ 4)
 --
 -- 2026-09-20 GÜNCELLEMESİ — ERP Denetim Madde 21 & 22 (Supabase Arşiv
 -- Mimarisi). Bu dosyaya YENİ TABLO EKLENMEDİ — yüksek hacimli hareket
@@ -1356,6 +1356,18 @@ CREATE TABLE IF NOT EXISTS banka_kapanis_snapshot (
   last_updated TIMESTAMPTZ
 );
 
+-- [YENİ — 2026-09-21] Yıl Sonu Devir çoklu cihaz kilidi (FAZ 4).
+CREATE TABLE IF NOT EXISTS donem_kilit (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id TEXT,
+  donem_id BIGINT,
+  sube_id BIGINT,
+  cihaz_id TEXT,
+  kilit_zamani TEXT,
+  son_yenileme TEXT,
+  last_updated TIMESTAMPTZ
+);
+
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- BÖLÜM 2 — EKSİK SÜTUNLARI EKLE
@@ -2227,6 +2239,13 @@ ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS son_guncelleme TEXT;
 ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS tamamlanma_zamani TEXT;
 ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS hata_mesaji TEXT;
 ALTER TABLE devir_checkpoint ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE donem_kilit ADD COLUMN IF NOT EXISTS global_id TEXT;
+ALTER TABLE donem_kilit ADD COLUMN IF NOT EXISTS donem_id BIGINT;
+ALTER TABLE donem_kilit ADD COLUMN IF NOT EXISTS sube_id BIGINT;
+ALTER TABLE donem_kilit ADD COLUMN IF NOT EXISTS cihaz_id TEXT;
+ALTER TABLE donem_kilit ADD COLUMN IF NOT EXISTS kilit_zamani TEXT;
+ALTER TABLE donem_kilit ADD COLUMN IF NOT EXISTS son_yenileme TEXT;
+ALTER TABLE donem_kilit ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS devir_id TEXT;
 ALTER TABLE stok_kapanis_snapshot ADD COLUMN IF NOT EXISTS donem_id BIGINT;
@@ -2291,6 +2310,7 @@ BEGIN
          'cari_hareket',
          'cari_kapanis_snapshot',
          'devir_checkpoint',
+         'donem_kilit',
          'donem_sube_durumlari',
          'donemler',
          'fatura_detaylari',
@@ -2380,6 +2400,7 @@ BEGIN
          'cari_hareket',
          'cari_kapanis_snapshot',
          'devir_checkpoint',
+         'donem_kilit',
          'donem_sube_durumlari',
          'donemler',
          'fatura_detaylari',
@@ -2469,6 +2490,7 @@ BEGIN
          'cari_hareket',
          'cari_kapanis_snapshot',
          'devir_checkpoint',
+         'donem_kilit',
          'donem_sube_durumlari',
          'donemler',
          'fatura_detaylari',
@@ -2616,6 +2638,11 @@ END $$;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_devir_checkpoint_global_id') THEN
     ALTER TABLE devir_checkpoint ADD CONSTRAINT uq_devir_checkpoint_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_donem_kilit_global_id') THEN
+    ALTER TABLE donem_kilit ADD CONSTRAINT uq_donem_kilit_global_id UNIQUE (global_id);
   END IF;
 END $$;
 DO $$ BEGIN
@@ -3048,6 +3075,8 @@ CREATE INDEX IF NOT EXISTS idx_donem_sube_durumlari_last_updated ON donem_sube_d
 CREATE INDEX IF NOT EXISTS idx_donem_sube_durumlari_donem ON donem_sube_durumlari(donem_id);
 CREATE INDEX IF NOT EXISTS idx_devir_checkpoint_last_updated ON devir_checkpoint(last_updated);
 CREATE INDEX IF NOT EXISTS idx_devir_checkpoint_durum ON devir_checkpoint(durum);
+CREATE INDEX IF NOT EXISTS idx_donem_kilit_last_updated ON donem_kilit(last_updated);
+CREATE INDEX IF NOT EXISTS idx_donem_kilit_donem ON donem_kilit(donem_id);
 CREATE INDEX IF NOT EXISTS idx_stok_kapanis_snapshot_last_updated ON stok_kapanis_snapshot(last_updated);
 CREATE INDEX IF NOT EXISTS idx_stok_kapanis_snapshot_donem ON stok_kapanis_snapshot(donem_id, sube_id);
 CREATE INDEX IF NOT EXISTS idx_cari_kapanis_snapshot_last_updated ON cari_kapanis_snapshot(last_updated);
@@ -3113,6 +3142,9 @@ CREATE POLICY cari_kapanis_snapshot_all ON cari_kapanis_snapshot FOR ALL TO anon
 ALTER TABLE devir_checkpoint ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS devir_checkpoint_all ON devir_checkpoint;
 CREATE POLICY devir_checkpoint_all ON devir_checkpoint FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+ALTER TABLE donem_kilit ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS donem_kilit_all ON donem_kilit;
+CREATE POLICY donem_kilit_all ON donem_kilit FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 ALTER TABLE donem_sube_durumlari ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS donem_sube_durumlari_all ON donem_sube_durumlari;
 CREATE POLICY donem_sube_durumlari_all ON donem_sube_durumlari FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
@@ -3289,6 +3321,7 @@ WITH beklenen(tablo) AS (VALUES
     ('cari_hareket'),
     ('cari_kapanis_snapshot'),
     ('devir_checkpoint'),
+    ('donem_kilit'),
     ('donem_sube_durumlari'),
     ('donemler'),
     ('fatura_detaylari'),

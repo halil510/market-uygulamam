@@ -183,6 +183,11 @@ class KolonHaritalama {
     'cari_kapanis_snapshot':  {'donem_id': 'donemler', 'cari_id': 'cari'},
     'kasa_kapanis_snapshot':  {'donem_id': 'donemler', 'sube_id': 'subeler'},
     'banka_kapanis_snapshot': {'donem_id': 'donemler', 'banka_hesap_id': 'banka_hesaplar'},
+    // Çoklu cihaz kilidi (2026-09-21, FAZ 4) — sube_id, devir_checkpoint
+    // ile AYNI 0-sentinel deseni (şirket geneli kilit) kullanabildiği
+    // için BİLEREK 'subeler'e eşlenmedi (aynı gerekçe: 0 gerçek bir şube
+    // id'si değil, çeviri denemesi hataya yol açardı).
+    'donem_kilit': {'donem_id': 'donemler'},
   };
 
   static Map<String, String>? fkHarita(String tablo) => fkHaritasi[tablo];

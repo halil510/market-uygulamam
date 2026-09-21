@@ -16,8 +16,11 @@ import '../veri/database/veritabani.dart';
 import '../modeller/cari_model.dart';
 import '../modeller/cari_hareket_model.dart';
 import '../modeller/kasa_hareket_model.dart';
+import '../modeller/banka_hareket_model.dart';
 import '../cekirdek/utils/para_utils.dart';
 import 'kasa_deposu.dart';
+import 'banka_hareket_deposu.dart';
+import 'kredi_karti_deposu.dart';
 
 class CariDeposu {
   final Veritabani _db = Veritabani();
@@ -237,6 +240,29 @@ class CariDeposu {
       return rows.map(CariModel.fromMap).toList();
     } catch (e, st) {
       LogServisi().hata('Cari.metod', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
+  // 🔴 DEEP_AUDIT (kendi-keşif turu, 2026-09-21 — FAZ 4 devir mekanizması
+  // ikinci-göz denetimi): DonemDevirServisi._cariSnapshotAl() (yıl sonu
+  // devir kapanış anlık görüntüsü) bu dosyadaki tumunuGetir()'i
+  // kullanıyordu — o metod is_deleted=0 AND aktif=1 filtreli. Ama
+  // DonemArsivServisi.aktifTablolardanSilVeAcilisYaz() silinecek cari
+  // kimliklerini DOĞRUDAN cari_hareket'ten (FİLTRESİZ) topluyor. Sonuç:
+  // dönem içinde hareketi olan ama devir anında pasif/silinmiş bir cari
+  // varsa, hareketleri silinirdi ama hiç kapanış snapshot'ı (dolayısıyla
+  // "kalan bakiye" açılış satırı) alamazdı — o cari daha sonra tekrar
+  // aktif edilirse bakiyeMutabakatYap() kalıcı olarak yanlış hesaplardı.
+  // Bu metod SADECE devir/arşiv gibi "eksiksiz olmalı" senaryoları için —
+  // normal ekranlar (Cari Liste vb.) tumunuGetir()'i kullanmaya devam eder.
+  Future<List<CariModel>> tumunuGetirFiltresiz() async {
+    try {
+      final db = await _d;
+      final rows = await db.query('cari', orderBy: 'id ASC');
+      return rows.map(CariModel.fromMap).toList();
+    } catch (e, st) {
+      LogServisi().hata('Cari.tumunuGetirFiltresiz', hata: e, yigin: st);
       rethrow;
     }
   }
@@ -471,9 +497,17 @@ class CariDeposu {
   /// audit-trail amaçlı borc=0/alacak=0 bir "... İptali" kaydı eklenir,
   /// bakiye hareketlerden yeniden hesaplanır (her zaman is_deleted=0
   /// filtresiyle — kanonik kural), ve varsa bağlı (referans_turu=
-  /// 'cari_hareket') NAKİT kasa hareketi otomatik ters çevrilir. Banka/
-  /// Kredi Kartı bağlı kayıtlar otomatik geri alınmaz — güvenli fallback,
-  /// kullanıcı o tarafı elle düzeltmeli.
+  /// 'cari_hareket') NAKİT kasa/Banka/Kredi Kartı hareketi otomatik ters
+  /// çevrilir.
+  ///
+  /// 🔴 DEEP_AUDIT (kendi-keşif turu, 2026-09-21): Banka/Kredi Kartı
+  /// tarafı ÖNCEDEN otomatik geri alınmıyordu (bilinçli, dokümante
+  /// edilmiş bir sınırlamaydı — o tabloların referans_id/referans_turu
+  /// kolonu HİÇ yoktu, bu yüzden hangi satırın iptal edilen cari
+  /// hareketine ait olduğu güvenilir şekilde bulunamıyordu). Migrasyon
+  /// v72 bu kolonları ekledi, CariTahsilatOdemeServisi.kaydet() artık
+  /// bunları dolduruyor — artık kasa ile AYNI desende otomatik tersine
+  /// çevriliyor.
   ///
   /// Ters kaydın borc=0/alacak=0 olması BİLİNÇLİDİR: orijinal kayıt zaten
   /// bakiye SUM'ından (is_deleted=0 filtresiyle) dışlandığı için, sıfır
@@ -485,6 +519,8 @@ class CariDeposu {
       final db = await _d;
       String? tersCariGid;
       int? tersKasaId;
+      int? tersBankaId;
+      int? tersKrediId;
       await db.transaction((txn) async {
         final guncelRows = await txn
             .query('cari_hareket', where: 'id = ?', whereArgs: [h.id]);
@@ -553,6 +589,62 @@ class CariDeposu {
                 ));
           }
         }
+
+        // 🔴 DEEP_AUDIT (kendi-keşif turu, 2026-09-21): Banka tarafı —
+        // kasa bloğuyla AYNI desen, sadece kaynak tablo/yön isimleri farklı.
+        final bankaRows = await txn.query('banka_hareketler',
+            where:
+                'referans_turu = ? AND referans_id = ? AND (is_deleted IS NULL OR is_deleted = 0)',
+            whereArgs: ['cari_hareket', h.id]);
+        if (bankaRows.isNotEmpty) {
+          final orijinalBanka = bankaRows.first;
+          final orijinalTip = orijinalBanka['islem_tipi'] as String? ?? '';
+          final orijinalTutar =
+              (orijinalBanka['tutar'] as num?)?.toDouble() ?? 0;
+          final bankaHesapId = orijinalBanka['banka_hesap_id'] as int?;
+          // Ters yön: para GİTMİŞSE (Giden) geri GELİR (Gelen) ve tam tersi.
+          final tersTip = orijinalTip == 'Giden'
+              ? 'Gelen'
+              : orijinalTip == 'Gelen'
+                  ? 'Giden'
+                  : null;
+          if (tersTip != null && orijinalTutar > 0 && bankaHesapId != null) {
+            tersBankaId = await BankaHareketDeposu().ekleTxn(
+                txn,
+                BankaHareketModel(
+                  bankaHesapId: bankaHesapId,
+                  islemTipi: tersTip,
+                  tutar: orijinalTutar,
+                  referansId: h.id,
+                  referansTuru: 'cari_hareket_iptal',
+                  tarih: DateTime.parse(now),
+                  aciklama: 'İptal: ${h.aciklama}',
+                ));
+          }
+        }
+
+        // Kredi kartı tarafı — 'yon' (harcama/odeme) tersine çevrilir.
+        final kkRows = await txn.query('kredi_karti_hareket',
+            where:
+                'referans_turu = ? AND referans_id = ? AND is_deleted = 0',
+            whereArgs: ['cari_hareket', h.id]);
+        if (kkRows.isNotEmpty) {
+          final orijinalKk = kkRows.first;
+          final orijinalYon = orijinalKk['yon'] as String? ?? '';
+          final orijinalTutar = (orijinalKk['tutar'] as num?)?.toDouble() ?? 0;
+          final krediKartiId = orijinalKk['kredi_karti_id'] as int?;
+          if (orijinalTutar > 0 && krediKartiId != null) {
+            // limitDegistirTxn: pozitif delta = harcama (limit artar),
+            // negatif = ödeme (limit azalır) — orijinali TERSİNE çeviriyoruz.
+            final tersDelta =
+                orijinalYon == 'harcama' ? -orijinalTutar : orijinalTutar;
+            tersKrediId = await KrediKartiDeposu().limitDegistirTxn(
+                txn, krediKartiId, tersDelta,
+                aciklama: 'İptal: ${h.aciklama}',
+                referansId: h.id,
+                referansTuru: 'cari_hareket_iptal');
+          }
+        }
       });
 
       final orijinalSatir = await db.query('cari_hareket',
@@ -581,6 +673,36 @@ class CariDeposu {
         if (kasaSatir.isNotEmpty) {
           BulutManager().upsert(
               'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+        }
+      }
+      if (tersBankaId != null) {
+        final bankaSatir = await db.query('banka_hareketler',
+            where: 'id = ?', whereArgs: [tersBankaId], limit: 1);
+        if (bankaSatir.isNotEmpty) {
+          BulutManager().upsert(
+              'banka_hareketler', Map<String, dynamic>.from(bankaSatir.first));
+          final hesapId = bankaSatir.first['banka_hesap_id'];
+          final hesapSatir = await db.query('banka_hesaplar',
+              where: 'id = ?', whereArgs: [hesapId], limit: 1);
+          if (hesapSatir.isNotEmpty) {
+            BulutManager().upsert(
+                'banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
+          }
+        }
+      }
+      if (tersKrediId != null) {
+        final kkSatir = await db.query('kredi_karti_hareket',
+            where: 'id = ?', whereArgs: [tersKrediId], limit: 1);
+        if (kkSatir.isNotEmpty) {
+          BulutManager().upsert(
+              'kredi_karti_hareket', Map<String, dynamic>.from(kkSatir.first));
+          final kartId = kkSatir.first['kredi_karti_id'];
+          final kartSatir = await db.query('kredi_kartlari',
+              where: 'id = ?', whereArgs: [kartId], limit: 1);
+          if (kartSatir.isNotEmpty) {
+            BulutManager().upsert(
+                'kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
+          }
         }
       }
     } catch (e, st) {

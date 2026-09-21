@@ -560,10 +560,15 @@ class DonemDevirServisi {
   }
 
   // ── FAZ 5 detay: cari snapshot ──────────────────────────────────────
+  // 🔴 DEEP_AUDIT (kendi-keşif turu, 2026-09-21): ÖNCEDEN tumunuGetir()
+  // (is_deleted=0 AND aktif=1 filtreli) kullanılıyordu — dönem içinde
+  // hareketi olan ama devir anında pasif/silinmiş bir cari için hiç
+  // snapshot alınmıyordu, sonraki silme adımı o carinin geçmişini
+  // "kalan bakiye" açılışı OLMADAN siliyordu (sessiz, kalıcı bakiye
+  // tutarsızlığı riski). Artık FİLTRESİZ (tüm cariler) alınıyor — bkz.
+  // CariDeposu.tumunuGetirFiltresiz() dosya başı gerekçesi.
   Future<void> _cariSnapshotAl({required String devirId, required int donemId}) async {
-    // Yüksek bir limit — "tümü" anlamına gelmesi için (varsayılan limit
-    // 500'dü, büyük cari defterlerinde sessizce kesilirdi).
-    final cariler = await CariDeposu().tumunuGetir(limit: 1000000);
+    final cariler = await CariDeposu().tumunuGetirFiltresiz();
     final db = await Veritabani().db;
     await db.transaction((txn) async {
       for (final c in cariler) {

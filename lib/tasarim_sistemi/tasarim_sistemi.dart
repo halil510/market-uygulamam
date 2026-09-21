@@ -19,3 +19,4 @@ export 'ts_app_bar.dart';
 export 'ts_yetki.dart';
 export 'ts_responsive.dart';
 export 'ts_dokunma_ikon.dart';
+export 'ts_dialog.dart';

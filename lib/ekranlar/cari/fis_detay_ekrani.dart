@@ -36,6 +36,7 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../depolar/fis_detay_deposu.dart';
+import '../../depolar/satis_deposu.dart';
 
 class FisDetayEkrani extends ConsumerStatefulWidget {
   final int fisId;
@@ -62,6 +63,17 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
   bool _yukleniyor = true;
   String? _hata;
 
+  // Kullanıcı isteği (2026-09-21): Satış Detayı'ndaki Karma ödeme kırılımı
+  // (Nakit/Kart/Cari ne kadar) Cari Fiş Detayı'nda hiç yoktu — burada
+  // "Ödeme" alanı sadece düz "Karma" yazıyordu, hangi yöntemden ne kadar
+  // ödendiği görünmüyordu (bkz. SatisDetayEkrani._odemeDagilimi — AYNI
+  // desen, SatisDeposu.odemeDagilimiGetir üzerinden).
+  List<Map<String, dynamic>>? _odemeDagilimi;
+
+  static const _satisFisTipleri = {
+    'Satış', 'Toptan Satış', 'Toptan Satış (Sipariş)', 'Masa Satış',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -77,6 +89,13 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
       if (!mounted) return;
       _fis = sonuc.fis;
       _kalemler = sonuc.kalemler;
+
+      if (_satisFisTipleri.contains(widget.fisTipi) &&
+          _fis?['odeme_yontemi'] == 'Karma') {
+        SatisDeposu().odemeDagilimiGetir(widget.fisId).then((v) {
+          if (mounted) setState(() => _odemeDagilimi = v);
+        });
+      }
 
       if (!mounted) return;
       // 🔴🔴 KRİTİK DÜZELTME: Bu, başarılı yükleme yolundaki TEK
@@ -373,6 +392,36 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
           if (odeme != null) ...[
             const SizedBox(height: 6),
             Row(children: [_infoCol('Ödeme', odeme)]),
+            if (odeme == 'Karma') ...[
+              const SizedBox(height: 4),
+              if (_odemeDagilimi == null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: SizedBox(
+                      width: 14, height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2)),
+                )
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: _odemeDagilimi!
+                      .map((d) => Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Row(children: [
+                              Icon(Icons.subdirectory_arrow_right,
+                                  size: 14, color: TsRenk.metinIkincil(context)),
+                              const SizedBox(width: 4),
+                              Text(
+                                  '${d['yontem']}: ${ParaUtils.formatla(d['tutar'] as double)}',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: TsRenk.metinIkincil(context))),
+                            ]),
+                          ))
+                      .toList(),
+                ),
+            ],
           ],
         ]),
       ),

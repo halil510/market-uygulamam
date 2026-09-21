@@ -715,7 +715,7 @@ class SatisDeposu {
     // veriyordu. Artık üst kapsamda tanımlanıp transaction içinde
     // sadece atanıyor, böylece her iki yerden de erişilebiliyor.
     int? cariId;
-    int? kasaHareketId;
+    final kasaHareketIdleri = <int>[];
     await db.transaction((txn) async {
 
       // 1. Satış başlığını al
@@ -724,8 +724,6 @@ class SatisDeposu {
       if (satisRows.isEmpty) return;
       final satis = satisRows.first;
 
-      final genelToplam  = (satis['genel_toplam'] as num?)?.toDouble() ?? 0;
-      final odenenTutar  = (satis['odenen_tutar'] as num?)?.toDouble() ?? 0;
       final odemeYontemi = satis['odeme_yontemi'] as String? ?? '';
       cariId       = satis['cari_id'] as int?;
       final fisNo        = satis['fis_no'] as String? ?? '#$id';
@@ -777,54 +775,74 @@ class SatisDeposu {
       }
 
       // 5. Kasa hareketini tersine çevir (nakit/kart satışlar)
-      // 🔴 Derin analizde bulundu: burada elle yazılmış bir SQL sorgusu
-      // son bakiyeyi 'WHERE deleted_at IS NULL' FİLTRESİ OLMADAN
-      // hesaplıyordu (KasaDeposu._sonBakiyeTxn'nin aksine) ve eklenen
-      // ters kayda global_id/sube_id atamıyordu — bu satır ne şubeye
-      // göre filtrelenen kasa raporlarında görünüyordu ne de buluta
-      // senkronize oluyordu. Artık standart KasaDeposu.hareketEkleTxn
-      // kullanılıyor (bkz. aşağıdaki post-transaction senkron bloğu).
-      if (odenenTutar > 0 && odemeYontemi != 'Cari') {
-        kasaHareketId = await KasaDeposu().hareketEkleTxn(txn, KasaHareketModel(
+      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu 2026-09-21): önceden bu
+      // blok satislar.odenen_tutar/odeme_yontemi alanlarına bakıp TEK bir
+      // ters kayıt tahmin ediyordu. Ama Karma (Nakit+Cari gibi) satışlarda
+      // odenen_tutar TÜM tutarları (Cari payı dahil) topluyor — bu da
+      // kasadan olduğundan FAZLA düşülmesine yol açardı. Artık bu satışa
+      // ait GERÇEKTEN yazılmış kasa_hareketleri satırları (referans_turu
+      // = 'satis') sorgulanıp HER biri kendi tutarı/ödeme yöntemiyle tek
+      // tek tersine çevriliyor — saf Cari (veresiye) satışta hiç kasa
+      // satırı yoktur, dolayısıyla hiçbir şey ters çevrilmez (doğru).
+      final orijinalKasaSatirlari = await txn.query('kasa_hareketleri',
+          where: 'referans_id = ? AND referans_turu = ? AND deleted_at IS NULL',
+          whereArgs: [id, 'satis']);
+      for (final k in orijinalKasaSatirlari) {
+        final tutar = (k['tutar'] as num?)?.toDouble() ?? 0;
+        if (tutar <= 0) continue;
+        final kid = await KasaDeposu().hareketEkleTxn(txn, KasaHareketModel(
           hareketTipi:  'Satış İptali',
-          tutar:        odenenTutar,
+          tutar:        tutar,
           referansId:   id,
           referansTuru: 'satis_iptal',
           tarih:        DateTime.parse(simdi),
           aciklama:     'Satış iptali: $fisNo',
+          odemeYontemi: k['odeme_yontemi'] as String?,
         ));
+        kasaHareketIdleri.add(kid);
       }
 
       // 6. Cari hareketi tersine çevir
+      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu 2026-09-21): önceden bu
+      // blok "Satış İptali" ters kaydını satis.genel_toplam'a göre
+      // yazıyor, AYRICA odenen_tutar > 0 ise HER ZAMAN ekstra bir
+      // "Tahsilat İptali" borcu ekliyordu. Saf Veresiye (Cari) satışlarda
+      // odenen_tutar HİÇBİR ZAMAN gerçek bir tahsilatı temsil etmiyor —
+      // sadece bookkeeping alanı satis.genel_toplam ile aynı değere sahip.
+      // Sonuç: satış silinince "Satış İptali" borcu sıfırlıyor ama hemen
+      // ardından "Tahsilat İptali" AYNI TUTARI TEKRAR borç yazıyordu —
+      // müşteri borcu satış silinmeden ÖNCEKİ HALİYLE AYNEN kalıyordu ve
+      // Cari Hareketler ekranında açıklanamaz "Tahsilat İptali" satırı
+      // görünüyordu. Artık tahmin yok: bu satışın GERÇEKTEN yazdığı
+      // cari_hareket satırları (fis_id + fis_tipi='Satış') sorgulanıp
+      // toplam borç/alacağın TAM TERSİ TEK bir "Satış İptali" kaydıyla
+      // sıfırlanıyor — hem saf Cari hem Karma+Cari satışlarda doğru.
       if (cariId != null) {
         final now = simdi;
-        // Borcu sil (ters kayıt: alacak = genelToplam)
-        await txn.insert('cari_hareket', {
-          'global_id':  const Uuid().v4(),
-          'cari_id':    cariId,
-          'tarih':      now,
-          'last_updated': now,
-          'fis_tipi':   'Satış İptali',
-          'fis_id':     id,
-          'fis_no':     fisNo,
-          'aciklama':   'Satış iptali: $fisNo',
-          'borc':       0.0,
-          'alacak':     genelToplam,
-          'odeme_turu': odemeYontemi,
-        });
-        // Tahsilatı geri al (ters kayıt: borç = ödenen)
-        if (odenenTutar > 0) {
+        // 'Satış' perakende akışının, 'Toptan Satış' ise
+        // ToptanSatisIslemServisi'nin bu fis_id için yazdığı fis_tipi —
+        // bu ekran (cari_detay_paneli.dart) her iki tür satışı da AYNI
+        // SatisDeposu.sil() ile siler, ikisi de eşleşmeli.
+        final orijinalCariSatirlari = await txn.query('cari_hareket',
+            where:
+                'fis_id = ? AND cari_id = ? AND fis_tipi IN (?, ?) AND is_deleted = 0',
+            whereArgs: [id, cariId, 'Satış', 'Toptan Satış']);
+        final toplamBorc = orijinalCariSatirlari.fold(
+            0.0, (s, r) => s + ((r['borc'] as num?)?.toDouble() ?? 0));
+        final toplamAlacak = orijinalCariSatirlari.fold(
+            0.0, (s, r) => s + ((r['alacak'] as num?)?.toDouble() ?? 0));
+        if (toplamBorc > 0.005 || toplamAlacak > 0.005) {
           await txn.insert('cari_hareket', {
             'global_id':  const Uuid().v4(),
             'cari_id':    cariId,
             'tarih':      now,
             'last_updated': now,
-            'fis_tipi':   'Tahsilat İptali',
+            'fis_tipi':   'Satış İptali',
             'fis_id':     id,
             'fis_no':     fisNo,
-            'aciklama':   'Tahsilat iptali: $fisNo',
-            'borc':       odenenTutar,
-            'alacak':     0.0,
+            'aciklama':   'Satış iptali: $fisNo',
+            'borc':       toplamAlacak,
+            'alacak':     toplamBorc,
             'odeme_turu': odemeYontemi,
           });
         }
@@ -841,17 +859,18 @@ class SatisDeposu {
     final db2 = await _d;
     final satisSon = await db2.query('satislar', where: 'id = ?', whereArgs: [id], limit: 1);
     if (satisSon.isNotEmpty) BulutManager().upsert('satislar', Map<String, dynamic>.from(satisSon.first));
-    if (kasaHareketId != null) {
+    for (final kasaHareketId in kasaHareketIdleri) {
       final kasaSon = await db2.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
       if (kasaSon.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSon.first));
     }
     // 🔴 Derin analizde bulundu: cari_hareket eklemeleri (yukarıdaki
-    // Satış İptali/Tahsilat İptali kayıtları) global_id ATAMIYORDU ve
-    // BulutManager'a HİÇ bildirilmiyordu — ne bu kayıtlar ne de cari
-    // bakiye güncellemesi buluta gidiyordu.
+    // Satış İptali kaydı) global_id ATAMIYORDU ve BulutManager'a HİÇ
+    // bildirilmiyordu — ne bu kayıtlar ne de cari bakiye güncellemesi
+    // buluta gidiyordu.
     if (cariId != null) {
       final cariHareketSon = await db2.query('cari_hareket',
-          where: 'fis_id = ? AND cari_id = ?', whereArgs: [id, cariId], orderBy: 'id DESC', limit: 2);
+          where: 'fis_id = ? AND cari_id = ? AND fis_tipi = ?',
+          whereArgs: [id, cariId, 'Satış İptali'], orderBy: 'id DESC', limit: 1);
       for (final satir in cariHareketSon) {
         BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(satir));
       }

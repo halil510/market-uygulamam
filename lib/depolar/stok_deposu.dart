@@ -338,6 +338,13 @@ class StokDeposu {
     return gidler;
   }
 
+  // 🔴 DEEP_AUDIT (kendi-keşif turu, 2026-09-21): bu fonksiyon mantığını
+  // stokGirTxn() ile elle kopyalayıp senkron kuyruğu yazımını
+  // (SyncKuyrukYazici.ekleTxn) UNUTMUŞTU — stokDus()'un stokDusTxn()'e
+  // delege ettiği AYNI desenin (bu oturumda urun_deposu.dart/stokDuzelt'e
+  // uygulanan atomiklik düzeltmesiyle aynı sınıf) kardeş fonksiyonda
+  // eksik kalmış hali. Artık stokGirTxn()'e delege ediyor — kuyruk kaydı
+  // artık business data ile AYNI transaction'da.
   Future<void> stokGir({
     required int urunId,
     required double miktar,
@@ -348,33 +355,15 @@ class StokDeposu {
     String? referansTuru,
   }) async {
     final db = await _d;
-    final now = DateTime.now().toIso8601String();
     final hareketGid = const Uuid().v4();
-    await db.transaction((txn) async {
-      final rows =
-          await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
-      if (rows.isEmpty) return;
-      final onceki = (rows.first['stok'] as num).toDouble();
-      final sonraki = onceki + miktar;
-
-      await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
-          where: 'id = ?', whereArgs: [urunId]);
-      await txn.insert('stok_hareket', {
-        'global_id': hareketGid,
-        'urun_id': urunId,
-        'hareket_turu': 'Giriş',
-        'miktar': miktar,
-        'onceki_stok': onceki,
-        'sonraki_stok': sonraki,
-        'birim_maliyet': birimMaliyet,
-        'tarih': now,
-        'last_updated': now,
-        if (kullaniciId != null) 'kullanici_id': kullaniciId,
-        if (aciklama != null) 'aciklama': aciklama,
-        if (referansId != null) 'referans_id': referansId,
-        if (referansTuru != null) 'referans_turu': referansTuru,
-      });
-    });
+    await db.transaction((txn) => stokGirTxn(txn, hareketGid,
+        urunId: urunId,
+        miktar: miktar,
+        birimMaliyet: birimMaliyet,
+        kullaniciId: kullaniciId,
+        aciklama: aciklama,
+        referansId: referansId,
+        referansTuru: referansTuru));
     final db2 = await _d;
     final guncelUrun = await db2.query('urunler',
         where: 'id = ?', whereArgs: [urunId], limit: 1);

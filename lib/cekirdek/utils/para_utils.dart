@@ -6,6 +6,21 @@ class ParaUtils {
   /// MKP2026000000001 → MKP-000001
   static String kisaFisNo(String? fisNo) {
     if (fisNo == null || fisNo.isEmpty) return 'FİŞ';
+    // 🔴 KULLANICI BULGUSU (ekran görüntüsü — Satış Listesi'nde "NC2ec87b"
+    // gibi anlamsız kodlar): Veritabani._cakismaKorumasiUygula() aynı
+    // fis_no'da GERÇEKTEN farklı bir global_id çakışırsa (ör. bu cihaz
+    // "Veritabanını Temizle" ile yerelini sıfırlayıp buluta hâlâ bağlıyken
+    // eski bulut kaydı geri iniyor — bkz. o ekrandaki bulut uyarısı) veri
+    // kaybetmemek için gelen kaydı '<orijinal>-SYNC<kısaId>' diye yeniden
+    // adlandırıp AYRI bir satır olarak saklıyordu. Bu fisNo 16 karakterden
+    // uzun olduğundan aşağıdaki "son 8 karakter" yoluna düşüp kullanıcıya
+    // rastgele görünen bir kod gösteriyordu. Artık bu biçim tanınıp
+    // okunabilir hale getiriliyor: "MKP-000003 ⚠" — kullanıcı bunun bir
+    // senkron çakışması kopyası olduğunu anlayabilir.
+    final syncIdx = fisNo.indexOf('-SYNC');
+    if (syncIdx > 0) {
+      return '${kisaFisNo(fisNo.substring(0, syncIdx))} ⚠';
+    }
     if (fisNo.length == 16 && RegExp(r'^[A-Z]{3}[0-9]{13}$').hasMatch(fisNo)) {
       final prefix = fisNo.substring(0, 3);
       final sira   = int.tryParse(fisNo.substring(7)) ?? 0;

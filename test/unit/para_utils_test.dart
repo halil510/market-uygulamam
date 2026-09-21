@@ -24,5 +24,12 @@ void main() {
     test('kısa format', () {
       expect(ParaUtils.kisaFisNo('FIS-001'), equals('FIS-001'));
     });
+    // Kullanıcı bulgusu: Veritabani._cakismaKorumasiUygula()'nın çakışma
+    // önleme eki ("-SYNC<hash>") önceden anlamsız bir 8 karakter kesmeye
+    // (ör. "NC2ec87b") düşüyordu — artık okunabilir + işaretli.
+    test('senkron çakışması eki (-SYNC) okunabilir hale getirilir', () {
+      expect(ParaUtils.kisaFisNo('MKP2026000000003-SYNC2ec87b'),
+          equals('MKP-000003 ⚠'));
+    });
   });
 }

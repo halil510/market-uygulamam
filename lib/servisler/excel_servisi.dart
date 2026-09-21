@@ -799,9 +799,18 @@ class ExcelServisi {
         final kod    = kodIdx != -1 ? _getCellValue(row[kodIdx]) : '';
         final miktar = miktarIdx != -1 ? _getCellDouble(row[miktarIdx]) ?? 0.0 : 0.0;
         if (kod.isEmpty) continue;
+        // 🔴 Kullanıcı bulgusu: ürünün alternatif barkodları (`barkodlar`
+        // — virgülle ayrılmış) burada da hiç eşleştirilmiyordu (bkz.
+        // UrunDeposu.ara()/barkodlaGetir() üzerindeki aynı düzeltme
+        // notu). Burası TAM/kesin bir kod eşleştirmesi olduğundan
+        // (metin arama kutusu değil), barkodlaGetir()'deki AYNI sıkı
+        // virgül-sınırlı desen kullanıldı — serbest LIKE '%kod%' yanlış
+        // pozitif üretebilirdi (ör. "12" kodu "5123" içinde eşleşirdi).
         final rows = await db.rawQuery(
-          'SELECT id, urun_adi, birim_adi FROM urunler WHERE (barkod=? OR kod=?) AND is_deleted=0 LIMIT 1',
-          [kod, kod]);
+          "SELECT id, urun_adi, birim_adi FROM urunler"
+          " WHERE (barkod=? OR (',' || barkodlar || ',') LIKE ? OR kod=?)"
+          "   AND is_deleted=0 LIMIT 1",
+          [kod, '%,$kod,%', kod]);
         if (rows.isNotEmpty) {
           liste.add({'urun_id': rows.first['id'], 'miktar': miktar,
             'urun_adi': rows.first['urun_adi'], 'birim_adi': rows.first['birim_adi']});
@@ -852,10 +861,14 @@ class ExcelServisi {
           continue;
         }
 
-        // Önce barkod ile bul, yoksa kod ile
+        // Önce barkod ile bul, yoksa alternatif barkodlar (`barkodlar`)
+        // ile, yoksa kod ile — bkz. yukarıdaki (stokSayimExcelDisaAl)
+        // aynı düzeltme notu.
         final rows = await db.rawQuery(
-          "SELECT id, stok FROM urunler WHERE (barkod=? OR kod=?) AND is_deleted=0 LIMIT 1",
-          [kod, kod],
+          "SELECT id, stok FROM urunler"
+          " WHERE (barkod=? OR (',' || barkodlar || ',') LIKE ? OR kod=?)"
+          "   AND is_deleted=0 LIMIT 1",
+          [kod, '%,$kod,%', kod],
         );
         if (rows.isNotEmpty) {
           // ÖNCEDEN BURADA stok_hareket HİÇ OLUŞTURULMUYORDU — Excel'den
@@ -990,10 +1003,13 @@ class ExcelServisi {
         final oran   = _getCellDouble(oranCell) ?? 0.0;
         if (kod.isEmpty || oran <= 0) continue;
 
-        // Ürünü bul
+        // Ürünü bul — alternatif barkodlar (`barkodlar`) dahil, bkz.
+        // stokSayimExcelDisaAl üzerindeki aynı düzeltme notu.
         final urunRows = await db.rawQuery(
-          "SELECT id FROM urunler WHERE (barkod=? OR kod=?) AND is_deleted=0 LIMIT 1",
-          [kod, kod],
+          "SELECT id FROM urunler"
+          " WHERE (barkod=? OR (',' || barkodlar || ',') LIKE ? OR kod=?)"
+          "   AND is_deleted=0 LIMIT 1",
+          [kod, '%,$kod,%', kod],
         );
         if (urunRows.isEmpty) {
           hata++;

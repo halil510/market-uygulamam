@@ -297,13 +297,13 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
         tus('1', onTap: () => _rakamBas('1')),
         tus('2', onTap: () => _rakamBas('2')),
         tus('3', onTap: () => _rakamBas('3')),
-        tus('C', onTap: _temizleBas, bg: Colors.red.shade50, fg: Colors.red),
+        tus('C', onTap: _temizleBas, bg: TsRenk.zemin(TsRenk.hata), fg: Colors.red),
       ]),
       Row(children: [
         tus('4', onTap: () => _rakamBas('4')),
         tus('5', onTap: () => _rakamBas('5')),
         tus('6', onTap: () => _rakamBas('6')),
-        tus('⌫', onTap: _silBas, bg: Colors.orange.shade50, fg: Colors.orange.shade800,
+        tus('⌫', onTap: _silBas, bg: TsRenk.zemin(TsRenk.uyari), fg: Colors.orange.shade800,
             child: Icon(Icons.backspace_outlined, size: 20, color: Colors.orange.shade800)),
       ]),
       Row(children: [
@@ -313,7 +313,7 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
         tus('Kalan', onTap: () => setState(() {
           _ekran = _fmtSayi(_kalan <= 0 ? 0 : _kalan);
           _yeniGiris = true;
-        }), bg: Colors.blue.shade50, fg: Colors.blue.shade800,
+        }), bg: TsRenk.zemin(TsRenk.bilgi), fg: Colors.blue.shade800,
             child: Text('Kalan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.blue.shade800))),
       ]),
       Row(children: [

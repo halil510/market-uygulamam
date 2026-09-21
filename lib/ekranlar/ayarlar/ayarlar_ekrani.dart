@@ -625,7 +625,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
               margin: const EdgeInsets.only(top: 10),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: TsRenk.zemin(TsRenk.uyari),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.orange.shade200),
               ),

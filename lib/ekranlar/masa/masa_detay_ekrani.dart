@@ -777,7 +777,7 @@ class _SiparisKalemListesiState extends ConsumerState<_SiparisKalemListesi> {
                     margin: const EdgeInsets.only(top: 4),
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
+                      color: TsRenk.zemin(TsRenk.uyari),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(k.not_!,

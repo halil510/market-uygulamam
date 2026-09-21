@@ -542,7 +542,7 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
     return Container(
       decoration: BoxDecoration(
         color: sayildi
-            ? Color.fromARGB(128, Colors.green.shade50.red, Colors.green.shade50.green, Colors.green.shade50.blue)
+            ? TsRenk.zemin(TsRenk.basarili, opaklik: 0.5)
             : Colors.white,
         border: sayildi
             ? Border.all(color: Colors.green.shade200)
@@ -560,9 +560,9 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
             width: 40, height: 40,
             decoration: BoxDecoration(
               color: sayildi
-                  ? Colors.green.shade100
+                  ? TsRenk.zemin(TsRenk.basarili, opaklik: 0.18)
                   : kritik
-                      ? Colors.orange.shade50
+                      ? TsRenk.zemin(TsRenk.uyari)
                       : TsRenk.arkaplan(context),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -643,7 +643,7 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
                       height: 38,
                       decoration: BoxDecoration(
                         color: sayildi
-                            ? Colors.green.shade100
+                            ? TsRenk.zemin(TsRenk.basarili, opaklik: 0.18)
                             : TsRenk.arkaplan(context),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(

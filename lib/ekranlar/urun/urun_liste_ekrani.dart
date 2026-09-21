@@ -738,7 +738,7 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                 onPressed: _barkodIleAra,
                 tooltip: 'Barkod ile ara',
                 style: IconButton.styleFrom(
-                  backgroundColor: Colors.blue.shade50,
+                  backgroundColor: TsRenk.zemin(TsRenk.bilgi),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
@@ -809,7 +809,7 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-            color: Colors.blue.shade100,
+            color: TsRenk.zemin(TsRenk.bilgi, opaklik: 0.18),
             borderRadius: BorderRadius.circular(20)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(label, style: const TextStyle(fontSize: 12, color: Colors.blue)),
@@ -945,7 +945,7 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
+                              color: TsRenk.zemin(TsRenk.bilgi),
                               borderRadius: BorderRadius.circular(4)),
                           child: Text(u.anaGrup!,
                               style: TextStyle(
@@ -1046,7 +1046,7 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                           child: Container(
                             padding: const EdgeInsets.all(7),
                             decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
+                                color: TsRenk.zemin(TsRenk.bilgi),
                                 borderRadius: BorderRadius.circular(8)),
                             child: const Icon(Icons.info_outline,
                                 size: 19, color: Colors.blue),

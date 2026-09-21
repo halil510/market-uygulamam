@@ -263,7 +263,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               const Text('Etkilenecek Ürünler', style: TextStyle(fontWeight: FontWeight.w700)),
               Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.uyari), borderRadius: BorderRadius.circular(12)),
                 child: Text(_tumunuSec ? '${_secili.length} ürün (Tümü)' : '${_seciliIds.length} ürün seçili',
                     style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w700))),
             ]),

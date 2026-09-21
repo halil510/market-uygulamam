@@ -96,7 +96,7 @@ class IrsaliyeEkrani extends ConsumerWidget {
                     leading: Container(
                       width: 44, height: 44,
                       decoration: BoxDecoration(
-                          color: Colors.teal.shade50,
+                          color: TsRenk.zemin(Colors.teal),
                           borderRadius: BorderRadius.circular(12)),
                       child: const Icon(Icons.local_shipping,
                           color: Colors.teal, size: 22),
@@ -122,8 +122,8 @@ class IrsaliyeEkrani extends ConsumerWidget {
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: durum == 'Teslim Edildi'
-                                ? Colors.green.shade50
-                                : Colors.orange.shade50,
+                                ? TsRenk.zemin(TsRenk.basarili)
+                                : TsRenk.zemin(TsRenk.uyari),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(durum,
@@ -246,7 +246,7 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
             itemCount: cariler.length,
             itemBuilder: (_, i) => ListTile(
               leading: CircleAvatar(
-                backgroundColor: Colors.teal.shade50,
+                backgroundColor: TsRenk.zemin(Colors.teal),
                 child: Text(cariler[i].unvan.isNotEmpty
                     ? cariler[i].unvan[0].toUpperCase() : '?',
                     style: TextStyle(color: Colors.teal.shade700,
@@ -450,7 +450,7 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
                         leading: Container(
                           width: 36, height: 36,
                           decoration: BoxDecoration(
-                            color: Colors.teal.shade50,
+                            color: TsRenk.zemin(Colors.teal),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(Icons.inventory_2_outlined,
@@ -783,7 +783,8 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
                 Chip(
                   label: Text(durum),
                   backgroundColor: durum == 'Teslim Edildi'
-                      ? Colors.green.shade100 : Colors.orange.shade100,
+                      ? TsRenk.zemin(TsRenk.basarili, opaklik: 0.18)
+                      : TsRenk.zemin(TsRenk.uyari, opaklik: 0.18),
                 ),
                 Chip(
                   label: Text(eEtiket, style: TextStyle(fontSize: 11, color: eRenk)),

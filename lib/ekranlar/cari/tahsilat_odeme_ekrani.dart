@@ -361,7 +361,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: TsRenk.zemin(TsRenk.uyari),
                     borderRadius: BorderRadius.circular(10)),
                 child: Text(
                     'Banka hesabı bulunamadı. Önce bir hesap ekleyin veya "Nakit" seçin.',
@@ -388,7 +388,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: TsRenk.zemin(TsRenk.uyari),
                     borderRadius: BorderRadius.circular(10)),
                 child: Text(
                     'Kredi kartı bulunamadı. Önce bir kart ekleyin veya başka yöntem seçin.',

@@ -201,7 +201,7 @@ class _BorcKarti extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: odendi ? context.borderColor : (vadesiGecti ? Colors.red.shade50 : Colors.white),
+        color: odendi ? context.borderColor : (vadesiGecti ? TsRenk.zemin(TsRenk.hata) : Colors.white),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: vadesiGecti ? Colors.red.shade300 : (odendi ? TsRenk.ayirac(context) : renk.withAlpha(77)),
@@ -304,7 +304,7 @@ class _BorcKarti extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: kalanGun <= 3 ? Colors.red.shade50 : Colors.orange.shade50,
+                          color: kalanGun <= 3 ? TsRenk.zemin(TsRenk.hata) : TsRenk.zemin(TsRenk.uyari),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text('$kalanGun gün kaldı',

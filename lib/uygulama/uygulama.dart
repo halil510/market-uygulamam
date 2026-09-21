@@ -105,7 +105,7 @@ class MarketBackButtonDispatcher extends RootBackButtonDispatcher {
             Container(
               width: 68, height: 68,
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: TsRenk.zemin(TsRenk.uyari),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.security_outlined,

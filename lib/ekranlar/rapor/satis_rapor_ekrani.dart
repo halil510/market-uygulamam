@@ -265,7 +265,7 @@ class _OzetTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-              color: Colors.red.shade50, borderRadius: BorderRadius.circular(10),
+              color: TsRenk.zemin(TsRenk.hata), borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.red.shade200)),
           child: Row(children: [
             const Icon(Icons.cancel_outlined, color: Colors.red, size: 18),
@@ -362,7 +362,7 @@ class _ListeTab extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: iptal ? Colors.red.shade50 : Colors.white,
+            color: iptal ? TsRenk.zemin(TsRenk.hata) : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: iptal ? Colors.red.shade200 : Colors.transparent),
             boxShadow: iptal ? [] : [BoxShadow(color: Color(0x0A000000), blurRadius: 4)],

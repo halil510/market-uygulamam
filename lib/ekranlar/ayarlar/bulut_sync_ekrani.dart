@@ -410,10 +410,10 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: _bagliMi == true
-                            ? Colors.green.shade50
+                            ? TsRenk.zemin(TsRenk.basarili)
                             : _bagliMi == false
-                                ? Colors.red.shade50
-                                : Colors.orange.shade50,
+                                ? TsRenk.zemin(TsRenk.hata)
+                                : TsRenk.zemin(TsRenk.uyari),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: _bagliMi == true
@@ -462,7 +462,7 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: TsRenk.zemin(TsRenk.uyari),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.orange.shade300),
                   ),
@@ -612,7 +612,7 @@ class _SonucKarti extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: sonuc.basarili ? Colors.green.shade50 : Colors.orange.shade50,
+        color: sonuc.basarili ? TsRenk.zemin(TsRenk.basarili) : TsRenk.zemin(TsRenk.uyari),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
             color: sonuc.basarili ? Colors.green.shade200 : Colors.orange.shade200),
@@ -716,7 +716,7 @@ class _LogWidget extends StatelessWidget {
               margin: const EdgeInsets.symmetric(vertical: 1.5),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                color: TsRenk.zemin(TsRenk.hata),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: Colors.red.shade200),
               ),

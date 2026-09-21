@@ -539,7 +539,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: _secili.isEmpty ? Colors.orange.shade50 : Colors.green.shade50,
+              color: _secili.isEmpty ? TsRenk.zemin(TsRenk.uyari) : TsRenk.zemin(TsRenk.basarili),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: _secili.isEmpty ? Colors.orange.shade300 : Colors.green.shade300)),
             child: Row(children: [

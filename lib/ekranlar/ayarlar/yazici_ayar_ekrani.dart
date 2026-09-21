@@ -826,7 +826,7 @@ class _KayitliYaziciKarti extends StatelessWidget {
           onPressed: onSil,
           tooltip: 'Kaldır',
           style: IconButton.styleFrom(
-            backgroundColor: Colors.red.shade50,
+            backgroundColor: TsRenk.zemin(TsRenk.hata),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
         ),
       ]),

@@ -322,7 +322,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: y.otomatik ? Colors.green.shade50 : Colors.blue.shade50,
+          color: y.otomatik ? TsRenk.zemin(TsRenk.basarili) : TsRenk.zemin(TsRenk.bilgi),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(

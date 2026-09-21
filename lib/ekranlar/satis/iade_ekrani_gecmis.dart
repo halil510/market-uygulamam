@@ -152,7 +152,7 @@ extension _GecmisTabExt on _IadeEkraniState {
                           leading: Container(
                             width: 44, height: 44,
                             decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
+                              color: TsRenk.zemin(TsRenk.uyari),
                               borderRadius: BorderRadius.circular(12)),
                             child: const Icon(Icons.assignment_return, color: Colors.orange, size: 22),
                           ),
@@ -335,7 +335,7 @@ extension _GecmisTabExt on _IadeEkraniState {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.green.shade50,
+                color: TsRenk.zemin(TsRenk.basarili),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.green.shade200),
               ),
@@ -526,7 +526,7 @@ extension _GecmisTabExt on _IadeEkraniState {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.orange.shade50,
+              color: TsRenk.zemin(TsRenk.uyari),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.orange.shade200),
             ),

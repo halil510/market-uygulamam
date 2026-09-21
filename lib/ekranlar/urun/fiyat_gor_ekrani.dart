@@ -182,7 +182,7 @@ class _FiyatGorIcerikState extends State<FiyatGorIcerik> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: stokYok ? Colors.red.shade50 : Colors.green.shade50,
+            color: stokYok ? TsRenk.zemin(TsRenk.hata) : TsRenk.zemin(TsRenk.basarili),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(

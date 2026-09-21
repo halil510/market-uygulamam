@@ -296,7 +296,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
-              color: Colors.red.shade50, borderRadius: BorderRadius.circular(12),
+              color: TsRenk.zemin(TsRenk.hata), borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.red.shade300)),
             child: Row(children: [
               const Icon(Icons.cancel_outlined, color: Colors.red),

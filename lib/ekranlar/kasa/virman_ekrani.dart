@@ -280,7 +280,7 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-                color: Colors.orange.shade50, borderRadius: BorderRadius.circular(10)),
+                color: TsRenk.zemin(TsRenk.uyari), borderRadius: BorderRadius.circular(10)),
             child: Text('Kayıtlı banka hesabı bulunamadı. Önce Banka Hesapları ekranından bir hesap ekleyin.',
                 style: TextStyle(fontSize: 11, color: Colors.orange.shade800)),
           ),
@@ -306,7 +306,7 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-                color: Colors.orange.shade50, borderRadius: BorderRadius.circular(10)),
+                color: TsRenk.zemin(TsRenk.uyari), borderRadius: BorderRadius.circular(10)),
             child: Text('Kayıtlı kredi kartı bulunamadı. Önce Kredi Kartları ekranından bir kart ekleyin.',
                 style: TextStyle(fontSize: 11, color: Colors.orange.shade800)),
           ),
@@ -320,7 +320,7 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-                color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10)),
+                color: TsRenk.zemin(TsRenk.bilgi), borderRadius: BorderRadius.circular(10)),
             child: Row(children: [
               Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
               const SizedBox(width: 8),

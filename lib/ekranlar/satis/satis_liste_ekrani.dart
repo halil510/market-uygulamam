@@ -328,7 +328,7 @@ class _SatisKarti extends StatelessWidget {
               width: 44, height: 44,
               decoration: BoxDecoration(
                 color: iptal
-                    ? Colors.red.shade50
+                    ? TsRenk.zemin(TsRenk.hata)
                     : Color.fromARGB(20, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -350,9 +350,9 @@ class _SatisKarti extends StatelessWidget {
                     padding: const EdgeInsets.all(3),
                     margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(
-                      color: iptal ? Colors.red.shade50
-                          : (satis.fisTipi == 'İade' ? Colors.orange.shade50
-                              : Colors.blue.shade50),
+                      color: iptal ? TsRenk.zemin(TsRenk.hata)
+                          : (satis.fisTipi == 'İade' ? TsRenk.zemin(TsRenk.uyari)
+                              : TsRenk.zemin(TsRenk.bilgi)),
                       borderRadius: BorderRadius.circular(4)),
                     child: Icon(
                       iptal ? Icons.cancel_outlined
@@ -373,7 +373,7 @@ class _SatisKarti extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
-                          color: Colors.red.shade50, borderRadius: BorderRadius.circular(4)),
+                          color: TsRenk.zemin(TsRenk.hata), borderRadius: BorderRadius.circular(4)),
                       child: Text('İPTAL',
                           style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
                               color: Colors.red.shade700)),

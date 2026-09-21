@@ -285,8 +285,8 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: kazandi
-                            ? Colors.green.shade50
-                            : Colors.red.shade50,
+                            ? TsRenk.zemin(TsRenk.basarili)
+                            : TsRenk.zemin(TsRenk.hata),
                         child: Icon(
                           kazandi ? Icons.add : Icons.remove,
                           color: kazandi ? Colors.green : Colors.red,

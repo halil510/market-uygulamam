@@ -462,7 +462,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                 margin: const EdgeInsets.only(top: 8),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: TsRenk.zemin(TsRenk.bilgi),
                     borderRadius: BorderRadius.circular(12)),
                 child: Row(children: [
                   Text(

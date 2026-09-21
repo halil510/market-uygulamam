@@ -319,7 +319,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
     Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12),
+          color: TsRenk.zemin(TsRenk.bilgi), borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.blue.shade200)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -407,7 +407,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
     Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12),
+          color: TsRenk.zemin(TsRenk.uyari), borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.amber.shade300)),
       child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [

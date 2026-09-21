@@ -352,7 +352,7 @@ class _AktifDonemYokKarti extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.orange.shade50,
+        color: TsRenk.zemin(TsRenk.uyari),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.orange.shade200),
       ),

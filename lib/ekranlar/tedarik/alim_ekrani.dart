@@ -221,7 +221,7 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
                     dense: true,
                     leading: CircleAvatar(
                       radius: 16,
-                      backgroundColor: Colors.teal.shade50,
+                      backgroundColor: TsRenk.zemin(Colors.teal),
                       child: Text(t.unvan.isNotEmpty ? t.unvan[0].toUpperCase() : '?',
                           style: TsMetin.kucukVurgu.copyWith(color: Colors.teal.shade700)),
                     ),
@@ -634,7 +634,7 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
                     decoration: BoxDecoration(
                       border: Border.all(color: _tedarikci != null ? Colors.teal : TsRenk.ayirac(context)),
                       borderRadius: BorderRadius.circular(12),
-                      color: _tedarikci != null ? Colors.teal.shade50 : null,
+                      color: _tedarikci != null ? TsRenk.zemin(Colors.teal) : null,
                     ),
                     child: Row(children: [
                       Icon(Icons.business, size: 18,
@@ -688,7 +688,7 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
                   else
                     Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.uyari), borderRadius: BorderRadius.circular(10)),
                       child: Text('Banka hesabı bulunamadı. Önce bir hesap ekleyin veya "Nakit" seçin.',
                           style: TextStyle(fontSize: 11, color: Colors.orange.shade800)),
                     ),

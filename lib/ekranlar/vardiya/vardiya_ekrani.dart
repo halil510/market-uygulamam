@@ -377,10 +377,10 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: fark.abs() < 1
-                      ? Colors.green.shade50
+                      ? TsRenk.zemin(TsRenk.basarili)
                       : fark > 0
-                          ? Colors.blue.shade50
-                          : Colors.red.shade50,
+                          ? TsRenk.zemin(TsRenk.bilgi)
+                          : TsRenk.zemin(TsRenk.hata),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                       color: fark.abs() < 1
@@ -705,7 +705,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  color: TsRenk.zemin(TsRenk.hata),
                   borderRadius: BorderRadius.circular(12)),
               child: Row(children: [
                 const Icon(Icons.cancel_outlined, color: Colors.red, size: 16),

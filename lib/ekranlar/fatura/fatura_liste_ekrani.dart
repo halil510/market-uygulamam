@@ -315,7 +315,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.bilgi), borderRadius: BorderRadius.circular(12)),
                 child: Text(f.faturaNo ?? '—', style: TsMetin.kucukVurgu.copyWith(color: Colors.blue))),
               const SizedBox(width: 6),
               Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),

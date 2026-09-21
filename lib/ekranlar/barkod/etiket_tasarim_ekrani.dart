@@ -422,7 +422,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
                 label: Text(_btBagliMi ? 'Bağlı' : 'Yok',
                     style: TextStyle(fontSize: 11,
                         color: _btBagliMi ? Colors.green.shade700 : Colors.red.shade700)),
-                backgroundColor: _btBagliMi ? Colors.green.shade50 : Colors.red.shade50,
+                backgroundColor: _btBagliMi ? TsRenk.zemin(TsRenk.basarili) : TsRenk.zemin(TsRenk.hata),
               ),
             ),
           ),

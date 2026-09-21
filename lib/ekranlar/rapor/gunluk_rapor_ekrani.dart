@@ -462,9 +462,9 @@ double _toDouble(dynamic value) {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: s.odemeYontemi == 'Nakit' ? Colors.green.shade100
-                    : s.odemeYontemi == 'Kredi Kartı' ? Colors.blue.shade100
-                    : Colors.orange.shade100,
+                color: s.odemeYontemi == 'Nakit' ? TsRenk.zemin(TsRenk.basarili, opaklik: 0.18)
+                    : s.odemeYontemi == 'Kredi Kartı' ? TsRenk.zemin(TsRenk.bilgi, opaklik: 0.18)
+                    : TsRenk.zemin(TsRenk.uyari, opaklik: 0.18),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(s.odemeYontemi,
@@ -571,7 +571,7 @@ double _toDouble(dynamic value) {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: TsRenk.zemin(TsRenk.basarili),
                   borderRadius: BorderRadius.circular(12)),
               child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -712,9 +712,9 @@ double _toDouble(dynamic value) {
                   ..._satislar.map((s) {
                     final idStr = s.fisNo ?? s.id?.toString().padLeft(6, '0') ?? '-';
                     Color odemeRenk = TsRenk.ayirac(context);
-                    if (s.odemeYontemi == 'Nakit') odemeRenk = Colors.green.shade100;
-                    if (s.odemeYontemi == 'Kredi Kartı') odemeRenk = Colors.blue.shade100;
-                    if (s.odemeYontemi == 'Cari') odemeRenk = Colors.orange.shade100;
+                    if (s.odemeYontemi == 'Nakit') odemeRenk = TsRenk.zemin(TsRenk.basarili, opaklik: 0.18);
+                    if (s.odemeYontemi == 'Kredi Kartı') odemeRenk = TsRenk.zemin(TsRenk.bilgi, opaklik: 0.18);
+                    if (s.odemeYontemi == 'Cari') odemeRenk = TsRenk.zemin(TsRenk.uyari, opaklik: 0.18);
                     return Container(
                       margin: const EdgeInsets.only(bottom: 6),
                       decoration: BoxDecoration(
@@ -725,7 +725,7 @@ double _toDouble(dynamic value) {
                       child: ListTile(
                         dense: true,
                         leading: CircleAvatar(radius: 20,
-                          backgroundColor: Colors.blue.shade50,
+                          backgroundColor: TsRenk.zemin(TsRenk.bilgi),
                           child: Text(idStr.length >= 3 ? idStr.substring(idStr.length - 3) : idStr,
                               style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue))),
                         title: Text('Fiş: $idStr',

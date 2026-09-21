@@ -755,7 +755,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                                             padding: const EdgeInsets.symmetric(
                                                 horizontal: 6, vertical: 1),
                                             decoration: BoxDecoration(
-                                                color: Colors.blue.shade50,
+                                                color: TsRenk.zemin(TsRenk.bilgi),
                                                 borderRadius:
                                                     BorderRadius.circular(6)),
                                             child: Text(h.fisTipi,

@@ -227,7 +227,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: TsRenk.zemin(TsRenk.uyari),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.orange.shade300),
                 ),
@@ -490,7 +490,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: m > 0 ? Colors.green.shade50 : TsRenk.arkaplan(ctx),
+                color: m > 0 ? TsRenk.zemin(TsRenk.basarili) : TsRenk.arkaplan(ctx),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                     color: m > 0 ? Colors.green.shade300 : TsRenk.ayirac(ctx)),

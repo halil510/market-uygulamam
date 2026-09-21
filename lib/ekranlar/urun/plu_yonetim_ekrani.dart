@@ -309,7 +309,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
                                   label: const Text('Eklendi',
                                       style: TextStyle(
                                           fontSize: 11, color: Colors.green)),
-                                  backgroundColor: Colors.green.shade50,
+                                  backgroundColor: TsRenk.zemin(TsRenk.basarili),
                                   side: BorderSide(color: Colors.green.shade200),
                                 )
                               : FilledButton(

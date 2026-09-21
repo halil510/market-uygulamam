@@ -296,7 +296,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                       padding: const EdgeInsets.all(10),
                       margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
+                        color: TsRenk.zemin(TsRenk.uyari),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.orange.shade200),
                       ),

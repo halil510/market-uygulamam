@@ -578,7 +578,7 @@ class _RezervasyonKarti extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.orange.shade50,
+              color: TsRenk.zemin(TsRenk.uyari),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.orange.shade200),
             ),

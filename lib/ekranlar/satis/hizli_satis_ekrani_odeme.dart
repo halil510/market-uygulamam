@@ -514,7 +514,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
                     return ListTile(
                       dense: true,
                       leading: CircleAvatar(radius: 18,
-                        backgroundColor: Colors.teal.shade50,
+                        backgroundColor: TsRenk.zemin(Colors.teal),
                         child: Text(t.unvan.isNotEmpty ? t.unvan[0].toUpperCase() : '?',
                             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.teal.shade700))),
                       title: Text(t.unvan, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),

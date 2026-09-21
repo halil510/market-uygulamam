@@ -875,7 +875,7 @@ class _BorcKartModern extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.green.shade50,
+                                color: TsRenk.zemin(TsRenk.basarili),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text('✓ Ödendi',

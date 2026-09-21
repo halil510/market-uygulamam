@@ -36,7 +36,7 @@ extension _UrunEkleWidgetExt on _UrunEkleEkraniState {
           margin: const EdgeInsets.only(top: 4),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.amber.shade50,
+            color: TsRenk.zemin(TsRenk.uyari),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: Colors.amber.shade200),
           ),
@@ -225,7 +225,7 @@ class _DovizleHesaplaDialogState extends State<_DovizleHesaplaDialog> {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.basarili), borderRadius: BorderRadius.circular(12)),
           child: Column(children: [
             Text('TL Karşılığı', style: TextStyle(fontSize: 11, color: context.textSecondary)),
             Text('${_sonuc.toStringAsFixed(2)} ₺',

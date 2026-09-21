@@ -97,7 +97,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
           const SizedBox(height: 16),
           Row(children: [
             Container(padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.bilgi), borderRadius: BorderRadius.circular(12)),
               child: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20)),
             const SizedBox(width: 10),
             Expanded(child: Text('Promosyon Düzenle',
@@ -421,9 +421,9 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
               margin: const EdgeInsets.only(top: 6, bottom: 6),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [Colors.blue.shade50, Colors.green.shade50]),
+                  gradient: LinearGradient(colors: [TsRenk.zemin(TsRenk.bilgi), TsRenk.zemin(TsRenk.basarili)]),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade100)),
+                  border: Border.all(color: TsRenk.zemin(TsRenk.bilgi, opaklik: 0.4))),
               child: Column(children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   _HesapKutu('Normal Birim', ParaUtils.formatla(_seciliUrun!.satisFiyati), Colors.blue),
@@ -461,7 +461,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
               margin: const EdgeInsets.only(top: 8),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: TsRenk.zemin(TsRenk.basarili),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.green.shade200)),
               child: Row(children: [
@@ -545,7 +545,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                 labelText: 'Toplam Fiyat ₺',
                 border: const OutlineInputBorder(),
                 filled: true,
-                fillColor: Colors.green.shade50,
+                fillColor: TsRenk.zemin(TsRenk.basarili),
                 prefixText: '₺ ',
               ),
               onChanged: (v) {

@@ -86,7 +86,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
         
         title: Row(children: [
           Container(padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.hata), shape: BoxShape.circle),
             child: const Icon(Icons.delete_outline, color: Colors.red, size: 20)),
           const SizedBox(width: 10),
           const Text('Cari Sil', style: TextStyle(fontSize: 16)),

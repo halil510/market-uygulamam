@@ -173,7 +173,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: TsRenk.zemin(TsRenk.uyari),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -216,7 +216,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
                 prefixIcon: const Icon(Icons.account_balance_rounded),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 filled: true,
-                fillColor: Colors.blue.shade50,
+                fillColor: TsRenk.zemin(TsRenk.bilgi),
               ),
               items: widget.bankaHesaplari
                   .map((h) => DropdownMenuItem(
@@ -239,7 +239,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: TsRenk.zemin(TsRenk.uyari),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -257,7 +257,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
                 prefixIcon: const Icon(Icons.credit_card_rounded),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 filled: true,
-                fillColor: Colors.purple.shade50,
+                fillColor: TsRenk.zemin(TsRenk.accent),
               ),
               items: widget.krediKartlari
                   .map((k) => DropdownMenuItem(
@@ -280,7 +280,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: TsRenk.zemin(TsRenk.uyari),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(

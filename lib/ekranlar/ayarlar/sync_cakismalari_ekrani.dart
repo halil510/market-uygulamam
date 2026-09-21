@@ -201,13 +201,13 @@ class _CakismaKarti extends StatelessWidget {
               Expanded(
                 child: Row(children: [
                   Expanded(
-                    child: _degerKutusu('Sizde (kaybedildi)', yerel, Colors.orange.shade50, Colors.orange.shade800),
+                    child: _degerKutusu('Sizde (kaybedildi)', yerel, TsRenk.zemin(TsRenk.uyari), Colors.orange.shade800),
                   ),
                   const SizedBox(width: 6),
                   const Icon(Icons.arrow_forward, size: 14),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: _degerKutusu('Buluttan (uygulandı)', gelen, Colors.green.shade50, Colors.green.shade800),
+                    child: _degerKutusu('Buluttan (uygulandı)', gelen, TsRenk.zemin(TsRenk.basarili), Colors.green.shade800),
                   ),
                 ]),
               ),

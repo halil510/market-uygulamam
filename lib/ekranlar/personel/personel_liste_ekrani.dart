@@ -416,7 +416,7 @@ class _PersonelDetaySheet extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: personel.aktif ? Colors.green.shade50 : Colors.red.shade50,
+              color: personel.aktif ? TsRenk.zemin(TsRenk.basarili) : TsRenk.zemin(TsRenk.hata),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(personel.aktif ? 'Aktif' : 'Pasif',

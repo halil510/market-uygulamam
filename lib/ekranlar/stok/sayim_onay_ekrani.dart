@@ -158,7 +158,7 @@ class _SayimOnayEkraniState extends ConsumerState<SayimOnayEkrani> {
                         decoration: BoxDecoration(
                           color: fark == 0
                               ? TsRenk.arkaplan(context)
-                              : (fark > 0 ? Colors.green.shade50 : Colors.red.shade50),
+                              : (fark > 0 ? TsRenk.zemin(TsRenk.basarili) : TsRenk.zemin(TsRenk.hata)),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(

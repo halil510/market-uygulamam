@@ -120,7 +120,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.orange.shade50,
+            color: TsRenk.zemin(TsRenk.uyari),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.orange.shade200)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -234,7 +234,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color: secili ? Colors.blue.shade50 : TsRenk.arkaplan(context),
+                    color: secili ? TsRenk.zemin(TsRenk.bilgi) : TsRenk.arkaplan(context),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: secili ? Colors.blue.shade300 : TsRenk.ayirac(context))),
@@ -242,7 +242,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
                     leading: Container(
                       width: 40, height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade100,
+                        color: TsRenk.zemin(TsRenk.bilgi, opaklik: 0.18),
                         shape: BoxShape.circle),
                       child: const Icon(Icons.phone_android, color: Colors.blue, size: 22)),
                     title: Text(ad, style: const TextStyle(
@@ -320,8 +320,8 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: _btDurum.startsWith('✅') ? Colors.green.shade50
-                  : _btDurum.startsWith('❌') ? Colors.red.shade50
+              color: _btDurum.startsWith('✅') ? TsRenk.zemin(TsRenk.basarili)
+                  : _btDurum.startsWith('❌') ? TsRenk.zemin(TsRenk.hata)
                   : TsRenk.arkaplan(context),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
@@ -734,7 +734,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
                 Container(
                   width: 44, height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.green.shade50,
+                    color: TsRenk.zemin(TsRenk.basarili),
                     shape: BoxShape.circle),
                   child: const Icon(Icons.phone_android,
                       color: Colors.green, size: 24)),

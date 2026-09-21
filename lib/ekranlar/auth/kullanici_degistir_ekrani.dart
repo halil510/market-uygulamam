@@ -354,7 +354,7 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   decoration: BoxDecoration(
-                    color: hata.isNotEmpty ? Colors.red.shade50 : TsRenk.kart(context),
+                    color: hata.isNotEmpty ? TsRenk.zemin(TsRenk.hata) : TsRenk.kart(context),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                         color: hata.isNotEmpty ? Colors.red.shade300 : TsRenk.ayirac(context),
@@ -384,7 +384,7 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
                 margin: const EdgeInsets.only(top: 8),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                    color: Colors.red.shade50,
+                    color: TsRenk.zemin(TsRenk.hata),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.red.shade200)),
                 child: Row(children: [
@@ -407,8 +407,8 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
               child: Padding(
                 padding: const EdgeInsets.all(4),
                 child: Material(
-                  color: t == 'C' ? Colors.red.shade50
-                      : t == '⌫' ? Colors.orange.shade50
+                  color: t == 'C' ? TsRenk.zemin(TsRenk.hata)
+                      : t == '⌫' ? TsRenk.zemin(TsRenk.uyari)
                       : TsRenk.arkaplan(context),
                   borderRadius: BorderRadius.circular(12),
                   child: InkWell(

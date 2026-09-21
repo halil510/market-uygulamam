@@ -239,7 +239,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: TsRenk.zemin(TsRenk.bilgi),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.blue.shade200),
                 ),
@@ -387,7 +387,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: TsRenk.zemin(TsRenk.uyari),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.orange.shade300),
                   ),

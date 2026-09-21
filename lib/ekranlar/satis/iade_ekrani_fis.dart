@@ -254,7 +254,7 @@ extension _FisTabExt on _IadeEkraniState {
                                   fontSize: 16, fontWeight: FontWeight.w700)),
                           Chip(
                               label: Text(_bulunanSatis!.odemeYontemi),
-                              backgroundColor: Colors.blue.shade50),
+                              backgroundColor: TsRenk.zemin(TsRenk.bilgi)),
                         ]),
                     if (_bulunanSatis!.cariAdi != null)
                       Text('Müşteri: ${_bulunanSatis!.cariAdi}',

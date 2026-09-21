@@ -9,6 +9,7 @@ import 'package:file_picker/file_picker.dart';
 
 import '../../servisler/excel_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../ortak/yukleniyor_widget.dart';
 
 class ExcelIceAktarYardimcisi {
@@ -88,7 +89,7 @@ class ExcelIceAktarYardimcisi {
               margin: const EdgeInsets.only(top: 10),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: TsRenk.zemin(TsRenk.uyari),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.orange.shade200),
               ),

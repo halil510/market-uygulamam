@@ -112,7 +112,7 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                    color: _seciliCari != null ? Colors.green.shade50 : TsRenk.arkaplan(context),
+                    color: _seciliCari != null ? TsRenk.zemin(TsRenk.basarili) : TsRenk.arkaplan(context),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: _seciliCari != null
                         ? Colors.green.shade300 : TsRenk.ayirac(context))),
@@ -170,7 +170,7 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: miktar > 0 ? Colors.green.shade50 : TsRenk.kart(context),
+                    color: miktar > 0 ? TsRenk.zemin(TsRenk.basarili) : TsRenk.kart(context),
                     borderRadius: BorderRadius.circular(12),
                     border: miktar > 0 ? Border.all(color: Colors.green.shade300) : null,
                     boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
@@ -184,7 +184,7 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
                       GestureDetector(
                         onTap: () => ref.read(sepetProvider.notifier).miktarGuncelle(kalemIdx, miktar - 1),
                         child: Container(width: 30, height: 30,
-                            decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
+                            decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.hata), shape: BoxShape.circle),
                             child: const Icon(Icons.remove, size: 16, color: Colors.red))),
                       Padding(padding: const EdgeInsets.symmetric(horizontal: 10),
                           child: Text(miktar.toStringAsFixed(0),
@@ -192,7 +192,7 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
                       GestureDetector(
                         onTap: () => ref.read(sepetProvider.notifier).miktarGuncelle(kalemIdx, miktar + 1),
                         child: Container(width: 30, height: 30,
-                            decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
+                            decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.basarili), shape: BoxShape.circle),
                             child: const Icon(Icons.add, size: 16, color: Colors.green))),
                     ])
                     else GestureDetector(

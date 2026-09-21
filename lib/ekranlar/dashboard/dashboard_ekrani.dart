@@ -314,7 +314,7 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
         margin: const EdgeInsets.fromLTRB(14, 10, 14, 0),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.red.shade50,
+          color: TsRenk.zemin(TsRenk.hata),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.red.shade200),
         ),

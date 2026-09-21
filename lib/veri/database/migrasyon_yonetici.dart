@@ -192,5 +192,9 @@ class MigrasyonYonetici {
     // v69'dan v70'e — Yıl Sonu Devir çoklu cihaz kilidi (donem_kilit,
     // bkz. _v69danV70e yorumu, 2026-09-21).
     if (eskiVersiyon < 70) await _v69danV70e(db);
+
+    // v70'den v71'e — lot_seri(urun_id, aktif) index (FAZ 5 performans,
+    // bkz. _v70denV71e yorumu, 2026-09-21).
+    if (eskiVersiyon < 71) await _v70denV71e(db);
   }
 }

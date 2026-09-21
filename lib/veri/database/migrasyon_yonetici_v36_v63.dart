@@ -1071,3 +1071,13 @@ Future<void> _v69danV70e(Database db) async {
   await _calistir(db,
       'CREATE INDEX IF NOT EXISTS idx_donemkilit_donem ON donem_kilit(donem_id)');
 }
+
+// v70'den v71'e — DEEP_AUDIT_REPORT FAZ 5 (Performans, 2026-09-21):
+// FEFO satış düşümü lot_seri'de hiç indekslenmemiş bir sorgu
+// çalıştırıyordu (bkz. index_semasi.dart'taki aynı gerekçe — o dosya
+// sadece TAZE kurulumları kapsar, mevcut cihazlar için bu migrasyon
+// gerekli).
+Future<void> _v70denV71e(Database db) async {
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_lot_seri_urun_aktif ON lot_seri(urun_id, aktif)');
+}

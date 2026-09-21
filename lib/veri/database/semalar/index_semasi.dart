@@ -132,5 +132,11 @@ class IndexSemasi {
     // bayi/toptancı carisinde (binlerce hareket) bu sorgu index
     // birleştirme yerine kısmi tam taramaya düşebiliyordu.
     "CREATE INDEX IF NOT EXISTS idx_carih_cari_silinmemis_tarih ON cari_hareket(cari_id, is_deleted, tarih)",
+
+    // 🔴 DEEP_AUDIT_REPORT FAZ 5 (Performans, 2026-09-21): FEFO satış
+    // düşümü (StokDeposu.stokDusFefoTxn — 'WHERE urun_id=? AND aktif=1
+    // AND miktar>0 ORDER BY son_kullanma_tarihi') lot takipli her ürün
+    // satışında çalışan, ama hiç indekslenmemiş bir sorguydu — full scan.
+    "CREATE INDEX IF NOT EXISTS idx_lot_seri_urun_aktif ON lot_seri(urun_id, aktif)",
   ];
 }

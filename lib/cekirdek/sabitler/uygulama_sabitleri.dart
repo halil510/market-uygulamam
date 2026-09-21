@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      70; // v70: Yıl Sonu Devir çoklu cihaz kilidi (donem_kilit, FAZ 4, 2026-09-21)
+      71; // v71: lot_seri(urun_id, aktif) index — FEFO sorgusu full-scan yapıyordu (FAZ 5, 2026-09-21)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

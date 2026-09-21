@@ -119,11 +119,19 @@ class OnayMerkeziServisi {
     }
   }
 
-  Future<List<Map<String, dynamic>>> listele({bool sadeceGorulmemis = false}) async {
+  // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 9): bu sorgu ÖNCEDEN limitsizdi —
+  // yıllar içinde birikince Onay Merkezi ekranı tüm geçmişi tek seferde
+  // çekip yavaşlıyordu. Varsayılan davranış (tüm görülmüş+görülmemiş
+  // kayıtları göstermek) KORUNDU — bu bir denetim/inceleme listesi,
+  // sessizce "sadece görülmemiş"e daraltmak geçmişi arayan bir kullanıcıyı
+  // şaşırtabilirdi. Bunun yerine makul bir üst sınır (LIMIT) eklendi.
+  Future<List<Map<String, dynamic>>> listele(
+      {bool sadeceGorulmemis = false, int limit = 300}) async {
     final db = await Veritabani().db;
     return db.query('onay_talepleri',
         where: sadeceGorulmemis ? 'is_deleted = 0 AND goruldu = 0' : 'is_deleted = 0',
-        orderBy: 'tarih DESC');
+        orderBy: 'tarih DESC',
+        limit: limit);
   }
 
   Future<int> gorulmemisSayisi() async {

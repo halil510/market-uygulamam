@@ -56,6 +56,10 @@ class YetkiTanimlari {
     // /rezervasyon (restoran modülü — sipariş alma/ödeme içerir)
     // uygulama_router.dart._routeYetkiler'de hiç yoktu, herkes erişebiliyordu.
     'masa': {'label': 'Masa/Restoran', 'grup': 'Satış'},
+    // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 6): /vardiya router'da hiç
+    // yetki kontrolüne bağlı değildi — kasiyer/personel/depocu deep-link
+    // ile kasa bakiyesi/açılış-kapanış mutabakatını görebiliyordu.
+    'vardiya': {'label': 'Vardiya/Kasa Kapanış', 'grup': 'Diğer'},
   };
 
   // Rol bazlı varsayılan yetkiler
@@ -66,7 +70,7 @@ class YetkiTanimlari {
       case 'mudur':
         return yetkiler.keys.where((k) => !['kullanici', 'ayarlar'].contains(k)).toSet();
       case 'kasiyer':
-        return {'satis', 'satis_liste', 'satis_iade', 'urun', 'cari', 'cari_hareket', 'stok', 'promosyon', 'masa'};
+        return {'satis', 'satis_liste', 'satis_iade', 'urun', 'cari', 'cari_hareket', 'stok', 'promosyon', 'masa', 'vardiya'};
       case 'personel':
         return {'satis', 'urun', 'cari', 'stok', 'masa'};
       case 'depocu':

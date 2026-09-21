@@ -356,6 +356,16 @@ class UygulamaRouter {
     '/birim': 'urun_ekle',
     '/lot': 'stok',
     '/ai': 'rapor',
+    // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 6): /vardiya kasa bakiyesi +
+    // açılış/kapanış mutabakatı gösteriyor — dedike 'vardiya' koduna
+    // bağlandı (kasiyer varsayılan olarak sahip, personel/depocu değil).
+    // /arama, satış/cari/masa verisini tek kutudan arattığı için 'satis'
+    // yetkisine bağlandı (depocu gibi satış izni olmayan roller artık
+    // deep-link ile bu veriye ulaşamaz). /bildirimler BİLİNÇLİ OLARAK
+    // dışarıda bırakıldı — '/' (dashboard) gibi tüm rollerin ortak
+    // gördüğü genel bir ekran, tek bir modüle özgü hassas veri değil.
+    '/vardiya': 'vardiya',
+    '/arama': 'satis',
   };
 
   static String? _redirect(WidgetRef ref, GoRouterState state) {

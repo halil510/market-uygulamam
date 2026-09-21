@@ -40,7 +40,13 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
 
   Future<void> _urunYukle() async {
     try {
-      final u = await UrunDeposu().tumunuGetir();
+      // 🔴 DEEP_AUDIT (kendi-keşif turu, 2026-09-21): tumunuGetir()
+      // varsayılan limiti (2000) burada override edilmiyordu — 2000'den
+      // fazla aktif SKU'su olan bir markette liste sessizce kesiliyordu
+      // (bu ekranda arama/sayfalama yok, kullanıcı eksik olduğunu fark
+      // edemezdi). CariDeposu'nun devir snapshot'ındaki AYNI hata
+      // sınıfıyla aynı gerekçe.
+      final u = await UrunDeposu().tumunuGetir(limit: 100000);
       if (mounted) setState(() { _urunler = u; _yukleniyor = false; });
     } catch (e) {
       if (mounted) setState(() => _yukleniyor = false);

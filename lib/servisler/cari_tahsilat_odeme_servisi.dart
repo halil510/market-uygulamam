@@ -39,6 +39,13 @@ class CariTahsilatOdemeServisi {
     String? aciklama,
     int? bankaHesapId,
     int? krediKartiId,
+    // 🆕 Makbuz yeniden yazdırma (kullanıcı isteği 2026-09-22): önceden
+    // makbuz numarası SADECE yazdırma anında üretilip cari_hareket'e HİÇ
+    // kaydedilmiyordu — Cari Detay'dan sonradan "tekrar bas" denince
+    // orijinal makbuz numarası kurtarılamıyordu. Artık çağıran taraf
+    // (tahsilat_odeme_ekrani.dart) makbuz numarasını kaydetmeden ÖNCE
+    // üretip buraya veriyor, cari_hareket.fis_no'ya yazılıyor.
+    String? fisNo,
   }) async {
     final bankaGerekli =
         paraHareketEdiyor && (odemeTuru == 'Banka' || odemeTuru == 'Havale');
@@ -63,6 +70,7 @@ class CariTahsilatOdemeServisi {
             cariId: cariId,
             tarih: DateTime.now(),
             fisTipi: islemTipi,
+            fisNo: fisNo,
             aciklama: (aciklama == null || aciklama.trim().isEmpty)
                 ? '$islemTipi - $odemeTuru'
                 : aciklama.trim(),

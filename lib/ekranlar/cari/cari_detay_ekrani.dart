@@ -24,6 +24,8 @@ import '../../cekirdek/utils/sifre_hash.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
+import '../../servisler/yazdirma_servisi.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 
 /// Karma ödemeli bir satışta hem Cari hem Cari-dışı (Nakit/Kart/Havale)
 /// payı varsa, SatisTamamlamaServisi.tamamla() AYNI satış (fis_id) için
@@ -83,8 +85,28 @@ List<CariHareketModel> _iptalEdilmisSatislariGizle(
       .toList();
 }
 
+/// CariDeposu.hareketIptalEt() bir Tahsilat/Ödeme iptal edildiğinde
+/// ORİJİNAL kaydı is_deleted=1 yapar (hareketleriniGetir() zaten
+/// is_deleted=0 filtreler, o satır hiç gelmez) ve yanına salt-audit,
+/// borc=0/alacak=0 bir "... İptali" damga satırı ekler (bakiyeyi
+/// etkilemesin diye bilinçli olarak sıfır). Sonuç: müşteri ekstresinde
+/// üstünde hiçbir şey görünmeyen, ₺0,00 tutarlı, tek başına asılı kalan
+/// bir "Tahsilat İptali" satırı — kullanıcı bulgusu (2026-09-22): "silme
+/// işlemi olmaz mı" (yani bu iz de satış iptalinde olduğu gibi hiç
+/// görünmesin). Orijinali zaten görünmediğinden bu damga satırı hiçbir
+/// bakiye bilgisi taşımıyor — DB'de audit için kalmaya devam eder, sadece
+/// ekrandan gizlenir.
+List<CariHareketModel> _sifirTutarliIptalDamgalariniGizle(
+    List<CariHareketModel> ham) {
+  return ham
+      .where((h) =>
+          !(h.fisTipi.endsWith('İptali') && h.borc == 0 && h.alacak == 0))
+      .toList();
+}
+
 List<CariHareketModel> cariHareketleriniGrupla(List<CariHareketModel> hamGiris) {
-  final ham = _iptalEdilmisSatislariGizle(hamGiris);
+  final ham = _sifirTutarliIptalDamgalariniGizle(
+      _iptalEdilmisSatislariGizle(hamGiris));
   final gruplar = <int, List<CariHareketModel>>{};
   for (final h in ham) {
     if (h.fisTipi == 'Satış' && h.fisId != null) {
@@ -177,6 +199,19 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
   bool _yukl = false;
   final _fmt = DateFormat('dd.MM.yyyy HH:mm');
 
+  // 🆕 Uzun basıp seçip yazdırma (kullanıcı isteği 2026-09-22): hızlı
+  // satıştaki manuel yazdırma butonuyla AYNI fikir — bir fiş/tahsilat/
+  // ödeme satırına uzun basılınca seçilir (vurgulanır), app bar'da beliren
+  // yazıcı ikonuna basınca O satır yazdırılır. Sadece gerçek bir belgesi
+  // olan tipler seçilebilir (Satış/Toptan Satış → fiş, Tahsilat/Odeme →
+  // makbuz) — "...İptali" gibi salt-audit satırların basılacak bir belgesi
+  // yok.
+  static const _yazdirilabilirTipler = {
+    'Satış', 'Toptan Satış', 'Tahsilat', 'Odeme',
+  };
+  CariHareketModel? _seciliHareket;
+  bool _yazdiriliyor = false;
+
   MusteriIstatistik? _istatistik;
   MusteriSegmenti? _segment;
   bool _analizYukl = false;
@@ -185,6 +220,9 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
+    _tab.addListener(() {
+      if (_seciliHareket != null) setState(() => _seciliHareket = null);
+    });
     _hareketYukle();
     if (widget.cari.cariTipi.contains('Müşteri')) _analizYukle();
   }
@@ -335,6 +373,59 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
       if (mounted) BildirimServisi.hata(context, 'Faturalandırma hatası: $e');
     } finally {
       if (mounted) setState(() => _yukl = false);
+    }
+  }
+
+  /// Uzun basılıp seçilen satırı yazdırır — Satış/Toptan Satış için
+  /// termal FİŞ (YazdirmaServisi.fisYazdir, hızlı satıştaki AYNI kod
+  /// yolu), Tahsilat/Ödeme için MAKBUZ (YazdirmaServisi.makbuzYazdir,
+  /// tahsilat_odeme_ekrani.dart'taki AYNI kod yolu — orijinal makbuz
+  /// numarası artık cari_hareket.fis_no'da saklı, yoksa geriye dönük
+  /// eski kayıtlar için "Kopya" etiketiyle üretilir).
+  Future<void> _seciliYazdir() async {
+    final h = _seciliHareket;
+    if (h == null || _yazdiriliyor) return;
+    setState(() => _yazdiriliyor = true);
+    try {
+      if (h.fisTipi == 'Satış' || h.fisTipi == 'Toptan Satış') {
+        if (h.fisId == null) throw Exception('Bu satışın fiş bilgisi bulunamadı');
+        final satis = await SatisDeposu().idileGetir(h.fisId!);
+        if (satis == null) throw Exception('Satış bulunamadı (silinmiş olabilir)');
+        double? cariOnceki, cariSon;
+        if (satis.cariId != null) {
+          final b = await CariDeposu().bakiyeHareketAninda(h);
+          cariOnceki = b.oncekiBakiye;
+          cariSon = b.sonBakiye;
+        }
+        await YazdirmaServisi().fisYazdir(satis,
+            cariUnvan: widget.cari.unvan,
+            cariOncekiBakiye: cariOnceki,
+            cariSonBakiye: cariSon);
+      } else if (h.fisTipi == 'Tahsilat' || h.fisTipi == 'Odeme') {
+        final b = await CariDeposu().bakiyeHareketAninda(h);
+        await YazdirmaServisi().makbuzYazdir(
+          makbuzNo: h.fisNo ?? 'KOPYA-${h.id}',
+          tarih: h.tarih,
+          cariUnvan: widget.cari.unvan,
+          tutar: h.fisTipi == 'Tahsilat' ? h.alacak : h.borc,
+          odemeTuru: h.odemeTuru ?? '—',
+          islemTipi: h.fisTipi,
+          aciklama: h.aciklama.isEmpty ? null : h.aciklama,
+          kesenKisi: h.kullanici,
+          oncekiBakiye: b.oncekiBakiye,
+          sonBakiye: b.sonBakiye,
+        );
+      } else {
+        throw Exception('Bu hareket türü yazdırılamaz');
+      }
+      if (mounted) BildirimServisi.basari(context, 'Yazdırıldı');
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Yazıcı hatası: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      if (mounted) setState(() {
+        _yazdiriliyor = false;
+        _seciliHareket = null;
+      });
     }
   }
 
@@ -606,6 +697,21 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
           _eFaturaRozeti(c),
         ]),
         aksiyonlar: [
+          if (_seciliHareket != null) ...[
+            IconButton(
+              icon: _yazdiriliyor
+                  ? const SizedBox(width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.print_outlined, color: Colors.white),
+              tooltip: 'Seçili fişi/makbuzu yazdır',
+              onPressed: _yazdiriliyor ? null : _seciliYazdir,
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              tooltip: 'Seçimi iptal et',
+              onPressed: () => setState(() => _seciliHareket = null),
+            ),
+          ],
           if (c.cariTipi.contains('Müşteri'))
             IconButton(
               icon: const Icon(Icons.stars_outlined, color: Colors.amber),
@@ -789,10 +895,13 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
               h.fisTipi == 'Toptan Satış' ||
               h.fisTipi == 'Toptan Satış (Sipariş)' ||
               h.fisTipi == 'Masa Satış');
+          final yazdirilabilir = _yazdirilabilirTipler.contains(h.fisTipi);
+          final secili = _seciliHareket == h;
           return Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12),
+              border: secili ? Border.all(color: AppRenkler.primary, width: 2) : null,
               boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
@@ -807,6 +916,12 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
                           ),
                         ))
                       : null,
+              // 🆕 Uzun bas → seç (hızlı satıştaki manuel yazdırma
+              // butonuyla aynı fikir): sadece gerçek bir belgesi olan
+              // tipler (Satış/Toptan Satış/Tahsilat/Odeme) seçilebilir.
+              onLongPress: !yazdirilabilir
+                  ? () => BildirimServisi.hata(context, 'Bu hareket türü yazdırılamaz')
+                  : () => setState(() => _seciliHareket = secili ? null : h),
               child: Row(children: [
               Container(
                 width: 36, height: 36,

@@ -199,6 +199,16 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
       // ══════════════════════════════════════════════════════════════════
       final oncekiBakiye = _cari?.bakiye ?? 0;
 
+      // 🆕 Makbuz no artık YAZDIRMADAN ÖNCE değil, KAYITTAN ÖNCE üretilip
+      // cari_hareket.fis_no'ya yazılıyor — Cari Detay'dan sonradan
+      // "tekrar yazdır" denildiğinde orijinal makbuz numarası kurtarılabilsin
+      // diye (kullanıcı isteği 2026-09-22). "Borç Ekle" (paraHareketEdiyor
+      // false) için makbuz üretilmiyor — zaten hiç basılmıyor.
+      final makbuzNo = _paraHareketEdiyor
+          ? await Veritabani()
+              .fisNoUret(_islemTipi == 'Tahsilat' ? 'tahsilat' : 'tediye')
+          : null;
+
       // Cari hareket + (varsa) gerçek para hareketi (kasa/banka/kredi
       // kartı) artık CariTahsilatOdemeServisi'nde TEK bir db.transaction()
       // içinde atomik olarak yürütülüyor — bkz. o servisin doc yorumu,
@@ -215,6 +225,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
         aciklama: _aciklamaCtrl.text,
         bankaHesapId: _secilenHesap?.id,
         krediKartiId: _secilenKart?.id,
+        fisNo: makbuzNo,
       );
       // ══════════════════════════════════════════════════════════════════
       // 🆕 TAHSİLAT / TEDİYE MAKBUZU YAZDIRMA
@@ -230,10 +241,8 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
       if (_paraHareketEdiyor) {
         try {
           final guncelCari = await _depo.idileGetir(widget.cariId);
-          final makbuzNo = await Veritabani()
-              .fisNoUret(_islemTipi == 'Tahsilat' ? 'tahsilat' : 'tediye');
           await YazdirmaServisi().makbuzYazdir(
-            makbuzNo: makbuzNo,
+            makbuzNo: makbuzNo!,
             tarih: DateTime.now(),
             cariUnvan: _cari?.unvan ?? 'Cari',
             tutar: tutar,

@@ -535,6 +535,27 @@ class CariDeposu {
     return rows.map(CariHareketModel.fromMap).toList();
   }
 
+  /// Belirli bir cari_hareket satırının YAZILDIĞI ANDAKİ bakiyesini
+  /// (sonBakiye) ve ondan hemen önceki bakiyesini (oncekiBakiye) geriye
+  /// dönük hesaplar — makbuz YENİDEN yazdırma için (kullanıcı isteği
+  /// 2026-09-22: Cari Hareketler'den bir Tahsilat/Ödeme'yi seçip tekrar
+  /// bastırabilme). Sıralama, hareketleriniGetir()'deki (tarih DESC)
+  /// ile TUTARLI olsun diye 'tarih, sonra id' kullanır.
+  Future<({double oncekiBakiye, double sonBakiye})> bakiyeHareketAninda(
+      CariHareketModel h) async {
+    final db = await _d;
+    final tarihStr = h.tarih.toIso8601String();
+    final rows = await db.rawQuery('''
+      SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) AS b
+      FROM cari_hareket
+      WHERE cari_id = ? AND is_deleted = 0
+        AND (datetime(tarih) < datetime(?) OR (datetime(tarih) = datetime(?) AND id <= ?))
+    ''', [h.cariId, tarihStr, tarihStr, h.id]);
+    final sonBakiye = (rows.first['b'] as num?)?.toDouble() ?? 0;
+    final oncekiBakiye = sonBakiye - (h.borc - h.alacak);
+    return (oncekiBakiye: oncekiBakiye, sonBakiye: sonBakiye);
+  }
+
   /// Bir cari hareketi iptal eder: orijinal kayıt SOFT-DELETE edilir
   /// (is_deleted=1, hard-delete edilmez — bulut senkron için gerekli),
   /// audit-trail amaçlı borc=0/alacak=0 bir "... İptali" kaydı eklenir,

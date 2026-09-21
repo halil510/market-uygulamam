@@ -181,5 +181,46 @@ void main() {
 
       expect(sonuc, hasLength(1));
     });
+
+    // Kullanıcı bulgusu (2026-09-22): satış silmede olduğu gibi, bir
+    // Tahsilat/Ödeme de İPTAL edildiğinde (CariDeposu.hareketIptalEt())
+    // hiç gözükmemeli. Orijinal kayıt zaten is_deleted=1 olduğu için
+    // hareketleriniGetir() onu hiç getirmiyor — geriye sadece salt-audit,
+    // borc=0/alacak=0 bir "Tahsilat İptali" damga satırı kalıyor. Bu
+    // satırın kendisi de artık gizlenmeli.
+    test('iptal edilen Tahsilat — orijinali zaten görünmez, sıfır tutarlı damga satırı da HİÇ görünmez', () {
+      final ham = [
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Tahsilat İptali', fisId: 42,
+            fisNo: null, borc: 0, alacak: 0, aciklama: 'İptal: Nakit tahsilat (₺90,00)'),
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Satış', fisId: 1, fisNo: 'F1', borc: 30, alacak: 0),
+      ];
+
+      final sonuc = cariHareketleriniGrupla(ham);
+
+      expect(sonuc, hasLength(1), reason: 'sadece ilgisiz Satış kalmalı');
+      expect(sonuc.first.fisTipi, 'Satış');
+    });
+
+    test('iptal edilen Ödeme — sıfır tutarlı damga satırı HİÇ görünmez', () {
+      final ham = [
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Ödeme İptali', fisId: 7,
+            borc: 0, alacak: 0, aciklama: 'İptal: Ödeme (₺50,00)'),
+      ];
+
+      final sonuc = cariHareketleriniGrupla(ham);
+
+      expect(sonuc, isEmpty);
+    });
+
+    test('gerçek (sıfır olmayan) Tahsilat/Ödeme kayıtları DEĞİŞMEDEN görünür', () {
+      final ham = [
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Tahsilat', borc: 0, alacak: 100),
+        _h(cariId: 1, tarih: tarih, fisTipi: 'Ödeme', borc: 50, alacak: 0),
+      ];
+
+      final sonuc = cariHareketleriniGrupla(ham);
+
+      expect(sonuc, hasLength(2));
+    });
   });
 }

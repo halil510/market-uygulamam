@@ -12,6 +12,7 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/barkod_servisi.dart';
 import '../../servisler/excel_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';

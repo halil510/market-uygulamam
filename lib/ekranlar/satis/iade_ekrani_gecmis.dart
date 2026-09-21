@@ -565,7 +565,6 @@ extension _GecmisTabExt on _IadeEkraniState {
     setState(() {
       _duzenlemeModu_iadeId  = iadeId;
       _duzenlemeModu_fisNo   = iade['fis_no']?.toString();
-      _duzenlemeModu_cari    = cari;
       _secilenCari           = cari;
       _oturumIadeId          = iadeId;        // Devam modunda oturum ID set et
       _oturumFisNo           = iade['fis_no']?.toString() ?? '';

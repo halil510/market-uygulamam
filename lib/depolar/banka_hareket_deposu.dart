@@ -187,12 +187,16 @@ class BankaHareketDeposu {
   Future<Map<String, double>> ozetGetir(int hesapId) async {
     try {
       final db = await _d;
+      // 🔴 DEEP_AUDIT_REPORT madde 10: is_deleted filtresi eksikti — bu
+      // özet, silinmiş (ör. virman/gider iptal edilmiş) hareketleri de
+      // toplama dahil ediyordu, gelen/giden diğer sorgulardan (hareketleri
+      // Getir, bakiye zinciri) daha yüksek görünebiliyordu.
       final rows = await db.rawQuery('''
         SELECT
           COALESCE(SUM(CASE WHEN islem_tipi = 'Gelen' THEN tutar ELSE 0 END), 0) as gelen,
           COALESCE(SUM(CASE WHEN islem_tipi != 'Gelen' THEN tutar ELSE 0 END), 0) as giden
         FROM banka_hareketler
-        WHERE banka_hesap_id = ?
+        WHERE banka_hesap_id = ? AND is_deleted = 0
       ''', [hesapId]);
       if (rows.isEmpty) return {'gelen': 0, 'giden': 0};
       return {

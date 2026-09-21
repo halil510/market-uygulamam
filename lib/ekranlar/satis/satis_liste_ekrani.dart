@@ -18,6 +18,7 @@ import '../../modeller/satis_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../depolar/satis_deposu.dart';
 
 class SatisListeEkrani extends ConsumerStatefulWidget {
   const SatisListeEkrani({super.key});
@@ -178,6 +179,13 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
           ]),
         ),
 
+        // 🔴 EKLENDİ (kullanıcı bulgusu, 2026-09-21): sync_cakisma_kopyasi=1
+        // satışlar artık bu listede hiç görünmüyor (bkz. SatisDeposu.
+        // tariheGoreGetir'deki not) — kullanıcı "nereye kayboldu" diye
+        // sormasın diye, varsa kaç tane olduğunu söyleyen ve inceleme
+        // ekranına götüren küçük bir şerit gösteriliyor.
+        const _SyncKopyasiSeridi(),
+
         // İstatistik şeridi
         if (!durum.yukleniyor && durum.satislar.isNotEmpty)
           _IstatistikSeridi(satislar: durum.satislar),
@@ -235,6 +243,45 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
                     ),
         ),
       ]),
+    );
+  }
+}
+
+// ── Senkron Kopyası Şeridi ────────────────────────────────────────────────────
+// Satış Listesi/Gün Sonu Raporu'ndan gizlenen sync-çakışması kopyası
+// satışlar varsa, kullanıcıyı Sync Çakışmaları ekranındaki inceleme
+// bölümüne yönlendiren tıklanabilir bir uyarı şeridi.
+
+class _SyncKopyasiSeridi extends StatelessWidget {
+  const _SyncKopyasiSeridi();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<SatisModel>>(
+      future: SatisDeposu().syncKopyalariGetir(),
+      builder: (context, snapshot) {
+        final adet = snapshot.data?.length ?? 0;
+        if (adet == 0) return const SizedBox.shrink();
+        return InkWell(
+          onTap: () => context.push('/ayarlar/sync-cakismalari'),
+          child: Container(
+            width: double.infinity,
+            color: Colors.orange.shade50,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(children: [
+              Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange.shade800),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$adet senkron kopyası şüpheli satış gizlendi — incelemek için dokunun',
+                  style: TextStyle(fontSize: 12, color: Colors.orange.shade900, fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 18, color: Colors.orange.shade800),
+            ]),
+          ),
+        );
+      },
     );
   }
 }

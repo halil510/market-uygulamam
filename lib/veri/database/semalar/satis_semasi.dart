@@ -28,6 +28,7 @@ class SatisSemasi {
         efatura_uuid TEXT, efatura_durum TEXT, efatura_gonderim_tarihi TEXT,
         efatura_yanit TEXT, servis_ucreti REAL NOT NULL DEFAULT 0,
         deleted_at DATETIME, cihaz_id TEXT,
+        sync_cakisma_kopyasi INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY(cari_id) REFERENCES ${DbSabitler.cari}(id),
         FOREIGN KEY(kasiyer_id) REFERENCES ${DbSabitler.kullanicilar}(id),
         FOREIGN KEY(kullanici_id) REFERENCES ${DbSabitler.kullanicilar}(id),

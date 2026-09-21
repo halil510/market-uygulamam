@@ -488,6 +488,21 @@ class Veritabani {
         if (cakisan.isNotEmpty) {
           final kisaId = gelenGlobalId.toString().substring(0, 6);
           kayit[alanAdi] = '$gelenNo-SYNC$kisaId';
+          // 🔴 DÜZELTME (kullanıcı bulgusu, 2026-09-21): bu satır ÖNCEDEN
+          // sadece ⚠ ile işaretlenip Satış Listesi/Gün Sonu'nda sıradan
+          // bir satış gibi TAM DEĞERLİ sayılıyordu — kullanıcı ekran
+          // görüntüsünde tek bir ₺90'lık satışın Gün Sonu'nda ₺180 Cari
+          // Satış olarak göründüğünü bildirdi ("kafa karıştırıyor").
+          // Artık 'satislar' için ayrıca sync_cakisma_kopyasi=1
+          // damgalanıyor (v73 migrasyonu) — SatisDeposu.tariheGoreGetir/
+          // maliyetToplami/gunSonuDetayGetir bunu varsayılan olarak
+          // dışlıyor, Sync Çakışmaları ekranı ayrı bir bölümde gösterip
+          // kullanıcıya "gerçek satış" / "kopya, sil" seçimi sunuyor.
+          // 'faturalar' tablosunda bu sütun yok (kapsam dışı bırakıldı,
+          // GİB tarafında farklı bir inceleme akışı gerektirir).
+          if (tablo == 'satislar') {
+            kayit['sync_cakisma_kopyasi'] = 1;
+          }
           LogServisi().bilgi(
               'Senkronizasyon çakışması önlendi: $tablo ($gelenGlobalId) '
               'yeni numara aldı, yerel kayıt korundu.');

@@ -12,8 +12,12 @@ import 'package:intl/intl.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/sync_cakisma_deposu.dart';
+import '../../depolar/satis_deposu.dart';
 import '../../modeller/sync_cakisma_model.dart';
+import '../../modeller/satis_model.dart';
 import '../../servisler/auth_servisi.dart';
+import '../../servisler/bildirim_servisi.dart';
+import '../../cekirdek/utils/para_utils.dart';
 import '../../widgetlar/ortak/onay_dialog.dart';
 
 const _tabloEtiketleri = {
@@ -32,7 +36,14 @@ class SyncCakismalariEkrani extends StatefulWidget {
 
 class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
   final _depo = SyncCakismaDeposu();
+  final _satisDepo = SatisDeposu();
   List<SyncCakismaModel> _cakismalar = [];
+  // 🔴 EKLENDİ (kullanıcı bulgusu, 2026-09-21): 'satislar' fis_no
+  // çakışması bir '-SYNC' kopyası yarattığında (bkz. Veritabani.
+  // _cakismaKorumasiUygula) bu satış artık Satış Listesi/Gün Sonu'ndan
+  // gizleniyor — kullanıcının onu HİÇBİR yerde kaybetmemesi için burada,
+  // aynı "sync incelemesi" ekranında AYRI bir bölümde gösteriliyor.
+  List<SatisModel> _syncKopyalari = [];
   bool _yukleniyor = true;
   bool _sadeceCozulmemis = true;
 
@@ -46,10 +57,47 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
     setState(() => _yukleniyor = true);
     try {
       final liste = await _depo.listele(sadeceCozulmemis: _sadeceCozulmemis);
+      final syncKopyalari = await _satisDepo.syncKopyalariGetir();
       if (!mounted) return;
-      setState(() { _cakismalar = liste; _yukleniyor = false; });
+      setState(() {
+        _cakismalar = liste;
+        _syncKopyalari = syncKopyalari;
+        _yukleniyor = false;
+      });
     } catch (e) {
       if (mounted) setState(() => _yukleniyor = false);
+    }
+  }
+
+  Future<void> _syncKopyasiGercek(SatisModel s) async {
+    final onay = await OnayDialog.goster(context,
+        baslik: 'Bu gerçek bir satış mı?',
+        icerik: '${ParaUtils.kisaFisNo(s.fisNo)} (${ParaUtils.formatla(s.genelToplam)}) '
+            'artık normal bir satış olarak Satış Listesi\'nde ve Gün Sonu '
+            'Raporu\'nda görünecek.',
+        onayYazi: 'Evet, gerçek satış', ikon: Icons.check_circle_outline);
+    if (!onay || s.id == null) return;
+    await _satisDepo.syncKopyasiGercekOlarakIsaretle(s.id!);
+    if (!mounted) return;
+    BildirimServisi.basari(context, 'Satış normal listelere eklendi');
+    _yukle();
+  }
+
+  Future<void> _syncKopyasiSil(SatisModel s) async {
+    final onay = await OnayDialog.goster(context,
+        baslik: 'Bu kopya silinsin mi?',
+        icerik: '${ParaUtils.kisaFisNo(s.fisNo)} (${ParaUtils.formatla(s.genelToplam)}) '
+            'silinecek; stok, kasa ve cari etkisi otomatik olarak geri '
+            'alınacak. Bu işlem geri alınamaz.',
+        onayYazi: 'Evet, sil', onayRengi: Colors.red, ikon: Icons.delete_outline);
+    if (!onay || s.id == null) return;
+    try {
+      await _satisDepo.sil(s.id!, neden: 'Senkron çakışması kopyası — kullanıcı onayıyla silindi');
+      if (!mounted) return;
+      BildirimServisi.basari(context, 'Kopya silindi, stok/kasa/cari geri alındı');
+      _yukle();
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }
   }
 
@@ -121,7 +169,7 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
       ),
       body: _yukleniyor
           ? const TsYukleniyor()
-          : _cakismalar.isEmpty
+          : (_cakismalar.isEmpty && _syncKopyalari.isEmpty)
               ? Center(
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.check_circle_outline, size: 48, color: context.textHint),
@@ -136,18 +184,104 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
                 )
               : RefreshIndicator(
                   onRefresh: _yukle,
-                  child: ListView.builder(
+                  child: ListView(
                     padding: const EdgeInsets.all(12),
-                    itemCount: _cakismalar.length,
-                    itemBuilder: (c, i) => _CakismaKarti(
-                      cakisma: _cakismalar[i],
-                      tabloAdi: _tabloAdi(_cakismalar[i].tablo),
-                      onGelen: () => _cozGelen(_cakismalar[i]),
-                      onYerel: () => _cozYerel(_cakismalar[i]),
-                      onManuel: () => _cozManuel(_cakismalar[i]),
-                    ),
+                    children: [
+                      if (_syncKopyalari.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8, left: 2),
+                          child: Text(
+                            'Senkron Kopyası Şüpheli Satışlar (${_syncKopyalari.length})',
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: context.textPrimary),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10, left: 2),
+                          child: Text(
+                            'Bu satışlar bulut senkronunda aynı fiş numarasıyla ama '
+                            'farklı bir kayıtla çakıştığı için Satış Listesi ve Gün '
+                            'Sonu Raporu\'ndan gizlendi. Genellikle "Veritabanını '
+                            'Temizle" sonrası buluttaki eski veri tam silinmediğinde '
+                            'oluşur — gerçek bir satışsa "Gerçek satış", eski bir '
+                            'kopyaysa "Kopya, sil" seçin.',
+                            style: TextStyle(fontSize: 11, color: context.textSecondary),
+                          ),
+                        ),
+                        ..._syncKopyalari.map((s) => _SyncKopyasiKarti(
+                              satis: s,
+                              onGercek: () => _syncKopyasiGercek(s),
+                              onSil: () => _syncKopyasiSil(s),
+                            )),
+                        if (_cakismalar.isNotEmpty) const Divider(height: 28),
+                      ],
+                      ..._cakismalar.map((c) => _CakismaKarti(
+                            cakisma: c,
+                            tabloAdi: _tabloAdi(c.tablo),
+                            onGelen: () => _cozGelen(c),
+                            onYerel: () => _cozYerel(c),
+                            onManuel: () => _cozManuel(c),
+                          )),
+                    ],
                   ),
                 ),
+    );
+  }
+}
+
+class _SyncKopyasiKarti extends StatelessWidget {
+  final SatisModel satis;
+  final VoidCallback onGercek;
+  final VoidCallback onSil;
+
+  const _SyncKopyasiKarti({
+    required this.satis,
+    required this.onGercek,
+    required this.onSil,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.orange.shade400),
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 4)],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.warning_amber_rounded, size: 18, color: Colors.orange.shade800),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(ParaUtils.kisaFisNo(satis.fisNo),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: context.textPrimary)),
+          ),
+          Text(DateFormat('dd.MM.yyyy HH:mm').format(satis.tarih),
+              style: TextStyle(fontSize: 11, color: context.textHint)),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          '${satis.cariAdi ?? satis.odemeYontemi} — ${ParaUtils.formatla(satis.genelToplam)}',
+          style: TextStyle(fontSize: 13, color: context.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 6, children: [
+          OutlinedButton.icon(
+            onPressed: onGercek,
+            icon: const Icon(Icons.check_circle_outline, size: 16),
+            label: const Text('Gerçek satış'),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.green.shade800),
+          ),
+          OutlinedButton.icon(
+            onPressed: onSil,
+            icon: const Icon(Icons.delete_outline, size: 16),
+            label: const Text('Kopya, sil'),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade800),
+          ),
+        ]),
+      ]),
     );
   }
 }

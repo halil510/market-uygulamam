@@ -201,5 +201,9 @@ class MigrasyonYonetici {
     // referans_turu (cari hareket iptali reversal, bkz. _v71denV72ye
     // yorumu, 2026-09-21).
     if (eskiVersiyon < 72) await _v71denV72ye(db);
+
+    // v72'den v73'e — satislar.sync_cakisma_kopyasi (bkz. _v72denV73e
+    // yorumu, 2026-09-21).
+    if (eskiVersiyon < 73) await _v72denV73e(db);
   }
 }

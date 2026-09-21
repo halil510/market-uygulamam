@@ -380,15 +380,47 @@ class SatisDeposu {
     // şubelerin satışlarını gösteriyordu.
     final subeId = AktifSubeServisi().subeId;
     final subeKosulu = subeId != null ? 'AND s.sube_id = ?' : '';
+    // 🔴 DÜZELTME (kullanıcı bulgusu, 2026-09-21): sync_cakisma_kopyasi=1
+    // satırlar (bkz. Veritabani._cakismaKorumasiUygula) artık Satış
+    // Listesi'nden VE (bu fonksiyonu paylaşan) Gün Sonu Raporu'ndan
+    // varsayılan olarak dışlanıyor — incelemesi Sync Çakışmaları
+    // ekranındaki ayrı bölümde yapılır (bkz. syncKopyalariGetir).
     final rows = await db.rawQuery(
       'SELECT s.*, c.unvan as cari_adi '
       'FROM satislar s LEFT JOIN cari c ON s.cari_id = c.id '
       'WHERE datetime(s.tarih) BETWEEN datetime(?) AND datetime(?) '
-      '  AND s.iptal = 0 AND s.is_deleted = 0 $subeKosulu '
+      '  AND s.iptal = 0 AND s.is_deleted = 0 '
+      '  AND s.sync_cakisma_kopyasi = 0 $subeKosulu '
       'ORDER BY s.tarih DESC',
       [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId],
     );
     return rows.map((r) => SatisModel.fromMap(r)).toList();
+  }
+
+  /// sync_cakisma_kopyasi=1 damgalı (bkz. tariheGoreGetir'deki not) tüm
+  /// satışları döner — Sync Çakışmaları ekranındaki inceleme bölümü için.
+  /// Tarih aralığı YOK (bu tür kayıtlar nadir olur, hepsi görülebilmeli).
+  Future<List<SatisModel>> syncKopyalariGetir() async {
+    final db = await _d;
+    final rows = await db.rawQuery(
+      'SELECT s.*, c.unvan as cari_adi '
+      'FROM satislar s LEFT JOIN cari c ON s.cari_id = c.id '
+      'WHERE s.sync_cakisma_kopyasi = 1 AND s.is_deleted = 0 '
+      'ORDER BY s.tarih DESC',
+    );
+    return rows.map((r) => SatisModel.fromMap(r)).toList();
+  }
+
+  /// Kullanıcı bir sync-kopyası şüpheli satışı inceleyip "bu gerçek bir
+  /// satış" derse, damgayı kaldırıp satışı normal listelere/toplamlara
+  /// geri döndürür. Kopyaysa zaten mevcut [sil] kullanılmalı.
+  Future<void> syncKopyasiGercekOlarakIsaretle(int id) async {
+    final db = await _d;
+    await db.update('satislar', {'sync_cakisma_kopyasi': 0}, where: 'id = ?', whereArgs: [id]);
+    final satisSatir = await db.query('satislar', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (satisSatir.isNotEmpty) {
+      BulutManager().upsert('satislar', Map<String, dynamic>.from(satisSatir.first));
+    }
   }
 
   // 🔴 Derin analizde bulundu: Satış Raporu'nun "$X iptal satış"
@@ -430,7 +462,8 @@ class SatisDeposu {
       JOIN satislar s ON sk.satis_id = s.id
       LEFT JOIN urunler u ON sk.urun_id = u.id
       WHERE s.tarih BETWEEN ? AND ?
-        AND s.iptal = 0 AND s.is_deleted = 0 $subeKosulu
+        AND s.iptal = 0 AND s.is_deleted = 0
+        AND s.sync_cakisma_kopyasi = 0 $subeKosulu
     ''', [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId]);
     return (rows.first['maliyet'] as num?)?.toDouble() ?? 0;
   }
@@ -464,7 +497,8 @@ class SatisDeposu {
       LEFT JOIN cari c ON s.cari_id = c.id
       WHERE s.tarih BETWEEN ? AND ?
         AND s.iptal = 0
-        AND s.is_deleted = 0 $subeKosulu
+        AND s.is_deleted = 0
+        AND s.sync_cakisma_kopyasi = 0 $subeKosulu
       ORDER BY s.tarih, s.id
     ''', [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId]);
   }

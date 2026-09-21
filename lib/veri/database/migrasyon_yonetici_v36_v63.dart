@@ -1102,3 +1102,21 @@ Future<void> _v71denV72ye(Database db) async {
   await _calistir(db,
       'CREATE INDEX IF NOT EXISTS idx_kk_hareket_referans ON kredi_karti_hareket(referans_turu, referans_id)');
 }
+
+// v72'den v73'e — kullanıcı bulgusu (2026-09-21, ekran görüntüleri):
+// Veritabani._cakismaKorumasiUygula() bir 'satislar' fis_no çakışmasını
+// '<fis_no>-SYNC<kısaId>' diye yeniden adlandırıp AYRI bir satır olarak
+// eklediğinde (bkz. o fonksiyonun yorumu — TİPİK TETİKLEYİCİ: "Veritabanını
+// Temizle" sonrası bulut hâlâ eski veriyi barındırıyorsa), bu satır Satış
+// Listesi'nde VE Gün Sonu Raporu'nda sıradan, tam değerli bir satış gibi
+// görünüp toplamları şişiriyordu — kullanıcı ekran görüntüsünde ₺90'lık
+// TEK satışın Gün Sonu'nda ₺180 Cari Satış olarak göründüğünü bildirdi.
+// Bu sütun, böyle bir satırı normal listelerden AYIRT ETMEK için eklendi
+// — veri KAYBEDİLMİYOR (satır hâlâ DB'de, cari/stok/kasa etkisi hâlâ
+// geçerli), sadece "incelenmeli" olarak işaretlenip Satış Listesi/Gün
+// Sonu'ndan varsayılan olarak gizleniyor; kullanıcı Sync Çakışmaları
+// ekranından gerçek/kopya olduğuna karar verebiliyor.
+Future<void> _v72denV73e(Database db) async {
+  await _calistir(db,
+      'ALTER TABLE satislar ADD COLUMN sync_cakisma_kopyasi INTEGER NOT NULL DEFAULT 0');
+}

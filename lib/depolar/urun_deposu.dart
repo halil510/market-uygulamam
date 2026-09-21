@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 
 import '../servisler/log_servisi.dart';
 import '../servisler/auth_servisi.dart';
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../veri/database/veritabani.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
 import '../modeller/urun_model.dart';
@@ -65,7 +66,7 @@ class UrunDeposu {
             etkilenenId = id;
             if (s.urun.stok > 0) {
               hareketGid = const Uuid().v4();
-              await txn.insert('stok_hareket', {
+              final stokSatiri = {
                 'global_id': hareketGid,
                 'urun_id': id,
                 'hareket_turu': 'İlk Stok',
@@ -75,9 +76,18 @@ class UrunDeposu {
                 'tarih': DateTime.now().toIso8601String(),
                 'last_updated': DateTime.now().toIso8601String(),
                 'referans_turu': 'excel_toplu_iceri_aktarim',
-              });
+              };
+              await txn.insert('stok_hareket', stokSatiri);
+              await SyncKuyrukYazici.ekleTxn(txn,
+                  tablo: 'stok_hareket', veri: stokSatiri);
             }
             eklenen++;
+            // 🔴 DEEP_AUDIT_REPORT madde 3: kuyruk kaydı artık business
+            // data ile AYNI transaction'da (bkz. guncelle()'deki aynı
+            // gerekçe) — Excel toplu içe aktarımda uygulama satır
+            // ortasında kapanırsa bile kuyruk kaydı diskte kalıcı olur.
+            await SyncKuyrukYazici.ekleTxn(txn,
+                tablo: 'urunler', veri: {...m, 'id': id});
           } else {
             etkilenenId = s.mevcutId;
             final eskiRows = await txn.query(DbSabitler.urunler,
@@ -87,7 +97,7 @@ class UrunDeposu {
               final eskiStok = (eskiRows.first['stok'] as num?)?.toDouble() ?? 0;
               if (eskiStok != s.urun.stok) {
                 hareketGid = const Uuid().v4();
-                await txn.insert('stok_hareket', {
+                final stokSatiri = {
                   'global_id': hareketGid,
                   'urun_id': s.mevcutId,
                   'hareket_turu': 'Manuel Düzeltme',
@@ -97,7 +107,10 @@ class UrunDeposu {
                   'tarih': DateTime.now().toIso8601String(),
                   'last_updated': DateTime.now().toIso8601String(),
                   'referans_turu': 'excel_toplu_iceri_aktarim',
-                });
+                };
+                await txn.insert('stok_hareket', stokSatiri);
+                await SyncKuyrukYazici.ekleTxn(txn,
+                    tablo: 'stok_hareket', veri: stokSatiri);
               }
               final eskiSatis = (eskiRows.first['satis_fiyati'] as num?)?.toDouble() ?? 0;
               final eskiAlis  = (eskiRows.first['alis_fiyat'] as num?)?.toDouble() ?? 0;
@@ -107,6 +120,8 @@ class UrunDeposu {
             }
             await txn.update(DbSabitler.urunler, m,
                 where: 'id = ?', whereArgs: [s.mevcutId]);
+            await SyncKuyrukYazici.ekleTxn(txn,
+                tablo: 'urunler', veri: {...m, 'id': s.mevcutId});
             guncellenen++;
           }
         });
@@ -246,10 +261,18 @@ class UrunDeposu {
     // fiyat gerçekten değiştiğinde fiyat_guncelleme_tarih'i damgalıyordu
     // (bkz. o fonksiyondaki not) ama bu toplu/döviz fiyat güncelleme
     // yolu bunu hiç yapmıyordu — tutarsızlık için düzeltildi.
-    await db.update(DbSabitler.urunler,
-        {'alis_fiyat': yeniAlisFiyat, 'alis_fiyat_kdv_dahil': yeniKdvDahil,
-         'fiyat_guncelleme_tarih': now, 'last_updated': now},
-        where: 'id = ?', whereArgs: [urunId]);
+    // 🔴 DEEP_AUDIT_REPORT madde 3: kuyruk kaydı artık business data ile
+    // AYNI transaction'da (bkz. guncelle()'deki aynı gerekçe).
+    final guncelleme = {
+      'alis_fiyat': yeniAlisFiyat, 'alis_fiyat_kdv_dahil': yeniKdvDahil,
+      'fiyat_guncelleme_tarih': now, 'last_updated': now,
+    };
+    await db.transaction((txn) async {
+      await txn.update(DbSabitler.urunler, guncelleme,
+          where: 'id = ?', whereArgs: [urunId]);
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'urunler', veri: {...guncelleme, 'id': urunId});
+    });
     final guncelSatir = await db.query(DbSabitler.urunler, where: 'id = ?', whereArgs: [urunId], limit: 1);
     if (guncelSatir.isNotEmpty) {
       BulutManager().upsert('urunler', Map<String, dynamic>.from(guncelSatir.first));
@@ -318,49 +341,68 @@ class UrunDeposu {
       }
 
       // plu ve plu_kart_boyut korunur — ürün güncelleme PLU ayarını sıfırlamaz
-      if (urun.id != null) {
-        final mevcut = await db.query(DbSabitler.urunler,
-            columns: ['plu', 'plu_kart_boyut', 'stok'],
-            where: 'id = ?', whereArgs: [urun.id]);
-        if (mevcut.isNotEmpty) {
-          final mplu   = mevcut.first['plu']           as int? ?? 0;
-          final mboyut = mevcut.first['plu_kart_boyut'] as int? ?? 2;
-          if (mplu == 1) {
-            m['plu']           = mplu;
-            m['plu_kart_boyut'] = mboyut;
-          }
-          // ÖNCEDEN BURADA: kullanıcı Ürün Güncelle formundan stoğu
-          // doğrudan değiştirip kaydettiğinde, bu değişiklik HİÇBİR
-          // hareket kaydına dönüşmüyordu — stok mutabakat sistemi için
-          // tamamen görünmezdi. Artık stok gerçekten değiştiyse,
-          // otomatik bir "Manuel Düzeltme" hareketi oluşturuluyor.
-          final eskiStok = (mevcut.first['stok'] as num?)?.toDouble() ?? 0;
-          if (eskiStok != urun.stok) {
-            final hareketGid = const Uuid().v4();
-            await db.insert('stok_hareket', {
-              'global_id': hareketGid,
-              'urun_id': urun.id,
-              'hareket_turu': 'Manuel Düzeltme',
-              'miktar': (urun.stok - eskiStok).abs(),
-              'onceki_stok': eskiStok,
-              'sonraki_stok': urun.stok,
-              'tarih': now,
-              'last_updated': now,
-              'referans_turu': 'urun_guncelle',
-              'aciklama': 'Ürün Güncelle ekranından stok değiştirildi',
-            });
-            // 🔴 Derin analizde bulundu: global_id atanmıyordu,
-            // BulutManager hiç çağrılmıyordu.
-            final hareketSatir = await db.query('stok_hareket', where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
-            if (hareketSatir.isNotEmpty) {
-              BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
+      // 🔴 DEEP_AUDIT_REPORT madde 3 (Ürün yönetimi sync-atomikliği):
+      // ÖNCEDEN stok_hareket ekleme ve urunler güncelleme İKİ AYRI,
+      // transaction'sız yazımdı — aradaki bir çökme "stok hareketi var
+      // ama urunler.stok hiç değişmedi" gibi tutarsız bir ara duruma yol
+      // açabilirdi. satis_tamamlama_servisi/iade_islem_servisi'deki AYNI
+      // desenle sarmalandı: TEK transaction + SyncKuyrukYazici.ekleTxn
+      // (kuyruk kaydı business data ile atomik) — BulutManager().upsert()
+      // (audit log + gerçek bulut bildirimi) transaction kapandıktan
+      // SONRA, aynı şekilde çağrılmaya devam ediyor.
+      String? stokHareketGid;
+      await db.transaction((txn) async {
+        if (urun.id != null) {
+          final mevcut = await txn.query(DbSabitler.urunler,
+              columns: ['plu', 'plu_kart_boyut', 'stok'],
+              where: 'id = ?', whereArgs: [urun.id]);
+          if (mevcut.isNotEmpty) {
+            final mplu   = mevcut.first['plu']           as int? ?? 0;
+            final mboyut = mevcut.first['plu_kart_boyut'] as int? ?? 2;
+            if (mplu == 1) {
+              m['plu']           = mplu;
+              m['plu_kart_boyut'] = mboyut;
+            }
+            // ÖNCEDEN BURADA: kullanıcı Ürün Güncelle formundan stoğu
+            // doğrudan değiştirip kaydettiğinde, bu değişiklik HİÇBİR
+            // hareket kaydına dönüşmüyordu — stok mutabakat sistemi için
+            // tamamen görünmezdi. Artık stok gerçekten değiştiyse,
+            // otomatik bir "Manuel Düzeltme" hareketi oluşturuluyor.
+            final eskiStok = (mevcut.first['stok'] as num?)?.toDouble() ?? 0;
+            if (eskiStok != urun.stok) {
+              stokHareketGid = const Uuid().v4();
+              final stokSatiri = {
+                'global_id': stokHareketGid,
+                'urun_id': urun.id,
+                'hareket_turu': 'Manuel Düzeltme',
+                'miktar': (urun.stok - eskiStok).abs(),
+                'onceki_stok': eskiStok,
+                'sonraki_stok': urun.stok,
+                'tarih': now,
+                'last_updated': now,
+                'referans_turu': 'urun_guncelle',
+                'aciklama': 'Ürün Güncelle ekranından stok değiştirildi',
+              };
+              await txn.insert('stok_hareket', stokSatiri);
+              await SyncKuyrukYazici.ekleTxn(txn,
+                  tablo: 'stok_hareket', veri: stokSatiri);
             }
           }
         }
-      }
 
-      await db.update(DbSabitler.urunler, m,
-          where: 'id = ?', whereArgs: [urun.id]);
+        await txn.update(DbSabitler.urunler, m,
+            where: 'id = ?', whereArgs: [urun.id]);
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'urunler', veri: {...m, 'id': urun.id});
+      });
+
+      if (stokHareketGid != null) {
+        final hareketSatir = await db.query('stok_hareket',
+            where: 'global_id = ?', whereArgs: [stokHareketGid], limit: 1);
+        if (hareketSatir.isNotEmpty) {
+          BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
+        }
+      }
       BulutManager().upsert('urunler', m,
           eskiVeri: eskiSatis != null ? {'satis_fiyati': eskiSatis, 'alis_fiyat': eskiAlis} : null);
     } catch (e, st) {

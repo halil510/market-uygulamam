@@ -489,15 +489,22 @@ class StokDeposu {
       final db = await _d;
       final now = DateTime.now().toIso8601String();
       final hareketGid = const Uuid().v4();
+      // 🔴 DEEP_AUDIT_REPORT madde 3 (Ürün yönetimi sync-atomikliği):
+      // kuyruk kaydı artık business data ile AYNI transaction'da yazılıyor
+      // (bkz. UrunDeposu.guncelle'deki aynı gerekçe).
       await db.transaction((txn) async {
         final rows =
             await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
         if (rows.isEmpty) return;
         onceki = (rows.first['stok'] as num).toDouble();
 
-        await txn.update('urunler', {'stok': yeniMiktar, 'last_updated': now},
+        final urunGuncelleme = {'stok': yeniMiktar, 'last_updated': now};
+        await txn.update('urunler', urunGuncelleme,
             where: 'id = ?', whereArgs: [urunId]);
-        await txn.insert('stok_hareket', {
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'urunler', veri: {...urunGuncelleme, 'id': urunId});
+
+        final stokSatiri = {
           'global_id': hareketGid,
           'urun_id': urunId,
           'hareket_turu': 'Sayım',
@@ -508,7 +515,10 @@ class StokDeposu {
           'last_updated': now,
           'kullanici_id': kullaniciId,
           'aciklama': aciklama ?? 'Stok sayım düzeltme',
-        });
+        };
+        await txn.insert('stok_hareket', stokSatiri);
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'stok_hareket', veri: stokSatiri);
       });
       final guncelUrun = await db.query('urunler',
           where: 'id = ?', whereArgs: [urunId], limit: 1);

@@ -1,34 +1,27 @@
 // lib/servisler/donem_devir_servisi.dart
 // Yıl Sonu Devir / Dönem Kapatma / Arşivleme sistemi — FAZ 5 (2026-09-16,
 // kullanıcı onaylı mimari plan raporu). Bu dosya devir motorunun 10
-// fazının HEPSİNİ içerir (Madde 17) — ama son üçü (Açılış/Kapanış/
-// Doğrulama) BİLİNÇLİ olarak sınırlı bir kapsamda uygulanıyor, aşağıya bkz.
+// fazının HEPSİNİ içerir (Madde 17).
 //
-// FAZ 3 (Arşivleme) artık GERÇEK bir kopyalama yapıyor (DonemArsivServisi
-// — bkz. o dosyanın başı) — ama SADECE kopyalama, aktif tablolardan
-// SİLME YOK. Bu yüzden aşağıdaki kritik bulgu HÂLÂ tam olarak geçerli.
+// 🔴🔴 GÜNCELLEME (2026-09-21, kullanıcı onayı: "veritabanı temizleme
+// işlemini de yap"): FAZ 3 (Arşivleme) HÂLÂ sadece kopyalar+doğrular
+// (silme yapmaz — bkz. DonemArsivServisi dosya başı). Ama FAZ 8 (Açılış
+// Kayıtları) artık GERÇEK — DonemArsivServisi.aktifTablolardanSilVeAcilis
+// Yaz() çağrılıyor: FAZ 4-7'nin snapshot'ları YAZILDIKTAN SONRA (sıra
+// kritik), arşivlenmiş satırlar aktif tablolardan ÇIKARILIR ve her
+// tablonun mutabakat formülünü BOZMAYACAK tek bir açılış kaydı yazılır
+// (o metodun dosya başı yorumu tam detayı içerir). Aşağıdaki eski analiz
+// hâlâ DOĞRU AMA ARTIK ÇÖZÜLDÜ — silme olmadan açılış satırı yazmak çift
+// sayardı, şimdi ikisi BİRLİKTE (aynı FAZ 8 çağrısında) yapılıyor:
 //
-// 🔴🔴 KRİTİK MİMARİ BULGU (FAZ 4'te tespit edildi, kod yazmadan ÖNCE
-// düşünüldü): Madde 8/9/10/11 "açılış kaydı" için STOK_DEVIR/CARI_DEVIR/
-// KASA_DEVIR/BANKA_DEVIR gibi YENİ bir hareket satırı yazılmasını
-// örnekliyor. Ama bu uygulamada stok/cari/kasa/banka bakiyeleri
-// event-sourcing ile (stok_hareket/cari_hareket/kasa_hareketleri/
-// banka_hareketler toplamından) hesaplanıyor — TEK, sürekli büyüyen bir
-// defter, dönem sınırı YOK. Eski yılın satırları aktif tablodan HENÜZ
-// ÇIKARILMADIĞI (sadece kopyalandığı) sürece, buraya "yeni dönem açılış
-// hareketi" diye YENİ bir satır eklenirse, mutabakat SUM'u bu satırı da
-// sayar → bakiye ÇİFT SAYILIR (ör. 125 adet stok, +125'lik bir
-// "STOK_DEVIR" satırıyla birlikte 250 görünür). Bu, tam olarak bu
-// oturumun önceki fazlarında bulup düzelttiğimiz sınıf bir hata olurdu
-// — bilerek YAPILMADI.
-//
-// Bunun yerine: FAZ 4-7'nin snapshot'ları (kapanis_snapshot tabloları)
-// ZATEN kalıcı "bu tarihte bakiye buydu" kaydını taşıyor — canlı
-// deftere dokunmadan. FAZ 8 (Açılış Kayıtları) bu mimaride SADECE
-// ilerleme işaretler, ledger'a YENİ satır YAZMAZ. Gerçek arşivleme
-// (eski satırların aktif tablodan çıkarılması) kurulduğunda, o taşıma
-// işleminin KENDİSİ zaten "yeni dönemin temiz başlangıcı" anlamına
-// gelecek — ayrıca bir "devir hareketi" icat etmeye gerek kalmayacak.
+// Madde 8/9/10/11 "açılış kaydı" için STOK_DEVIR/CARI_DEVIR/KASA_DEVIR/
+// BANKA_DEVIR gibi YENİ bir hareket satırı yazılmasını örnekliyordu. Bu
+// uygulamada stok/cari/kasa/banka bakiyeleri event-sourcing ile
+// (stok_hareket/cari_hareket/kasa_hareketleri/banka_hareketler
+// toplamından) hesaplanıyor — eski satırlar aktif tablodan ÇIKARILMADAN
+// yeni bir "açılış" satırı eklemek bakiyeyi ÇİFT SAYARDI. Artık silme +
+// açılış AYNI ANDA, aynı domain-bazlı transaction içinde yapılıyor —
+// çift sayım riski yok.
 //
 // Resumable state-machine ilkesi (Madde 17/27): her faz kendi işini
 // BİTİRDİKTEN SONRA checkpoint'i ilerletir. Böylece bir kesinti (uygulama
@@ -335,19 +328,35 @@ class DonemDevirServisi {
       }
     }
 
-    // ── FAZ 8: AÇILIŞ KAYITLARI ─────────────────────────────────────
-    // 🔴 Dosya başındaki KRİTİK MİMARİ BULGU'ya bkz.: bu faz canlı
-    // deftere (stok_hareket/cari_hareket/kasa_hareketleri/
-    // banka_hareketler) YENİ bir "devir" satırı YAZMAZ — bunu yapmak
-    // (gerçek arşivleme, yani eski satırların çıkarılması olmadan)
-    // event-sourced bakiyeleri ÇİFT SAYARDI. FAZ 4-7'nin snapshot'ları
-    // zaten kalıcı "açılış referansı" görevi görüyor. Bu faz sadece
-    // ilerlemeyi işaretler.
+    // ── FAZ 8: AÇILIŞ KAYITLARI — GERÇEK TEMİZLEME (2026-09-21) ──────
+    // Kullanıcı onayı: "veritabanı temizleme işlemini de yap" +
+    // "cariler de sade bakiye kalan devir gözükecek". Artık FAZ 4-7'nin
+    // snapshot'ları ZATEN yazıldıktan SONRA (sıra kritik — bkz.
+    // DonemArsivServisi.aktifTablolardanSilVeAcilisYaz dosya başı
+    // yorumu), arşivlenmiş satırlar aktif tablolardan çıkarılır ve
+    // mutabakat formüllerini BOZMAYACAK tek bir açılış kaydı yazılır.
+    // Eski "hiçbir şey yazma" davranışı ARTIK GEÇERLİ DEĞİL — gerçek
+    // silme devreye girdiği için çift sayım riski ortadan kalktı.
     if (checkpoint.mevcutFaz < DevirFaz.acilisKayitlari) {
       checkpoint = checkpoint.copyWith(durum: DevirDurumu.opening);
       await _checkpointDepo.guncelle(checkpoint);
-      checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.acilisKayitlari);
-      await _checkpointDepo.guncelle(checkpoint);
+      try {
+        await DonemArsivServisi().aktifTablolardanSilVeAcilisYaz(
+          donemId: kaynakDonem.id!,
+          donemYili: kaynakDonem.donemYili,
+          subeId: subeId,
+          baslangic: kaynakDonem.baslangicTarihi,
+          bitis: kaynakDonem.bitisTarihi,
+        );
+        checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.acilisKayitlari);
+        await _checkpointDepo.guncelle(checkpoint);
+      } catch (e, st) {
+        LogServisi().hata('DonemDevirServisi.fazAcilis', hata: e, yigin: st);
+        checkpoint = checkpoint.copyWith(
+            durum: DevirDurumu.failed, hataMesaji: 'Açılış/temizleme başarısız: $e');
+        await _checkpointDepo.guncelle(checkpoint);
+        return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);
+      }
     }
 
     // ── FAZ 9: DÖNEM KAPANIŞI ───────────────────────────────────────

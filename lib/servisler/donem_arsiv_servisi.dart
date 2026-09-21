@@ -45,7 +45,9 @@
 // üzerine yazılır.
 import 'dart:io';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 import 'arsiv_veritabani_yoneticisi.dart';
+import 'bulut/sync_kuyruk_yazici.dart';
 import '../veri/database/veritabani.dart';
 
 /// Tek bir tablonun arşivleme+doğrulama sonucu.
@@ -338,5 +340,196 @@ class DonemArsivServisi {
       aktifToplam: (aktifOzet.first['t'] as num?)?.toDouble() ?? 0,
       arsivToplam: (arsivOzet.first['t'] as num?)?.toDouble() ?? 0,
     );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GERÇEK TEMİZLEME (kullanıcı onayı, 2026-09-21): "veritabanı temizleme
+  // işlemini de yap" + "cariler de sade bakiye kalan devir gözükecek".
+  // Bu metod DEVİR MOTORUNUN FAZ 8'i (Açılış Kayıtları) tarafından,
+  // arşivleme (yukarıdaki arsivleVeDogrula — kopyala+doğrula) VE TÜM
+  // kapanış snapshot'ları (FAZ 4-7: stok/cari/kasa/banka) ZATEN
+  // yazıldıktan SONRA çağrılmalı — sıra kritik: kasa snapshot'ı kendi
+  // hareket zincirinin SON satırını okur, silme ondan ÖNCE yapılırsa
+  // yanlış (sıfır) bakiye yakalanır.
+  //
+  // 🔴 KRİTİK TASARIM: bu uygulamada stok/cari/kasa bakiyeleri event-
+  // sourcing ile hesaplanıyor — SİLME işlemi TEK BAŞINA yapılırsa
+  // sonraki bir mutabakat turu (stokMutabakatYap/bakiyeMutabakatYap gibi
+  // TÜM geçmişi yeniden toplayan fonksiyonlar) yanlış (eksik) bir bakiye
+  // üretir. Bu yüzden her tablo için silme, o tablonun mutabakat
+  // formülünü BOZMAYACAK bir "açılış" kaydıyla birlikte yapılır:
+  //   - STOK: silinen satırların net etkisi (SUM(sonraki-onceki))
+  //     ÖNCEDEN hesaplanıp TEK bir 'Devir Açılış' satırıyla korunur —
+  //     stokMutabakatYap()'ın SUM'u matematiksel olarak DEĞİŞMEZ.
+  //   - CARİ: kapanış snapshot'ındaki (cari_kapanis_snapshot.bakiye —
+  //     cari.bakiye'nin snapshot anındaki, ayrıca tutulan, kendi kendini
+  //     iyileştiren otoriter değeri) "kalan bakiye" TEK bir 'Devir'
+  //     hareketiyle yazılır — kullanıcının istediği "sade kalan bakiye"
+  //     görünümü budur.
+  //   - KASA: kapanış snapshot'ındaki bakiye TEK bir 'AçılışKasa'
+  //     satırıyla yazılır (kasa'da cari/stok'un aksine "SUM" değil "SON
+  //     SATIR" mantığı var — silme sonrası zincir boş kalırsa
+  //     _sonBakiyeTxn sıfır döner, bu satır onu önler).
+  //   - BANKA: hiçbir açılış satırına GEREK YOK — BankaHareketDeposu.
+  //     _sonBakiyeTxn zaten "hiç hareket yoksa banka_hesaplar.bakiye'ye
+  //     düş" fallback'ine sahip (kanıtlanmış, kod okunarak doğrulandı).
+  //   - SATIŞ/SATIŞ KALEMİ: saf geçmiş kaydı — hiçbir mutabakat
+  //     formülü bunlardan "güncel durum" hesaplamıyor, açılış GEREKMEZ.
+  //
+  // SADECE YEREL: bu silme SyncKuyrukYazici'ye YAZILMAZ — Supabase'deki
+  // veri KORUNUR (supabase_arsiv_plani.sql BÖLÜM 6'nın zaten bilinçli
+  // olarak kapsam dışı bıraktığı "cloud'da da sil" adımı bu değil, ayrı
+  // ve onaylanmamış bir karar olarak kalıyor). Açılış satırları ise
+  // NORMAL iş verisi gibi senkronlanır (SyncKuyrukYazici.ekleTxn).
+  Future<void> aktifTablolardanSilVeAcilisYaz({
+    required int donemId,
+    required int donemYili,
+    required int subeId,
+    required DateTime baslangic,
+    required DateTime bitis,
+    Database? aktifDbTest,
+  }) async {
+    final aktif = aktifDbTest ?? await Veritabani().db;
+    final acilisTarihi = bitis.add(const Duration(seconds: 1)).toIso8601String();
+    final simdi = DateTime.now().toIso8601String();
+    final bas = baslangic.toIso8601String();
+    final bit = bitis.toIso8601String();
+
+    // ── SATIŞ + SATIŞ KALEM: saf log, sadece sil ────────────────────
+    // 🔴 ÖNEMLİ: `iade.satis_id` ve `masa_siparisleri.satis_id` gerçek
+    // FOREIGN KEY (CASCADE'siz) — bu iki tablodan HÂLÂ referans edilen
+    // bir satislar satırını silmeye çalışmak `PRAGMA foreign_keys = ON`
+    // altında hata fırlatırdı. Bu yüzden sadece HİÇBİR yerden referans
+    // edilmeyen satışlar silinir; referanslı olanlar bu turda ATLANIR
+    // (bir sonraki devirde, o iade/sipariş de arşivlendiğinde temizlenir).
+    await aktif.transaction((txn) async {
+      final satisIdler = (await txn.rawQuery('''
+        SELECT id FROM satislar
+        WHERE tarih >= ? AND tarih <= ? AND sube_id = ?
+          AND id NOT IN (SELECT satis_id FROM iade WHERE satis_id IS NOT NULL)
+          AND id NOT IN (SELECT satis_id FROM masa_siparisleri WHERE satis_id IS NOT NULL)
+      ''', [bas, bit, subeId]))
+          .map((r) => r['id'] as int)
+          .toList();
+      if (satisIdler.isEmpty) return;
+      final yerTutucu = List.filled(satisIdler.length, '?').join(',');
+      // satis_kalem'de ON DELETE CASCADE var — açık silme sadece netlik
+      // için, CASCADE'e sessizce güvenmek yerine.
+      await txn.delete('satis_kalem',
+          where: 'satis_id IN ($yerTutucu)', whereArgs: satisIdler);
+      await txn.delete(
+          'satislar', where: 'id IN ($yerTutucu)', whereArgs: satisIdler);
+    });
+
+    // ── STOK: net etkiyi TEK satırda KORUYARAK sil ──────────────────
+    await aktif.transaction((txn) async {
+      final netler = await txn.rawQuery('''
+        SELECT urun_id, SUM(sonraki_stok - onceki_stok) AS net
+        FROM stok_hareket WHERE tarih >= ? AND tarih <= ? AND sube_id = ?
+        GROUP BY urun_id
+      ''', [bas, bit, subeId]);
+      await txn.delete('stok_hareket',
+          where: 'tarih >= ? AND tarih <= ? AND sube_id = ?',
+          whereArgs: [bas, bit, subeId]);
+      for (final r in netler) {
+        final urunId = r['urun_id'] as int?;
+        final net = (r['net'] as num?)?.toDouble() ?? 0;
+        if (urunId == null || net.abs() < 0.0001) continue;
+        final satir = {
+          'global_id': const Uuid().v4(),
+          'urun_id': urunId,
+          'hareket_turu': 'Devir Açılış',
+          'miktar': net.abs(),
+          'onceki_stok': 0.0,
+          'sonraki_stok': net,
+          'tarih': acilisTarihi,
+          'sube_id': subeId,
+          'referans_turu': 'devir_acilis',
+          'aciklama': '$donemYili yıl sonu devri — açılış',
+          'last_updated': simdi,
+        };
+        final id = await txn.insert('stok_hareket', satir);
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'stok_hareket', veri: {...satir, 'id': id});
+      }
+    });
+
+    // ── CARİ (şirket geneli): kapanış snapshot'ındaki "kalan bakiye" ─
+    await aktif.transaction((txn) async {
+      final silinenCariIdler = (await txn.rawQuery(
+              'SELECT DISTINCT cari_id FROM cari_hareket WHERE tarih >= ? AND tarih <= ?',
+              [bas, bit]))
+          .map((r) => r['cari_id'] as int?)
+          .whereType<int>()
+          .toSet();
+      await txn.delete('cari_hareket',
+          where: 'tarih >= ? AND tarih <= ?', whereArgs: [bas, bit]);
+      // Boşsa bu dönem/aralık başka bir şubenin devri sırasında ZATEN
+      // temizlenmiş demektir (cari şirket geneli — bkz. dosya başı
+      // "BİLİNÇLİ TASARIM SINIRLAMASI") — idempotent, tekrar açılış
+      // satırı YAZILMAZ (mükerrer olurdu).
+      if (silinenCariIdler.isEmpty) return;
+
+      final snapshotlar = await txn.query('cari_kapanis_snapshot',
+          where: 'donem_id = ?', whereArgs: [donemId]);
+      for (final s in snapshotlar) {
+        final cariId = s['cari_id'] as int?;
+        if (cariId == null || !silinenCariIdler.contains(cariId)) continue;
+        final bakiye = (s['bakiye'] as num?)?.toDouble() ?? 0;
+        if (bakiye.abs() < 0.005) continue;
+        final satir = {
+          'global_id': const Uuid().v4(),
+          'cari_id': cariId,
+          'tarih': acilisTarihi,
+          'fis_tipi': 'Devir',
+          'aciklama': '$donemYili yıl sonu devri — kapanış bakiyesi',
+          'borc': bakiye > 0 ? bakiye : 0.0,
+          'alacak': bakiye < 0 ? -bakiye : 0.0,
+          'is_deleted': 0,
+          'last_updated': simdi,
+        };
+        final id = await txn.insert('cari_hareket', satir);
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'cari_hareket', veri: {...satir, 'id': id});
+      }
+    });
+
+    // ── KASA (şube bazlı): kapanış snapshot'ındaki bakiye TEK satır ──
+    await aktif.transaction((txn) async {
+      final oncekiVarMi = await txn.query('kasa_hareketleri',
+          where: 'tarih >= ? AND tarih <= ? AND sube_id = ?',
+          whereArgs: [bas, bit, subeId], limit: 1);
+      await txn.delete('kasa_hareketleri',
+          where: 'tarih >= ? AND tarih <= ? AND sube_id = ?',
+          whereArgs: [bas, bit, subeId]);
+      if (oncekiVarMi.isEmpty) return;
+
+      final snapshotlar = await txn.query('kasa_kapanis_snapshot',
+          where: 'donem_id = ? AND sube_id = ?',
+          whereArgs: [donemId, subeId], limit: 1);
+      final bakiye = snapshotlar.isEmpty
+          ? 0.0
+          : (snapshotlar.first['bakiye'] as num?)?.toDouble() ?? 0.0;
+      final satir = {
+        'global_id': const Uuid().v4(),
+        'hareket_tipi': 'AçılışKasa',
+        'tutar': bakiye,
+        'bakiye_sonrasi': bakiye,
+        'tarih': acilisTarihi,
+        'sube_id': subeId,
+        'referans_turu': 'devir_acilis',
+        'aciklama': '$donemYili yıl sonu devri — açılış',
+        'last_updated': simdi,
+      };
+      final id = await txn.insert('kasa_hareketleri', satir);
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'kasa_hareketleri', veri: {...satir, 'id': id});
+    });
+
+    // ── BANKA (şirket geneli): açılış satırı GEREKMEZ, sadece sil ────
+    await aktif.transaction((txn) async {
+      await txn.delete('banka_hareketler',
+          where: 'tarih >= ? AND tarih <= ?', whereArgs: [bas, bit]);
+    });
   }
 }

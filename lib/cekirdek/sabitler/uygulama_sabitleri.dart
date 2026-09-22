@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      73; // v73: satislar.sync_cakisma_kopyasi — sync çakışması kopyası satışlar artık Satış Listesi/Gün Sonu'ndan ayırt ediliyor (2026-09-21)
+      74; // v74: sube_urun tablosuna urun_id/sube_id FOREIGN KEY eklendi — yetim satır birikimi artık mümkün değil (2026-09-22)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

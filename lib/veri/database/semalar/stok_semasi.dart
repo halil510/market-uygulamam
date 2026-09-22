@@ -51,7 +51,9 @@ class StokSemasi {
         kritik_stok REAL DEFAULT 0, satis_fiyati REAL, alis_fiyati REAL,
         raf_kodu TEXT, son_guncelleme DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         last_updated DATETIME,
-        PRIMARY KEY (urun_id, sube_id)
+        PRIMARY KEY (urun_id, sube_id),
+        FOREIGN KEY(urun_id) REFERENCES ${DbSabitler.urunler}(id) ON DELETE CASCADE,
+        FOREIGN KEY(sube_id) REFERENCES ${DbSabitler.subeler}(id) ON DELETE CASCADE
       )
     ''');
 

@@ -1120,3 +1120,48 @@ Future<void> _v72denV73e(Database db) async {
   await _calistir(db,
       'ALTER TABLE satislar ADD COLUMN sync_cakisma_kopyasi INTEGER NOT NULL DEFAULT 0');
 }
+
+// v73'ten v74'e — kullanıcı bulgusu ("tam ERP oldu mu, başka hata var
+// mı" sorusuna cevaben yapılan denetim, 2026-09-22): 'sube_urun' (şube
+// bazlı stok payı) tablosunda hiç FOREIGN KEY yoktu — composite PK
+// (urun_id, sube_id) dışında hiçbir bütünlük garantisi yoktu, bir ürün
+// veya şube hard-delete edilse (ya da bozuk bir senkron satırı gelse)
+// yetim satırlar sessizce birikebilirdi. SQLite mevcut bir tabloya
+// ALTER TABLE ile FK ekleyemediğinden standart "yeniden oluştur" deseni
+// kullanılıyor: yeniden adlandır → FK'lı yeni tabloyu oluştur → SADECE
+// hem ürünü hem şubesi hâlâ var olan satırları kopyala (var olan yetim
+// satırlar — varsa — sessizce ATLANIR, veri kaybı riski taşıyan bir
+// silme değil, zaten anlamsız satırların yeni şemaya taşınmaması) →
+// eskiyi sil → indeksleri yeniden kur. Taze kurulumlar için aynı FK'lar
+// StokSemasi.olustur()'a da eklendi (bkz. o dosyanın aynı satırı).
+Future<void> _v73denV74e(Database db) async {
+  await _calistir(db, 'ALTER TABLE sube_urun RENAME TO sube_urun_eski_v73');
+  await _calistir(db, '''
+    CREATE TABLE IF NOT EXISTS sube_urun (
+      global_id TEXT,
+      urun_id INTEGER NOT NULL, sube_id INTEGER NOT NULL,
+      stok REAL NOT NULL DEFAULT 0, rezerve_stok REAL NOT NULL DEFAULT 0,
+      kritik_stok REAL DEFAULT 0, satis_fiyati REAL, alis_fiyati REAL,
+      raf_kodu TEXT, son_guncelleme DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_updated DATETIME,
+      PRIMARY KEY (urun_id, sube_id),
+      FOREIGN KEY(urun_id) REFERENCES urunler(id) ON DELETE CASCADE,
+      FOREIGN KEY(sube_id) REFERENCES subeler(id) ON DELETE CASCADE
+    )
+  ''');
+  await _calistir(db, '''
+    INSERT INTO sube_urun (global_id, urun_id, sube_id, stok, rezerve_stok,
+        kritik_stok, satis_fiyati, alis_fiyati, raf_kodu, son_guncelleme, last_updated)
+    SELECT o.global_id, o.urun_id, o.sube_id, o.stok, o.rezerve_stok,
+        o.kritik_stok, o.satis_fiyati, o.alis_fiyati, o.raf_kodu,
+        o.son_guncelleme, o.last_updated
+    FROM sube_urun_eski_v73 o
+    WHERE EXISTS (SELECT 1 FROM urunler u WHERE u.id = o.urun_id)
+      AND EXISTS (SELECT 1 FROM subeler s WHERE s.id = o.sube_id)
+  ''');
+  await _calistir(db, 'DROP TABLE sube_urun_eski_v73');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_sube_urun_urun ON sube_urun(urun_id)');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_sube_urun_sube ON sube_urun(sube_id)');
+}

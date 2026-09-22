@@ -205,5 +205,9 @@ class MigrasyonYonetici {
     // v72'den v73'e — satislar.sync_cakisma_kopyasi (bkz. _v72denV73e
     // yorumu, 2026-09-21).
     if (eskiVersiyon < 73) await _v72denV73e(db);
+
+    // v73'ten v74'e — sube_urun tablosuna FOREIGN KEY eklendi (bkz.
+    // _v73denV74e yorumu, 2026-09-22).
+    if (eskiVersiyon < 74) await _v73denV74e(db);
   }
 }

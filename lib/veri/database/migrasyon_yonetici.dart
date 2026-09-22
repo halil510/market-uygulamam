@@ -209,5 +209,9 @@ class MigrasyonYonetici {
     // v73'ten v74'e — sube_urun tablosuna FOREIGN KEY eklendi (bkz.
     // _v73denV74e yorumu, 2026-09-22).
     if (eskiVersiyon < 74) await _v73denV74e(db);
+
+    // v74'ten v75'e — ölü 'stok_fifo' tablosu kaldırıldı (bkz.
+    // _v74denV75e yorumu, 2026-09-22).
+    if (eskiVersiyon < 75) await _v74denV75e(db);
   }
 }

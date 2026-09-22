@@ -103,4 +103,21 @@ void main() {
     expect(kalanlar, isEmpty,
         reason: 'ON DELETE CASCADE artık ürün silinince ilişkili sube_urun satırını da temizlemeli');
   });
+
+  test('v74→v75 — ölü stok_fifo tablosu migrasyondan sonra artık yok', () async {
+    db = await _v73OncesiDbOlustur();
+    await db.execute('''
+      CREATE TABLE stok_fifo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, global_id TEXT,
+        giris_hareket_id INTEGER NOT NULL, cikis_hareket_id INTEGER NOT NULL,
+        kullanilan_miktar REAL NOT NULL
+      )
+    ''');
+
+    await MigrasyonYonetici.guncelle(db, 73, 75);
+
+    final tablolar = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='stok_fifo'");
+    expect(tablolar, isEmpty, reason: 'stok_fifo v75 migrasyonuyla kaldırılmış olmalı');
+  });
 }

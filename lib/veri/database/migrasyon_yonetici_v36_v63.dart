@@ -1165,3 +1165,14 @@ Future<void> _v73denV74e(Database db) async {
   await _calistir(db,
       'CREATE INDEX IF NOT EXISTS idx_sube_urun_sube ON sube_urun(sube_id)');
 }
+
+// v74'ten v75'e — kullanıcı bulgusu ("tam ERP oldu mu, başka hata var
+// mı" denetimi, 2026-09-22): 'stok_fifo' tablosu şemada VARDI (v1'den
+// beri) ama HİÇBİR depo/servis/ekran onu hiç okumuyor/yazmıyordu —
+// tamamen ölü, kullanılmayan bir FIFO maliyet takibi denemesiydi. Gerçek
+// lot/parti takibi zaten ayrı, aktif çalışan 'lot_seri' (FEFO) tablosu
+// üzerinden yapılıyor. Boş/ölü bir tablo veri kaybı riski taşımaz —
+// güvenle kaldırılıyor.
+Future<void> _v74denV75e(Database db) async {
+  await _calistir(db, 'DROP TABLE IF EXISTS stok_fifo');
+}

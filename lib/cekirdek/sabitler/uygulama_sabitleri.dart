@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      74; // v74: sube_urun tablosuna urun_id/sube_id FOREIGN KEY eklendi — yetim satır birikimi artık mümkün değil (2026-09-22)
+      75; // v75: ölü 'stok_fifo' tablosu kaldırıldı (2026-09-22)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

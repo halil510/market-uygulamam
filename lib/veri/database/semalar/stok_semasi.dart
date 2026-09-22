@@ -57,13 +57,12 @@ class StokSemasi {
       )
     ''');
 
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS ${DbSabitler.stokFifo} (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, global_id TEXT,
-        giris_hareket_id INTEGER NOT NULL, cikis_hareket_id INTEGER NOT NULL,
-        kullanilan_miktar REAL NOT NULL
-      )
-    ''');
+    // NOT (kullanıcı bulgusu, 2026-09-22 — "tam ERP" denetimi): 'stok_fifo'
+    // tablosu burada ARTIK oluşturulmuyor — tamamen ölü şemaydı (hiçbir
+    // depo/servis okumuyor/yazmıyor, FIFO maliyet takibi bu uygulamada hiç
+    // uygulanmadı; gerçek lot/parti takibi ayrı, aktif kullanılan
+    // 'lot_seri' tablosu üzerinden yapılıyor). Mevcut kurulumlarda tablo
+    // migrasyonla (bkz. _v74denV75e) kaldırılıyor.
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS ${DbSabitler.subeFiyatGecmis} (

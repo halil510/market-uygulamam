@@ -46,6 +46,8 @@ class DbSabitler {
   static const String syncQueue           = 'sync_queue';
   static const String syncMeta            = 'sync_meta';
   static const String syncCakismalar      = 'sync_cakismalar';
+  // 🔴 Tablo v75 migrasyonuyla kaldırıldı (hiç kullanılmayan ölü şemaydı)
+  // — bu sabit sadece eski migrasyon kodunun okunabilirliği için duruyor.
   static const String stokFifo            = 'stok_fifo';
   static const String subeFiyatGecmis     = 'sube_fiyat_gecmis';
   static const String personel            = 'personel';

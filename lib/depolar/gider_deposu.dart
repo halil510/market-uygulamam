@@ -6,13 +6,18 @@ import '../servisler/log_servisi.dart';
 import '../veri/database/veritabani.dart';
 import '../modeller/gider_model.dart';
 import '../modeller/kasa_hareket_model.dart';
+import '../modeller/banka_hareket_model.dart';
 import '../servisler/aktif_sube_servisi.dart';
 import 'kasa_deposu.dart';
+import 'banka_hareket_deposu.dart';
+import 'kredi_karti_deposu.dart';
 
 class GiderDeposu {
   final Veritabani _db = Veritabani();
   Future<Database> get _d async => _db.db;
   final KasaDeposu _kasaDepo = KasaDeposu();
+  final BankaHareketDeposu _bankaHareketDepo = BankaHareketDeposu();
+  final KrediKartiDeposu _krediKartiDepo = KrediKartiDeposu();
 
   // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): Bu depo (ve onu
   // kullanan gider_ekle_ekrani.dart) 'Nakit' ödeme yöntemiyle girilen
@@ -38,8 +43,11 @@ class GiderDeposu {
       final db = await _d;
       late int gid;
       int? kasaHareketId;
+      int? bankaHareketId;
+      int? krediHareketId;
       await db.transaction((txn) async {
         gid = await ekleTxn(txn, g);
+        final aciklama = 'Gider: ${g.kategoriAdi.isNotEmpty ? g.kategoriAdi : (g.aciklama ?? '')}';
         if (g.odemeYontemi == 'Nakit') {
           kasaHareketId = await _kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
             hareketTipi: 'Gider',
@@ -47,9 +55,29 @@ class GiderDeposu {
             referansId: gid,
             referansTuru: 'gider',
             tarih: g.tarih,
-            aciklama: 'Gider: ${g.kategoriAdi.isNotEmpty ? g.kategoriAdi : (g.aciklama ?? '')}',
+            aciklama: aciklama,
             kullaniciId: g.kullaniciId,
           ));
+        } else if (g.odemeYontemi == 'Banka' && g.bankaHesapId != null) {
+          // 🔴🔴 KRİTİK DÜZELTME (paralel fork denetimi, 2026-09-22):
+          // Banka ile ödenen giderler ÖNCEDEN hiçbir banka_hareketler
+          // satırı oluşturmuyordu — para "kayboluyordu" (Virman/İade'de
+          // daha önce bulunan AYNI hata sınıfı). Bir gider HER ZAMAN
+          // parayı DIŞARI çıkarır — 'Giden'.
+          bankaHareketId = await _bankaHareketDepo.ekleTxn(txn, BankaHareketModel(
+            bankaHesapId: g.bankaHesapId!,
+            islemTipi: 'Giden',
+            tutar: g.tutar,
+            aciklama: aciklama,
+            tarih: g.tarih,
+            referansId: gid,
+            referansTuru: 'gider',
+          ));
+        } else if (g.odemeYontemi == 'Kredi Kartı' && g.krediKartiId != null) {
+          // Gider = harcama → pozitif delta (kullanılan limit artar).
+          krediHareketId = await _krediKartiDepo.limitDegistirTxn(
+              txn, g.krediKartiId!, g.tutar,
+              aciklama: aciklama, referansId: gid, referansTuru: 'gider');
         }
       });
       final satir = await db.query('giderler', where: 'id = ?', whereArgs: [gid], limit: 1);
@@ -57,6 +85,18 @@ class GiderDeposu {
       if (kasaHareketId != null) {
         final kasaSatir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
         if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+      }
+      if (bankaHareketId != null) {
+        final bankaSatir = await db.query('banka_hareketler', where: 'id = ?', whereArgs: [bankaHareketId], limit: 1);
+        if (bankaSatir.isNotEmpty) BulutManager().upsert('banka_hareketler', Map<String, dynamic>.from(bankaSatir.first));
+        final hesapSatir = await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [g.bankaHesapId], limit: 1);
+        if (hesapSatir.isNotEmpty) BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
+      }
+      if (krediHareketId != null) {
+        final krediSatir = await db.query('kredi_karti_hareket', where: 'id = ?', whereArgs: [krediHareketId], limit: 1);
+        if (krediSatir.isNotEmpty) BulutManager().upsert('kredi_karti_hareket', Map<String, dynamic>.from(krediSatir.first));
+        final kartSatir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [g.krediKartiId], limit: 1);
+        if (kartSatir.isNotEmpty) BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
       }
       return gid;
     } catch (e, st) {
@@ -105,6 +145,46 @@ class GiderDeposu {
     return net; // pozitif = kasadan net çıkmış tutar
   }
 
+  /// [_kasaNetHesapla] ile AYNI mantık, banka_hareketler için — ama
+  /// kasadan farklı olarak BİRDEN FAZLA hesap olabileceğinden (kasiyer
+  /// bir düzenlemede bankayı değiştirebilir) HESAP BAZINDA net döner.
+  /// Anahtar: banka_hesap_id, değer: o hesaptan bu gider yüzünden net
+  /// çıkmış tutar (pozitif = çıkmış).
+  Future<Map<int, double>> _bankaNetHesaplaTumHesaplar(
+      dynamic dbVeyaTxn, int giderId) async {
+    final rows = await dbVeyaTxn.query('banka_hareketler',
+        where:
+            "referans_id = ? AND referans_turu = 'gider' AND (is_deleted IS NULL OR is_deleted = 0)",
+        whereArgs: [giderId]);
+    final netler = <int, double>{};
+    for (final r in rows) {
+      final hesapId = r['banka_hesap_id'] as int?;
+      if (hesapId == null) continue;
+      final tip = r['islem_tipi'] as String? ?? '';
+      final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+      netler[hesapId] = (netler[hesapId] ?? 0) + (tip == 'Giden' ? tutar : -tutar);
+    }
+    return netler;
+  }
+
+  /// [_bankaNetHesaplaTumHesaplar] ile AYNI mantık, kredi_karti_hareket
+  /// için — kart bazında net kullanılan tutar döner.
+  Future<Map<int, double>> _krediNetHesaplaTumKartlar(
+      dynamic dbVeyaTxn, int giderId) async {
+    final rows = await dbVeyaTxn.query('kredi_karti_hareket',
+        where: "referans_id = ? AND referans_turu = 'gider' AND is_deleted = 0",
+        whereArgs: [giderId]);
+    final netler = <int, double>{};
+    for (final r in rows) {
+      final kartId = r['kredi_karti_id'] as int?;
+      if (kartId == null) continue;
+      final yon = r['yon'] as String? ?? '';
+      final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+      netler[kartId] = (netler[kartId] ?? 0) + (yon == 'harcama' ? tutar : -tutar);
+    }
+    return netler;
+  }
+
   // 🔴 DÜZELTME (derin analizde bulundu): Bu depoda hiç guncelle()
   // fonksiyonu YOKTU — kullanıcı yanlış girdiği bir gideri (tutar,
   // kategori, açıklama vb.) asla düzeltemiyordu; tek çare silip yeniden
@@ -126,22 +206,74 @@ class GiderDeposu {
       m.remove('id');
       m.remove('global_id'); // global_id oluşturulduktan sonra değişmez
       m['last_updated'] = now;
+      final duzeltmeAciklamasi =
+          'Gider düzeltmesi: ${g.kategoriAdi.isNotEmpty ? g.kategoriAdi : (g.aciklama ?? '')}';
       int? kasaHareketId;
+      final bankaHareketIdleri = <int>[];
+      final krediHareketIdleri = <int>[];
       await db.transaction((txn) async {
         await txn.update('giderler', m, where: 'id = ?', whereArgs: [g.id]);
-        final mevcutNet = await _kasaNetHesapla(txn, g.id!);
-        final hedefNet = g.odemeYontemi == 'Nakit' ? g.tutar : 0.0;
-        final fark = hedefNet - mevcutNet;
-        if (fark.abs() > 0.005) {
+
+        // Kasa (Nakit)
+        final mevcutKasaNet = await _kasaNetHesapla(txn, g.id!);
+        final hedefKasaNet = g.odemeYontemi == 'Nakit' ? g.tutar : 0.0;
+        final kasaFark = hedefKasaNet - mevcutKasaNet;
+        if (kasaFark.abs() > 0.005) {
           kasaHareketId = await _kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
-            hareketTipi: fark > 0 ? 'Gider' : 'Gider İptali',
-            tutar: fark.abs(),
+            hareketTipi: kasaFark > 0 ? 'Gider' : 'Gider İptali',
+            tutar: kasaFark.abs(),
             referansId: g.id,
             referansTuru: 'gider',
             tarih: DateTime.now(),
-            aciklama: 'Gider düzeltmesi: ${g.kategoriAdi.isNotEmpty ? g.kategoriAdi : (g.aciklama ?? '')}',
+            aciklama: duzeltmeAciklamasi,
             kullaniciId: g.kullaniciId,
           ));
+        }
+
+        // Banka — hesap DEĞİŞTİRİLMİŞ olabilir (eski hesap sıfırlanır,
+        // yeni hesaba hedef tutar yazılır), HESAP BAZINDA uzlaştırılır.
+        final bankaNetler = await _bankaNetHesaplaTumHesaplar(txn, g.id!);
+        final bankaHedefler = <int, double>{
+          if (g.odemeYontemi == 'Banka' && g.bankaHesapId != null)
+            g.bankaHesapId!: g.tutar,
+        };
+        final etkilenenHesaplar = {...bankaNetler.keys, ...bankaHedefler.keys};
+        for (final hesapId in etkilenenHesaplar) {
+          final mevcut = bankaNetler[hesapId] ?? 0;
+          final hedef = bankaHedefler[hesapId] ?? 0;
+          final fark = hedef - mevcut;
+          if (fark.abs() > 0.005) {
+            final id = await _bankaHareketDepo.ekleTxn(txn, BankaHareketModel(
+              bankaHesapId: hesapId,
+              islemTipi: fark > 0 ? 'Giden' : 'Gelen',
+              tutar: fark.abs(),
+              aciklama: duzeltmeAciklamasi,
+              tarih: DateTime.now(),
+              referansId: g.id,
+              referansTuru: 'gider',
+            ));
+            bankaHareketIdleri.add(id);
+          }
+        }
+
+        // Kredi Kartı — kart DEĞİŞTİRİLMİŞ olabilir, KART BAZINDA
+        // uzlaştırılır (banka bloğuyla AYNI desen).
+        final krediNetler = await _krediNetHesaplaTumKartlar(txn, g.id!);
+        final krediHedefler = <int, double>{
+          if (g.odemeYontemi == 'Kredi Kartı' && g.krediKartiId != null)
+            g.krediKartiId!: g.tutar,
+        };
+        final etkilenenKartlar = {...krediNetler.keys, ...krediHedefler.keys};
+        for (final kartId in etkilenenKartlar) {
+          final mevcut = krediNetler[kartId] ?? 0;
+          final hedef = krediHedefler[kartId] ?? 0;
+          final fark = hedef - mevcut;
+          if (fark.abs() > 0.005) {
+            final id = await _krediKartiDepo.limitDegistirTxn(
+                txn, kartId, fark,
+                aciklama: duzeltmeAciklamasi, referansId: g.id, referansTuru: 'gider');
+            if (id != null) krediHareketIdleri.add(id);
+          }
         }
       });
       final satir = await db.query('giderler', where: 'id = ?', whereArgs: [g.id], limit: 1);
@@ -149,6 +281,14 @@ class GiderDeposu {
       if (kasaHareketId != null) {
         final kasaSatir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
         if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+      }
+      for (final id in bankaHareketIdleri) {
+        final s = await db.query('banka_hareketler', where: 'id = ?', whereArgs: [id], limit: 1);
+        if (s.isNotEmpty) BulutManager().upsert('banka_hareketler', Map<String, dynamic>.from(s.first));
+      }
+      for (final id in krediHareketIdleri) {
+        final s = await db.query('kredi_karti_hareket', where: 'id = ?', whereArgs: [id], limit: 1);
+        if (s.isNotEmpty) BulutManager().upsert('kredi_karti_hareket', Map<String, dynamic>.from(s.first));
       }
     } catch (e, st) {
       LogServisi().hata('Gider.guncelle', hata: e, yigin: st);
@@ -161,6 +301,8 @@ class GiderDeposu {
       final db = await _d;
       final now = DateTime.now().toIso8601String();
       int? kasaHareketId;
+      final bankaHareketIdleri = <int>[];
+      final krediHareketIdleri = <int>[];
       await db.transaction((txn) async {
         // 🔴 DÜZELTME: Gerçek HARD DELETE yapılıyordu — tabloda zaten
         // 'deleted_at' sütunu vardı ama hiç kullanılmıyordu. Hard delete,
@@ -184,12 +326,47 @@ class GiderDeposu {
             aciklama: 'Gider silindi (kasa düzeltmesi)',
           ));
         }
+
+        // Banka/Kredi Kartı — AYNI koruma (paralel fork denetimi,
+        // 2026-09-22): bu gidere bağlı gerçek banka/kart hareketi varsa,
+        // silinince tersine çevrilmezse kalıcı sapma oluşurdu.
+        final bankaNetler = await _bankaNetHesaplaTumHesaplar(txn, id);
+        for (final entry in bankaNetler.entries) {
+          if (entry.value.abs() <= 0.005) continue;
+          final hareketId = await _bankaHareketDepo.ekleTxn(txn, BankaHareketModel(
+            bankaHesapId: entry.key,
+            islemTipi: entry.value > 0 ? 'Gelen' : 'Giden',
+            tutar: entry.value.abs(),
+            aciklama: 'Gider silindi (banka düzeltmesi)',
+            tarih: DateTime.now(),
+            referansId: id,
+            referansTuru: 'gider',
+          ));
+          bankaHareketIdleri.add(hareketId);
+        }
+        final krediNetler = await _krediNetHesaplaTumKartlar(txn, id);
+        for (final entry in krediNetler.entries) {
+          if (entry.value.abs() <= 0.005) continue;
+          final hareketId = await _krediKartiDepo.limitDegistirTxn(
+              txn, entry.key, -entry.value,
+              aciklama: 'Gider silindi (kart düzeltmesi)',
+              referansId: id, referansTuru: 'gider');
+          if (hareketId != null) krediHareketIdleri.add(hareketId);
+        }
       });
       final satir = await db.query('giderler', where: 'id = ?', whereArgs: [id], limit: 1);
       if (satir.isNotEmpty) BulutManager().upsert('giderler', Map<String, dynamic>.from(satir.first));
       if (kasaHareketId != null) {
         final kasaSatir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
         if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+      }
+      for (final hid in bankaHareketIdleri) {
+        final s = await db.query('banka_hareketler', where: 'id = ?', whereArgs: [hid], limit: 1);
+        if (s.isNotEmpty) BulutManager().upsert('banka_hareketler', Map<String, dynamic>.from(s.first));
+      }
+      for (final hid in krediHareketIdleri) {
+        final s = await db.query('kredi_karti_hareket', where: 'id = ?', whereArgs: [hid], limit: 1);
+        if (s.isNotEmpty) BulutManager().upsert('kredi_karti_hareket', Map<String, dynamic>.from(s.first));
       }
     } catch (e, st) {
       LogServisi().hata('Gider.sil', hata: e, yigin: st);

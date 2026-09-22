@@ -213,5 +213,9 @@ class MigrasyonYonetici {
     // v74'ten v75'e — ölü 'stok_fifo' tablosu kaldırıldı (bkz.
     // _v74denV75e yorumu, 2026-09-22).
     if (eskiVersiyon < 75) await _v74denV75e(db);
+
+    // v75'ten v76'ya — giderler.banka_hesap_id/kredi_karti_id eklendi
+    // (bkz. _v75denV76ya yorumu, 2026-09-22).
+    if (eskiVersiyon < 76) await _v75denV76ya(db);
   }
 }

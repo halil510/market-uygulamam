@@ -1176,3 +1176,15 @@ Future<void> _v73denV74e(Database db) async {
 Future<void> _v74denV75e(Database db) async {
   await _calistir(db, 'DROP TABLE IF EXISTS stok_fifo');
 }
+
+// v75'ten v76'ya — kullanıcı bulgusu ("tam ERP" denetimi, paralel fork
+// taraması, 2026-09-22): Banka/Kredi Kartı ödeme yöntemiyle girilen
+// GİDERLER hiçbir gerçek banka/kredi kartı hareketi oluşturmuyordu —
+// sadece 'giderler' tablosuna düşüyor, şirketin gerçek banka bakiyesi/
+// kart limit kullanımı hiç etkilenmiyordu (Virman/İade'de daha önce
+// bulunan AYNI hata sınıfı). GiderDeposu artık bu iki sütunu kullanarak
+// CariTahsilatOdemeServisi'ndeki AYNI desenle gerçek hareket yazıyor.
+Future<void> _v75denV76ya(Database db) async {
+  await _calistir(db, 'ALTER TABLE giderler ADD COLUMN banka_hesap_id INTEGER');
+  await _calistir(db, 'ALTER TABLE giderler ADD COLUMN kredi_karti_id INTEGER');
+}

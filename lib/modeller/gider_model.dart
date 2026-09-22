@@ -11,12 +11,15 @@ class GiderModel {
   final String odemeYontemi;
   final int? cariId;
   final int? kullaniciId;
+  final int? bankaHesapId;
+  final int? krediKartiId;
 
   const GiderModel({
     this.id, this.globalId, required this.kategoriId, this.kategoriAdi = '',
     required this.tutar, this.aciklama, required this.tarih,
     this.belgeNo, this.odemeYontemi = 'Nakit',
     this.cariId, this.kullaniciId,
+    this.bankaHesapId, this.krediKartiId,
   });
 
   factory GiderModel.fromMap(Map<String, dynamic> m) => GiderModel(
@@ -31,6 +34,8 @@ class GiderModel {
     odemeYontemi: m['odeme_yontemi'] as String? ?? 'Nakit',
     cariId: m['cari_id'] as int?,
     kullaniciId: m['kullanici_id'] as int?,
+    bankaHesapId: m['banka_hesap_id'] as int?,
+    krediKartiId: m['kredi_karti_id'] as int?,
   );
 
 
@@ -46,6 +51,8 @@ class GiderModel {
     String? odemeYontemi,
     int? cariId,
     int? kullaniciId,
+    int? bankaHesapId,
+    int? krediKartiId,
   }) => GiderModel(
       id: id ?? this.id,
       globalId: globalId ?? this.globalId,
@@ -58,6 +65,8 @@ class GiderModel {
       odemeYontemi: odemeYontemi ?? this.odemeYontemi,
       cariId: cariId ?? this.cariId,
       kullaniciId: kullaniciId ?? this.kullaniciId,
+      bankaHesapId: bankaHesapId ?? this.bankaHesapId,
+      krediKartiId: krediKartiId ?? this.krediKartiId,
     );
 
   Map<String, dynamic> toMap() => {
@@ -70,5 +79,7 @@ class GiderModel {
     'odeme_yontemi': odemeYontemi,
     if (cariId != null) 'cari_id': cariId,
     if (kullaniciId != null) 'kullanici_id': kullaniciId,
+    'banka_hesap_id': bankaHesapId,
+    'kredi_karti_id': krediKartiId,
   };
 }

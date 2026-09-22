@@ -23,6 +23,7 @@ class FinansSemasi {
         tarih DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         belge_no TEXT, odeme_yontemi TEXT NOT NULL DEFAULT 'Nakit',
         cari_id INTEGER, kullanici_id INTEGER, sube_id INTEGER,
+        banka_hesap_id INTEGER, kredi_karti_id INTEGER,
         last_updated DATETIME, deleted_at DATETIME,
         FOREIGN KEY(kategori_id) REFERENCES ${DbSabitler.giderKategoriler}(id)
       )

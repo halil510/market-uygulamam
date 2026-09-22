@@ -54,6 +54,21 @@ class GibServisi {
 
   String get _authHeader => _ayar.authHeader;
 
+  /// 🔴 DÜZELTME (kritik — derin denetimde bulundu): `response.data as
+  /// Map&lt;String, dynamic&gt;?` KOŞULSUZ bir cast'ti — entegratör düz metin,
+  /// HTML (ör. bir proxy'nin hata sayfası) ya da JSON dizisi dönerse Dio
+  /// bunu `String`/`List` olarak verir, cast bir `TypeError` fırlatır. Bu
+  /// istisna `on DioException` tarafından YAKALANMIYORDU ve gonder()/
+  /// irsaliyeGonder()'den YAKALANMADAN fırlıyordu — çağıran
+  /// FaturaEBelgeServisi.gonder() daha ÖNCE durumu 'gonderiliyor' yapmış
+  /// olduğu için, satır hiç 'hata'ya güncellenmiyor, fatura SONSUZA KADAR
+  /// 'gonderiliyor'da (Gönder butonu kalıcı devre dışı) takılı kalıyordu
+  /// — bu oturumda ayrı bir modülde düzeltilen sync "kalici_hata" bug'ının
+  /// aynısı. Artık cast'ler güvenli — beklenmeyen bir gövde tipi gelirse
+  /// null döner, çağıran kod bunu normal bir "hata" yanıtı gibi işler.
+  Map<String, dynamic>? _govdeCoz(dynamic data) =>
+      data is Map<String, dynamic> ? data : null;
+
   /// Kullanıcı isteği: "logo gibi yazılımlarda cari kartın ortasında
   /// e-fatura veya e-arşiv gibi ikonlar oluyor" — GİB'in yayınladığı
   /// "e-Fatura Kayıtlı Kullanıcılar Listesi"nde bir VKN/TCKN'nin kayıtlı
@@ -207,7 +222,7 @@ class GibServisi {
         ),
       );
 
-      final body = response.data as Map<String, dynamic>?;
+      final body = _govdeCoz(response.data);
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Log kaydet
         await _log.kaydet(
@@ -248,6 +263,24 @@ class GibServisi {
         hataMesaj: hata,
         istekXml: xml,
       );
+      return GibGonderimSonucu(basarili: false, hata: hata);
+    } catch (e) {
+      // 🔴 DÜZELTME: DioException DIŞI beklenmeyen bir hata (ör. yanıt
+      // gövdesi beklenmeyen tipte) artık BURADA da yakalanıp 'hata'
+      // olarak loglanıyor — fatura kalıcı olarak 'gonderiliyor'da
+      // takılı kalmıyor.
+      final hata = 'Beklenmeyen hata: $e';
+      try {
+        await _log.kaydet(
+          referansId: fatura.id ?? 0,
+          referansTuru: 'fatura',
+          uuid: ettn,
+          islemTipi: 'gonder',
+          durum: 'hata',
+          hataMesaj: hata,
+          istekXml: xml,
+        );
+      } catch (_) { /* loglama başarısız olsa bile sonuç döndürülmeli */ }
       return GibGonderimSonucu(basarili: false, hata: hata);
     }
   }
@@ -307,7 +340,7 @@ class GibServisi {
           receiveTimeout: const Duration(seconds: 30),
         ),
       );
-      final body = response.data as Map<String, dynamic>?;
+      final body = _govdeCoz(response.data);
       if (response.statusCode == 200 || response.statusCode == 201) {
         await _log.kaydet(
           referansId: irsaliyeId, referansTuru: 'irsaliye', uuid: ettn,
@@ -328,6 +361,19 @@ class GibServisi {
         referansId: irsaliyeId, referansTuru: 'irsaliye', uuid: ettn,
         islemTipi: 'gonder', durum: 'hata', hataMesaj: hata, istekXml: xml,
       );
+      return GibGonderimSonucu(basarili: false, hata: hata);
+    } catch (e) {
+      // 🔴 DÜZELTME: bkz. gonder()'daki aynı düzeltme — e-İrsaliye tarafı
+      // için de fatura'nın 'gonderiliyor'da SONSUZA KADAR takılı kalma
+      // riskinin aynısı vardı, hatta daha kötüsü (bkz. irsaliye_ekrani.dart
+      // — Durum Sorgula butonu bu durumda hiç görünmüyor).
+      final hata = 'Beklenmeyen hata: $e';
+      try {
+        await _log.kaydet(
+          referansId: irsaliyeId, referansTuru: 'irsaliye', uuid: ettn,
+          islemTipi: 'gonder', durum: 'hata', hataMesaj: hata, istekXml: xml,
+        );
+      } catch (_) { /* loglama başarısız olsa bile sonuç döndürülmeli */ }
       return GibGonderimSonucu(basarili: false, hata: hata);
     }
   }
@@ -381,7 +427,7 @@ class GibServisi {
         options: Options(headers: {'Authorization': _authHeader}),
       );
       if (r.statusCode == 200) {
-        final body = r.data as Map<String, dynamic>?;
+        final body = _govdeCoz(r.data);
         return _durumNormallestir(body?['status']?.toString());
       }
       throw Exception('GİB durum sorgusu başarısız (HTTP ${r.statusCode})');

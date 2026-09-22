@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import "../../veri/database/veritabani.dart";
 import "../../servisler/yazdirma_servisi.dart";
@@ -227,44 +228,41 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
         krediKartiId: _secilenKart?.id,
         fisNo: makbuzNo,
       );
-      // ══════════════════════════════════════════════════════════════════
-      // 🆕 TAHSİLAT / TEDİYE MAKBUZU YAZDIRMA
-      //
-      // Yazdırma HATASI işlemi geri almamalı — para hareketi zaten
-      // veritabanına yazıldı. Kullanıcı görünür bir uyarı alır ve
-      // isterse tekrar dener (hizli_satis_ekrani'ndeki aynı desen).
-      //
-      // "Borç Ekle" (tedarikçiye veresiye kayıt) için makbuz BASILMAZ —
-      // ortada gerçek bir para hareketi yok, makbuz sadece parayı
-      // belgeler.
-      // ══════════════════════════════════════════════════════════════════
+      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22 sabah —
+      // "kaydet dediğimde çok uzun dönüp duruyor"): para hareketi zaten
+      // yukarıda GERÇEKTEN veritabanına yazıldı — ekranın kapanması BUNA
+      // bağlı olmalı, fiziksel yazıcının Bluetooth/WiFi/USB üzerinden
+      // yanıt vermesine DEĞİL. Yazıcı bağlı/açık değilse makbuzYazdir()
+      // içindeki bağlantı denemeleri (her biri 6-12sn timeout, kopya
+      // sayısı kadar tekrar) "Kaydet" düğmesini onlarca saniye kilitli
+      // tutuyordu. Artık kayıt biter bitmez ekran hemen kapanıyor,
+      // yazdırma ARKA PLANDA (beklemeden) tetikleniyor — hata olursa
+      // (madde 2'de eklenen) Cari Detay'daki yazdır ikonuyla tekrar
+      // basılabilir, kullanıcıyı burada bekletmenin bir faydası yok.
       if (_paraHareketEdiyor) {
-        try {
-          final guncelCari = await _depo.idileGetir(widget.cariId);
-          await YazdirmaServisi().makbuzYazdir(
-            makbuzNo: makbuzNo!,
-            tarih: DateTime.now(),
-            cariUnvan: _cari?.unvan ?? 'Cari',
-            tutar: tutar,
-            odemeTuru: _odemeTuru,
-            islemTipi: _islemTipi,
-            aciklama: _aciklamaCtrl.text.trim().isEmpty
-                ? null
-                : _aciklamaCtrl.text.trim(),
-            kesenKisi: kasiyer,
-            oncekiBakiye: oncekiBakiye,
-            sonBakiye: guncelCari?.bakiye,
-          );
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('⚠️ Makbuz yazdırılamadı: $e\n'
-                  'İşlem kaydedildi, makbuzu Cari Detay ekranından tekrar basabilirsiniz.'),
-              backgroundColor: Colors.orange.shade800,
-              duration: const Duration(seconds: 6),
-            ));
+        unawaited(() async {
+          try {
+            final guncelCari = await _depo.idileGetir(widget.cariId);
+            await YazdirmaServisi().makbuzYazdir(
+              makbuzNo: makbuzNo!,
+              tarih: DateTime.now(),
+              cariUnvan: _cari?.unvan ?? 'Cari',
+              tutar: tutar,
+              odemeTuru: _odemeTuru,
+              islemTipi: _islemTipi,
+              aciklama: _aciklamaCtrl.text.trim().isEmpty
+                  ? null
+                  : _aciklamaCtrl.text.trim(),
+              kesenKisi: kasiyer,
+              oncekiBakiye: oncekiBakiye,
+              sonBakiye: guncelCari?.bakiye,
+            );
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint('Makbuz arka plan yazdırma hatası: $e');
+            }
           }
-        }
+        }());
       }
 
       if (mounted) {

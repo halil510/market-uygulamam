@@ -1125,23 +1125,33 @@ class IadeIslemServisi {
         }
       }
 
-      // 5. Kasa hareketi
-      final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) - toplam;
-      final kasaSatiri = {
-        'global_id': const Uuid().v4(),
-        'hareket_tipi': 'İade',
-        'tutar': toplam,
-        'bakiye_sonrasi': kasaBakiye,
-        'referans_id': iadeId,
-        'referans_turu': 'iade',
-        'tarih': now,
-        'sube_id': AktifSubeServisi().subeId,
-        'aciklama': 'İade: $fisNo - $urunAdi',
-        'kullanici_id': kullaniciId,
-      };
-      final kasaId = await txn.insert('kasa_hareketleri', kasaSatiri);
-      await SyncKuyrukYazici.ekleTxn(txn,
-          tablo: 'kasa_hareketleri', veri: {...kasaSatiri, 'id': kasaId});
+      // 5. Kasa hareketi — SADECE Nakit iade seçildiyse.
+      //
+      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22 — devam turu):
+      // bu satır ÖNCEDEN [odemeYontemi] ne olursa olsun KOŞULSUZ bir kasa
+      // çıkışı yazıyordu — İade Geçmişi'nde düzenleme moduna girip
+      // Kart/Banka VEYA Cari seçerek kalem eklenirse bile kasadan GERÇEKTE
+      // hiç çıkmamış bir tutar düşülüyordu (dosyadaki diğer tüm oluşturma
+      // fonksiyonlarının — topluIadeKaydet/fisKalemIadeKaydet/
+      // manuelKalemEkle — zaten uyduğu 'SADECE Nakit' kuralıyla tutarsızdı).
+      if (odemeYontemi == 'Nakit') {
+        final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) - toplam;
+        final kasaSatiri = {
+          'global_id': const Uuid().v4(),
+          'hareket_tipi': 'İade',
+          'tutar': toplam,
+          'bakiye_sonrasi': kasaBakiye,
+          'referans_id': iadeId,
+          'referans_turu': 'iade',
+          'tarih': now,
+          'sube_id': AktifSubeServisi().subeId,
+          'aciklama': 'İade: $fisNo - $urunAdi',
+          'kullanici_id': kullaniciId,
+        };
+        final kasaId = await txn.insert('kasa_hareketleri', kasaSatiri);
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'kasa_hareketleri', veri: {...kasaSatiri, 'id': kasaId});
+      }
     });
 
     try {

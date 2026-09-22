@@ -129,4 +129,49 @@ void main() {
           reason: 'Nakit zaten elden verildiği için cari bakiyesi hiç etkilenmemeli');
     });
   });
+
+  group(
+      "İade Geçmişi düzenleme modunda kalem ekleme (duzenlemeModuKalemEkle) — kasa hareketi artık ödeme yöntemine göre",
+      () {
+    // IadeIslemServisi.duzenlemeModuKalemEkle()'teki "5. Kasa hareketi"
+    // adımının (düzeltilmiş) koşulunun BİREBİR aynısı: ÖNCEDEN odemeYontemi
+    // ne olursa olsun koşulsuz kasa çıkışı yazıyordu — Kart/Banka veya Cari
+    // seçilse bile kasadan gerçekte hiç çıkmamış bir tutar düşülüyordu.
+    Future<void> kasaYazIadeGirisi(Database db,
+        {required String odemeYontemi, required int iadeId, required double toplam}) async {
+      if (odemeYontemi != 'Nakit') return; // düzeltilmiş davranış
+      await db.insert('kasa_hareketleri', {
+        'global_id': const Uuid().v4(),
+        'hareket_tipi': 'İade',
+        'tutar': toplam,
+        'referans_id': iadeId,
+        'referans_turu': 'iade',
+        'tarih': DateTime.now().toIso8601String(),
+      });
+    }
+
+    test('Kart/Banka seçiliyken kalem eklenirse kasaya HİÇ hareket yazılmaz', () async {
+      await kasaYazIadeGirisi(db, odemeYontemi: 'Kart/Banka', iadeId: 10, toplam: 75.0);
+      final kasaSatirlari = await db.query('kasa_hareketleri',
+          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [10, 'iade']);
+      expect(kasaSatirlari, isEmpty,
+          reason: 'Kart/Banka ile ödenen bir iade kalemi kasadan hiç nakit çıkarmamalı');
+    });
+
+    test('Cari seçiliyken kalem eklenirse kasaya HİÇ hareket yazılmaz', () async {
+      await kasaYazIadeGirisi(db, odemeYontemi: 'Cari', iadeId: 11, toplam: 50.0);
+      final kasaSatirlari = await db.query('kasa_hareketleri',
+          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [11, 'iade']);
+      expect(kasaSatirlari, isEmpty,
+          reason: 'Cari\'ye yazılan bir iade kalemi kasadan hiç nakit çıkarmamalı');
+    });
+
+    test('Nakit seçiliyken kalem eklenirse kasaya GERÇEK tutar yazılır', () async {
+      await kasaYazIadeGirisi(db, odemeYontemi: 'Nakit', iadeId: 12, toplam: 40.0);
+      final kasaSatirlari = await db.query('kasa_hareketleri',
+          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [12, 'iade']);
+      expect(kasaSatirlari, hasLength(1));
+      expect((kasaSatirlari.first['tutar'] as num).toDouble(), equals(40.0));
+    });
+  });
 }

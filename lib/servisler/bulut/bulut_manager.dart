@@ -325,6 +325,30 @@ class BulutManager {
     final db = await Veritabani().db;
 
     try {
+      // 🔴 KENDİ KENDİNİ ONARAN DÜZELTME (2026-09-22): satislar.
+      // sync_cakisma_kopyasi'nin buluta gönderilmeden önce ayıklanması
+      // bir önceki commit'te eklendi (bkz. aşağıdaki _veriCoz'daki
+      // 'satislar' bloğu) — ama o düzeltmeden ÖNCE senkronize olmaya
+      // çalışmış satışlar zaten HTTP 400 (PGRST204) aldığı için
+      // 'kalici_hata'ya damgalanmıştı. Aşağıdaki sorgu SADECE
+      // durum='beklemede' okur, yani o satışlar kod düzeltilse bile
+      // SONSUZA KADAR senkronize olmayacaktı (bkz. _kuyrukSatiriBasarisiz
+      // İsaretle — 4xx kalıcıdır, bir daha asla otomatik denenmez). Bu ÇOK
+      // DAR kapsamlı, idempotent onarım SADECE bu tanınan/artık-düzeltilmiş
+      // hata imzasıyla eşleşen satırları 'beklemede'ye geri döndürür —
+      // genel bir "tüm kalıcı hataları yeniden dene" mekanizması DEĞİL;
+      // gerçek validation hataları (ör. NOT NULL ihlali) hâlâ kalici_hata
+      // olarak kalmalı.
+      try {
+        await db.rawUpdate(
+          "UPDATE ${DbSabitler.syncQueue} SET durum = 'beklemede', deneme_sayisi = 0 "
+          "WHERE durum = 'kalici_hata' AND tablo_adi = 'satislar' "
+          "AND hata_mesaji LIKE '%sync_cakisma_kopyasi%'",
+        );
+      } catch (_) {
+        // best-effort — ana akışı bloklamamalı
+      }
+
       // Kalıcı kuyruktan bekleyen satırları oku — RAM'de HİÇBİR ŞEY
       // tutulmuyor, tek doğruluk kaynağı bu sorgu. Tek turda en fazla
       // 500 satır işlenir (bellek/performans için); kalan varsa turun

@@ -59,6 +59,51 @@ extension _CariDetayIslemlerExt on _CariDetayPaneliState {
     ]);
   }
 
+  /// Bir satış satırını termal FİŞ olarak yazdırır (perakende Cari Detay
+  /// ekranındaki _seciliYazdir ile AYNI mantık — bkz. cari_detay_ekrani.dart).
+  /// `_satislar` listesi kalemsiz geldiği için tam satış yeniden çekilir.
+  Future<void> _satisYazdir(SatisModel s) async {
+    if (_yazdiriliyor || s.id == null) return;
+    setState(() => _yazdiriliyor = true);
+    try {
+      final tam = await _satisDepo.idileGetir(s.id!);
+      if (tam == null) throw Exception('Satış bulunamadı (silinmiş olabilir)');
+      await YazdirmaServisi().fisYazdir(tam, cariUnvan: widget.cari.unvan);
+      if (mounted) BildirimServisi.basari(context, 'Yazdırıldı');
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Yazıcı hatası: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      if (mounted) setState(() => _yazdiriliyor = false);
+    }
+  }
+
+  /// Bir Tahsilat/Ödeme satırını MAKBUZ olarak yazdırır (perakende Cari
+  /// Detay ekranındaki AYNI mantık).
+  Future<void> _tahsilatYazdir(CariHareketModel t) async {
+    if (_yazdiriliyor) return;
+    setState(() => _yazdiriliyor = true);
+    try {
+      final b = await _cariDepo.bakiyeHareketAninda(t);
+      await YazdirmaServisi().makbuzYazdir(
+        makbuzNo: t.fisNo ?? 'KOPYA-${t.id}',
+        tarih: t.tarih,
+        cariUnvan: widget.cari.unvan,
+        tutar: t.alacak > 0 ? t.alacak : t.borc,
+        odemeTuru: t.odemeTuru ?? '—',
+        islemTipi: t.fisTipi,
+        aciklama: t.aciklama.isEmpty ? null : t.aciklama,
+        kesenKisi: t.kullanici,
+        oncekiBakiye: b.oncekiBakiye,
+        sonBakiye: b.sonBakiye,
+      );
+      if (mounted) BildirimServisi.basari(context, 'Yazdırıldı');
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Yazıcı hatası: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      if (mounted) setState(() => _yazdiriliyor = false);
+    }
+  }
+
   Widget _islemKisayolu(String etiket, IconData ikon, Color renk, VoidCallback onTap) {
     return Material(
       color: context.cardBg,
@@ -101,7 +146,7 @@ extension _CariDetayIslemlerExt on _CariDetayPaneliState {
             _ekstreBaslik('BELGE NO', flex: 3),
             _ekstreBaslik('TUTAR', flex: 3, sagaYasla: true),
             _ekstreBaslik('BAKİYE', flex: 3, sagaYasla: true),
-            const SizedBox(width: 26),
+            const SizedBox(width: 64),
           ]),
         ),
       ),
@@ -150,6 +195,16 @@ extension _CariDetayIslemlerExt on _CariDetayPaneliState {
                       _ekstreHucre(ParaUtils.formatla(s.genelToplam), flex: 3, sagaYasla: true, kalin: true),
                       _ekstreHucre(ParaUtils.formatla(bakiyeler[i]), flex: 3, sagaYasla: true,
                           renk: bakiyeler[i] > 0 ? Colors.red.shade400 : Colors.green.shade600),
+                      IconButton(
+                        icon: const Icon(Icons.print_outlined, size: 18),
+                        color: AppRenkler.primary,
+                        tooltip: 'Fişi yazdır',
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: _yazdiriliyor ? null : () => _satisYazdir(s),
+                      ),
+                      const SizedBox(width: 4),
                       Icon(Icons.chevron_right, size: 18, color: context.textHint),
                     ]),
                   ),
@@ -253,8 +308,20 @@ extension _CariDetayIslemlerExt on _CariDetayPaneliState {
                   Text(t.aciklama, style: TextStyle(fontSize: 11, color: context.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
               ]),
             ),
-            Text(ParaUtils.formatla(tutar),
-                style: TextStyle(fontWeight: FontWeight.w700, color: iptalMi ? context.textSecondary : Colors.green)),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(ParaUtils.formatla(tutar),
+                  style: TextStyle(fontWeight: FontWeight.w700, color: iptalMi ? context.textSecondary : Colors.green)),
+              if (!iptalMi)
+                IconButton(
+                  icon: const Icon(Icons.print_outlined, size: 18),
+                  color: AppRenkler.primary,
+                  tooltip: 'Makbuzu yazdır',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: _yazdiriliyor ? null : () => _tahsilatYazdir(t),
+                ),
+            ]),
           ]),
         );
       },

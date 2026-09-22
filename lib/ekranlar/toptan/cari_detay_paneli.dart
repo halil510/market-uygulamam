@@ -30,6 +30,8 @@ import '../../depolar/irsaliye_deposu.dart';
 import '../../modeller/fiyat_grubu_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
+import '../../servisler/yazdirma_servisi.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../cari/fis_detay_ekrani.dart';
 import '../satis/iade_ekrani.dart';
 import 'toptan_satis_ekrani.dart';
@@ -92,6 +94,12 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
   String _islemAlt = 'Satışlar'; // 'Satışlar' | 'Faturalar' | 'Tahsilatlar'
 
   static const _tahsilatTipleri = {'Tahsilat', 'Ödeme', 'Odeme', 'Tahsilat İptali'};
+
+  // 🆕 Kullanıcı isteği (2026-09-22): perakende Cari Detay ekranında
+  // (cari_detay_ekrani.dart) zaten var olan "satır üzerinde doğrudan
+  // yazıcı ikonu" bu toptan/bayi cari 360 panelinde eksikti. AYNI
+  // YazdirmaServisi.fisYazdir/makbuzYazdir kod yolu kullanılıyor.
+  bool _yazdiriliyor = false;
 
   @override
   void initState() {

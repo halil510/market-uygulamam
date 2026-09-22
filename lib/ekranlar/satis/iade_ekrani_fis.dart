@@ -40,20 +40,10 @@ extension _FisTabExt on _IadeEkraniState {
 
   /// Bu satıştan daha önce iade edilmiş miktarları ürün bazında toplar
   /// (satis_id ile ilişkili tüm 'iade' kayıtlarındaki 'iade_kalem' satırları).
-  Future<Map<int, double>> _fisIadeliMiktarlariGetir(int satisId) async {
-    final db = await Veritabani().db;
-    final rows = await db.rawQuery('''
-      SELECT ik.urun_id AS urun_id, SUM(ik.miktar) AS toplam
-      FROM iade_kalem ik
-      JOIN iade i ON ik.iade_id = i.id
-      WHERE i.satis_id = ?
-      GROUP BY ik.urun_id
-    ''', [satisId]);
-    return {
-      for (final r in rows)
-        (r['urun_id'] as num).toInt(): (r['toplam'] as num?)?.toDouble() ?? 0,
-    };
-  }
+  /// Madde 2 sertleştirmesi (2026-09-22): doğrudan Veritabani().db erişimi
+  /// kaldırıldı — IadeDeposu.fisIadeliMiktarlariGetir() üzerinden.
+  Future<Map<int, double>> _fisIadeliMiktarlariGetir(int satisId) =>
+      IadeDeposu().fisIadeliMiktarlariGetir(satisId);
 
   Future<void> _fisKalemIade(SatisKalemModel kalem) async {
     if (_bulunanSatis == null) return;

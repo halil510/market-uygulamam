@@ -659,24 +659,10 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
   //      Barkod Üret" denemesi yakalanmamış bir FormatException ile
   //      çöküyordu. `int.tryParse` + `?? 0` ile artık böyle bir satır
   //      sessizce yok sayılıyor (0 kabul edilir), çökme riski yok.
-  Future<String> _benzersizBarkodUret() async {
-    final db = await Veritabani().db;
-    final sonuc = await db.rawQuery('''
-      SELECT barkod FROM urunler
-      WHERE barkod LIKE 'M%'
-        AND barkod IS NOT NULL
-        AND barkod != ''
-        AND is_deleted = 0
-      ORDER BY CAST(SUBSTR(barkod, 2) AS INTEGER) DESC LIMIT 1
-    ''');
-    int yeniNumara = 1;
-    if (sonuc.isNotEmpty) {
-      final sonBarkod = sonuc.first['barkod'] as String;
-      final numaraStr = sonBarkod.substring(1);
-      yeniNumara = (int.tryParse(numaraStr) ?? 0) + 1;
-    }
-    return "M${yeniNumara.toString().padLeft(6, '0')}";
-  }
+  // Madde 2 sertleştirmesi (2026-09-22): doğrudan Veritabani().db erişimi
+  // kaldırıldı — UrunDeposu.benzersizBarkodUret() üzerinden, davranış
+  // birebir korunarak (bkz. o metodun doc yorumu).
+  Future<String> _benzersizBarkodUret() => _depo.benzersizBarkodUret();
 
   Future<void> _otomatikBarkodUret() async {
     final yeni = await _benzersizBarkodUret();

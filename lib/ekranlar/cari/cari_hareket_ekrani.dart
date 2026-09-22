@@ -20,7 +20,7 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/satis_iptal_servisi.dart';
 import '../../servisler/alim_islem_servisi.dart';
 import '../../servisler/iade_islem_servisi.dart';
-import '../../veri/database/veritabani.dart';
+import '../../depolar/iade_deposu.dart';
 import '../../saglayicilar/riverpod/satis_provider.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
@@ -283,17 +283,18 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
         // IadeIslemServisi().gecmisFisIadeSil() ile silinir — o metod
         // TÜM kalemlerini iade_kalem'den kendi sorguluyor, burada sadece
         // iadeId/toplam/cariId/fisNo gerekiyor (bkz. o metodun doc yorumu).
-        final db = await Veritabani().db;
-        final iadeRows = await db.query('iade', where: 'id = ?', whereArgs: [h.fisId]);
-        if (iadeRows.isEmpty) {
+        // Madde 2 sertleştirmesi (2026-09-22): doğrudan Veritabani().db
+        // erişimi kaldırıldı — IadeDeposu üzerinden.
+        final iadeDepo = IadeDeposu();
+        final iadeSatiri = await iadeDepo.idileGetir(h.fisId!);
+        if (iadeSatiri == null) {
           throw Exception('Bu iade bulunamadı (silinmiş olabilir).');
         }
-        final kalemler = await db.query('iade_kalem',
-            where: 'iade_id = ?', whereArgs: [h.fisId]);
+        final kalemler = await iadeDepo.kalemleriGetir(h.fisId!);
         await IadeIslemServisi().gecmisFisIadeSil(
           iadeId: h.fisId!,
           kalemler: kalemler,
-          toplamTutar: (iadeRows.first['toplam_tutar'] as num?)?.toDouble() ?? 0,
+          toplamTutar: (iadeSatiri['toplam_tutar'] as num?)?.toDouble() ?? 0,
           cariId: h.cariId,
           fisNo: h.fisNo,
         );

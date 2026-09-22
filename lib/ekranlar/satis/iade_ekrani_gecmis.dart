@@ -495,10 +495,9 @@ extension _GecmisTabExt on _IadeEkraniState {
     final iadeId = iade['id'] as int?;
     if (iadeId == null) return;
 
-    // DB'den kalemleri çek
-    final db     = await Veritabani().db;
-    final kalemler = await db.rawQuery(
-      'SELECT * FROM iade_kalem WHERE iade_id = ?', [iadeId]);
+    // DB'den kalemleri çek — Madde 2 sertleştirmesi (2026-09-22):
+    // doğrudan Veritabani().db erişimi kaldırıldı.
+    final kalemler = await IadeDeposu().kalemleriGetir(iadeId);
 
     // Cari bul
     CariModel? cari;
@@ -628,11 +627,12 @@ extension _GecmisTabExt on _IadeEkraniState {
     if (onay != true || !mounted) return;
 
     try {
-      final db      = await Veritabani().db;
       final iadeId  = iade['id'] as int?;
       if (iadeId == null) return;
 
-      final kalemler = await db.query('iade_kalem', where: 'iade_id = ?', whereArgs: [iadeId]);
+      // Madde 2 sertleştirmesi (2026-09-22): doğrudan Veritabani().db
+      // erişimi kaldırıldı.
+      final kalemler = await IadeDeposu().kalemleriGetir(iadeId);
 
       // Tüm transaction + bulut senkron mantığı artık
       // IadeIslemServisi.gecmisFisIadeSil'de — bkz. o metodun doc
@@ -657,32 +657,14 @@ extension _GecmisTabExt on _IadeEkraniState {
     _gecmisYukleniyor = true;
     if (mounted) setState(() {});
     try {
-      final db = await Veritabani().db;
-      String where = '1=1';
-      List<dynamic> args = [];
-      if (_gecmisTarihBaslangic != null) {
-        where += ' AND ia.tarih >= ?';
-        args.add(_gecmisTarihBaslangic!.toIso8601String());
-      }
-      if (_gecmisTarihBitis != null) {
-        where += ' AND ia.tarih <= ?';
-        final bitis = _gecmisTarihBitis!.add(const Duration(days: 1));
-        args.add(bitis.toIso8601String());
-      }
-      if (_gecmisCariFiltre != null) {
-        where += ' AND ia.cari_id = ?';
-        args.add(_gecmisCariFiltre!.id);
-      }
-      final rows = await db.rawQuery('''
-        SELECT ia.*,
-          c.unvan as cari_adi,
-          (SELECT COUNT(*) FROM iade_kalem WHERE iade_id = ia.id) as kalem_sayisi
-        FROM iade ia
-        LEFT JOIN cari c ON ia.cari_id = c.id
-        WHERE ia.durum != 'iptal' AND $where
-        ORDER BY ia.tarih DESC
-        LIMIT 100
-      ''', args);
+      // Madde 2 sertleştirmesi (2026-09-22): doğrudan Veritabani().db
+      // erişimi kaldırıldı — IadeDeposu.gecmisListesiGetir() üzerinden,
+      // davranış birebir korunarak.
+      final rows = await IadeDeposu().gecmisListesiGetir(
+        baslangic: _gecmisTarihBaslangic,
+        bitis: _gecmisTarihBitis,
+        cariId: _gecmisCariFiltre?.id,
+      );
       if (!mounted) return;
       _gecmisIadeler = rows;
       _gecmisYukleniyor = false;
@@ -804,13 +786,10 @@ extension _GecmisTabExt on _IadeEkraniState {
   }
 
   Future<void> _gecmisIadeDetay(Map<String, dynamic> iade) async {
-    final db = await Veritabani().db;
-    final kalemler = await db.rawQuery('''
-      SELECT ik.*, u.urun_adi as urun_adi_db, u.kdv_oran as urun_kdv_oran
-      FROM iade_kalem ik
-      LEFT JOIN urunler u ON ik.urun_id = u.id
-      WHERE ik.iade_id = ?
-    ''', [iade['id']]);
+    // Madde 2 sertleştirmesi (2026-09-22): doğrudan Veritabani().db
+    // erişimi kaldırıldı.
+    final kalemler =
+        await IadeDeposu().kalemleriUrunBilgisiyleGetir(iade['id'] as int);
 
     if (!mounted) return;
     showDialog(

@@ -1017,6 +1017,32 @@ class UrunDeposu {
     }
   }
 
+  // 🔴 MASTER ERP DEEP AUDIT — Madde 2 (Mimari) sertleştirmesi, devam
+  // (2026-09-22): urun_ekle_ekrani_ai_ses.dart doğrudan Veritabani().db
+  // üzerinden bu sorguyu çalıştırıyordu (repository katmanını
+  // atlıyordu). Davranış (P2 düzeltmesiyle birlikte) birebir korunarak
+  // buraya taşındı: 'M' önekli barkodlar arasında GERÇEK en yüksek
+  // numarayı (sayısal CAST ile, ekleniş sırasına göre değil) bulup bir
+  // sonrakini üretir.
+  Future<String> benzersizBarkodUret() async {
+    final db = await _d;
+    final sonuc = await db.rawQuery('''
+      SELECT barkod FROM ${DbSabitler.urunler}
+      WHERE barkod LIKE 'M%'
+        AND barkod IS NOT NULL
+        AND barkod != ''
+        AND is_deleted = 0
+      ORDER BY CAST(SUBSTR(barkod, 2) AS INTEGER) DESC LIMIT 1
+    ''');
+    int yeniNumara = 1;
+    if (sonuc.isNotEmpty) {
+      final sonBarkod = sonuc.first['barkod'] as String;
+      final numaraStr = sonBarkod.substring(1);
+      yeniNumara = (int.tryParse(numaraStr) ?? 0) + 1;
+    }
+    return "M${yeniNumara.toString().padLeft(6, '0')}";
+  }
+
   // 🔴 Derin analizde bulundu: stokGuncelle(id, yeniStok) burada duruyordu
   // ama projede HİÇBİR YERDEN çağrılmıyordu (ölü kod) — ve çağrılsaydı
   // TEHLİKELİYDİ: urunler.stok'u stok_hareket tablosuna hiç kayıt

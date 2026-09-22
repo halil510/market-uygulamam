@@ -51,4 +51,88 @@ class IadeDeposu {
     }
     BulutManager().zorlaGonder();
   }
+
+  // 🔴 MASTER ERP DEEP AUDIT — Madde 2 (Mimari) sertleştirmesi, devam
+  // (2026-09-22): iade_ekrani_gecmis.dart/iade_ekrani_fis.dart/
+  // cari_hareket_ekrani.dart doğrudan Veritabani().db üzerinden bu
+  // salt-okunur sorguları çalıştırıyordu. Aşağıdaki metodlar aynı SQL'i
+  // (davranış birebir korunarak) repository katmanına taşır.
+
+  /// Tek bir iade başlığını (id) döner — bulunamazsa null.
+  Future<Map<String, dynamic>?> idileGetir(int iadeId) async {
+    final db = await _d;
+    final rows = await db.query('iade', where: 'id = ?', whereArgs: [iadeId]);
+    return rows.isEmpty ? null : Map<String, dynamic>.from(rows.first);
+  }
+
+  /// Bir iadenin ham kalem satırları (iade_kalem) — ürün bilgisi JOIN'siz.
+  Future<List<Map<String, dynamic>>> kalemleriGetir(int iadeId) async {
+    final db = await _d;
+    final rows = await db.query('iade_kalem', where: 'iade_id = ?', whereArgs: [iadeId]);
+    return rows.map((r) => Map<String, dynamic>.from(r)).toList();
+  }
+
+  /// Bir iadenin kalemleri — ürün adı/KDV oranı JOIN'li (detay diyaloğu için).
+  Future<List<Map<String, dynamic>>> kalemleriUrunBilgisiyleGetir(int iadeId) async {
+    final db = await _d;
+    final rows = await db.rawQuery('''
+      SELECT ik.*, u.urun_adi as urun_adi_db, u.kdv_oran as urun_kdv_oran
+      FROM iade_kalem ik
+      LEFT JOIN urunler u ON ik.urun_id = u.id
+      WHERE ik.iade_id = ?
+    ''', [iadeId]);
+    return rows;
+  }
+
+  /// "İade Geçmişi" listesi — tarih/cari filtreli, cari adı JOIN'li, en
+  /// fazla [limit] kayıt (iptal edilenler hariç).
+  Future<List<Map<String, dynamic>>> gecmisListesiGetir({
+    DateTime? baslangic,
+    DateTime? bitis,
+    int? cariId,
+    int limit = 100,
+  }) async {
+    final db = await _d;
+    var where = '1=1';
+    final args = <dynamic>[];
+    if (baslangic != null) {
+      where += ' AND ia.tarih >= ?';
+      args.add(baslangic.toIso8601String());
+    }
+    if (bitis != null) {
+      where += ' AND ia.tarih <= ?';
+      args.add(bitis.add(const Duration(days: 1)).toIso8601String());
+    }
+    if (cariId != null) {
+      where += ' AND ia.cari_id = ?';
+      args.add(cariId);
+    }
+    return db.rawQuery('''
+      SELECT ia.*,
+        c.unvan as cari_adi,
+        (SELECT COUNT(*) FROM iade_kalem WHERE iade_id = ia.id) as kalem_sayisi
+      FROM iade ia
+      LEFT JOIN cari c ON ia.cari_id = c.id
+      WHERE ia.durum != 'iptal' AND $where
+      ORDER BY ia.tarih DESC
+      LIMIT $limit
+    ''', args);
+  }
+
+  /// Bu satıştan daha önce iade edilmiş miktarları ürün bazında toplar
+  /// ("Fiş No ile İade" sekmesindeki çift-iade koruması için).
+  Future<Map<int, double>> fisIadeliMiktarlariGetir(int satisId) async {
+    final db = await _d;
+    final rows = await db.rawQuery('''
+      SELECT ik.urun_id AS urun_id, SUM(ik.miktar) AS toplam
+      FROM iade_kalem ik
+      JOIN iade i ON ik.iade_id = i.id
+      WHERE i.satis_id = ?
+      GROUP BY ik.urun_id
+    ''', [satisId]);
+    return {
+      for (final r in rows)
+        (r['urun_id'] as num).toInt(): (r['toplam'] as num?)?.toDouble() ?? 0,
+    };
+  }
 }

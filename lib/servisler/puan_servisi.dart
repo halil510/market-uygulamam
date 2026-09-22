@@ -108,6 +108,98 @@ class PuanServisi {
     return kullanilanPuan;
   }
 
+  // 🔴🔴 KRİTİK DÜZELTME (paralel fork denetimi, 2026-09-22 — "tam ERP"
+  // turu): bir satış tamamlanınca müşteri puan kazanıyordu (puanEkle),
+  // ama o satış İPTAL EDİLİP SİLİNİRSE (SatisDeposu.sil()) kazanılan
+  // puan hiç geri alınmıyordu — kasiyer satışı yanlışlıkla girip hemen
+  // silse bile müşterinin puan bakiyesinde kalıcı olarak duruyordu.
+  // Bu, dosyadaki AYNI hata sınıfının (stok/kasa/cari reversal eksikliği
+  // — bugün İade/Gider'de bulunup düzeltilen) sadakat puanı karşılığı.
+  //
+  // idempotent: aynı satisId için ikinci kez çağrılırsa (örn. bir hata
+  // sonrası tekrar denenirse) zaten yazılmış 'İptal' kaydını görüp
+  // hiçbir şey yapmaz — mükerrer geri alma/çifte düzeltme riski yok.
+  Future<void> puanIptalEt({required int cariId, required int satisId}) async {
+    final db = await Veritabani().db;
+    final iptalGlobalIdleri = <String>[];
+    await db.transaction((txn) async {
+      final zatenIptal = await txn.query(DbSabitler.puanHareket,
+          where: 'cari_id = ? AND referans_id = ? AND islem_tipi = ?',
+          whereArgs: [cariId, satisId, 'İptal']);
+      if (zatenIptal.isNotEmpty) return;
+
+      final hareketler = await txn.query(DbSabitler.puanHareket,
+          where: 'cari_id = ? AND referans_id = ? AND islem_tipi != ?',
+          whereArgs: [cariId, satisId, 'İptal']);
+      if (hareketler.isEmpty) return;
+
+      // 'toplam_puan' (kazanılan) ve 'kullanilan' (harcanan) AYRI
+      // sayaçlar — ikisini de kendi yönünde tersine çevirmek gerekir.
+      double kazanilanToplam = 0, harcananToplam = 0;
+      for (final h in hareketler) {
+        final puan = (h['puan'] as num?)?.toDouble() ?? 0;
+        if (puan > 0) {
+          kazanilanToplam += puan;
+        } else {
+          harcananToplam += puan.abs();
+        }
+      }
+
+      final now = DateTime.now().toIso8601String();
+      if (kazanilanToplam > 0.005) {
+        await txn.rawUpdate('''
+          UPDATE ${DbSabitler.musteriPuan}
+          SET toplam_puan = MAX(0, toplam_puan - ?), son_islem = ?
+          WHERE cari_id = ?
+        ''', [kazanilanToplam, now, cariId]);
+        final gid = const Uuid().v4();
+        await txn.insert(DbSabitler.puanHareket, {
+          'global_id': gid,
+          'cari_id': cariId,
+          'islem_tipi': 'İptal',
+          'puan': -kazanilanToplam,
+          'referans_id': satisId,
+          'aciklama': 'Satış iptali/silindi — kazanılan puan geri alındı',
+        });
+        iptalGlobalIdleri.add(gid);
+      }
+      if (harcananToplam > 0.005) {
+        await txn.rawUpdate('''
+          UPDATE ${DbSabitler.musteriPuan}
+          SET kullanilan = MAX(0, kullanilan - ?), son_islem = ?
+          WHERE cari_id = ?
+        ''', [harcananToplam, now, cariId]);
+        final gid = const Uuid().v4();
+        await txn.insert(DbSabitler.puanHareket, {
+          'global_id': gid,
+          'cari_id': cariId,
+          'islem_tipi': 'İptal',
+          'puan': harcananToplam,
+          'referans_id': satisId,
+          'aciklama': 'Satış iptali/silindi — kullanılan puan iade edildi',
+        });
+        iptalGlobalIdleri.add(gid);
+      }
+    });
+    if (iptalGlobalIdleri.isEmpty) return;
+    try {
+      final puanSatir = await db.query(DbSabitler.musteriPuan,
+          where: 'cari_id = ?', whereArgs: [cariId], limit: 1);
+      if (puanSatir.isNotEmpty) {
+        BulutManager().upsert(DbSabitler.musteriPuan, Map<String, dynamic>.from(puanSatir.first));
+      }
+      for (final gid in iptalGlobalIdleri) {
+        final hareketSatir = await db.query(DbSabitler.puanHareket,
+            where: 'global_id = ?', whereArgs: [gid], limit: 1);
+        if (hareketSatir.isNotEmpty) {
+          BulutManager().upsert(DbSabitler.puanHareket, Map<String, dynamic>.from(hareketSatir.first));
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('PuanServisi.puanIptalEt bulut bildirimi hatası: $e');
+    }
+  }
+
   /// Mevcut kullanılabilir puan bakiyesi
   Future<double> puanBakiyesi(int cariId) async {
     final db = await Veritabani().db;

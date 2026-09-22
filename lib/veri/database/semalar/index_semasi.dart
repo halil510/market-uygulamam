@@ -57,6 +57,11 @@ class IndexSemasi {
     "CREATE INDEX IF NOT EXISTS idx_cari_hareket_deleted ON cari_hareket(is_deleted)",
     "CREATE INDEX IF NOT EXISTS idx_cari_hareket_global ON cari_hareket(global_id)",
     "CREATE INDEX IF NOT EXISTS idx_puan_hareket_global ON puan_hareket(global_id)",
+    // 🔴 KRİTİK (kullanıcı bulgusu, 2026-09-22 — bkz. migrasyon v77
+    // yorumu): PuanServisi.puanEkle()'nin ON CONFLICT(cari_id) hedefi
+    // bu UNIQUE INDEX olmadan HER ZAMAN SQL hatasıyla patlıyordu — taze
+    // kurulumlar da bu indeksi almalı, sadece yükseltilenler değil.
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_musteri_puan_cari_unique ON musteri_puan(cari_id)",
 
     // ── FİNANS ─────────────────────────────────────────────────────────
     "CREATE INDEX IF NOT EXISTS idx_gider_tarih ON giderler(tarih)",

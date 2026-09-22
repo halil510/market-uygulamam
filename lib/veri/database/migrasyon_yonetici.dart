@@ -217,5 +217,10 @@ class MigrasyonYonetici {
     // v75'ten v76'ya — giderler.banka_hesap_id/kredi_karti_id eklendi
     // (bkz. _v75denV76ya yorumu, 2026-09-22).
     if (eskiVersiyon < 76) await _v75denV76ya(db);
+
+    // v76'dan v77'ye — musteri_puan.cari_id UNIQUE index (bkz.
+    // _v76denV77ye yorumu — puanEkle()'nin ON CONFLICT hedefi eksikti,
+    // 2026-09-22).
+    if (eskiVersiyon < 77) await _v76denV77ye(db);
   }
 }

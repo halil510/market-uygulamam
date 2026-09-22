@@ -1188,3 +1188,64 @@ Future<void> _v75denV76ya(Database db) async {
   await _calistir(db, 'ALTER TABLE giderler ADD COLUMN banka_hesap_id INTEGER');
   await _calistir(db, 'ALTER TABLE giderler ADD COLUMN kredi_karti_id INTEGER');
 }
+
+// v76'dan v77'ye — KRİTİK kök neden düzeltmesi (kullanıcı bulgusu, "tam
+// ERP" denetimi devamı, 2026-09-22): PuanServisi.puanEkle()'deki
+// 'INSERT ... ON CONFLICT(cari_id) DO UPDATE' cümlesi, musteri_puan.
+// cari_id üzerinde HİÇBİR UNIQUE/PRIMARY KEY kısıtı OLMADIĞI için HER
+// ZAMAN "ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE
+// constraint" SQL hatasıyla patlıyordu. Bu hata satis_tamamlama_servisi.
+// dart'ta BOŞ bir try/catch(_){} ile sessizce yutuluyordu — yani satış
+// sonrası müşteri sadakat puanı kazandırma özelliği muhtemelen HİÇ
+// ÇALIŞMAMIŞTI, her müşterinin puan bakiyesi her zaman 0 görünüyordu ve
+// kimse fark etmedi çünkü hata hiçbir yere düşmüyordu (o catch bloğu da
+// bu turda LogServisi'ne loglayacak şekilde düzeltildi).
+//
+// Önce (varsa — tablo muhtemelen boştu ama savunmacı davranılıyor) aynı
+// cari_id'ye ait birden fazla satır Dart tarafında TEK satıra
+// birleştiriliyor, SONRA cari_id üzerinde bir UNIQUE INDEX kuruluyor —
+// SQLite'ta ON CONFLICT hedefi bir UNIQUE INDEX'i de kabul eder, tabloyu
+// yeniden oluşturmaya gerek yok.
+Future<void> _v76denV77ye(Database db) async {
+  // Savunmacı: 'musteri_puan' teorik olarak yoksa (ör. çok eski/kısmi
+  // bir şema durumu) sessizce atla — CREATE UNIQUE INDEX zaten
+  // _calistir() içinde 'no such table' durumunu güvenle yutuyor, ama
+  // buradaki SELECT/DELETE/UPDATE adımları _calistir() KULLANMIYOR.
+  final tabloVarMi = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='musteri_puan'");
+  if (tabloVarMi.isEmpty) return;
+
+  final satirlar = await db.query('musteri_puan', orderBy: 'id ASC');
+  final gruplu = <int, List<Map<String, dynamic>>>{};
+  for (final s in satirlar) {
+    final cariId = s['cari_id'] as int?;
+    if (cariId == null) continue;
+    (gruplu[cariId] ??= []).add(s);
+  }
+  for (final entry in gruplu.entries) {
+    if (entry.value.length <= 1) continue;
+    double toplam = 0, kullanilan = 0;
+    String? sonIslem;
+    for (final s in entry.value) {
+      toplam += (s['toplam_puan'] as num?)?.toDouble() ?? 0;
+      kullanilan += (s['kullanilan'] as num?)?.toDouble() ?? 0;
+      final si = s['son_islem'] as String?;
+      if (si != null && (sonIslem == null || si.compareTo(sonIslem) > 0)) sonIslem = si;
+    }
+    final korunacakId = entry.value.first['id'] as int;
+    await db.update(
+        'musteri_puan',
+        {
+          'toplam_puan': toplam,
+          'kullanilan': kullanilan,
+          if (sonIslem != null) 'son_islem': sonIslem,
+        },
+        where: 'id = ?',
+        whereArgs: [korunacakId]);
+    for (final s in entry.value.skip(1)) {
+      await db.delete('musteri_puan', where: 'id = ?', whereArgs: [s['id']]);
+    }
+  }
+  await _calistir(db,
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_musteri_puan_cari_unique ON musteri_puan(cari_id)');
+}

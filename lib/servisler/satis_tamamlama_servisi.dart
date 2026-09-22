@@ -26,6 +26,7 @@ import '../modeller/satis_kalem_model.dart';
 import '../modeller/satis_model.dart';
 import '../modeller/sepet_model.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/log_servisi.dart';
 import '../servisler/puan_servisi.dart';
 import '../veri/database/veritabani.dart';
 
@@ -303,7 +304,17 @@ class SatisTamamlamaServisi {
           tutar: genelToplam,
           satisId: satisId,
         );
-      } catch (_) {/* puan hatası satışı geçersiz kılmaz */}
+      } catch (e, st) {
+        // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, "tam ERP" denetimi,
+        // 2026-09-22): burası ÖNCEDEN hatayı TAMAMEN sessizce yutuyordu
+        // (boş catch) — musteri_puan.cari_id'de UNIQUE kısıt olmadığı
+        // için PuanServisi.puanEkle()'deki ON CONFLICT(cari_id) cümlesi
+        // HER ZAMAN SQL hatası fırlatıyordu (bkz. migrasyon v77'nin
+        // düzelttiği kök neden) ve kimse fark etmedi çünkü hata hiçbir
+        // yere düşmüyordu. Puan hatası satışı yine geçersiz kılmaz —
+        // ama artık en azından loglanıyor, sessiz/görünmez kalmıyor.
+        LogServisi().hata('SatisTamamlamaServisi.puanEkle', hata: e, yigin: st);
+      }
     }
 
     return SatisTamamlamaSonucu(

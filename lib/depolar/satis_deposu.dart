@@ -11,6 +11,7 @@ import '../veri/database/veritabani.dart';
 import '../modeller/satis_model.dart';
 import '../modeller/satis_kalem_model.dart';
 import '../modeller/kasa_hareket_model.dart';
+import '../servisler/puan_servisi.dart';
 import 'kasa_deposu.dart';
 
 class SatisDeposu {
@@ -891,6 +892,16 @@ class SatisDeposu {
       }
       final cariSon = await db2.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
       if (cariSon.isNotEmpty) BulutManager().upsert('cari', Map<String, dynamic>.from(cariSon.first));
+
+      // 🔴🔴 KRİTİK DÜZELTME (paralel fork denetimi, 2026-09-22): satış
+      // silinince kazanılan/kullanılan sadakat puanı hiç geri alınmıyordu
+      // — bkz. PuanServisi.puanIptalEt() dosya başı yorumu. Ana silme
+      // işlemini geri almamalı diye ayrı, best-effort bir adım.
+      try {
+        await PuanServisi().puanIptalEt(cariId: cariId!, satisId: id);
+      } catch (e) {
+        if (kDebugMode) debugPrint('Satış silme — puan iptali hatası: $e');
+      }
     }
   }
 }

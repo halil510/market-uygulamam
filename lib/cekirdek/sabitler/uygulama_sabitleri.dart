@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      76; // v76: giderler.banka_hesap_id/kredi_karti_id — Banka/Kredi Kartı giderleri artık gerçek hareket yaratıyor (2026-09-22)
+      77; // v77: musteri_puan.cari_id UNIQUE index — puanEkle() artık SQL hatası fırlatmıyor, satış puanı kazandırma gerçekten çalışıyor (2026-09-22)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

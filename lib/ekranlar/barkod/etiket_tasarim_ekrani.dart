@@ -404,6 +404,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
       sktGoster: _sktGoster,
       aciklamaGoster: _aciklamaGoster,
       kdvDahilFiyat: _kdvDahilGoster,
+      birimFiyatliMod: _birimFiyatliMod,
       ozelMetin: _ozelMetin,
       fontOlcek: _fontOlcek,
     );
@@ -886,10 +887,6 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
           // açık renk miras alıp beyaz zeminde kaybolurdu) ya da yanlışlıkla
           // tema-uyarlamalı renklere geçirilmişti (karanlık modda açık
           // griye dönüp yine kaybolurdu). Hepsi sabitlendi.
-          if (_firmaBilgi)
-            Text(_yazdirma.firmaAdiOnizleme,
-                style: TextStyle(fontSize: w * 0.03 * f, color: Colors.black87),
-                maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
           if (_adGoster)
             Text(u.urunAdi,
                 style: TextStyle(fontSize: w * 0.04 * f, fontWeight: FontWeight.bold, color: Colors.black),
@@ -918,9 +915,30 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
                 style: TextStyle(fontSize: w * 0.022 * f, color: context.textSecondary),
                 maxLines: 1, overflow: TextOverflow.ellipsis),
           if (_fiyatGoster)
-            Text('${ParaUtils.formatla(_onizlemeFiyat(u))} ₺',
-                style: TextStyle(fontSize: w * 0.045 * f, fontWeight: FontWeight.w900,
-                    color: Colors.red.shade700)),
+            // 🔴 DÜZELTME (kullanıcı bulgusu): "Birim Fiyatlı Mod" anahtarı
+            // Ayarlar'da açılıp kapatılıyordu ama önizlemede HİÇBİR
+            // görsel değişikliğe yol açmıyordu — termal yazdırma yolunda
+            // (adet/kg + fiyat yan yana) çalışıyordu ama burada yok
+            // sayılıyordu. Artık önizleme de aynı düzeni gösteriyor.
+            (_birimFiyatliMod
+                ? Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(u.birimAdi.isEmpty ? 'Adet' : u.birimAdi,
+                        style: TextStyle(fontSize: w * 0.035 * f, color: Colors.black87)),
+                    SizedBox(width: w * 0.02),
+                    Text('${ParaUtils.formatla(_onizlemeFiyat(u))} ₺',
+                        style: TextStyle(fontSize: w * 0.04 * f, fontWeight: FontWeight.w900,
+                            color: Colors.red.shade700)),
+                  ])
+                : Text('${ParaUtils.formatla(_onizlemeFiyat(u))} ₺',
+                    style: TextStyle(fontSize: w * 0.045 * f, fontWeight: FontWeight.w900,
+                        color: Colors.red.shade700))),
+          // 🔴 DÜZELTME (kullanıcı referans tasarımı — raf üstü fiyat
+          // etiketi): firma/mağaza adı en altta basılmalı, ürün adının
+          // ÜSTÜNDE değil — hem burada hem ZPL/termal çıktısında taşındı.
+          if (_firmaBilgi)
+            Text(_yazdirma.firmaAdiOnizleme,
+                style: TextStyle(fontSize: w * 0.03 * f, color: Colors.black87),
+                maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
           if (_ozelMetin.trim().isNotEmpty)
             Text(_ozelMetin.trim(),
                 style: TextStyle(fontSize: w * 0.025 * f, fontStyle: FontStyle.italic),

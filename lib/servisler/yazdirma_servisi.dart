@@ -1423,10 +1423,6 @@ class YazdirmaServisi {
 
     for (int i = 0; i < adet; i++) {
       final bytes = <int>[];
-      if (firmaGoster && _firmaAdi.isNotEmpty) {
-        bytes.addAll(generator.text(_t(_firmaAdi),
-            styles: const PosStyles(bold: false, align: PosAlign.center)));
-      }
       if (adGoster) {
         final ad = urun.urunAdi;
         bytes.addAll(generator.text(_t(
@@ -1479,6 +1475,13 @@ class YazdirmaServisi {
               styles: const PosStyles(bold: true, align: PosAlign.center,
                   height: PosTextSize.size2, width: PosTextSize.size1)));
         }
+      }
+      // 🔴 DÜZELTME (kullanıcı referans tasarımı — raf üstü fiyat etiketi):
+      // firma/mağaza adı en altta basılmalı (ör. "DEMAR HİPERMARKET"),
+      // ürün adının ÜSTÜNDE değil — önceden en üstteydi.
+      if (firmaGoster && _firmaAdi.isNotEmpty) {
+        bytes.addAll(generator.text(_t(_firmaAdi),
+            styles: const PosStyles(bold: false, align: PosAlign.center)));
       }
       if (ozelMetin != null && ozelMetin.trim().isNotEmpty) {
         bytes.addAll(generator.text(_t(ozelMetin.trim()),

@@ -35,6 +35,11 @@ class ZplServisi {
     bool sktGoster = false,
     bool aciklamaGoster = false,
     bool kdvDahilFiyat = true,
+    // 🔴 DÜZELTME (kullanıcı bulgusu — Ayarlar sekmesindeki "Birim Fiyatlı
+    // Mod" anahtarı ZPL çıktısına hiç yansımıyordu; sadece termal (ESC/POS)
+    // yolunda çalışıyordu). Açıkken fiyat satırı yerine "birim adı | fiyat"
+    // yan yana basılır (ör. "Kg   45.00 TL").
+    bool birimFiyatliMod = false,
     String? ozelMetin,
     double fontOlcek = 1.0,
   }) {
@@ -49,12 +54,6 @@ class ZplServisi {
     buf.writeln('^CI28'); // UTF-8 — Türkçe karakter desteği
 
     var y = 20;
-
-    if (firmaGoster && (firmaAdi?.isNotEmpty ?? false)) {
-      final s = fs(18);
-      buf.writeln('^FO10,$y^A0N,$s,$s^FD${_zplKacis(_kisalt(firmaAdi!, 32))}^FS');
-      y += (24 * fontOlcek).round();
-    }
 
     if (adGoster) {
       final ad = _zplKacis(_kisalt(urun.urunAdi, 32));
@@ -100,9 +99,28 @@ class ZplServisi {
       final kdv = double.tryParse(urun.kdvOran) ?? 0;
       final gosterilecek = kdvDahilFiyat ? taban : taban / (1 + kdv / 100);
       final fiyat = '${gosterilecek.toStringAsFixed(2)} TL';
-      final s = fs(40);
-      buf.writeln('^FO10,$y^A0N,$s,$s^FD$fiyat^FS');
-      y += (48 * fontOlcek).round();
+      if (birimFiyatliMod) {
+        // Birim adı solda, fiyat sağda — aynı termal (ESC/POS) yoldaki
+        // "Adet/KG + fiyat yan yana" davranışı.
+        final birim = urun.birimAdi.isEmpty ? 'Adet' : urun.birimAdi;
+        final s = fs(32);
+        buf.writeln('^FO10,$y^A0N,$s,$s^FD${_zplKacis(_kisalt(birim, 12))}^FS');
+        buf.writeln('^FO${(w * 0.45).round()},$y^A0N,$s,$s^FD$fiyat^FS');
+        y += (40 * fontOlcek).round();
+      } else {
+        final s = fs(40);
+        buf.writeln('^FO10,$y^A0N,$s,$s^FD$fiyat^FS');
+        y += (48 * fontOlcek).round();
+      }
+    }
+
+    // 🔴 DÜZELTME (kullanıcı referans tasarımı — raf üstü fiyat etiketi):
+    // firma/mağaza adı en altta basılmalı (ör. "DEMAR HİPERMARKET"),
+    // ürün adının ÜSTÜNDE değil — önceden en üstteydi.
+    if (firmaGoster && (firmaAdi?.isNotEmpty ?? false)) {
+      final s = fs(16);
+      buf.writeln('^FO10,$y^A0N,$s,$s^FD${_zplKacis(_kisalt(firmaAdi!, 32))}^FS');
+      y += (22 * fontOlcek).round();
     }
 
     if (ozelMetin != null && ozelMetin.trim().isNotEmpty) {
@@ -131,6 +149,7 @@ class ZplServisi {
     bool sktGoster = false,
     bool aciklamaGoster = false,
     bool kdvDahilFiyat = true,
+    bool birimFiyatliMod = false,
     String? ozelMetin,
     double fontOlcek = 1.0,
   }) {
@@ -151,6 +170,7 @@ class ZplServisi {
         sktGoster: sktGoster,
         aciklamaGoster: aciklamaGoster,
         kdvDahilFiyat: kdvDahilFiyat,
+        birimFiyatliMod: birimFiyatliMod,
         ozelMetin: ozelMetin,
         fontOlcek: fontOlcek,
       ));

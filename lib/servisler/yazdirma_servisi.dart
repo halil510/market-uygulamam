@@ -73,6 +73,39 @@ class YazdirmaServisi {
   YaziciBaglanti? _aktif;
   final _fmt = NumberFormat('#,##0.00', 'tr_TR');
 
+  // 🔴 KRİTİK DÜZELTME (paralel fork denetimi, 2026-09-22 — "tam ERP"
+  // turu): _yazdir() yazıcıya erişilemediğinde otomatikBaglan()'ın TAM
+  // kademeli-retry kaskadını (WiFi için 4 deneme × [0,2,4,6]sn gecikme +
+  // 6sn timeout ≈ tek seferde ~26sn'ye kadar) tetikliyordu — hem
+  // yazdırma ÖNCESİ (bağlı değilse) HEM DE yazma başarısız olursa TEKRAR
+  // (yeniden bağlan + tek deneme daha). fisYazdir/makbuzYazdir'deki kopya
+  // döngüsü (_fisKopyaSayisi'ne kadar) her kopya için bu iki denemeyi
+  // AYRI AYRI tetikleyebiliyordu — yazıcı tamamen erişilemezse, çok
+  // kopyalı bir yazdırma teorik olarak dakikalarca sürebiliyordu (bugün
+  // tahsilat_odeme_ekrani.dart'ta bulunup düzeltilen kök sorunla AYNI
+  // aile). Artık son başarısız deneme zaman damgası tutuluyor — 20
+  // saniye içinde tekrar denenirse pahalı kaskad ATLANIR, doğrudan
+  // başarısız sayılır. İlk deneme (splash ekranındaki otomatikBaglan()
+  // çağrısı dahil) buna tabi DEĞİL — sadece _yazdir()'in kendi içindeki
+  // yeniden-bağlanma yolu bunu kullanır.
+  DateTime? _sonBasarisizYenidenBaglanma;
+  static const _yenidenBaglanmaBeklemeSuresi = Duration(seconds: 20);
+
+  Future<bool> _yenidenBaglanCircuitBreaker() async {
+    final sonDeneme = _sonBasarisizYenidenBaglanma;
+    if (sonDeneme != null &&
+        DateTime.now().difference(sonDeneme) < _yenidenBaglanmaBeklemeSuresi) {
+      if (kDebugMode) {
+        debugPrint('🔴 Yazıcı yeniden bağlanma devre dışı (circuit breaker) — '
+            'son deneme ${DateTime.now().difference(sonDeneme).inSeconds}sn önce başarısız oldu');
+      }
+      return false;
+    }
+    final basarili = await otomatikBaglan();
+    _sonBasarisizYenidenBaglanma = basarili ? null : DateTime.now();
+    return basarili;
+  }
+
   /// Termal yazıcıların varsayılan kod sayfaları (CP437/CP1252/PC850 vb.)
   /// Türkçe'ye özgü ş,Ş,ğ,Ğ,ı,İ karakterlerini İÇERMEZ. Bu karakterler
   /// `generator.text(_t())`/`row()` çağrılarına gönderildiğinde
@@ -725,7 +758,7 @@ class YazdirmaServisi {
     // buydu. Artık bağlantı kopmuşsa, yazdırmadan ÖNCE kayıtlı
     // varsayılan yazıcıyla otomatik yeniden bağlanma deneniyor.
     if (_aktif == null || !_aktif!.bagliMi) {
-      final yenidenBaglandi = await otomatikBaglan();
+      final yenidenBaglandi = await _yenidenBaglanCircuitBreaker();
       if (!yenidenBaglandi || _aktif == null || !_aktif!.bagliMi) {
         throw Exception('Yazıcı bağlı değil (otomatik yeniden bağlanma da başarısız oldu)');
       }
@@ -747,7 +780,7 @@ class YazdirmaServisi {
       if (kDebugMode) debugPrint('🔴 Yazdırma başarısız, yeniden bağlanıp tekrar deneniyor: $e');
       _aktif?.bagliMi = false;
       _aktif = null;
-      final yenidenBaglandi = await otomatikBaglan();
+      final yenidenBaglandi = await _yenidenBaglanCircuitBreaker();
       if (!yenidenBaglandi || _aktif == null || !_aktif!.bagliMi) {
         throw Exception('Yazıcıya yazılamadı ve yeniden bağlanma başarısız oldu: $e');
       }

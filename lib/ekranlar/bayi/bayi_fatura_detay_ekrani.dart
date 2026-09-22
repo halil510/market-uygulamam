@@ -77,7 +77,12 @@ class _BayiFaturaDetayEkraniState extends State<BayiFaturaDetayEkrani> {
                   child: Padding(
                     padding: const EdgeInsets.all(TsBosluk.md),
                     child: Column(children: [
-                      _ozetSatir(context, 'Ara Toplam', _fatura!.toplamAraToplam),
+                      // Not: "Ara Toplam" BİLEREK indirim UYGULANMADAN ÖNCEKİ
+                      // brüt tutar olarak gösteriliyor (toplamAraToplam
+                      // zaten net saklanıyor) — aksi halde alttaki "İskonto"
+                      // satırı ikinci kez düşülmüş gibi görünüp toplam
+                      // tutmazdı.
+                      _ozetSatir(context, 'Ara Toplam', _fatura!.toplamAraToplam + _fatura!.toplamIskonto),
                       if (_fatura!.toplamIskonto > 0)
                         _ozetSatir(context, 'İskonto', -_fatura!.toplamIskonto),
                       _ozetSatir(context, 'KDV', _fatura!.toplamKdv),

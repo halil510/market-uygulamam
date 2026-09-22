@@ -258,7 +258,16 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
         iskontoTutari: k.iskontoTut,
         kdvOrani:      double.tryParse(k.kdvOran) ?? 18,
         kdvTutari:     k.kdvTutar,
-        araToplam:     k.araToplam,
+        // 🔴 DÜZELTME (kritik — derin denetimde bulundu): araToplam burada
+        // indirim UYGULANMADAN ÖNCEKİ tutara (k.araToplam) eşitleniyordu.
+        // Codebase'in her yerinde geçerli kural "araToplam = toplamTutar -
+        // kdvTutari" (Madde 21) — burada bozuluyordu. İki sonucu vardı:
+        // (1) basılan faturada "Vergiler Hariç Toplam" indirimi iki kez
+        // düşüyordu, (2) GİB'e giden UBL XML'de LineExtensionAmount/
+        // TaxableAmount indirim UYGULANMAMIŞ (fazla) tutarla gidiyor,
+        // TaxAmount ise indirim uygulanmış (doğru, küçük) matrah üzerinden
+        // hesaplanıyordu — TaxAmount ≠ TaxableAmount×oran uyuşmazlığı.
+        araToplam:     k.netTutar,
         toplamTutar:   k.toplam,
       )).toList();
 

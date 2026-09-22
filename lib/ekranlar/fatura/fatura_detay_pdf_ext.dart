@@ -187,7 +187,11 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
         )),
         pw.Container(width: double.infinity, height: 0.5, color: PdfColors.black),
         pw.SizedBox(height: 4),
-        _termalToplamSatir('Ara Toplam', f.toplamAraToplam, font, boldFont, scale: scale),
+        // Not: "Ara Toplam" burada BİLEREK indirim UYGULANMADAN ÖNCEKİ brüt
+        // tutar olarak gösteriliyor (toplamAraToplam zaten net saklanıyor,
+        // +toplamIskonto ile brüte geri çevriliyor) — aksi halde alttaki
+        // "İndirim" satırı ikinci kez düşülmüş gibi görünüp toplam tutmazdı.
+        _termalToplamSatir('Ara Toplam', f.toplamAraToplam + f.toplamIskonto, font, boldFont, scale: scale),
         if (f.toplamIskonto > 0) _termalToplamSatir('İndirim', -f.toplamIskonto, font, boldFont, scale: scale),
         _termalToplamSatir('KDV', f.toplamKdv, font, boldFont, scale: scale),
         pw.SizedBox(height: 2),
@@ -256,7 +260,14 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
       for (final d in f.detaylar) {
         kdvGruplari[d.kdvOrani] = (kdvGruplari[d.kdvOrani] ?? 0) + d.kdvTutari;
       }
-      final vergilerHaric = f.toplamAraToplam - f.toplamIskonto;
+      // 🔴 DÜZELTME (kritik — derin denetimde bulundu): toplamAraToplam zaten
+      // net (indirim uygulanmış) tutar — burada bir kez daha toplamIskonto
+      // çıkarılınca "Vergiler Hariç Toplam" gerçek matrahtan İNDİRİM KADAR
+      // DAHA AZ görünüyordu; "Vergiler Hariç Toplam + Hesaplanan KDV" artık
+      // basılan "Vergiler Dahil Toplam" ile TUTMUYORDU (resmi bir belgede
+      // en kritik hata sınıfı). genelToplam - toplamKdv, hangi kural
+      // değişirse değişsin HER ZAMAN doğru sonucu verir.
+      final vergilerHaric = f.genelToplam - f.toplamKdv;
 
       // ÖNCEDEN "kdv_musaf" ve "tevkifat" ayarları (Ayarlar > Fatura
       // Ayarları'nda kaydediliyordu) HİÇBİR YERDE okunmuyordu — kullanıcı
@@ -416,7 +427,19 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
               ...f.detaylar.asMap().entries.map((e) {
                 final i = e.key + 1;
                 final d = e.value;
-                final netTutar = d.araToplam - d.iskontoTutari;
+                // 🔴 DÜZELTME (kritik — derin denetimde bulundu): d.araToplam
+                // codebase genelinde ZATEN indirim uygulanmış (net) tutar
+                // olarak saklanıyor (Madde 21 kuralı: araToplam = toplamTutar
+                // - kdvTutari). Burada ÖNCEDEN "Tutar" sütununa doğrudan
+                // d.araToplam (yanlışlıkla net değer) basılıyor, SONRA "Net
+                // Tutar" sütununda ondan iskontoTutari BİR KEZ DAHA
+                // çıkarılıyordu — yani indirim ÇİFT uygulanmış görünüyordu
+                // ve "Tutar - Net Tutar" farkı gerçek indirimin iki katıydı.
+                // Artık: "Tutar" = indirim ÖNCESİ brüt (araToplam +
+                // iskontoTutari ile geri hesaplanır), "Net Tutar" = zaten
+                // net olan d.araToplam.
+                final brutTutar = d.araToplam + d.iskontoTutari;
+                final netTutar = d.araToplam;
                 return pw.TableRow(children: [
                   _pdfHucre('$i', font, align: pw.TextAlign.center, scale: scale),
                   _pdfHucre(d.urunAdi, font, scale: scale),
@@ -424,7 +447,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
                   _pdfHucre('${d.miktar.toStringAsFixed(d.miktar == d.miktar.roundToDouble() ? 0 : 2)} Adet',
                       font, align: pw.TextAlign.center, scale: scale),
                   _pdfHucre(ParaUtils.formatla(d.birimFiyat), font, align: pw.TextAlign.right, scale: scale),
-                  _pdfHucre(ParaUtils.formatla(d.araToplam), font, align: pw.TextAlign.right, scale: scale),
+                  _pdfHucre(ParaUtils.formatla(brutTutar), font, align: pw.TextAlign.right, scale: scale),
                   _pdfHucre(ParaUtils.formatla(netTutar), font, align: pw.TextAlign.right, scale: scale),
                   _pdfHucre('%${d.kdvOrani.toStringAsFixed(d.kdvOrani == d.kdvOrani.roundToDouble() ? 0 : 2)}',
                       font, align: pw.TextAlign.center, scale: scale),

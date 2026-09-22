@@ -178,7 +178,14 @@ class FaturalandirmaServisi {
           miktar: k.miktar, birimFiyat: k.birimFiyat,
           iskontoOrani: varsayilanIskonto, iskontoTutari: iskontoTutar,
           kdvOrani: k.kdvOrani, kdvTutari: kdvTutar,
-          araToplam: k.araToplam, toplamTutar: netTutar + kdvTutar,
+          // 🔴 DÜZELTME (kritik — derin denetimde bulundu): araToplam burada
+          // YANLIŞLIKLA indirim UYGULANMADAN ÖNCEKİ (k.araToplam) değere
+          // eşitleniyordu — codebase'in her yerinde geçerli olan
+          // "araToplam = toplamTutar - kdvTutari" (Madde 21) kuralını bu
+          // TEK dalda bozuyordu. Sonuç: bu dalın ürettiği faturalarda
+          // basılan "Vergiler Hariç Toplam" indirimi İKİ KEZ düşüyordu
+          // (bkz. fatura_detay_pdf_ext.dart'taki aynı düzeltme).
+          araToplam: netTutar, toplamTutar: netTutar + kdvTutar,
         );
       }).toList();
     }

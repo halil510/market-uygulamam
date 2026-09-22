@@ -1310,9 +1310,14 @@ class YazdirmaServisi {
     }
     bytes.addAll(generator.hr());
 
+    // Not: "Ara Toplam" BİLEREK indirim UYGULANMADAN ÖNCEKİ brüt tutar
+    // olarak gösteriliyor (toplamAraToplam zaten net saklanıyor,
+    // +toplamIskonto ile brüte geri çevriliyor) — aksi halde alttaki
+    // "İndirim" satırı ikinci kez düşülmüş gibi görünüp toplam tutmazdı
+    // (bkz. fatura_detay_pdf_ext.dart'taki aynı düzeltme).
     bytes.addAll(generator.row([
       PosColumn(text:_t('Ara Toplam'), width: 8),
-      PosColumn(text:_t(_fmt.format(f.toplamAraToplam)), width: 4, styles: const PosStyles(align: PosAlign.right)),
+      PosColumn(text:_t(_fmt.format(f.toplamAraToplam + f.toplamIskonto)), width: 4, styles: const PosStyles(align: PosAlign.right)),
     ]));
     if (f.toplamIskonto > 0)
       bytes.addAll(generator.row([

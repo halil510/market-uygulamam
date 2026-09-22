@@ -243,7 +243,11 @@ appBar: TsAppBar(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(children: [
-              _toplamSatir('Ara Toplam', f.toplamAraToplam),
+              // Not: "Ara Toplam" BİLEREK indirim UYGULANMADAN ÖNCEKİ brüt
+              // tutar olarak gösteriliyor (toplamAraToplam zaten net
+              // saklanıyor) — aksi halde alttaki "Iskonto" satırı ikinci
+              // kez düşülmüş gibi görünüp toplam tutmazdı.
+              _toplamSatir('Ara Toplam', f.toplamAraToplam + f.toplamIskonto),
               if (f.toplamIskonto > 0)
                 _toplamSatir('Iskonto', -f.toplamIskonto, renk: Colors.red),
               _toplamSatir('KDV', f.toplamKdv),

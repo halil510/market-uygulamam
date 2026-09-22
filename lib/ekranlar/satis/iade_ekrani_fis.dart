@@ -100,8 +100,14 @@ extension _FisTabExt on _IadeEkraniState {
     // iade edilmesi gerekiyor), sadece Nakit seçiliyse kasa hareketi
     // oluşuyor. Varsayılan, orijinal ödeme yöntemidir; kullanıcı
     // isterse değiştirebilir.
-    String secilenYontem =
-        _bulunanSatis!.odemeYontemi == 'Nakit' ? 'Nakit' : 'Kart/Banka';
+    // Varsayılan, orijinal satışın ödeme yöntemidir — müşteri veresiye
+    // almışsa (hiç nakit/kart ödemesi yapmamışsa) varsayılan da Cari
+    // olmalı, aksi halde hiç verilmemiş bir nakit iadesi öneriliyordu.
+    String secilenYontem = _bulunanSatis!.odemeYontemi == 'Nakit'
+        ? 'Nakit'
+        : (_bulunanSatis!.odemeYontemi == 'Cari' && _bulunanSatis!.cariId != null)
+            ? 'Cari'
+            : 'Kart/Banka';
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -122,17 +128,33 @@ extension _FisTabExt on _IadeEkraniState {
                             labelText: 'İade Ödeme Yöntemi',
                             border: OutlineInputBorder(),
                             isDense: true),
-                        items: const [
-                          DropdownMenuItem(
+                        items: [
+                          const DropdownMenuItem(
                               value: 'Nakit', child: Text('Nakit (kasadan)')),
-                          DropdownMenuItem(
+                          const DropdownMenuItem(
                               value: 'Kart/Banka',
                               child: Text('Kart/Banka (POS\'tan)')),
+                          // Sadece bu fişin sahibi kayıtlı bir cari ise
+                          // gösterilir (orijinal satış Veresiye/Cari ise
+                          // müşteri zaten nakit/kart ödemesi yapmamıştı).
+                          if (_bulunanSatis!.cariId != null)
+                            const DropdownMenuItem(
+                                value: 'Cari',
+                                child: Text('Veresiye / Cari (borca yaz)')),
                         ],
                         onChanged: (v) =>
                             setS(() => secilenYontem = v ?? secilenYontem),
                       ),
-                      if (secilenYontem != 'Nakit') ...[
+                      if (secilenYontem == 'Cari') ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Kasadan nakit çıkışı OLUŞTURULMAZ — tutar '
+                          '${_bulunanSatis!.cariAdi ?? 'cari'} hesabının bakiyesinden '
+                          'gerçekten düşülecek/eklenecek.',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.blue.shade800),
+                        ),
+                      ] else if (secilenYontem != 'Nakit') ...[
                         const SizedBox(height: 8),
                         Text(
                           'Bu seçenekte kasadan nakit çıkışı OLUŞTURULMAZ — iade '
@@ -157,7 +179,6 @@ extension _FisTabExt on _IadeEkraniState {
               )),
     );
     if (onay != true) return;
-    final nakitIade = secilenYontem == 'Nakit';
 
     // Tüm transaction + lot-farkındalıklı stok geri ekleme + bulut senkron
     // mantığı artık IadeIslemServisi.fisKalemIadeKaydet'te — bkz. o
@@ -170,7 +191,7 @@ extension _FisTabExt on _IadeEkraniState {
       birimFiyat: kalem.birimFiyat,
       kalanMiktar: kalanMiktar,
       oncekiIadeMiktar: oncekiIadeMiktar,
-      nakitIade: nakitIade,
+      odemeYontemi: secilenYontem,
       kullaniciId: AuthServisi().aktifId,
       kullaniciAdi: AuthServisi().aktifAd,
     );
@@ -208,9 +229,12 @@ extension _FisTabExt on _IadeEkraniState {
       referansId: iadeId,
       aciklama: '${kalem.urunAdi} (Fiş: ${_bulunanSatis!.fisNo ?? _bulunanSatis!.id})',
     );
-    _msg(nakitIade
-        ? '${kalem.urunAdi} iade edildi (kasadan nakit ödendi)'
-        : '${kalem.urunAdi} iade edildi — tutarı POS cihazından ayrıca müşteriye iade edin');
+    _msg(switch (secilenYontem) {
+      'Nakit' => '${kalem.urunAdi} iade edildi (kasadan nakit ödendi)',
+      'Cari' =>
+        '${kalem.urunAdi} iade edildi (${_bulunanSatis!.cariAdi ?? 'cari'} bakiyesine işlendi)',
+      _ => '${kalem.urunAdi} iade edildi — tutarı POS cihazından ayrıca müşteriye iade edin',
+    });
     setState(() {});
   }
 

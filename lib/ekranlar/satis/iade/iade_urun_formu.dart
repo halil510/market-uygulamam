@@ -16,6 +16,7 @@ class IadeUrunFormu extends StatelessWidget {
   final VoidCallback onDegisti;
   final String odemeYontemi;
   final ValueChanged<String> onOdemeYontemiChanged;
+  final String? cariAdi;
 
   const IadeUrunFormu({
     super.key,
@@ -29,6 +30,7 @@ class IadeUrunFormu extends StatelessWidget {
     required this.onDegisti,
     required this.odemeYontemi,
     required this.onOdemeYontemiChanged,
+    this.cariAdi,
   });
 
   // Ana iade_ekrani.dart'taki _R paletiyle aynı TsRenk semantik sabitleri
@@ -235,17 +237,30 @@ class IadeUrunFormu extends StatelessWidget {
                 borderRadius: BorderRadius.all(Radius.circular(10))),
             isDense: true,
           ),
-          items: const [
-            DropdownMenuItem(
+          items: [
+            const DropdownMenuItem(
                 value: 'Nakit', child: Text('Nakit (kasadan ödenir)')),
-            DropdownMenuItem(
+            const DropdownMenuItem(
                 value: 'Kart/Banka', child: Text('Kart/Banka (POS üzerinden)')),
+            // Sadece kayıtlı bir cari seçiliyse gösterilir.
+            if (cariAdi != null)
+              const DropdownMenuItem(
+                  value: 'Cari', child: Text('Veresiye / Cari (borca yaz)')),
           ],
           onChanged: (v) {
             if (v != null) onOdemeYontemiChanged(v);
           },
         ),
-        if (odemeYontemi != 'Nakit') ...[
+        if (odemeYontemi == 'Cari') ...[
+          const SizedBox(height: 6),
+          Text(
+            'Kasadan nakit çıkışı olmayacak — tutar $cariAdi hesabının bakiyesinden gerçekten düşülecek/eklenecek.',
+            style: const TextStyle(
+                fontSize: 11,
+                color: TsRenk.bilgi,
+                fontWeight: FontWeight.w600),
+          ),
+        ] else if (odemeYontemi != 'Nakit') ...[
           const SizedBox(height: 6),
           Text(
             'Bu tutar kasadan nakit çıkışı olarak kaydedilmeyecek. Müşteriye iadeyi POS cihazından ayrıca yapmanız gerekir.',

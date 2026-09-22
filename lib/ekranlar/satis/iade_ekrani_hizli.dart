@@ -83,17 +83,32 @@ extension _HizliTabExt on _IadeEkraniState {
                             labelText: 'İade Ödeme Yöntemi',
                             border: OutlineInputBorder(),
                             isDense: true),
-                        items: const [
-                          DropdownMenuItem(
+                        items: [
+                          const DropdownMenuItem(
                               value: 'Nakit', child: Text('Nakit (kasadan)')),
-                          DropdownMenuItem(
+                          const DropdownMenuItem(
                               value: 'Kart/Banka',
                               child: Text('Kart/Banka (POS\'tan)')),
+                          // Sadece kayıtlı bir cari seçiliyse gösterilir —
+                          // kayıtsız/perakende müşteride bakiyesi olmadığı
+                          // için bu seçenek anlamsızdır.
+                          if (_secilenCari?.id != null)
+                            const DropdownMenuItem(
+                                value: 'Cari',
+                                child: Text('Veresiye / Cari (borca yaz)')),
                         ],
                         onChanged: (v) =>
                             setS(() => secilenYontem = v ?? secilenYontem),
                       ),
-                      if (secilenYontem != 'Nakit') ...[
+                      if (secilenYontem == 'Cari') ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Kasadan nakit çıkışı OLUŞTURULMAZ — tutar ${_secilenCari!.unvan} '
+                          'cari hesabının bakiyesinden gerçekten düşülecek/eklenecek.',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.blue.shade800),
+                        ),
+                      ] else if (secilenYontem != 'Nakit') ...[
                         const SizedBox(height: 8),
                         Text(
                           'Bu seçenekte kasadan nakit çıkışı OLUŞTURULMAZ — iade '
@@ -114,7 +129,6 @@ extension _HizliTabExt on _IadeEkraniState {
               )),
     );
     if (onay != true || !mounted) return;
-    final nakitIade = secilenYontem == 'Nakit';
 
     setState(() => _yukleniyor = true);
     try {
@@ -127,7 +141,7 @@ extension _HizliTabExt on _IadeEkraniState {
           .toList();
       final (_, fisNo) = await IadeIslemServisi().topluIadeKaydet(
         kalemler: kalemler,
-        nakitIade: nakitIade,
+        odemeYontemi: secilenYontem,
         kullaniciId: AuthServisi().aktifId,
         kullaniciAdi: AuthServisi().aktifAd,
         cari: _secilenCari,
@@ -158,9 +172,11 @@ extension _HizliTabExt on _IadeEkraniState {
         ref.read(carilerProvider.notifier).yukle();
       }
       ref.invalidate(kasaRaporProvider);
-      _msg(nakitIade
-          ? '$n ürün iade edildi (kasadan nakit ödendi)'
-          : '$n ürün iade edildi — tutarı POS cihazından ayrıca müşteriye iade edin');
+      _msg(switch (secilenYontem) {
+        'Nakit' => '$n ürün iade edildi (kasadan nakit ödendi)',
+        'Cari' => '$n ürün iade edildi (${_secilenCari!.unvan} bakiyesine işlendi)',
+        _ => '$n ürün iade edildi — tutarı POS cihazından ayrıca müşteriye iade edin',
+      });
     } catch (e) {
       _msg('Hata: $e', err: true);
     } finally {

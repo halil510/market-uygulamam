@@ -308,6 +308,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
       _oturumFisNo = '';
       _iadeListesi.clear();
       _secilenCari = null;
+      _iadeOdemeYontemi = 'Nakit';
     });
     _yeniFisNoOlustur(); // Yeni oturum için yeni fiş no
     _formSifirla();
@@ -546,6 +547,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                 deleteIcon: const Icon(Icons.close, size: 14),
                 onDeleted: () {
                   _secilenCari = null;
+                  // Cari kaldırıldığında 'Cari' ödeme seçeneği artık
+                  // dropdown'da yok — seçili kalırsa DropdownButtonFormField
+                  // geçersiz değerle çöker.
+                  if (_iadeOdemeYontemi == 'Cari') _iadeOdemeYontemi = 'Nakit';
                   if (mounted) setState(() {});
                 }),
           PopupMenuButton<String>(
@@ -557,6 +562,9 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                     builder: (ctx) => CariSecDialog(cariler: _cariler));
                 if (secilen != null) {
                   _secilenCari = secilen;
+                  if (secilen.id == null && _iadeOdemeYontemi == 'Cari') {
+                    _iadeOdemeYontemi = 'Nakit';
+                  }
                   if (mounted) setState(() {});
                 }
               }
@@ -698,6 +706,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
         onOdemeYontemiChanged: (v) {
           if (mounted) setState(() => _iadeOdemeYontemi = v);
         },
+        cariAdi: _secilenCari?.id != null ? _secilenCari!.unvan : null,
       );
 
   Widget _bosEkran() => const Padding(

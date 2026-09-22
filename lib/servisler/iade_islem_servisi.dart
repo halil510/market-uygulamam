@@ -34,7 +34,7 @@ class IadeIslemServisi {
   /// için fişNo'ya ihtiyaç duyuyor.
   Future<(int, String)> topluIadeKaydet({
     required List<IadeKalemGirdi> kalemler,
-    required bool nakitIade,
+    required String odemeYontemi,
     required int? kullaniciId,
     required String kullaniciAdi,
     CariModel? cari,
@@ -117,7 +117,7 @@ class IadeIslemServisi {
       }
 
       // Kasa — SADECE Nakit iade seçildiyse oluşturulur.
-      if (nakitIade && toplamIade > 0) {
+      if (odemeYontemi == 'Nakit' && toplamIade > 0) {
         final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) - toplamIade;
         final kasaSatiri = {
           'global_id': const Uuid().v4(),
@@ -137,16 +137,19 @@ class IadeIslemServisi {
       }
 
       if (cari != null && toplamIade > 0) {
-        // 🔴🔴 KRİTİK DÜZELTME (kullanıcı kararı, 2026-09-22): burada cari
-        // seçimi VE nakit/kart iade YÖNTEMİ birbirinden TAMAMEN bağımsız
-        // iki seçimdi ('nakitIade' dialog-local, 'cari' ekran-level) —
-        // kasiyer İKİSİNİ BİRDEN seçerse müşteriye HEM elden nakit
-        // veriliyor HEM DE cari hesabından düşülüyordu (çift iade).
-        // Kullanıcı kararı: cari seçimi SADECE "kim iade etti" takibi
-        // için — para her zaman kasa/kart üzerinden gerçekten geri
-        // veriliyor. Artık bakiyeyi etkilemeyen (borc=alacak) salt-kayıt
-        // bir satır yazılıyor — Karma satıştaki "bakiyeyi etkilemez"
-        // deseniyle AYNI.
+        // 🔴🔴 KRİTİK DÜZELTME (kullanıcı kararı, 2026-09-22 sabah): bir
+        // önceki "düzeltme" cari seçimini HER ZAMAN bakiyeyi etkilemeyen
+        // salt-kayıt yapmıştı — ama bu, cari'ye GERÇEKTEN yazdırılan
+        // (Veresiye/borç) iadelerde bakiyeyi hiç düşürmüyordu. Doğru ERP
+        // kuralı: ödeme yöntemi ('Nakit'/'Kart/Banka' → para fiziksel
+        // olarak zaten geri verildi, cari sadece takip amaçlı = nötr) ile
+        // ('Cari' → para fiziksel verilmedi, tutar cari bakiyesinden
+        // GERÇEKTEN düşülür/eklenir) birbirini DIŞLAR — kasiyer ikisini
+        // birden seçemez (dropdown'da tek seçim), bu yüzden çift-iade
+        // riski olmadan artık gerçek etki uygulanabiliyor.
+        final isTedarikci = (cari.cariTipi).contains('edarik') ||
+            (cari.cariTipi).contains('upplier');
+        final gercekEtki = odemeYontemi == 'Cari';
         final cariHareketSatiri = {
           'global_id': const Uuid().v4(),
           'cari_id': cari.id,
@@ -154,10 +157,12 @@ class IadeIslemServisi {
           'fis_tipi': 'İade',
           'fis_id': iadeId,
           'fis_no': fisNo,
-          'aciklama': 'Toplu iade: $fisNo — bakiyeyi etkilemez',
-          'borc': toplamIade,
-          'alacak': toplamIade,
-          'odeme_turu': 'Nakit',
+          'aciklama': gercekEtki
+              ? 'Toplu iade: $fisNo — cari bakiyesine işlendi'
+              : 'Toplu iade: $fisNo — bakiyeyi etkilemez',
+          'borc': gercekEtki ? (isTedarikci ? toplamIade : 0) : toplamIade,
+          'alacak': gercekEtki ? (isTedarikci ? 0 : toplamIade) : toplamIade,
+          'odeme_turu': odemeYontemi,
           'kullanici': kullaniciAdi,
         };
         final cariHareketId = await txn.insert('cari_hareket', cariHareketSatiri);
@@ -263,7 +268,7 @@ class IadeIslemServisi {
     required double birimFiyat,
     required double kalanMiktar,
     required double oncekiIadeMiktar,
-    required bool nakitIade,
+    required String odemeYontemi,
     required int? kullaniciId,
     required String kullaniciAdi,
   }) async {
@@ -404,7 +409,7 @@ class IadeIslemServisi {
       // Kasa — SADECE Nakit iade seçildiyse oluşturulur. Kart/Banka
       // iadesinde fiziksel kasadan hiç para çıkmıyor (POS'tan ayrıca
       // iade ediliyor), bu yüzden kasa_hareketleri'ne HİÇ yazılmaz.
-      if (nakitIade) {
+      if (odemeYontemi == 'Nakit') {
         final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) - toplam;
         final kasaSatiri = {
           'global_id': const Uuid().v4(),
@@ -424,10 +429,19 @@ class IadeIslemServisi {
       }
 
       if (cariId != null) {
-        // 🔴🔴 KRİTİK DÜZELTME (kullanıcı kararı, 2026-09-22) — bkz.
-        // topluIadeKaydet'teki AYNI düzeltmenin gerekçesi: cari seçimi
-        // ödeme yönteminden bağımsız olduğu için çift iade riski
-        // taşıyordu. Artık bakiyeyi etkilemeyen (borc=alacak) salt-kayıt.
+        // 🔴🔴 KRİTİK DÜZELTME (kullanıcı kararı, 2026-09-22 sabah) — bkz.
+        // topluIadeKaydet'teki AYNI düzeltmenin gerekçesi: ödeme yöntemi
+        // 'Cari' seçildiyse (para fiziksel verilmedi) bakiye GERÇEKTEN
+        // düzeltilir; 'Nakit'/'Kart/Banka' seçildiyse (para zaten fiziksel
+        // verildi) cari sadece takip amaçlı nötr kayıt alır.
+        final cariRows = await txn
+            .rawQuery('SELECT cari_tipi FROM cari WHERE id = ?', [cariId]);
+        final cariTipiStr = cariRows.isNotEmpty
+            ? (cariRows.first['cari_tipi'] as String? ?? '')
+            : '';
+        final isTedarikci =
+            cariTipiStr.contains('edarik') || cariTipiStr.contains('upplier');
+        final gercekEtki = odemeYontemi == 'Cari';
         final cariHareketSatiri = {
           'global_id': const Uuid().v4(),
           'cari_id': cariId,
@@ -435,10 +449,12 @@ class IadeIslemServisi {
           'fis_tipi': 'İade',
           'fis_id': iadeId,
           'fis_no': fisNo,
-          'aciklama': 'Fiş iadesi: $fisNo — bakiyeyi etkilemez',
-          'borc': toplam,
-          'alacak': toplam,
-          'odeme_turu': 'Nakit',
+          'aciklama': gercekEtki
+              ? 'Fiş iadesi: $fisNo — cari bakiyesine işlendi'
+              : 'Fiş iadesi: $fisNo — bakiyeyi etkilemez',
+          'borc': gercekEtki ? (isTedarikci ? toplam : 0) : toplam,
+          'alacak': gercekEtki ? (isTedarikci ? 0 : toplam) : toplam,
+          'odeme_turu': odemeYontemi,
           'kullanici': kullaniciAdi,
         };
         final cariHareketId = await txn.insert('cari_hareket', cariHareketSatiri);
@@ -588,30 +604,40 @@ class IadeIslemServisi {
               tablo: 'iade', veri: Map<String, dynamic>.from(guncelIadeSatiri.first));
         }
       }
-      if (toplam > 0 && iadeId != null) {
-        kasaGid = const Uuid().v4();
-        final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) + toplam;
-        final kasaSatiri = {
-          'global_id': kasaGid,
-          'hareket_tipi': 'Iade Iptali',
-          'tutar': toplam,
-          'bakiye_sonrasi': kasaBakiye,
-          'referans_id': iadeId,
-          'referans_turu': 'iade_iptal',
-          'tarih': now,
-          // 🔴 Derin analizde bulundu: sube_id eksikti — bu dosyadaki diğer
-          // kasa yazan fonksiyonların (topluIadeKaydet, fisKalemIadeKaydet,
-          // manuelKalemEkle) hepsi bunu set ediyordu. Eksik olunca, çok
-          // şubeli kurulumda bu kayıt aktif şube filtreli bakiye
-          // sorgularında (sonBakiyeTxn/guncelBakiyeNakit/nakitDegisimi)
-          // "görünmez" kalıyor, şubenin nakit bakiyesi bu düzeltmeyi hiç
-          // yansıtmıyordu.
-          'sube_id': AktifSubeServisi().subeId,
-          'aciklama': 'İade silindi: $fisNo',
-        };
-        final kasaId = await txn.insert('kasa_hareketleri', kasaSatiri);
-        await SyncKuyrukYazici.ekleTxn(txn,
-            tablo: 'kasa_hareketleri', veri: {...kasaSatiri, 'id': kasaId});
+      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22 sabah —
+      // gecmisFisIadeSil'de zaten düzeltilmiş AYNI hata sınıfı): burası
+      // ÖNCEDEN [toplam] parametresine bakıp KOŞULSUZ bir "Iade Iptali"
+      // (nakit GİRİŞ) kasa kaydı ekliyordu — orijinal iade GERÇEKTEN
+      // nakit olarak mı verilmişti (sadece odemeYontemi=='Nakit' iken
+      // kasa satırı yazılır) hiç kontrol edilmiyordu. Kart/Banka veya
+      // Cari'ye işlenmiş bir iade silinince HİÇ VAR OLMAMIŞ bir nakit
+      // giriş kaydı oluşuyor, kasa mutabakatını bozuyordu. Artık gerçekten
+      // yazılmış kasa_hareketleri satırı (varsa) sorgulanıp SADECE o
+      // satırın GERÇEK tutarıyla tersine çevriliyor.
+      if (iadeId != null) {
+        final orijinalKasaSatirlari = await txn.query('kasa_hareketleri',
+            where: 'referans_id = ? AND referans_turu = ? AND deleted_at IS NULL',
+            whereArgs: [iadeId, 'iade']);
+        for (final k in orijinalKasaSatirlari) {
+          final kasaTutar = (k['tutar'] as num?)?.toDouble() ?? 0;
+          if (kasaTutar <= 0) continue;
+          kasaGid = const Uuid().v4();
+          final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) + kasaTutar;
+          final kasaSatiri = {
+            'global_id': kasaGid,
+            'hareket_tipi': 'Iade Iptali',
+            'tutar': kasaTutar,
+            'bakiye_sonrasi': kasaBakiye,
+            'referans_id': iadeId,
+            'referans_turu': 'iade_iptal',
+            'tarih': now,
+            'sube_id': AktifSubeServisi().subeId,
+            'aciklama': 'İade silindi: $fisNo',
+          };
+          final kasaId = await txn.insert('kasa_hareketleri', kasaSatiri);
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'kasa_hareketleri', veri: {...kasaSatiri, 'id': kasaId});
+        }
       }
       // Bu DELETE (rawUpdate soft-delete) fis_tipi ile de sınırlı —
       // 'iade' ve 'satislar' tablolarının BAĞIMSIZ, tesadüfen aynı ID'yi
@@ -779,26 +805,36 @@ class IadeIslemServisi {
         }
       }
       final tutarFark = yeniToplam - eskiToplam;
+      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22 sabah): burası
+      // ÖNCEDEN tutarFark'a bakıp KOŞULSUZ kasa düzeltmesi yazıyordu —
+      // orijinal iade GERÇEKTEN nakit olarak mı verilmişti hiç kontrol
+      // edilmiyordu (bkz. oturumIadeSil'deki AYNI hata sınıfının
+      // düzeltmesi). Kart/Banka veya Cari'ye işlenmiş bir iade kalemi
+      // düzenlenince kasada hiç var olmamış bir hareket oluşuyordu.
       if (tutarFark.abs() > 0.01 && iadeId != null) {
-        final oncekiBakiye = await _kasaDepo.sonBakiyeTxn(txn);
-        final yeniBakiye = oncekiBakiye + tutarFark;
-        kasaGid = const Uuid().v4();
-        final kasaSatiri = {
-          'global_id': kasaGid,
-          'hareket_tipi': 'İade Düzeltme',
-          'tutar': tutarFark,
-          'bakiye_sonrasi': yeniBakiye,
-          'referans_id': iadeId,
-          'referans_turu': 'iade_duzeltme',
-          'tarih': now,
-          // 🔴 Derin analizde bulundu: sube_id eksikti (bkz. oturumIadeSil'deki
-          // aynı düzeltmenin gerekçesi).
-          'sube_id': AktifSubeServisi().subeId,
-          'aciklama': 'İade düzeltme: $fisNo',
-        };
-        final kasaId = await txn.insert('kasa_hareketleri', kasaSatiri);
-        await SyncKuyrukYazici.ekleTxn(txn,
-            tablo: 'kasa_hareketleri', veri: {...kasaSatiri, 'id': kasaId});
+        final orijinalKasaVarMi = await txn.query('kasa_hareketleri',
+            where:
+                "referans_id = ? AND referans_turu = 'iade' AND deleted_at IS NULL",
+            whereArgs: [iadeId], limit: 1);
+        if (orijinalKasaVarMi.isNotEmpty) {
+          final oncekiBakiye = await _kasaDepo.sonBakiyeTxn(txn);
+          final yeniBakiye = oncekiBakiye + tutarFark;
+          kasaGid = const Uuid().v4();
+          final kasaSatiri = {
+            'global_id': kasaGid,
+            'hareket_tipi': 'İade Düzeltme',
+            'tutar': tutarFark,
+            'bakiye_sonrasi': yeniBakiye,
+            'referans_id': iadeId,
+            'referans_turu': 'iade_duzeltme',
+            'tarih': now,
+            'sube_id': AktifSubeServisi().subeId,
+            'aciklama': 'İade düzeltme: $fisNo',
+          };
+          final kasaId = await txn.insert('kasa_hareketleri', kasaSatiri);
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'kasa_hareketleri', veri: {...kasaSatiri, 'id': kasaId});
+        }
       }
       if (cariId != null && iadeId != null) {
         final cariRows = await txn
@@ -808,6 +844,20 @@ class IadeIslemServisi {
             : '';
         final isTedarikciDuz =
             cariTipiDuz.contains('edarik') || cariTipiDuz.contains('upplier');
+
+        // Bu iade kalemi GERÇEK cari etkisiyle mi (Veresiye/'Cari' ödeme
+        // yöntemi) yoksa NÖTR (Nakit/Kart, sadece takip) mi yazılmıştı?
+        // borc==alacak ise nötrdü — düzenlemede de nötr kalmalı, aksi
+        // halde para fiziksel verilmişken bakiye de düşer (çift iade).
+        final eskiSatir = await txn.rawQuery(
+            "SELECT borc, alacak FROM cari_hareket WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi') AND is_deleted = 0",
+            [iadeId, cariId]);
+        final eskiBorcD =
+            eskiSatir.isNotEmpty ? (eskiSatir.first['borc'] as num?)?.toDouble() ?? 0 : 0;
+        final eskiAlacakD = eskiSatir.isNotEmpty
+            ? (eskiSatir.first['alacak'] as num?)?.toDouble() ?? 0
+            : 0;
+        final gercekEtki = eskiSatir.isNotEmpty && eskiBorcD != eskiAlacakD;
 
         await txn.rawUpdate(
             "UPDATE cari_hareket SET is_deleted = 1, last_updated = ? WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi')",
@@ -820,10 +870,12 @@ class IadeIslemServisi {
             'fis_tipi': isTedarikciDuz ? 'Alım İadesi' : 'İade',
             'fis_id': iadeId,
             'fis_no': fisNo,
-            'aciklama': '$urunAdi - $fisNo',
-            'borc': isTedarikciDuz ? yeniToplam : 0,
-            'alacak': isTedarikciDuz ? 0 : yeniToplam,
-            'odeme_turu': 'Nakit',
+            'aciklama': gercekEtki
+                ? '$urunAdi - $fisNo — cari bakiyesine işlendi'
+                : '$urunAdi - $fisNo — bakiyeyi etkilemez',
+            'borc': gercekEtki ? (isTedarikciDuz ? yeniToplam : 0) : yeniToplam,
+            'alacak': gercekEtki ? (isTedarikciDuz ? 0 : yeniToplam) : yeniToplam,
+            'odeme_turu': gercekEtki ? 'Cari' : 'Nakit',
           };
           final cariHareketId = await txn.insert('cari_hareket', cariHareketSatiri);
           await SyncKuyrukYazici.ekleTxn(txn,
@@ -1470,13 +1522,16 @@ class IadeIslemServisi {
       // 5. Cari — fis_tipi ile de kontrol edilir: 'iade' ve 'satislar'
       // tablolarının BAĞIMSIZ sayaçları tesadüfen aynı id'yi üretebilir.
       //
-      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı kararı, 2026-09-22): cari seçimi
-      // ile odemeYontemi (Nakit/Kart) birbirinden BAĞIMSIZDI — kasiyer
-      // Nakit iade edip AYRICA bir cari de seçerse müşteri HEM elden
-      // nakit alıyor HEM DE cari hesabından düşülüyordu (çift iade).
-      // Kullanıcı kararı: cari seçimi SADECE takip amaçlı — artık HER
-      // ZAMAN bakiyeyi etkilemeyen (borc=alacak) salt-kayıt yazılıyor.
+      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı kararı, 2026-09-22 sabah) — bkz.
+      // topluIadeKaydet'teki AYNI düzeltmenin gerekçesi: 'Cari' ödeme
+      // yöntemi seçilirse (para fiziksel verilmedi) bakiye GERÇEKTEN
+      // düzeltilir; 'Nakit'/'Kart/Banka' seçilirse (para zaten fiziksel
+      // verildi) cari sadece takip amaçlı nötr kayıt alır. odemeYontemi
+      // TEK seçimli dropdown olduğundan çift-iade riski yok.
       if (cariId != null) {
+        final gercekEtki = odemeYontemi == 'Cari';
+        final yeniBorc = gercekEtki ? (isTedarikci ? toplam : 0) : toplam;
+        final yeniAlacak = gercekEtki ? (isTedarikci ? 0 : toplam) : toplam;
         final mevcut = await txn.rawQuery(
             "SELECT id, alacak, borc FROM cari_hareket WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi')",
             [iadeId, cariId]);
@@ -1485,7 +1540,7 @@ class IadeIslemServisi {
           final eskiBorc = (mevcut.first['borc'] as num?)?.toDouble() ?? 0;
           await txn.rawUpdate(
               "UPDATE cari_hareket SET alacak=?, borc=? WHERE fis_id=? AND cari_id=? AND fis_tipi IN ('İade','Alım İadesi')",
-              [eskiAlacak + toplam, eskiBorc + toplam, iadeId, cariId]);
+              [eskiAlacak + yeniAlacak, eskiBorc + yeniBorc, iadeId, cariId]);
         } else {
           await txn.insert('cari_hareket', {
             'global_id': const Uuid().v4(),
@@ -1494,10 +1549,12 @@ class IadeIslemServisi {
             'fis_tipi': isTedarikci ? 'Alım İadesi' : 'İade',
             'fis_id': iadeId,
             'fis_no': fisNo,
-            'aciklama': '$fisNo — bakiyeyi etkilemez',
-            'borc': toplam,
-            'alacak': toplam,
-            'odeme_turu': 'Nakit',
+            'aciklama': gercekEtki
+                ? '$fisNo — cari bakiyesine işlendi'
+                : '$fisNo — bakiyeyi etkilemez',
+            'borc': yeniBorc,
+            'alacak': yeniAlacak,
+            'odeme_turu': odemeYontemi,
             'kullanici': kullaniciAdi,
           });
         }

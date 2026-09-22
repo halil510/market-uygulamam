@@ -440,6 +440,26 @@ class DonemDevirServisi {
         await _checkpointDepo.guncelle(checkpoint);
         return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);
       }
+
+      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22 sabah —
+      // "devir işlemi DB'yi hafifletmek, listeyi hafifletmek değil mi"):
+      // FAZ 8 (yukarıda) satis_kalem/stok_hareket/cari_hareket/
+      // kasa_hareketleri/banka_hareketler'den satırları GERÇEKTEN DELETE
+      // ediyor — bu doğru, sadece listeden gizlemiyor. AMA SQLite DELETE
+      // sonrası boşalan sayfaları dosyaya geri VERMEZ (VACUUM çalışmadan
+      // .db dosyasının fiziksel boyutu KÜÇÜLMEZ) — devir "veritabanını
+      // hafiflet" vaadini disk boyutu açısından hiç yerine getirmiyordu,
+      // sadece aktif tabloların SATIR SAYISINI (ve bu sayede sorgu/indeks
+      // performansını) küçültüyordu. Devir bittiğinde artık VACUUM da
+      // çalıştırılıyor — best-effort: başarısız olsa bile devir zaten
+      // tamamlandı sayılır (silme/açılış zaten kalıcı), sadece disk
+      // sıkıştırma atlanmış olur.
+      try {
+        final db = await Veritabani().db;
+        await db.execute('VACUUM');
+      } catch (e, st) {
+        LogServisi().hata('DonemDevirServisi.vacuum', hata: e, yigin: st);
+      }
     }
 
     return DevirSonucu(checkpoint: checkpoint, kontroller: kontroller);

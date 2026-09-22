@@ -218,9 +218,11 @@ class _DonemYonetimiEkraniState extends State<DonemYonetimiEkrani> {
             'satırlar SADECE arşiv dosyasında ve Supabase\'de (bulutta) '
             'kalır, aktif veritabanında görünmez olur. Cari/stok/kasa '
             'bakiyeleriniz DEĞİŞMEZ (tek açılış kaydı eski toplamı korur), '
-            'sadece geçmiş hareket detayı arşive taşınır. Kritik bir '
-            'kontrol ya da arşiv doğrulaması başarısız olursa işlem '
-            'güvenle durur, hiçbir veri değişmez.',
+            'sadece geçmiş hareket detayı arşive taşınır. Sonunda '
+            'veritabanı dosyası da sıkıştırılır (VACUUM) — bu adım '
+            'büyük veritabanlarında biraz sürebilir, lütfen bekleyin. '
+            'Kritik bir kontrol ya da arşiv doğrulaması başarısız '
+            'olursa işlem güvenle durur, hiçbir veri değişmez.',
         onayYazi: 'Devri Başlat', onayRengi: Colors.orange,
         ikon: Icons.warning_amber_rounded);
     if (!onay || !mounted) return;

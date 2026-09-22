@@ -45,6 +45,39 @@ class GibUblOlusturucu {
     final now      = DateTime.now();
     final faturaNo = fatura.faturaNo ?? 'TMP${now.millisecondsSinceEpoch}';
     final vkn      = _ayar.firmaVkn ?? '0000000000';
+    // 🔴 DÜZELTME (kritik — derin denetimde bulundu): IssueDate/IssueTime
+    // ÖNCEDEN her zaman DateTime.now() (XML ÜRETİLDİĞİ AN) kullanıyordu.
+    // Bir gönderim başarısız olup DAHA SONRA (saatler/günler sonra)
+    // yeniden denendiğinde, GİB'e giden resmi belgedeki düzenlenme
+    // tarihi/saati ile müşteriye basılan PDF'teki "Düzenlenme Tarihi"
+    // (fatura.duzenlenmeTarihi, fatura OLUŞTURULDUĞUNDA sabitlenir)
+    // BİRBİRİNDEN FARKLI oluyordu — resmi kayıt ile müşteri nüshası
+    // arasında denetim uyuşmazlığı.
+    final faturaDuzenlemeZamani = fatura.duzenlenmeTarihi ?? fatura.tarih;
+
+    // 🔴 DÜZELTME (kritik — derin denetimde bulundu): Ayarlar ekranındaki
+    // `ayarliMi` SADECE apiUrl/kullaniciAdi/sifre/firmaVkn'yi zorunlu
+    // tutuyordu — firmaAdi/firmaAdres/firmaVergiDairesi boş bırakılabiliyordu.
+    // Ama bu üç alan aşağıda AccountingSupplierParty içinde ZORUNLU UBL-TR
+    // alanları olarak KOŞULSUZ (boşsa boş string olarak) gönderiliyordu.
+    // Sonuç: kullanıcı sadece API bilgilerini girip adres/vergi dairesini
+    // atlarsa, GİB'e KENDİ FİRMASININ eksik/boş bilgisiyle bir fatura
+    // gönderilmeye çalışılır — entegratör/GİB muhtemelen şematron
+    // hatasıyla reddeder ama kullanıcı genel bir "gönderim başarısız"
+    // mesajı görür, GERÇEK sebebi (Ayarlar'daki eksik alan) hiç anlamaz.
+    // Artık burada erken ve AÇIK bir hata veriliyor.
+    final eksikAyarlar = <String>[
+      if (_ayar.firmaAdi.trim().isEmpty) 'Firma Adı',
+      if (_ayar.firmaAdres.trim().isEmpty) 'Firma Adresi',
+      if (_ayar.firmaVergiDairesi.trim().isEmpty) 'Vergi Dairesi',
+    ];
+    if (eksikAyarlar.isNotEmpty) {
+      throw Exception(
+        'GİB gönderimi için Ayarlar > GİB Entegrasyon\'da şu bilgiler eksik: '
+        '${eksikAyarlar.join(", ")}. Bu alanlar olmadan gönderilen fatura '
+        'GİB tarafından reddedilir.',
+      );
+    }
 
     final satirlar = fatura.detaylar.map((k) {
       final kdvTutar = k.kdvTutari;
@@ -135,6 +168,35 @@ class GibUblOlusturucu {
     final tevkifatVar = tevkifatPrefs.getBool('tevkifat') ?? false;
     final tevkifatOrani = tevkifatPrefs.getString('tevkifat_orani') ?? '';
 
+    // 🔴 DÜZELTME (kritik — derin denetimde bulundu): "KDV Muaf" ayarı
+    // (Ayarlar > Fatura Ayarları) SADECE fatura_detay_pdf_ext.dart'taki
+    // PDF görünümünde "Hesaplanan KDV" satırını gizliyordu — bu XML
+    // üreticide HİÇ okunmuyordu. Yani GİB'e giden resmi belge her zaman
+    // TAM KDV ile gidiyordu, müşteriye basılan kopya ise (KDV satırı
+    // gizlenmiş olsa bile "Vergiler Dahil Toplam" hâlâ KDV'Yİ İÇERİYORDU
+    // — bkz. o dosyadaki ayrı düzeltme) — yani şu an bu uygulama gerçek
+    // bir KDV muaf/istisna fatura ÜRETEMİYOR, sadece bir PDF satırını
+    // gizliyor. Gerçek istisna için GİB'in TaxExemptionReasonCode kod
+    // listesinden (sektöre/muafiyet gerekçesine göre değişir) doğru kodu
+    // seçmek gerekir — bu alan uygulamada YOK. Tevkifat'takiyle AYNI
+    // ilke: sessizce yanlış/eksik bir resmi belge göndermek yerine açık
+    // hata — kullanıcı bu faturayı GİB portalından manuel kesmeli ya da
+    // ayarı kapatmalı.
+    final kdvMuafPrefs = await SharedPreferences.getInstance();
+    final kdvMuaf = kdvMuafPrefs.getBool('kdv_musaf') ?? false;
+    if (kdvMuaf) {
+      throw Exception(
+        'KDV Muaf fatura gönderimi henüz desteklenmiyor.\n\n'
+        'Ayarlar > Fatura Ayarları\'nda "KDV Muaf" açık. Ancak e-Fatura '
+        'XML\'inde zorunlu olan istisna gerekçe kodu (TaxExemptionReasonCode) '
+        'henüz eklenmedi; GİB bu faturayı ya reddeder ya da (daha kötüsü) '
+        'kabul edip TAM KDV\'li olarak işler.\n\n'
+        'Bu faturayı gönderebilmek için Ayarlar > Fatura Ayarları\'ndan '
+        '"KDV Muaf" ayarını kapatın, ya da faturayı manuel olarak GİB '
+        'portalından kesin.',
+      );
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     // 🔴 KRİTİK — TEVKİFAT DESTEĞİ TAMAMLANMAMIŞ (analiz bulgusu)
     //
@@ -175,8 +237,17 @@ class GibUblOlusturucu {
     //      DÜŞÜRÜLMESİ
     //
     // O ZAMANA KADAR: sessizce bozuk fatura göndermek yerine açık hata.
+    //
+    // 🔴 DÜZELTME (kritik — derin denetimde bulundu): Bu engel ÖNCEDEN
+    // "fatura.faturaTipi != 'İade'" koşuluyla SADECE Satış faturalarını
+    // kapsıyordu — tevkifat açıkken bir İade faturası kesilirse bu engel
+    // hiç devreye girmiyor, WithholdingTaxTotal bloğu OLMADAN GİB'e
+    // gönderiliyordu (yukarıdaki yorumun tam olarak önlemeye çalıştığı
+    // "sessizce bozuk fatura" senaryosu). İade için istisna tutmayı
+    // haklı çıkaran hiçbir yorum/gerekçe yoktu — kazara bırakılmış
+    // görünüyor. Artık İade dahil HER fatura tipinde engelleniyor.
     // ══════════════════════════════════════════════════════════════════════
-    if (tevkifatVar && fatura.faturaTipi != 'İade') {
+    if (tevkifatVar) {
       throw Exception(
         'Tevkifatlı fatura gönderimi henüz desteklenmiyor.\n\n'
         'Ayarlar > Fatura Ayarları\'nda "Tevkifat (KDV Stopajı)" açık '
@@ -212,7 +283,7 @@ class GibUblOlusturucu {
             billingReferenceXml = '''
   <cac:BillingReference>
     <cac:InvoiceDocumentReference>
-      <cbc:ID>$orijinalFaturaNo</cbc:ID>
+      <cbc:ID>${_xmlEscape(orijinalFaturaNo)}</cbc:ID>
       <cbc:DocumentTypeCode>IADE</cbc:DocumentTypeCode>
     </cac:InvoiceDocumentReference>
   </cac:BillingReference>
@@ -232,11 +303,11 @@ class GibUblOlusturucu {
   <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
   <cbc:CustomizationID>TR1.2</cbc:CustomizationID>
   <cbc:ProfileID>${tip == EFaturaTipi.eFatura ? 'TICARIFATURA' : 'EARSIVFATURA'}</cbc:ProfileID>
-  <cbc:ID>$faturaNo</cbc:ID>
+  <cbc:ID>${_xmlEscape(faturaNo)}</cbc:ID>
   <cbc:CopyIndicator>false</cbc:CopyIndicator>
   <cbc:UUID>$ettn</cbc:UUID>
-  <cbc:IssueDate>${tarihFmt.format(now)}</cbc:IssueDate>
-  <cbc:IssueTime>${saatFmt.format(now)}</cbc:IssueTime>
+  <cbc:IssueDate>${tarihFmt.format(faturaDuzenlemeZamani)}</cbc:IssueDate>
+  <cbc:IssueTime>${saatFmt.format(faturaDuzenlemeZamani)}</cbc:IssueTime>
   <cbc:InvoiceTypeCode>$invoiceTypeCode</cbc:InvoiceTypeCode>
   <cbc:DocumentCurrencyCode>TRY</cbc:DocumentCurrencyCode>
   <cbc:LineCountNumeric>${fatura.detaylar.length}</cbc:LineCountNumeric>
@@ -244,7 +315,7 @@ class GibUblOlusturucu {
   <cac:AccountingSupplierParty>
     <cac:Party>
       <cac:PartyIdentification>
-        <cbc:ID schemeID="VKN">$vkn</cbc:ID>
+        <cbc:ID schemeID="VKN">${_xmlEscape(vkn)}</cbc:ID>
       </cac:PartyIdentification>
       <cac:PartyName>
         <cbc:Name>${_xmlEscape(_ayar.firmaAdi.isNotEmpty ? _ayar.firmaAdi : 'MarketPlus')}</cbc:Name>
@@ -274,7 +345,7 @@ class GibUblOlusturucu {
   <cac:AccountingCustomerParty>
     <cac:Party>
       <cac:PartyIdentification>
-        <cbc:ID schemeID="${(fatura.cariVergiNo?.length ?? 0) == 10 ? 'VKN' : 'TCKN'}">${fatura.cariVergiNo ?? '11111111111'}</cbc:ID>
+        <cbc:ID schemeID="${(fatura.cariVergiNo?.length ?? 0) == 10 ? 'VKN' : 'TCKN'}">${_xmlEscape(fatura.cariVergiNo ?? '11111111111')}</cbc:ID>
       </cac:PartyIdentification>
       <cac:PartyName>
         <cbc:Name>${_xmlEscape(fatura.cariUnvan ?? '-')}</cbc:Name>
@@ -296,7 +367,12 @@ class GibUblOlusturucu {
 $billingReferenceXml
   <cac:PaymentMeans>
     <cbc:PaymentMeansCode>${_odemeSekliKodu(fatura.odemeSekli)}</cbc:PaymentMeansCode>
-    <cbc:PaymentDueDate>${DateFormat('yyyy-MM-dd').format(fatura.tarih)}</cbc:PaymentDueDate>
+    <!-- 🔴 DÜZELTME (kritik — derin denetimde bulundu): ÖNCEDEN her zaman
+         fatura.tarih (düzenlenme günü) kullanılıyordu — vadeli/veresiye
+         faturalarda kullanıcının gerçekten girdiği vadeTarihi (fatura_ekle
+         _ekrani.dart'ta bir alanı VAR ve müşteriye ekranda gösteriliyor)
+         GİB'e giden resmi belgede TAMAMEN YOK SAYILIYORDU. -->
+    <cbc:PaymentDueDate>${tarihFmt.format(fatura.vadeTarihi ?? fatura.tarih)}</cbc:PaymentDueDate>
   </cac:PaymentMeans>
 
   <cac:TaxTotal>
@@ -385,7 +461,7 @@ $satirlar
   <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
   <cbc:CustomizationID>TR1.2</cbc:CustomizationID>
   <cbc:ProfileID>TEMELIRSALIYE</cbc:ProfileID>
-  <cbc:ID>$irsaliyeNo</cbc:ID>
+  <cbc:ID>${_xmlEscape(irsaliyeNo)}</cbc:ID>
   <cbc:CopyIndicator>false</cbc:CopyIndicator>
   <cbc:UUID>$ettn</cbc:UUID>
   <cbc:IssueDate>${tarihFmt.format(belgeTarihi)}</cbc:IssueDate>
@@ -397,7 +473,7 @@ $satirlar
   <cac:DespatchSupplierParty>
     <cac:Party>
       <cac:PartyIdentification>
-        <cbc:ID schemeID="VKN">$vkn</cbc:ID>
+        <cbc:ID schemeID="VKN">${_xmlEscape(vkn)}</cbc:ID>
       </cac:PartyIdentification>
       <cac:PartyName>
         <cbc:Name>${_xmlEscape(_ayar.firmaAdi.isNotEmpty ? _ayar.firmaAdi : 'MarketPlus')}</cbc:Name>

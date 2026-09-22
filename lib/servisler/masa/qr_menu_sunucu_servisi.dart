@@ -265,6 +265,16 @@ const MASA_ID = $masaId;
 let urunler = [];
 let sepet = {};
 
+// 🔴 DÜZELTME (güvenlik — XSS, qr_menu_sayfasi.html'deki AYNI düzeltme):
+// ürün adı/grup gibi metinler escape edilmeden innerHTML'e ekleniyordu —
+// biri "<" veya bir HTML etiketi içeren bir ürün adı girerse sayfa bozulur
+// ya da (teorik olarak) tarayıcıda kod çalıştırılır.
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
 async function yukle() {
   const r = await fetch('/api/menu/urunler');
   const d = await r.json();
@@ -277,11 +287,11 @@ function render() {
   urunler.forEach(u => { (gruplar[u.grup] = gruplar[u.grup] || []).push(u); });
   let html = '';
   for (const grup in gruplar) {
-    html += '<div class="grup">' + grup + '</div>';
+    html += '<div class="grup">' + esc(grup) + '</div>';
     gruplar[grup].forEach(u => {
       const adet = sepet[u.id] ? sepet[u.id].adet : 0;
       html += '<div class="urun">' +
-        '<div><div class="urun-ad">' + u.ad + '</div>' +
+        '<div><div class="urun-ad">' + esc(u.ad) + '</div>' +
         '<div class="urun-fiyat">' + u.fiyat.toFixed(2) + ' ₺</div></div>' +
         '<div class="miktar-kutu">' +
         '<button class="btn-yuvarlak" onclick="degistir(' + u.id + ',-1)" ' + (adet===0?'disabled':'') + '>−</button>' +
@@ -319,7 +329,7 @@ function sepetiAc() {
   const adetler = Object.values(sepet);
   const toplam = adetler.reduce((s, k) => s + k.adet * k.urun.fiyat, 0);
   let satirlar = adetler.map(k =>
-    '<div class="sepet-satir"><span>' + k.adet + 'x ' + k.urun.ad + '</span><span>' +
+    '<div class="sepet-satir"><span>' + k.adet + 'x ' + esc(k.urun.ad) + '</span><span>' +
     (k.adet * k.urun.fiyat).toFixed(2) + ' ₺</span></div>').join('');
   document.getElementById('modalIcerik').innerHTML =
     '<h2>Siparişiniz</h2>' + satirlar +

@@ -399,4 +399,58 @@ class SupabaseSaglayici implements IBulutSaglayici {
       'key': await SupabaseAyarlari.keyOku() ?? '',
     };
   }
+
+  /// Bir satırı ekler (varsa on_conflict ile idempotent upsert) VE
+  /// sunucunun oluşturduğu/eşleşen satırı (ör. BIGSERIAL id) geri
+  /// döndürür — normal upsert() (fire-and-forget, "return=minimal")
+  /// yeterli DEĞİLDİR çünkü ör. Terminal kaydında sunucunun ürettiği
+  /// id'yi hemen yerel cihaza yazmamız gerekiyor.
+  Future<Map<String, dynamic>?> insertVeDondur(
+      String tablo, Map<String, dynamic> veri, {String? onConflict}) async {
+    final uri = onConflict != null
+        ? Uri.parse('$_rest/$tablo?on_conflict=$onConflict')
+        : Uri.parse('$_rest/$tablo');
+    final headers = {
+      ..._h,
+      'Prefer': onConflict != null
+          ? 'resolution=merge-duplicates,return=representation'
+          : 'return=representation',
+    };
+    final r = await http.post(uri, headers: headers, body: jsonEncode(veri))
+        .timeout(const Duration(seconds: 15));
+    if (r.statusCode >= 400) {
+      throw BulutIstekHatasi(r.statusCode,
+          '$tablo insert: ${r.body.substring(0, r.body.length.clamp(0, 300))}');
+    }
+    if (r.body.isEmpty) return null;
+    final govde = jsonDecode(r.body);
+    if (govde is List && govde.isNotEmpty) return govde.first as Map<String, dynamic>;
+    if (govde is Map<String, dynamic>) return govde;
+    return null;
+  }
+
+  /// PostgreSQL RPC (stored function) çağırır — ör.
+  /// fatura_blok_tahsis_et() gibi ATOMİK sunucu-taraflı işlemler için.
+  /// Normal REST tablo uçlarından FARKLI olarak burada Postgres'in
+  /// kendi satır kilidi/transaction garantisi devreye girer — bu yüzden
+  /// merkezi numara/blok tahsisi gibi concurrency-kritik işlemler
+  /// BİLEREK buradan geçiyor, tablo upsert'inden değil (bkz.
+  /// CENTRAL_DOCUMENT_NUMBERING_DEEP_AUDIT.md §20).
+  Future<List<Map<String, dynamic>>> rpcCagir(
+      String fonksiyonAdi, Map<String, dynamic> parametreler) async {
+    final r = await http.post(
+      Uri.parse('$_rest/rpc/$fonksiyonAdi'),
+      headers: _h,
+      body: jsonEncode(parametreler),
+    ).timeout(const Duration(seconds: 20));
+    if (r.statusCode >= 400) {
+      throw BulutIstekHatasi(r.statusCode,
+          'rpc $fonksiyonAdi: ${r.body.substring(0, r.body.length.clamp(0, 300))}');
+    }
+    if (r.body.isEmpty) return [];
+    final govde = jsonDecode(r.body);
+    if (govde is List) return govde.cast<Map<String, dynamic>>();
+    if (govde is Map<String, dynamic>) return [govde];
+    return [];
+  }
 }

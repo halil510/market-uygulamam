@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'MarketPlus';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      77; // v77: musteri_puan.cari_id UNIQUE index — puanEkle() artık SQL hatası fırlatmıyor, satış puanı kazandırma gerçekten çalışıyor (2026-09-22)
+      78; // v78: merkezi fatura seri/blok yönetimi için yerel önbellek tabloları (yerel_terminal, yerel_fatura_blok) — bkz. CENTRAL_DOCUMENT_NUMBERING_DEEP_AUDIT.md (2026-09-23)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

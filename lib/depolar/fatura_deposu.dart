@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/fatura_seri/fatura_seri_blok_servisi.dart';
 import '../veri/database/veritabani.dart';
 import '../modeller/fatura_model.dart';
 
@@ -119,6 +120,71 @@ class FaturaDeposu {
       }
     }
     throw Exception('Fatura numarası çakışması çözülemedi, lütfen tekrar deneyin.');
+  }
+
+  /// [ekle]'nin MERKEZİ SERİ/BLOK sistemini kullanan sürümü — bkz.
+  /// CENTRAL_DOCUMENT_NUMBERING_DEEP_AUDIT.md. `fatura.faturaNo` burada
+  /// YOK SAYILIR — numara, [FaturaSeriBlokServisi] tarafından yerel
+  /// bloktan (ya da gerekirse önce buluttan yeni bir blok alınarak)
+  /// ATOMİK olarak, TAM OLARAK BU INSERT ile AYNI SQLite transaction'ı
+  /// içinde üretilir — "numarayı oku" ile "kaydet" arasında hiçbir
+  /// boşluk (TOCTOU) kalmaz, ve birden fazla terminal artık ASLA aynı
+  /// numarayı üretemez (bloklar Postgres'te atomik tahsis edilir).
+  ///
+  /// [ekle]'nin eski (yerel MAX+1) yolu SİLİNMEDİ — bilerek: manuel
+  /// fatura girişi ekranı hâlâ onu kullanıyor (kullanıcı numarayı
+  /// görüp elle düzenleyebiliyor, bu ayrı bir iş kararı — bkz. rapor
+  /// §26/24). Bu yeni yol SADECE otomatik (satış/iade→fatura) akış
+  /// için kullanılıyor.
+  Future<int> ekleMerkeziSeriIle(
+    FaturaModel fatura,
+    List<FaturaDetayModel> kalemler, {
+    required String seri,
+  }) async {
+    final blokServisi = FaturaSeriBlokServisi();
+    for (var deneme = 0; deneme < 2; deneme++) {
+      await blokServisi.blokHazirOldugundanEminOl(seri);
+      try {
+        final db = await _d;
+        final faturaId = await db.transaction((txn) async {
+          final tuketilen = await blokServisi.faturaNoTuket(txn, seri);
+          final faturaNo =
+              '$seri${tuketilen.yil}${tuketilen.numara.toString().padLeft(9, '0')}';
+          final faturaMap = fatura.toMap();
+          faturaMap['global_id'] ??= const Uuid().v4();
+          faturaMap.remove('id');
+          faturaMap['fatura_no'] = faturaNo;
+          final id = await txn.insert('faturalar', faturaMap);
+          for (final k in kalemler) {
+            final km = k.toMap();
+            km['global_id'] ??= const Uuid().v4();
+            km.remove('id');
+            km['fatura_id'] = id;
+            await txn.insert('fatura_detaylari', km);
+          }
+          return id;
+        });
+
+        try {
+          final faturaSatir = await db.query('faturalar', where: 'id = ?', whereArgs: [faturaId], limit: 1);
+          if (faturaSatir.isNotEmpty) {
+            BulutManager().upsert('faturalar', Map<String, dynamic>.from(faturaSatir.first));
+          }
+          final detaySatirlar = await db.query('fatura_detaylari', where: 'fatura_id = ?', whereArgs: [faturaId]);
+          for (final d in detaySatirlar) {
+            BulutManager().upsert('fatura_detaylari', Map<String, dynamic>.from(d));
+          }
+        } catch (e) {
+          if (kDebugMode) debugPrint('Fatura bulut bildirimi hatası: $e');
+        }
+        return faturaId;
+      } on BlokTukendiException catch (e, st) {
+        if (deneme == 0) continue; // bir kez daha dene — yeni blok alınmış olmalı
+        LogServisi().hata('FaturaDeposu.ekleMerkeziSeriIle', hata: e, yigin: st);
+        rethrow;
+      }
+    }
+    throw BlokTukendiException('Fatura numarası tahsis edilemedi, lütfen tekrar deneyin.');
   }
 
   Future<FaturaModel?> idileGetir(int id) async {

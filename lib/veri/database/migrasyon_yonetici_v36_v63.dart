@@ -1249,3 +1249,51 @@ Future<void> _v76denV77ye(Database db) async {
   await _calistir(db,
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_musteri_puan_cari_unique ON musteri_puan(cari_id)');
 }
+
+// v77'den v78'e — MERKEZİ FATURA SERİ/BLOK YÖNETİMİ (kullanıcının
+// ERP_DENETIM_KURALLARI.md.txt spesifikasyonu, derin denetim sonucu —
+// bkz. proje kökünde CENTRAL_DOCUMENT_NUMBERING_DEEP_AUDIT.md).
+//
+// Fatura numarası ÖNCEDEN sadece cihazın kendi yerel verisine bakarak
+// (SELECT MAX+1) üretiliyordu — birden fazla cihaz/terminal aynı anda
+// aynı numarayı üretebilirdi. Artık numara ÜRETİMİ Supabase'deki
+// fatura_blok_tahsis_et() RPC'sine (bkz. supabase_fatura_seri_bloklari
+// .sql) taşınıyor — burada Postgres'in kendi atomik satır kilidi iki
+// terminalin ASLA aynı aralığı almamasını garanti ediyor. Bu iki yerel
+// tablo, tahsis edilen bloğun OFFLINE tüketimi için (cihaz internetsiz
+// kalsa bile önceden alınmış bloktan numara üretebilsin diye).
+//
+// yerel_terminal: TEK satır (id=1) — bu cihazın hangi bulut Terminal
+// kaydına karşılık geldiği. NULL ise cihaz henüz bir Terminal olarak
+// kayıtlı değildir (TerminalServisi ilk kullanımda otomatik kaydeder).
+//
+// yerel_fatura_blok: bu cihaza tahsis edilmiş blok(lar) — offline
+// tüketim için "sıradaki" imleç yerelde SQLite transaction'ı İÇİNDE
+// (fatura INSERT'iyle AYNI transaction'da) atomik olarak ilerletilir.
+Future<void> _v77denV78e(Database db) async {
+  await _calistir(db, '''
+    CREATE TABLE IF NOT EXISTS yerel_terminal (
+      id             INTEGER PRIMARY KEY CHECK (id = 1),
+      terminal_id    INTEGER,
+      terminal_kodu  TEXT,
+      sube_id        INTEGER,
+      kayit_tarihi   TEXT
+    )
+  ''');
+  await _calistir(db, '''
+    CREATE TABLE IF NOT EXISTS yerel_fatura_blok (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      seri            TEXT NOT NULL,
+      yil             INTEGER NOT NULL,
+      blok_baslangic  INTEGER NOT NULL,
+      blok_bitis      INTEGER NOT NULL,
+      siradaki        INTEGER NOT NULL,
+      durum           TEXT NOT NULL DEFAULT 'aktif',
+      tahsis_zamani   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  ''');
+  await _calistir(db,
+      'CREATE INDEX IF NOT EXISTS idx_yerel_fatura_blok_durum ON yerel_fatura_blok(durum, seri, yil)');
+  await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN terminal_id INTEGER');
+  await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN blok_id INTEGER');
+}

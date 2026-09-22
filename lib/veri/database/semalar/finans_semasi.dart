@@ -94,10 +94,38 @@ class FinansSemasi {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
         last_updated DATETIME, deleted_at DATETIME,
+        terminal_id INTEGER, blok_id INTEGER,
         FOREIGN KEY(cari_id) REFERENCES ${DbSabitler.cari}(id),
         FOREIGN KEY(sube_id) REFERENCES ${DbSabitler.subeler}(id)
       )
     ''');
+
+    // Merkezi fatura seri/blok yönetimi — yerel önbellek (bkz.
+    // CENTRAL_DOCUMENT_NUMBERING_DEEP_AUDIT.md / migrasyon v77->v78'in
+    // aynısı, taze kurulumlarda migrasyon zincirini beklemeden hazır olsun).
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS yerel_terminal (
+        id             INTEGER PRIMARY KEY CHECK (id = 1),
+        terminal_id    INTEGER,
+        terminal_kodu  TEXT,
+        sube_id        INTEGER,
+        kayit_tarihi   TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS yerel_fatura_blok (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        seri            TEXT NOT NULL,
+        yil             INTEGER NOT NULL,
+        blok_baslangic  INTEGER NOT NULL,
+        blok_bitis      INTEGER NOT NULL,
+        siradaki        INTEGER NOT NULL,
+        durum           TEXT NOT NULL DEFAULT 'aktif',
+        tahsis_zamani   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_yerel_fatura_blok_durum ON yerel_fatura_blok(durum, seri, yil)');
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS ${DbSabitler.faturaDetaylari} (

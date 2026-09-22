@@ -222,5 +222,9 @@ class MigrasyonYonetici {
     // _v76denV77ye yorumu — puanEkle()'nin ON CONFLICT hedefi eksikti,
     // 2026-09-22).
     if (eskiVersiyon < 77) await _v76denV77ye(db);
+
+    // v77'den v78'e — merkezi fatura seri/blok yönetimi için yerel
+    // önbellek tabloları (bkz. _v77denV78e yorumu, 2026-09-23).
+    if (eskiVersiyon < 78) await _v77denV78e(db);
   }
 }

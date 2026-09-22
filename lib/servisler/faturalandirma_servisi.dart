@@ -15,6 +15,7 @@ import '../modeller/cari_model.dart';
 import '../modeller/fatura_model.dart';
 import '../veri/database/veritabani.dart';
 import '../cekirdek/utils/vergi_no_dogrulayici.dart';
+import 'aktif_sube_servisi.dart';
 
 /// Cari'nin faturalandırma için hazır olup olmadığının sonucu.
 class CariFaturaKontrolu {
@@ -195,10 +196,23 @@ class FaturalandirmaServisi {
     final toplamKdv       = islenmisKalemler.fold<double>(0, (t, d) => t + d.kdvTutari);
     final genelToplam     = islenmisKalemler.fold<double>(0, (t, d) => t + d.toplamTutar);
 
-    final faturaNo = await sonrakiFaturaNo(tarih);
+    // 🔴 DÜZELTME (kritik — CENTRAL_DOCUMENT_NUMBERING_DEEP_AUDIT.md):
+    // fatura_no artık burada ÖNCEDEN hesaplanıp FaturaDeposu().ekle()'ye
+    // AYRI bir adım olarak geçirilmiyor (bu, iki cihazın aynı anda aynı
+    // numarayı üretebildiği asıl kök nedendi). Numara artık
+    // FaturaDeposu().ekleMerkeziSeriIle() içinde, gerçek INSERT ile
+    // AYNI SQLite transaction'ında, merkezi (Supabase'de atomik olarak
+    // tahsis edilmiş) bir bloktan üretiliyor — bkz. o fonksiyonun
+    // yorumu. `sonrakiFaturaNo()` fonksiyonu SİLİNMEDİ (manuel fatura
+    // ekranı hâlâ kullanıyor, bilinçli ayrı bir karar).
+    var onek = (await SharedPreferences.getInstance())
+        .getString('fatura_no_onek')
+        ?.trim()
+        .toUpperCase() ??
+        '';
+    if (onek.isEmpty) onek = 'FTR';
 
     final fatura = FaturaModel(
-      faturaNo: faturaNo,
       faturaTipi: faturaTipi,
       satisId: satisId,
       iadeId: iadeId,
@@ -215,6 +229,11 @@ class FaturalandirmaServisi {
       // faturanın kesildiği andaki gerçeği yansıtması doğrudur).
       cariMukellefDurumu: cari.mukellefDurumu,
       cariAdres: kontrol.adresMetni,
+      // 🔴 DÜZELTME (P1 — derin denetimde bulundu): sube_id şemada/
+      // modelde vardı ama hiçbir oluşturma noktası hiç doldurmuyordu,
+      // her fatura sessizce NULL şubeye sahipti. Uygulama genelinde
+      // zaten çalışan aktif şube seçiciden dolduruluyor.
+      subeId: AktifSubeServisi().subeId,
       tarih: tarih,
       duzenlenmeTarihi: DateTime.now(),
       toplamAraToplam: toplamAraToplam,
@@ -226,6 +245,6 @@ class FaturalandirmaServisi {
       odemeDurumu: odenenTutar >= genelToplam ? 'odendi' : 'beklemede',
     );
 
-    return FaturaDeposu().ekle(fatura, islenmisKalemler);
+    return FaturaDeposu().ekleMerkeziSeriIle(fatura, islenmisKalemler, seri: onek);
   }
 }

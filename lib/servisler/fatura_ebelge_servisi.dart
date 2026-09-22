@@ -95,18 +95,34 @@ class FaturaEBelgeServisi {
       if (tazelenen != null) gonderilecek = tazelenen;
     }
     await _depo.eFaturaDurumGuncelle(gonderilecek.id!, 'gonderiliyor');
-    final sonuc = await _gib.gonder(fatura: gonderilecek, tip: tip);
-    if (sonuc.basarili) {
-      await _depo.eFaturaDurumGuncelle(fatura.id!, 'gonderildi', uuid: sonuc.uuid);
-    } else {
-      // 🔴 DÜZELTME (erp_roadmap madde 38 — e-Belge durum makinesi):
-      // ÖNCEDEN gönderim başarısız olduğunda DB'ye HİÇBİR ŞEY
-      // yazılmıyordu — fatura sessizce 'hazir' (Beklemede) görünmeye
-      // devam ediyordu. efatura_log tablosu zaten (GibServisi içinde)
-      // başarısız denemeyi kaydediyordu, ama fatura kaydının kendisi hiç
-      // işaretlenmiyordu.
+    // 🔴 DÜZELTME (kritik — bağımsız yeniden denetimde bulundu): GibServisi.
+    // gonder() içindeki try/catch SADECE ağ isteği/yanıt ayrıştırma
+    // bloğunu sarıyor — ondan ÖNCEKİ adımlar (ayarlariYukle, ETTN
+    // hesaplama, ublXmlOlustur — ör. eksik firma bilgisi/KDV Muaf/
+    // Tevkifat engelleri burada Exception fırlatır) try/catch DIŞINDA
+    // kalıyordu. Durum yukarıda 'gonderiliyor' yapıldıktan SONRA bu
+    // fırlarsa, hiçbir kod yolu 'hata'ya güncellemiyor, fatura SONSUZA
+    // KADAR 'gonderiliyor'da takılı kalıyordu — tam olarak bu oturumda
+    // GibServisi içinde kapatılmaya çalışılan bug sınıfının aynısı,
+    // sadece bir katman daha yukarıda. Artık BURADA da (tüm çağrı
+    // zincirini kapsayacak şekilde) yakalanıyor.
+    try {
+      final sonuc = await _gib.gonder(fatura: gonderilecek, tip: tip);
+      if (sonuc.basarili) {
+        await _depo.eFaturaDurumGuncelle(fatura.id!, 'gonderildi', uuid: sonuc.uuid);
+      } else {
+        // 🔴 DÜZELTME (erp_roadmap madde 38 — e-Belge durum makinesi):
+        // ÖNCEDEN gönderim başarısız olduğunda DB'ye HİÇBİR ŞEY
+        // yazılmıyordu — fatura sessizce 'hazir' (Beklemede) görünmeye
+        // devam ediyordu. efatura_log tablosu zaten (GibServisi içinde)
+        // başarısız denemeyi kaydediyordu, ama fatura kaydının kendisi hiç
+        // işaretlenmiyordu.
+        await _depo.eFaturaDurumGuncelle(fatura.id!, 'hata');
+      }
+      return sonuc;
+    } catch (e) {
       await _depo.eFaturaDurumGuncelle(fatura.id!, 'hata');
+      return GibGonderimSonucu(basarili: false, hata: 'Beklenmeyen hata: $e');
     }
-    return sonuc;
   }
 }

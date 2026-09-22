@@ -359,11 +359,33 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
               padding: const pw.EdgeInsets.all(6),
               decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
               child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                _pdfTutarSatir('Ara Toplam', f.toplamAraToplam, font, boldFont, scale: scale),
+                // 🔴 DÜZELTME (kritik — bağımsız yeniden denetimde bulundu):
+                // Bu satır 80mm termal/yazdirma_servisi.dart'taki AYNI
+                // düzeltmeden (toplamAraToplam+toplamIskonto ile brüte geri
+                // çevirme) atlanmıştı — toplamAraToplam zaten NET olduğu
+                // için "Ara Toplam" - "Toplam İndirim" ≠ "Vergiler Hariç
+                // Toplam" görünüyordu (ör. 90 - 10 ≠ 90 basılıyordu, resmi
+                // A4 fatura formatında kendi içinde tutmayan bir belge).
+                _pdfTutarSatir('Ara Toplam', f.toplamAraToplam + f.toplamIskonto, font, boldFont, scale: scale),
                 if (f.toplamIskonto > 0)
                   _pdfTutarSatir('Toplam İndirim', f.toplamIskonto, font, boldFont, scale: scale),
                 _pdfTutarSatir('Vergiler Hariç Toplam', vergilerHaric, font, boldFont, scale: scale),
-                if (kdvMuaf)
+                // 🔴 DÜZELTME (kritik — derin denetimde bulundu): "KDV Muaf"
+                // açıkken burada gerçek KDV tutarı GİZLENİP sadece "KDV Muaf"
+                // etiketi basılıyordu — AMA aşağıdaki "Vergiler Dahil
+                // Toplam"/"Ödenecek Toplam" hâlâ f.genelToplam'ı (KDV DAHİL
+                // saklanan gerçek tutar) basıyordu. Sonuç: müşteri "KDV Muaf"
+                // yazan ama içinde hesaplanmış KDV'nin gizlenmiş olduğu bir
+                // toplam görüyordu — gerçekte muaf OLMAYAN bir satışı muaf
+                // gibi göstermek, hiç göstermemekten kötü. Artık gerçek KDV
+                // toplamı SIFIRSA (gerçekten muaf bir satışsa) "KDV Muaf"
+                // etiketi gösterilir; sıfır DEĞİLSE (ayar açık ama alttaki
+                // veri hâlâ KDV içeriyorsa) gerçek KDV kırılımı HER ZAMAN
+                // gösterilir — hiçbir zaman gerçek, tahsil edilmiş bir KDV
+                // tutarı sessizce gizlenmez. (GİB'e gönderim ayrıca
+                // gib_ubl_olusturucu.dart'ta bu ayar açıkken TAMAMEN
+                // ENGELLENDİ — gerçek istisna desteği eklenene kadar.)
+                if (kdvMuaf && f.toplamKdv <= 0.005)
                   pw.Padding(
                     padding: const pw.EdgeInsets.symmetric(vertical: 2),
                     child: pw.Text('KDV Muaf', style: pw.TextStyle(font: boldFont, fontSize: 8 * scale)),

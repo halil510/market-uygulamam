@@ -78,6 +78,18 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
   final _teslimAlanCtrl  = TextEditingController();
 
   double get _araToplam   => _kalemler.fold(0.0, (s, k) => s + k.araToplam);
+  // 🔴 DÜZELTME (kritik — bağımsız yeniden denetimde bulundu): FaturaModel.
+  // toplamAraToplam alanı codebase genelinde NET (indirim uygulanmış)
+  // tutar olarak saklanır (Madde 21 kuralı) — ama bu ekran gönderirken
+  // YUKARIDAKİ _araToplam'ı (ekranda "Ara Toplam" etiketiyle GÖSTERİLEN,
+  // bilerek BRÜT bırakılan değeri) kullanıyordu. Ekrandaki gösterim
+  // doğruydu (brüt gösterip altında İndirim/Net satırlarıyla açıklıyor),
+  // ama SAKLANAN toplamAraToplam brüt kalıyordu — bu da basılan faturada
+  // (toplamAraToplam+toplamIskonto ile brüte geri çevrilen diğer 4
+  // yüzeyde) indirimin İKİ KEZ eklenmiş görünmesine yol açıyordu (ör.
+  // gerçek brüt 100 iken 110 basılıyordu). Gönderirken KULLANILMASI
+  // gereken NET toplam bu.
+  double get _araToplamNet => _kalemler.fold(0.0, (s, k) => s + k.netTutar);
   double get _iskonto     => _kalemler.fold(0.0, (s, k) => s + k.iskontoTut);
   double get _kdvToplam   => _kalemler.fold(0.0, (s, k) => s + k.kdvTutar);
   double get _genelToplam => _kalemler.fold(0.0, (s, k) => s + k.toplam);
@@ -295,7 +307,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
         malinNereye:    _nereyeCtrl.text.trim().isEmpty ? null : _nereyeCtrl.text.trim(),
         teslimEden:     _teslimEdenCtrl.text.trim().isEmpty ? null : _teslimEdenCtrl.text.trim(),
         teslimAlan:     _teslimAlanCtrl.text.trim().isEmpty ? null : _teslimAlanCtrl.text.trim(),
-        toplamAraToplam: _araToplam,
+        toplamAraToplam: _araToplamNet,
         toplamIskonto:  _iskonto,
         toplamKdv:      _kdvToplam,
         genelToplam:    _genelToplam,

@@ -8,6 +8,7 @@ class OnayDialog extends StatelessWidget {
   final String iptalYazi;
   final Color? onayRengi;
   final IconData? ikon;
+  final bool iptalGoster;
 
   const OnayDialog({
     super.key,
@@ -17,6 +18,7 @@ class OnayDialog extends StatelessWidget {
     this.iptalYazi = 'İptal',
     this.onayRengi,
     this.ikon,
+    this.iptalGoster = true,
   });
 
   static Future<bool> goster(
@@ -27,13 +29,16 @@ class OnayDialog extends StatelessWidget {
     String iptalYazi = 'İptal',
     Color? onayRengi,
     IconData? ikon,
+    // Sadece bilgilendirme amaçlı, tek butonlu (geri dönüşü olmayan bir
+    // engeli anlatmak için) dialoglarda false verilir — bkz. SatisIptalServisi.
+    bool iptalGoster = true,
   }) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (_) => OnayDialog(
         baslik: baslik, icerik: icerik,
         onayYazi: onayYazi, iptalYazi: iptalYazi,
-        onayRengi: onayRengi, ikon: ikon,
+        onayRengi: onayRengi, ikon: ikon, iptalGoster: iptalGoster,
       ),
     );
     return result ?? false;
@@ -50,10 +55,11 @@ class OnayDialog extends StatelessWidget {
       ]),
       content: Text(icerik),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(iptalYazi),
-        ),
+        if (iptalGoster)
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(iptalYazi),
+          ),
         FilledButton(
           style: FilledButton.styleFrom(foregroundColor: Colors.white,
           backgroundColor: renk),

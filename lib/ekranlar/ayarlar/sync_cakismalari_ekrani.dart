@@ -17,6 +17,7 @@ import '../../modeller/sync_cakisma_model.dart';
 import '../../modeller/satis_model.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/faturalandirma_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../widgetlar/ortak/onay_dialog.dart';
 
@@ -84,6 +85,22 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
   }
 
   Future<void> _syncKopyasiSil(SatisModel s) async {
+    // 🔴 DÜZELTME (kritik — derin denetimde bulundu): bu buton codebase'in
+    // her yerinde uygulanan "faturalandırılmış bir satış doğrudan
+    // silinemez" kuralını hiç kontrol etmiyordu.
+    if (s.id != null) {
+      final faturaId = await FaturalandirmaServisi.mevcutFaturaId(satisId: s.id);
+      if (faturaId != null) {
+        if (!mounted) return;
+        await OnayDialog.goster(context,
+            baslik: 'Bu Satış Faturalandırılmış',
+            icerik: 'Bu kopya için zaten bir fatura kesilmiş — doğrudan '
+                'silinemez. Düzeltme yapmak için "İade Et" kullanın.',
+            onayYazi: 'Tamam', ikon: Icons.info_outline, iptalGoster: false);
+        return;
+      }
+    }
+    if (!mounted) return;
     final onay = await OnayDialog.goster(context,
         baslik: 'Bu kopya silinsin mi?',
         icerik: '${ParaUtils.kisaFisNo(s.fisNo)} (${ParaUtils.formatla(s.genelToplam)}) '

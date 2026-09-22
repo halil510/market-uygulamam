@@ -2,6 +2,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../depolar/satis_deposu.dart';
 import '../../modeller/satis_model.dart';
+import '../../servisler/faturalandirma_servisi.dart';
 
 part 'satis_provider.g.dart';
 
@@ -97,8 +98,10 @@ class Satislar extends _$Satislar {
   void secimTemizle() =>
       state = state.copyWith(secimModu: false, seciliIds: {});
 
-  Future<void> seciliSil() async {
-    if (state.seciliIds.isEmpty) return;
+  /// Döndürdüğü sayı, faturalandırılmış olduğu için ATLANIP silinmeyen
+  /// satış adedidir (arayüz bunu kullanıcıya bildirmeli).
+  Future<int> seciliSil() async {
+    if (state.seciliIds.isEmpty) return 0;
     // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): Bu fonksiyon
     // önceden _depo.satisIptal() çağırıyordu — bu, sadece satışın
     // 'iptal' bayrağını işaretler; STOK GERİ YÜKLEMEZ, MÜŞTERİNİN
@@ -108,11 +111,23 @@ class Satislar extends _$Satislar {
     // stok yapay olarak düşük kalıyor, müşteri iptal edilmiş bir
     // satış için hâlâ borçlu görünüyor, kasa iptal edilmiş bir satış
     // için hâlâ para almış gibi duruyordu.
+    //
+    // 🔴 DÜZELTME (kritik — derin denetimde bulundu): Bu toplu silme,
+    // codebase'in her yerinde uygulanan "faturalandırılmış bir satış
+    // doğrudan silinemez" kuralını HİÇ kontrol etmiyordu — GİB'e
+    // gönderilmiş/onaylanmış bir faturası olan satışlar bile sessizce
+    // silinebiliyordu. Artık faturası olan satışlar ATLANIYOR.
+    var atlanan = 0;
     for (final id in state.seciliIds) {
-      try { await _depo.sil(id); } catch (e) { /* ignore */ }
+      try {
+        final faturaId = await FaturalandirmaServisi.mevcutFaturaId(satisId: id);
+        if (faturaId != null) { atlanan++; continue; }
+        await _depo.sil(id);
+      } catch (e) { /* ignore */ }
     }
     secimTemizle();
     await yukle();
+    return atlanan;
   }
 }
 

@@ -263,6 +263,36 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
       );
       if (onay != true || !mounted) return;
 
+      // 🔴 DÜZELTME (kritik — derin denetimde bulundu): fiş geri çağrılıp
+      // "Tamamla" ile güncellenince kalemler/tutar SESSİZCE değişiyordu —
+      // bu satış için zaten bir fatura kesilmişse, basılı/GİB'e gönderilmiş
+      // faturayla sistemdeki kayıt burada diverjans yaşayabiliyordu.
+      // Codebase'in her yerinde uygulanan "faturalandırılmış bir satış
+      // doğrudan düzenlenemez" kuralı bu girişte hiç kontrol edilmiyordu.
+      final faturaId = await FaturalandirmaServisi.mevcutFaturaId(satisId: satis.id);
+      if (faturaId != null) {
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(children: [
+              Icon(Icons.info_outline, color: Colors.orange),
+              SizedBox(width: 8),
+              Expanded(child: Text('Bu Satış Faturalandırılmış')),
+            ]),
+            content: const Text(
+                'Bu fiş için zaten bir fatura kesilmiş — kalemleri/tutarı '
+                'değiştirmek üzere geri çağrılamaz. Düzeltme yapmak için '
+                'Satış Detayı\'ndan "İade Et" ile ters kayıt oluşturun.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam')),
+            ],
+          ),
+        );
+        return;
+      }
+
       ref.read(sepetProvider.notifier).temizle();
 
       final bulunamayan = <String>[];

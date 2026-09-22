@@ -41,6 +41,7 @@ import '../../servisler/auth_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../servisler/satis_tamamlama_servisi.dart';
+import '../../servisler/faturalandirma_servisi.dart';
 import '../../servisler/yazdirma_servisi.dart';
 import '../../saglayicilar/riverpod/sepet_provider.dart';
 import '../../saglayicilar/riverpod/dashboard_provider.dart';

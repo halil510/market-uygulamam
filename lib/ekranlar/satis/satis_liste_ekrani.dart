@@ -103,8 +103,15 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
                     ],
                   ));
                 if (onay == true && mounted) {
-                  await ref.read(satislarProvider.notifier).seciliSil();
-                  if (mounted) BildirimServisi.basari(context, 'Satışlar iptal edildi');
+                  final atlanan = await ref.read(satislarProvider.notifier).seciliSil();
+                  if (!mounted) return;
+                  if (atlanan > 0) {
+                    BildirimServisi.uyari(context,
+                        'Silindi, ancak $atlanan satış faturalandırılmış olduğu '
+                        'için silinmedi — bunun için "İade Et" kullanın.');
+                  } else {
+                    BildirimServisi.basari(context, 'Satışlar iptal edildi');
+                  }
                 }
               }),
             ),

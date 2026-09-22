@@ -970,6 +970,13 @@ class IadeIslemServisi {
     required String? cariTipi,
     required int? kullaniciId,
     required String kullaniciAdi,
+    // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22 sabah) — bkz.
+    // topluIadeKaydet'teki AYNI düzeltmenin gerekçesi. Bu fonksiyon hiç
+    // kasa hareketi yazmaz (İade Geçmişi'nde mevcut/kapanmış bir fişe
+    // ek kalem işlemidir, kasa tarafı bu turun BİLİNÇLİ OLARAK kapsamı
+    // dışıdır) ama cari etkisini artık aynı 'Cari' ödeme yöntemi kuralına
+    // göre gerçek/nötr olarak ayırt eder.
+    required String odemeYontemi,
   }) async {
     final db = await Veritabani().db;
     final now = DateTime.now().toIso8601String();
@@ -1057,16 +1064,17 @@ class IadeIslemServisi {
 
       // 4. Cari: fis_id bazlı tek kayıt - mevcut varsa güncelle, yoksa ekle
       //
-      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı kararı, 2026-09-22) — bkz.
-      // topluIadeKaydet'teki AYNI düzeltmenin gerekçesi: bu fonksiyonun
-      // hiç ödeme yöntemi bilgisi yok (kasa hiç yazmıyor) ama yine de
-      // gerçek bir bakiye etkisi (borc/alacak asimetrik) yazıyordu — cari
-      // seçimi sadece takip amaçlı olmalı. Artık isTedarikci ayrımı SADECE
-      // fis_tipi (kayıt/kategori) için kullanılıyor, borc/alacak HER ZAMAN
-      // eşit (bakiyeyi etkilemez).
+      // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22 sabah): 'Cari'
+      // ödeme yöntemi seçilirse (para fiziksel verilmedi) bakiye GERÇEKTEN
+      // düzeltilir; 'Nakit'/'Kart/Banka' seçilirse (para zaten fiziksel
+      // verildi) cari sadece takip amaçlı nötr kayıt alır — bkz.
+      // topluIadeKaydet'teki AYNI kuralın gerekçesi.
       if (cariId != null) {
         final isTedarikci =
             (cariTipi ?? 'Müşteri').contains('edarik') || (cariTipi ?? '').contains('upplier');
+        final gercekEtki = odemeYontemi == 'Cari';
+        final ekBorc = gercekEtki ? (isTedarikci ? toplam : 0) : toplam;
+        final ekAlacak = gercekEtki ? (isTedarikci ? 0 : toplam) : toplam;
         final mevcut = await txn.rawQuery(
             "SELECT id, alacak, borc FROM cari_hareket WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi')",
             [iadeId, cariId]);
@@ -1076,8 +1084,8 @@ class IadeIslemServisi {
           await txn.rawUpdate(
               "UPDATE cari_hareket SET alacak = ?, borc = ?, last_updated = ? WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi')",
               [
-                eskiAlacak + toplam,
-                eskiBorc + toplam,
+                eskiAlacak + ekAlacak,
+                eskiBorc + ekBorc,
                 now,
                 iadeId,
                 cariId,
@@ -1090,10 +1098,12 @@ class IadeIslemServisi {
             'fis_tipi': isTedarikci ? 'Alım İadesi' : 'İade',
             'fis_id': iadeId,
             'fis_no': fisNo,
-            'aciklama': '${fisNo ?? ''} — bakiyeyi etkilemez',
-            'borc': toplam,
-            'alacak': toplam,
-            'odeme_turu': 'Nakit',
+            'aciklama': gercekEtki
+                ? '${fisNo ?? ''} — cari bakiyesine işlendi'
+                : '${fisNo ?? ''} — bakiyeyi etkilemez',
+            'borc': ekBorc,
+            'alacak': ekAlacak,
+            'odeme_turu': odemeYontemi,
             'kullanici': kullaniciAdi,
           });
         }

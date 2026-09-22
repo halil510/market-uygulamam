@@ -445,6 +445,7 @@ extension _GecmisTabExt on _IadeEkraniState {
         cariTipi: _secilenCari?.cariTipi,
         kullaniciId: AuthServisi().aktifId,
         kullaniciAdi: AuthServisi().aktifAd,
+        odemeYontemi: _iadeOdemeYontemi,
       );
 
       // 6. Lokal listeye ekle

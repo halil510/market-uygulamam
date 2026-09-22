@@ -18,7 +18,14 @@
              background: linear-gradient(100deg, var(--ana-renk), var(--ana-renk-koyu));
              color: white; display: flex; align-items: center; justify-content: space-between;
              padding: 16px 20px; box-shadow: 0 2px 14px rgba(0,0,0,0.18); }
-  .ust-bar .logo { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 800; letter-spacing: 0.3px; }
+  .ust-bar .logo { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 800; letter-spacing: 0.3px; cursor: pointer; }
+  .nav-baslik { cursor: pointer; }
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible, input:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--vurgu-renk); outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  }
   .menu-buton { background: rgba(255,255,255,0.12); border: none; color: white; font-size: 20px;
                 width: 42px; height: 42px; border-radius: 12px; cursor: pointer;
                 display: flex; align-items: center; justify-content: center;
@@ -231,15 +238,15 @@
 <body>
 
   <div class="ust-bar">
-    <span class="logo" id="ustBarBaslik">DoğalOra</span>
-    <button class="menu-buton" onclick="menuAc()">☰</button>
+    <span class="logo" id="ustBarBaslik" onclick="sayfaGoster('anasayfa')" role="link" tabindex="0" onkeydown="if(event.key==='Enter')sayfaGoster('anasayfa')">DoğalOra</span>
+    <button class="menu-buton" onclick="menuAc()" aria-label="Menüyü aç">☰</button>
   </div>
 
   <div class="karartma" id="karartma" onclick="menuKapat()"></div>
   <nav class="nav-menu" id="navMenu">
     <div class="nav-ust">
-      <div class="nav-baslik" id="navBaslik">DoğalOra</div>
-      <button class="nav-kapat" onclick="menuKapat()">✕</button>
+      <div class="nav-baslik" id="navBaslik" onclick="sayfaGoster('anasayfa')" role="link" tabindex="0" onkeydown="if(event.key==='Enter')sayfaGoster('anasayfa')">DoğalOra</div>
+      <button class="nav-kapat" onclick="menuKapat()" aria-label="Menüyü kapat">✕</button>
     </div>
     <a class="nav-link aktif" data-sayfa="anasayfa" onclick="sayfaGoster('anasayfa')"><span class="rozet">A</span> Ana Sayfa</a>
     <a class="nav-link" data-sayfa="urunler" onclick="sayfaGoster('urunler')"><span class="rozet">Ü</span> Ürünler</a>
@@ -373,6 +380,18 @@ const SUPABASE_ANON_KEY = "sb_publishable_6MqDIwTRaeuKdP6uo5mWew_AInoVbSY";
 // fazladan "/" varsa temizler — siz yanlış girseniz bile çalışır.
 SUPABASE_URL = SUPABASE_URL.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 
+// 🔴 DÜZELTME (güvenlik — XSS): ürün adı/açıklaması/grup gibi metinler
+// aşağıda innerHTML string'lerine DOĞRUDAN ekleniyordu, hiç escape
+// edilmeden. Bu alanlar personel tarafından ürün kartında serbest metin
+// olarak girilebiliyor — biri "<" veya bir HTML etiketi içeren bir ürün
+// adı girerse sayfa bozulur ya da (teorik olarak) tarayıcıda kod çalıştırılır.
+// Artık her dinamik metin buradan geçiyor.
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
 // ── Render fonksiyonları — hem sayfa açılışında hardcoded yedekle, hem de
 // buluttan (site_icerik) gelen güncel değerlerle YENİDEN çağrılabilir.
 // Bu, işyeri fotoğrafları galerisiyle AYNI kanıtlanmış desen: uygulamadan
@@ -386,8 +405,10 @@ function genelRender(isletmeAdi, altYazi) {
   document.getElementById('heroAltYazi').textContent = altYazi;
 }
 function hakkimizdaRender(metin) {
-  // \n\n paragraf araları korunarak gösteriliyor
-  document.getElementById('hakkimizdaMetin').innerHTML = metin.replace(/\n/g, '<br>');
+  // \n\n paragraf araları korunarak gösteriliyor — önce escape edilir,
+  // SONRA satır sonları <br>'a çevrilir (yoksa gerçek metindeki "<"
+  // karakterleri sayfayı bozabilirdi).
+  document.getElementById('hakkimizdaMetin').innerHTML = esc(metin).replace(/\n/g, '<br>');
 }
 function istatistikRender(liste) {
   document.getElementById('istatistiklerAlani').innerHTML = liste.map(i =>
@@ -475,15 +496,15 @@ function vitrinRender() {
   let html = '<div class="vitrin">';
   let sira = 0;
   for (const grup in gruplar) {
-    html += '<div class="vitrin-grup-baslik">' + grup + '</div>';
+    html += '<div class="vitrin-grup-baslik">' + esc(grup) + '</div>';
     gruplar[grup].forEach(u => {
       const gecikme = (sira++ % 8) * 0.06;
       html += '<div class="vitrin-kart" style="animation-delay:' + gecikme + 's" ' +
-        (u.resim ? 'onclick="resmiBuyut(\'' + u.resim + '\')"' : '') + '>' +
+        (u.resim ? 'onclick="resmiBuyut(\'' + esc(u.resim) + '\')"' : '') + '>' +
         (u.resim
-          ? '<img src="' + u.resim + '" alt="' + u.ad + '" loading="lazy">'
+          ? '<img src="' + esc(u.resim) + '" alt="' + esc(u.ad) + '" loading="lazy">'
           : '<div class="yok-resim">🍽️</div>') +
-        '<div class="vitrin-ad">' + u.ad + '</div></div>';
+        '<div class="vitrin-ad">' + esc(u.ad) + '</div></div>';
     });
   }
   html += '</div>';
@@ -564,14 +585,14 @@ function render() {
   urunler.forEach(u => { (gruplar[u.grup] = gruplar[u.grup] || []).push(u); });
   let html = '';
   for (const grup in gruplar) {
-    html += '<div class="grup">' + grup + '</div>';
+    html += '<div class="grup">' + esc(grup) + '</div>';
     gruplar[grup].forEach(u => {
       const adet = sepet[u.id] ? sepet[u.id].adet : 0;
       html += '<div class="urun">' +
-        (u.resim ? '<img class="urun-resim" src="' + u.resim + '" alt="" onclick="resmiBuyut(\'' + u.resim + '\')">' : '') +
+        (u.resim ? '<img class="urun-resim" src="' + esc(u.resim) + '" alt="" onclick="resmiBuyut(\'' + esc(u.resim) + '\')">' : '') +
         '<div class="urun-bilgi">' +
-        '<div class="urun-ad">' + u.ad + '</div>' +
-        (u.aciklama ? '<div class="urun-aciklama">' + u.aciklama + '</div>' : '') +
+        '<div class="urun-ad">' + esc(u.ad) + '</div>' +
+        (u.aciklama ? '<div class="urun-aciklama">' + esc(u.aciklama) + '</div>' : '') +
         '<div class="urun-fiyat">' + u.fiyat.toFixed(2) + ' ₺</div></div>' +
         '<div class="miktar-kutu">' +
         '<button class="btn-yuvarlak" onclick="degistir(' + u.id + ',-1)" ' + (adet===0?'disabled':'') + '>−</button>' +
@@ -609,7 +630,7 @@ function sepetiAc() {
   const adetler = Object.values(sepet);
   const toplam = adetler.reduce((s, k) => s + k.adet * k.urun.fiyat, 0);
   let satirlar = adetler.map(k =>
-    '<div class="sepet-satir"><span>' + k.adet + 'x ' + k.urun.ad + '</span><span>' +
+    '<div class="sepet-satir"><span>' + k.adet + 'x ' + esc(k.urun.ad) + '</span><span>' +
     (k.adet * k.urun.fiyat).toFixed(2) + ' ₺</span></div>').join('');
   document.getElementById('modalIcerik').innerHTML =
     '<h2>Siparişiniz</h2>' + satirlar +

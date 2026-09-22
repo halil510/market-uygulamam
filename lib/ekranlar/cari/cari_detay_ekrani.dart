@@ -405,8 +405,8 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
   /// tahsilat_odeme_ekrani.dart'taki AYNI kod yolu — orijinal makbuz
   /// numarası artık cari_hareket.fis_no'da saklı, yoksa geriye dönük
   /// eski kayıtlar için "Kopya" etiketiyle üretilir).
-  Future<void> _seciliYazdir() async {
-    final h = _seciliHareket;
+  Future<void> _seciliYazdir([CariHareketModel? hareket]) async {
+    final h = hareket ?? _seciliHareket;
     if (h == null || _yazdiriliyor) return;
     setState(() => _yazdiriliyor = true);
     try {
@@ -970,6 +970,29 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
               if (satisMi) ...[
                 const SizedBox(width: 6),
                 Icon(Icons.receipt_long_outlined, size: 18, color: TsRenk.metinIkincil(context)),
+              ],
+              // 🆕 Doğrudan görünür yazdır ikonu (kullanıcı isteği,
+              // 2026-09-22 sabah): uzun-basıp-seçme gizli bir jest olduğu
+              // için keşfedilmiyordu — artık her yazdırılabilir satırda
+              // tek dokunuşla doğrudan yazdırma var, uzun-bas+seç akışı
+              // (çoklu satırdan hızlı seçim için) AYNEN korunuyor.
+              if (yazdirilabilir) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: _yazdiriliyor && secili
+                      ? const SizedBox(width: 16, height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : Icon(Icons.print_outlined, size: 18, color: AppRenkler.primary),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  tooltip: 'Yazdır',
+                  onPressed: _yazdiriliyor
+                      ? null
+                      : () {
+                          setState(() => _seciliHareket = h);
+                          _seciliYazdir(h);
+                        },
+                ),
               ],
             ]),
             ),

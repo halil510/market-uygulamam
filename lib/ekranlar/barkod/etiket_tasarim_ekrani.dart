@@ -2,7 +2,9 @@
 // v3.0 — Barkod/metin arama + barkod okuyucu ile ürün ekleme, çoklu etiket yazdırma
 import 'package:flutter/foundation.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
@@ -89,6 +91,33 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
   String _secilenSablon      = 'Varsayılan';
   final List<String> _sablonlar = ['Varsayılan', 'Gıda', 'Tekstil', 'Elektronik', 'Kargo'];
 
+  // Özel boyut — 4 hazır ölçünün yanında, mm cinsinden serbest boyut girişi.
+  // "Raf etiketi" kullanımında işletmeler genelde kendi raf/ürün ölçüsüne
+  // göre özel etiket kağıdı kullanır; sabit 4 preset yetersiz kalıyordu.
+  bool _ozelBoyutAktif       = false;
+  final _ozelGenislikCtrl    = TextEditingController(text: '58');
+  final _ozelYukseklikCtrl   = TextEditingController(text: '30');
+
+  // Yazı boyutu ölçeği — önizlemede ve ZPL çıktısında tüm metinleri
+  // orantılı büyütüp küçültür. Termal (ESC/POS) tarafı donanım sınırlı
+  // olduğundan (sabit iki boy) bu ölçekten etkilenmez.
+  double _fontOlcek         = 1.0;
+
+  // Kullanıcının kaydettiği adlandırılmış özel şablonlar (5 hazır şablonun
+  // ötesinde) — SharedPreferences'ta JSON liste olarak saklanır.
+  List<Map<String, dynamic>> _ozelSablonlar = [];
+
+  double get _efGenislik => _ozelBoyutAktif
+      ? (double.tryParse(_ozelGenislikCtrl.text.replaceAll(',', '.')) ?? _boyut.w).clamp(20.0, 200.0)
+      : _boyut.w;
+  double get _efYukseklik => _ozelBoyutAktif
+      ? (double.tryParse(_ozelYukseklikCtrl.text.replaceAll(',', '.')) ?? _boyut.h).clamp(15.0, 200.0)
+      : _boyut.h;
+  PaperSize get _efKagit => _efGenislik > 65 ? PaperSize.mm80 : PaperSize.mm58;
+  String get _boyutEtiketMetni => _ozelBoyutAktif
+      ? '${_efGenislik.toStringAsFixed(0)}×${_efYukseklik.toStringAsFixed(0)} mm (özel)'
+      : _boyut.etiket;
+
   @override
   void initState() {
     super.initState();
@@ -96,6 +125,88 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
     _btDurumKontrol();
     // Firma adı önizlemede doğru görünsün diye erken yükleniyor
     _yazdirma.ayarlariYukle().then((_) { if (mounted) setState(() {}); });
+    _ozelSablonlariYukle();
+  }
+
+  // ── Adlandırılmış özel şablonlar ─────────────────────────────────────────
+  Future<void> _ozelSablonlariYukle() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('etiket_ozel_sablonlar');
+      if (raw == null) return;
+      final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+      if (mounted) setState(() => _ozelSablonlar = list);
+    } catch (_) {/* bozuk kayıt varsa yok say */}
+  }
+
+  Map<String, dynamic> _mevcutAyarlar() => {
+    'barkod': _barkodGoster, 'fiyat': _fiyatGoster, 'ad': _adGoster,
+    'firma': _firmaBilgi, 'birimFiyatli': _birimFiyatliMod, 'lotNo': _lotNoGoster,
+    'skt': _sktGoster, 'anaGrup': _anaGrupGoster, 'kdvDahil': _kdvDahilGoster,
+    'aciklama': _aciklamaGoster, 'ozelMetin': _ozelMetin, 'fontOlcek': _fontOlcek,
+    'boyutIndex': _boyut.index, 'ozelBoyutAktif': _ozelBoyutAktif,
+    'ozelGenislik': _ozelGenislikCtrl.text, 'ozelYukseklik': _ozelYukseklikCtrl.text,
+  };
+
+  void _ayarlariUygula(Map<String, dynamic> a) {
+    setState(() {
+      _barkodGoster    = a['barkod'] ?? true;
+      _fiyatGoster     = a['fiyat'] ?? true;
+      _adGoster        = a['ad'] ?? true;
+      _firmaBilgi      = a['firma'] ?? false;
+      _birimFiyatliMod = a['birimFiyatli'] ?? false;
+      _lotNoGoster     = a['lotNo'] ?? false;
+      _sktGoster       = a['skt'] ?? false;
+      _anaGrupGoster   = a['anaGrup'] ?? false;
+      _kdvDahilGoster  = a['kdvDahil'] ?? true;
+      _aciklamaGoster  = a['aciklama'] ?? false;
+      _ozelMetin       = a['ozelMetin'] ?? '';
+      _ozelMetinCtrl.text = _ozelMetin;
+      _fontOlcek       = (a['fontOlcek'] as num?)?.toDouble() ?? 1.0;
+      final bi = a['boyutIndex'] as int?;
+      if (bi != null && bi >= 0 && bi < EtiketBoyut.values.length) _boyut = EtiketBoyut.values[bi];
+      _ozelBoyutAktif  = a['ozelBoyutAktif'] ?? false;
+      _ozelGenislikCtrl.text  = (a['ozelGenislik'] as String?) ?? _ozelGenislikCtrl.text;
+      _ozelYukseklikCtrl.text = (a['ozelYukseklik'] as String?) ?? _ozelYukseklikCtrl.text;
+    });
+  }
+
+  Future<void> _ozelSablonKaydet() async {
+    final adCtrl = TextEditingController();
+    final ad = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Şablonu Kaydet'),
+        content: TextField(
+          controller: adCtrl, autofocus: true,
+          decoration: const InputDecoration(
+              labelText: 'Şablon adı', hintText: 'Örn: "Şarküteri Etiketi"',
+              border: OutlineInputBorder(), isDense: true),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, adCtrl.text.trim()),
+              child: const Text('Kaydet')),
+        ],
+      ),
+    );
+    if (ad == null || ad.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    _ozelSablonlar.removeWhere((s) => s['ad'] == ad);
+    _ozelSablonlar.add({'ad': ad, ..._mevcutAyarlar()});
+    await prefs.setString('etiket_ozel_sablonlar', jsonEncode(_ozelSablonlar));
+    if (!mounted) return;
+    setState(() {});
+    BildirimServisi.basari(context, 'Şablon kaydedildi: $ad');
+  }
+
+  Future<void> _ozelSablonSil(String ad) async {
+    final prefs = await SharedPreferences.getInstance();
+    _ozelSablonlar.removeWhere((s) => s['ad'] == ad);
+    await prefs.setString('etiket_ozel_sablonlar', jsonEncode(_ozelSablonlar));
+    if (mounted) setState(() {});
   }
 
   Future<void> _btDurumKontrol() async {
@@ -149,6 +260,8 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
     _araCtrl.dispose();
     _araFocus.dispose();
     _ozelMetinCtrl.dispose();
+    _ozelGenislikCtrl.dispose();
+    _ozelYukseklikCtrl.dispose();
     _tab.dispose();
     _scanCtrl?.dispose();
     super.dispose();
@@ -249,7 +362,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
           fiyatGoster:     _fiyatGoster,
           adGoster:        _adGoster,
           birimFiyatliMod: _birimFiyatliMod,
-          etiketBoy:       _boyut.kagit,
+          etiketBoy:       _efKagit,
           adet:            kalem.adet,
           firmaGoster:     _firmaBilgi,
           lotNoGoster:     _lotNoGoster,
@@ -279,8 +392,8 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
     if (_sepet.isEmpty) { BildirimServisi.uyari(context, 'Ürün ekleyin'); return; }
     final zpl = ZplServisi.topluZpl(
       _sepet.map((k) => (urun: k.urun, adet: k.adet)).toList(),
-      genislikMm: _boyut.w,
-      yukseklikMm: _boyut.h,
+      genislikMm: _efGenislik,
+      yukseklikMm: _efYukseklik,
       barkodGoster: _barkodGoster,
       fiyatGoster: _fiyatGoster,
       adGoster: _adGoster,
@@ -292,6 +405,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
       aciklamaGoster: _aciklamaGoster,
       kdvDahilFiyat: _kdvDahilGoster,
       ozelMetin: _ozelMetin,
+      fontOlcek: _fontOlcek,
     );
 
     if (_yazdirma.bagliMi) {
@@ -316,7 +430,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
                 Row(children: [
                   Icon(Icons.label_outline, size: 16, color: TsRenk.metinIkincil(context)),
                   const SizedBox(width: 6),
-                  Text('${_boyut.etiket} • ${_sepet.length} çeşit • '
+                  Text('$_boyutEtiketMetni • ${_sepet.length} çeşit • '
                       '${_sepet.fold<int>(0, (t, k) => t + k.adet)} adet',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: TsRenk.metinBirincil(context))),
                 ]),
@@ -372,7 +486,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
         subject: 'MarketPlus Etiketler (ZPL)',
         text: 'Bu .zpl dosyasını BarTender veya Zebra/ZPL uyumlu '
               'bir etiket yazıcısına "Dosyadan Yazdır" ile gönderebilirsiniz.\n'
-              'Etiket boyutu: ${_boyut.etiket}, Toplam: '
+              'Etiket boyutu: $_boyutEtiketMetni, Toplam: '
               '${_sepet.fold<int>(0, (t, k) => t + k.adet)} adet.',
       );
     } catch (e) {
@@ -746,8 +860,9 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
   }
 
   Widget _miniEtiketOnizleme(UrunModel u, bool barkodGecerli) {
-    final w = _boyut.w * 1.8;
-    final h = _boyut.h * 1.8;
+    final w = _efGenislik * 1.8;
+    final h = _efYukseklik * 1.8;
+    final f = _fontOlcek;
     return Container(
       width: w, height: h,
       decoration: BoxDecoration(
@@ -773,15 +888,15 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
           // griye dönüp yine kaybolurdu). Hepsi sabitlendi.
           if (_firmaBilgi)
             Text(_yazdirma.firmaAdiOnizleme,
-                style: TextStyle(fontSize: w * 0.03, color: Colors.black87),
+                style: TextStyle(fontSize: w * 0.03 * f, color: Colors.black87),
                 maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
           if (_adGoster)
             Text(u.urunAdi,
-                style: TextStyle(fontSize: w * 0.04, fontWeight: FontWeight.bold, color: Colors.black),
+                style: TextStyle(fontSize: w * 0.04 * f, fontWeight: FontWeight.bold, color: Colors.black),
                 maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
           if (_anaGrupGoster && (u.anaGrup?.isNotEmpty ?? false))
             Text(u.anaGrup!,
-                style: TextStyle(fontSize: w * 0.03, color: context.textSecondary),
+                style: TextStyle(fontSize: w * 0.03 * f, color: context.textSecondary),
                 maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
           if (barkodGecerli && _barkodGoster)
             Flexible(child: bw.BarcodeWidget(
@@ -794,21 +909,21 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
             )),
           if (_lotNoGoster && (u.lotNo?.isNotEmpty ?? false))
             Text('Lot: ${u.lotNo}',
-                style: TextStyle(fontSize: w * 0.025, color: context.textSecondary)),
+                style: TextStyle(fontSize: w * 0.025 * f, color: context.textSecondary)),
           if (_sktGoster && (u.sonKullanmaTarihi?.isNotEmpty ?? false))
             Text('SKT: ${u.sonKullanmaTarihi}',
-                style: TextStyle(fontSize: w * 0.025, color: context.textSecondary)),
+                style: TextStyle(fontSize: w * 0.025 * f, color: context.textSecondary)),
           if (_aciklamaGoster && (u.lotAciklama?.isNotEmpty ?? false))
             Text(u.lotAciklama!,
-                style: TextStyle(fontSize: w * 0.022, color: context.textSecondary),
+                style: TextStyle(fontSize: w * 0.022 * f, color: context.textSecondary),
                 maxLines: 1, overflow: TextOverflow.ellipsis),
           if (_fiyatGoster)
             Text('${ParaUtils.formatla(_onizlemeFiyat(u))} ₺',
-                style: TextStyle(fontSize: w * 0.045, fontWeight: FontWeight.w900,
+                style: TextStyle(fontSize: w * 0.045 * f, fontWeight: FontWeight.w900,
                     color: Colors.red.shade700)),
           if (_ozelMetin.trim().isNotEmpty)
             Text(_ozelMetin.trim(),
-                style: TextStyle(fontSize: w * 0.025, fontStyle: FontStyle.italic),
+                style: TextStyle(fontSize: w * 0.025 * f, fontStyle: FontStyle.italic),
                 maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
@@ -891,9 +1006,50 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
       title: Text(b.etiket),
       subtitle: Text('${b.w.toInt()}×${b.h.toInt()} mm · '
           '${b.kagit == PaperSize.mm58 ? "58mm kağıt" : "80mm kağıt"}'),
-      value: b, groupValue: _boyut,
-      onChanged: (v) { if (v != null) setState(() => _boyut = v); },
+      value: b, groupValue: _ozelBoyutAktif ? null : _boyut,
+      onChanged: (v) { if (v != null) setState(() { _boyut = v; _ozelBoyutAktif = false; }); },
     )),
+    SwitchListTile(
+      title: const Text('Özel Boyut'),
+      subtitle: const Text('Kendi mm ölçünüzü girin (ZPL/etiket önizlemesi için)'),
+      value: _ozelBoyutAktif,
+      onChanged: (v) => setState(() => _ozelBoyutAktif = v),
+    ),
+    if (_ozelBoyutAktif)
+      Padding(
+        padding: const EdgeInsets.only(left: 16, right: 8, bottom: 8),
+        child: Row(children: [
+          Expanded(
+            child: TextField(
+              controller: _ozelGenislikCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Genişlik (mm)', border: OutlineInputBorder(), isDense: true),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: _ozelYukseklikCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Yükseklik (mm)', border: OutlineInputBorder(), isDense: true),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+        ]),
+      ),
+    const Divider(height: 24),
+    _baslik('Yazı Boyutu'),
+    SegmentedButton<double>(
+      segments: const [
+        ButtonSegment(value: 0.85, label: Text('Kompakt')),
+        ButtonSegment(value: 1.0, label: Text('Normal')),
+        ButtonSegment(value: 1.2, label: Text('Büyük')),
+        ButtonSegment(value: 1.4, label: Text('Ekstra')),
+      ],
+      selected: {_fontOlcek},
+      onSelectionChanged: (s) => setState(() => _fontOlcek = s.first),
+    ),
     const Divider(height: 24),
     _baslik('İçerik'),
     SwitchListTile(
@@ -947,6 +1103,45 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
       onChanged: (v) => setState(() => _ozelMetin = v),
     ),
     const SizedBox(height: 16),
+    Row(children: [
+      Expanded(child: _baslik('Kayıtlı Şablonlarım')),
+      TextButton.icon(
+        icon: const Icon(Icons.save_outlined, size: 16),
+        label: const Text('Şu Anki Ayarları Kaydet', style: TextStyle(fontSize: 12)),
+        onPressed: _ozelSablonKaydet,
+      ),
+    ]),
+    if (_ozelSablonlar.isEmpty)
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text('Henüz kayıtlı özel şablon yok. İçerik/boyut/yazı ayarlarını '
+            'dilediğiniz gibi düzenleyip "Şu Anki Ayarları Kaydet" ile adlandırıp saklayabilirsiniz.',
+            style: TextStyle(color: TsRenk.metinIkincil(context), fontSize: 12)),
+      )
+    else
+      ..._ozelSablonlar.map((s) => Card(
+        margin: const EdgeInsets.only(bottom: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: TsRenk.ayirac(context))),
+        child: ListTile(
+          dense: true,
+          leading: const Icon(Icons.bookmark_outline, size: 20),
+          title: Text('${s['ad']}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+            IconButton(
+              icon: const Icon(Icons.download_outlined, size: 20),
+              tooltip: 'Uygula',
+              onPressed: () => _ayarlariUygula(s),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+              tooltip: 'Sil',
+              onPressed: () => _ozelSablonSil('${s['ad']}'),
+            ),
+          ]),
+        ),
+      )),
+    const SizedBox(height: 8),
     _baslik('Sepet Özeti'),
     if (_sepet.isEmpty)
       Text('Henüz ürün eklenmedi.',

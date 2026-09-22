@@ -118,6 +118,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
     final genislik = 80 * PdfPageFormat.mm;
     final vkn80    = f.cariVergiNo ?? '';
     final eArsivMi80 = vkn80.length == 11;
+    final scale    = (await SharedPreferences.getInstance()).getDouble('fatura_font_olcek') ?? 1.0;
 
     final doc = pw.Document();
     doc.addPage(pw.Page(
@@ -133,39 +134,39 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
                 fit: pw.BoxFit.cover)),
           ),
         pw.Text(firma['adi']!, textAlign: pw.TextAlign.center,
-            style: pw.TextStyle(font: boldFont, fontSize: 12)),
+            style: pw.TextStyle(font: boldFont, fontSize: 12 * scale)),
         if (firma['adres']!.isNotEmpty)
           pw.Text(firma['adres']!, textAlign: pw.TextAlign.center,
-              style: pw.TextStyle(font: font, fontSize: 7)),
+              style: pw.TextStyle(font: font, fontSize: 7 * scale)),
         if (firma['vergiDairesi']!.isNotEmpty || firma['vergiNo']!.isNotEmpty)
           pw.Text('VD: ${firma['vergiDairesi']}  VKN: ${firma['vergiNo']}',
-              style: pw.TextStyle(font: font, fontSize: 7)),
+              style: pw.TextStyle(font: font, fontSize: 7 * scale)),
         pw.SizedBox(height: 4),
         pw.Container(width: double.infinity, height: 0.5, color: PdfColors.black),
         pw.SizedBox(height: 4),
         _gibMuhru(font, boldFont, eArsivMi80, f.faturaTipi ?? 'Fatura'),
         pw.SizedBox(height: 4),
         pw.Text((f.faturaTipi ?? 'Fatura').toUpperCase(),
-            style: pw.TextStyle(font: boldFont, fontSize: 11)),
-        pw.Text('No: ${f.faturaNo ?? "-"}', style: pw.TextStyle(font: font, fontSize: 8)),
-        pw.Text(fmt.format(f.duzenlenmeTarihi ?? f.tarih), style: pw.TextStyle(font: font, fontSize: 8)),
+            style: pw.TextStyle(font: boldFont, fontSize: 11 * scale)),
+        pw.Text('No: ${f.faturaNo ?? "-"}', style: pw.TextStyle(font: font, fontSize: 8 * scale)),
+        pw.Text(fmt.format(f.duzenlenmeTarihi ?? f.tarih), style: pw.TextStyle(font: font, fontSize: 8 * scale)),
         if (f.eFaturaUuid != null)
-          pw.Text('ETTN: ${f.eFaturaUuid}', style: pw.TextStyle(font: font, fontSize: 6)),
+          pw.Text('ETTN: ${f.eFaturaUuid}', style: pw.TextStyle(font: font, fontSize: 6 * scale)),
         if (f.odemeSekli != null)
-          pw.Text('Ödeme Şekli: ${f.odemeSekli}', style: pw.TextStyle(font: font, fontSize: 6.5)),
+          pw.Text('Ödeme Şekli: ${f.odemeSekli}', style: pw.TextStyle(font: font, fontSize: 6.5 * scale)),
         pw.SizedBox(height: 4),
         pw.Container(width: double.infinity, height: 0.5, color: PdfColors.black),
         pw.SizedBox(height: 4),
         pw.Align(alignment: pw.Alignment.centerLeft, child: pw.Text('SAYIN',
-            style: pw.TextStyle(font: boldFont, fontSize: 7))),
+            style: pw.TextStyle(font: boldFont, fontSize: 7 * scale))),
         pw.Align(alignment: pw.Alignment.centerLeft, child: pw.Text(f.cariUnvan ?? '-',
-            style: pw.TextStyle(font: boldFont, fontSize: 9))),
+            style: pw.TextStyle(font: boldFont, fontSize: 9 * scale))),
         if (f.cariAdres != null && f.cariAdres!.isNotEmpty)
           pw.Align(alignment: pw.Alignment.centerLeft, child: pw.Text(f.cariAdres!,
-              style: pw.TextStyle(font: font, fontSize: 6.5))),
+              style: pw.TextStyle(font: font, fontSize: 6.5 * scale))),
         pw.Align(alignment: pw.Alignment.centerLeft, child: pw.Text(
             'VD: ${f.cariVergiDairesi ?? "-"}  VKN/TC: ${f.cariVergiNo ?? "-"}',
-            style: pw.TextStyle(font: font, fontSize: 6.5))),
+            style: pw.TextStyle(font: font, fontSize: 6.5 * scale))),
         pw.SizedBox(height: 4),
         pw.Container(width: double.infinity, height: 0.5, color: PdfColors.black),
         pw.SizedBox(height: 4),
@@ -173,27 +174,27 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
         ...f.detaylar.map((d) => pw.Padding(
           padding: const pw.EdgeInsets.only(bottom: 3),
           child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-            pw.Text(d.urunAdi, style: pw.TextStyle(font: font, fontSize: 8)),
+            pw.Text(d.urunAdi, style: pw.TextStyle(font: font, fontSize: 8 * scale)),
             pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
               pw.Text(
                 '${d.miktar.toStringAsFixed(d.miktar == d.miktar.roundToDouble() ? 0 : 2)} x '
                 '${ParaUtils.formatla(d.birimFiyat)} (KDV %${d.kdvOrani.toStringAsFixed(0)})',
-                style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey700)),
+                style: pw.TextStyle(font: font, fontSize: 7 * scale, color: PdfColors.grey700)),
               pw.Text(ParaUtils.formatla(d.toplamTutar),
-                  style: pw.TextStyle(font: boldFont, fontSize: 8)),
+                  style: pw.TextStyle(font: boldFont, fontSize: 8 * scale)),
             ]),
           ]),
         )),
         pw.Container(width: double.infinity, height: 0.5, color: PdfColors.black),
         pw.SizedBox(height: 4),
-        _termalToplamSatir('Ara Toplam', f.toplamAraToplam, font, boldFont),
-        if (f.toplamIskonto > 0) _termalToplamSatir('İndirim', -f.toplamIskonto, font, boldFont),
-        _termalToplamSatir('KDV', f.toplamKdv, font, boldFont),
+        _termalToplamSatir('Ara Toplam', f.toplamAraToplam, font, boldFont, scale: scale),
+        if (f.toplamIskonto > 0) _termalToplamSatir('İndirim', -f.toplamIskonto, font, boldFont, scale: scale),
+        _termalToplamSatir('KDV', f.toplamKdv, font, boldFont, scale: scale),
         pw.SizedBox(height: 2),
-        _termalToplamSatir('GENEL TOPLAM', f.genelToplam, font, boldFont, vurgu: true),
+        _termalToplamSatir('GENEL TOPLAM', f.genelToplam, font, boldFont, vurgu: true, scale: scale),
         pw.SizedBox(height: 6),
         pw.Text('Yalnız, ${tutariYaziyaCevir(f.genelToplam)}',
-            textAlign: pw.TextAlign.center, style: pw.TextStyle(font: font, fontSize: 7)),
+            textAlign: pw.TextAlign.center, style: pw.TextStyle(font: font, fontSize: 7 * scale)),
         pw.SizedBox(height: 8),
         if (firma['qrGoster'] == 'true')
           pw.BarcodeWidget(
@@ -204,18 +205,18 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
         pw.SizedBox(height: 6),
         pw.Text('Bizi tercih ettiğiniz için teşekkür ederiz.',
             textAlign: pw.TextAlign.center,
-            style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey600)),
+            style: pw.TextStyle(font: font, fontSize: 7 * scale, color: PdfColors.grey600)),
       ]),
     ));
     return doc.save();
   }
 
   pw.Widget _termalToplamSatir(String label, double val, pw.Font font, pw.Font boldFont,
-      {bool vurgu = false}) =>
+      {bool vurgu = false, double scale = 1.0}) =>
     pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-      pw.Text(label, style: pw.TextStyle(font: vurgu ? boldFont : font, fontSize: vurgu ? 9 : 7.5)),
+      pw.Text(label, style: pw.TextStyle(font: vurgu ? boldFont : font, fontSize: (vurgu ? 9 : 7.5) * scale)),
       pw.Text('${ParaUtils.formatla(val)} TL',
-          style: pw.TextStyle(font: vurgu ? boldFont : font, fontSize: vurgu ? 9 : 7.5)),
+          style: pw.TextStyle(font: vurgu ? boldFont : font, fontSize: (vurgu ? 9 : 7.5) * scale)),
     ]);
 
 
@@ -271,6 +272,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
       final kdvMuaf = prefsKdv.getBool('kdv_musaf') ?? false;
       final tevkifatVar = prefsKdv.getBool('tevkifat') ?? false;
       final tevkifatOrani = prefsKdv.getString('tevkifat_orani') ?? '';
+      final scale = prefsKdv.getDouble('fatura_font_olcek') ?? 1.0;
 
       pdf.addPage(pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -297,19 +299,19 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
               ],
             pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
               pw.Text(firma['adi']!,
-                  style: pw.TextStyle(font: boldFont, fontSize: 16)),
+                  style: pw.TextStyle(font: boldFont, fontSize: 16 * scale)),
               if (firma['adres']!.isNotEmpty)
                 pw.Text(firma['adres']!,
-                    style: pw.TextStyle(font: font, fontSize: 8.5),
+                    style: pw.TextStyle(font: font, fontSize: 8.5 * scale),
                     maxLines: 2),
               if (firma['vergiDairesi']!.isNotEmpty || firma['vergiNo']!.isNotEmpty)
                 pw.Text('Vergi Dairesi: ${firma['vergiDairesi']} | VKN: ${firma['vergiNo']}',
-                    style: pw.TextStyle(font: font, fontSize: 8.5)),
+                    style: pw.TextStyle(font: font, fontSize: 8.5 * scale)),
             ]),
             ]),
             pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
               pw.Text(belgeAdi.toUpperCase(),
-                  style: pw.TextStyle(font: boldFont, fontSize: 14)),
+                  style: pw.TextStyle(font: boldFont, fontSize: 14 * scale)),
               pw.SizedBox(height: 4),
               pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
                 if (firma['qrGoster'] == 'true') ...[
@@ -326,13 +328,13 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
                 padding: const pw.EdgeInsets.all(6),
                 decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
                 child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                  _pdfEtiket('Özelleştirme No', 'TR1.2.1', font, boldFont),
-                  _pdfEtiket('Fatura Tipi', f.faturaTipi ?? belgeAdi, font, boldFont),
-                  _pdfEtiket('Fatura Numarası', f.faturaNo ?? '-', font, boldFont),
-                  _pdfEtiket('Düzenlenme Tarihi', fmt.format(f.duzenlenmeTarihi ?? f.tarih), font, boldFont),
-                  _pdfEtiket('Düzenlenme Zamanı', fmtSaat.format(f.duzenlenmeTarihi ?? f.tarih), font, boldFont),
+                  _pdfEtiket('Özelleştirme No', 'TR1.2.1', font, boldFont, scale: scale),
+                  _pdfEtiket('Fatura Tipi', f.faturaTipi ?? belgeAdi, font, boldFont, scale: scale),
+                  _pdfEtiket('Fatura Numarası', f.faturaNo ?? '-', font, boldFont, scale: scale),
+                  _pdfEtiket('Düzenlenme Tarihi', fmt.format(f.duzenlenmeTarihi ?? f.tarih), font, boldFont, scale: scale),
+                  _pdfEtiket('Düzenlenme Zamanı', fmtSaat.format(f.duzenlenmeTarihi ?? f.tarih), font, boldFont, scale: scale),
                   if (f.eFaturaUuid != null)
-                    _pdfEtiket('ETTN', f.eFaturaUuid!, font, boldFont),
+                    _pdfEtiket('ETTN', f.eFaturaUuid!, font, boldFont, scale: scale),
                 ]),
               ),
               ]),
@@ -346,44 +348,44 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
               padding: const pw.EdgeInsets.all(6),
               decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
               child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                _pdfTutarSatir('Ara Toplam', f.toplamAraToplam, font, boldFont),
+                _pdfTutarSatir('Ara Toplam', f.toplamAraToplam, font, boldFont, scale: scale),
                 if (f.toplamIskonto > 0)
-                  _pdfTutarSatir('Toplam İndirim', f.toplamIskonto, font, boldFont),
-                _pdfTutarSatir('Vergiler Hariç Toplam', vergilerHaric, font, boldFont),
+                  _pdfTutarSatir('Toplam İndirim', f.toplamIskonto, font, boldFont, scale: scale),
+                _pdfTutarSatir('Vergiler Hariç Toplam', vergilerHaric, font, boldFont, scale: scale),
                 if (kdvMuaf)
                   pw.Padding(
                     padding: const pw.EdgeInsets.symmetric(vertical: 2),
-                    child: pw.Text('KDV Muaf', style: pw.TextStyle(font: boldFont, fontSize: 8)),
+                    child: pw.Text('KDV Muaf', style: pw.TextStyle(font: boldFont, fontSize: 8 * scale)),
                   )
                 else ...[
                   for (final entry in kdvGruplari.entries)
                     if (entry.value > 0)
                       _pdfTutarSatir('Hesaplanan KDV (%${entry.key.toStringAsFixed(0)})',
-                          entry.value, font, boldFont),
+                          entry.value, font, boldFont, scale: scale),
                   if (tevkifatVar && tevkifatOrani.isNotEmpty)
                     pw.Padding(
                       padding: const pw.EdgeInsets.symmetric(vertical: 2),
                       child: pw.Text('Tevkifat Oranı: $tevkifatOrani',
-                          style: pw.TextStyle(font: font, fontSize: 8)),
+                          style: pw.TextStyle(font: font, fontSize: 8 * scale)),
                     ),
                 ],
-                _pdfTutarSatir('Vergiler Dahil Toplam', f.genelToplam, font, boldFont, vurgu: true),
-                _pdfTutarSatir('Ödenecek Toplam', f.genelToplam, font, boldFont, vurgu: true),
+                _pdfTutarSatir('Vergiler Dahil Toplam', f.genelToplam, font, boldFont, vurgu: true, scale: scale),
+                _pdfTutarSatir('Ödenecek Toplam', f.genelToplam, font, boldFont, vurgu: true, scale: scale),
               ]),
             ),
           ),
           pw.SizedBox(height: 14),
           // ── SAYIN: Alıcı bilgileri ───────────────────────────────────────
-          pw.Text('SAYIN', style: pw.TextStyle(font: boldFont, fontSize: 9)),
+          pw.Text('SAYIN', style: pw.TextStyle(font: boldFont, fontSize: 9 * scale)),
           pw.SizedBox(height: 2),
           pw.Text(f.cariUnvan ?? '-',
-              style: pw.TextStyle(font: boldFont, fontSize: 11)),
+              style: pw.TextStyle(font: boldFont, fontSize: 11 * scale)),
           if (f.cariAdres != null && f.cariAdres!.isNotEmpty)
-            pw.Text(f.cariAdres!, style: pw.TextStyle(font: font, fontSize: 9)),
+            pw.Text(f.cariAdres!, style: pw.TextStyle(font: font, fontSize: 9 * scale)),
           pw.Text(
             'Vergi Dairesi: ${f.cariVergiDairesi ?? "-"}'
             '${vkn.isEmpty ? "" : (eArsivMi ? " | TC Kimlik Numarası: $vkn" : " | Vergi Numarası: $vkn")}',
-            style: pw.TextStyle(font: font, fontSize: 9)),
+            style: pw.TextStyle(font: font, fontSize: 9 * scale)),
           pw.SizedBox(height: 12),
           // ── Kalemler tablosu ─────────────────────────────────────────────
           pw.Table(
@@ -408,7 +410,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
                         padding: const pw.EdgeInsets.all(3),
                         child: pw.Text(h,
                             textAlign: pw.TextAlign.center,
-                            style: pw.TextStyle(font: boldFont, fontSize: 8))))
+                            style: pw.TextStyle(font: boldFont, fontSize: 8 * scale))))
                     .toList(),
               ),
               ...f.detaylar.asMap().entries.map((e) {
@@ -416,17 +418,17 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
                 final d = e.value;
                 final netTutar = d.araToplam - d.iskontoTutari;
                 return pw.TableRow(children: [
-                  _pdfHucre('$i', font, align: pw.TextAlign.center),
-                  _pdfHucre(d.urunAdi, font),
-                  _pdfHucre(d.barkod ?? '', font, align: pw.TextAlign.center),
+                  _pdfHucre('$i', font, align: pw.TextAlign.center, scale: scale),
+                  _pdfHucre(d.urunAdi, font, scale: scale),
+                  _pdfHucre(d.barkod ?? '', font, align: pw.TextAlign.center, scale: scale),
                   _pdfHucre('${d.miktar.toStringAsFixed(d.miktar == d.miktar.roundToDouble() ? 0 : 2)} Adet',
-                      font, align: pw.TextAlign.center),
-                  _pdfHucre(ParaUtils.formatla(d.birimFiyat), font, align: pw.TextAlign.right),
-                  _pdfHucre(ParaUtils.formatla(d.araToplam), font, align: pw.TextAlign.right),
-                  _pdfHucre(ParaUtils.formatla(netTutar), font, align: pw.TextAlign.right),
+                      font, align: pw.TextAlign.center, scale: scale),
+                  _pdfHucre(ParaUtils.formatla(d.birimFiyat), font, align: pw.TextAlign.right, scale: scale),
+                  _pdfHucre(ParaUtils.formatla(d.araToplam), font, align: pw.TextAlign.right, scale: scale),
+                  _pdfHucre(ParaUtils.formatla(netTutar), font, align: pw.TextAlign.right, scale: scale),
                   _pdfHucre('%${d.kdvOrani.toStringAsFixed(d.kdvOrani == d.kdvOrani.roundToDouble() ? 0 : 2)}',
-                      font, align: pw.TextAlign.center),
-                  _pdfHucre(ParaUtils.formatla(d.toplamTutar), font, align: pw.TextAlign.right),
+                      font, align: pw.TextAlign.center, scale: scale),
+                  _pdfHucre(ParaUtils.formatla(d.toplamTutar), font, align: pw.TextAlign.right, scale: scale),
                 ]);
               }),
             ],
@@ -439,15 +441,15 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
                 padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
                 child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                  pw.Text('Not:', style: pw.TextStyle(font: boldFont, fontSize: 9)),
+                  pw.Text('Not:', style: pw.TextStyle(font: boldFont, fontSize: 9 * scale)),
                   pw.Text('Yalniz, ' + tutariYaziyaCevir(f.genelToplam),
-                      style: pw.TextStyle(font: font, fontSize: 9)),
+                      style: pw.TextStyle(font: font, fontSize: 9 * scale)),
                   pw.SizedBox(height: 2),
                   pw.Text(
                     eArsivMi
                         ? "e-Arsiv izni kapsaminda elektronik ortamda iletilmistir."
                         : "Bu fatura 397 Sira No'lu VUK Genel Tebligi kapsaminda e-Fatura olarak duzenlenmistir.",
-                    style: pw.TextStyle(font: font, fontSize: 8)),
+                    style: pw.TextStyle(font: font, fontSize: 8 * scale)),
                 ]),
               ),
             ),
@@ -462,7 +464,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
                   pw.Expanded(child: pw.Image(
                       pw.MemoryImage(File(firma['imzaYolu']!).readAsBytesSync()),
                       fit: pw.BoxFit.contain)),
-                  pw.Text('Imza / Kase', style: pw.TextStyle(font: font, fontSize: 7)),
+                  pw.Text('Imza / Kase', style: pw.TextStyle(font: font, fontSize: 7 * scale)),
                 ]),
               ),
             ],
@@ -518,31 +520,31 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
     );
   }
 
-  pw.Widget _pdfHucre(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left}) =>
+  pw.Widget _pdfHucre(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left, double scale = 1.0}) =>
     pw.Padding(
       padding: const pw.EdgeInsets.all(3),
       child: pw.Text(text, textAlign: align,
-          style: pw.TextStyle(font: font, fontSize: 8)));
+          style: pw.TextStyle(font: font, fontSize: 8 * scale)));
 
-  pw.Widget _pdfEtiket(String label, String deger, pw.Font font, pw.Font boldFont) =>
+  pw.Widget _pdfEtiket(String label, String deger, pw.Font font, pw.Font boldFont, {double scale = 1.0}) =>
     pw.Padding(
       padding: const pw.EdgeInsets.symmetric(vertical: 1),
       child: pw.Row(mainAxisSize: pw.MainAxisSize.min, children: [
         pw.SizedBox(width: 110, child: pw.Text('$label:',
-            style: pw.TextStyle(font: font, fontSize: 8))),
-        pw.Text(deger, style: pw.TextStyle(font: boldFont, fontSize: 8)),
+            style: pw.TextStyle(font: font, fontSize: 8 * scale))),
+        pw.Text(deger, style: pw.TextStyle(font: boldFont, fontSize: 8 * scale)),
       ]),
     );
 
   pw.Widget _pdfTutarSatir(String label, double val, pw.Font font, pw.Font boldFont,
-      {bool vurgu = false}) =>
+      {bool vurgu = false, double scale = 1.0}) =>
     pw.Padding(
       padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
       child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
         pw.Text(label, style: pw.TextStyle(
-            font: vurgu ? boldFont : font, fontSize: vurgu ? 10 : 9)),
+            font: vurgu ? boldFont : font, fontSize: (vurgu ? 10 : 9) * scale)),
         pw.Text('${ParaUtils.formatla(val)} TL', style: pw.TextStyle(
-            font: vurgu ? boldFont : font, fontSize: vurgu ? 10 : 9)),
+            font: vurgu ? boldFont : font, fontSize: (vurgu ? 10 : 9) * scale)),
       ]),
     );
 }

@@ -65,6 +65,9 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
   String _yazdirmaFormat = 'a4'; // a4 | 80mm
   final _faturaNotCtrl   = TextEditingController();
   final _dipnotCtrl      = TextEditingController();
+  // Yazı boyutu ölçeği — PDF'teki tüm metinleri orantılı büyütür/küçültür
+  // (resmi "T.C. Değerli Kağıt" damga kutusu hariç — o sabit kalmalı).
+  double _fontOlcek      = 1.0;
 
   // KDV ayarları
   String _varsayilanKdv  = '20'; // Türkiye 2024: %20 standart
@@ -127,6 +130,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
       _faturaNotCtrl.text    = prefs.getString('fatura_notlari') ?? '';
       _dipnotCtrl.text       = prefs.getString('fatura_dipnot') ??
           'Bu fatura elektronik olarak oluşturulmuştur.';
+      _fontOlcek             = prefs.getDouble('fatura_font_olcek') ?? 1.0;
     });
   }
 
@@ -168,6 +172,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
       await prefs.setBool('fatura_barkod',         _barkodGoster);
       await prefs.setString('fatura_notlari',      _faturaNotCtrl.text.trim());
       await prefs.setString('fatura_dipnot',       _dipnotCtrl.text.trim());
+      await prefs.setDouble('fatura_font_olcek',   _fontOlcek);
       if (mounted) BildirimServisi.basari(context, '✓ Fatura ayarları kaydedildi');
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
@@ -606,6 +611,32 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
           Text(
             'Diğer format ve e-posta gönderimi her zaman fatura ekranındaki '
             '"⋮" menüsünden de seçilebilir.',
+            style: TextStyle(fontSize: 11, color: context.textSecondary)),
+        ]),
+      ),
+    ]),
+    const SizedBox(height: 4),
+    _Baslik('Yazı Boyutu'),
+    _Kart(children: [
+      Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Faturanın PDF çıktısındaki tüm yazıların boyutu',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          SegmentedButton<double>(
+            segments: const [
+              ButtonSegment(value: 0.85, label: Text('Kompakt')),
+              ButtonSegment(value: 1.0, label: Text('Normal')),
+              ButtonSegment(value: 1.15, label: Text('Büyük')),
+            ],
+            selected: {_fontOlcek},
+            onSelectionChanged: (s) => setState(() => _fontOlcek = s.first),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Daha fazla ürün satırını tek sayfaya sığdırmak için "Kompakt", '
+            'göz yorgunluğu az olsun diye "Büyük" seçebilirsiniz.',
             style: TextStyle(fontSize: 11, color: context.textSecondary)),
         ]),
       ),

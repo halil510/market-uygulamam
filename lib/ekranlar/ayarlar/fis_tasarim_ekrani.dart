@@ -1,7 +1,10 @@
 // lib/ekranlar/ayarlar/fis_tasarim_ekrani.dart
 // v2.1 - Tamamen düzeltilmiş, çalışan versiyon
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:barcode/barcode.dart' as bc;
 import 'package:pdf/widgets.dart' as pw;
@@ -72,6 +75,10 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
   int    _kopySayisi      = 1;
   int    _beslemeKagit    = 3;
 
+  // Firma logosu — fişin en üstüne, firma adının üzerine basılır.
+  bool   _logoGoster      = false;
+  String? _logoYolu;
+
   @override
   void initState() {
     super.initState();
@@ -97,7 +104,7 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
     'fis_baslik_metin', 'fis_alt_yazi', 'fis_tesekkur_metni', 'fis_kopya_sayisi',
     'fis_besleme_kagit',
     'fis_cari_bakiye_goster', 'fis_yaziyla_tutar', 'fis_alt_barkod_goster',
-    'fis_cari_goster',
+    'fis_cari_goster', 'fis_logo_goster', 'fis_logo_yolu',
   ];
 
   Future<void> _yukle() async {
@@ -135,6 +142,8 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
         _altYaziCtrl.text = m['fis_alt_yazi'] ?? '';
         _tesekkurCtrl.text = m['fis_tesekkur_metni'] ??
             'Bizi tercih ettiğiniz için teşekkürler!';
+        _logoGoster       = (m['fis_logo_goster'] ?? '0') == '1';
+        _logoYolu         = (m['fis_logo_yolu'] ?? '').isEmpty ? null : m['fis_logo_yolu'];
       });
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Ayarlar yüklenemedi: $e');
@@ -180,6 +189,8 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
         _ayarKaydet('fis_baslik_metin', _baslikCtrl.text),
         _ayarKaydet('fis_alt_yazi', _altYaziCtrl.text),
         _ayarKaydet('fis_tesekkur_metni', _tesekkurCtrl.text),
+        _ayarKaydet('fis_logo_goster', _logoGoster ? '1' : '0'),
+        _ayarKaydet('fis_logo_yolu', _logoYolu ?? ''),
       ]);
       if (mounted) BildirimServisi.basari(context, 'Fiş tasarımı kaydedildi ✓');
     } catch (e) {
@@ -190,18 +201,48 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
   }
 
 
+  // ── Logo seç/kaldır ──────────────────────────────────────────────────────
+  Future<void> _logoSec() async {
+    final picker = ImagePicker();
+    final xFile = await picker.pickImage(
+        source: ImageSource.gallery, maxWidth: 600, maxHeight: 600, imageQuality: 90);
+    if (xFile == null) return;
+    try {
+      final base = await getApplicationDocumentsDirectory();
+      final dir = Directory('${base.path}/fis_gorseller');
+      if (!await dir.exists()) await dir.create(recursive: true);
+      final hedef = File('${dir.path}/logo.png');
+      await File(xFile.path).copy(hedef.path);
+      if (!mounted) return;
+      setState(() { _logoYolu = hedef.path; _logoGoster = true; });
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Logo kaydedilemedi: $e');
+    }
+  }
+
+  void _logoKaldir() => setState(() { _logoYolu = null; _logoGoster = false; });
+
   // PDF Olusturucu
   Future<pw.Document> _fisPdfOlustur() async {
     final pdf = pw.Document();
     final genislik = _fisGenislik == 58
         ? PdfPageFormat(58 * PdfPageFormat.mm, 297 * PdfPageFormat.mm)
         : PdfPageFormat(80 * PdfPageFormat.mm, 297 * PdfPageFormat.mm);
+    pw.MemoryImage? logoResim;
+    if (_logoGoster && _logoYolu != null && await File(_logoYolu!).exists()) {
+      try { logoResim = pw.MemoryImage(await File(_logoYolu!).readAsBytes()); } catch (_) {}
+    }
 
     pdf.addPage(pw.Page(
       pageFormat: genislik,
       margin: const pw.EdgeInsets.all(4),
       build: (ctx) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
+        if (logoResim != null)
+          pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 4),
+            child: pw.Image(logoResim, height: 40, fit: pw.BoxFit.contain),
+          ),
         if (_baslikCtrl.text.isNotEmpty)
           pw.Text(_baslikCtrl.text, style: pw.TextStyle(fontSize: _baslikFontBoyut, fontWeight: pw.FontWeight.bold)),
         if (_firmaAdi) pw.Text('ORNEK MARKET', style: pw.TextStyle(fontSize: _baslikFontBoyut, fontWeight: pw.FontWeight.bold)),
@@ -451,6 +492,9 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
 
   // TAB 2: Tasarim
   Widget _tasarimTab() => ListView(padding: const EdgeInsets.all(16), children: [
+    _bolumBaslik('Firma Logosu'),
+    _logoAlani(),
+    const SizedBox(height: 16),
     _bolumBaslik('Kagit Genisligi'),
     Row(children: [58, 80].map((g) => Padding(
       padding: const EdgeInsets.only(right: 10),
@@ -541,6 +585,40 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
   );
 
   // YARDIMCI WIDGET'LAR
+
+  Widget _logoAlani() {
+    final var_ = _logoYolu != null && File(_logoYolu!).existsSync();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+          color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: TsRenk.ayirac(context))),
+      child: Row(children: [
+        Container(
+          width: 56, height: 56,
+          decoration: BoxDecoration(
+            color: TsRenk.arkaplan(context),
+            borderRadius: BorderRadius.circular(8),
+            image: var_ ? DecorationImage(image: FileImage(File(_logoYolu!)), fit: BoxFit.contain) : null,
+          ),
+          child: !var_ ? Icon(Icons.image_outlined, color: TsRenk.metinIkincil(context), size: 26) : null,
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Fişin üstüne basılır', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: TsRenk.metinBirincil(context))),
+          const SizedBox(height: 2),
+          Text(var_ ? 'Yüklendi' : 'PNG/JPG — şeffaf arkaplan önerilir',
+              style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
+        ])),
+        TextButton(onPressed: _logoSec, child: Text(var_ ? 'Değiştir' : 'Yükle')),
+        if (var_)
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+            onPressed: _logoKaldir,
+          ),
+      ]),
+    );
+  }
 
   Widget _fontSlider(String label, double val, double min, double max, ValueChanged<double> onChange) =>
     Container(

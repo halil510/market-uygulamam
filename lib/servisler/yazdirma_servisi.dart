@@ -211,6 +211,30 @@ class YazdirmaServisi {
     return bytes;
   }
 
+  /// Fiş üstüne firma logosunu basar (Fiş Tasarımı ekranında yüklenen
+  /// PNG/JPG). Görsel kağıt genişliğine göre orantılı küçültülür; okunamaz
+  /// veya bozuksa sessizce atlanır (fiş logosuz devam eder, hata vermez).
+  Future<List<int>> _logoBas(Generator generator) async {
+    final bytes = <int>[];
+    if (!_fisLogoGoster || _fisLogoYolu.isEmpty) return bytes;
+    try {
+      final dosya = File(_fisLogoYolu);
+      if (!await dosya.exists()) return bytes;
+      final ham = await dosya.readAsBytes();
+      final decoded = img.decodeImage(ham);
+      if (decoded == null) return bytes;
+      final tamGenislik = _kagit == PaperSize.mm58 ? 384 : 576;
+      final hedefGenislik = (tamGenislik * 0.6).round();
+      final oran = hedefGenislik / decoded.width;
+      final resim = img.copyResize(decoded,
+          width: hedefGenislik, height: (decoded.height * oran).round());
+      bytes.addAll(generator.imageRaster(resim, align: PosAlign.center));
+    } catch (e) {
+      if (kDebugMode) debugPrint('Fiş logosu basılamadı: $e');
+    }
+    return bytes;
+  }
+
   /// Cari bakiyesini insan okunur biçimde yazar.
   ///
   /// `cari.bakiye = SUM(borc) - SUM(alacak)` olduğu için:
@@ -279,6 +303,8 @@ class YazdirmaServisi {
   bool _fisParaUstuGoster = true;
   int _fisKopyaSayisi = 1;
   int _fisBeslemeKagit = 3;
+  bool _fisLogoGoster = false;
+  String _fisLogoYolu = '';
 
   // ── Durum ─────────────────────────────────────────────────────────────────
   bool get bagliMi => _aktif?.bagliMi == true;
@@ -383,7 +409,7 @@ class YazdirmaServisi {
           "'fis_tesekkur_metni','fis_odeme_yontemi_goster','fis_para_ustu_goster',"
           "'fis_kopya_sayisi','fis_besleme_kagit',"
           "'fis_cari_bakiye_goster','fis_yaziyla_tutar','fis_alt_barkod_goster',"
-          "'fis_cari_goster')");
+          "'fis_cari_goster','fis_logo_goster','fis_logo_yolu')");
       final m = {for (final r in rows) r['anahtar'] as String: r['deger'] as String};
       _firmaAdi   = m['firma_adi']     ?? 'MarketPlus';
       _firmaAdres = m['firma_adres']   ?? '';
@@ -410,6 +436,8 @@ class YazdirmaServisi {
       _fisCariBakiyeGoster = (m['fis_cari_bakiye_goster'] ?? '1') == '1';
       _fisYaziylaTutar     = (m['fis_yaziyla_tutar'] ?? '1') == '1';
       _fisBarkodGoster     = (m['fis_alt_barkod_goster'] ?? '1') == '1';
+      _fisLogoGoster       = (m['fis_logo_goster'] ?? '0') == '1';
+      _fisLogoYolu         = m['fis_logo_yolu'] ?? '';
     } catch (e) {
       if (kDebugMode) debugPrint('Ayar okuma hatası: $e');
     }
@@ -824,6 +852,7 @@ class YazdirmaServisi {
     for (int kopya = 0; kopya < _fisKopyaSayisi.clamp(1, 5); kopya++) {
       final List<int> bytes = [];
 
+      bytes.addAll(await _logoBas(generator));
       bytes.addAll(generator.text(_t(fa),
           styles: const PosStyles(bold: true, align: PosAlign.center,
               height: PosTextSize.size2, width: PosTextSize.size1)));

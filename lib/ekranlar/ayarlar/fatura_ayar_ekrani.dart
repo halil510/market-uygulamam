@@ -591,6 +591,35 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
         '"HLF2026000000018" olur. Sayaç bu numaradan devam eder.',
         style: TextStyle(fontSize: 11, color: context.textSecondary)),
     ),
+    // 🔴 DÜZELTME (kritik — derin denetimde bulundu): Fatura numarası
+    // SADECE bu cihazdaki yerel verilere bakılarak (MAX+1) üretilir —
+    // buluttan/diğer cihazlardan KONTROL EDİLMEZ. Birden fazla cihaz
+    // (ör. iki kasa, iki şube) faturayı BURADAN kesiyorsa ve AYNI ön eki
+    // kullanıyorsa, iki cihaz AYNI ANDA AYNI fatura numarasını üretebilir
+    // — bu, GİB nezdinde ciddi bir mükerrer/sıra hatası riskidir. Önceden
+    // bu risk hiç belirtilmiyordu.
+    Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.orange.withAlpha(30),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.orange.shade300),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.warning_amber_rounded, size: 18, color: Colors.orange.shade800),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Birden fazla cihazdan/şubeden fatura kesiyorsanız her cihaza '
+            'FARKLI bir ön ek verin (ör. Merkez: "HLF", Şube: "HLS"). Aynı '
+            'ön ek kullanılırsa, iki cihaz aynı anda aynı fatura numarasını '
+            'üretebilir — bu GİB\'e karşı mükerrer/sıra hatası riski taşır.',
+            style: TextStyle(fontSize: 11.5, color: Colors.orange.shade900),
+          ),
+        ),
+      ]),
+    ),
     const SizedBox(height: 4),
     _Baslik('Yazdırma Formatı'),
     _Kart(children: [

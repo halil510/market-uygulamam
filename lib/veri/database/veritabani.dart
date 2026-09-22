@@ -503,6 +503,32 @@ class Veritabani {
           if (tablo == 'satislar') {
             kayit['sync_cakisma_kopyasi'] = 1;
           }
+          // 🔴 DÜZELTME (kritik — derin denetimde bulundu, sadece
+          // 'faturalar' için): Bu yeniden adlandırma ÖNCEDEN SADECE yerel
+          // veritabanına yazılıyordu — Supabase'e (veya diğer cihazlara)
+          // HİÇ geri gönderilmiyordu. Sonuç: bulutta AYNI fatura_no'ya
+          // sahip İKİ satır kalıcı olarak duruyordu, ve iki cihaz bu
+          // çakışmayı GÖRDÜKLERİ SIRAYA göre BAĞIMSIZ/FARKLI şekillerde
+          // çözüyordu (A cihazı X satırını, B cihazı Y satırını "-SYNC"
+          // yapabiliyordu) — resmi fatura numaralarında çoklu-cihaz
+          // tutarsızlığı. Artık çözülmüş (yeni numaralı) hâli BULUTA DA
+          // geri gönderiliyor ki diğer cihazlar bir sonraki senkronda
+          // AYNI (çözülmüş) sonucu görsün.
+          //
+          // NOT: Bu, İKİ cihazın TAM OLARAK AYNI ANDA aynı fatura_no'yu
+          // üretme riskinin KENDİSİNİ ortadan kaldırmaz (bu, çevrimdışı-
+          // öncelikli mimariyi bozmadan ayrı, daha büyük bir tasarım
+          // kararı gerektirir — bkz. proje notları) — sadece çakışma
+          // TESPİT EDİLDİKTEN SONRA bulutun ve tüm cihazların AYNI
+          // (çözülmüş) sonuca YAKINSAMASINI sağlar.
+          if (tablo == 'faturalar') {
+            try {
+              BulutManager().upsert(tablo, Map<String, dynamic>.from(kayit));
+            } catch (e) {
+              LogServisi().bilgi('Fatura çakışma düzeltmesi buluta '
+                  'gönderilemedi (bir sonraki senkronda tekrar denenecek): $e');
+            }
+          }
           LogServisi().bilgi(
               'Senkronizasyon çakışması önlendi: $tablo ($gelenGlobalId) '
               'yeni numara aldı, yerel kayıt korundu.');

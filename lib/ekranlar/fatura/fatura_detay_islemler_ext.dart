@@ -166,7 +166,9 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
       // persist edilir: 'gonderiliyor' durumunda DB'de hâlâ null olabilen
       // eFaturaUuid, bu sorgulamayla birlikte kalıcı olarak doldurulmuş
       // olur (bir daha yeniden hesaplamaya gerek kalmaz).
-      final durum = await _eBelge.durumSorgula(_fatura!, ettn);
+      final sonuc = await _eBelge.durumSorgula(_fatura!, ettn);
+      final durum = sonuc?.durum;
+      final aciklama = sonuc?.aciklama;
       if (navigator.mounted) navigator.pop();
       if (!mounted) return;
       showDialog(context: context, builder: (ctx) => AlertDialog(
@@ -176,6 +178,13 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
           Icon(_durumIkonu(durum), color: _durumRengi(durum), size: 40),
           const SizedBox(height: 12),
           Text(_durumEtiketi(durum), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          if (aciklama != null) ...[
+            const SizedBox(height: 8),
+            Text(durum == 'reddedildi' ? 'Red sebebi: $aciklama' : aciklama,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13,
+                    color: durum == 'reddedildi' ? Colors.red : null)),
+          ],
           Text('UUID: ${ettn.substring(0, 8)}...',
               style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
         ]),

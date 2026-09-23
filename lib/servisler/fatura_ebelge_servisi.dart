@@ -56,14 +56,14 @@ class FaturaEBelgeServisi {
   }
 
   /// GİB'den durum sorgular, sonucu DB'ye yazar (ETTN de bu vesileyle
-  /// kalıcı olarak doldurulmuş olur) ve normalleştirilmiş durumu döner.
+  /// kalıcı olarak doldurulmuş olur) ve normalleştirilmiş durumu + GİB açıklamasını (red sebebi) döner.
   /// Hata durumunda exception fırlatır — çağıran taraf yakalayıp
   /// göstermeli (GibServisi.durumSorgula ile aynı sözleşme).
-  Future<String?> durumSorgula(FaturaModel fatura, String ettn) async {
+  Future<GibDurumSonucu?> durumSorgula(FaturaModel fatura, String ettn) async {
     await _gib.ayarlariYukle();
-    final String? durum;
+    final GibDurumSonucu? sonuc;
     try {
-      durum = await _gib.durumSorgula(ettn);
+      sonuc = await _gib.durumSorgula(ettn, referansId: fatura.id ?? 0);
     } on GibBelgeBulunamadi {
       // 'gonderiliyor'da kalmış (gönderim sırasında çökme vb.) ve GİB'e
       // hiç ulaşmamış: 'hata'ya çek ki Gönder tekrar açılsın — aynı
@@ -74,10 +74,11 @@ class FaturaEBelgeServisi {
       }
       rethrow;
     }
+    final durum = sonuc?.durum;
     if (durum != null) {
       await _depo.eFaturaDurumGuncelle(fatura.id!, durum, uuid: ettn);
     }
-    return durum;
+    return sonuc;
   }
 
   /// GİB'de iptal eder; başarılıysa DB'yi 'gib_iptal' olarak günceller.

@@ -427,7 +427,13 @@ class GibServisi {
   // sessizce yutulan hatayı kullanıcıya görünür kılıyor. "Yapılandırılmamış"
   // (ayarliMi==false) durumu davranışsal olarak DEĞİŞMEDİ — hâlâ null
   // döner (bu bir sorgu hatası değil, bir ön-koşul eksikliği).
-  Future<String?> durumSorgula(String uuid) async {
+  //
+  // Red sebebi (2026-09-23): önceden yalnızca `status` okunuyor, GİB'in
+  // verdiği açıklama atılıyordu — kullanıcı "GİB Reddetti" dışında hiçbir
+  // şey göremiyordu. Artık açıklama da dönüyor; red durumunda efatura_log'a
+  // da yazılıyor (kalıcı iz).
+  Future<GibDurumSonucu?> durumSorgula(String uuid,
+      {int referansId = 0, String referansTuru = 'fatura'}) async {
     await ayarlariYukle();
     if (!ayarliMi) return null;
     try {
@@ -437,7 +443,20 @@ class GibServisi {
       );
       if (r.statusCode == 200) {
         final body = _govdeCoz(r.data);
-        return _durumNormallestir(body?['status']?.toString());
+        final durum = _durumNormallestir(body?['status']?.toString());
+        final aciklama = gibAciklamaCikar(body);
+        if (durum == 'reddedildi') {
+          await _log.kaydet(
+            referansId: referansId,
+            referansTuru: referansTuru,
+            uuid: uuid,
+            islemTipi: 'durum_sorgula',
+            durum: 'reddedildi',
+            yanitXml: jsonEncode(body),
+            hataMesaj: aciklama,
+          );
+        }
+        return GibDurumSonucu(durum, aciklama: aciklama);
       }
       if (r.statusCode == 404) throw GibBelgeBulunamadi(uuid);
       throw Exception('GİB durum sorgusu başarısız (HTTP ${r.statusCode})');

@@ -33,3 +33,35 @@ class GibBelgeBulunamadi implements Exception {
   @override
   String toString() => 'GİB\'de bu ETTN ile kayıtlı belge bulunamadı ($ettn)';
 }
+
+/// GİB durum sorgusunun sonucu — [durum] normalleştirilmiş durum,
+/// [aciklama] entegratörün verdiği açıklama (ör. red sebebi), yoksa null.
+class GibDurumSonucu {
+  final String? durum;
+  final String? aciklama;
+  const GibDurumSonucu(this.durum, {this.aciklama});
+}
+
+/// Entegratör yanıtından insan-okunur açıklamayı (red sebebi vb.) çıkarır.
+/// Alan adı entegratöre göre değişir; yaygın adlar sırayla denenir,
+/// iç içe `error: {message}` de desteklenir. Durum kodunun kendisini
+/// (ör. "REJECTED") açıklama olarak döndürmez.
+String? gibAciklamaCikar(Map<String, dynamic>? govde) {
+  if (govde == null) return null;
+  const anahtarlar = [
+    'reason', 'rejection_reason', 'rejectReason', 'red_sebebi',
+    'message', 'description', 'status_description', 'statusDescription',
+    'error_message', 'errorMessage', 'detail', 'aciklama', 'hata',
+  ];
+  final durum = govde['status']?.toString().trim().toLowerCase();
+  for (final a in anahtarlar) {
+    final d = govde[a];
+    if (d is String && d.trim().isNotEmpty && d.trim().toLowerCase() != durum) {
+      return d.trim();
+    }
+  }
+  final hata = govde['error'];
+  if (hata is String && hata.trim().isNotEmpty) return hata.trim();
+  if (hata is Map) return gibAciklamaCikar(Map<String, dynamic>.from(hata));
+  return null;
+}

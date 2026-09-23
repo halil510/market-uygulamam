@@ -698,12 +698,23 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
     setState(() => _islemDevam = true);
     try {
       await gib.ayarlariYukle();
-      final durum = await gib.durumSorgula(uuid);
+      final sonuc = await gib.durumSorgula(uuid,
+          referansId: widget.irsaliyeId, referansTuru: 'irsaliye');
+      final durum = sonuc?.durum;
       if (durum != null) {
         await IrsaliyeDeposu().eIrsaliyeDurumGuncelle(widget.irsaliyeId, durum, uuid: uuid);
         await _yukle();
       }
-      if (mounted) BildirimServisi.basari(context, 'Durum: ${durum ?? "Bilinmiyor"}');
+      if (mounted) {
+        final aciklama = sonuc?.aciklama;
+        if (durum == 'reddedildi') {
+          BildirimServisi.hata(context,
+              'GİB Reddetti${aciklama != null ? ' — Sebep: $aciklama' : ''}');
+        } else {
+          BildirimServisi.basari(context,
+              'Durum: ${durum ?? "Bilinmiyor"}${aciklama != null ? ' — $aciklama' : ''}');
+        }
+      }
     } on GibBelgeBulunamadi {
       // GİB'e hiç ulaşmamış: 'hata'ya çek, Gönder tekrar açılsın (aynı
       // deneme_no → aynı ETTN, mükerrer belge oluşmaz).

@@ -61,7 +61,19 @@ class FaturaEBelgeServisi {
   /// göstermeli (GibServisi.durumSorgula ile aynı sözleşme).
   Future<String?> durumSorgula(FaturaModel fatura, String ettn) async {
     await _gib.ayarlariYukle();
-    final durum = await _gib.durumSorgula(ettn);
+    final String? durum;
+    try {
+      durum = await _gib.durumSorgula(ettn);
+    } on GibBelgeBulunamadi {
+      // 'gonderiliyor'da kalmış (gönderim sırasında çökme vb.) ve GİB'e
+      // hiç ulaşmamış: 'hata'ya çek ki Gönder tekrar açılsın — aynı
+      // deneme_no → aynı ETTN, mükerrer belge oluşmaz. Aksi halde belge
+      // Gönder kapalı + sorgu sonuçsuz şekilde SONSUZA kadar kilitli kalıyordu.
+      if (fatura.eFaturaDurum == 'gonderiliyor') {
+        await _depo.eFaturaDurumGuncelle(fatura.id!, 'hata');
+      }
+      rethrow;
+    }
     if (durum != null) {
       await _depo.eFaturaDurumGuncelle(fatura.id!, durum, uuid: ettn);
     }

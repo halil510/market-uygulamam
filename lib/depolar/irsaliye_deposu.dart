@@ -379,11 +379,16 @@ class IrsaliyeDeposu {
   }
 
   /// GİB'den sorgulanan güncel e-İrsaliye durumunu yazar.
-  Future<void> eIrsaliyeDurumGuncelle(int irsaliyeId, String durum) async {
+  /// [uuid] verilirse ETTN de kalıcı yazılır ('gonderiliyor'da kalmış,
+  /// ETTN'si hiç kaydedilememiş irsaliyeler için).
+  Future<void> eIrsaliyeDurumGuncelle(int irsaliyeId, String durum, {String? uuid}) async {
     final db = await Veritabani().db;
     final now = DateTime.now().toIso8601String();
-    await db.update('irsaliyeler', {'e_irsaliye_durum': durum, 'last_updated': now},
-        where: 'id = ?', whereArgs: [irsaliyeId]);
+    await db.update('irsaliyeler', {
+      'e_irsaliye_durum': durum,
+      if (uuid != null) 'e_irsaliye_uuid': uuid,
+      'last_updated': now,
+    }, where: 'id = ?', whereArgs: [irsaliyeId]);
     await _bildir(db, irsaliyeId);
   }
 

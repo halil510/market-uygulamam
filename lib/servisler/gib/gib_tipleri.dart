@@ -23,3 +23,13 @@ class GibGonderimSonucu {
   const GibGonderimSonucu(
       {required this.basarili, this.uuid, this.yanit, this.hata});
 }
+
+/// Durum sorgusunda GİB/entegratör belgeyi hiç tanımıyor (HTTP 404) —
+/// 'gonderiliyor'da kalmış bir belge GİB'e hiç ulaşmamış demektir; aynı
+/// ETTN ile güvenle yeniden gönderilebilir.
+class GibBelgeBulunamadi implements Exception {
+  final String ettn;
+  const GibBelgeBulunamadi(this.ettn);
+  @override
+  String toString() => 'GİB\'de bu ETTN ile kayıtlı belge bulunamadı ($ettn)';
+}

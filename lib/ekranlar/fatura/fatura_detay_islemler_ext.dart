@@ -184,6 +184,15 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
       if (durum != null) {
         await _yukle();
       }
+    } on GibBelgeBulunamadi {
+      if (navigator.mounted) navigator.pop();
+      if (!mounted) return;
+      await _yukle();
+      if (!mounted) return;
+      BildirimServisi.uyari(context,
+          'Bu fatura GİB\'e hiç ulaşmamış. Durumu "Gönderim Hatası" olarak '
+          'güncellendi — güvenle yeniden gönderebilirsiniz (aynı ETTN '
+          'kullanılır, mükerrer belge oluşmaz).');
     } catch (e) {
       if (navigator.mounted) navigator.pop();
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');

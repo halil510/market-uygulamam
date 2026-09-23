@@ -569,6 +569,14 @@ class _IrsKalem {
 
 // ── İrsaliye Detay ────────────────────────────────────────────────────────────
 
+/// e-İrsaliye "Gönder" kapalı / "Durum Sorgula" açık olmalı mı — fatura
+/// tarafındaki [eFaturaGonderilmisMi] ile AYNI kural. 'gonderiliyor'
+/// ÖNCEDEN burada yoktu: gönderim sırasında çökmüş bir irsaliye GİB'deki
+/// gerçek durumu sorgulanmadan kör kör yeniden gönderilebiliyordu.
+bool eIrsaliyeGonderilmisMi(String? durum) =>
+    durum == 'gonderildi' || durum == 'onaylandi' || durum == 'gib_iptal' ||
+    durum == 'gonderiliyor';
+
 class IrsaliyeDetayEkrani extends ConsumerStatefulWidget {
   final int irsaliyeId;
   const IrsaliyeDetayEkrani({super.key, required this.irsaliyeId});
@@ -619,10 +627,8 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
     }
   }
 
-  bool get _eIrsaliyeGonderilmis {
-    final d = _irsaliye?['e_irsaliye_durum']?.toString();
-    return d == 'gonderildi' || d == 'onaylandi' || d == 'gib_iptal';
-  }
+  bool get _eIrsaliyeGonderilmis =>
+      eIrsaliyeGonderilmisMi(_irsaliye?['e_irsaliye_durum']?.toString());
 
   // ── e-İrsaliye Gönder ────────────────────────────────────────────────────
   // Ayarlar > Fatura Ayarları'ndaki "e-İrsaliye Aktif" anahtarı ÖNCEDEN hiçbir
@@ -678,18 +684,37 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
   }
 
   Future<void> _eIrsaliyeDurumSorgula() async {
-    final uuid = _irsaliye?['e_irsaliye_uuid']?.toString();
-    if (uuid == null || uuid.isEmpty) return;
+    if (_irsaliye == null) return;
+    final gib = GibServisi();
+    final eDurum = _irsaliye!['e_irsaliye_durum']?.toString();
+    // 'gonderiliyor'da kalmış (gönderim sırasında çökme) irsaliyenin ETTN'si
+    // DB'de null olabilir — deterministik olduğu için yeniden hesaplanır
+    // (fatura tarafındaki FaturaEbelgeServisi.ettnBelirle ile aynı mantık).
+    final kayitli = _irsaliye!['e_irsaliye_uuid']?.toString();
+    final uuid = (kayitli != null && kayitli.isNotEmpty)
+        ? kayitli
+        : eDurum == 'gonderiliyor' ? gib.ettnIrsaliyeHesapla(_irsaliye!) : null;
+    if (uuid == null) return;
     setState(() => _islemDevam = true);
     try {
-      final gib = GibServisi();
       await gib.ayarlariYukle();
       final durum = await gib.durumSorgula(uuid);
       if (durum != null) {
-        await IrsaliyeDeposu().eIrsaliyeDurumGuncelle(widget.irsaliyeId, durum);
+        await IrsaliyeDeposu().eIrsaliyeDurumGuncelle(widget.irsaliyeId, durum, uuid: uuid);
         await _yukle();
       }
       if (mounted) BildirimServisi.basari(context, 'Durum: ${durum ?? "Bilinmiyor"}');
+    } on GibBelgeBulunamadi {
+      // GİB'e hiç ulaşmamış: 'hata'ya çek, Gönder tekrar açılsın (aynı
+      // deneme_no → aynı ETTN, mükerrer belge oluşmaz).
+      if (eDurum == 'gonderiliyor') {
+        await IrsaliyeDeposu().eIrsaliyeDurumGuncelle(widget.irsaliyeId, 'hata');
+        await _yukle();
+      }
+      if (mounted) {
+        BildirimServisi.uyari(context,
+            'Bu irsaliye GİB\'e hiç ulaşmamış. Güvenle yeniden gönderebilirsiniz.');
+      }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     } finally {
@@ -732,7 +757,7 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
       appBar: TsAppBar(
         baslikWidget: Text(_irsaliye!['irsaliye_no']?.toString() ?? 'İrsaliye'),
         aksiyonlar: [
-          if (_irsaliye!['e_irsaliye_uuid'] != null)
+          if (_irsaliye!['e_irsaliye_uuid'] != null || eDurum == 'gonderiliyor')
             IconButton(
               icon: const Icon(Icons.refresh_outlined),
               tooltip: 'GİB Durum Sorgula',

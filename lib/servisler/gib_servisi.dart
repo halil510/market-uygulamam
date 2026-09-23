@@ -142,6 +142,17 @@ class GibServisi {
     return _uuid.v5(_ettnNamespace, anahtar).toUpperCase();
   }
 
+  /// e-İrsaliye ETTN'si — [irsaliyeGonder] ile AYNI deterministik
+  /// hesap. 'gonderiliyor'da kalmış (ETTN'si DB'ye yazılamamış) bir
+  /// irsaliye için durum sorgusunda yeniden hesaplanır.
+  String ettnIrsaliyeHesapla(Map<String, dynamic> irsaliye) {
+    final irsaliyeId = irsaliye['id'] as int? ?? 0;
+    final globalId = irsaliye['global_id']?.toString() ??
+        irsaliye['irsaliye_no']?.toString() ?? 'irsaliye-$irsaliyeId';
+    final denemeNo = (irsaliye['e_irsaliye_deneme_no'] as int?) ?? 0;
+    return _ettnUret2(globalId, denemeNo);
+  }
+
   String _ettnFaturaIcin(FaturaModel fatura) {
     final ad = fatura.globalId ?? fatura.faturaNo ?? fatura.id?.toString() ??
         DateTime.now().toIso8601String();
@@ -320,9 +331,7 @@ class GibServisi {
     }
 
     final irsaliyeId = irsaliye['id'] as int? ?? 0;
-    final globalId = irsaliye['global_id']?.toString() ?? irsaliye['irsaliye_no']?.toString() ?? 'irsaliye-$irsaliyeId';
-    final denemeNo = (irsaliye['e_irsaliye_deneme_no'] as int?) ?? 0;
-    final ettn = _ettnUret2(globalId, denemeNo);
+    final ettn = ettnIrsaliyeHesapla(irsaliye);
     final xml = await ublDespatchAdviceOlustur(irsaliye: irsaliye, kalemler: kalemler, ettn: ettn);
 
     try {
@@ -430,7 +439,12 @@ class GibServisi {
         final body = _govdeCoz(r.data);
         return _durumNormallestir(body?['status']?.toString());
       }
+      if (r.statusCode == 404) throw GibBelgeBulunamadi(uuid);
       throw Exception('GİB durum sorgusu başarısız (HTTP ${r.statusCode})');
+    } on DioException catch (e) {
+      // Dio 404'ü varsayılan olarak istisna olarak fırlatır.
+      if (e.response?.statusCode == 404) throw GibBelgeBulunamadi(uuid);
+      rethrow;
     } catch (e) {
       if (kDebugMode) debugPrint('[HATA] ' + e.toString());
       rethrow;

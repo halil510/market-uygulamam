@@ -139,6 +139,11 @@ CREATE OR REPLACE FUNCTION fatura_blok_tahsis_et(
 SECURITY DEFINER
 SET search_path = public
 LANGUAGE plpgsql AS $$
+#variable_conflict use_column
+-- ↑ RETURNS TABLE'daki çıktı sütunları (blok_baslangic/blok_bitis/yil)
+-- PL/pgSQL içinde değişken sayılır; tablo sütunlarıyla aynı isimde
+-- oldukları için "column reference yil is ambiguous" hatası veriyordu
+-- (2026-09-23 canlı testte yakalandı). Belirsizlikte tablo sütunu seçilir.
 DECLARE
   v_yil INT := EXTRACT(YEAR FROM now())::INT;
   v_baslangic BIGINT;

@@ -18,6 +18,7 @@ import '../../servisler/auth_servisi.dart';
 import '../../depolar/kullanici_deposu.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 import '../../depolar/ayarlar_deposu.dart';
 import '../../servisler/excel_servisi.dart';
 import '../../saglayicilar/riverpod/masa_modu_provider.dart';
@@ -186,7 +187,17 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
       onayYazi: 'Devam Et',
       onayRengi: Colors.orange,
     );
-    if (!onay) return;
+    if (!onay || !mounted) return;
+    // Yedek geri yükleme / DB temizleme ile aynı koruma: tüm veritabanının
+    // üzerine yazan bu işlem şifre istemiyordu (2026-09-23).
+    final onaylandi = await yoneticiSifresiIleOnayIste(
+      context,
+      baslik: 'Veritabanı İçe Aktarma Onayı',
+      aciklama: 'Seçeceğiniz dosya mevcut TÜM verilerin yerine geçecek. '
+          'Devam etmek için şifrenizi girin.',
+    );
+    if (!onaylandi || !mounted) return;
+    if (!AuthServisi().isMudur) return; // savunma: eylem anında ikinci kez doğrula
 
     try {
       final result = await FilePicker.platform.pickFiles(

@@ -16,6 +16,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../servisler/sync_servisi.dart';
 import '../../servisler/bluetooth_transfer_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/auth_servisi.dart';
+import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
@@ -464,6 +466,16 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
       ),
     );
     if (onay != true || !mounted) return;
+    // Yedek geri yükleme ile aynı koruma: bu cihazın TÜM verisinin üzerine
+    // yazılıyor (öncesinde yedek de alınmıyor) — şifre istemiyordu (2026-09-23).
+    final onaylandi = await yoneticiSifresiIleOnayIste(
+      context,
+      baslik: 'Tüm Veriyi Alma Onayı',
+      aciklama: 'Bu cihazdaki TÜM veriler diğer cihazın verisiyle '
+          'değiştirilecek. Devam etmek için şifrenizi girin.',
+    );
+    if (!onaylandi || !mounted) return;
+    if (!AuthServisi().isMudur) return; // savunma: eylem anında ikinci kez doğrula
 
     setState(() {
       _islemde = true;

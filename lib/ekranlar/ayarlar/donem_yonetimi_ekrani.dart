@@ -27,6 +27,8 @@ import '../../servisler/donem_devir_servisi.dart';
 import '../../servisler/veri_sagligi_servisi.dart' show SaglikDurum;
 import '../../servisler/yedekleme_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../servisler/auth_servisi.dart';
+import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../widgetlar/ortak/onay_dialog.dart';
@@ -226,6 +228,16 @@ class _DonemYonetimiEkraniState extends State<DonemYonetimiEkrani> {
         onayYazi: 'Devri Başlat', onayRengi: Colors.orange,
         ikon: Icons.warning_amber_rounded);
     if (!onay || !mounted) return;
+    // Yedek geri yükleme ile aynı koruma: hareketleri aktif veritabanından
+    // geri dönüşsüz çıkaran bu işlem şifre istemiyordu (2026-09-23).
+    final onaylandi = await yoneticiSifresiIleOnayIste(
+      context,
+      baslik: 'Yıl Sonu Devri Onayı',
+      aciklama: 'Geçmiş hareketler aktif veritabanından arşive taşınacak. '
+          'Devam etmek için şifrenizi girin.',
+    );
+    if (!onaylandi || !mounted) return;
+    if (!AuthServisi().isMudur) return; // savunma: eylem anında ikinci kez doğrula
 
     setState(() { _isleniyor = true; _sonKontrolSonuclari = null; });
     try {

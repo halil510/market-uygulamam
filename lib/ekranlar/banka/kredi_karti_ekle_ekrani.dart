@@ -182,7 +182,7 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
           ),
         ],
       ),
-      body: Form(
+      body: TsResponsive.formSarmalayici(context: context, maxGenislik: 720, child: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(TsBosluk.lg),
@@ -285,7 +285,7 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 

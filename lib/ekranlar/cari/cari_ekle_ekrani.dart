@@ -218,7 +218,7 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
       appBar: TsAppBar(
         baslikWidget: Text(_duzenle ? 'Cari Düzenle' : 'Yeni Cari'),
       ),
-      body: Form(
+      body: TsResponsive.formSarmalayici(context: context, maxGenislik: 720, child: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -384,7 +384,7 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 

@@ -96,7 +96,7 @@ class _BankaHesapEkleEkraniState extends ConsumerState<BankaHesapEkleEkrani> {
           ),
         ],
       ),
-      body: Form(
+      body: TsResponsive.formSarmalayici(context: context, maxGenislik: 720, child: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(TsBosluk.lg),
@@ -169,7 +169,7 @@ class _BankaHesapEkleEkraniState extends ConsumerState<BankaHesapEkleEkrani> {
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 }

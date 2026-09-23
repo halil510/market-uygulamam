@@ -95,8 +95,9 @@ extension _DashboardTumUygulamalarExt on _DashboardEkraniState {
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    // Telefonda 4 kolon; tablet/PC’de sığdığı kadar (sabit 4 idi).
+                    maxCrossAxisExtent: 110,
                     mainAxisSpacing: 10,
                     crossAxisSpacing: 10,
                     childAspectRatio: 0.9,

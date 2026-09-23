@@ -210,8 +210,9 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
               ? const Center(child: AppYukleniyor())
               : GridView.builder(
                   padding: const EdgeInsets.all(12),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    // Telefonda 2 kolon; tablet/PC’de sığdığı kadar (sabit 2 idi).
+                    maxCrossAxisExtent: 200,
                     childAspectRatio: 1.1,
                     mainAxisSpacing: 10,
                     crossAxisSpacing: 10,

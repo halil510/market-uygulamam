@@ -41,6 +41,34 @@ class TsResponsive {
     return telefon;
   }
 
+  /// Masaüstü: tüm uygulamanın en fazla bu genişliğe yayılması.
+  static const double masaustuMaxGenislik = 1440;
+
+  /// Uygulama kökü (MaterialApp.builder) için: çok geniş PC ekranlarında
+  /// (tam ekran 1920px+ monitör) her şeyin monitör boyunca gerilmesini
+  /// önler — içerik ortalanır, iki yan tema arka planıyla dolar. Telefon/
+  /// tablette ([masaustuMaxGenislik] altı) hiçbir etkisi yoktur.
+  static Widget uygulamaSarmalayici(BuildContext context, Widget? child) {
+    final icerik = child ?? const SizedBox.shrink();
+    final w = MediaQuery.sizeOf(context).width;
+    if (w <= masaustuMaxGenislik) return icerik;
+    return ColoredBox(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: masaustuMaxGenislik),
+          child: MediaQuery(
+            // Alt widget'lar kendi genişlik kararlarını gerçek kullanılabilir
+            // alana göre versin (ör. TsResponsive.genisMi).
+            data: MediaQuery.of(context).copyWith(
+                size: Size(masaustuMaxGenislik, MediaQuery.sizeOf(context).height)),
+            child: icerik,
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Formlar/dialoglar için maksimum içerik genişliği. Telefon ekranında
   /// hiçbir etkisi yoktur (ekran zaten daha dar); tablette formun tüm
   /// genişliğe yayılıp "kocaman boş alanlar" oluşturmasını önler.
@@ -48,11 +76,18 @@ class TsResponsive {
       tabletMi(context) ? 560 : double.infinity;
 
   /// Geniş ekranda formu ortalayıp [formMaxGenislik] ile sınırlayan sarmalayıcı.
-  static Widget formSarmalayici({required BuildContext context, required Widget child}) {
+  /// [maxGenislik] verilirse [formMaxGenislik] yerine o kullanılır (çok
+  /// alanlı formlar için daha geniş). İçerik üste hizalanır.
+  static Widget formSarmalayici({
+    required BuildContext context,
+    required Widget child,
+    double? maxGenislik,
+  }) {
     if (!tabletMi(context)) return child;
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: formMaxGenislik(context)),
+        constraints: BoxConstraints(maxWidth: maxGenislik ?? formMaxGenislik(context)),
         child: child,
       ),
     );

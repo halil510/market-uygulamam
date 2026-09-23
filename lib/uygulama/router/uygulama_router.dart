@@ -514,6 +514,11 @@ class _AnaKabukState extends ConsumerState<AnaKabuk> {
     // Telefon davranışı bu bloğa hiç girmez, aşağıdaki orijinal
     // bottomNavigationBar yapısı birebir korunuyor.
     if (tablet) {
+      // Renkler temadan — önceden sabit beyazdı, karanlık modda yan menü
+      // parlak beyaz bir şerit olarak kalıyordu.
+      final cs = Theme.of(context).colorScheme;
+      // Geniş ekranda (PC / büyük tablet) etiketler ikonun yanında.
+      final genis = TsResponsive.genisMi(context);
       return PopScope(
         canPop: false,
         onPopInvokedWithResult: (_, __) {},
@@ -522,14 +527,16 @@ class _AnaKabukState extends ConsumerState<AnaKabuk> {
             NavigationRail(
               selectedIndex: _seciliIndex,
               onDestinationSelected: navSecildi,
-              backgroundColor: Colors.white,
-              labelType: NavigationRailLabelType.all,
+              backgroundColor: cs.surface,
+              extended: genis,
+              minExtendedWidth: 200,
+              labelType: genis ? NavigationRailLabelType.none : NavigationRailLabelType.all,
               useIndicator: true,
-              indicatorColor: const Color(0xFFE8EAFF),
-              selectedIconTheme: const IconThemeData(color: Color(0xFF4361EE)),
-              unselectedIconTheme: const IconThemeData(color: Color(0xFF6B7280)),
-              selectedLabelTextStyle: TsMetin.kucukVurgu.copyWith(color: Color(0xFF4361EE)),
-              unselectedLabelTextStyle: const TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+              indicatorColor: cs.primaryContainer,
+              selectedIconTheme: IconThemeData(color: cs.primary),
+              unselectedIconTheme: IconThemeData(color: cs.onSurfaceVariant),
+              selectedLabelTextStyle: TsMetin.kucukVurgu.copyWith(color: cs.primary),
+              unselectedLabelTextStyle: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
               destinations: _navItems.map((item) => NavigationRailDestination(
                 icon: Icon(item.icon),
                 selectedIcon: Icon(item.activeIcon),
@@ -551,20 +558,20 @@ class _AnaKabukState extends ConsumerState<AnaKabuk> {
         body: widget.child,
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             boxShadow: [BoxShadow(color: Color(0x12000000), blurRadius: 12, offset: const Offset(0, -3))],
           ),
           child: NavigationBar(
             selectedIndex: _seciliIndex,
             elevation: 0,
-            backgroundColor: Colors.white,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             surfaceTintColor: Colors.transparent,
             height: 64,
             labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
             onDestinationSelected: navSecildi,
             destinations: _navItems.map((item) => NavigationDestination(
-              icon: Icon(item.icon, color: const Color(0xFF6B7280)),
-              selectedIcon: Icon(item.activeIcon, color: const Color(0xFF4361EE)),
+              icon: Icon(item.icon, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              selectedIcon: Icon(item.activeIcon, color: Theme.of(context).colorScheme.primary),
               label: item.label,
             )).toList(),
           ),

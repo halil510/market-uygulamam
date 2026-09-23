@@ -195,7 +195,7 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
       appBar: TsAppBar(baslik: widget.duzenlenecek != null ? 'Gideri Düzenle' : 'Gider Ekle', gradyanli: true),
-      body: _yukleniyor
+      body: TsResponsive.formSarmalayici(context: context, maxGenislik: 720, child: _yukleniyor
           ? const TsYukleniyor(iskelet: true)
           : ListView(
               padding: const EdgeInsets.all(TsBosluk.lg),
@@ -328,7 +328,7 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
                   ),
                 ),
               ],
-            ),
+            )),
     );
   }
 }

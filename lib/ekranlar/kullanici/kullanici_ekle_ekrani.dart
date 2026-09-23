@@ -290,7 +290,7 @@ class _KullaniciEkleEkraniState extends ConsumerState<KullaniciEkleEkrani>
           ],
         ),
       ),
-      body: TabBarView(
+      body: TsResponsive.formSarmalayici(context: context, maxGenislik: 720, child: TabBarView(
         controller: _tab,
         children: [
           // ── TAB 1: Temel Bilgiler ──────────────────────────────────────
@@ -464,7 +464,7 @@ class _KullaniciEkleEkraniState extends ConsumerState<KullaniciEkleEkrani>
             ],
           ),
         ],
-      ),
+      )),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: TsRenk.primary,
         foregroundColor: Colors.white,

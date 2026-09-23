@@ -394,7 +394,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                 onPressed: _kaydet),
         ],
       ),
-      body: Form(
+      body: TsResponsive.formSarmalayici(context: context, maxGenislik: 960, child: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(14),
@@ -579,7 +579,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
             const SizedBox(height: 100),
           ],
         ),
-      ),
+      )),
       floatingActionButton: FloatingActionButton.extended(
         elevation: 6,
         backgroundColor: TsRenk.primary,

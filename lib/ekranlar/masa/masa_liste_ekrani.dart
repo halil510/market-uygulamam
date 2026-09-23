@@ -178,8 +178,9 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
               onRefresh: () => ref.read(masaListesiProvider.notifier).yukle(),
               child: GridView.builder(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2, childAspectRatio: 1.05,
+                // Telefonda 2 kolon; tablet/PC'de sığdığı kadar (sabit 2 idi).
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 200, childAspectRatio: 1.05,
                     mainAxisSpacing: 10, crossAxisSpacing: 10),
                 itemCount: gosterilen.length,
                 itemBuilder: (_, i) {

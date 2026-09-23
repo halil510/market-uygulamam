@@ -163,7 +163,7 @@ void initState() {
           ),
         ],
       ),
-      body: Form(
+      body: TsResponsive.formSarmalayici(context: context, maxGenislik: 720, child: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -364,7 +364,7 @@ void initState() {
             const SizedBox(height: 24),
           ],
         ),
-      ),
+      )),
     );
   }
 }

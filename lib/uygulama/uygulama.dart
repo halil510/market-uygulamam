@@ -54,6 +54,7 @@ class _MarketPlusAppState extends ConsumerState<MarketPlusApp> {
       routeInformationParser:   UygulamaRouter.router(ref).routeInformationParser,
       routeInformationProvider: UygulamaRouter.router(ref).routeInformationProvider,
       backButtonDispatcher:     _dispatcher,
+      builder: TsResponsive.uygulamaSarmalayici,
     );
   }
 }

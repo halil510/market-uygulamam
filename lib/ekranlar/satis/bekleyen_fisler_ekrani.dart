@@ -12,6 +12,7 @@ import '../../modeller/cari_model.dart';
 import '../../modeller/sepet_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../widgetlar/ortak/onay_dialog.dart';
 
 // Askıya alınan satış yapısı
 class _AskiSatis {
@@ -111,7 +112,12 @@ class _BekleyenFislerEkraniState extends ConsumerState<BekleyenFislerEkrani> {
   }
 
   Future<void> _sil(String id) async {
-    try {  
+    final onay = await OnayDialog.goster(context,
+        baslik: 'Askıdaki Fişi Sil',
+        icerik: 'Bu fişteki ürünler kaybolacak. Emin misiniz?',
+        onayYazi: 'Sil', onayRengi: Colors.red);
+    if (!onay) return;
+    try {
       if (!mounted) return;
       setState(() => _fisler.removeWhere((f) => f.id == id));
       await _kaydet();

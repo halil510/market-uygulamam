@@ -18,6 +18,7 @@ import '../../depolar/cari_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../widgetlar/ortak/onay_dialog.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../depolar/irsaliye_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
@@ -615,6 +616,13 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
   }
 
   Future<void> _durumGuncelle(String yeniDurum) async {
+    if (yeniDurum == 'İptal') {
+      final onay = await OnayDialog.goster(context,
+          baslik: 'İrsaliyeyi İptal Et',
+          icerik: 'Bu irsaliye iptal edilecek. Emin misiniz?',
+          onayYazi: 'İptal Et', onayRengi: Colors.red);
+      if (!onay || !mounted) return;
+    }
     try {
       // 🔴 Derin analizde bulundu: last_updated hiç ayarlanmıyordu,
       // BulutManager hiç çağrılmıyordu — bkz. IrsaliyeDeposu.durumGuncelle.

@@ -18,6 +18,7 @@ import '../../depolar/masa_deposu.dart';
 import 'masa_detay_ekrani.dart';
 import '../../tasarim_sistemi/ts_yetki.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../widgetlar/ortak/onay_dialog.dart';
 
 class MasaListeEkrani extends ConsumerStatefulWidget {
   const MasaListeEkrani({super.key});
@@ -312,6 +313,11 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
             title: const Text('Rezervasyonu İptal Et'),
             onTap: () async {
               Navigator.pop(ctx);
+              final onay = await OnayDialog.goster(context,
+                  baslik: 'Rezervasyonu İptal Et',
+                  icerik: '"${m.ad}" rezervasyonu iptal edilip masa boşa alınacak. Emin misiniz?',
+                  onayYazi: 'İptal Et', onayRengi: Colors.red);
+              if (!onay || !mounted) return;
               await MasaDeposu().masaDurumGuncelle(m.id!, 'bos');
               ref.read(masaListesiProvider.notifier).yukle();
             },
@@ -322,6 +328,11 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
             title: const Text('Masayı Sil', style: TextStyle(color: Colors.red)),
             onTap: () async {
               Navigator.pop(ctx);
+              final onay = await OnayDialog.goster(context,
+                  baslik: 'Masayı Sil',
+                  icerik: '"${m.ad}" masası silinecek. Emin misiniz?',
+                  onayYazi: 'Sil', onayRengi: Colors.red);
+              if (!onay || !mounted) return;
               try {
                 await MasaDeposu().masaSil(m.id!);
                 ref.read(masaListesiProvider.notifier).yukle();

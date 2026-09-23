@@ -10,6 +10,7 @@ import '../../modeller/rezervasyon_model.dart';
 import '../../saglayicilar/riverpod/masa_provider.dart';
 import '../../servisler/masa/rezervasyon_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../widgetlar/ortak/onay_dialog.dart';
 
 class RezervasyonEkrani extends ConsumerStatefulWidget {
   const RezervasyonEkrani({super.key});
@@ -110,6 +111,13 @@ class _RezervasyonEkraniState extends ConsumerState<RezervasyonEkrani>
   }
 
   Future<void> _durumDegistir(RezervasyonModel r, RezervasyonDurum yeniDurum) async {
+    if (yeniDurum == RezervasyonDurum.iptal) {
+      final onay = await OnayDialog.goster(context,
+          baslik: 'Rezervasyonu İptal Et',
+          icerik: 'Bu rezervasyon iptal edilecek. Emin misiniz?',
+          onayYazi: 'İptal Et', onayRengi: Colors.red);
+      if (!onay || !mounted) return;
+    }
     await _rezervasyonServisi.durumGuncelle(r.id!, yeniDurum);
     if (!mounted) return;
     await _yukle();

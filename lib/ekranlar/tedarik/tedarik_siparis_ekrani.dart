@@ -10,6 +10,7 @@ import '../../depolar/cari_deposu.dart';
 import '../../depolar/tedarikci_siparis_deposu.dart';
 import '../../modeller/cari_model.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../widgetlar/ortak/onay_dialog.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/ts_kart.dart';
@@ -127,6 +128,13 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
   }
 
   Future<void> _durumDegistir(Map<String, dynamic> siparis, String yeniDurum) async {
+    if (yeniDurum == 'iptal') {
+      final onay = await OnayDialog.goster(context,
+          baslik: 'Siparişi İptal Et',
+          icerik: 'Bu tedarikçi siparişi iptal edilecek. Emin misiniz?',
+          onayYazi: 'İptal Et', onayRengi: Colors.red);
+      if (!onay || !mounted) return;
+    }
     try {
       await _siparisDepo.durumGuncelle(siparis['id'] as int, yeniDurum);
       await _yukle();

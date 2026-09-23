@@ -22,6 +22,7 @@ class _AuditLogEkraniState extends State<AuditLogEkrani> {
     'faturalar': 'Faturalar', 'promosyonlar': 'Promosyonlar',
     'masalar': 'Masalar', 'borclar': 'Borçlar', 'kullanicilar': 'Kullanıcılar',
     'kasa_hareketleri': 'Kasa', 'stok_hareket': 'Stok',
+    'yerel_fatura_blok': 'Fatura Numaraları',
   };
 
   @override

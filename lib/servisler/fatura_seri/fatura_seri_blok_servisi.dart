@@ -16,6 +16,7 @@
 import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import '../../veri/database/veritabani.dart';
+import '../audit_log_servisi.dart';
 import '../bulut/bulut_saglayici.dart';
 import '../bulut/supabase_ayarlari.dart';
 import '../bulut/supabase_saglayici.dart';
@@ -98,6 +99,13 @@ class FaturaSeriBlokServisi {
       where: 'id = ?',
       whereArgs: [id],
     );
+    await AuditLogServisi().olayKaydet(
+      tabloAdi: 'yerel_fatura_blok',
+      islemTuru: 'Fatura Numarası Atlandı',
+      kayitId: '$seri-$yil-${r['blok_baslangic']}',
+      ozet: '$seri $yil: $baslangicSiradaki–${siradaki - 1} zaten başka '
+          'faturada kullanılmış (manuel giriş) — bloktan atlandı',
+    );
   }
 
   /// true: kullanılabilir blok hazır. false: yeni blok alındı, kullanılmış
@@ -166,7 +174,7 @@ class FaturaSeriBlokServisi {
         throw BlokTukendiException(
             'Fatura numarası bloğu alınamadı — sunucudan boş yanıt geldi.');
       }
-      await _blogKaydet(seri, sonuc.first);
+      await _blogKaydet(seri, sonuc.first, terminalKodu: terminal.terminalKodu);
     } on BlokTukendiException {
       rethrow;
     } on BulutIstekHatasi catch (e) {
@@ -196,7 +204,8 @@ class FaturaSeriBlokServisi {
     }
   }
 
-  Future<void> _blogKaydet(String seri, Map<String, dynamic> r) async {
+  Future<void> _blogKaydet(String seri, Map<String, dynamic> r,
+      {String? terminalKodu}) async {
     final baslangic = (r['blok_baslangic'] as num).toInt();
     final bitis = (r['blok_bitis'] as num).toInt();
     final yil = (r['yil'] as num).toInt();
@@ -210,6 +219,16 @@ class FaturaSeriBlokServisi {
       'durum': 'aktif',
       'tahsis_zamani': DateTime.now().toIso8601String(),
     });
+    // Denetim izi: hangi terminale ne zaman hangi aralık verildi (bulutta
+    // fatura_seri_bloklari'nda da var; burası kullanıcının Audit Log
+    // ekranından görebilmesi için).
+    await AuditLogServisi().olayKaydet(
+      tabloAdi: 'yerel_fatura_blok',
+      islemTuru: 'Fatura Numara Bloğu Tahsisi',
+      kayitId: '$seri-$yil-$baslangic',
+      ozet: '$seri $yil: $baslangic–$bitis'
+          '${terminalKodu != null ? ' (terminal $terminalKodu)' : ''}',
+    );
   }
 
   /// Yerel bloktan bir sonraki numarayı ATOMİK olarak tüketir — [txn]

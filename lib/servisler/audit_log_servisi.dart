@@ -169,19 +169,42 @@ class AuditLogServisi {
     required int? kullaniciId,
     required String kullaniciAdi,
     required bool basarili,
+  }) =>
+      olayKaydet(
+        tabloAdi: 'kullanicilar',
+        kayitId: kullaniciId?.toString(),
+        islemTuru: basarili ? 'Giriş' : 'Başarısız Giriş',
+        ozet: kullaniciAdi,
+        kullaniciId: kullaniciId,
+        kullaniciAdi: kullaniciAdi,
+      );
+
+  /// Bir tablo satırı değişikliğine bağlı OLMAYAN olayları (giriş, fatura
+  /// numara bloğu tahsisi vb.) audit_log'a yazar. [kullaniciId]/[kullaniciAdi]
+  /// verilmezse aktif oturum kullanılır. Ana işlemi asla bozmaz.
+  Future<void> olayKaydet({
+    required String tabloAdi,
+    required String islemTuru,
+    String? kayitId,
+    String? ozet,
+    int? kullaniciId,
+    String? kullaniciAdi,
   }) async {
     try {
       final db = await Veritabani().db;
       final now = DateTime.now().toIso8601String();
       final cihazId = await SupabaseSyncServisi.cihazId();
+      final auth = AuthServisi();
+      final ad = kullaniciAdi ?? auth.aktifAd;
       final kayit = {
         'global_id': const Uuid().v4(),
-        'tablo_adi': 'kullanicilar',
-        'kayit_id': kullaniciId?.toString(),
-        'islem_turu': basarili ? 'Giriş' : 'Başarısız Giriş',
-        'ozet': kullaniciAdi,
-        'kullanici_id': kullaniciId,
-        'kullanici_adi': kullaniciAdi.isEmpty ? 'Bilinmiyor' : kullaniciAdi,
+        'tablo_adi': tabloAdi,
+        'kayit_id': kayitId,
+        'islem_turu': islemTuru,
+        'ozet': ozet,
+        'kullanici_id': kullaniciId ?? (kullaniciAdi == null ? auth.aktifId : null),
+        'kullanici_adi': ad.isEmpty ? 'Bilinmiyor' : ad,
+        'sube_id': AktifSubeServisi().subeId,
         'cihaz_id': cihazId,
         'tarih': now,
         'last_updated': now,
@@ -192,7 +215,7 @@ class AuditLogServisi {
         BulutManager().upsert('audit_log', Map<String, dynamic>.from(guncelSatir.first));
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('AuditLogServisi.girisKaydet hatası: $e');
+      if (kDebugMode) debugPrint('AuditLogServisi.olayKaydet hatası: $e');
     }
   }
 

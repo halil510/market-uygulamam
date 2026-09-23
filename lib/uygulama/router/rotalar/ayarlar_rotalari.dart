@@ -18,6 +18,7 @@ import '../../../ekranlar/ayarlar/bulut_sync_ekrani.dart';
 import '../../../ekranlar/ayarlar/site_fotograflari_ekrani.dart';
 import '../../../ekranlar/ayarlar/site_icerik_ekrani.dart';
 import '../../../ekranlar/ayarlar/audit_log_ekrani.dart';
+import '../../../ekranlar/ayarlar/seri_mutabakati_ekrani.dart';
 import '../../../ekranlar/ayarlar/sync_cakismalari_ekrani.dart';
 import '../../../ekranlar/ayarlar/veri_sagligi_ekrani.dart';
 import '../../../ekranlar/ayarlar/donem_yonetimi_ekrani.dart';
@@ -82,6 +83,11 @@ List<GoRoute> ayarlarRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
           name: 'ayarlar_audit_log',
           parentNavigatorKey: rootNavigatorKey,
           builder: (_, __) => const AuditLogEkrani()),
+      GoRoute(
+          path: '/ayarlar/seri-mutabakati',
+          name: 'ayarlar_seri_mutabakati',
+          parentNavigatorKey: rootNavigatorKey,
+          builder: (_, __) => const SeriMutabakatiEkrani()),
       GoRoute(
           path: '/ayarlar/sync-cakismalari',
           name: 'ayarlar_sync_cakismalari',

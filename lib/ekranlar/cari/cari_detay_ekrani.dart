@@ -319,7 +319,7 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
     setState(() => _yukl = true);
     try {
       final satis = await SatisDeposu().idileGetir(h.fisId!);
-      if (satis == null || satis.kalemler == null || satis.kalemler!.isEmpty) {
+      if (satis == null || satis.kalemler.isEmpty) {
         if (mounted) BildirimServisi.hata(context, 'Satış kalemleri bulunamadı.');
         return;
       }
@@ -376,7 +376,7 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
       // 🔴 DÜZELTME (Madde 21 — GİB/fatura araToplam bulgusu devamı,
       // 2026-09-16): araToplam KDV DAHİL (brüt) doluyordu — bkz.
       // satis_detay_ekrani.dart'taki aynı düzeltme. Net (matrah) olmalı.
-      final detaylar = satis.kalemler!.map((k) => FaturaDetayModel(
+      final detaylar = satis.kalemler.map((k) => FaturaDetayModel(
         urunId: k.urunId, urunAdi: k.urunAdi, barkod: k.barkod,
         miktar: k.miktar, birimFiyat: k.birimFiyat,
         iskontoOrani: k.iskontoOran, iskontoTutari: k.iskontoTutar,
@@ -877,8 +877,8 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
         if (c.vergiNo != null) _Satir('Vergi No', c.vergiNo!),
         if (c.tcKimlik != null) _Satir('TC Kimlik No', c.tcKimlik!),
         if (c.vergiDairesi != null) _Satir('Vergi Dairesi', c.vergiDairesi!),
-        if (c.limitTutari != null && c.limitTutari! > 0)
-          _Satir('Kredi Limiti', ParaUtils.formatla(c.limitTutari!)),
+        if (c.limitTutari > 0)
+          _Satir('Kredi Limiti', ParaUtils.formatla(c.limitTutari)),
       ]),
       const SizedBox(height: 80),
     ],
@@ -900,8 +900,8 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
         separatorBuilder: (_, __) => const SizedBox(height: 6),
         itemBuilder: (_, i) {
           final h = _hareketler[i];
-          final borc = (h.borc ?? 0.0) as double;
-          final alacak = (h.alacak ?? 0.0) as double;
+          final borc = (h.borc);
+          final alacak = (h.alacak);
           final giris = alacak > 0;
           final satisMi = h.fisTipi == 'Satış' && h.fisId != null;
 
@@ -956,9 +956,8 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
                   color: giris ? Colors.green : Colors.red, size: 18)),
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(h.fisTipi ?? '—', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                if (h.aciklama != null)
-                  Text(h.aciklama!, style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
+                Text(h.fisTipi, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                Text(h.aciklama, style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
                 Text(_fmt.format(h.tarih), style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
               ])),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [

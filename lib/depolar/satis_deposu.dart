@@ -1,7 +1,6 @@
 import '../servisler/bulut/bulut_manager.dart';
 import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import 'package:flutter/foundation.dart';
-import '../cekirdek/sabitler/db_sabitleri.dart';
 // lib/depolar/satis_deposu.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';

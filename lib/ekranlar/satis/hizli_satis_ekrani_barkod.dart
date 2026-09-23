@@ -85,7 +85,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
       _player.play(AssetSource('sounds/bip.mp3'), volume: 0.5);
     }).catchError((_) {});
     Vibration.hasVibrator().then((has) {
-      if (has ?? false) Vibration.vibrate(duration: 50);
+      if (has) Vibration.vibrate(duration: 50);
     }).catchError((_) {});
   }
 

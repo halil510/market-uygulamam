@@ -40,7 +40,7 @@ enum EtiketBoyut {
 class _EtiketKalem {
   final UrunModel urun;
   int adet;
-  _EtiketKalem({required this.urun, this.adet = 1});
+  _EtiketKalem({required this.urun}) : adet = 1;
 }
 
 class EtiketTasarimEkrani extends ConsumerStatefulWidget {

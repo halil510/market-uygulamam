@@ -597,7 +597,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
       if (mounted) Navigator.of(progressCtx, rootNavigator: true).pop();
       if (!mounted) return;
 
-      if (sonuc != null && (sonuc.eklenen + sonuc.guncellenen) > 0) {
+      if ((sonuc.eklenen + sonuc.guncellenen) > 0) {
         await _yukle();
         if (mounted) _excelSonucDialog(sonuc);
       } else {

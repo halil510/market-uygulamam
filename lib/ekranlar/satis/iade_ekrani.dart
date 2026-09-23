@@ -69,7 +69,7 @@ class _R {
 class _HizliItem {
   final UrunModel urun;
   int adet;
-  _HizliItem({required this.urun, this.adet = 1});
+  _HizliItem({required this.urun}) : adet = 1;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

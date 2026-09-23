@@ -44,9 +44,9 @@ final _satisRaporProvider = FutureProvider.autoDispose<Map<String, dynamic>>((re
   final odemeMap = <String, double>{};
   for (final s in aktif) {
     ciro += s.genelToplam;
-    iskonto += s.iskonto ?? 0;
-    odemeMap[s.odemeYontemi ?? 'Diğer'] =
-        (odemeMap[s.odemeYontemi ?? 'Diğer'] ?? 0) + s.genelToplam;
+    iskonto += s.iskonto;
+    odemeMap[s.odemeYontemi] =
+        (odemeMap[s.odemeYontemi] ?? 0) + s.genelToplam;
   }
 
   // Saat bazında dağılım
@@ -137,7 +137,7 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
           TextCellValue(excelIcinGuvenliMetin(s.fisNo)),
           TextCellValue(fmt.format(s.tarih)),
           TextCellValue(excelIcinGuvenliMetin(s.cariAdi)),
-          TextCellValue(s.odemeYontemi ?? ''),
+          TextCellValue(s.odemeYontemi),
           DoubleCellValue(s.genelToplam),
           TextCellValue(s.iptal ? 'Evet' : ''),
         ]);
@@ -379,7 +379,7 @@ class _ListeTab extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(s.fisNo ?? '—', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              Text('${fmt.format(s.tarih)} · ${s.odemeYontemi ?? ''}',
+              Text('${fmt.format(s.tarih)} · ${s.odemeYontemi}',
                   style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
               if (s.cariAdi != null)
                 Text(s.cariAdi!, style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),

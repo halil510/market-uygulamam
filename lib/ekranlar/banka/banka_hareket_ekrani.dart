@@ -248,7 +248,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
                   h.bakiye >= 0 ? Colors.greenAccent : Colors.redAccent),
               _ozetKalem('Kullanılabilir', ParaUtils.formatla(h.kullanilabilirBakiye),
                   Colors.white70),
-              if (h.hesapNo != null) _ozetKalem('Hesap No', h.hesapNo!, Colors.white70),
+              _ozetKalem('Hesap No', h.hesapNo, Colors.white70),
             ],
           ),
           if (h.iban != null) ...[

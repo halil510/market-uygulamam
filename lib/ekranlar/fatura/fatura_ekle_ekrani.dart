@@ -512,7 +512,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                       value: c,
                       child: Text(c.unvan, overflow: TextOverflow.ellipsis)))
                   .toList(),
-              onChanged: _cariler.isEmpty ? null : (v) => setState(() => _seciliCari = v as CariModel?),
+              onChanged: _cariler.isEmpty ? null : (v) => setState(() => _seciliCari = v),
               validator: (v) => v == null ? 'Cari seçin' : null,
             ),
             if (_seciliCari != null)

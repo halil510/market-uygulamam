@@ -122,7 +122,7 @@ class StokSayim extends _$StokSayim {
                 aramaMetni: state.aramaMetni.isEmpty ? null : state.aramaMetni),
         _urunDepo.kritikStoklar(),
       ]);
-      final yeni = results[0] as List<UrunModel>;
+      final yeni = results[0];
 
       // 🔴 Derin analizde bulunan eksikliğin düzeltmesi: aktif olarak
       // belirli bir şube seçiliyse (Tüm Şubeler değil), bu sayfadaki
@@ -149,7 +149,7 @@ class StokSayim extends _$StokSayim {
 
       state = state.copyWith(
         urunler:   sifirla ? yeni : [...state.urunler, ...yeni],
-        kritikler: results[1] as List<UrunModel>,
+        kritikler: results[1],
         subeStoklari: yeniSubeStoklari,
         dahaFazla: yeni.length >= _limit,
         sayfa:     sayfa + 1,

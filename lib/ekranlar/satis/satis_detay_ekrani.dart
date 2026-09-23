@@ -187,7 +187,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
       // GİB şematron doğrulamasında reddedilme riski. k.toplamTutar (KDV
       // dahil, doğru) ve k.kdvTutar (İÇİNDEN doğru ayıklanmış KDV payı)
       // ARTIK doğru olduğundan, net araToplam bu ikisinden türetiliyor.
-      final detaylar = s.kalemler!.map((k) => FaturaDetayModel(
+      final detaylar = s.kalemler.map((k) => FaturaDetayModel(
         urunId: k.urunId,
         urunAdi: k.urunAdi,
         barkod: k.barkod,
@@ -278,7 +278,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
           // Karma ödemede artık düz "Karma" yazısı yerine (veya onunla
           // birlikte) yöntem+tutar dağılımı gösteriliyor.
           if (s.odemeYontemi != 'Karma')
-            _Satir('Ödeme Yöntemi', s.odemeYontemi ?? '—')
+            _Satir('Ödeme Yöntemi', s.odemeYontemi)
           else ...[
             _Satir('Ödeme Yöntemi', 'Karma'),
             if (_odemeDagilimi == null)
@@ -315,7 +315,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
         const SizedBox(height: 12),
 
         // Kalemler
-        if (s.kalemler != null && s.kalemler!.isNotEmpty) ...[
+        if (s.kalemler.isNotEmpty) ...[
           const Text('Ürünler', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
           const SizedBox(height: 8),
           Container(
@@ -323,7 +323,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
               color: TsRenk.kart(context), borderRadius: BorderRadius.circular(14),
               boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
             child: Column(children: [
-              ...s.kalemler!.map((k) => Container(
+              ...s.kalemler.map((k) => Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: TsRenk.ayirac(context)))),
@@ -345,12 +345,12 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
 
         // Toplamlar
         _Kart(children: [
-          if ((s.iskonto ?? 0) > 0)
-            _Satir('İskonto', '-${ParaUtils.formatla(s.iskonto ?? 0)}',
+          if ((s.iskonto) > 0)
+            _Satir('İskonto', '-${ParaUtils.formatla(s.iskonto)}',
                 renk: Colors.orange.shade700),
           _Satir('Toplam', ParaUtils.formatla(s.genelToplam), bold: true),
-          if ((s.odenenTutar ?? 0) > 0 && (s.odenenTutar ?? 0) != s.genelToplam)
-            _Satir('Ödenen', ParaUtils.formatla(s.odenenTutar!)),
+          if ((s.odenenTutar) > 0 && (s.odenenTutar) != s.genelToplam)
+            _Satir('Ödenen', ParaUtils.formatla(s.odenenTutar)),
         ]),
         const SizedBox(height: 80),
       ]),

@@ -53,7 +53,7 @@ class ExcelIceAktarYardimcisi {
       if (progressCtx.mounted) Navigator.of(progressCtx, rootNavigator: true).pop();
       if (!context.mounted) return;
 
-      if (sonuc != null && (sonuc.eklenen + sonuc.guncellenen) > 0) {
+      if ((sonuc.eklenen + sonuc.guncellenen) > 0) {
         onTamamlandi();
         if (context.mounted) _sonucDialog(context, sonuc);
       } else {

@@ -340,7 +340,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
 
       // Kalemleri al (satış listesi kalemsiz gelir — tam satışı yeniden çek).
       final tamSatis = await _satisDepo.idileGetir(s.id!);
-      if (tamSatis?.kalemler == null || tamSatis!.kalemler!.isEmpty) {
+      if (tamSatis?.kalemler == null || tamSatis!.kalemler.isEmpty) {
         if (mounted) BildirimServisi.uyari(context, 'Bu satışın kalemleri bulunamadı');
         return;
       }
@@ -348,7 +348,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
       // 🔴 DÜZELTME (Madde 21 — GİB/fatura araToplam bulgusu devamı,
       // 2026-09-16): araToplam KDV DAHİL (brüt) doluyordu — bkz.
       // satis_detay_ekrani.dart'taki aynı düzeltme. Net (matrah) olmalı.
-      final detaylar = tamSatis.kalemler!.map((k) => FaturaDetayModel(
+      final detaylar = tamSatis.kalemler.map((k) => FaturaDetayModel(
             urunId: k.urunId,
             urunAdi: k.urunAdi,
             barkod: k.barkod,

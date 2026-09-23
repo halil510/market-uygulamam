@@ -26,7 +26,6 @@ import '../../modeller/banka_hesap_model.dart';
 import '../../modeller/kredi_karti_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
-import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/log_servisi.dart';
 import 'widgets/borc_odeme_bottom_sheet.dart';

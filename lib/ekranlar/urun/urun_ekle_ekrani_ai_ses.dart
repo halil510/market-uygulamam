@@ -67,7 +67,7 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
     if (cevap.containsKey('ana_grup')) {
       if (!mounted) return;
       setState(() {
-        _anaGrup = cevap['ana_grup'] as String?;
+        _anaGrup = cevap['ana_grup'];
         _aiDoldurulanAlanlar.add('ana_grup');
       });
       if (mounted) BildirimServisi.basari(context, 'Grup önerisi: $_anaGrup');
@@ -86,7 +86,7 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
     if (cevap.containsKey('alan1')) {
       if (!mounted) return;
       setState(() {
-        _c['alan1']?.text = cevap['alan1'] as String? ?? '';
+        _c['alan1']?.text = cevap['alan1'] ?? '';
         _aiDoldurulanAlanlar.add('alan1');
       });
       if (mounted) BildirimServisi.basari(context, 'Alan1 önerisi: ${_c['alan1']?.text}');

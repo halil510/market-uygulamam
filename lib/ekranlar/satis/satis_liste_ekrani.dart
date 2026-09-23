@@ -456,7 +456,7 @@ class _SatisKarti extends StatelessWidget {
                   color: iptal ? context.textSecondary : AppRenkler.primary,
                 ),
               ),
-              Text(satis.odemeYontemi ?? '',
+              Text(satis.odemeYontemi,
                   style: TextStyle(
                       fontSize: 11, color: context.textSecondary)),
             ]),

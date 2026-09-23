@@ -321,7 +321,7 @@ class ExcelServisi {
         TextCellValue(''),  // Barkod Ölçü Birimi
         DoubleCellValue(karOrani.toDouble()),
         TextCellValue(excelIcinGuvenliMetin(urun.muafiyetKodu)),
-        DoubleCellValue(urun.resmiBakiye ?? 0),
+        DoubleCellValue(urun.resmiBakiye),
         DoubleCellValue(urun.alisFiyatKdvDahil),
         TextCellValue(urun.fiyatGuncellemeTarih ?? ''),
         TextCellValue(urun.fiyatGuncelleyenKullanici ?? ''),
@@ -599,7 +599,7 @@ class ExcelServisi {
             kod: gercekKod.isNotEmpty ? gercekKod : null,
             barkod: barkod.isNotEmpty ? barkod : (kod.isNotEmpty ? kod : null),
             barkodlar: barkodlarIndex != -1
-                ? (row[barkodlarIndex]?.value?.toString()?.trim().isNotEmpty == true
+                ? (row[barkodlarIndex]?.value?.toString().trim().isNotEmpty == true
                     ? row[barkodlarIndex]!.value.toString().trim()
                     : null)
                 : null,
@@ -635,7 +635,7 @@ class ExcelServisi {
             kod: gercekKod.isNotEmpty ? gercekKod : null,
             barkod: barkod.isNotEmpty ? barkod : (kod.isNotEmpty ? kod : null),
             barkodlar: barkodlarIndex != -1
-                ? (row[barkodlarIndex]?.value?.toString()?.trim().isNotEmpty == true
+                ? (row[barkodlarIndex]?.value?.toString().trim().isNotEmpty == true
                     ? row[barkodlarIndex]!.value.toString().trim()
                     : null)
                 : null,
@@ -863,7 +863,7 @@ class ExcelServisi {
     final sheet = excel.sheets.values.first;
     if (sheet.rows.isEmpty) return {'basarili': 0, 'hata': 0, 'hatalar': <String>[]};
 
-    final headerList = sheet.rows.first.map((c) => c?.value?.toString()?.trim() ?? '').toList();
+    final headerList = sheet.rows.first.map((c) => c?.value?.toString().trim() ?? '').toList();
     final Map<String, int> kolonlar = {};
     for (int i = 0; i < headerList.length; i++) {
       final h = headerList[i];
@@ -1009,7 +1009,7 @@ class ExcelServisi {
     final sheet = excel.sheets.values.first;
     if (sheet.rows.isEmpty) return {'basarili': 0, 'hata': 0, 'hatalar': <String>[]};
 
-    final headerList = sheet.rows.first.map((c) => c?.value?.toString()?.trim() ?? '').toList();
+    final headerList = sheet.rows.first.map((c) => c?.value?.toString().trim() ?? '').toList();
     final Map<String, int> kolonlar = {};
     for (int i = 0; i < headerList.length; i++) {
       final h = headerList[i];

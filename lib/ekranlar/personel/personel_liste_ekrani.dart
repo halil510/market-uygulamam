@@ -236,11 +236,11 @@ class _PersonelKarti extends StatelessWidget {
             metin: personel.aktif ? 'AKTİF' : 'PASİF',
             tur: personel.aktif ? TsBadgeTuru.basarili : TsBadgeTuru.hata,
           ),
-          if (personel.maas != null && personel.maas! > 0)
+          if (personel.maas > 0)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                ParaUtils.formatla(personel.maas!),
+                ParaUtils.formatla(personel.maas),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -274,7 +274,7 @@ class _MaasOzetiTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final aktifler = personeller.where((p) => p.aktif).toList();
     final toplamMaas = aktifler.fold(
-        0.0, (s, p) => s + (p.maas ?? 0));
+        0.0, (s, p) => s + (p.maas));
     final departmanlar = <String, List<PersonelModel>>{};
     for (final p in aktifler) {
       departmanlar.putIfAbsent(p.pozisyon ?? 'Genel', () => []).add(p);
@@ -332,7 +332,7 @@ class _MaasOzetiTab extends StatelessWidget {
         ...departmanlar.entries.map((e) {
           final dept = e.key;
           final personeller = e.value;
-          final maasToplam = personeller.fold(0.0, (s, p) => s + (p.maas ?? 0));
+          final maasToplam = personeller.fold(0.0, (s, p) => s + (p.maas));
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(16),
@@ -431,8 +431,7 @@ class _PersonelDetaySheet extends StatelessWidget {
 
         
         
-        if (personel.maas != null)
-          _BilgiSatiri('Maaş', ParaUtils.formatla(personel.maas!), Icons.payments),
+        _BilgiSatiri('Maaş', ParaUtils.formatla(personel.maas), Icons.payments),
         if (personel.iseBaslama != null)
           _BilgiSatiri('İşe Başlama',
               DateFormat('dd.MM.yyyy').format(personel.iseBaslama!),

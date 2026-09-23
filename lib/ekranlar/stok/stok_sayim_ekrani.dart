@@ -585,7 +585,7 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
                       fontWeight: FontWeight.w600, fontSize: 13),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
               Row(children: [
-                Text('Mevcut: ${ref.watch(stokSayimProvider).mevcutStok(widget.urun)} ${widget.urun.birim ?? ''}',
+                Text('Mevcut: ${ref.watch(stokSayimProvider).mevcutStok(widget.urun)} ${widget.urun.birim}',
                     style: TextStyle(
                         fontSize: 11,
                         color: kritik

@@ -145,9 +145,9 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
       if (!mounted) return;
       final urunler  = await _depo.tumunuGetir();
       if (!mounted) return;
-      final anaGruplar = urunler.map((u) => u.anaGrup).where((g) => g != null && g!.isNotEmpty).cast<String>().toSet().toList()..sort();
-      final alan1lar = urunler.map((u) => u.alan1).where((a) => a != null && a!.isNotEmpty).cast<String>().toSet().toList()..sort();
-      final altGruplar = urunler.map((u) => u.altGrup).where((g) => g != null && g!.isNotEmpty).cast<String>().toSet().toList()..sort();
+      final anaGruplar = urunler.map((u) => u.anaGrup).where((g) => g != null && g.isNotEmpty).cast<String>().toSet().toList()..sort();
+      final alan1lar = urunler.map((u) => u.alan1).where((a) => a != null && a.isNotEmpty).cast<String>().toSet().toList()..sort();
+      final altGruplar = urunler.map((u) => u.altGrup).where((g) => g != null && g.isNotEmpty).cast<String>().toSet().toList()..sort();
       if (mounted) {
         setState(() {
           _birimler   = birimler;

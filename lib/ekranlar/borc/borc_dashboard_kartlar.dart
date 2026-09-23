@@ -54,7 +54,7 @@ class _OzetItem {
 class _OzetKartWidget extends StatelessWidget {
   final _OzetItem item;
   final bool tamGenislik;
-  const _OzetKartWidget({super.key, required this.item, this.tamGenislik = false});
+  const _OzetKartWidget({required this.item, this.tamGenislik = false});
 
   @override
   Widget build(BuildContext context) {

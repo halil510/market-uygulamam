@@ -1,0 +1,38 @@
+# Her push/PR'da statik analiz + tüm testler. Bir değişiklik mevcut bir
+# davranışı bozarsa (test kırılırsa) ya da yeni bir hata/uyarı eklerse
+# GitHub'da kırmızı görünür.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analiz-ve-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.1
+          cache: true
+
+      - name: Bağımlılıklar
+        run: flutter pub get
+
+      # Hata ve uyarılar CI'ı kırar; stil notları (info) kırmaz.
+      - name: Statik analiz
+        run: flutter analyze --no-fatal-infos lib test
+
+      - name: Testler
+        run: flutter test --reporter expanded

@@ -279,7 +279,7 @@ extension _UrunListeDialoglarExt on _UrunListeEkraniState {
   }
 
   // ── Excel aktar ───────────────────────────────────────────────────────────
-  Future<void> _excelAktar({bool sutunSec = false}) async {
+  Future<void> _excelAktar() async {
     final durum = ref.read(urunlerProvider);
     try {
       final excel = Excel.createExcel();

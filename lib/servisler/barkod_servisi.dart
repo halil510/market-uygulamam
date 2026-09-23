@@ -32,7 +32,7 @@ class BarkodServisi {
 
   Future<void> titret() async {
     try {
-      if ((await Vibration.hasVibrator()) ?? false) {
+      if ((await Vibration.hasVibrator())) {
         Vibration.vibrate(duration: 80);
       }
     } catch (e) { if (kDebugMode) debugPrint('[HATA] ' + e.toString()); }

@@ -24,7 +24,7 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../servisler/ai/ai_urun_ekle_servisi.dart';
 import '../../servisler/ai/ai_vision_servisi.dart'; // API anahtarını set etmek için
-import '../../veri/database/veritabani.dart'; // urun_ekle_ekrani_ai_ses.dart (part) kullanıyor
+// urun_ekle_ekrani_ai_ses.dart (part) kullanıyor
 import '../birim/birim_ekrani.dart';
 import 'widgets/urun_form_alanlari.dart';
 import '../../tasarim_sistemi/ts_responsive.dart';

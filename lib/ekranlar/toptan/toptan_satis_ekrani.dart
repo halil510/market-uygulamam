@@ -30,6 +30,7 @@ import '../../servisler/auth_servisi.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../servisler/toptan_satis_islem_servisi.dart';
+import '../../widgetlar/ortak/donanim_barkod_dinleyici.dart';
 
 class _SepetKalemi {
   final UrunModel urun;
@@ -224,6 +225,28 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
     }
     final sonuc = await _urunDepo.ara(q.trim());
     if (mounted) setState(() => _aramaSonuclari = sonuc);
+  }
+
+  /// Arama kutusunda Enter ya da ekran genelinde okuyucu girişi (el
+  /// terminali / USB okuyucu). Önceden Enter'ın karşılığı yoktu: okutulan
+  /// ürün eklenmiyor, sadece arama listesi açılıyordu.
+  Future<void> _aramaGonderildi(String q) async {
+    final temiz = q.trim();
+    if (temiz.isEmpty || _secilenBayi == null) return;
+    final barkodlu = await _urunDepo.barkodlaGetir(temiz);
+    if (!mounted) return;
+    if (barkodlu != null) {
+      await _urunEkle(barkodlu);
+      return;
+    }
+    final sonuc = await _urunDepo.ara(temiz);
+    if (!mounted) return;
+    if (sonuc.length == 1) {
+      await _urunEkle(sonuc.first);
+    } else {
+      setState(() => _aramaSonuclari = sonuc);
+      if (sonuc.isEmpty) BildirimServisi.uyari(context, '"$temiz" için ürün bulunamadı');
+    }
   }
 
   Future<void> _urunEkle(UrunModel urun) async {
@@ -648,7 +671,12 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // El terminali / USB okuyucu: arama kutusu odakta değilken de okutma
+    // ürün ekler (bkz. DonanimBarkodDinleyici).
+    return DonanimBarkodDinleyici(
+      onBarkod: _aramaGonderildi,
+      aktif: _secilenBayi != null,
+      child: Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
       appBar: TsAppBar(
         baslik: 'Toptan Satış',
@@ -776,6 +804,8 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
                     borderSide: BorderSide.none),
               ),
               onChanged: _urunAra,
+              onSubmitted: _aramaGonderildi,
+              textInputAction: TextInputAction.search,
             ),
           ),
           if (_aramaSonuclari.isNotEmpty)
@@ -996,7 +1026,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
             altyazi: 'Devam etmek için bir bayi/toptan müşteri seçin',
           )),
       ]),
-    );
+    ));
   }
 }
 

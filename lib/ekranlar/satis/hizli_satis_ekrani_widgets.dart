@@ -17,6 +17,7 @@ extension _HizliSatisWidgetExt on _HizliSatisEkraniState {
     },
     onPluAc: _pluAc,
     onHizliTusAc: _hizliTusAc,
+    onGonder: _aramaGonderildi,
   );
 
   Widget _kameraPaneli() => SatisKameraPaneli(

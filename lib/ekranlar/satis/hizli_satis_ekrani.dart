@@ -55,6 +55,7 @@ import 'plu_ekrani.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../widgetlar/ortak/musteri_secim_paneli.dart';
+import '../../widgetlar/ortak/donanim_barkod_dinleyici.dart';
 
 part 'hizli_satis_ekrani_barkod.dart';
 part 'hizli_satis_ekrani_odeme.dart';
@@ -172,7 +173,11 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   Widget build(BuildContext context) {
     final sepet = ref.watch(sepetProvider);
 
-    return Scaffold(
+    // El terminali / USB okuyucu: arama kutusu odakta değilken de okutma
+    // sepete ekler (bkz. DonanimBarkodDinleyici).
+    return DonanimBarkodDinleyici(
+      onBarkod: _barkodOkutIsle,
+      child: Scaffold(
       backgroundColor: context.scaffoldBg,
       appBar: TsAppBar(
         baslikWidget: Text(_kameraAcik ? 'Barkod Okut' : 'Hızlı Satış'),
@@ -403,6 +408,6 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
             }),
         ),
       ]),
-    );
+    ));
   }
 }

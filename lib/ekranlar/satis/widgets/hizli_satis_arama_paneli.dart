@@ -13,6 +13,9 @@ class HizliSatisAramaPaneli extends StatelessWidget {
   /// bu widget'ı kullanan başka bir ekran varsa kırılmasın.
   final VoidCallback? onHizliTusAc;
 
+  /// Enter (klavye ya da klavye gibi davranan barkod okuyucu) basıldığında.
+  final ValueChanged<String>? onGonder;
+
   const HizliSatisAramaPaneli({
     super.key,
     required this.araCtrl,
@@ -20,6 +23,7 @@ class HizliSatisAramaPaneli extends StatelessWidget {
     required this.onDegisti,
     required this.onPluAc,
     this.onHizliTusAc,
+    this.onGonder,
   });
 
   @override
@@ -32,6 +36,8 @@ class HizliSatisAramaPaneli extends StatelessWidget {
             controller: araCtrl,
             focusNode:  araFocus,
             onChanged:  onDegisti,
+            onSubmitted: onGonder,
+            textInputAction: TextInputAction.search,
             decoration: InputDecoration(
               hintText:   'Ürün adı veya barkod ara…',
               prefixIcon: const Icon(Icons.search),

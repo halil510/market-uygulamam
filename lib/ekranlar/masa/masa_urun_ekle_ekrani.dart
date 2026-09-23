@@ -14,6 +14,7 @@ import '../../depolar/urun_deposu.dart';
 import '../../saglayicilar/riverpod/masa_provider.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../widgetlar/ortak/donanim_barkod_dinleyici.dart';
 
 class MasaUrunEkleEkrani extends ConsumerStatefulWidget {
   final int masaId;
@@ -136,6 +137,22 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
               child: TextField(
                 controller: _araCtrl,
                 autofocus: true,
+                textInputAction: TextInputAction.search,
+                // El terminali / USB okuyucu barkodu yazıp Enter'a basar —
+                // önceden karşılığı yoktu, ürün eklenmiyordu.
+                onSubmitted: (q) async {
+                  final b = q.trim();
+                  if (b.isEmpty) return;
+                  final urun = await _depo.barkodlaGetir(b);
+                  if (!mounted) return;
+                  if (urun != null) {
+                    setState(() => _araCtrl.clear());
+                    _aramaChanged();
+                    _urunEkle(urun);
+                  } else if (barkodaBenziyor(b)) {
+                    BildirimServisi.uyari(context, 'Barkod bulunamadı: $b');
+                  }
+                },
                 decoration: InputDecoration(
                   hintText: 'Ürün ara veya barkod okut...',
                   prefixIcon: const Icon(Icons.search, size: 20),

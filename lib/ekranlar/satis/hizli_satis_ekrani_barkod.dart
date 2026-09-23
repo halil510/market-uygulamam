@@ -580,6 +580,41 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
   }
 
   // ── Arama ────────────────────────────────────────────────────────────────────
+  /// Arama kutusunda Enter. PC'deki USB okuyucu ve el terminalinin tarama
+  /// tuşu barkodu bu kutuya "yazıp" Enter'a basar — önceden burada hiçbir
+  /// işleyici yoktu: okutulan ürün sepete EKLENMİYOR, sadece arama listesi
+  /// açılıyordu. Barkoda benzeyen girdi normal barkod akışından (tartım,
+  /// GS1, fiş geri çağırma, "ürün bulunamadı → kaydet" dahil) geçer; ürün
+  /// adı yazılmışsa ve tek sonuç varsa o ürün eklenir.
+  Future<void> _aramaGonderildi(String q) async {
+    final temiz = q.trim();
+    if (temiz.isEmpty) return;
+    if (barkodaBenziyor(temiz) || _fisBarkoduMu(temiz)) {
+      _araDebounce?.cancel();
+      ++_aramaId; // uçuştaki arama sonucunu geçersiz kıl
+      _araCtrl.clear();
+      setState(() => _aramaSonuclari = []);
+      _araFocus.requestFocus();
+      await _barkodOkutIsle(temiz);
+      return;
+    }
+    _araDebounce?.cancel();
+    final aramaId = ++_aramaId;
+    try {
+      final sonuclar = await _urunDepo.ara(temiz, limit: 20);
+      if (!mounted || aramaId != _aramaId) return;
+      if (sonuclar.length == 1) {
+        await _urunSepeteEkleAkilli(sonuclar.first);
+        _araFocus.requestFocus();
+      } else {
+        setState(() => _aramaSonuclari = sonuclar);
+        if (sonuclar.isEmpty) BildirimServisi.uyari(context, '"$temiz" için ürün bulunamadı');
+      }
+    } catch (_) {
+      // arama hatası — kullanıcı listeden seçmeye devam edebilir
+    }
+  }
+
   void _aramaDegisti(String q) {
     _araDebounce?.cancel();
     final temiz = q.trim();

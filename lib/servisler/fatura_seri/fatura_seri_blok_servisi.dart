@@ -46,6 +46,63 @@ class FaturaSeriBlokServisi {
   /// çağrılmalı). Azalmış ama hâlâ kullanılabilir bir blok varsa,
   /// arka planda (beklemeden) proaktif bir yenileme başlatır.
   Future<void> blokHazirOldugundanEminOl(String seri) async {
+    // Kullanılmış numaraları atlamak bloğu tüketebilir — o durumda yeni
+    // blok alınıp tekrar kontrol edilir (sınırlı sayıda deneme).
+    for (var i = 0; i < 5; i++) {
+      await _kullanilmisNumaralariAtla(seri);
+      if (await _blokHazirTekTur(seri)) return;
+    }
+    throw BlokTukendiException(
+        '$seri için kullanılabilir fatura numarası bulunamadı — bloklardaki '
+        'numaraların tamamı zaten başka faturalarda kullanılmış.');
+  }
+
+  /// 🔴 Yerelde ZATEN bir faturada kullanılmış numaraları bloktan atlar.
+  /// Manuel "Fatura Ekle" ekranı (eski yerel MAX+1 yöntemi) bloğun
+  /// sıradaki numarasını önceden alabiliyordu — bu durumda faturaNoTuket
+  /// aynı numarayı verip INSERT UNIQUE hatasıyla düşüyor, transaction
+  /// geri alındığı için siradaki hiç ilerlemiyor ve SONRAKİ TÜM otomatik
+  /// faturalar aynı noktada kilitleniyordu. Atlanan numara zaten dolu
+  /// olduğu için seride boşluk da oluşmaz. Transaction DIŞINDA, kalıcı
+  /// olarak yazılır (geri alınmaz).
+  Future<void> _kullanilmisNumaralariAtla(String seri) async {
+    final db = await Veritabani().db;
+    final rows = await db.query(
+      'yerel_fatura_blok',
+      where: 'seri = ? AND durum = ? AND siradaki <= blok_bitis',
+      whereArgs: [seri, 'aktif'],
+      orderBy: 'id ASC',
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    final r = rows.first;
+    final id = r['id'] as int;
+    final bitis = r['blok_bitis'] as int;
+    final yil = r['yil'] as int;
+    var siradaki = r['siradaki'] as int;
+    final baslangicSiradaki = siradaki;
+    while (siradaki <= bitis) {
+      final no = '$seri$yil${siradaki.toString().padLeft(9, '0')}';
+      final mevcut = await db.query('faturalar',
+          columns: ['id'], where: 'fatura_no = ?', whereArgs: [no], limit: 1);
+      if (mevcut.isEmpty) break;
+      siradaki++;
+    }
+    if (siradaki == baslangicSiradaki) return;
+    await db.update(
+      'yerel_fatura_blok',
+      {
+        'siradaki': siradaki,
+        if (siradaki > bitis) 'durum': 'tukendi',
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// true: kullanılabilir blok hazır. false: yeni blok alındı, kullanılmış
+  /// numara kontrolü tekrar yapılmalı.
+  Future<bool> _blokHazirTekTur(String seri) async {
     final db = await Veritabani().db;
     final rows = await db.query(
       'yerel_fatura_blok',
@@ -61,15 +118,16 @@ class FaturaSeriBlokServisi {
       final siradaki = r['siradaki'] as int;
       final toplam = (bitis - baslangic + 1).clamp(1, 1 << 30);
       final kalan = (bitis - siradaki + 1).clamp(0, toplam);
-      if (kalan / toplam > _yenilemeEsikOrani) return; // yeterli — hiçbir şey yapma
+      if (kalan / toplam > _yenilemeEsikOrani) return true; // yeterli — hiçbir şey yapma
       // Az kaldı — mevcut blok hâlâ kullanılabilir olduğu için
       // BEKLEMEDEN arka planda yeni blok iste (çevrimdışıysa sessizce
       // başarısız olur, bir sonraki çağrıda tekrar denenir).
       _arkaPlandaYenile(seri);
-      return;
+      return true;
     }
     // Hiç kullanılabilir blok yok — buradan devam edebilmek için ZORUNLU.
     await _yeniBlokAl(seri);
+    return false;
   }
 
   void _arkaPlandaYenile(String seri) {

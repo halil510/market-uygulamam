@@ -12,6 +12,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:market_plus/servisler/fatura_seri/fatura_seri_blok_servisi.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../../helper/test_initializer.dart';
 
 Future<int> _blokEkle(Database db,
@@ -110,6 +111,42 @@ void main() {
 
       expect(uretilenler, List.generate(10, (i) => i + 1));
       expect(uretilenler.toSet().length, 10, reason: 'mükerrer numara üretildi');
+    });
+  });
+
+  group('FaturaSeriBlokServisi.blokHazirOldugundanEminOl — kullanılmış numara atlama', () {
+    setUp(() => Veritabani.testVeritabani = db);
+    tearDown(() => Veritabani.testVeritabani = null);
+
+    Future<void> faturaEkle(String no) => db.insert('faturalar', {'fatura_no': no});
+
+    test('manuel ekranın önceden aldığı numarayı atlar (otomatik faturalar kilitlenmez)', () async {
+      await _blokEkle(db, baslangic: 11, bitis: 20);
+      // Manuel "Fatura Ekle" (yerel MAX+1) bloğun sıradaki 11 ve 12'sini almış.
+      await faturaEkle('HLF2026000000011');
+      await faturaEkle('HLF2026000000012');
+
+      await servis.blokHazirOldugundanEminOl('HLF');
+      final s = await db.transaction((txn) => servis.faturaNoTuket(txn, 'HLF'));
+      expect(s.numara, 13);
+    });
+
+    test('kullanılmamış numarada hiçbir şey atlamaz', () async {
+      await _blokEkle(db, baslangic: 11, bitis: 20);
+      await faturaEkle('HLF2026000000013'); // sıradaki (11) boş — araya dokunulmaz
+
+      await servis.blokHazirOldugundanEminOl('HLF');
+      final s = await db.transaction((txn) => servis.faturaNoTuket(txn, 'HLF'));
+      expect(s.numara, 11);
+    });
+
+    test('farklı serideki aynı sıra numarası atlamaya sebep olmaz', () async {
+      await _blokEkle(db, baslangic: 11, bitis: 20);
+      await faturaEkle('FTR2026000000011');
+
+      await servis.blokHazirOldugundanEminOl('HLF');
+      final s = await db.transaction((txn) => servis.faturaNoTuket(txn, 'HLF'));
+      expect(s.numara, 11);
     });
   });
 }

@@ -22,6 +22,10 @@ class Veritabani {
 
   static Database? _db;
 
+  /// Testlerde bellek-içi veritabanını singleton'a bağlamak için.
+  @visibleForTesting
+  static set testVeritabani(Database? db) => _db = db;
+
   // Tek kaynak: UygSabitler.dbVersiyon ile eşleşmeli
   static const int _versiyon = UygSabitler.dbVersiyon;
 

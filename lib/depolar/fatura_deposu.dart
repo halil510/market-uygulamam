@@ -182,6 +182,14 @@ class FaturaDeposu {
         if (deneme == 0) continue; // bir kez daha dene — yeni blok alınmış olmalı
         LogServisi().hata('FaturaDeposu.ekleMerkeziSeriIle', hata: e, yigin: st);
         rethrow;
+      } catch (e, st) {
+        // Bloktaki numara bu arada (ör. manuel Fatura Ekle ekranınca)
+        // kullanılmışsa: bir sonraki blokHazirOldugundanEminOl onu atlar.
+        final mesaj = e.toString().toLowerCase();
+        final cakismaMi = mesaj.contains('unique') && mesaj.contains('fatura_no');
+        if (cakismaMi && deneme == 0) continue;
+        LogServisi().hata('FaturaDeposu.ekleMerkeziSeriIle', hata: e, yigin: st);
+        rethrow;
       }
     }
     throw BlokTukendiException('Fatura numarası tahsis edilemedi, lütfen tekrar deneyin.');

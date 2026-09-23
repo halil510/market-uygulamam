@@ -99,7 +99,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => _MusteriSecimPaneli(cariler: cariler),
+        builder: (_) => MusteriSecimPaneli(cariler: cariler),
       );
       if (secilen == null || !mounted) return;
 

@@ -23,6 +23,8 @@ import '../../veri/database/veritabani.dart';
 import '../satis/coklu_odeme_ekrani.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../depolar/cari_deposu.dart';
+import '../../modeller/cari_model.dart';
+import '../../widgetlar/ortak/musteri_secim_paneli.dart';
 import '../../depolar/adisyon_log_deposu.dart';
 
 class MasaDetayEkrani extends ConsumerStatefulWidget {
@@ -290,6 +292,41 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
     }
   }
 
+  // ── Masaya müşteri (cari) bağla ────────────────────────────────────────────
+  // Altyapı (masa_siparisleri.cari_id + MasaDeposu.musteriBagla) vardı ama
+  // hiçbir ekrandan çağrılmıyordu — masada cari seçilemiyor, dolayısıyla
+  // ödemede 'Cari' (veresiye) yöntemi hiç çıkmıyordu. Yalnızca müşteri
+  // tipindeki cariler listelenir (tedarikçiler hariç).
+  Future<void> _musteriSec(MasaSiparisModel siparis) async {
+    if (_islemAktif) return;
+    try {
+      final cariler = (await _cariDepo.tumunuGetir()).where(cariMusteriMi).toList();
+      if (!mounted) return;
+      final secilen = await showModalBottomSheet<CariModel>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => MusteriSecimPaneli(cariler: cariler, baslik: 'Müşteri Seç'),
+      );
+      if (secilen == null || !mounted) return;
+      await ref.read(masaSiparisProvider(widget.masa.id!).notifier)
+          .musteriBagla(secilen.id, secilen.unvan);
+      if (mounted) BildirimServisi.basari(context, 'Müşteri bağlandı: ${secilen.unvan}');
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, kullaniciyaHataMetni(e));
+    }
+  }
+
+  Future<void> _musteriKaldir() async {
+    if (_islemAktif) return;
+    try {
+      await ref.read(masaSiparisProvider(widget.masa.id!).notifier).musteriBagla(null, null);
+      if (mounted) BildirimServisi.uyari(context, 'Müşteri masadan kaldırıldı');
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, kullaniciyaHataMetni(e));
+    }
+  }
+
   Future<void> _odemeAl(MasaSiparisModel siparis) async {
     if (_islemAktif) return;
     setState(() => _islemAktif = true);
@@ -482,6 +519,8 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
           onAdisyon: () => _adisyonYazdir(siparis!),
           onHesapIstendi: () => _hesapIstendi(siparis!),
           onOdeme: () => _odemeAl(siparis!),
+          onMusteriSec: () => _musteriSec(siparis!),
+          onMusteriKaldir: _musteriKaldir,
           islemAktif: _islemAktif,
         ),
       ),
@@ -526,6 +565,8 @@ class _MasaDetayIcerik extends StatelessWidget {
   final VoidCallback onAdisyon;
   final VoidCallback onHesapIstendi;
   final VoidCallback onOdeme;
+  final VoidCallback onMusteriSec;
+  final VoidCallback onMusteriKaldir;
   final bool islemAktif;
 
   const _MasaDetayIcerik({
@@ -534,6 +575,8 @@ class _MasaDetayIcerik extends StatelessWidget {
     required this.onAdisyon,
     required this.onHesapIstendi,
     required this.onOdeme,
+    required this.onMusteriSec,
+    required this.onMusteriKaldir,
     required this.islemAktif,
   });
 
@@ -562,6 +605,26 @@ class _MasaDetayIcerik extends StatelessWidget {
                 if (siparis?.acilisZamani != null)
                   Text('Açılış: ${_formatSaat(siparis!.acilisZamani)}',
                       style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
+                // Müşteri (cari) — sipariş açıkken bağlanabilir; bağlıysa
+                // ödemede 'Cari' (veresiye) yöntemi açılır.
+                if (siparis != null) ...[
+                  const SizedBox(height: 8),
+                  siparis!.cariId != null
+                      ? InputChip(
+                          avatar: const Icon(Icons.person, size: 16),
+                          label: Text(siparis!.cariAdi ?? 'Müşteri',
+                              overflow: TextOverflow.ellipsis),
+                          tooltip: 'Müşteriyi değiştir',
+                          onPressed: islemAktif ? null : onMusteriSec,
+                          onDeleted: islemAktif ? null : onMusteriKaldir,
+                          deleteButtonTooltipMessage: 'Müşteriyi kaldır',
+                        )
+                      : ActionChip(
+                          avatar: const Icon(Icons.person_add_alt_1_outlined, size: 16),
+                          label: const Text('Müşteri Ekle'),
+                          onPressed: islemAktif ? null : onMusteriSec,
+                        ),
+                ],
               ]),
             ),
             if (aktifSiparis)

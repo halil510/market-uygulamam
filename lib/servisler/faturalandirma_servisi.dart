@@ -144,6 +144,18 @@ class FaturalandirmaServisi {
     return '$onek$yil${sira.toString().padLeft(9, '0')}';
   }
 
+  /// Merkezi seri/blok sisteminde kullanılan seri öneki (Ayarlar > Fatura
+  /// "fatura_no_onek", boşsa 'FTR'). Otomatik ve manuel fatura AYNI seriyi
+  /// kullanmalı — tek kaynak burası.
+  static Future<String> faturaSeriOneki() async {
+    final onek = (await SharedPreferences.getInstance())
+            .getString('fatura_no_onek')
+            ?.trim()
+            .toUpperCase() ??
+        '';
+    return onek.isEmpty ? 'FTR' : onek;
+  }
+
   /// Ayarlardaki "Varsayılan İskonto %" değerini döndürür (yoksa 0).
   static Future<double> varsayilanIskontoOrani() async {
     final prefs = await SharedPreferences.getInstance();
@@ -205,12 +217,7 @@ class FaturalandirmaServisi {
     // tahsis edilmiş) bir bloktan üretiliyor — bkz. o fonksiyonun
     // yorumu. `sonrakiFaturaNo()` fonksiyonu SİLİNMEDİ (manuel fatura
     // ekranı hâlâ kullanıyor, bilinçli ayrı bir karar).
-    var onek = (await SharedPreferences.getInstance())
-        .getString('fatura_no_onek')
-        ?.trim()
-        .toUpperCase() ??
-        '';
-    if (onek.isEmpty) onek = 'FTR';
+    final onek = await faturaSeriOneki();
 
     final fatura = FaturaModel(
       faturaTipi: faturaTipi,

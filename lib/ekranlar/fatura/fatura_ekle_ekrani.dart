@@ -104,10 +104,12 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
     // damgası periyodik olarak tekrarlandığı için ÇAKIŞMA riski
     // taşıyordu. Artık veritabanında kayıtlı gerçek son numaraya göre
     // hesaplanan, GERÇEKTEN sıralı bir numara kullanılıyor.
-    _faturaNoCtrl.text = 'Yükleniyor…';
-    FaturaDeposu().siradakiFaturaNoUret().then((no) {
-      if (mounted) setState(() => _faturaNoCtrl.text = no);
-    });
+    //
+    // 2026-09-23: Yerel MAX+1 ile önceden doldurma KALDIRILDI — bu numara
+    // başka bir terminale tahsis edilmiş merkezi blokla çakışabiliyordu.
+    // Alan boş bırakılırsa numara kayıt anında merkezi seriden
+    // (FaturaDeposu.ekleMerkeziSeriIle) atanır; elle yazılırsa (ör. kağıt
+    // faturanın sisteme girilmesi) yazılan numara aynen kullanılır.
     _varsayilanKdvYukle();
   }
 
@@ -316,7 +318,24 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
         detaylar:       detaylar,
       );
 
-      final faturaId = await _faturaDepo.ekle(fatura, detaylar);
+      final otomatikNo = girilenFaturaNo.isEmpty;
+      if (!otomatikNo) {
+        // Elle girilen numara mevcut bir faturayla çakışıyorsa sessizce
+        // değiştirmek yerine kullanıcıya sor (kağıt faturanın numarası
+        // değişmemeli).
+        if (await _faturaDepo.faturaNoKullanildiMi(girilenFaturaNo)) {
+          if (mounted) {
+            BildirimServisi.hata(context,
+                '"$girilenFaturaNo" numaralı bir fatura zaten var. Farklı bir '
+                'numara yazın ya da alanı boş bırakıp otomatik atanmasını sağlayın.');
+          }
+          return;
+        }
+      }
+      final faturaId = otomatikNo
+          ? await _faturaDepo.ekleMerkeziSeriIle(fatura, detaylar,
+              seri: await FaturalandirmaServisi.faturaSeriOneki())
+          : await _faturaDepo.ekle(fatura, detaylar);
       if (!mounted) return;
       // 🔴 Derin denetimde bulundu (P2): fatura_no alanı serbestçe
       // düzenlenebiliyordu — kullanıcı otomatik üretilen numarayı silip
@@ -327,7 +346,11 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
       // kalıyordu. Kaydedilen faturanın gerçek numarası kontrol edilip
       // farklıysa açıkça bildiriliyor.
       final kaydedilen = await _faturaDepo.idileGetir(faturaId);
-      if (kaydedilen != null && kaydedilen.faturaNo != girilenFaturaNo) {
+      if (!mounted) return;
+      if (otomatikNo) {
+        BildirimServisi.basari(context,
+            'Fatura oluşturuldu — No: ${kaydedilen?.faturaNo ?? '-'}');
+      } else if (kaydedilen != null && kaydedilen.faturaNo != girilenFaturaNo) {
         BildirimServisi.uyari(context,
             'Fatura oluşturuldu — ama "$girilenFaturaNo" numarası zaten '
             'kullanıldığı için otomatik olarak "${kaydedilen.faturaNo}" '
@@ -379,7 +402,21 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
             // Fatura bilgileri
             _bolum('FATURA BİLGİLERİ', Icons.receipt_long),
             Row(children: [
-              Expanded(child: _ctrl(_faturaNoCtrl, 'Fatura No *', zorunlu: true)),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: TextFormField(
+                    controller: _faturaNoCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Fatura No',
+                      hintText: 'Otomatik',
+                      helperText: 'Boş bırakılırsa merkezi seriden atanır',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<String>(

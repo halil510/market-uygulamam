@@ -62,6 +62,13 @@ class FaturaDeposu {
     }
   }
 
+  Future<bool> faturaNoKullanildiMi(String faturaNo) async {
+    final db = await _d;
+    final rows = await db.query('faturalar',
+        columns: ['id'], where: 'fatura_no = ?', whereArgs: [faturaNo], limit: 1);
+    return rows.isNotEmpty;
+  }
+
   Future<int> ekle(FaturaModel fatura, List<FaturaDetayModel> kalemler) async {
     // 🔴 Derin analizde bulundu: fatura_detaylari kalemlerine global_id
     // atanmıyordu ve işlem sonrası BulutManager hiç çağrılmıyordu —

@@ -51,11 +51,89 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
     super.initState();
     _ayarlariYukle();
     _cakismaSayisiniYukle();
+    _kaliciHatalariYukle();
   }
 
   Future<void> _cakismaSayisiniYukle() async {
     final sayi = await SyncCakismaDeposu().cozulmemisSayisi();
     if (mounted) setState(() => _cozulmemisCakisma = sayi);
+  }
+
+  // Kalıcı (4xx) hataya düşmüş, otomatik gönderimden çıkmış kuyruk satırları.
+  List<({String tablo, int adet, String? ornekHata})> _kaliciHatalar = [];
+  bool _kaliciYenidenDeneniyor = false;
+
+  Future<void> _kaliciHatalariYukle() async {
+    try {
+      final liste = await BulutManager().kaliciHataOzeti();
+      if (mounted) setState(() => _kaliciHatalar = liste);
+    } catch (_) {
+      // görünürlük amaçlı — ekranı bozmamalı
+    }
+  }
+
+  Future<void> _kaliciHatalariYenidenDene() async {
+    setState(() => _kaliciYenidenDeneniyor = true);
+    try {
+      final adet = await BulutManager().kaliciHatalariYenidenDene();
+      _snack('$adet kayıt yeniden gönderim kuyruğuna alındı — sonuç birkaç '
+          'saniye içinde burada görünür', Colors.green);
+      // Gönderim turunun bitmesine fırsat ver, sonra listeyi tazele.
+      await Future.delayed(const Duration(seconds: 5));
+      await _kaliciHatalariYukle();
+    } finally {
+      if (mounted) setState(() => _kaliciYenidenDeneniyor = false);
+    }
+  }
+
+  Widget _kaliciHataKarti() {
+    final toplam = _kaliciHatalar.fold<int>(0, (t, h) => t + h.adet);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: TsRenk.kart(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withAlpha(120)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.cloud_off_outlined, color: Colors.red, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text('$toplam kayıt buluta gönderilemedi (kalıcı hata)',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
+        ]),
+        const SizedBox(height: 4),
+        Text('Sunucu bu kayıtları reddetti (ör. yanlış anahtar, eksik sütun). '
+            'Veri bu cihazda güvende. Uygulama her açıldığında otomatik yeniden '
+            'denenir; sorunu düzelttiyseniz hemen denemek için butona basın.',
+            style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
+        const SizedBox(height: 8),
+        ..._kaliciHatalar.map((h) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${h.tablo}: ${h.adet} kayıt',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                if (h.ornekHata != null)
+                  SelectableText(
+                    h.ornekHata!.length > 200 ? '${h.ornekHata!.substring(0, 200)}…' : h.ornekHata!,
+                    style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context)),
+                  ),
+              ]),
+            )),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.icon(
+            onPressed: _kaliciYenidenDeneniyor ? null : _kaliciHatalariYenidenDene,
+            icon: _kaliciYenidenDeneniyor
+                ? const SizedBox(width: 14, height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.replay, size: 16),
+            label: const Text('Yeniden Dene'),
+          ),
+        ),
+      ]),
+    );
   }
 
   @override
@@ -532,6 +610,8 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
                   textAlign: TextAlign.center),
               const SizedBox(height: 8),
             ],
+
+            if (_kaliciHatalar.isNotEmpty) _kaliciHataKarti(),
 
             // SONUÇ KARTI + KOPYALA BUTONU
             if (_sonSonuc != null) ...[

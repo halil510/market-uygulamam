@@ -44,3 +44,9 @@ bool syncSatiriSimdiDenenebilirMi(
   final gecenSaniye = simdiKullan.difference(sonDeneme).inSeconds;
   return gecenSaniye >= backoffSuresiSaniyeHesapla(denemeSayisi);
 }
+
+/// 'kalici_hata' (4xx) satırları bağlantı her kurulduğunda (uygulama
+/// açılışı, anahtar kaydı) otomatik olarak yeniden kuyruğa alınır — ta ki
+/// deneme sayısı bu sınıra ulaşana kadar. Sınırı aşanlar yalnızca Bulut
+/// Senkronizasyon ekranındaki "Yeniden Dene" ile denenir.
+const int kaliciHataOtomatikDenemeSiniri = 20;

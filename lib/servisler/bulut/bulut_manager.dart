@@ -110,6 +110,7 @@ class BulutManager {
     final sonuc = await s.baglantiTest();
     durum.value = sonuc.basarili ? BulutDurum.bagli : BulutDurum.hata;
     if (sonuc.basarili) {
+      await _kaliciHatalariKuyrugaGeriAl(otomatik: true);
       _workerBaslat();
       // 🔴 KURTARMA: bağlantı kurulduğu anda, önceki bir çökme/kapanmadan
       // KALMIŞ olabilecek bekleyen kuyruk satırlarını hemen işlemeye
@@ -291,7 +292,7 @@ class BulutManager {
         LogServisi().hata(
           'BulutManager: kalıcı senkron hatası (${tablo ?? "?"}, sync_queue#$id) — otomatik yeniden denenmeyecek',
           hata: hata,
-          ek: 'Düzeltme sonrası "Buluta Gönder" ile manuel tekrar denenebilir.',
+          ek: 'Uygulama her açıldığında otomatik yeniden denenir (en fazla $kaliciHataOtomatikDenemeSiniri kez); ayrıca Bulut Senkronizasyon > Kalıcı Hatalar > Yeniden Dene.',
         );
       } else {
         await db.rawUpdate(
@@ -303,6 +304,68 @@ class BulutManager {
     } catch (_) {
       // best-effort — görünürlük içindir, ana akışı bloklamamalı
     }
+  }
+
+  /// 'kalici_hata' satırları için GENEL kurtarma (2026-09-23). Önceden bu
+  /// satırlar bir daha HİÇ denenmiyordu — kod/şema/anahtar düzeltilse bile
+  /// (ör. sync_cakisma_kopyasi PGRST204 olayı, yanlış anahtar 401'i)
+  /// her seferinde özel bir onarım UPDATE'i yazmak gerekiyordu.
+  ///
+  /// [otomatik]: bağlantı her kurulduğunda (uygulama açılışı, anahtar
+  /// kaydı) çağrılır; yalnızca [kaliciHataOtomatikDenemeSiniri]'nin altındaki
+  /// satırları geri alır ve deneme sayısını KORUR (backoff geçerli kalır) —
+  /// gerçekten bozuk bir satır sınırsız yeniden denenmez. Elle çağrıda
+  /// (Bulut Senkronizasyon ekranı) tümü sıfırdan denenir.
+  Future<int> _kaliciHatalariKuyrugaGeriAl({required bool otomatik}) async {
+    try {
+      final db = await Veritabani().db;
+      final adet = otomatik
+          ? await db.rawUpdate(
+              "UPDATE ${DbSabitler.syncQueue} SET durum = 'beklemede' "
+              "WHERE durum = 'kalici_hata' AND deneme_sayisi < ?",
+              [kaliciHataOtomatikDenemeSiniri])
+          : await db.rawUpdate(
+              "UPDATE ${DbSabitler.syncQueue} SET durum = 'beklemede', deneme_sayisi = 0 "
+              "WHERE durum = 'kalici_hata'");
+      if (adet > 0) {
+        LogServisi().bilgi(
+            'BulutManager: $adet kalıcı-hatalı senkron satırı yeniden kuyruğa alındı'
+            '${otomatik ? ' (otomatik)' : ' (elle)'}');
+        await _bekleyenSayisiniYenile(db);
+      }
+      return adet;
+    } catch (_) {
+      return 0; // best-effort — bağlantı akışını bloklamamalı
+    }
+  }
+
+  /// Bulut Senkronizasyon ekranı için: kalıcı hatalı satırların tablo
+  /// bazında özeti (adet + örnek hata mesajı).
+  Future<List<({String tablo, int adet, String? ornekHata})>> kaliciHataOzeti() async {
+    final db = await Veritabani().db;
+    final rows = await db.rawQuery(
+        'SELECT tablo_adi, COUNT(*) AS adet, MAX(hata_mesaji) AS ornek '
+        "FROM ${DbSabitler.syncQueue} WHERE durum = 'kalici_hata' "
+        'GROUP BY tablo_adi ORDER BY adet DESC');
+    return rows
+        .map((r) => (
+              tablo: r['tablo_adi']?.toString() ?? '?',
+              adet: (r['adet'] as int?) ?? 0,
+              ornekHata: r['ornek']?.toString(),
+            ))
+        .toList();
+  }
+
+  /// Tüm kalıcı hatalı satırları deneme sayısı sıfırlanarak yeniden
+  /// kuyruğa alır ve hemen bir gönderim turu başlatır. Geri alınan satır
+  /// sayısını döner.
+  @visibleForTesting
+  Future<int> kaliciHatalariOtomatikGeriAl() => _kaliciHatalariKuyrugaGeriAl(otomatik: true);
+
+  Future<int> kaliciHatalariYenidenDene() async {
+    final adet = await _kaliciHatalariKuyrugaGeriAl(otomatik: false);
+    if (adet > 0) unawaited(_isle());
+    return adet;
   }
 
   Future<void> _bekleyenSayisiniYenile(Database db) async {

@@ -182,6 +182,12 @@ class FaturaSeriBlokServisi {
       // supabase_fatura_blok_tahsis_yetki_kisitla.sql) — publishable
       // anahtarla kalmış bir cihaz 401/403 alır; bu "script çalışmadı"
       // değil, yanlış anahtar demektir.
+      if (e.mesaj.contains('TERMINAL_PASIF')) {
+        throw BlokTukendiException(
+            'Bu cihaz (terminal) yönetici tarafından PASİFE alınmış — yeni '
+            'fatura numarası verilemez. Ayarlar > Terminaller ekranından '
+            'yeniden aktif edilebilir.');
+      }
       if (e.statusKodu == 401 || e.statusKodu == 403) {
         throw BlokTukendiException(
             'Fatura numarası bloğu alınamadı — bu cihazda herkese açık '

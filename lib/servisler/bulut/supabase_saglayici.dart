@@ -429,6 +429,30 @@ class SupabaseSaglayici implements IBulutSaglayici {
     return null;
   }
 
+  /// PostgREST sorgu dizesiyle okuma (ör. 'select=id,ad&order=id.asc').
+  /// Senkron akışındaki [cek]'ten farklı olarak hata SESSİZCE boş liste
+  /// dönmez — yönetim ekranlarında "veri yok" ile "okunamadı" ayrılmalı.
+  Future<List<Map<String, dynamic>>> sorgula(String tablo, String sorgu) async {
+    final r = await http.get(Uri.parse('$_rest/$tablo?$sorgu'), headers: _h)
+        .timeout(const Duration(seconds: 20));
+    if (r.statusCode >= 400) {
+      throw BulutIstekHatasi(r.statusCode,
+          '$tablo okuma: ${r.body.substring(0, r.body.length.clamp(0, 300))}');
+    }
+    return (jsonDecode(r.body) as List).cast<Map<String, dynamic>>();
+  }
+
+  /// `id` ile tek satırı kısmen günceller (PATCH).
+  Future<void> idIleGuncelle(String tablo, int id, Map<String, dynamic> veri) async {
+    final r = await http.patch(Uri.parse('$_rest/$tablo?id=eq.$id'),
+        headers: _h, body: jsonEncode(veri))
+        .timeout(const Duration(seconds: 15));
+    if (r.statusCode >= 400) {
+      throw BulutIstekHatasi(r.statusCode,
+          '$tablo güncelle: ${r.body.substring(0, r.body.length.clamp(0, 300))}');
+    }
+  }
+
   /// PostgreSQL RPC (stored function) çağırır — ör.
   /// fatura_blok_tahsis_et() gibi ATOMİK sunucu-taraflı işlemler için.
   /// Normal REST tablo uçlarından FARKLI olarak burada Postgres'in

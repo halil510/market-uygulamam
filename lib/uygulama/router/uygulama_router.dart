@@ -326,6 +326,7 @@ class UygulamaRouter {
     '/ayarlar/hata-izleme': 'ayarlar_sync',
     '/ayarlar/audit-log': 'ayarlar_audit_log',
     '/ayarlar/seri-mutabakati': 'ayarlar_gib',
+    '/ayarlar/terminaller': 'ayarlar_gib',
     '/ayarlar/gib': 'ayarlar_gib',
     '/ayarlar/log': 'ayarlar_log',
     '/personel': 'ayarlar',

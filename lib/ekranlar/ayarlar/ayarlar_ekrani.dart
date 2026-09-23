@@ -1001,6 +1001,15 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                   onTap: () => context.push('/ayarlar/seri-mutabakati'),
                 ),
                 ListTile(
+                  leading: const Icon(Icons.point_of_sale_outlined,
+                      color: Colors.indigo),
+                  title: const Text('Terminaller'),
+                  subtitle: const Text(
+                      'Fatura kesen cihazlar — ad verme, kaybolan cihazı pasife alma'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/ayarlar/terminaller'),
+                ),
+                ListTile(
                   leading: const Icon(Icons.health_and_safety_outlined,
                       color: Colors.green),
                   title: const Text('Veri Sağlığı Merkezi'),

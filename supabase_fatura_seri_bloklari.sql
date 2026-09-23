@@ -152,6 +152,13 @@ BEGIN
     RAISE EXCEPTION 'Geçersiz blok boyutu: %', p_blok_boyutu;
   END IF;
 
+  -- Pasif (kaybolan/çalınan) terminale blok verilmez.
+  IF p_terminal_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM terminaller t WHERE t.id = p_terminal_id AND t.aktif
+  ) THEN
+    RAISE EXCEPTION 'TERMINAL_PASIF: terminal % pasif veya kayıtlı değil', p_terminal_id;
+  END IF;
+
   INSERT INTO fatura_seri_sayaclari (belge_tipi, seri, yil, son_tahsis_edilen, last_updated)
     VALUES ('FATURA', p_seri, v_yil, p_blok_boyutu, now())
     ON CONFLICT (belge_tipi, seri, yil)

@@ -52,10 +52,9 @@ class TerminalServisi {
 
   /// Bu cihaz henüz bir Terminal olarak kayıtlı değilse, buluta bir
   /// tane kaydedip yerelde saklar. Kayıtlıysa doğrudan onu döner.
-  /// İdempotent: `terminal_kodu` üzerinde on_conflict kullanıldığı
-  /// için aynı kod tekrar gönderilirse hata vermez, mevcut satırı döner
-  /// (ör. cihaz verisi silinip yerel kayıt kaybolduysa, aynı cihaz
-  /// kimliğinden üretilen kod ile eski Terminal satırı yeniden bulunur).
+  /// İdempotent: aynı `terminal_kodu` bulutta zaten varsa (ör. cihaz
+  /// verisi silinip yerel kayıt kaybolduysa) eski satır olduğu gibi —
+  /// adı ve aktif/pasif durumu KORUNARAK — yeniden kullanılır.
   Future<YerelTerminal> terminalGarantiEt() async {
     final mevcut = await mevcutTerminal();
     if (mevcut != null) return mevcut;
@@ -77,17 +76,29 @@ class TerminalServisi {
     final subeId = AktifSubeServisi().subeId;
 
     final saglayici = SupabaseSaglayici(url: url, key: key);
-    final satir = await saglayici.insertVeDondur(
-      'terminaller',
-      {
-        'terminal_kodu': terminalKodu,
-        'terminal_adi': terminalKodu,
-        'sube_id': subeId,
-        'kayit_cihaz_id': cihazId,
-        'aktif': true,
-      },
-      onConflict: 'terminal_kodu',
-    );
+    // 🔴 Önce MEVCUT satır aranır, varsa DOKUNULMADAN kullanılır. Önceden
+    // on_conflict merge ile 'aktif: true' + terminal_adi yeniden
+    // yazılıyordu: pasife alınmış bir cihaz verisi silinip yeniden
+    // kurulunca KENDİNİ yeniden aktif ediyor, verilen ad da sıfırlanıyordu.
+    final kodFiltre = Uri.encodeComponent(terminalKodu);
+    final mevcutlar = await saglayici.sorgula(
+        'terminaller', 'select=id,terminal_kodu,sube_id&terminal_kodu=eq.$kodFiltre&limit=1');
+    final satir = mevcutlar.isNotEmpty
+        ? mevcutlar.first
+        : await saglayici.insertVeDondur(
+            'terminaller',
+            {
+              'terminal_kodu': terminalKodu,
+              'terminal_adi': terminalKodu,
+              'sube_id': subeId,
+              'kayit_cihaz_id': cihazId,
+              'aktif': true,
+            },
+            // Aynı anda iki kayıt denemesinde UNIQUE hatası yerine mevcut
+            // satır dönsün; bu dalda satır zaten yoktu, üzerine yazılan
+            // bir ayar olamaz.
+            onConflict: 'terminal_kodu',
+          );
     if (satir == null || satir['id'] == null) {
       throw Exception('Terminal kaydı buluttan beklenmeyen bir yanıt aldı.');
     }
@@ -115,5 +126,81 @@ class TerminalServisi {
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+}
+
+/// Buluttaki bir terminal kaydı + bu terminale verilmiş numara blokları özeti.
+class BulutTerminal {
+  final int id;
+  final String kod;
+  final String ad;
+  final bool aktif;
+  final int? subeId;
+  final DateTime? kayitTarihi;
+  final int blokSayisi;
+  final DateTime? sonTahsis;
+
+  const BulutTerminal({
+    required this.id,
+    required this.kod,
+    required this.ad,
+    required this.aktif,
+    this.subeId,
+    this.kayitTarihi,
+    this.blokSayisi = 0,
+    this.sonTahsis,
+  });
+}
+
+/// Terminal yönetimi (Ayarlar > Terminaller) — bulut üzerinde çalışır.
+class TerminalYonetimServisi {
+  Future<SupabaseSaglayici> _saglayici() async {
+    final url = await SupabaseAyarlari.urlOku();
+    final key = await SupabaseAyarlari.keyOku();
+    if (url == null || url.isEmpty || key == null || key.isEmpty) {
+      throw Exception('Supabase bağlantısı yapılandırılmamış '
+          '(Ayarlar > Bulut Senkronizasyon).');
+    }
+    return SupabaseSaglayici(url: url, key: key);
+  }
+
+  Future<List<BulutTerminal>> listele() async {
+    final s = await _saglayici();
+    final terminaller = await s.sorgula('terminaller',
+        'select=id,terminal_kodu,terminal_adi,aktif,sube_id,created_at&order=id.asc');
+    final bloklar = await s.sorgula('fatura_seri_bloklari',
+        'select=terminal_id,tahsis_zamani&terminal_id=not.is.null&limit=10000');
+    final sayi = <int, int>{};
+    final son = <int, DateTime>{};
+    for (final b in bloklar) {
+      final tid = (b['terminal_id'] as num).toInt();
+      sayi[tid] = (sayi[tid] ?? 0) + 1;
+      final t = DateTime.tryParse(b['tahsis_zamani']?.toString() ?? '');
+      if (t != null && (son[tid] == null || t.isAfter(son[tid]!))) son[tid] = t;
+    }
+    return terminaller.map((t) {
+      final id = (t['id'] as num).toInt();
+      final kod = t['terminal_kodu']?.toString() ?? '';
+      final ad = t['terminal_adi']?.toString();
+      return BulutTerminal(
+        id: id,
+        kod: kod,
+        ad: (ad == null || ad.isEmpty) ? kod : ad,
+        aktif: t['aktif'] == true,
+        subeId: (t['sube_id'] as num?)?.toInt(),
+        kayitTarihi: DateTime.tryParse(t['created_at']?.toString() ?? '')?.toLocal(),
+        blokSayisi: sayi[id] ?? 0,
+        sonTahsis: son[id]?.toLocal(),
+      );
+    }).toList();
+  }
+
+  Future<void> guncelle(int id, {String? ad, bool? aktif}) async {
+    final s = await _saglayici();
+    await s.idIleGuncelle('terminaller', id, {
+      if (ad != null) 'terminal_adi': ad,
+      if (aktif != null) 'aktif': aktif,
+      'last_updated': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 }

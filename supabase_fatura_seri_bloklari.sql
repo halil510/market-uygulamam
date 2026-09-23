@@ -172,10 +172,10 @@ $$;
 -- ── 8) RLS — bu 3 tablo BİLEREK anon/authenticated'e HİÇ açılmıyor.
 --    Uygulamanın kendi (sb_secret_/service_role) anahtarı zaten RLS'i
 --    atlar; fatura_blok_tahsis_et() RPC'si SECURITY DEFINER olduğu
---    için (yukarıda tanımlı) RLS'ten BAĞIMSIZ çalışmaya devam eder —
---    yani anon anahtarla bile normal şekilde çağrılabilir, ama bu
---    tablolara DOĞRUDAN erişim (herkese açık QR menü sayfasındaki
---    anahtarla bile) kapalı kalır. Aynı ilke: supabase_rls_sertlestirme
+--    için RLS'ten BAĞIMSIZ çalışır — bu yüzden EXECUTE yetkisi de
+--    aşağıda SADECE service_role'e bırakılıyor (aksi halde herkese açık
+--    QR menü anahtarıyla numara aralıkları boşa harcatılabilirdi).
+--    Tablolara DOĞRUDAN erişim de kapalı kalır. Aynı ilke: supabase_rls_sertlestirme
 --    .sql'de diğer ~60 tablo için uygulanan desenin AYNISI — YENİ
 --    eklenen tablolar da baştan bu desenle kurulmalı, sonradan
 --    hatırlanmayı beklememeli. ────────────────────────────────────────
@@ -184,6 +184,11 @@ ALTER TABLE fatura_seri_sayaclari ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fatura_seri_bloklari ENABLE ROW LEVEL SECURITY;
 -- (Kasıtlı olarak hiçbir CREATE POLICY yok — anon/authenticated'e sıfır
 -- doğrudan erişim, sadece service_role ve SECURITY DEFINER RPC.)
+
+REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM anon;
+REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM authenticated;
+GRANT  EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) TO service_role;
 
 COMMIT;
 

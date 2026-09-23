@@ -16,6 +16,7 @@
 import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import '../../veri/database/veritabani.dart';
+import '../bulut/bulut_saglayici.dart';
 import '../bulut/supabase_ayarlari.dart';
 import '../bulut/supabase_saglayici.dart';
 import 'terminal_servisi.dart';
@@ -110,12 +111,29 @@ class FaturaSeriBlokServisi {
       await _blogKaydet(seri, sonuc.first);
     } on BlokTukendiException {
       rethrow;
-    } catch (e) {
+    } on BulutIstekHatasi catch (e) {
+      // RPC'nin EXECUTE yetkisi yalnızca service_role'de (bkz.
+      // supabase_fatura_blok_tahsis_yetki_kisitla.sql) — publishable
+      // anahtarla kalmış bir cihaz 401/403 alır; bu "script çalışmadı"
+      // değil, yanlış anahtar demektir.
+      if (e.statusKodu == 401 || e.statusKodu == 403) {
+        throw BlokTukendiException(
+            'Fatura numarası bloğu alınamadı — bu cihazda herkese açık '
+            '(publishable) Supabase anahtarı kayıtlı. Ayarlar > Bulut '
+            'Senkronizasyon ekranından sb_secret_ ile başlayan anahtarı '
+            'girin. (Teknik ayrıntı: $e)');
+      }
       throw BlokTukendiException(
           'Fatura numarası bloğu alınamadı. Bu genelde '
           'supabase_fatura_seri_bloklari.sql henüz Supabase\'de '
           'çalıştırılmadığı anlamına gelir — lütfen bu script\'i '
           'Supabase SQL Editor\'de çalıştırıp tekrar deneyin. '
+          '(Teknik ayrıntı: $e)');
+    } catch (e) {
+      // Ağ hatası (çevrimdışı/zaman aşımı) vb.
+      throw BlokTukendiException(
+          'Fatura numarası bloğu alınamadı — Supabase\'e ulaşılamıyor. '
+          'İnternet bağlantınızı kontrol edip tekrar deneyin. '
           '(Teknik ayrıntı: $e)');
     }
   }

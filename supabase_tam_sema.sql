@@ -1,3 +1,44 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- MARKETPLUS / BARKOPRO — TEK PARÇA BULUT ŞEMASI (PostgreSQL / Supabase)
+-- Birleştirme: 2026-09-27
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Bu dosya, daha önce ayrı ayrı çalıştırılan 7 dosyanın YERİNE geçer:
+--   1) supabase tablolar önemli buluttaki tablolar.txt  → BÖLÜM A
+--   2) supabase_fatura_seri_bloklari.sql                → BÖLÜM B
+--   3) supabase_fatura_blok_tahsis_fix.sql              → BÖLÜM C'ye dahil (yerini C aldı)
+--   4) supabase_terminal_aktif_kontrolu.sql             → BÖLÜM C
+--   5) supabase_fatura_blok_tahsis_yetki_kisitla.sql    → BÖLÜM D
+--   6) supabase_rls_sertlestirme.sql                    → BÖLÜM E
+--   7) supabase_arsiv_plani.sql                         → BÖLÜM F
+--
+-- KULLANIM: Dosyanın TAMAMINI SQL Editor'e yapıştırıp çalıştırın. Her bölüm
+-- "IF NOT EXISTS / CREATE OR REPLACE / DROP ... IF EXISTS" ile yazıldığı için
+-- dolu bir veritabanında TEKRAR çalıştırmak güvenlidir: veri silmez, eksik
+-- tablo/sütun/indeks/fonksiyonu tamamlar. Yeni bir projede sıfırdan kurulum
+-- için de aynı dosya kullanılır.
+--
+-- BAŞKA BİR BULUTTA (Supabase dışı saf PostgreSQL) KULLANIM:
+--   • BÖLÜM A–D ve F standart PostgreSQL'dir.
+--   • 'anon', 'authenticated', 'service_role' Supabase'e özgü rollerdir.
+--     Saf PostgreSQL'de bu rollere referans veren GRANT/REVOKE/POLICY
+--     satırları "role does not exist" hatası verir — önce şunu çalıştırın:
+--       CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN;
+--       CREATE ROLE service_role NOLOGIN BYPASSRLS;
+--     (ya da BÖLÜM E'yi ve RLS satırlarını atlayın).
+--   • Uygulama tabloya PostgREST (REST) arayüzüyle bağlanır; Supabase dışı
+--     bir sunucuda PostgREST'in kurulu olması gerekir.
+--
+-- ⚠️ Bölüm E öncesi: uygulamada kayıtlı anahtarın "sb_secret_" (service_role)
+-- olduğundan emin olun — ayrıntı Bölüm E başlığında.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+
+
+-- ###########################################################################
+-- BÖLÜM A — ANA ŞEMA: tablolar, sütunlar, kısıt temizliği, UNIQUE, indeks, RLS
+-- (kaynak: supabase tablolar önemli buluttaki tablolar.txt)
+-- ###########################################################################
+
 -- ═══════════════════════════════════════════════════════════════════════
 -- MARKETPLUS — SUPABASE ŞEMASI  (KENDİ KENDİNİ ONARAN SÜRÜM)
 -- 68 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-21 (banka_hareketler/kredi_karti_hareket referans_id/referans_turu — cari hareket iptali artık bu tarafları da tersine çevirebiliyor)
@@ -3403,3 +3444,1046 @@ ALTER TABLE site_icerik ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS site_icerik_anon_okuyabilir ON site_icerik;
 CREATE POLICY site_icerik_anon_okuyabilir ON site_icerik
   FOR SELECT TO anon USING (true);
+
+-- ###########################################################################
+-- BÖLÜM B — MERKEZİ FATURA SERİ/BLOK YÖNETİMİ
+-- (kaynak: supabase_fatura_seri_bloklari.sql)
+-- ###########################################################################
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- MERKEZİ FATURA SERİ/BLOK YÖNETİMİ — 2026-09-23
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Bkz. proje kökünde CENTRAL_DOCUMENT_NUMBERING_DEEP_AUDIT.md (tam analiz).
+--
+-- NEDEN: Mevcut fatura numarası üretimi SADECE cihazın kendi yerel
+-- verisine bakarak (SELECT MAX(fatura_no)+1) çalışıyordu — birden fazla
+-- cihaz/terminal aynı anda aynı numarayı üretebilir, ikisi de GİB'e
+-- gönderilirse bu resmi bir mükerrer/sıra hatası olur. Bu script,
+-- numara ÜRETİMİNİ PostgreSQL'e taşıyor — burada atomik satır
+-- kilidi/UPSERT ile İKİ terminal ASLA aynı numara aralığını alamaz
+-- (Postgres'in kendi garantisi, uygulama kodu değil).
+--
+-- Bu script SADECE yeni tablo/fonksiyon ekler — MEVCUT hiçbir tabloya/
+-- veriye dokunmaz, mevcut fatura numaralarını DEĞİŞTİRMEZ. Güvenle
+-- çalıştırılabilir; uygulama kodu bunu kullanmaya başlayana kadar
+-- hiçbir etkisi olmaz.
+--
+-- Supabase Dashboard'da: SQL Editor > New query > bu dosyanın TAMAMINI
+-- yapıştırıp Run'a basın.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+BEGIN;
+
+-- ── 1) Terminaller — Şube'ye benzer, ADMİN tarafından bilinçli kaydedilen
+--    bir kimlik (cihaz_id gibi kendiliğinden üretilmiş/doğrulanmamış bir
+--    şeye DEĞİL, insan kararına dayanır — bkz. rapor §18) ─────────────────
+CREATE TABLE IF NOT EXISTS terminaller (
+  id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id      TEXT UNIQUE,
+  terminal_kodu  TEXT NOT NULL UNIQUE,
+  terminal_adi   TEXT,
+  sube_id        BIGINT,
+  aktif          BOOLEAN NOT NULL DEFAULT true,
+  kayit_cihaz_id TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_updated   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ── 2) Merkezi sayaç — blok tahsisinin ATOMİK kaynağı. Tek satır =
+--    tek (belge_tipi, seri, yil) kombinasyonu. ────────────────────────────
+CREATE TABLE IF NOT EXISTS fatura_seri_sayaclari (
+  belge_tipi          TEXT NOT NULL DEFAULT 'FATURA',
+  seri                TEXT NOT NULL,
+  yil                 INT NOT NULL,
+  son_tahsis_edilen   BIGINT NOT NULL DEFAULT 0,
+  last_updated        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (belge_tipi, seri, yil)
+);
+
+-- ── 3) Blok tahsis geçmişi — her terminale ne zaman hangi aralığın
+--    verildiğinin kaydı (audit + mutabakat için). ─────────────────────────
+CREATE TABLE IF NOT EXISTS fatura_seri_bloklari (
+  id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id          TEXT UNIQUE,
+  belge_tipi         TEXT NOT NULL DEFAULT 'FATURA',
+  seri               TEXT NOT NULL,
+  yil                INT NOT NULL,
+  terminal_id        BIGINT REFERENCES terminaller(id),
+  blok_baslangic     BIGINT NOT NULL,
+  blok_bitis         BIGINT NOT NULL,
+  son_kullanilan     BIGINT,
+  durum              TEXT NOT NULL DEFAULT 'aktif',
+  tahsis_zamani      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  aktivasyon_zamani  TIMESTAMPTZ,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_updated       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_fatura_seri_bloklari_terminal
+  ON fatura_seri_bloklari(terminal_id);
+CREATE INDEX IF NOT EXISTS idx_fatura_seri_bloklari_seri_yil
+  ON fatura_seri_bloklari(belge_tipi, seri, yil);
+
+-- ── 4) Mevcut faturalar tablosunda: bulutta fatura_no üzerinde HİÇ
+--    UNIQUE kısıt yoktu (yerelde vardı) — artık bulutta da var. Önce
+--    mevcut veride gerçek bir çakışma olmadığını doğrulayan bir kontrol,
+--    SONRA kısıt. (Eğer çakışma varsa — ör. daha önce "-SYNC" ile
+--    çözülmüş satırlar — kısıt eklenmeden önce görünür olsun diye
+--    NOTICE ile uyarılır, script YİNE DE devam eder çünkü "-SYNC" ekli
+--    satırlar zaten benzersizdir; gerçek bir çakışma varsa CREATE UNIQUE
+--    INDEX aşağıda hata verip script'i durdurur — bu KASITLI, sessizce
+--    geçmemesi gerekir.) ────────────────────────────────────────────────
+DO $$
+DECLARE
+  v_cakisma_sayisi INT;
+BEGIN
+  SELECT COUNT(*) INTO v_cakisma_sayisi FROM (
+    SELECT fatura_no FROM faturalar
+    WHERE fatura_no IS NOT NULL
+    GROUP BY fatura_no HAVING COUNT(*) > 1
+  ) t;
+  IF v_cakisma_sayisi > 0 THEN
+    RAISE NOTICE 'UYARI: faturalar tablosunda % adet mükerrer fatura_no bulundu. UNIQUE kısıt eklenemeyecek — önce bu satırları elle inceleyip düzeltin (SELECT fatura_no, COUNT(*) FROM faturalar GROUP BY fatura_no HAVING COUNT(*)>1).', v_cakisma_sayisi;
+  END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_faturalar_fatura_no_unique
+  ON faturalar (fatura_no) WHERE fatura_no IS NOT NULL;
+
+-- ── 5) Terminal/blok kolonları faturalar'a ekleniyor — mevcut fatura_no
+--    formatı/metni DEĞİŞMİYOR, sadece hangi terminal/blok tarafından
+--    üretildiğinin izi tutuluyor (audit + mutabakat için). ───────────────
+ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS terminal_id BIGINT;
+ALTER TABLE faturalar ADD COLUMN IF NOT EXISTS blok_id BIGINT;
+
+-- ── 6) Mevcut fatura_no'lardan sayaç TOHUMLANIR — "13 haneli sonek"
+--    (4 haneli yıl + 9 haneli sıra) formatına uyan satırlar taranır,
+--    her (seri,yıl) için GERÇEK maksimum bulunup sayaç oradan başlatılır.
+--    Bu formata uymayan (ör. manuel serbest metinle girilmiş) satırlar
+--    BİLEREK atlanır — onlar zaten yeni sistemin ürettiği bir numara
+--    değil, sayacı yanlış yönlendirmemesi için dahil edilmez. ──────────
+INSERT INTO fatura_seri_sayaclari (belge_tipi, seri, yil, son_tahsis_edilen)
+SELECT
+  'FATURA',
+  substring(fatura_no from 1 for length(fatura_no) - 13) AS seri,
+  substring(fatura_no from length(fatura_no) - 12 for 4)::int AS yil,
+  MAX(substring(fatura_no from length(fatura_no) - 8 for 9)::bigint) AS son_tahsis_edilen
+FROM faturalar
+WHERE fatura_no IS NOT NULL
+  AND length(fatura_no) >= 13
+  AND fatura_no ~ '^.*[0-9]{13}$'
+GROUP BY 2, 3
+ON CONFLICT (belge_tipi, seri, yil) DO UPDATE
+  SET son_tahsis_edilen = GREATEST(
+    fatura_seri_sayaclari.son_tahsis_edilen,
+    EXCLUDED.son_tahsis_edilen
+  );
+
+-- ── 7) Atomik blok tahsis fonksiyonu ──────────────────────────────────────
+-- Aynı anda 2 terminal çağırsa bile Postgres'in kendi UPSERT satır kilidi
+-- sayesinde ASLA aynı aralığı iki kez döndürmez. Yıl, SUNUCU saatinden
+-- (now()) hesaplanır — çağıran cihazın saatine GÜVENİLMEZ (cihaz saati
+-- yanlış ayarlıysa bile doğru yıl üretilir).
+CREATE OR REPLACE FUNCTION fatura_blok_tahsis_et(
+  p_terminal_id  BIGINT,
+  p_seri         TEXT,
+  p_blok_boyutu  INT DEFAULT 10
+) RETURNS TABLE(blok_baslangic BIGINT, blok_bitis BIGINT, yil INT)
+SECURITY DEFINER
+SET search_path = public
+LANGUAGE plpgsql AS $$
+#variable_conflict use_column
+-- ↑ RETURNS TABLE'daki çıktı sütunları (blok_baslangic/blok_bitis/yil)
+-- PL/pgSQL içinde değişken sayılır; tablo sütunlarıyla aynı isimde
+-- oldukları için "column reference yil is ambiguous" hatası veriyordu
+-- (2026-09-23 canlı testte yakalandı). Belirsizlikte tablo sütunu seçilir.
+DECLARE
+  v_yil INT := EXTRACT(YEAR FROM now())::INT;
+  v_baslangic BIGINT;
+BEGIN
+  IF p_blok_boyutu IS NULL OR p_blok_boyutu <= 0 OR p_blok_boyutu > 1000 THEN
+    RAISE EXCEPTION 'Geçersiz blok boyutu: %', p_blok_boyutu;
+  END IF;
+
+  -- Pasif (kaybolan/çalınan) terminale blok verilmez.
+  IF p_terminal_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM terminaller t WHERE t.id = p_terminal_id AND t.aktif
+  ) THEN
+    RAISE EXCEPTION 'TERMINAL_PASIF: terminal % pasif veya kayıtlı değil', p_terminal_id;
+  END IF;
+
+  INSERT INTO fatura_seri_sayaclari (belge_tipi, seri, yil, son_tahsis_edilen, last_updated)
+    VALUES ('FATURA', p_seri, v_yil, p_blok_boyutu, now())
+    ON CONFLICT (belge_tipi, seri, yil)
+    DO UPDATE SET
+      son_tahsis_edilen = fatura_seri_sayaclari.son_tahsis_edilen + p_blok_boyutu,
+      last_updated = now()
+    RETURNING son_tahsis_edilen - p_blok_boyutu + 1 INTO v_baslangic;
+
+  INSERT INTO fatura_seri_bloklari
+    (belge_tipi, seri, yil, terminal_id, blok_baslangic, blok_bitis, durum, aktivasyon_zamani)
+    VALUES
+    ('FATURA', p_seri, v_yil, p_terminal_id, v_baslangic, v_baslangic + p_blok_boyutu - 1, 'aktif', now());
+
+  RETURN QUERY SELECT v_baslangic, v_baslangic + p_blok_boyutu - 1, v_yil;
+END;
+$$;
+
+-- ── 8) RLS — bu 3 tablo BİLEREK anon/authenticated'e HİÇ açılmıyor.
+--    Uygulamanın kendi (sb_secret_/service_role) anahtarı zaten RLS'i
+--    atlar; fatura_blok_tahsis_et() RPC'si SECURITY DEFINER olduğu
+--    için RLS'ten BAĞIMSIZ çalışır — bu yüzden EXECUTE yetkisi de
+--    aşağıda SADECE service_role'e bırakılıyor (aksi halde herkese açık
+--    QR menü anahtarıyla numara aralıkları boşa harcatılabilirdi).
+--    Tablolara DOĞRUDAN erişim de kapalı kalır. Aynı ilke: supabase_rls_sertlestirme
+--    .sql'de diğer ~60 tablo için uygulanan desenin AYNISI — YENİ
+--    eklenen tablolar da baştan bu desenle kurulmalı, sonradan
+--    hatırlanmayı beklememeli. ────────────────────────────────────────
+ALTER TABLE terminaller ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fatura_seri_sayaclari ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fatura_seri_bloklari ENABLE ROW LEVEL SECURITY;
+-- (Kasıtlı olarak hiçbir CREATE POLICY yok — anon/authenticated'e sıfır
+-- doğrudan erişim, sadece service_role ve SECURITY DEFINER RPC.)
+
+REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM anon;
+REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM authenticated;
+GRANT  EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) TO service_role;
+
+COMMIT;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- DOĞRULAMA (script çalıştıktan sonra):
+-- 1) SELECT * FROM fatura_seri_sayaclari;  — mevcut faturalarınızdaki gerçek
+--    seri/yıllar ve doğru MAX+1'den başlayan sayaçları görmelisiniz.
+-- 2) SELECT * FROM fatura_blok_tahsis_et(1, 'HLF', 10);  — (1 henüz gerçek
+--    bir terminal id'si olmayabilir, test amaçlı; uygulama gerçek
+--    terminal kaydını kendisi oluşturacak) — bir başlangıç/bitiş aralığı
+--    dönmeli, fatura_seri_sayaclari'ndaki değer 10 artmalı.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+
+-- ###########################################################################
+-- BÖLÜM C — fatura_blok_tahsis_et() SON HÂLİ (yil-ambiguous yaması + pasif terminal kontrolü)
+-- (kaynak: supabase_terminal_aktif_kontrolu.sql — supabase_fatura_blok_tahsis_fix.sql'in yerini alır)
+-- ###########################################################################
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- YAMA — Pasif terminale fatura numara bloğu verilmesin — 2026-09-23
+-- ═══════════════════════════════════════════════════════════════════════════
+-- terminaller.aktif bayrağı hiçbir yerde kontrol edilmiyordu: kaybolan/
+-- çalınan bir cihaz pasife alınsa bile numara bloğu almaya devam ederdi.
+-- Artık fatura_blok_tahsis_et() pasif (ya da hiç kayıtlı olmayan) bir
+-- terminal için 'TERMINAL_PASIF' hatası verir. Uygulama bunu yakalayıp
+-- kullanıcıya açık bir mesaj gösterir.
+--
+-- Tablolara/veriye dokunmaz; yalnızca fonksiyonu yeniden tanımlar
+-- (yetkiler — yalnızca service_role — korunur).
+-- Supabase Dashboard > SQL Editor > New query > yapıştır > Run.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION fatura_blok_tahsis_et(
+  p_terminal_id  BIGINT,
+  p_seri         TEXT,
+  p_blok_boyutu  INT DEFAULT 10
+) RETURNS TABLE(blok_baslangic BIGINT, blok_bitis BIGINT, yil INT)
+SECURITY DEFINER
+SET search_path = public
+LANGUAGE plpgsql AS $$
+#variable_conflict use_column
+DECLARE
+  v_yil INT := EXTRACT(YEAR FROM now())::INT;
+  v_baslangic BIGINT;
+BEGIN
+  IF p_blok_boyutu IS NULL OR p_blok_boyutu <= 0 OR p_blok_boyutu > 1000 THEN
+    RAISE EXCEPTION 'Geçersiz blok boyutu: %', p_blok_boyutu;
+  END IF;
+
+  IF p_terminal_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM terminaller t WHERE t.id = p_terminal_id AND t.aktif
+  ) THEN
+    RAISE EXCEPTION 'TERMINAL_PASIF: terminal % pasif veya kayıtlı değil', p_terminal_id;
+  END IF;
+
+  INSERT INTO fatura_seri_sayaclari (belge_tipi, seri, yil, son_tahsis_edilen, last_updated)
+    VALUES ('FATURA', p_seri, v_yil, p_blok_boyutu, now())
+    ON CONFLICT (belge_tipi, seri, yil)
+    DO UPDATE SET
+      son_tahsis_edilen = fatura_seri_sayaclari.son_tahsis_edilen + p_blok_boyutu,
+      last_updated = now()
+    RETURNING son_tahsis_edilen - p_blok_boyutu + 1 INTO v_baslangic;
+
+  INSERT INTO fatura_seri_bloklari
+    (belge_tipi, seri, yil, terminal_id, blok_baslangic, blok_bitis, durum, aktivasyon_zamani)
+    VALUES
+    ('FATURA', p_seri, v_yil, p_terminal_id, v_baslangic, v_baslangic + p_blok_boyutu - 1, 'aktif', now());
+
+  RETURN QUERY SELECT v_baslangic, v_baslangic + p_blok_boyutu - 1, v_yil;
+END;
+$$;
+
+
+-- ###########################################################################
+-- BÖLÜM D — fatura_blok_tahsis_et() YETKİ KISITLAMA (yalnızca service_role)
+-- (kaynak: supabase_fatura_blok_tahsis_yetki_kisitla.sql)
+-- ###########################################################################
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- YAMA — fatura_blok_tahsis_et() herkese açık anahtarla çağrılabiliyordu
+-- 2026-09-23
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SORUN: Fonksiyon SECURITY DEFINER ve Postgres varsayılanı olarak EXECUTE
+-- yetkisi PUBLIC'e açık. QR menü sayfasındaki publishable (anon) anahtarı
+-- ele geçiren biri sürekli çağırarak fatura numarası aralıklarını boşa
+-- harcatabilir (resmi numaralamada boşluk). Canlı testte doğrulandı.
+--
+-- Uygulama zaten sb_secret_ (service_role) anahtarıyla çalışıyor —
+-- service_role yetkisi korunduğu için uygulama ETKİLENMEZ.
+-- Supabase Dashboard > SQL Editor > New query > yapıştır > Run.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+BEGIN;
+
+REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM anon;
+REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM authenticated;
+GRANT  EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) TO service_role;
+
+
+COMMIT;
+
+
+-- ###########################################################################
+-- BÖLÜM E — RLS SERTLEŞTİRME (herkese açık anahtarın erişimini kapatır)
+-- (kaynak: supabase_rls_sertlestirme.sql)
+-- ###########################################################################
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SUPABASE RLS SERTLEŞTİRMESİ — 2026-09-22
+-- ═══════════════════════════════════════════════════════════════════════════
+-- NEDEN: Şu anda TÜM tablolarda "anon, authenticated USING (true)" politikası
+-- var — yani QR menü sayfasındaki (qr_menu_sayfasi.html / _v2.html) herkese
+-- açık anahtar (sb_publishable_...), kullanicilar (şifre hash dahil),
+-- kredi_kartlari, cari, satislar, kasa_hareketleri gibi TÜM tablolara tam
+-- okuma+yazma+silme erişimi veriyor. Bu anahtar sayfa kaynağında düz metin —
+-- QR kodunu okutan HERKES tarayıcı geliştirici araçlarıyla görebilir.
+--
+-- UYGULAMANIN KENDİSİ etkilenmez: Ayarlar > Bulut Senkronizasyon'da
+-- "sb_secret_" (service_role) anahtar kayıtlıysa, o anahtar RLS'i zaten
+-- ATLAR (Supabase'in kendi kuralı) — aşağıdaki DROP'lar sadece anon/
+-- authenticated rollerinin erişimini kapatır.
+--
+-- ⚠️ ÖN KOŞUL — BU SCRIPT'İ ÇALIŞTIRMADAN ÖNCE MUTLAKA KONTROL EDİN:
+-- Uygulamada Ayarlar > Bulut Senkronizasyon ekranındaki kayıtlı anahtar
+-- "sb_secret_" ile mi başlıyor? (Ekran zaten bunu "Secret anahtar
+-- kaydedildi ✓ — tam yetkili senkron aktif" diye yeşil onaylıyor.)
+--   - EVET ise → bu script'i güvenle çalıştırabilirsiniz.
+--   - HAYIR ise (publishable/eyJ... anahtar kayıtlıysa) → ÖNCE Supabase
+--     Dashboard > Project Settings > API Keys sayfasından "service_role"
+--     (secret) anahtarı kopyalayıp o ekrana yapıştırıp kaydedin, SONRA bu
+--     script'i çalıştırın. Aksi halde uygulamanızın kendi senkronu 401
+--     hatası almaya başlar.
+--
+-- Supabase Dashboard'da: SQL Editor > New query > bu dosyanın TAMAMINI
+-- yapıştırıp Run'a basın. Tamamı tek işlemde (transaction) uygulanır.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+BEGIN;
+
+-- ── 1) urunler: anon'a tam CRUD yerine SADECE okuma, SADECE QR menüdeki
+--    ürünler (uygulama zaten bu filtreyle sorguluyor — RLS aynı kısıtı
+--    sunucu tarafında da uygulasın, savunma derinliği) ──────────────────
+DROP POLICY IF EXISTS urunler_all ON urunler;
+CREATE POLICY urunler_anon_qr_menu_okuyabilir ON urunler
+  FOR SELECT TO anon
+  USING (aktif = true AND is_deleted = false AND qr_menude = 1);
+
+-- ── 2) qr_siparisler / site_icerik: DOKUNULMUYOR — zaten doğru dar
+--    kapsamlı politikaları var (INSERT-only / SELECT-only anon). ────────
+
+-- ── 3) Geri kalan tüm tablolar: anon/authenticated'e HİÇBİR erişim
+--    kalmasın — uygulamanın kendi secret anahtarı zaten RLS'i atlıyor. ──
+DROP POLICY IF EXISTS adisyon_log_all ON adisyon_log;
+DROP POLICY IF EXISTS audit_log_all ON audit_log;
+DROP POLICY IF EXISTS ayarlar_all ON ayarlar;
+DROP POLICY IF EXISTS banka_hareketler_all ON banka_hareketler;
+DROP POLICY IF EXISTS banka_hesaplar_all ON banka_hesaplar;
+DROP POLICY IF EXISTS banka_kapanis_snapshot_all ON banka_kapanis_snapshot;
+DROP POLICY IF EXISTS bankalar_all ON bankalar;
+DROP POLICY IF EXISTS bekleyen_siparis_kalem_all ON bekleyen_siparis_kalem;
+DROP POLICY IF EXISTS bekleyen_siparisler_all ON bekleyen_siparisler;
+DROP POLICY IF EXISTS birimler_all ON birimler;
+DROP POLICY IF EXISTS borc_odemeler_all ON borc_odemeler;
+DROP POLICY IF EXISTS borclar_all ON borclar;
+DROP POLICY IF EXISTS cari_all ON cari;
+DROP POLICY IF EXISTS cari_adres_all ON cari_adres;
+DROP POLICY IF EXISTS cari_hareket_all ON cari_hareket;
+DROP POLICY IF EXISTS cari_kapanis_snapshot_all ON cari_kapanis_snapshot;
+DROP POLICY IF EXISTS devir_checkpoint_all ON devir_checkpoint;
+DROP POLICY IF EXISTS donem_kilit_all ON donem_kilit;
+DROP POLICY IF EXISTS donem_sube_durumlari_all ON donem_sube_durumlari;
+DROP POLICY IF EXISTS donemler_all ON donemler;
+DROP POLICY IF EXISTS fatura_detaylari_all ON fatura_detaylari;
+DROP POLICY IF EXISTS faturalar_all ON faturalar;
+DROP POLICY IF EXISTS fis_seri_all ON fis_seri;
+DROP POLICY IF EXISTS fiyat_gecmis_all ON fiyat_gecmis;
+DROP POLICY IF EXISTS fiyat_gruplari_all ON fiyat_gruplari;
+DROP POLICY IF EXISTS fiyat_kademeleri_all ON fiyat_kademeleri;
+DROP POLICY IF EXISTS garson_cagri_log_all ON garson_cagri_log;
+DROP POLICY IF EXISTS gider_kategoriler_all ON gider_kategoriler;
+DROP POLICY IF EXISTS giderler_all ON giderler;
+DROP POLICY IF EXISTS iade_all ON iade;
+DROP POLICY IF EXISTS iade_kalem_all ON iade_kalem;
+DROP POLICY IF EXISTS irsaliye_kalem_all ON irsaliye_kalem;
+DROP POLICY IF EXISTS irsaliyeler_all ON irsaliyeler;
+DROP POLICY IF EXISTS kasa_hareketleri_all ON kasa_hareketleri;
+DROP POLICY IF EXISTS kasa_kapanis_snapshot_all ON kasa_kapanis_snapshot;
+DROP POLICY IF EXISTS kategoriler_all ON kategoriler;
+DROP POLICY IF EXISTS kredi_karti_hareket_all ON kredi_karti_hareket;
+DROP POLICY IF EXISTS kredi_kartlari_all ON kredi_kartlari;
+DROP POLICY IF EXISTS kullanicilar_all ON kullanicilar;
+DROP POLICY IF EXISTS lot_seri_all ON lot_seri;
+DROP POLICY IF EXISTS markalar_all ON markalar;
+DROP POLICY IF EXISTS masa_hareket_log_all ON masa_hareket_log;
+DROP POLICY IF EXISTS masa_rezervasyon_all ON masa_rezervasyon;
+DROP POLICY IF EXISTS masa_siparis_kalem_all ON masa_siparis_kalem;
+DROP POLICY IF EXISTS masa_siparisleri_all ON masa_siparisleri;
+DROP POLICY IF EXISTS masalar_all ON masalar;
+DROP POLICY IF EXISTS musteri_puan_all ON musteri_puan;
+DROP POLICY IF EXISTS onay_talepleri_all ON onay_talepleri;
+DROP POLICY IF EXISTS personel_all ON personel;
+DROP POLICY IF EXISTS promosyon_aksiyon_all ON promosyon_aksiyon;
+DROP POLICY IF EXISTS promosyon_kosul_all ON promosyon_kosul;
+DROP POLICY IF EXISTS promosyon_tanim_all ON promosyon_tanim;
+DROP POLICY IF EXISTS promosyonlar_all ON promosyonlar;
+DROP POLICY IF EXISTS puan_hareket_all ON puan_hareket;
+DROP POLICY IF EXISTS rol_yetkileri_all ON rol_yetkileri;
+DROP POLICY IF EXISTS roller_yetki_all ON roller_yetki;
+DROP POLICY IF EXISTS satis_kalem_all ON satis_kalem;
+DROP POLICY IF EXISTS satislar_all ON satislar;
+DROP POLICY IF EXISTS stok_hareket_all ON stok_hareket;
+DROP POLICY IF EXISTS stok_kapanis_snapshot_all ON stok_kapanis_snapshot;
+DROP POLICY IF EXISTS sube_urun_all ON sube_urun;
+DROP POLICY IF EXISTS subeler_all ON subeler;
+DROP POLICY IF EXISTS tedarikci_siparis_kalem_all ON tedarikci_siparis_kalem;
+DROP POLICY IF EXISTS tedarikci_siparisler_all ON tedarikci_siparisler;
+DROP POLICY IF EXISTS urun_fiyat_gruplari_all ON urun_fiyat_gruplari;
+DROP POLICY IF EXISTS vardiyalar_all ON vardiyalar;
+DROP POLICY IF EXISTS zaman_fiyat_all ON zaman_fiyat;
+
+COMMIT;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- DOĞRULAMA (script çalıştıktan sonra):
+-- 1) Uygulamada Ayarlar > Bulut Senkronizasyon > senkron hâlâ ✓ yeşil olmalı.
+-- 2) Tarayıcıdan/curl'den anon anahtarla şu istek artık BOŞ ya da 401/403
+--    dönmeli (önceden TÜM kullanıcıları dönüyordu):
+--      GET {SUPABASE_URL}/rest/v1/kullanicilar?select=*
+--      Header: apikey: sb_publishable_...  Authorization: Bearer sb_publishable_...
+-- 3) QR menü sayfası (gerçek tarayıcıda) yine sorunsuz ürün listesi
+--    gösterip sipariş verebilmeli.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+
+-- ###########################################################################
+-- BÖLÜM F — ARŞİV TABLOLARI + FONKSİYONLARI (yalnızca ekler, aktif tablolara dokunmaz)
+-- (kaynak: supabase_arsiv_plani.sql)
+-- ###########################################################################
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- BARKOPRO — SUPABASE ARŞİV MİMARİSİ (ERP_DENETIM_KURALLARI.md, Madde 21 & 22)
+-- Oluşturulma: 2026-09-20
+--
+-- AMAÇ: Yerel tarafta zaten üretim seviyesinde çalışan Yıl Sonu Devir /
+-- Arşivleme sisteminin (bkz. lib/servisler/donem_arsiv_servisi.dart —
+-- satislar, satis_kalem, stok_hareket, cari_hareket, kasa_hareketleri,
+-- banka_hareketler'i arsiv/<YIL>/barkopro_<YIL>.db dosyasına kopyalayıp
+-- Madde 19'a göre doğrulayan sistem) BULUT (Supabase/PostgreSQL)
+-- tarafındaki bir benzerini kurmak: yüksek hacimli hareket tablolarını,
+-- eski dönemlere ait satırları aktif tablolardan SİLMEDEN, salt-okunur
+-- arşiv tablolarına ayırmak.
+--
+-- ───────────────────────────────────────────────────────────────────────
+-- KARAR: "PARTITIONING" DEĞİL, "ARCHIVE TABLES" (Madde 21'in istediği
+-- rapor — kod yazılmadan önce gerekçelendirilmesi istenen seçim)
+-- ───────────────────────────────────────────────────────────────────────
+-- 1. TUTARLILIK: Yerel taraf zaten "aktif DB küçük + ayrı, salt-okunur
+--    arşiv dosyası" modelini kullanıyor (bkz. yukarıdaki dosya). Bulut
+--    tarafında da AYNI zihinsel modeli (ayrı arşiv tablosu = yerel ayrı
+--    arşiv dosyası) kurmak, native partitioning gibi yerelde hiçbir
+--    karşılığı olmayan ikinci, farklı bir strateji öğrenmekten daha
+--    güvenli ve tutarlı.
+-- 2. RİSK: PostgreSQL'de declarative partitioning, ZATEN ÜRETİMDE DOLU
+--    ve mobil istemcinin (anon/authenticated key ile) doğrudan INSERT/
+--    UPSERT yaptığı bir tabloyu partitioned hale getirmek için tablo
+--    DEĞİŞTİRİLEMEZ — yeni partitioned tablo oluşturup veriyi kopyalayıp
+--    eski tabloyu RENAME/DROP ile değiştirmek gerekir (kesinti riski,
+--    dikkatli bir "cutover" penceresi ister). Archive tables SADECE YENİ
+--    TABLO EKLER — mevcut satislar/stok_hareket/cari_hareket/
+--    kasa_hareketleri tablolarına ve üzerlerindeki sync akışına SIFIR
+--    dokunuş, sıfır kesinti riski.
+-- 3. GÜVENLİK: Madde 22'nin istediği "arşiv READ ONLY, normal kullanıcı
+--    değiştiremez" kuralı, AYRI bir tabloda AYRI bir RLS politikasıyla
+--    trivial biçimde ifade edilir. Tek bir partitioned tabloda RLS tüm
+--    tabloya (ya da parça-bazlı ek karmaşıklığa) uygulanır — eski
+--    parçalara yanlışlıkla yazma izni sızması ihtimali daha yüksektir.
+-- 4. MİMARİ UYUM: Bu uygulamanın bulut istemcisi SADECE anon/authenticated
+--    anahtar kullanıyor (Madde 16 — service_role hiçbir yerde yok, bkz.
+--    lib/servisler/bulut/supabase_saglayici.dart). Partition attach/
+--    detach gibi DBA işlemleri sunucu tarafı bir arka uç gerektirir; bu
+--    projede yok. Archive tables + açıkça çağrılan SQL fonksiyonları,
+--    yerelde zaten kurulu "aşamalı/checkpoint'li devir motoru" (Madde 17,
+--    DonemArsivServisi) ile bire bir aynı çalışma şekline oturuyor: yerel
+--    dönem kapanışı + yerel arşivleme + doğrulama TAMAMLANDIKTAN SONRA,
+--    aynı cihaz/kullanıcı bu dosyadaki fonksiyonları açıkça çağırarak
+--    bulut tarafını da arşivler.
+--
+-- SONUÇ: Archive Tables seçildi. Native partitioning şimdilik
+-- uygulanmadı; ileride veri hacmi bunu zorunlu kılarsa (ör. tek tabloda
+-- 50M+ satır) ayrı bir bakım penceresiyle yeniden değerlendirilebilir.
+--
+-- ───────────────────────────────────────────────────────────────────────
+-- KAPSAM (yerel DonemArsivServisi._kurallar ile BİREBİR aynı 6 tablo)
+-- ───────────────────────────────────────────────────────────────────────
+-- satislar, satis_kalem (satislar'ın çocuğu), stok_hareket, cari_hareket,
+-- kasa_hareketleri, banka_hareketler.
+-- Kullanıcının istediği 4 tabloya (satislar, stok_hareket, cari_hareket,
+-- kasa_hareketleri) EK olarak satis_kalem ve banka_hareketler de dahil
+-- edildi — çünkü (a) satis_kalem'siz arşivlenmiş bir satis başlığı
+-- raporlanamaz/faydasızdır, (b) yerel arşivleme zaten banka_hareketler'i
+-- de kapsıyor; iki taraf arasında kapsam farkı bırakmak gelecekte
+-- "yerelde arşivlendi ama bulutta arşivlenmedi" tutarsızlığına yol açar.
+-- Master tablolar (urunler, cariler, subeler, kasalar, bankalar,
+-- kullanicilar) Madde 7 gereği KOPYALANMIYOR — yerel karar burada da
+-- aynen korunuyor.
+--
+-- ───────────────────────────────────────────────────────────────────────
+-- KESİNLİKLE YAPILMAYAN (yerel karar burada da geçerli — bkz.
+-- donem_arsiv_servisi.dart başlığı, kullanıcı onayı: "SADECE kopyalama,
+-- silme yok")
+-- ───────────────────────────────────────────────────────────────────────
+-- ❌ Aktif tablolardan (satislar, stok_hareket, cari_hareket,
+--    kasa_hareketleri, banka_hareketler, satis_kalem) satır SİLİNMİYOR.
+--    Bu dosyanın sonunda, sadece ileride AYRI bir onayla açılmak üzere
+--    YORUM SATIRI olarak bırakılmış bir "taşıma" iskeleti var — şu anda
+--    ÇALIŞTIRILMAMALI.
+-- ❌ Bu script hiçbir mevcut tabloyu, index'i, RLS politikasını veya
+--    sync akışını DEĞİŞTİRMİYOR — sadece yeni tablo/index/politika/
+--    fonksiyon EKLİYOR (additive-only).
+--
+-- ───────────────────────────────────────────────────────────────────────
+-- SYNC_QUEUE UYUMLULUĞU (statik doğrulama — Madde 21 görevinin 2. adımı)
+-- ───────────────────────────────────────────────────────────────────────
+-- lib/servisler/bulut/sync_kuyruk_yazici.dart:SyncKuyrukYazici.ekleTxn()
+-- her çağrıda `tablo` parametresini SABİT BİR STRING LİTERALİ olarak
+-- alır (bkz. lib/depolar/satis_deposu.dart, stok_deposu.dart,
+-- cari_deposu.dart, kasa_deposu.dart çağrı noktaları — 'satislar',
+-- 'stok_hareket', 'cari_hareket', 'kasa_hareketleri'). Kuyruk hiçbir
+-- yerde dinamik bir "tüm tablolar" listesi üzerinden ÇALIŞMIYOR; push
+-- işlemi (BulutManager._isle → supabase_sync_servisi.dart) yalnızca
+-- kuyruğa yazılmış olan bu sabit tablo adlarını Supabase'e gönderir.
+-- Bu script'teki `*_arsiv` tabloları hiçbir kod yolunda `tablo:` argümanı
+-- olarak GEÇMİYOR ve bu tablolara yazma SADECE aşağıdaki
+-- `arsivle_*` fonksiyonları elle/açıkça çağrıldığında olur — sync
+-- worker'ı bunları asla otomatik tetiklemez. Dolayısıyla:
+--   • Arşiv tabloları eklemek sync_queue'nun davranışını DEĞİŞTİRMEZ.
+--   • Sync push'u ile arşivleme fonksiyonu arasında çakışma/conflict
+--     imkânı YOKTUR (ikisi de global_id UNIQUE + idempotent upsert
+--     kullanır, ama tamamen ayrı tetikleyicilerle çalışır).
+--   • Arşivleme dönem KAPANDIKTAN ve yerel devir/arşiv/doğrulama
+--     TAMAMLANDIKTAN sonra çağrılmalıdır — o noktada ilgili dönem için
+--     zaten hiçbir yeni satış/hareket üretilmiyor olması gerekir (Madde
+--     4/5 — Yıl Sonu Kontrolü zaten "sync queue boş mu" kontrolünü
+--     kapanıştan önce yapıyor), bu yüzden arşivleme sırasında hâlâ
+--     bekleyen bir sync push'uyla yarışma riski pratikte yoktur.
+-- ═══════════════════════════════════════════════════════════════════════
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- BÖLÜM 1 — ARŞİV TABLOLARI
+-- Her tablo, ilgili aktif tablonun kolonlarını BİREBİR mirror eder + 2 ek
+-- kolon: donem_id (hangi kapanmış döneme ait olduğu) ve arsivlenme_tarihi
+-- (bu satırın arşive ne zaman yazıldığı — audit amaçlı).
+-- ═══════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS satislar_arsiv (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  donem_id BIGINT NOT NULL REFERENCES donemler(id),
+  global_id TEXT,
+  fis_no TEXT,
+  tarih TIMESTAMPTZ,
+  cari_id BIGINT,
+  toplam_tutar DOUBLE PRECISION,
+  iskonto_tutar DOUBLE PRECISION,
+  iskonto_oran DOUBLE PRECISION,
+  kdv_tutar DOUBLE PRECISION,
+  genel_toplam DOUBLE PRECISION,
+  odenen_tutar DOUBLE PRECISION,
+  odeme_yontemi TEXT,
+  fis_tipi TEXT,
+  aciklama TEXT,
+  kargo_ucreti DOUBLE PRECISION,
+  kasiyer_id BIGINT,
+  kullanici_id BIGINT,
+  vardiya_id BIGINT,
+  sube_id BIGINT,
+  iptal BOOLEAN,
+  iptal_tarihi TIMESTAMPTZ,
+  iptal_nedeni TEXT,
+  last_updated TIMESTAMPTZ,
+  is_deleted BOOLEAN,
+  efatura_uuid TEXT,
+  efatura_durum TEXT,
+  efatura_gonderim_tarihi TEXT,
+  efatura_yanit TEXT,
+  servis_ucreti DOUBLE PRECISION,
+  deleted_at TIMESTAMPTZ,
+  cihaz_id TEXT,
+  arsivlenme_tarihi TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- 🔴 DÜZELTME: PostgreSQL'de "ALTER TABLE ... ADD CONSTRAINT IF NOT
+-- EXISTS" GEÇERLİ BİR SÖZDİZİMİ DEĞİL (sadece ADD COLUMN/CREATE INDEX
+-- IF NOT EXISTS destekleniyor) — script'i ikinci kez çalıştırmak burada
+-- syntax error verirdi. Eşdeğer, tekrar-çalıştırılabilir bir UNIQUE
+-- INDEX kullanılıyor — ON CONFLICT (global_id) hedefi için de yeterli.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_satislar_arsiv_global_id ON satislar_arsiv (global_id);
+
+CREATE TABLE IF NOT EXISTS satis_kalem_arsiv (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  donem_id BIGINT NOT NULL REFERENCES donemler(id),
+  global_id TEXT,
+  satis_id BIGINT,
+  urun_id BIGINT,
+  urun_adi TEXT,
+  barkod TEXT,
+  miktar DOUBLE PRECISION,
+  birim_fiyat DOUBLE PRECISION,
+  iskonto_oran DOUBLE PRECISION,
+  iskonto_tutar DOUBLE PRECISION,
+  kdv_oran DOUBLE PRECISION,
+  kdv_tutar DOUBLE PRECISION,
+  net_fiyat DOUBLE PRECISION,
+  toplam_tutar DOUBLE PRECISION,
+  lot_id BIGINT,
+  seri_no TEXT,
+  alis_fiyat DOUBLE PRECISION,
+  alis_fiyat_kdv DOUBLE PRECISION,
+  last_updated TIMESTAMPTZ,
+  cihaz_id TEXT,
+  arsivlenme_tarihi TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_satis_kalem_arsiv_global_id ON satis_kalem_arsiv (global_id);
+
+CREATE TABLE IF NOT EXISTS stok_hareket_arsiv (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  donem_id BIGINT NOT NULL REFERENCES donemler(id),
+  global_id TEXT,
+  cihaz_id TEXT,
+  urun_id BIGINT,
+  hareket_turu TEXT,
+  miktar DOUBLE PRECISION,
+  onceki_stok DOUBLE PRECISION,
+  sonraki_stok DOUBLE PRECISION,
+  birim_maliyet DOUBLE PRECISION,
+  tarih TIMESTAMPTZ,
+  referans_id BIGINT,
+  referans_turu TEXT,
+  lot_id BIGINT,
+  aciklama TEXT,
+  kullanici_id BIGINT,
+  sube_id BIGINT,
+  last_updated TIMESTAMPTZ,
+  arsivlenme_tarihi TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_stok_hareket_arsiv_global_id ON stok_hareket_arsiv (global_id);
+
+CREATE TABLE IF NOT EXISTS cari_hareket_arsiv (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  donem_id BIGINT NOT NULL REFERENCES donemler(id),
+  global_id TEXT,
+  cari_id BIGINT,
+  tarih TIMESTAMPTZ,
+  fis_tipi TEXT,
+  fis_id BIGINT,
+  fis_no TEXT,
+  aciklama TEXT,
+  borc DOUBLE PRECISION,
+  alacak DOUBLE PRECISION,
+  bakiye DOUBLE PRECISION,
+  odeme_turu TEXT,
+  kullanici TEXT,
+  last_updated TIMESTAMPTZ,
+  is_deleted BOOLEAN,
+  cihaz_id TEXT,
+  arsivlenme_tarihi TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_cari_hareket_arsiv_global_id ON cari_hareket_arsiv (global_id);
+
+CREATE TABLE IF NOT EXISTS kasa_hareketleri_arsiv (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  donem_id BIGINT NOT NULL REFERENCES donemler(id),
+  global_id TEXT,
+  hareket_tipi TEXT,
+  tutar DOUBLE PRECISION,
+  bakiye_sonrasi DOUBLE PRECISION,
+  referans_id BIGINT,
+  referans_turu TEXT,
+  tarih TIMESTAMPTZ,
+  aciklama TEXT,
+  kullanici_id BIGINT,
+  sube_id BIGINT,
+  last_updated TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
+  odeme_yontemi TEXT,
+  arsivlenme_tarihi TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_kasa_hareketleri_arsiv_global_id ON kasa_hareketleri_arsiv (global_id);
+
+CREATE TABLE IF NOT EXISTS banka_hareketler_arsiv (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  donem_id BIGINT NOT NULL REFERENCES donemler(id),
+  global_id TEXT,
+  banka_hesap_id BIGINT,
+  kredi_karti_id BIGINT,
+  islem_tipi TEXT,
+  tutar DOUBLE PRECISION,
+  aciklama TEXT,
+  tarih TIMESTAMPTZ,
+  referans_no TEXT,
+  karsi_hesap TEXT,
+  onceki_bakiye DOUBLE PRECISION,
+  sonraki_bakiye DOUBLE PRECISION,
+  last_updated TEXT,
+  is_deleted BOOLEAN,
+  arsivlenme_tarihi TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_banka_hareketler_arsiv_global_id ON banka_hareketler_arsiv (global_id);
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- BÖLÜM 2 — INDEXLER
+-- Aktif tablolardaki mevcut indexlerin (bkz. "supabase tablolar önemli
+-- buluttaki tablolar.txt" BÖLÜM 7) arşiv karşılıkları + donem_id.
+-- ═══════════════════════════════════════════════════════════════════════
+
+CREATE INDEX IF NOT EXISTS idx_satislar_arsiv_donem_id ON satislar_arsiv(donem_id);
+CREATE INDEX IF NOT EXISTS idx_satislar_arsiv_cari_id ON satislar_arsiv(cari_id);
+CREATE INDEX IF NOT EXISTS idx_satislar_arsiv_sube_id ON satislar_arsiv(sube_id);
+CREATE INDEX IF NOT EXISTS idx_satislar_arsiv_tarih ON satislar_arsiv(tarih);
+CREATE INDEX IF NOT EXISTS idx_satislar_arsiv_fis_no ON satislar_arsiv(fis_no);
+
+CREATE INDEX IF NOT EXISTS idx_satis_kalem_arsiv_donem_id ON satis_kalem_arsiv(donem_id);
+CREATE INDEX IF NOT EXISTS idx_satis_kalem_arsiv_satis_id ON satis_kalem_arsiv(satis_id);
+CREATE INDEX IF NOT EXISTS idx_satis_kalem_arsiv_urun_id ON satis_kalem_arsiv(urun_id);
+
+CREATE INDEX IF NOT EXISTS idx_stok_hareket_arsiv_donem_id ON stok_hareket_arsiv(donem_id);
+CREATE INDEX IF NOT EXISTS idx_stok_hareket_arsiv_urun_id ON stok_hareket_arsiv(urun_id);
+CREATE INDEX IF NOT EXISTS idx_stok_hareket_arsiv_sube_id ON stok_hareket_arsiv(sube_id);
+CREATE INDEX IF NOT EXISTS idx_stok_hareket_arsiv_tarih ON stok_hareket_arsiv(tarih);
+
+CREATE INDEX IF NOT EXISTS idx_cari_hareket_arsiv_donem_id ON cari_hareket_arsiv(donem_id);
+CREATE INDEX IF NOT EXISTS idx_cari_hareket_arsiv_cari_id ON cari_hareket_arsiv(cari_id);
+CREATE INDEX IF NOT EXISTS idx_cari_hareket_arsiv_fis_id ON cari_hareket_arsiv(fis_id);
+CREATE INDEX IF NOT EXISTS idx_cari_hareket_arsiv_tarih ON cari_hareket_arsiv(tarih);
+
+CREATE INDEX IF NOT EXISTS idx_kasa_hareketleri_arsiv_donem_id ON kasa_hareketleri_arsiv(donem_id);
+CREATE INDEX IF NOT EXISTS idx_kasa_hareketleri_arsiv_sube_id ON kasa_hareketleri_arsiv(sube_id);
+CREATE INDEX IF NOT EXISTS idx_kasa_hareketleri_arsiv_referans_id ON kasa_hareketleri_arsiv(referans_id);
+CREATE INDEX IF NOT EXISTS idx_kasa_hareketleri_arsiv_tarih ON kasa_hareketleri_arsiv(tarih);
+
+CREATE INDEX IF NOT EXISTS idx_banka_hareketler_arsiv_donem_id ON banka_hareketler_arsiv(donem_id);
+CREATE INDEX IF NOT EXISTS idx_banka_hareketler_arsiv_banka_hesap_id ON banka_hareketler_arsiv(banka_hesap_id);
+CREATE INDEX IF NOT EXISTS idx_banka_hareketler_arsiv_tarih ON banka_hareketler_arsiv(tarih);
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- BÖLÜM 3 — ROW LEVEL SECURITY (Madde 22)
+--
+-- Bu uygulamanın bulut istemcisi (Flutter/anon+authenticated key) hiçbir
+-- zaman service_role kullanmıyor (Madde 16). Mevcut aktif tablolarda RLS
+-- "FOR ALL ... USING (true) WITH CHECK (true)" şeklinde (tüm CRUD
+-- serbest — bkz. BÖLÜM 8, mevcut şema dosyası). Arşiv tabloları için
+-- BİLİNÇLİ OLARAK DAHA SIKI bir politika kuruluyor:
+--   • SELECT   → anon + authenticated: SERBEST (eski dönem raporları
+--                okunabilmeli).
+--   • INSERT   → SADECE authenticated (anonim/misafir cihaz arşivleme
+--                yapamaz), WITH CHECK(true) — global_id UNIQUE kısıtı +
+--                aşağıdaki arsivle_*() fonksiyonlarının ON CONFLICT DO
+--                NOTHING kullanması sayesinde bu INSERT izni "idempotent
+--                ekleme" ötesine geçemez: aynı satırı iki kez göndermek
+--                veri çoğaltmaz, var olan bir arşiv satırını asla
+--                değiştirmez.
+--   • UPDATE / DELETE → HİÇBİR POLİTİKA YOK. PostgreSQL RLS'de bir
+--                komut için politika tanımlanmamışsa o komut owner/
+--                superuser DIŞINDAKİ HİÇBİR ROL için mümkün değildir.
+--                Yani arşiv, tablo sahibi (Supabase SQL editöründen
+--                elle, acil bir düzeltme için) DIŞINDA KİMSE TARAFINDAN
+--                DEĞİŞTİRİLEMEZ/SİLİNEMEZ — Madde 22'nin istediği "salt
+--                okunur" garantisi bu şekilde DB seviyesinde (UI'da
+--                değil) sağlanıyor.
+-- ═══════════════════════════════════════════════════════════════════════
+
+DO $$
+DECLARE
+  t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'satislar_arsiv', 'satis_kalem_arsiv', 'stok_hareket_arsiv',
+    'cari_hareket_arsiv', 'kasa_hareketleri_arsiv', 'banka_hareketler_arsiv'
+  ]
+  LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', t);
+
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I;', t || '_select', t);
+    EXECUTE format(
+      'CREATE POLICY %I ON %I FOR SELECT TO anon, authenticated USING (true);',
+      t || '_select', t);
+
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I;', t || '_insert', t);
+    EXECUTE format(
+      'CREATE POLICY %I ON %I FOR INSERT TO authenticated WITH CHECK (true);',
+      t || '_insert', t);
+    -- UPDATE / DELETE: kasıtlı olarak politika oluşturulmuyor (yukarıdaki not).
+  END LOOP;
+END $$;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- BÖLÜM 4 — ARŞİVLEME FONKSİYONLARI
+--
+-- Her fonksiyon: dönem kapanış tarih aralığına düşen satırları ilgili
+-- aktif tablodan SEÇER, arşiv tablosuna INSERT ... SELECT ile (tek
+-- set-based sorgu — Postgres tarafında çalışır, milyonlarca satırda bile
+-- istemci RAM'ine hiçbir veri çekilmez, Madde 24) YAZAR, ON CONFLICT
+-- (global_id) DO NOTHING ile idempotent çalışır (Madde 28 — aynı devir
+-- iki kez çalıştırılırsa veri çoğalmaz). AKTİF TABLODAN HİÇBİR SATIR
+-- SİLİNMEZ (bkz. dosya başı).
+--
+-- Şube-bazlı tablolar (satislar, stok_hareket, kasa_hareketleri) için
+-- p_sube_id ZORUNLU — yerel DonemArsivServisi ile aynı desen (Madde 29,
+-- çoklu şube: devir şube bazında yapılmalı). Şirket geneli tablolar
+-- (cari_hareket, banka_hareketler) için şube filtresi yoktur.
+-- ═══════════════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION arsivle_satislar(p_donem_id BIGINT, p_sube_id BIGINT, p_baslangic TIMESTAMPTZ, p_bitis TIMESTAMPTZ)
+RETURNS BIGINT LANGUAGE plpgsql AS $$
+DECLARE v_sayi BIGINT;
+BEGIN
+  INSERT INTO satislar_arsiv (
+    donem_id, global_id, fis_no, tarih, cari_id, toplam_tutar, iskonto_tutar,
+    iskonto_oran, kdv_tutar, genel_toplam, odenen_tutar, odeme_yontemi,
+    fis_tipi, aciklama, kargo_ucreti, kasiyer_id, kullanici_id, vardiya_id,
+    sube_id, iptal, iptal_tarihi, iptal_nedeni, last_updated, is_deleted,
+    efatura_uuid, efatura_durum, efatura_gonderim_tarihi, efatura_yanit,
+    servis_ucreti, deleted_at, cihaz_id
+  )
+  SELECT
+    p_donem_id, global_id, fis_no, tarih, cari_id, toplam_tutar, iskonto_tutar,
+    iskonto_oran, kdv_tutar, genel_toplam, odenen_tutar, odeme_yontemi,
+    fis_tipi, aciklama, kargo_ucreti, kasiyer_id, kullanici_id, vardiya_id,
+    sube_id, iptal, iptal_tarihi, iptal_nedeni, last_updated, is_deleted,
+    efatura_uuid, efatura_durum, efatura_gonderim_tarihi, efatura_yanit,
+    servis_ucreti, deleted_at, cihaz_id
+  FROM satislar
+  WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis
+  ON CONFLICT (global_id) DO NOTHING;
+  GET DIAGNOSTICS v_sayi = ROW_COUNT;
+  RETURN v_sayi;
+END $$;
+
+CREATE OR REPLACE FUNCTION arsivle_satis_kalem(p_donem_id BIGINT, p_sube_id BIGINT, p_baslangic TIMESTAMPTZ, p_bitis TIMESTAMPTZ)
+RETURNS BIGINT LANGUAGE plpgsql AS $$
+DECLARE v_sayi BIGINT;
+BEGIN
+  -- satis_kalem'in kendi tarih/sube_id'si yok — satis_id JOIN'i üzerinden
+  -- filtrelenir (yerel _satisKalemArsivle ile AYNI desen). Önkoşul:
+  -- satislar bu dönem için ÖNCE arşivlenmiş olmalı (çağrı sırası önemli).
+  INSERT INTO satis_kalem_arsiv (
+    donem_id, global_id, satis_id, urun_id, urun_adi, barkod, miktar,
+    birim_fiyat, iskonto_oran, iskonto_tutar, kdv_oran, kdv_tutar,
+    net_fiyat, toplam_tutar, lot_id, seri_no, alis_fiyat, alis_fiyat_kdv,
+    last_updated, cihaz_id
+  )
+  SELECT
+    p_donem_id, sk.global_id, sk.satis_id, sk.urun_id, sk.urun_adi, sk.barkod,
+    sk.miktar, sk.birim_fiyat, sk.iskonto_oran, sk.iskonto_tutar, sk.kdv_oran,
+    sk.kdv_tutar, sk.net_fiyat, sk.toplam_tutar, sk.lot_id, sk.seri_no,
+    sk.alis_fiyat, sk.alis_fiyat_kdv, sk.last_updated, sk.cihaz_id
+  FROM satis_kalem sk
+  WHERE sk.satis_id IN (
+    SELECT id FROM satislar
+    WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis
+  )
+  ON CONFLICT (global_id) DO NOTHING;
+  GET DIAGNOSTICS v_sayi = ROW_COUNT;
+  RETURN v_sayi;
+END $$;
+
+CREATE OR REPLACE FUNCTION arsivle_stok_hareket(p_donem_id BIGINT, p_sube_id BIGINT, p_baslangic TIMESTAMPTZ, p_bitis TIMESTAMPTZ)
+RETURNS BIGINT LANGUAGE plpgsql AS $$
+DECLARE v_sayi BIGINT;
+BEGIN
+  INSERT INTO stok_hareket_arsiv (
+    donem_id, global_id, cihaz_id, urun_id, hareket_turu, miktar,
+    onceki_stok, sonraki_stok, birim_maliyet, tarih, referans_id,
+    referans_turu, lot_id, aciklama, kullanici_id, sube_id, last_updated
+  )
+  SELECT
+    p_donem_id, global_id, cihaz_id, urun_id, hareket_turu, miktar,
+    onceki_stok, sonraki_stok, birim_maliyet, tarih, referans_id,
+    referans_turu, lot_id, aciklama, kullanici_id, sube_id, last_updated
+  FROM stok_hareket
+  WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis
+  ON CONFLICT (global_id) DO NOTHING;
+  GET DIAGNOSTICS v_sayi = ROW_COUNT;
+  RETURN v_sayi;
+END $$;
+
+CREATE OR REPLACE FUNCTION arsivle_kasa_hareketleri(p_donem_id BIGINT, p_sube_id BIGINT, p_baslangic TIMESTAMPTZ, p_bitis TIMESTAMPTZ)
+RETURNS BIGINT LANGUAGE plpgsql AS $$
+DECLARE v_sayi BIGINT;
+BEGIN
+  INSERT INTO kasa_hareketleri_arsiv (
+    donem_id, global_id, hareket_tipi, tutar, bakiye_sonrasi, referans_id,
+    referans_turu, tarih, aciklama, kullanici_id, sube_id, last_updated,
+    deleted_at, odeme_yontemi
+  )
+  SELECT
+    p_donem_id, global_id, hareket_tipi, tutar, bakiye_sonrasi, referans_id,
+    referans_turu, tarih, aciklama, kullanici_id, sube_id, last_updated,
+    deleted_at, odeme_yontemi
+  FROM kasa_hareketleri
+  WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis
+  ON CONFLICT (global_id) DO NOTHING;
+  GET DIAGNOSTICS v_sayi = ROW_COUNT;
+  RETURN v_sayi;
+END $$;
+
+-- Şirket geneli (şube filtresiz) — bir dönem kapanışında sadece BİR KEZ
+-- çağrılmalı (herhangi bir şube tarafından); birden fazla şube tarafından
+-- tekrar çağrılsa bile ON CONFLICT DO NOTHING sayesinde veri çoğalmaz.
+CREATE OR REPLACE FUNCTION arsivle_cari_hareket(p_donem_id BIGINT, p_baslangic TIMESTAMPTZ, p_bitis TIMESTAMPTZ)
+RETURNS BIGINT LANGUAGE plpgsql AS $$
+DECLARE v_sayi BIGINT;
+BEGIN
+  INSERT INTO cari_hareket_arsiv (
+    donem_id, global_id, cari_id, tarih, fis_tipi, fis_id, fis_no,
+    aciklama, borc, alacak, bakiye, odeme_turu, kullanici, last_updated,
+    is_deleted, cihaz_id
+  )
+  SELECT
+    p_donem_id, global_id, cari_id, tarih, fis_tipi, fis_id, fis_no,
+    aciklama, borc, alacak, bakiye, odeme_turu, kullanici, last_updated,
+    is_deleted, cihaz_id
+  FROM cari_hareket
+  WHERE tarih >= p_baslangic AND tarih <= p_bitis
+  ON CONFLICT (global_id) DO NOTHING;
+  GET DIAGNOSTICS v_sayi = ROW_COUNT;
+  RETURN v_sayi;
+END $$;
+
+CREATE OR REPLACE FUNCTION arsivle_banka_hareketleri(p_donem_id BIGINT, p_baslangic TIMESTAMPTZ, p_bitis TIMESTAMPTZ)
+RETURNS BIGINT LANGUAGE plpgsql AS $$
+DECLARE v_sayi BIGINT;
+BEGIN
+  INSERT INTO banka_hareketler_arsiv (
+    donem_id, global_id, banka_hesap_id, kredi_karti_id, islem_tipi, tutar,
+    aciklama, tarih, referans_no, karsi_hesap, onceki_bakiye,
+    sonraki_bakiye, last_updated, is_deleted
+  )
+  SELECT
+    p_donem_id, global_id, banka_hesap_id, kredi_karti_id, islem_tipi, tutar,
+    aciklama, tarih, referans_no, karsi_hesap, onceki_bakiye,
+    sonraki_bakiye, last_updated, is_deleted
+  FROM banka_hareketler
+  WHERE tarih >= p_baslangic AND tarih <= p_bitis
+  ON CONFLICT (global_id) DO NOTHING;
+  GET DIAGNOSTICS v_sayi = ROW_COUNT;
+  RETURN v_sayi;
+END $$;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- BÖLÜM 5 — DOĞRULAMA (Madde 19)
+-- Aktif/arşiv arasında satır sayısı VE toplam tutar karşılaştırması —
+-- yerel DonemArsivTabloSonucu.dogrulandiMi ile AYNI mantık (tutar
+-- toleransı: 0.01). Devir'in bulut kolunu "tamamlandı" işaretlemeden
+-- önce bu fonksiyonun tüm satırlarında dogrulandi = true olmalı.
+-- ═══════════════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION arsiv_dogrula(p_donem_id BIGINT, p_sube_id BIGINT, p_baslangic TIMESTAMPTZ, p_bitis TIMESTAMPTZ)
+RETURNS TABLE(tablo TEXT, aktif_sayim BIGINT, arsiv_sayim BIGINT, aktif_toplam DOUBLE PRECISION, arsiv_toplam DOUBLE PRECISION, dogrulandi BOOLEAN)
+LANGUAGE plpgsql AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 'satislar'::TEXT,
+    (SELECT COUNT(*) FROM satislar WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis),
+    (SELECT COUNT(*) FROM satislar_arsiv WHERE donem_id = p_donem_id AND sube_id = p_sube_id),
+    (SELECT COALESCE(SUM(genel_toplam),0) FROM satislar WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis),
+    (SELECT COALESCE(SUM(genel_toplam),0) FROM satislar_arsiv WHERE donem_id = p_donem_id AND sube_id = p_sube_id),
+    NULL::BOOLEAN;
+
+  RETURN QUERY
+  SELECT 'stok_hareket'::TEXT,
+    (SELECT COUNT(*) FROM stok_hareket WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis),
+    (SELECT COUNT(*) FROM stok_hareket_arsiv WHERE donem_id = p_donem_id AND sube_id = p_sube_id),
+    (SELECT COALESCE(SUM(miktar),0) FROM stok_hareket WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis),
+    (SELECT COALESCE(SUM(miktar),0) FROM stok_hareket_arsiv WHERE donem_id = p_donem_id AND sube_id = p_sube_id),
+    NULL::BOOLEAN;
+
+  RETURN QUERY
+  SELECT 'kasa_hareketleri'::TEXT,
+    (SELECT COUNT(*) FROM kasa_hareketleri WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis),
+    (SELECT COUNT(*) FROM kasa_hareketleri_arsiv WHERE donem_id = p_donem_id AND sube_id = p_sube_id),
+    (SELECT COALESCE(SUM(tutar),0) FROM kasa_hareketleri WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis),
+    (SELECT COALESCE(SUM(tutar),0) FROM kasa_hareketleri_arsiv WHERE donem_id = p_donem_id AND sube_id = p_sube_id),
+    NULL::BOOLEAN;
+
+  RETURN QUERY
+  SELECT 'cari_hareket'::TEXT,
+    (SELECT COUNT(*) FROM cari_hareket WHERE tarih >= p_baslangic AND tarih <= p_bitis),
+    (SELECT COUNT(*) FROM cari_hareket_arsiv WHERE donem_id = p_donem_id),
+    (SELECT COALESCE(SUM(borc),0) + COALESCE(SUM(alacak),0) FROM cari_hareket WHERE tarih >= p_baslangic AND tarih <= p_bitis),
+    (SELECT COALESCE(SUM(borc),0) + COALESCE(SUM(alacak),0) FROM cari_hareket_arsiv WHERE donem_id = p_donem_id),
+    NULL::BOOLEAN;
+
+  RETURN QUERY
+  SELECT 'banka_hareketler'::TEXT,
+    (SELECT COUNT(*) FROM banka_hareketler WHERE tarih >= p_baslangic AND tarih <= p_bitis),
+    (SELECT COUNT(*) FROM banka_hareketler_arsiv WHERE donem_id = p_donem_id),
+    (SELECT COALESCE(SUM(tutar),0) FROM banka_hareketler WHERE tarih >= p_baslangic AND tarih <= p_bitis),
+    (SELECT COALESCE(SUM(tutar),0) FROM banka_hareketler_arsiv WHERE donem_id = p_donem_id),
+    NULL::BOOLEAN;
+
+  RETURN QUERY
+  SELECT 'satis_kalem'::TEXT,
+    (SELECT COUNT(*) FROM satis_kalem WHERE satis_id IN (SELECT id FROM satislar WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis)),
+    (SELECT COUNT(*) FROM satis_kalem_arsiv WHERE donem_id = p_donem_id),
+    (SELECT COALESCE(SUM(toplam_tutar),0) FROM satis_kalem WHERE satis_id IN (SELECT id FROM satislar WHERE sube_id = p_sube_id AND tarih >= p_baslangic AND tarih <= p_bitis)),
+    (SELECT COALESCE(SUM(toplam_tutar),0) FROM satis_kalem_arsiv WHERE donem_id = p_donem_id),
+    NULL::BOOLEAN;
+END $$;
+
+-- Kullanım: sonuç satırlarının HER BİRİNDE aktif_sayim = arsiv_sayim VE
+-- abs(aktif_toplam - arsiv_toplam) < 0.01 olmalı. Örnek:
+--   SELECT *, (aktif_sayim = arsiv_sayim AND abs(aktif_toplam - arsiv_toplam) < 0.01) AS dogrulandi
+--   FROM arsiv_dogrula(<donem_id>, <sube_id>, '2026-01-01', '2026-12-31 23:59:59');
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- BÖLÜM 6 — [ONAY BEKLİYOR — ŞU AN ÇALIŞTIRILMAMALI]
+-- Aktif tablodan taşıma/silme (DB şişmesini gerçekten azaltan adım,
+-- Madde 23). Yerel tarafta da AYNI kapsam dışı bırakma kararı var (bkz.
+-- donem_arsiv_servisi.dart başlığı) — üretim finansal verisini etkiler,
+-- ayrı ve açık bir kullanıcı onayı gerektirir. Sadece REFERANS/iskelet
+-- olarak bırakıldı; arsiv_dogrula() o dönem için TÜM satırlarda
+-- dogrulandi=true DÖNMEDEN bu ASLA çalıştırılmamalı.
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- DELETE FROM satis_kalem WHERE satis_id IN (SELECT id FROM satislar WHERE sube_id = :p_sube_id AND tarih >= :p_baslangic AND tarih <= :p_bitis);
+-- DELETE FROM satislar WHERE sube_id = :p_sube_id AND tarih >= :p_baslangic AND tarih <= :p_bitis;
+-- DELETE FROM stok_hareket WHERE sube_id = :p_sube_id AND tarih >= :p_baslangic AND tarih <= :p_bitis;
+-- DELETE FROM kasa_hareketleri WHERE sube_id = :p_sube_id AND tarih >= :p_baslangic AND tarih <= :p_bitis;
+-- DELETE FROM cari_hareket WHERE tarih >= :p_baslangic AND tarih <= :p_bitis;
+-- DELETE FROM banka_hareketler WHERE tarih >= :p_baslangic AND tarih <= :p_bitis;
+
+-- ═══ DOSYA SONU ═══

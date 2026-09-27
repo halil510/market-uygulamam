@@ -197,7 +197,7 @@ class FaturaSeriBlokServisi {
       }
       throw BlokTukendiException(
           'Fatura numarası bloğu alınamadı. Bu genelde '
-          'supabase_fatura_seri_bloklari.sql henüz Supabase\'de '
+          'supabase_tam_sema.sql (Bölüm B–D) henüz Supabase\'de '
           'çalıştırılmadığı anlamına gelir — lütfen bu script\'i '
           'Supabase SQL Editor\'de çalıştırıp tekrar deneyin. '
           '(Teknik ayrıntı: $e)');

@@ -14,6 +14,7 @@
 // 203 dpi (8 dot/mm) yaygındır — bu servis 203 dpi varsayar.
 
 import '../modeller/urun_model.dart';
+import '../cekirdek/utils/etiket_yardimci.dart';
 
 class ZplServisi {
   static const int _dpmm = 8; // 203 dpi ≈ 8 dot/mm
@@ -99,18 +100,17 @@ class ZplServisi {
       final kdv = double.tryParse(urun.kdvOran) ?? 0;
       final gosterilecek = kdvDahilFiyat ? taban : taban / (1 + kdv / 100);
       final fiyat = '${gosterilecek.toStringAsFixed(2)} TL';
+      final s = fs(40);
+      buf.writeln('^FO10,$y^A0N,$s,$s^FD$fiyat^FS');
+      y += (48 * fontOlcek).round();
+      // Birim fiyat satırı (1 KG / 1 LT) — önizleme ve termal çıktıyla aynı
+      // hesap (EtiketYardimci). Önceden yalnızca birim adı + aynı fiyattı.
       if (birimFiyatliMod) {
-        // Birim adı solda, fiyat sağda — aynı termal (ESC/POS) yoldaki
-        // "Adet/KG + fiyat yan yana" davranışı.
-        final birim = urun.birimAdi.isEmpty ? 'Adet' : urun.birimAdi;
-        final s = fs(32);
-        buf.writeln('^FO10,$y^A0N,$s,$s^FD${_zplKacis(_kisalt(birim, 12))}^FS');
-        buf.writeln('^FO${(w * 0.45).round()},$y^A0N,$s,$s^FD$fiyat^FS');
-        y += (40 * fontOlcek).round();
-      } else {
-        final s = fs(40);
-        buf.writeln('^FO10,$y^A0N,$s,$s^FD$fiyat^FS');
-        y += (48 * fontOlcek).round();
+        final bf = EtiketYardimci.birimFiyatMetni(urun, gosterilecek) ??
+            (urun.birimAdi.isEmpty ? 'Adet' : urun.birimAdi);
+        final s2 = fs(22);
+        buf.writeln('^FO10,$y^A0N,$s2,$s2^FD${_zplKacis(_kisalt(bf, 32))}^FS');
+        y += (28 * fontOlcek).round();
       }
     }
 

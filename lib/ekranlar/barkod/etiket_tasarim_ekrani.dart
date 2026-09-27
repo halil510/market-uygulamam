@@ -22,6 +22,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../servisler/yazdirma_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/etiket_yardimci.dart';
 import '../../widgetlar/ortak/yukleniyor_widget.dart';
 
 enum EtiketBoyut {
@@ -363,6 +364,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
           adGoster:        _adGoster,
           birimFiyatliMod: _birimFiyatliMod,
           etiketBoy:       _efKagit,
+          etiketGenislikMm: _efGenislik,
           adet:            kalem.adet,
           firmaGoster:     _firmaBilgi,
           lotNoGoster:     _lotNoGoster,
@@ -893,7 +895,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
                 maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
           if (_anaGrupGoster && (u.anaGrup?.isNotEmpty ?? false))
             Text(u.anaGrup!,
-                style: TextStyle(fontSize: w * 0.03 * f, color: context.textSecondary),
+                style: TextStyle(fontSize: w * 0.03 * f, color: Colors.black54),
                 maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
           if (barkodGecerli && _barkodGoster)
             Flexible(child: bw.BarcodeWidget(
@@ -906,13 +908,13 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
             )),
           if (_lotNoGoster && (u.lotNo?.isNotEmpty ?? false))
             Text('Lot: ${u.lotNo}',
-                style: TextStyle(fontSize: w * 0.025 * f, color: context.textSecondary)),
+                style: TextStyle(fontSize: w * 0.025 * f, color: Colors.black54)),
           if (_sktGoster && (u.sonKullanmaTarihi?.isNotEmpty ?? false))
             Text('SKT: ${u.sonKullanmaTarihi}',
-                style: TextStyle(fontSize: w * 0.025 * f, color: context.textSecondary)),
+                style: TextStyle(fontSize: w * 0.025 * f, color: Colors.black54)),
           if (_aciklamaGoster && (u.lotAciklama?.isNotEmpty ?? false))
             Text(u.lotAciklama!,
-                style: TextStyle(fontSize: w * 0.022 * f, color: context.textSecondary),
+                style: TextStyle(fontSize: w * 0.022 * f, color: Colors.black54),
                 maxLines: 1, overflow: TextOverflow.ellipsis),
           if (_fiyatGoster)
             // 🔴 DÜZELTME (kullanıcı bulgusu): "Birim Fiyatlı Mod" anahtarı
@@ -920,18 +922,14 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
             // görsel değişikliğe yol açmıyordu — termal yazdırma yolunda
             // (adet/kg + fiyat yan yana) çalışıyordu ama burada yok
             // sayılıyordu. Artık önizleme de aynı düzeni gösteriyor.
-            (_birimFiyatliMod
-                ? Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text(u.birimAdi.isEmpty ? 'Adet' : u.birimAdi,
-                        style: TextStyle(fontSize: w * 0.035 * f, color: Colors.black87)),
-                    SizedBox(width: w * 0.02),
-                    Text('${ParaUtils.formatla(_onizlemeFiyat(u))} ₺',
-                        style: TextStyle(fontSize: w * 0.04 * f, fontWeight: FontWeight.w900,
-                            color: Colors.red.shade700)),
-                  ])
-                : Text('${ParaUtils.formatla(_onizlemeFiyat(u))} ₺',
-                    style: TextStyle(fontSize: w * 0.045 * f, fontWeight: FontWeight.w900,
-                        color: Colors.red.shade700))),
+            Text('${ParaUtils.formatla(_onizlemeFiyat(u))} ₺',
+                style: TextStyle(fontSize: w * 0.045 * f, fontWeight: FontWeight.w900,
+                    color: Colors.red.shade700)),
+          // Birim fiyat (1 KG / 1 LT) — termal ve ZPL çıktısıyla aynı hesap.
+          if (_fiyatGoster && _birimFiyatliMod)
+            Text(EtiketYardimci.birimFiyatMetni(u, _onizlemeFiyat(u)) ??
+                    (u.birimAdi.isEmpty ? 'Adet' : u.birimAdi),
+                style: TextStyle(fontSize: w * 0.028 * f, color: Colors.black87)),
           // 🔴 DÜZELTME (kullanıcı referans tasarımı — raf üstü fiyat
           // etiketi): firma/mağaza adı en altta basılmalı, ürün adının
           // ÜSTÜNDE değil — hem burada hem ZPL/termal çıktısında taşındı.

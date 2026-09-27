@@ -21,6 +21,7 @@ import '../modeller/fatura_model.dart';
 import '../cekirdek/utils/sayi_yaziya_cevir.dart';
 import '../modeller/satis_model.dart';
 import '../modeller/urun_model.dart';
+import '../cekirdek/utils/etiket_yardimci.dart';
 import '../modeller/yazici_model.dart';
 import '../depolar/yazici_deposu.dart';
 import '../veri/database/veritabani.dart';
@@ -185,12 +186,14 @@ class YazdirmaServisi {
   ///
   /// Genişlik kâğıt boyutuna göre: 58 mm → 384 nokta, 80 mm → 576 nokta.
   /// Barkod kâğıt genişliğinin tamamını kaplamasın diye ~%75 kullanılıyor.
-  List<int> _barkodBas(Generator generator, String veri) {
+  /// [genislikPx] verilirse barkod o genişlikte üretilir (etiket yazdırma —
+  /// etiketin GERÇEK genişliği). Verilmezse fiş kâğıdı ayarına göre.
+  List<int> _barkodBas(Generator generator, String veri, {int? genislikPx}) {
     final bytes = <int>[];
     final tamGenislik = _kagit == PaperSize.mm58 ? 384 : 576;
     final resim = _barkodResmiUret(
       veri,
-      genislikPx: (tamGenislik * 0.75).round(),
+      genislikPx: genislikPx ?? (tamGenislik * 0.75).round(),
       yukseklikPx: 60,
     );
 
@@ -1421,24 +1424,32 @@ class YazdirmaServisi {
     bool kdvDahilFiyat   = true,
     bool aciklamaGoster  = false,
     String? ozelMetin,
+    /// Etiketin GERÇEK genişliği (mm) — barkod ve satır uzunluğu buna göre.
+    double? etiketGenislikMm,
   }) async {
     await ayarlariYukle();
     final profile   = await CapabilityProfile.load();
     final generator = Generator(etiketBoy, profile);
 
+    // 🔴 DÜZELTME (2026-09-28): barkod resmi ÖNCEDEN FİŞ yazıcısının kâğıt
+    // ayarına (_kagit) göre boyutlanıyordu — fiş 80 mm, etiket 58 mm (ya da
+    // 40x30 gibi küçük sticker) iken barkod kâğıttan taşıp kesiliyor,
+    // okunmuyordu. Artık etiketin kendi genişliği kullanılıyor (8 nokta/mm).
+    final kagitPx = etiketBoy == PaperSize.mm58 ? 384 : 576;
+    final etiketPx = etiketGenislikMm != null && etiketGenislikMm > 0
+        ? (etiketGenislikMm * 8).round().clamp(160, kagitPx)
+        : kagitPx;
+    final barkodPx = (etiketPx * 0.85).round();
+    final satirKarakter = (etiketPx / 12).floor().clamp(12, 48); // font A: 12 nokta
+
     for (int i = 0; i < adet; i++) {
       final bytes = <int>[];
       if (adGoster) {
-        final ad = urun.urunAdi;
-        bytes.addAll(generator.text(_t(
-          ad.length > 24 ? ad.substring(0, 24) : ad),
-          styles: const PosStyles(bold: true, align: PosAlign.center),
-        ));
-        if (ad.length > 24)
-          bytes.addAll(generator.text(_t(
-            ad.substring(24, ad.length > 48 ? 48 : ad.length)),
-            styles: const PosStyles(bold: true, align: PosAlign.center),
-          ));
+        // Kelime sınırından en fazla 2 satır (önceden 24. harfte kesiliyordu).
+        for (final satir in EtiketYardimci.satirlaraBol(urun.urunAdi, satirKarakter)) {
+          bytes.addAll(generator.text(_t(satir),
+              styles: const PosStyles(bold: true, align: PosAlign.center)));
+        }
       }
       if (anaGrupGoster && (urun.anaGrup?.isNotEmpty ?? false)) {
         bytes.addAll(generator.text(_t(urun.anaGrup!),
@@ -1449,7 +1460,7 @@ class YazdirmaServisi {
         // `generator.barcode()` (GS k komutu) ucuz termal yazıcıların
         // çoğunda çalışmıyor; etiketlerde de sadece barkod NUMARASI
         // basılıyor, çizgi çıkmıyordu. Artık resim olarak basılıyor.
-        bytes.addAll(_barkodBas(generator, urun.barkod!));
+        bytes.addAll(_barkodBas(generator, urun.barkod!, genislikPx: barkodPx));
       }
       if (lotNoGoster && (urun.lotNo?.isNotEmpty ?? false)) {
         bytes.addAll(generator.text(_t('Lot: ${urun.lotNo}'),
@@ -1468,17 +1479,15 @@ class YazdirmaServisi {
         // KDV Dahil anahtarı: kapalıysa KDV hariç (net) fiyat basılır.
         final kdv = double.tryParse(urun.kdvOran) ?? 0;
         final fiyat = kdvDahilFiyat ? tabanFiyat : tabanFiyat / (1 + kdv / 100);
+        bytes.addAll(generator.text(_t('${_fmt.format(fiyat)} TL'),
+            styles: const PosStyles(bold: true, align: PosAlign.center,
+                height: PosTextSize.size2, width: PosTextSize.size1)));
+        // Birim fiyat satırı (1 KG / 1 LT) — bkz. EtiketYardimci.
         if (birimFiyatliMod) {
-          bytes.addAll(generator.row([
-            PosColumn(text:_t(urun.birimAdi.isEmpty ? 'Adet' : urun.birimAdi), width: 6,
-                styles: const PosStyles(align: PosAlign.center)),
-            PosColumn(text:_t('${_fmt.format(fiyat)} TL'), width: 6,
-                styles: const PosStyles(bold: true, align: PosAlign.right)),
-          ]));
-        } else {
-          bytes.addAll(generator.text(_t('${_fmt.format(fiyat)} TL'),
-              styles: const PosStyles(bold: true, align: PosAlign.center,
-                  height: PosTextSize.size2, width: PosTextSize.size1)));
+          final bf = EtiketYardimci.birimFiyatMetni(urun, fiyat);
+          bytes.addAll(generator.text(
+              _t(bf ?? (urun.birimAdi.isEmpty ? 'Adet' : urun.birimAdi)),
+              styles: const PosStyles(align: PosAlign.center)));
         }
       }
       // 🔴 DÜZELTME (kullanıcı referans tasarımı — raf üstü fiyat etiketi):

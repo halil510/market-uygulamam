@@ -127,7 +127,6 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
     _hesaplamaCalisiyor = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _geminiApiAnahtariniKontrolEt(); // API anahtarı kontrolü
         _listenerlariEkle();
         _yukleDropdownlar();
       }

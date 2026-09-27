@@ -49,18 +49,6 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     _c['alisKdvOran']?.text = '18';
   }
 
-  Future<void> _geminiApiAnahtariniKontrolEt() async {
-    // 🔴 DÜZELTME: Anahtar burada doğrudan SharedPreferences'tan
-    // okunuyordu — ama AiVisionServisi.setApiKey() (bu ekranın kayıt
-    // yolu) artık güvenli depoya yazıyor. Bu okuma yolu güncellenmeden
-    // bırakılsaydı, kaydedilen anahtar HİÇ BULUNAMAZDI (her zaman
-    // "eksik" sanılıp dialog tekrar tekrar gösterilirdi).
-    final mevcutAnahtar = await AiVisionServisi().apiKeyGetir();
-    if (mevcutAnahtar == null || mevcutAnahtar.isEmpty) {
-      await _geminiApiAnahtarDialogu();
-    }
-  }
-
   Future<void> _geminiApiAnahtarDialogu() async {
     final TextEditingController controller = TextEditingController();
     return showDialog(

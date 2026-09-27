@@ -38,6 +38,7 @@ import '../../servisler/aktif_sube_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../servisler/iade_islem_servisi.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
+import '../../widgetlar/ortak/donanim_barkod_dinleyici.dart';
 
 // Geçmiş İadeler sekmesinin kodu, dosya boyutunu azaltmak için ayrı bir
 // dosyaya taşındı (bkz. dosyanın sonundaki not). part/part of ile bu
@@ -317,9 +318,18 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
 
   // ── Barkod ─────────────────────────────────────────────────────────────────
   Future<void> _barkodOku() async {
+    final barkod = await _barkodSrv.barkodTara(context);
+    if (barkod == null || barkod.isEmpty) return;
+    await _barkodIsle(barkod);
+  }
+
+  /// Kamera, arama kutusunda Enter ve el terminali / USB okuyucu (bkz.
+  /// DonanimBarkodDinleyici) buradan geçer. Önceden yalnızca kamera
+  /// vardı; okuyucuyla okutulan barkod kutuya yazılıp kalıyordu.
+  Future<void> _barkodIsle(String barkod) async {
     try {
-      final barkod = await _barkodSrv.barkodTara(context);
-      if (barkod == null || barkod.isEmpty) return;
+      _aramaCtrl.clear();
+      if (mounted) setState(() => _aramaListesi = []);
 
       // 🔴 DÜZELTME (Madde 34 — Barkod/POS denetimi, 2026-09-20): tartılan
       // (değişken ağırlıklı) bir ürün satışta terazi barkoduyla (13 hane,
@@ -517,7 +527,11 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   // ══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // El terminali / USB okuyucu: İade sekmesinde arama kutusu odakta
+    // değilken de okutma ürünü seçer.
+    return DonanimBarkodDinleyici(
+      onBarkod: (b) { if (_tab.index == 0) _barkodIsle(b); },
+      child: Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
       appBar: TsAppBar(
         baslikWidget: _duzenlemeModu_iadeId != null
@@ -600,7 +614,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
         _fisTab(),
         _gecmisTab(),
       ]),
-    );
+    ));
   }
 
   // ── İade Sekmesi ──────────────────────────────────────────────────────────
@@ -685,6 +699,14 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
           if (mounted) setState(() {});
         },
         onBarkod: _barkodOku,
+        onGonder: (q) {
+          final b = q.trim();
+          if (barkodaBenziyor(b)) {
+            _barkodIsle(b);
+          } else if (_aramaListesi.length == 1) {
+            _secilenUrunAyarla(_aramaListesi.first);
+          }
+        },
       );
 
   Widget _aramaPanel() => IadeAramaPanel(

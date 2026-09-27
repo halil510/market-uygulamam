@@ -18,12 +18,16 @@ class IadeAramaKutusu extends StatelessWidget {
   final VoidCallback onTemizle;
   final VoidCallback onBarkod;
 
+  /// Enter (klavye ya da klavye gibi davranan barkod okuyucu).
+  final ValueChanged<String>? onGonder;
+
   const IadeAramaKutusu({
     super.key,
     required this.controller,
     required this.focusNode,
     required this.onTemizle,
     required this.onBarkod,
+    this.onGonder,
   });
 
   @override
@@ -34,6 +38,8 @@ class IadeAramaKutusu extends StatelessWidget {
         Expanded(child: TextField(
           controller: controller,
           focusNode: focusNode,
+          onSubmitted: onGonder,
+          textInputAction: TextInputAction.search,
           decoration: InputDecoration(
             hintText: 'Ürün adı veya barkod ara…',
             prefixIcon: const Icon(Icons.search),

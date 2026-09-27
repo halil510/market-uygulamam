@@ -16,12 +16,10 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../modeller/cari_model.dart';
 import '../../modeller/satis_model.dart';
-import '../../modeller/urun_model.dart';
 import '../../widgetlar/ortak/il_ilce_alani.dart';
 import '../../modeller/fatura_model.dart';
 import '../../modeller/cari_hareket_model.dart';
 import '../../depolar/satis_deposu.dart';
-import '../../depolar/urun_deposu.dart';
 import '../../depolar/fatura_deposu.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../depolar/cari_adres_deposu.dart';
@@ -71,7 +69,6 @@ class _CariDetayPaneli extends StatefulWidget {
 class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
   final _satisDepo = SatisDeposu();
-  final _urunDepo = UrunDeposu();
   final _faturaDepo = FaturaDeposu();
   final _cariDepo = CariDeposu();
   final _adresDepo = CariAdresDeposu();
@@ -247,30 +244,21 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
   }
 
   Future<void> _iadeEt(SatisModel s) async {
-    try {
-      final satisDetay = await _satisDepo.idileGetir(s.id!);
-      final kalemler = satisDetay?.kalemler ?? const [];
-      if (kalemler.isEmpty) {
-        if (mounted) BildirimServisi.uyari(context, 'Bu satışta iade edilecek kalem bulunamadı');
-        return;
-      }
-      final urunler = <UrunModel>[];
-      for (final k in kalemler) {
-        final u = await _urunDepo.idileGetir(k.urunId);
-        if (u != null) urunler.add(u);
-      }
-      if (!mounted) return;
-      if (urunler.isEmpty) {
-        BildirimServisi.uyari(context, 'Bu satışın ürünleri artık bulunamıyor (silinmiş olabilir)');
-        return;
-      }
-      await Navigator.push(context, MaterialPageRoute(
-        builder: (_) => IadeEkrani(baslangicUrunleri: urunler, otomatikKapat: true),
-      ));
-      _yukle();
-    } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'İade ekranı açılamadı: $e');
+    // 🔴 DÜZELTME (2026-09-28, bayi/toptan iadesi): ÖNCEDEN iade ekranı
+    // yalnızca ürün listesiyle, BAYİ ve SATIŞ bağlanmadan açılıyordu —
+    // varsayılan 'Nakit' ile kasadan hiç ödenmemiş para çıkıyor, bayinin
+    // bakiyesi düşmüyordu; tutar da bayinin ödediği toptan fiyat yerine
+    // perakende satış fiyatından hesaplanıyordu ve adet sınırı yoktu.
+    // Artık fişten iade açılır: bayi, gerçek satır fiyatı (iskontolu),
+    // satılan adet ve önceki iadeler fişten gelir; varsayılan yöntem Cari.
+    if (s.fisNo == null || s.fisNo!.isEmpty) {
+      BildirimServisi.uyari(context, 'Bu satışın fiş numarası yok, iade açılamadı');
+      return;
     }
+    await Navigator.push(context, MaterialPageRoute(
+      builder: (_) => IadeEkrani(baslangicFisNo: s.fisNo),
+    ));
+    _yukle();
   }
 
   Future<void> _cogalt(SatisModel s) async {

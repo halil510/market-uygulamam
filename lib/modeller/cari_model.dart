@@ -156,3 +156,19 @@ class CariModel {
     musteriTipi: musteriTipi ?? this.musteriTipi,
   );
 }
+
+/// Cari SAF tedarikçi mi? İade yönünü belirler: saf tedarikçiye iade =
+/// "Alım İadesi" (cari BORÇ+, ona olan borcumuz azalır); müşteri iadesi =
+/// cari ALACAK+ (müşterinin borcu azalır).
+///
+/// 🔴 DÜZELTME (2026-09-28): iade kodu ÖNCEDEN `cariTipi.contains('edarik')`
+/// kullanıyordu — "Hem Müşteri Hem Tedarikçi" de eşleşiyor, bu tipteki bir
+/// müşteri ürün iade ettiğinde bakiyesi DÜŞECEĞİ yerde ARTIYOR, fiyat da
+/// satış yerine alış fiyatından geliyordu. Çift tipli cari iade ekranında
+/// müşteri olarak işlem görür (tedarikçiye iade Alım/Tedarik akışındandır).
+bool cariSafTedarikciMi(String? cariTipi) {
+  final t = (cariTipi ?? '').toLowerCase();
+  final tedarikci = t.contains('edarik') || t.contains('upplier');
+  final musteriDe = t.contains('müşteri') || t.contains('musteri') || t.contains('hem ');
+  return tedarikci && !musteriDe;
+}

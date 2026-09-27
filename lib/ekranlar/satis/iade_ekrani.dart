@@ -81,8 +81,12 @@ class IadeEkrani extends ConsumerStatefulWidget {
   // (çok kalemli, sekmeli) perakende iade akışını BOZMAMAK için
   // varsayılan false — sadece açıkça istenirse otomatik kapanır.
   final bool otomatikKapat;
+  /// Verilirse ekran Fiş sekmesinde bu satışla açılır (bayi/toptan panelinden
+  /// "İade Et": müşteri, gerçek satış fiyatları, adetler ve önceki iadeler
+  /// fişten gelir).
+  final String? baslangicFisNo;
   const IadeEkrani(
-      {super.key, this.baslangicUrunleri, this.otomatikKapat = false});
+      {super.key, this.baslangicUrunleri, this.otomatikKapat = false, this.baslangicFisNo});
 
   @override
   ConsumerState<IadeEkrani> createState() => _IadeEkraniState();
@@ -172,6 +176,11 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
       if (v != _miktar) setState(() => _miktar = v);
     });
     _verileriYukle();
+    if (widget.baslangicFisNo != null && widget.baslangicFisNo!.isNotEmpty) {
+      _fisNoCtrl.text = widget.baslangicFisNo!;
+      _tab.index = 2; // Fiş sekmesi
+      WidgetsBinding.instance.addPostFrameCallback((_) => _fisBul());
+    }
 
     if (widget.baslangicUrunleri?.isNotEmpty == true) {
       for (final u in widget.baslangicUrunleri!) {
@@ -261,8 +270,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
       // fiyatı üzerinden iade edilsin — bu artık cari tipine göre
       // koşullu olarak doğru fiyatı gösteriyor.
       final cariTipi = _secilenCari?.cariTipi ?? '';
-      final isTedarikci =
-          cariTipi.contains('edarik') || cariTipi.contains('upplier');
+      final isTedarikci = cariSafTedarikciMi(cariTipi);
       _orijinalFiyat = isTedarikci ? u.alisFiyat : u.satisFiyat;
       _fiyatCtrl.text = _orijinalFiyat.toStringAsFixed(2);
       _miktar = 1;
@@ -364,6 +372,30 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   // 'iade_ekrani_hizli.dart' dosyasına taşındı (extension olarak).
 
   // ── Cari seçim - kayıtsız müşteri dahil ─────────────────────────────────
+  /// Kayıtlı müşteriye iade: borcundan mı düşülsün, elden mi ödensin?
+  /// null = vazgeçti.
+  Future<String?> _cariIadeYontemiSor(String unvan) => showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('İade nasıl yapılsın?'),
+          content: Text('$unvan için iade tutarı:'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.pop(ctx, 'Nakit'),
+              icon: const Icon(Icons.payments_outlined),
+              label: const Text('Nakit ver (kasadan)'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(ctx, 'Cari'),
+              icon: const Icon(Icons.account_balance_wallet_outlined),
+              label: const Text('Borcundan düş (Cari)'),
+            ),
+          ],
+        ),
+      );
+
   Future<CariModel?> _cariSecimDialog() async {
     return showDialog<CariModel>(
       context: context,
@@ -388,6 +420,16 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
       if (sec == null) return; // Kullanıcı iptal etti
       if (!mounted) return;
       setState(() => _secilenCari = sec);
+      // 🔴 DÜZELTME (2026-09-28, kullanıcı bulgusu — "müşteriden iade aldım,
+      // bakiye azalmadı"): kayıtlı cari BURADA (kaydet anında) seçilince
+      // iade yöntemi hiç sorulmadan varsayılan 'Nakit' ile kaydediliyordu —
+      // kasadan para çıkmış sayılıyor, cari borcu düşmüyordu. Artık açıkça
+      // soruluyor.
+      if (sec.id != null) {
+        final yontem = await _cariIadeYontemiSor(sec.unvan);
+        if (yontem == null || !mounted) return;
+        setState(() => _iadeOdemeYontemi = yontem);
+      }
     }
 
     // Düzenleme modunda mevcut fişe kalem ekle
@@ -578,6 +620,11 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                   _secilenCari = secilen;
                   if (secilen.id == null && _iadeOdemeYontemi == 'Cari') {
                     _iadeOdemeYontemi = 'Nakit';
+                  } else if (secilen.id != null) {
+                    // Kayıtlı müşteride varsayılan: iade borcundan düşülür
+                    // (profesyonel ERP davranışı). Elden para verilecekse
+                    // ürün formundaki "İade Yöntemi"nden Nakit seçilir.
+                    _iadeOdemeYontemi = 'Cari';
                   }
                   if (mounted) setState(() {});
                 }

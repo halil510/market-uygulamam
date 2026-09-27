@@ -59,8 +59,9 @@ extension _HizliTabExt on _IadeEkraniState {
     // 🔴🔴 FAZ 1 madde 1 (kullanıcı onayıyla): bu akışın belirli bir
     // orijinal satışa bağlantısı yok (barkod ile serbest iade), bu
     // yüzden "orijinal ödeme yöntemi" bilinmiyor — kullanıcı iade
-    // ödeme yöntemini burada seçiyor (varsayılan: Nakit).
-    String secilenYontem = 'Nakit';
+    // ödeme yöntemini burada seçiyor. Kayıtlı müşteri seçiliyse varsayılan
+    // 'Cari' (borcundan düşülür — 2026-09-28), değilse Nakit.
+    String secilenYontem = _secilenCari?.id != null ? 'Cari' : 'Nakit';
     final toplamOnizleme = _hizliMap.values
         .fold<double>(0.0, (s, i) => s + i.adet * i.urun.satisFiyati);
     final onay = await showDialog<bool>(

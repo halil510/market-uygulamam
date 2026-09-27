@@ -614,27 +614,6 @@ class SatisDeposu {
     return rows.map((r) => SatisModel.fromMap(r)).toList();
   }
 
-  Future<void> satisIptal(int id, String neden) async {
-    try {
-      final db = await _d;
-      final now = DateTime.now().toIso8601String();
-      // 🔴 DÜZELTME: last_updated bümlenmiyordu — satış iptali diğer
-      // cihazlara hiç senkron olmuyordu.
-      await db.update('satislar', {
-        'iptal': 1,
-        'iptal_tarihi': now,
-        'iptal_nedeni': neden,
-        'last_updated': now,
-      }, where: 'id = ?', whereArgs: [id]);
-      final guncelSatir = await db.query('satislar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('satislar', Map<String, dynamic>.from(guncelSatir.first));
-      }
-    } catch (e, st) {
-      LogServisi().hata('SatisDeposu.satisIptal', hata: e, yigin: st);
-      rethrow;
-    }
-  }
 
 
   Future<Map<String, double>> gunlukIstatistik() async {
@@ -769,6 +748,18 @@ class SatisDeposu {
           where: 'id = ?', whereArgs: [id]);
       if (satisRows.isEmpty) return;
       final satis = satisRows.first;
+
+      // 🔴 DÜZELTME (2026-09-28, bulut kontrolü): zaten iptal edilmiş/silinmiş
+      // bir satışta sil() TEKRAR çağrılınca stok, kasa ve cari YENİDEN ters
+      // çevriliyordu — bulutta aynı 14 TL'lik nakit satışın kasa girişinin 3
+      // kez ters çevrildiği (kasa 28 TL eksik) görüldü (Satış Listesi +
+      // Cari Hareketler'den ayrı ayrı silme, çift tıklama vb.). İkinci
+      // çağrı artık hiçbir ters kayıt üretmez.
+      if ((satis['iptal'] as int? ?? 0) == 1 ||
+          (satis['is_deleted'] as int? ?? 0) == 1) {
+        LogServisi().bilgi('SatisDeposu.sil: satış #$id zaten iptal/silinmiş — ters kayıt üretilmedi');
+        return;
+      }
 
       final odemeYontemi = satis['odeme_yontemi'] as String? ?? '';
       cariId       = satis['cari_id'] as int?;

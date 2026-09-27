@@ -168,7 +168,14 @@ class BulutManager {
     // kullanici_adi, fis_seri…) global_id'ye dayanmaz — olduğu gibi git.
     final globalIdTablosu =
         (KolonHaritalama.uniqueAlan(tablo) ?? 'global_id') == 'global_id';
-    if (globalIdTablosu && (gid == null || gid.isEmpty)) {
+    // 🔴 DÜZELTME (2026-09-28, bulut kontrolü: yeni kullanıcı 'ahmet'
+    // global_id'siz gitmişti): doğal anahtarlı tablolar (kullanicilar,
+    // subeler, kategoriler…) da global_id sütunu taşıyor ve diğer tabloların
+    // FK dönüşümü onları global_id ile arıyor. Yerel id'si olan satırda
+    // kimlik bu tablolarda da çözülür/üretilir; yalnızca global_id sütunu
+    // hiç olmayan tabloda (okuma hatası) dokunulmaz.
+    final kimlikCozulmeli = globalIdTablosu || veri['id'] != null;
+    if (kimlikCozulmeli && (gid == null || gid.isEmpty)) {
       final id = veri['id'];
       if (id == null) {
         // Ne yerel id ne global_id: bu satır bulutta HİÇBİR ZAMAN
@@ -198,9 +205,13 @@ class BulutManager {
               whereArgs: [id]);
         }
       } catch (e, st) {
-        // Okuma başarısızsa eski davranış: bu gönderim için kimlik üret.
-        LogServisi().uyari('BulutManager.upsert($tablo) kimlik çözümü', hata: e, yigin: st);
-        veri['global_id'] ??= const Uuid().v4();
+        // Okuma başarısız: global_id eşleşmeli tabloda bu gönderim için
+        // kimlik üret; doğal anahtarlı tabloda sütun hiç olmayabilir —
+        // eklemek PGRST204'e yol açar, dokunma.
+        if (globalIdTablosu) {
+          LogServisi().uyari('BulutManager.upsert($tablo) kimlik çözümü', hata: e, yigin: st);
+          veri['global_id'] ??= const Uuid().v4();
+        }
       }
     }
     await _kuyrukaYaz(tablo, 'UPSERT', veri);

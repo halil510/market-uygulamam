@@ -147,8 +147,7 @@ class IadeIslemServisi {
         // GERÇEKTEN düşülür/eklenir) birbirini DIŞLAR — kasiyer ikisini
         // birden seçemez (dropdown'da tek seçim), bu yüzden çift-iade
         // riski olmadan artık gerçek etki uygulanabiliyor.
-        final isTedarikci = (cari.cariTipi).contains('edarik') ||
-            (cari.cariTipi).contains('upplier');
+        final isTedarikci = cariSafTedarikciMi(cari.cariTipi);
         final gercekEtki = odemeYontemi == 'Cari';
         final cariHareketSatiri = {
           'global_id': const Uuid().v4(),
@@ -439,8 +438,7 @@ class IadeIslemServisi {
         final cariTipiStr = cariRows.isNotEmpty
             ? (cariRows.first['cari_tipi'] as String? ?? '')
             : '';
-        final isTedarikci =
-            cariTipiStr.contains('edarik') || cariTipiStr.contains('upplier');
+        final isTedarikci = cariSafTedarikciMi(cariTipiStr);
         final gercekEtki = odemeYontemi == 'Cari';
         final cariHareketSatiri = {
           'global_id': const Uuid().v4(),
@@ -842,8 +840,7 @@ class IadeIslemServisi {
         final cariTipiDuz = cariRows.isNotEmpty
             ? (cariRows.first['cari_tipi'] as String? ?? '')
             : '';
-        final isTedarikciDuz =
-            cariTipiDuz.contains('edarik') || cariTipiDuz.contains('upplier');
+        final isTedarikciDuz = cariSafTedarikciMi(cariTipiDuz);
 
         // Bu iade kalemi GERÇEK cari etkisiyle mi (Veresiye/'Cari' ödeme
         // yöntemi) yoksa NÖTR (Nakit/Kart, sadece takip) mi yazılmıştı?
@@ -1070,8 +1067,7 @@ class IadeIslemServisi {
       // verildi) cari sadece takip amaçlı nötr kayıt alır — bkz.
       // topluIadeKaydet'teki AYNI kuralın gerekçesi.
       if (cariId != null) {
-        final isTedarikci =
-            (cariTipi ?? 'Müşteri').contains('edarik') || (cariTipi ?? '').contains('upplier');
+        final isTedarikci = cariSafTedarikciMi(cariTipi);
         final gercekEtki = odemeYontemi == 'Cari';
         final ekBorc = gercekEtki ? (isTedarikci ? toplam : 0) : toplam;
         final ekAlacak = gercekEtki ? (isTedarikci ? 0 : toplam) : toplam;
@@ -1426,8 +1422,7 @@ class IadeIslemServisi {
     required String kullaniciAdi,
   }) async {
     final db = await Veritabani().db;
-    final isTedarikci =
-        (cariTipi ?? 'Müşteri').contains('edarik') || (cariTipi ?? '').contains('upplier');
+    final isTedarikci = cariSafTedarikciMi(cariTipi);
     final now = DateTime.now().toIso8601String();
     int iadeId = oturumIadeId ?? 0;
 

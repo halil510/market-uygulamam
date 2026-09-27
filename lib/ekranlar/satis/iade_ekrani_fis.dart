@@ -27,10 +27,13 @@ extension _FisTabExt on _IadeEkraniState {
     _bulunanSatis = null;
     _fisIadeEdilenMiktar = {};
     if (mounted) setState(() {});
-    final satislar = await _satisDepo.bugunkunSatislar();
-    final satis = satislar
-        .where((s) => s.fisNo == no || s.id?.toString() == no)
-        .firstOrNull;
+    // 🔴 DÜZELTME (2026-09-28): ÖNCEDEN yalnızca BUGÜNÜN satışlarında
+    // aranıyordu — dünkü bir (ör. toptan/bayi) satışın iadesi fişle
+    // bulunamıyordu. Artık fiş no ile tüm tarihlerde (iptal edilmemiş).
+    final satis = await _satisDepo.fisNoIleGetir(no) ??
+        (await _satisDepo.bugunkunSatislar())
+            .where((s) => s.id?.toString() == no)
+            .firstOrNull;
     _bulunanSatis = satis;
     if (satis != null)
       _fisIadeEdilenMiktar = await _fisIadeliMiktarlariGetir(satis.id!);
@@ -93,11 +96,29 @@ extension _FisTabExt on _IadeEkraniState {
     // Varsayılan, orijinal satışın ödeme yöntemidir — müşteri veresiye
     // almışsa (hiç nakit/kart ödemesi yapmamışsa) varsayılan da Cari
     // olmalı, aksi halde hiç verilmemiş bir nakit iadesi öneriliyordu.
-    String secilenYontem = _bulunanSatis!.odemeYontemi == 'Nakit'
+    // 🔴 DÜZELTME (2026-09-28): Karma satış ÖNCEDEN 'Kart/Banka'ya düşüyordu
+    // (satışta kart hiç yokken). Carili karma satışta varsayılan Cari,
+    // carisiz karmada Nakit.
+    final orjYontem = _bulunanSatis!.odemeYontemi;
+    final cariliSatis = _bulunanSatis!.cariId != null;
+    String secilenYontem = orjYontem == 'Nakit'
         ? 'Nakit'
-        : (_bulunanSatis!.odemeYontemi == 'Cari' && _bulunanSatis!.cariId != null)
+        : ((orjYontem == 'Cari' || orjYontem == 'Karma') && cariliSatis)
             ? 'Cari'
-            : 'Kart/Banka';
+            : orjYontem == 'Karma'
+                ? 'Nakit'
+                : 'Kart/Banka';
+    // 🔴 DÜZELTME (2026-09-28): iade ÖNCEDEN kalan miktarın TAMAMI için ve
+    // iskonto ÖNCESİ liste fiyatından (birimFiyat) yapılıyordu — kısmi iade
+    // (ör. bayinin 10 kolisinden 3'ü) mümkün değildi, indirimli satılan ürün
+    // müşterinin ödediğinden YÜKSEK tutarla iade ediliyordu. Artık miktar
+    // seçilebilir, tutar satırda gerçekten ödenen net fiyattan hesaplanır.
+    final iadeFiyati = kalem.netFiyat > 0 ? kalem.netFiyat : kalem.birimFiyat;
+    final miktarCtrl = TextEditingController(
+        text: kalanMiktar == kalanMiktar.roundToDouble()
+            ? kalanMiktar.toInt().toString()
+            : kalanMiktar.toString());
+    double iadeMiktari = kalanMiktar;
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -109,8 +130,30 @@ extension _FisTabExt on _IadeEkraniState {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(kalem.urunAdi,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: miktarCtrl,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'İade miktarı (en fazla $kalanMiktar)',
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                          errorText: (iadeMiktari <= 0 || iadeMiktari > kalanMiktar + 1e-9)
+                              ? 'Geçersiz miktar'
+                              : null,
+                        ),
+                        onChanged: (v) => setS(
+                            () => iadeMiktari = ParaUtils.sayiCoz(v) ?? 0),
+                      ),
+                      const SizedBox(height: 6),
                       Text(
-                          '${kalem.urunAdi} ($kalanMiktar adet) iade edilecek.'),
+                          'Tutar: ${ParaUtils.formatla(iadeFiyati * (iadeMiktari > 0 ? iadeMiktari : 0))} '
+                          '(${ParaUtils.formatla(iadeFiyati)} × miktar'
+                          '${iadeFiyati < kalem.birimFiyat ? ', iskontolu' : ''})',
+                          style: const TextStyle(fontSize: 12)),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: secilenYontem,
@@ -160,7 +203,9 @@ extension _FisTabExt on _IadeEkraniState {
                       onPressed: () => Navigator.pop(ctx, false),
                       child: const Text('İptal')),
                   FilledButton(
-                      onPressed: () => Navigator.pop(ctx, true),
+                      onPressed: (iadeMiktari <= 0 || iadeMiktari > kalanMiktar + 1e-9)
+                          ? null
+                          : () => Navigator.pop(ctx, true),
                       style: FilledButton.styleFrom(
                           foregroundColor: Colors.white,
                           backgroundColor: _R.orange),
@@ -178,8 +223,8 @@ extension _FisTabExt on _IadeEkraniState {
       cariId: _bulunanSatis!.cariId,
       urunId: kalem.urunId,
       urunAdi: kalem.urunAdi,
-      birimFiyat: kalem.birimFiyat,
-      kalanMiktar: kalanMiktar,
+      birimFiyat: iadeFiyati,
+      kalanMiktar: iadeMiktari, // servis bunu 'iade edilecek miktar' olarak kullanır
       oncekiIadeMiktar: oncekiIadeMiktar,
       odemeYontemi: secilenYontem,
       kullaniciId: AuthServisi().aktifId,
@@ -196,14 +241,14 @@ extension _FisTabExt on _IadeEkraniState {
     // kalemin tekrar "İade Et" ile mükerrer iade edilmesini önler.
     _fisIadeEdilenMiktar = {
       ..._fisIadeEdilenMiktar,
-      kalem.urunId: oncekiIadeMiktar + kalanMiktar,
+      kalem.urunId: oncekiIadeMiktar + iadeMiktari,
     };
 
     _iadeListesi.add({
       'tarih': DateTime.now(),
       'urun_adi': kalem.urunAdi,
-      'miktar': kalanMiktar,
-      'birim_fiyat': kalem.birimFiyat,
+      'miktar': iadeMiktari,
+      'birim_fiyat': iadeFiyati,
       'toplam_tutar': toplam,
       'musteri_adi': _bulunanSatis!.cariAdi ?? 'Perakende',
       'aciklama': 'Fiş iadesi - ${_bulunanSatis!.fisNo ?? _bulunanSatis!.id}',

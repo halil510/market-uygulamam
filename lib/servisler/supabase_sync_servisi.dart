@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../veri/database/veritabani.dart';
 import 'bulut/supabase_ayarlari.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
+import 'senkron_sonrasi_mutabakat.dart';
 
 class _Ayar {
   final String url, key;
@@ -75,13 +76,16 @@ class SupabaseSyncServisi {
     // tablosu buluta gittikten SONRA 'lot_seri' gönderiliyor.
     'lot_seri',
     'vardiyalar',
-    'satislar','satis_kalem','kasa_hareketleri',
+    'satislar','satis_kalem',
     'iade','iade_kalem',
     'irsaliyeler','irsaliye_kalem',
     'promosyonlar','promosyon_tanim','promosyon_kosul','promosyon_aksiyon',
     'tedarikci_siparisler','tedarikci_siparis_kalem',
     'giderler','faturalar','fatura_detaylari',
-    'stok_hareket','cari_hareket','puan_hareket','personel',
+    // kasa_hareketleri cari_hareket'ten SONRA: referans_id'si satışa,
+    // iadeye, gidere ve cari harekete işaret edebilir (polimorfik FK —
+    // bkz. KolonHaritalama.polimorfikFkHaritasi); ebeveyn önce inmeli.
+    'stok_hareket','cari_hareket','kasa_hareketleri','puan_hareket','personel',
     'masalar','masa_siparisleri','masa_siparis_kalem',
     'masa_rezervasyon',
     'adisyon_log',
@@ -164,51 +168,17 @@ class SupabaseSyncServisi {
     'donem_kilit', // çoklu cihaz kilidi (2026-09-21, FAZ 4)
   };
 
-  // 🔴 DÜZELTME: 'masa_siparisleri' önceden bu listede YOKTU — oysa
-  // _fkHaritasi'da masa_siparis_kalem.siparis_id, adisyon_log.siparis_id
-  // ve masa_hareket_log.siparis_id için PARENT olarak kullanılıyor.
-  // Haritası hiç kurulamadığı için, indirme sırasında bu kolonlar
-  // eşleşme bulunamayıp SİLİNİYORDU → indirilen masa sipariş kalemleri
-  // hiçbir siparişe bağlı olmadan geliyordu (diğer cihazda masanın
-  // ürünleri görünmüyordu).
-  // 🔴 Derin analizde bulundu: 'kullanicilar' bu listede hiç yoktu —
-  // yeni eklenen 'roller_yetki.kullanici_id' FK dönüşümü (bkz.
-  // kolon_haritalama.dart) bu harita olmadan çalışamazdı.
-  // 🔴🔴 Derin analizde bulundu: 'kredi_kartlari' — banka_hareketler,
-  // kredi_karti_hareket, borc_odemeler tablolarının FK HEDEFİ olduğu
-  // halde bu listede HİÇ yoktu. Bu üç tablonun kredi_karti_id FK
-  // dönüşümü, hedef tablonun id haritası hiç kurulmadığı için sessizce
-  // başarısız oluyordu.
-  // 🔴🔴🔴 KRİTİK, AKTİF VERİ KAYBI DÜZELTMESİ (kullanıcı bulgusu —
-  // "hızlı al hızlı gönder onlara da baktın mı, tam gönder tam al iyice
-  // incele"): Bu liste 'banka_hesaplar', 'bankalar', 'borclar',
-  // 'fiyat_gruplari', 'promosyon_tanim' tablolarını İÇERMİYORDU — oysa
-  // bu 5 tablo fkHaritasi'nde FK HEDEFİ (parent) olarak kullanılıyor.
-  // Sonuç: idHaritasi[parentTablo] bu 5 tablo için HİÇ kurulmadığından
-  // hep null dönüyordu, ve FK çevirme kodundaki
-  // "localId == null ise m.remove(kolon)" mantığı devreye girip
-  // İLGİLİ FK SÜTUNUNU TAMAMEN SİLİYORDU. Somut etki: borc_odemeler
-  // çekilirken borc_id kayboluyor (ödeme hangi borca ait bilinmiyor —
-  // Ödeme Geçmişi özelliği çok cihazlı kullanımda bozuluyor),
-  // urun_fiyat_gruplari/fiyat_kademeleri çekilirken fiyat_grubu_id
-  // kayboluyor (toptan fiyatlandırma bozuluyor), banka_hareketleri
-  // çekilirken banka_hesap_id kayboluyor.
-  // 🔴🔴🔴 KAPSAMLI DERİN ANALİZ EK GÜNCELLEMESİ: kolon_haritalama.dart
-  // içindeki fkHaritasi'ye 25 tabloda 35 eksik FK dönüşümü eklendi
-  // (banka_hesaplar sorunuyla AYNI hata sınıfı — bkz. o dosyadaki not).
-  // Bu yeni FK hedeflerinin (parent) id haritası burada da kurulmazsa,
-  // YUKARIDAKİ notta anlatılan AYNI veri kaybı (FK sütununun tamamen
-  // silinmesi) bu yeni eklenen ilişkilerde de yaşanır. Yeni parent'lar:
-  // kategoriler, gider_kategoriler, vardiyalar, lot_seri, irsaliyeler,
-  // faturalar, tedarikci_siparisler.
-  // 'donemler' eklendi (2026-09-16, Yıl Sonu Devir): donem_sube_
-  // durumlari/devir_checkpoint/4 kapanis_snapshot tablosunun FK hedefi.
-  static const _idHaritasiKurulacakTablolar = ['cari', 'urunler', 'satislar', 'iade', 'masalar', 'masa_siparisleri', 'kullanicilar', 'kredi_kartlari', 'subeler', 'banka_hesaplar', 'bankalar', 'borclar', 'fiyat_gruplari', 'promosyon_tanim', 'kategoriler', 'gider_kategoriler', 'vardiyalar', 'lot_seri', 'irsaliyeler', 'faturalar', 'tedarikci_siparisler', 'bekleyen_siparisler', 'donemler'];
+  // NOT (2026-09-27): burada ÖNCEDEN id haritası kurulacak ebeveyn
+  // tabloların elle tutulan bir listesi vardı (_idHaritasiKurulacakTablolar).
+  // Listeye eklenmeyi unutulan her ebeveyn için (masa_siparisleri,
+  // kullanicilar, kredi_kartlari, banka_hesaplar, borclar, fiyat_gruplari…
+  // — geçmişte defalarca) indirilen çocuk kaydın FK sütunu SİLİNİYORDU.
+  // Artık _buluttanAlCalistir içindeki idHaritasiGetir, satırın ihtiyaç
+  // duyduğu HER ebeveynin haritasını ilk ihtiyaçta kurar — bu hata sınıfı
+  // yapısal olarak kapandı.
 
-  // 🔄 TEK DOĞRULUK KAYNAĞI: FK haritası artık KolonHaritalama'da
-  // (hem manuel hem otomatik senkron yolu aynı haritayı kullanıyor —
-  // iki ayrı kopyanın zamanla birbirinden sapması riskine karşı).
-  static const _fkHaritasi = KolonHaritalama.fkHaritasi;
+  // FK haritası: tek doğruluk kaynağı KolonHaritalama (satır bazlı —
+  // KolonHaritalama.satirFkHaritasi, polimorfik referanslar dahil).
 
   static const _lastUpdatedVar = {
     'birimler','cari','cari_adres','cari_hareket','fatura_detaylari',
@@ -965,9 +935,7 @@ class SupabaseSyncServisi {
     // de görülebiliyor.
     final gidCloudCache = <String, Map<String, int>>{};   // parent → {gid: cloudId}
     final lokalGidCache = <String, Map<int, String>>{};   // parent → {lokalId: gid}
-    final fkParentlar = _fkHaritasi.values
-        .expand((m) => m.values)
-        .toSet();
+    final fkParentlar = _tabloSirasi.expand(KolonHaritalama.ebeveynler).toSet();
 
     for (final tablo in _tabloSirasi) {
       try {
@@ -1075,12 +1043,11 @@ class SupabaseSyncServisi {
         // FK remap (lokal id → bulut id) — açıklama için döngü
         // öncesindeki 🔴 nota bakın.
         var fkBekletilen = 0;
-        final fkMap = _fkHaritasi[tablo];
-        if (fkMap != null) {
+        if (KolonHaritalama.ebeveynler(tablo).isNotEmpty) {
           log?.call('   ↳ ilişki (FK) dönüşümü...');
           final fkBaslangic = DateTime.now();
           final bekle = await _fkLocalToCloudDonustur(
-              ayar, tablo, veriler, fkMap, gidCloudCache, lokalGidCache, log);
+              ayar, tablo, veriler, gidCloudCache, lokalGidCache, log);
           if (bekle.isNotEmpty) {
             // Yanlış kayda bağlanmasın diye bu tur gönderilmez; filigran
             // da ilerletilmez ki bir sonraki "Hızlı Gönder" onları alsın.
@@ -1306,43 +1273,49 @@ class SupabaseSyncServisi {
     _Ayar ayar,
     String tablo,
     List<Map<String, dynamic>> veriler,
-    Map<String, String> fkMap,
     Map<String, Map<String, int>> gidCloudCache,
     Map<String, Map<int, String>> lokalGidCache,
     void Function(String)? log,
   ) async {
     final bekletilecek = Set<Map<String, dynamic>>.identity();
     final localDb = await Veritabani().db;
-    for (final entry in fkMap.entries) {
-      final kolon = entry.key, parent = entry.value;
-      try {
-        // 1) Lokal: id → global_id (cache'li)
-        if (lokalGidCache[parent] == null) {
-          final rows = await localDb.query(parent, columns: ['id', 'global_id']);
-          final h = <int, String>{};
-          for (final r in rows) {
-            final id = r['id'] as int?;
-            final gid = r['global_id']?.toString();
-            if (id != null && gid != null && gid.isNotEmpty) h[id] = gid;
-          }
-          lokalGidCache[parent] = h;
-        }
-        // 2) Bulut: global_id → bulut id (cache'li)
-        if (gidCloudCache[parent] == null) {
-          log?.call('   ↳ $parent bulut haritası çekiliyor...');
-          gidCloudCache[parent] = await _tekTabloGidCloud(ayar, parent);
-          log?.call('   ↳ $parent haritası hazır (${gidCloudCache[parent]!.length} kayıt)');
-        }
 
-        final lokalGid = lokalGidCache[parent]!;
-        final gidCloud = gidCloudCache[parent]!;
-        int bulunamadi = 0, yerelYok = 0;
-        for (final m in veriler) {
-          final v = m[kolon];
-          if (v == null) continue;
-          final lid = v is int ? v : int.tryParse(v.toString());
-          if (lid == null) continue;
-          final gid = lokalGid[lid];
+    Future<void> cacheHazirla(String parent) async {
+      // 1) Lokal: id → global_id (cache'li)
+      if (lokalGidCache[parent] == null) {
+        final rows = await localDb.query(parent, columns: ['id', 'global_id']);
+        final h = <int, String>{};
+        for (final r in rows) {
+          final id = r['id'] as int?;
+          final gid = r['global_id']?.toString();
+          if (id != null && gid != null && gid.isNotEmpty) h[id] = gid;
+        }
+        lokalGidCache[parent] = h;
+      }
+      // 2) Bulut: global_id → bulut id (cache'li)
+      if (gidCloudCache[parent] == null) {
+        log?.call('   ↳ $parent bulut haritası çekiliyor...');
+        gidCloudCache[parent] = await _tekTabloGidCloud(ayar, parent);
+        log?.call('   ↳ $parent haritası hazır (${gidCloudCache[parent]!.length} kayıt)');
+      }
+    }
+
+    int bulunamadi = 0, yerelYok = 0;
+    for (final m in veriler) {
+      // Satır bazlı: polimorfik referanslar (referans_id / fis_id) tür
+      // sütununa göre farklı tabloya işaret eder (bkz. KolonHaritalama.
+      // polimorfikFkHaritasi).
+      final fkMap = KolonHaritalama.satirFkHaritasi(tablo, m);
+      if (fkMap == null) continue;
+      for (final entry in fkMap.entries) {
+        final kolon = entry.key, parent = entry.value;
+        final v = m[kolon];
+        if (v == null) continue;
+        final lid = v is int ? v : int.tryParse(v.toString());
+        if (lid == null) continue;
+        try {
+          await cacheHazirla(parent);
+          final gid = lokalGidCache[parent]![lid];
           if (gid == null) {
             // Ebeveyn yerelde yok — yerel id'yi göndermek buluttaki BAŞKA
             // bir kayda bağlardı (bkz. SupabaseSaglayici._fkDonustur).
@@ -1350,27 +1323,25 @@ class SupabaseSyncServisi {
             yerelYok++;
             continue;
           }
-          final cid = gidCloud[gid];
+          final cid = gidCloudCache[parent]![gid];
           if (cid != null) {
             m[kolon] = cid;
           } else {
             bekletilecek.add(m);
             bulunamadi++;
           }
-        }
-        if (bulunamadi > 0) {
-          log?.call('⚠️ $tablo.$kolon: $bulunamadi kayıtta $parent henüz bulutta '
-              'yok — bu kayıtlar bekletildi (sonraki gönderimde gider)');
-        }
-        if (yerelYok > 0) {
-          log?.call('⚠️ $tablo.$kolon: $yerelYok kayıtta $parent yerelde de yok — boş gönderildi');
-        }
-      } catch (e) {
-        log?.call('⚠️ $tablo.$kolon FK dönüşümü yapılamadı, kayıtlar bekletildi: $e');
-        for (final m in veriler) {
-          if (m[kolon] != null) bekletilecek.add(m);
+        } catch (e) {
+          log?.call('⚠️ $tablo.$kolon FK dönüşümü yapılamadı, kayıt bekletildi: $e');
+          bekletilecek.add(m);
         }
       }
+    }
+    if (bulunamadi > 0) {
+      log?.call('⚠️ $tablo: $bulunamadi ilişkide ebeveyn kayıt henüz bulutta '
+          'yok — bu kayıtlar bekletildi (sonraki gönderimde gider)');
+    }
+    if (yerelYok > 0) {
+      log?.call('⚠️ $tablo: $yerelYok ilişkide ebeveyn yerelde de yok — boş gönderildi');
     }
     return bekletilecek;
   }
@@ -1378,47 +1349,6 @@ class SupabaseSyncServisi {
   // --------------------------------------------------------------
   // ID HARİTASI (FK DÖNÜŞÜM İÇİN)
   // --------------------------------------------------------------
-  /// Bulut'taki (global_id -> cloud_id) eşlemesini TEK SEFER çeker —
-  /// bu, senkronizasyon boyunca değişmez, tekrar tekrar çekmeye gerek
-  /// yok. Yerel eşleme (cloud_id -> local_id) ise AYRI tutuluyor çünkü
-  /// bu, her tablo eklendikçe DEĞİŞİR (bkz. _idHaritasiTabloGuncelle).
-  static Future<Map<String, Map<String, int>>> _bulutGidHaritasiCek(
-      _Ayar ayar, {void Function(String)? log}) async {
-    final sonuc = <String, Map<String, int>>{};
-    for (final tablo in _idHaritasiKurulacakTablolar) {
-      try {
-        final gidToCloud = <String, int>{};
-        int offset = 0;
-        // Güvenlik sınırı: sayfalama hiçbir koşulda 200 turdan
-        // (200.000 kayıt) fazla dönemez — uç durumlarda (sunucunun
-        // beklenmedik yanıtı) sonsuz döngüyü fiziksel olarak engeller.
-        int guvenlikSayaci2 = 0;
-        while (guvenlikSayaci2++ < 200) {
-          final res = await http.get(
-            Uri.parse('${ayar.rest}/$tablo?select=id,global_id&limit=1000&offset=$offset'),
-            headers: _getH(ayar.key),
-          ).timeout(const Duration(seconds: 30));
-          if (res.statusCode != 200) break;
-          final batch = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
-          if (batch.isEmpty) break;
-          for (final r in batch) {
-            final gid = r['global_id']?.toString();
-            final cid = r['id'];
-            if (gid != null && gid.isNotEmpty && cid != null) {
-              gidToCloud[gid] = cid is int ? cid : int.parse(cid.toString());
-            }
-          }
-          if (batch.length < 1000) break;
-          offset += 1000;
-        }
-        sonuc[tablo] = gidToCloud;
-      } catch (e) {
-        log?.call('⚠️ $tablo bulut id listesi çekilemedi: $e');
-      }
-    }
-    return sonuc;
-  }
-
   /// 🔴🔴🔴 KULLANICI TARAFINDAN BULUNAN, GERÇEK BİR HATA: ÖNCEDEN ID
   /// haritası (cloud_id -> local_id) senkronizasyonun EN BAŞINDA, TEK
   /// SEFER kuruluyordu. Ama bir satış Cihaz A için YENİYSE (Cihaz A'da
@@ -1436,7 +1366,6 @@ class SupabaseSyncServisi {
     Map<String, Map<String, int>> bulutGidHaritasi,
     Map<String, Map<int, int>> idHaritasi,
   ) async {
-    if (!_idHaritasiKurulacakTablolar.contains(tablo)) return;
     final gidToCloud = bulutGidHaritasi[tablo];
     if (gidToCloud == null || gidToCloud.isEmpty) return;
     try {
@@ -1454,57 +1383,6 @@ class SupabaseSyncServisi {
     } catch (_) {
       // Sessizce geç — bir sonraki genel senkronizasyonda düzelir
     }
-  }
-
-  static Future<Map<String, Map<int, int>>> _idHaritasiOlustur(
-      _Ayar ayar, {void Function(String)? log}) async {
-    final sonuc = <String, Map<int, int>>{};
-    final localDb = await Veritabani().db;
-
-    for (final tablo in _idHaritasiKurulacakTablolar) {
-      try {
-        final gidToCloud = <String, int>{};
-        int offset = 0;
-        // Güvenlik sınırı: sayfalama hiçbir koşulda 200 turdan
-        // (200.000 kayıt) fazla dönemez — uç durumlarda (sunucunun
-        // beklenmedik yanıtı) sonsuz döngüyü fiziksel olarak engeller.
-        int guvenlikSayaci3 = 0;
-        while (guvenlikSayaci3++ < 200) {
-          final res = await http.get(
-            Uri.parse('${ayar.rest}/$tablo?select=id,global_id&limit=1000&offset=$offset'),
-            headers: _getH(ayar.key),
-          ).timeout(const Duration(seconds: 30));
-          if (res.statusCode != 200) break;
-          final batch = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
-          if (batch.isEmpty) break;
-          for (final r in batch) {
-            final gid = r['global_id']?.toString();
-            final cid = r['id'];
-            if (gid != null && gid.isNotEmpty && cid != null) {
-              gidToCloud[gid] = cid is int ? cid : int.parse(cid.toString());
-            }
-          }
-          if (batch.length < 1000) break;
-          offset += 1000;
-        }
-        if (gidToCloud.isEmpty) continue;
-
-        final localRows = await localDb.query(tablo, columns: ['id', 'global_id']);
-        final harita = <int, int>{};
-        for (final lr in localRows) {
-          final gid = lr['global_id']?.toString();
-          if (gid == null) continue;
-          final cloudId = gidToCloud[gid];
-          final localId = lr['id'] as int?;
-          if (cloudId != null && localId != null) harita[cloudId] = localId;
-        }
-        sonuc[tablo] = harita;
-        log?.call('🔗 $tablo: ${harita.length} id eşleşti');
-      } catch (e) {
-        log?.call('⚠️ $tablo id haritası kurulamadı: $e');
-      }
-    }
-    return sonuc;
   }
 
   // --------------------------------------------------------------
@@ -1617,11 +1495,26 @@ class SupabaseSyncServisi {
     }
 
     final sonuc = SyncSonuc();
-    // Bulut'taki global_id->cloud_id eşlemesi TEK SEFER çekiliyor
-    // (değişmez), ama YEREL eşleme (idHaritasi) artık MUTABLE — her
-    // tablo işlendikçe TAZELENİYOR (bkz. _idHaritasiTabloGuncelle).
-    final bulutGidHaritasi = await _bulutGidHaritasiCek(ayar, log: log);
-    final idHaritasi = await _idHaritasiOlustur(ayar, log: log);
+    // 🔴 PERFORMANS (2026-09-27): eşlemeler ÖNCEDEN her çekimin başında
+    // 25 ebeveyn tablonun TAMAMI için buluttan İKİ KEZ indiriliyordu
+    // (_bulutGidHaritasiCek + _idHaritasiOlustur aynı sorguyu yapıyordu) —
+    // masa ekranı 15 sn'de bir çektiği için veri büyüdükçe ciddi yük.
+    // Artık bir ebeveyn tablonun eşlemesi yalnızca o tabloya referans
+    // veren bir satır geldiğinde, tek sefer indirilir. Değişiklik yoksa
+    // hiç indirilmez.
+    final bulutGidHaritasi = <String, Map<String, int>>{};
+    final idHaritasi = <String, Map<int, int>>{};
+    Future<Map<int, int>> idHaritasiGetir(String parent) async {
+      final hazir = idHaritasi[parent];
+      if (hazir != null) return hazir;
+      try {
+        bulutGidHaritasi[parent] ??= await _tekTabloGidCloud(ayar, parent);
+        await _idHaritasiTabloGuncelle(parent, bulutGidHaritasi, idHaritasi);
+      } catch (e) {
+        log?.call('⚠️ $parent id haritası kurulamadı: $e');
+      }
+      return idHaritasi[parent] ??= <int, int>{};
+    }
     // Bu turda buluttan GÜNCELLENEREK gelen satışlar — kalemleri başka
     // cihazda değişmiş olabilir (fiş güncelleme), sonda mutabakat yapılır.
     final guncellenenSatisGidleri = <String>{};
@@ -1680,7 +1573,8 @@ class SupabaseSyncServisi {
         final yeni    = <Map<String, dynamic>>[];
         final guncel  = <Map<String, dynamic>>[];
 
-        final fkHaritasi = _fkHaritasi[tablo];
+        // FK haritası artık satır bazlı (polimorfik referanslar — bkz.
+        // KolonHaritalama.polimorfikFkHaritasi), aşağıda her satırda çözülür.
 
         // Yerel tablonun gerçek sütunları — bulut fazlalıklarını atmak için
         final yerelKolonSeti = await _yerelKolonlar(localDb, tablo);
@@ -1712,6 +1606,7 @@ class SupabaseSyncServisi {
           }
 
           var atlaSatir = false;
+          final fkHaritasi = KolonHaritalama.satirFkHaritasi(tablo, m);
           if (fkHaritasi != null) {
             for (final entry in fkHaritasi.entries) {
               final kolon = entry.key, parentTablo = entry.value;
@@ -1719,7 +1614,7 @@ class SupabaseSyncServisi {
               if (cloudVal == null) continue;
               final cloudId = cloudVal is int ? cloudVal : int.tryParse(cloudVal.toString());
               if (cloudId == null) continue;
-              final localId = idHaritasi[parentTablo]?[cloudId];
+              final localId = (await idHaritasiGetir(parentTablo))[cloudId];
               if (localId != null) {
                 m[kolon] = localId;
               } else if (zorunluKolonSeti.contains(kolon)) {
@@ -1814,9 +1709,20 @@ class SupabaseSyncServisi {
 
     try {
       await _satisKalemMutabakati(
-          ayar, guncellenenSatisGidleri, bulutGidHaritasi['satislar'] ?? const {}, log);
+          ayar,
+          guncellenenSatisGidleri,
+          guncellenenSatisGidleri.isEmpty
+              ? const <String, int>{}
+              : (bulutGidHaritasi['satislar'] ??= await _tekTabloGidCloud(ayar, 'satislar')),
+          log);
     } catch (e) {
       log?.call('⚠️ satış kalem mutabakatı atlandı: $e');
+    }
+
+    // Türetilmiş değerler (cari bakiye, stok, puan …) hareketlerden yeniden
+    // hesaplanır — yalnızca bir şey indiyse (masa ekranı 15 sn'de bir çeker).
+    if (sonuc.toplamEklenen + sonuc.toplamGuncellenen + sonuc.toplamSilinen > 0) {
+      await SenkronSonrasiMutabakat.calistir(log: log);
     }
 
     log?.call('────────────────────────');

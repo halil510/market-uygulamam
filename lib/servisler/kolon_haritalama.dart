@@ -192,6 +192,63 @@ class KolonHaritalama {
 
   static Map<String, String>? fkHarita(String tablo) => fkHaritasi[tablo];
 
+  static const Map<String, String> _referansTuruTablo = {
+    'satis': 'satislar', 'satis_iptal': 'satislar',
+    'fis_guncelleme': 'satislar', 'toptan_satis': 'satislar',
+    'iade': 'iade', 'iade_iptal': 'iade', 'iade_duzenle': 'iade',
+    'iade_duzeltme': 'iade',
+    'irsaliye': 'irsaliyeler', 'irsaliye_iptal': 'irsaliyeler',
+    'fatura': 'faturalar',
+    'gider': 'giderler',
+    'alim': 'tedarikci_siparisler', 'alim_iptal': 'tedarikci_siparisler',
+    'toptan_siparis': 'bekleyen_siparisler',
+    'cari_hareket': 'cari_hareket', 'cari_hareket_iptal': 'cari_hareket',
+  };
+
+  /// TÜR SÜTUNUNA GÖRE hedefi değişen (polimorfik) referanslar:
+  /// tablo → (id sütunu, tür sütunu, tür değeri → hedef tablo).
+  ///
+  /// 🔴🔴 ÇOKLU TERMİNAL DÜZELTMESİ (2026-09-27): bu sütunlar ÖNCEDEN
+  /// dönüştürülmeden, YEREL id ile buluta gidiyordu (fkHaritasi'ndaki
+  /// notta "tek bir sabit tabloya eşlenemez" diye bilerek dışarıda
+  /// bırakılmıştı). Başka kasada o sayı BAŞKA bir kaydı gösteriyordu:
+  /// B kasasında bir iadeyi düzenleyip silmek, satışı iptal etmek ya da
+  /// tahsilatı iptal etmek YANLIŞ kasa/stok/cari hareketini bulup ters
+  /// çeviriyor veya hiç bulamıyordu (cari bakiyesi bozuluyordu). Artık
+  /// her satır kendi tür değerine göre doğru tabloya çevriliyor. Listede
+  /// olmayan tür değerleri (toplu_islem, excel_import …) bir kayda işaret
+  /// etmediği için olduğu gibi kalır.
+  static const Map<String, ({String kolon, String turKolon, Map<String, String> hedef})>
+      polimorfikFkHaritasi = {
+    'kasa_hareketleri': (kolon: 'referans_id', turKolon: 'referans_turu', hedef: _referansTuruTablo),
+    'stok_hareket': (kolon: 'referans_id', turKolon: 'referans_turu', hedef: _referansTuruTablo),
+    'banka_hareketler': (kolon: 'referans_id', turKolon: 'referans_turu', hedef: _referansTuruTablo),
+    'kredi_karti_hareket': (kolon: 'referans_id', turKolon: 'referans_turu', hedef: _referansTuruTablo),
+    'cari_hareket': (kolon: 'fis_id', turKolon: 'fis_tipi', hedef: {
+      'Satış': 'satislar', 'Toptan Satış': 'satislar',
+      'Toptan Satış (Sipariş)': 'satislar', 'Satış İptali': 'satislar',
+      'İade': 'iade', 'Alım İadesi': 'iade',
+      'Alım': 'tedarikci_siparisler', 'Alım İptali': 'tedarikci_siparisler',
+    }),
+  };
+
+  /// Bu SATIR için geçerli FK haritası: sabit FK'lar + satırın tür
+  /// değerine göre çözülen polimorfik referans.
+  static Map<String, String>? satirFkHaritasi(String tablo, Map<String, dynamic> satir) {
+    final sabit = fkHaritasi[tablo];
+    final p = polimorfikFkHaritasi[tablo];
+    if (p == null) return sabit;
+    final hedef = p.hedef[satir[p.turKolon]?.toString()];
+    if (hedef == null) return sabit;
+    return {...?sabit, p.kolon: hedef};
+  }
+
+  /// Tablonun (sabit + polimorfik) olası tüm ebeveyn tabloları.
+  static Set<String> ebeveynler(String tablo) => {
+        ...?fkHaritasi[tablo]?.values,
+        ...?polimorfikFkHaritasi[tablo]?.hedef.values,
+      };
+
   static final Map<String, int> _derinlikOnbellek = {};
 
   /// [fkHaritasi]'na göre tablonun ebeveyn zincirindeki derinliği:
@@ -204,7 +261,7 @@ class KolonHaritalama {
     final ziyaret = yol ?? <String>{};
     if (!ziyaret.add(tablo)) return 0;
     var d = 0;
-    for (final parent in (fkHaritasi[tablo]?.values ?? const <String>[])) {
+    for (final parent in ebeveynler(tablo)) {
       if (parent == tablo || ziyaret.contains(parent)) continue;
       final pd = derinlik(parent, ziyaret) + 1;
       if (pd > d) d = pd;

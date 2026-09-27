@@ -89,15 +89,26 @@ class CariDeposu {
         // Aynı kodu taşıyan tüm carileri, oluşturulma tarihine göre
         // eskiden yeniye sırala — en eski kodu korur, diğerleri
         // yeniden numaralanır.
+        // 🔴 DÜZELTME (2026-09-27, çoklu terminal): ikincil sıralama
+        // ÖNCEDEN yerel 'id' idi — id her kasada farklı olduğundan iki kasa
+        // AYNI çakışmada FARKLI cariyi "asıl" sayıp birbirinin tersini
+        // yeniden adlandırabiliyordu. global_id her kasada aynıdır.
+        // Ayrıca yeni kod ÖNCEDEN buluta hiç gönderilmiyordu (her kasa
+        // kendi başına, farklı kodlarla düzeltiyordu) — artık gönderiliyor.
         final ayniKodlular = await db.query('cari',
             where: 'cari_kodu = ? AND is_deleted = 0', whereArgs: [kod],
-            orderBy: 'olusturma_tarihi ASC, id ASC');
+            orderBy: 'olusturma_tarihi ASC, global_id ASC');
         for (var i = 1; i < ayniKodlular.length; i++) {
           final yeniNo = await sonrakiCariNo();
+          final id = ayniKodlular[i]['id'];
           await db.update('cari', {
             'cari_kodu': 'CARIO-$yeniNo',
             'last_updated': DateTime.now().toIso8601String(),
-          }, where: 'id = ?', whereArgs: [ayniKodlular[i]['id']]);
+          }, where: 'id = ?', whereArgs: [id]);
+          final satir = await db.query('cari', where: 'id = ?', whereArgs: [id], limit: 1);
+          if (satir.isNotEmpty) {
+            BulutManager().upsert('cari', Map<String, dynamic>.from(satir.first));
+          }
           duzeltilen++;
         }
       }
@@ -535,6 +546,19 @@ class CariDeposu {
     return rows.map(CariHareketModel.fromMap).toList();
   }
 
+  /// Ekstre için DEVREDEN bakiye: [tarih]ten ÖNCEKİ tüm (iptal edilmemiş)
+  /// hareketlerin borç − alacak toplamı. Listeleme limitinden bağımsız,
+  /// doğrudan SQL ile.
+  Future<double> devredenBakiye(int cariId, DateTime tarih) async {
+    final db = await _d;
+    final rows = await db.rawQuery('''
+      SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) AS b
+      FROM cari_hareket
+      WHERE cari_id = ? AND is_deleted = 0 AND datetime(tarih) < datetime(?)
+    ''', [cariId, tarih.toIso8601String()]);
+    return (rows.first['b'] as num?)?.toDouble() ?? 0;
+  }
+
   /// Belirli bir cari_hareket satırının YAZILDIĞI ANDAKİ bakiyesini
   /// (sonBakiye) ve ondan hemen önceki bakiyesini (oncekiBakiye) geriye
   /// dönük hesaplar — makbuz YENİDEN yazdırma için (kullanıcı isteği
@@ -835,15 +859,21 @@ class CariDeposu {
       // değiştiricisiyle düzeltilmişti (bkz. rapor_deposu.dart,
       // kar_zarar_provider.dart vb.) — bu yedinci örnek o turda
       // kapsanmamış.
+      // 🔴 DÜZELTME (2026-09-27): ÖNCEDEN "vadesi geçmiş HERHANGİ bir borç
+      // satırı var mı" soruluyordu — 3 ay önceki borcunu çoktan ödemiş,
+      // bugün vadesi içinde yeni alışveriş yapmış müşteri de listeye
+      // düşüyordu. Artık ödemeler en eski borçtan düşülür (FIFO): bakiyenin,
+      // vadesi HENÜZ DOLMAMIŞ borçlarla karşılanamayan kısmı vadesi
+      // geçmiş sayılır.
       final rows = await db.rawQuery('''
         SELECT c.* FROM cari c
         WHERE c.is_deleted = 0 AND c.aktif = 1 AND c.bakiye > 0
           AND c.vade_gun > 0
-          AND EXISTS (
-            SELECT 1 FROM cari_hareket ch
+          AND c.bakiye - COALESCE((
+            SELECT SUM(ch.borc) FROM cari_hareket ch
             WHERE ch.cari_id = c.id AND ch.borc > 0 AND ch.is_deleted = 0
-            AND datetime(ch.tarih, '+' || c.vade_gun || ' days') < datetime('now', 'localtime')
-          )
+            AND datetime(ch.tarih, '+' || c.vade_gun || ' days') >= datetime('now', 'localtime')
+          ), 0) > 0.01
         ORDER BY c.bakiye DESC
       ''');
       return rows.map(CariModel.fromMap).toList();

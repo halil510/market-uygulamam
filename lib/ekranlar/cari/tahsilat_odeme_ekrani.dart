@@ -63,6 +63,9 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
       if (!mounted) return;
       setState(() {
         _cari = c;
+        // Tedarikçide olağan işlem ödemedir — varsayılan onu seçsin
+        // (aksi hâlde her seferinde "olağandışı işlem" uyarısı çıkıyordu).
+        if (_tedarikci) _islemTipi = 'Odeme';
         _bankaHesaplari = hesaplar;
         _krediKartlari = kartlar;
         if (hesaplar.isNotEmpty) _secilenHesap = hesaplar.first;
@@ -81,18 +84,25 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
     }
   }
 
+  // Tedarikçi mi (cari kartı 'Tedarikçi' kaydeder; eski kayıtlarda ç'siz
+  // yazım da olabilir). "Hem Müşteri Hem Tedarikçi" müşteri gibi etiketlenir.
+  bool get _tedarikci {
+    final t = _cari?.cariTipi;
+    return t == 'Tedarikçi' || t == 'Tedarikci';
+  }
+
   Widget _segmentButton() {
-    final tedarikci = _cari?.cariTipi == 'Tedarikci';
+    final tedarikci = _tedarikci;
     return SegmentedButton<String>(
       segments: [
         ButtonSegment(
           value: 'Tahsilat',
-          label: Text(tedarikci ? 'Ödeme Yaptım' : 'Tahsilat'),
+          label: Text(tedarikci ? 'Tahsilat (İade)' : 'Tahsilat'),
           icon: const Icon(Icons.add_circle_outline),
         ),
         ButtonSegment(
           value: 'Odeme',
-          label: Text(tedarikci ? 'Borç Ekle' : 'İade/Ödeme'),
+          label: Text(tedarikci ? 'Ödeme Yap' : 'İade/Ödeme'),
           icon: const Icon(Icons.remove_circle_outline),
         ),
       ],
@@ -101,26 +111,22 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
     );
   }
 
-  // 🔴 YENİ: Bu ekran hem müşteri hem tedarikçi için kullanıldığından,
-  // "para gerçekten hareket ediyor mu" ve "hangi yönde" ayrı ayrı
-  // belirlenmeli:
-  //   - Tedarikçi + "Ödeme Yaptım" (Tahsilat)  → PARA ÇIKAR (gerçek ödeme)
-  //   - Tedarikçi + "Borç Ekle" (Odeme)        → para hareketi YOK (sadece
-  //     veresiye borç kaydı — henüz ödeme yapılmadı)
-  //   - Müşteri + "Tahsilat"                   → PARA GİRER
-  //   - Müşteri + "İade/Ödeme" (Odeme)         → PARA ÇIKAR (iade)
-  bool get _tedarikci => _cari?.cariTipi == 'Tedarikci';
+  // Yön kuralı (ERP sabit kuralı — müşteri ve tedarikçi için AYNI):
+  //   'Tahsilat' → cari ALACAK+, para GİRER (müşteriden tahsilat /
+  //                tedarikçiden iade)
+  //   'Odeme'    → cari BORÇ+,   para ÇIKAR (tedarikçiye ödeme /
+  //                müşteriye iade)
+  //
+  // 🔴 DÜZELTME (2026-09-27): burada ÖNCEDEN tedarikçiye özel bir dal
+  // vardı ("Ödeme Yaptım" = Tahsilat, "Borç Ekle" = Odeme) — ama tür
+  // kontrolü 'Tedarikci' (ç'siz) yazıldığı için cari kartının kaydettiği
+  // 'Tedarikçi' ile HİÇ eşleşmiyor, dal hiç çalışmıyordu. Dalın kendisi de
+  // ters yönlüydü: "Ödeme Yaptım" tedarikçiye olan borcu AZALTACAĞI yerde
+  // (alacak+ yazarak) ARTIRIRDI. Fiilen çalışan (doğru) davranış korunup
+  // ters dal kaldırıldı; tedarikçiye borç kaydı Alım akışından yapılır.
+  bool get _paraHareketEdiyor => true;
 
-  bool get _paraHareketEdiyor {
-    if (_tedarikci && _islemTipi == 'Odeme') return false; // sadece borç kaydı
-    return true;
-  }
-
-  bool get _paraCikiyor {
-    if (_tedarikci && _islemTipi == 'Tahsilat') return true; // Ödeme Yaptım
-    if (!_tedarikci && _islemTipi == 'Odeme') return true; // İade/Ödeme
-    return false; // müşteri tahsilatı = para girer
-  }
+  bool get _paraCikiyor => _islemTipi == 'Odeme';
 
   bool get _bankaSecimiGerekli =>
       _paraHareketEdiyor && (_odemeTuru == 'Banka' || _odemeTuru == 'Havale');

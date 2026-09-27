@@ -7,12 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../servisler/supabase_sync_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
 import '../../veri/database/veritabani.dart';
-import '../../depolar/cari_deposu.dart';
-import '../../depolar/stok_deposu.dart';
-import '../../depolar/masa_deposu.dart';
-import '../../depolar/borc_deposu.dart';
-import '../../depolar/kredi_karti_deposu.dart';
-import '../../servisler/puan_servisi.dart';
+import '../../servisler/senkron_sonrasi_mutabakat.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -283,43 +278,13 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
       sadeceDegisenler: !tamSync,
       log: _log,
     );
-    // Kullanıcı sorusu: "2 cihaz aynı cari kodunu atarsa ne olur?" —
-    // senkronizasyon sonrası, farklı cihazlardan gelen carilerin AYNI
-    // koda sahip olup olmadığı otomatik kontrol edilip düzeltiliyor.
-    final duzeltilenCari = await CariDeposu().mukerrerKodlariDuzelt();
-    if (duzeltilenCari > 0) {
-      _log('🔧 $duzeltilenCari mükerrer cari kodu otomatik düzeltildi');
-    }
-    // Kullanıcı isteği: "aynı ürünü başka cihazdan güncelleme" — stok
-    // artık her zaman hareketlerin (stok_hareket) toplamından yeniden
-    // hesaplanıyor, bu yüzden hangi sırayla senkronize olursa olsun
-    // matematiksel olarak her zaman doğru sonuca ulaşılıyor.
-    final duzeltilenStok = await StokDeposu().stokMutabakatYap();
-    if (duzeltilenStok > 0) {
-      _log('📦 $duzeltilenStok ürünün stoğu mutabakatla düzeltildi');
-    }
-    // Kullanıcı isteği: "3+ terminal, hepsi çakışabilir" — masa
-    // siparişlerinin toplamı da, başka cihazlardan senkronize olan
-    // kalemleri yansıtacak şekilde yeniden hesaplanıyor.
-    final duzeltilenSiparis = await MasaDeposu().siparisToplamlariMutabakatYap();
-    if (duzeltilenSiparis > 0) {
-      _log('🍽️ $duzeltilenSiparis masa siparişinin toplamı düzeltildi');
-    }
-    // Kullanıcı isteği: "detaylı analiz et" — borç ödemelerinin de
-    // (stok/masa siparişi gibi) hareket bazlı toplamdan mutabakatı
-    // yapılıyor, 2 cihazdan aynı borca yapılan ödemelerin kaybolmaması
-    // için.
-    final duzeltilenBorc = await BorcDeposu().odemeMutabakatYap();
-    if (duzeltilenBorc > 0) {
-      _log('💳 $duzeltilenBorc borcun ödenen tutarı düzeltildi');
-    }
-    final duzeltilenKart = await KrediKartiDeposu().limitMutabakatYap();
-    if (duzeltilenKart > 0) {
-      _log('💳 $duzeltilenKart kredi kartının limiti düzeltildi');
-    }
-    final duzeltilenPuan = await PuanServisi().puanMutabakatYap();
-    if (duzeltilenPuan > 0) {
-      _log('⭐ $duzeltilenPuan müşterinin puanı düzeltildi');
+    // Mutabakat adımları (mükerrer cari kodu, cari bakiye, stok, masa,
+    // borç, kart limiti, puan) artık SupabaseSyncServisi.buluttanAl içinde,
+    // bir şey indiyse otomatik çalışıyor (bkz. SenkronSonrasiMutabakat).
+    // Elle "Buluttan Al"da hiçbir şey inmese de kullanıcı bir kontrol
+    // bekliyor — o durumda burada çalıştırılır.
+    if (sonuc.toplamEklenen + sonuc.toplamGuncellenen + sonuc.toplamSilinen == 0) {
+      await SenkronSonrasiMutabakat.calistir(log: _log);
     }
     if (mounted) setState(() { _yukleniyor = false; _sonSonuc = sonuc; });
     _log('✅ BULUTTAN ALMA TAMAMLANDI: ${sonuc.ozet}');

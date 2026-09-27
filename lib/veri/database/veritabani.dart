@@ -503,7 +503,7 @@ class Veritabani {
         final gelenGlobalId = kayit['global_id'];
         if (gelenKod == null || gelenGlobalId == null) continue;
         final cakisan = await database.query('cari',
-            columns: ['global_id'],
+            columns: ['id', 'global_id', 'olusturma_tarihi'],
             where: 'cari_kodu = ? AND global_id != ?',
             whereArgs: [gelenKod, gelenGlobalId]);
         if (cakisan.isNotEmpty) {
@@ -515,10 +515,36 @@ class Veritabani {
             final kod = maxRows.first['cari_kodu'] as String?;
             sonNo = int.tryParse(kod?.replaceFirst('CARIO-', '') ?? '') ?? 0;
           }
-          kayit['cari_kodu'] = 'CARIO-${sonNo + 1}';
+          final yeniKod = 'CARIO-${sonNo + 1}';
+          // 🔴 DÜZELTME (2026-09-27, çoklu terminal): ÖNCEDEN her zaman GELEN
+          // cari yeniden adlandırılıyor ve bu yalnızca YERELDE kalıyordu —
+          // her kasa aynı cariye farklı kod veriyor, bulutta çakışma hiç
+          // çözülmüyordu. Artık her kasada AYNI karar verilir: kodu önce
+          // oluşturulan (eşitse küçük global_id'li) cari korur, diğeri yeni
+          // kod alır ve bu buluta gönderilir — tüm kasalar aynı sonuca yakınsar.
+          final yerel = cakisan.first;
+          String anahtar(Object? tarih, Object? gid) =>
+              '${tarih ?? '9999'}|${gid ?? ''}';
+          final gelenOnce = anahtar(kayit['olusturma_tarihi'], gelenGlobalId)
+                  .compareTo(anahtar(yerel['olusturma_tarihi'], yerel['global_id'])) <
+              0;
+          if (gelenOnce) {
+            await database.update('cari', {
+              'cari_kodu': yeniKod,
+              'last_updated': DateTime.now().toIso8601String(),
+            }, where: 'id = ?', whereArgs: [yerel['id']]);
+            final satir = await database.query('cari',
+                where: 'id = ?', whereArgs: [yerel['id']], limit: 1);
+            if (satir.isNotEmpty) {
+              BulutManager().upsert('cari', Map<String, dynamic>.from(satir.first));
+            }
+          } else {
+            kayit['cari_kodu'] = yeniKod;
+            BulutManager().upsert('cari', Map<String, dynamic>.from(kayit));
+          }
           LogServisi().bilgi(
-              'Senkronizasyon çakışması önlendi: gelen cari ($gelenGlobalId) '
-              'yeni kod aldı (${kayit["cari_kodu"]}), yerel kayıt korundu.');
+              'Senkronizasyon çakışması çözüldü: cari kodu $gelenKod — '
+              '${gelenOnce ? 'yerel' : 'gelen'} cari yeni kod aldı ($yeniKod).');
         }
       }
     }
@@ -908,6 +934,10 @@ class Veritabani {
         final temiz = Map<String, dynamic>.from(kayit);
         temiz.remove('id');
         temiz.removeWhere((_, v) => v == null);
+        // Cari bakiye bu cihazda hareketlerden türetilir (tetikleyici +
+        // SenkronSonrasiMutabakat) — başka kasanın o anki hesabı olan bulut
+        // değeri yerel bakiyeyi ezmesin, çakışma kaydına da düşmesin.
+        if (tablo == DbSabitler.cari) temiz.remove('bakiye');
         if (temiz.containsKey('global_id') && temiz['global_id'] != null) {
           // 🔴🔴 GENELLEŞTİRİLMİŞ ÇAKIŞMA KORUMASI (kullanıcı isteği:
           // "tam ERP sistemi — internetsiz gelip bulutsuz çalışıp sonra

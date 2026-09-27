@@ -114,23 +114,29 @@ class SupabaseSaglayici implements IBulutSaglayici {
   Future<Set<Map<String, dynamic>>> _fkDonustur(
       String tablo, List<Map<String, dynamic>> kayitlar) async {
     final bekletilecek = Set<Map<String, dynamic>>.identity();
-    final fkMap = KolonHaritalama.fkHarita(tablo);
-    if (fkMap == null || kayitlar.isEmpty) return bekletilecek;
-    for (final e in fkMap.entries) {
-      final kolon = e.key, parent = e.value;
-      try {
-        if (_fkLokalGidCache[parent] == null) await _fkLokalCacheYukle(parent);
-        if (_fkGidCloudCache[parent] == null) await _fkBulutCacheYukle(parent);
-        bool lokalTazelendi = false, bulutTazelendi = false;
-        for (final m in kayitlar) {
-          final v = m[kolon];
-          if (v == null) continue;
-          final lid = v is int ? v : int.tryParse(v.toString());
-          if (lid == null) continue;
+    if (kayitlar.isEmpty || KolonHaritalama.ebeveynler(tablo).isEmpty) {
+      return bekletilecek;
+    }
+    // Her ebeveyn için cache en fazla bir kez "ıskada tazelenir".
+    final lokalTazelendi = <String>{}, bulutTazelendi = <String>{};
+    for (final m in kayitlar) {
+      // Satır bazlı harita: polimorfik referanslar (kasa_hareketleri.
+      // referans_id, cari_hareket.fis_id …) satırın tür değerine göre
+      // farklı tabloya işaret eder (bkz. KolonHaritalama.polimorfikFkHaritasi).
+      final fkMap = KolonHaritalama.satirFkHaritasi(tablo, m);
+      if (fkMap == null) continue;
+      for (final e in fkMap.entries) {
+        final kolon = e.key, parent = e.value;
+        final v = m[kolon];
+        if (v == null) continue;
+        final lid = v is int ? v : int.tryParse(v.toString());
+        if (lid == null) continue;
+        try {
+          if (_fkLokalGidCache[parent] == null) await _fkLokalCacheYukle(parent);
+          if (_fkGidCloudCache[parent] == null) await _fkBulutCacheYukle(parent);
           var gid = _fkLokalGidCache[parent]![lid];
-          if (gid == null && !lokalTazelendi) {
+          if (gid == null && lokalTazelendi.add(parent)) {
             await _fkLokalCacheYukle(parent); // miss-refresh
-            lokalTazelendi = true;
             gid = _fkLokalGidCache[parent]![lid];
           }
           if (gid == null) {
@@ -138,9 +144,8 @@ class SupabaseSaglayici implements IBulutSaglayici {
             continue;
           }
           var cid = _fkGidCloudCache[parent]![gid];
-          if (cid == null && !bulutTazelendi) {
+          if (cid == null && bulutTazelendi.add(parent)) {
             await _fkBulutCacheYukle(parent); // miss-refresh
-            bulutTazelendi = true;
             cid = _fkGidCloudCache[parent]![gid];
           }
           if (cid != null) {
@@ -148,12 +153,10 @@ class SupabaseSaglayici implements IBulutSaglayici {
           } else {
             bekletilecek.add(m);
           }
-        }
-      } catch (_) {
-        // Dönüşüm yapılamadı (ör. ağ) — bu kolonu taşıyan kayıtlar
-        // yanlış bağla gitmesin, bu tur bekletilsin.
-        for (final m in kayitlar) {
-          if (m[kolon] != null) bekletilecek.add(m);
+        } catch (_) {
+          // Dönüşüm yapılamadı (ör. ağ) — yanlış bağla gitmesin,
+          // bu tur bekletilsin.
+          bekletilecek.add(m);
         }
       }
     }

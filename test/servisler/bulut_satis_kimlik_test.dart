@@ -53,12 +53,16 @@ class _SahteSaglayici implements IBulutSaglayici {
 
 /// Kuyruk boşalana kadar gönderim turlarını çalıştırır.
 Future<void> _kuyruguBosalt(Database db) async {
-  for (var i = 0; i < 60; i++) {
+  // upsert() kuyruğa yazmayı arka planda yapar — art arda İKİ turda boş
+  // görülene kadar bekle (tek okuma, henüz yazılmamış satırı kaçırabilir).
+  var bosTur = 0;
+  for (var i = 0; i < 80; i++) {
     await Future<void>.delayed(const Duration(milliseconds: 50));
     await BulutManager().zorlaGonder();
     final r = await db.rawQuery(
         "SELECT COUNT(*) AS c FROM sync_queue WHERE durum = 'beklemede'");
-    if ((r.first['c'] as int) == 0) return;
+    bosTur = (r.first['c'] as int) == 0 ? bosTur + 1 : 0;
+    if (bosTur >= 2) return;
   }
   fail('sync_queue boşalmadı');
 }
@@ -84,6 +88,8 @@ void main() {
   });
 
   tearDown(() async {
+    // Arka plan kuyruk/audit yazımları kapanmış DB'ye düşmesin.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     BulutManager().testIcinSifirla();
     Veritabani.testVeritabani = null;
     await db.close();

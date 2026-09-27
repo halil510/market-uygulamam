@@ -47,6 +47,16 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   String? _filtreTip;
   DateTimeRange? _tarihAralik;
   double _toplamBorc = 0, _toplamAlacak = 0, _bakiye = 0;
+  /// Tarih aralığı seçiliyken aralık başından ÖNCEKİ bakiye (ekstre).
+  double _devreden = 0;
+  /// Tür filtresi varken "bakiye" anlamlı değildir — yalnızca listelenen
+  /// hareketlerin neti gösterilir.
+  bool get _turFiltreli => _filtreTip != null;
+  /// Ekstre (PDF/Excel/CSV) yürüyen bakiyesinin başlangıcı: tarih aralığında
+  /// devreden, filtre yokken cari bakiyesi − listenin neti (5000 kayıt
+  /// tavanını aşan caride listeden önceki kısım), tür filtresinde 0.
+  double get _ekstreBaslangic =>
+      _turFiltreli ? 0.0 : _bakiye - (_toplamBorc - _toplamAlacak);
 
   @override
   void initState() {
@@ -72,6 +82,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
     try {
       final cari = await _depo.idileGetir(widget.cariId);
       final hareketler = await _hareketleriGetir();
+      await _devredenYukle();
       if (!mounted) return;
       setState(() {
         _cari = cari;
@@ -119,17 +130,39 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       list = list.where((h) => h.fisTipi == _filtreTip).toList();
     }
     if (_tarihAralik != null) {
+      // 🔴 DÜZELTME (2026-09-27): başlangıç ÖNCEDEN "start − 1 gün"den
+      // sonrası alınıyordu — seçilen aralığın bir gün öncesi de listeye
+      // (ve toplamlara/PDF ekstreye) giriyordu.
+      final bas = _tarihAralik!.start;
+      final bitis = _tarihAralik!.end.add(const Duration(days: 1));
       list = list
-          .where((h) =>
-              h.tarih.isAfter(
-                  _tarihAralik!.start.subtract(const Duration(days: 1))) &&
-              h.tarih.isBefore(_tarihAralik!.end.add(const Duration(days: 1))))
+          .where((h) => !h.tarih.isBefore(bas) && h.tarih.isBefore(bitis))
           .toList();
     }
     _filtreli = list;
     _toplamBorc = _filtreli.fold(0.0, (s, h) => s + h.borc);
     _toplamAlacak = _filtreli.fold(0.0, (s, h) => s + h.alacak);
-    _bakiye = _toplamBorc - _toplamAlacak;
+    // 🔴 DÜZELTME (2026-09-27): "Bakiye" ÖNCEDEN yalnızca listedeki
+    // hareketlerin netiydi — tarih aralığı seçilince devreden bakiye
+    // eklenmiyordu (müşteriye verilen PDF ekstre yanlış bakiye basıyordu);
+    // filtre yokken de 5000 kayıt tavanını aşan caride eksik kalıyordu.
+    // Artık: filtre yoksa kanonik cari bakiyesi; tarih aralığında
+    // devreden + dönem neti; tür filtresinde yalnızca net.
+    final net = _toplamBorc - _toplamAlacak;
+    if (_turFiltreli) {
+      _bakiye = net;
+    } else if (_tarihAralik != null) {
+      _bakiye = _devreden + net;
+    } else {
+      _bakiye = _cari?.bakiye ?? net;
+    }
+  }
+
+  /// Tarih aralığı değişince devredeni SQL'den (limitsiz) yeniden hesaplar.
+  Future<void> _devredenYukle() async {
+    _devreden = _tarihAralik == null
+        ? 0
+        : await _depo.devredenBakiye(widget.cariId, _tarihAralik!.start);
   }
 
   Future<void> _tarihSec() async {
@@ -140,11 +173,11 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
         lastDate: DateTime.now().add(const Duration(days: 1)),
         initialDateRange: _tarihAralik,
       );
-      if (r != null)
-        setState(() {
-          _tarihAralik = r;
-          _filtrele();
-        });
+      if (r != null) {
+        _tarihAralik = r;
+        await _devredenYukle();
+        if (mounted) setState(_filtrele);
+      }
     } catch (e) {
       if (kDebugMode) if (mounted) debugPrint('Hata: $e');
     }
@@ -467,7 +500,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
         TextCellValue('Alacak'),
         TextCellValue('Bakiye')
       ]);
-      double runBak = 0;
+      double runBak = _ekstreBaslangic;
       for (final h in _filtreli.reversed.toList()) {
         runBak += h.borc - h.alacak;
         sh.appendRow([
@@ -499,7 +532,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
     try {
       final buf = StringBuffer()..write('\uFEFF');
       buf.writeln('Tarih,Tip,Fiş No,Açıklama,Borç,Alacak,Bakiye');
-      double runBak = 0;
+      double runBak = _ekstreBaslangic;
       for (final h in _filtreli.reversed.toList()) {
         runBak += h.borc - h.alacak;
         // 🔴 Derin denetimde bulundu (P2): _exportExcel() bu oturumda
@@ -551,8 +584,21 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
           headerDecoration: pw.BoxDecoration(color: PdfColors.grey700),
           cellStyle: pw.TextStyle(font: font, fontSize: 8),
           data: () {
-            double runBak = 0;
-            return _filtreli.reversed.map((h) {
+            // Yürüyen bakiye devredenden başlar (tarih aralığı seçiliyse);
+            // tür filtresinde yalnızca listelenenlerin kümülatifidir.
+            // Filtre yokken başlangıç = cari bakiyesi − listenin neti (5000
+            // kayıt tavanını aşan caride listeden önceki kısım).
+            final baslangic = _ekstreBaslangic;
+            double runBak = baslangic;
+            final satirlar = <List<String>>[
+              if (baslangic.abs() > 0.005)
+                [
+                  _tarihAralik != null ? _fmt.format(_tarihAralik!.start) : '',
+                  'Devreden', 'Önceki dönem bakiyesi', '', '',
+                  baslangic.toStringAsFixed(2),
+                ],
+            ];
+            return satirlar..addAll(_filtreli.reversed.map((h) {
               runBak += h.borc - h.alacak;
               return [
                 _fmtT.format(h.tarih),
@@ -562,7 +608,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                 h.alacak > 0 ? h.alacak.toStringAsFixed(2) : '',
                 runBak.toStringAsFixed(2)
               ];
-            }).toList();
+            }));
           }(),
         ),
         pw.SizedBox(height: 8),
@@ -574,7 +620,10 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
             pw.Text('Toplam Alacak: ${_toplamAlacak.toStringAsFixed(2)} ₺',
                 style: pw.TextStyle(
                     font: boldFont, fontSize: 10, color: PdfColors.green)),
-            pw.Text('Bakiye: ${_bakiye.toStringAsFixed(2)} ₺',
+            if (_tarihAralik != null && !_turFiltreli)
+              pw.Text('Devreden: ${_devreden.toStringAsFixed(2)} ₺',
+                  style: pw.TextStyle(font: font, fontSize: 10)),
+            pw.Text('${_turFiltreli ? 'Net' : 'Bakiye'}: ${_bakiye.toStringAsFixed(2)} ₺',
                 style: pw.TextStyle(font: boldFont, fontSize: 11)),
           ]),
         ]),
@@ -680,7 +729,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
             Expanded(
                 child:
                     _bakiyeItem('Alacak', _toplamAlacak, Colors.greenAccent)),
-            Expanded(child: _bakiyeItem('Bakiye', _bakiye, _bakiyeRenk())),
+            Expanded(child: _bakiyeItem(_turFiltreli ? 'Net' : 'Bakiye', _bakiye, _bakiyeRenk())),
           ]),
         ),
         if (fistipler.length > 1 || _tarihAralik != null)
@@ -701,6 +750,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                     deleteIcon: const Icon(Icons.close, size: 14),
                     onDeleted: () => setState(() {
                           _tarihAralik = null;
+                          _devreden = 0;
                           _filtrele();
                         })),
               ],

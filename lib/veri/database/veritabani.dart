@@ -422,8 +422,12 @@ class Veritabani {
         },
         uniqueAlan: 'sube_id,fis_tipi',
       );
-    } catch (_) {
-      // best-effort — offline/hata sessizce yutulur, yerel numara zaten üretildi
+    } catch (e) {
+      // best-effort — yerel numara zaten üretildi, satış bloklanmaz. AMA
+      // ÖNCEDEN hata tamamen yutuluyordu: 2026-09-27 bulut kontrolünde
+      // fis_seri tablosunun HİÇ dolmadığı görüldü ve sebep izlenemedi.
+      // Artık log'a düşer (Ayarlar > Loglar).
+      LogServisi().uyari('fis_seri buluta gönderilemedi ($tip, şube $subeId)', hata: e);
     }
   }
 

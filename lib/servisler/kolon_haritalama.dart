@@ -251,6 +251,11 @@ class KolonHaritalama {
       'Toptan Satış (Sipariş)': 'satislar', 'Satış İptali': 'satislar',
       'İade': 'iade', 'Alım İadesi': 'iade',
       'Alım': 'tedarikci_siparisler', 'Alım İptali': 'tedarikci_siparisler',
+      // CariDeposu.hareketIptalEt: ters kaydın fis_id'si İPTAL EDİLEN
+      // cari_hareket'tir (bulutta 'Tahsilat İptali' fis_id=122 yerel id
+      // olarak görüldü — asıl kayıt bulutta 1124).
+      'Tahsilat İptali': 'cari_hareket', 'Odeme İptali': 'cari_hareket',
+      'Ödeme İptali': 'cari_hareket',
     }),
   };
 

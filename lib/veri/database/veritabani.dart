@@ -243,19 +243,6 @@ class Veritabani {
       );
       final sonNo =
           result.isNotEmpty ? (result.first['son_fis_no'] as int) : 0;
-      yeniNo = sonNo + 1;
-      if (result.isEmpty) {
-        // Satır yoksa ekle
-        await txn.rawInsert(
-          'INSERT INTO ${DbSabitler.fisSeri}(sube_id, fis_tipi, son_fis_no) VALUES(?, ?, ?)',
-          [gecerliSubeId, tip, yeniNo],
-        );
-      } else {
-        await txn.rawUpdate(
-          'UPDATE ${DbSabitler.fisSeri} SET son_fis_no = ? WHERE sube_id = ? AND fis_tipi = ?',
-          [yeniNo, gecerliSubeId, tip],
-        );
-      }
       final now = DateTime.now();
       // GIB Türkiye e-Fatura/e-Arşiv standartı:
       // Fatura: [A-Z]{3}[0-9]{4}[0-9]{9} = 3 harf + 4 yıl rakamı + 9 sıra no
@@ -272,8 +259,36 @@ class Veritabani {
         _ => tip.toUpperCase().substring(0, min(3, tip.length)).padRight(3, 'X'),
       };
       final yil = now.year.toString();
-      final siraNo = yeniNo.toString().padLeft(9, '0');
-      return '$prefix$yil$siraNo'; // GIB standartı: 16 karakter
+      String noYap(int n) => '$prefix$yil${n.toString().padLeft(9, '0')}';
+      var aday = sonNo + 1;
+      // 🔴 DÜZELTME (2026-09-27): sayaç, başka cihazdan senkronlanmış bir
+      // satışın zaten kullandığı numarayı yeniden verebiliyordu (ör. iki
+      // kasa çevrimdışıyken). satislar.fis_no UNIQUE olduğu için bu ya
+      // satışı patlatıyor ya da (eski REPLACE ile) diğer satışı siliyordu.
+      // Yerelde kullanılmış numaralar atlanır.
+      if (tip == 'satis' || tip == 'cari_satis' || tip == 'masa') {
+        for (var deneme = 0; deneme < 10000; deneme++) {
+          final kullanilmis = await txn.rawQuery(
+              'SELECT 1 FROM ${DbSabitler.satislar} WHERE fis_no = ? LIMIT 1',
+              [noYap(aday)]);
+          if (kullanilmis.isEmpty) break;
+          aday++;
+        }
+      }
+      yeniNo = aday;
+      if (result.isEmpty) {
+        // Satır yoksa ekle
+        await txn.rawInsert(
+          'INSERT INTO ${DbSabitler.fisSeri}(sube_id, fis_tipi, son_fis_no) VALUES(?, ?, ?)',
+          [gecerliSubeId, tip, yeniNo],
+        );
+      } else {
+        await txn.rawUpdate(
+          'UPDATE ${DbSabitler.fisSeri} SET son_fis_no = ? WHERE sube_id = ? AND fis_tipi = ?',
+          [yeniNo, gecerliSubeId, tip],
+        );
+      }
+      return noYap(yeniNo); // GIB standartı: 16 karakter
     });
     unawaited(_fisSeriBulutaPushla(gecerliSubeId, tip, yeniNo));
     return sonuc;
@@ -630,7 +645,33 @@ class Veritabani {
     final prefs = await SharedPreferences.getInstance();
     final s = prefs.getString('mp_sync_gonder_$tablo') ??
         prefs.getString('mp_sync_$tablo'); // eski tek-anahtar sürümü
-    return s != null ? DateTime.tryParse(s) : null;
+    final manuel = s != null ? DateTime.tryParse(s) : null;
+    // 🔴 DÜZELTME (2026-09-27): ÖNCEDEN yalnızca MANUEL "Buluta Gönder"
+    // zamanı okunuyordu. Günlük kullanımda kayıtlar OTOMATİK kuyrukla
+    // (BulutManager) gidiyor ve bu zaman hiç ilerlemiyordu — zaten
+    // gönderilmiş her yerel değişiklik "gönderilmemiş" sanılıp çakışma
+    // sayılıyor, işlem verisinde gelen meşru güncelleme (ör. başka
+    // kasadaki iptal) UYGULANMIYORDU. Otomatik gönderim zamanı da
+    // hesaba katılır (bkz. BulutManager.otoGonderAnahtari).
+    final o = prefs.getString('mp_sync_otogonder_$tablo');
+    final oto = o != null ? DateTime.tryParse(o) : null;
+    if (manuel == null) return oto;
+    if (oto == null) return manuel;
+    return oto.isAfter(manuel) ? oto : manuel;
+  }
+
+  /// Bu kaydın bu cihazda henüz buluta GİTMEMİŞ bir değişikliği var mı —
+  /// sync_queue'da bekleyen (veya kalıcı hatalı) satırı varsa evet. Bu,
+  /// "yerel değişiklik kaybolur mu?" sorusunun kesin cevabıdır.
+  Future<bool> _kuyruktaBekliyorMu(
+      Database database, String tablo, String? globalId) async {
+    if (globalId == null || globalId.isEmpty) return false;
+    final r = await database.query(DbSabitler.syncQueue,
+        columns: ['id'],
+        where: 'tablo_adi = ? AND kayit_global_id = ?',
+        whereArgs: [tablo, globalId],
+        limit: 1);
+    return r.isNotEmpty;
   }
 
   /// Bir kaydın gelen (buluttan) sürümüyle üzerine yazılmadan HEMEN önce
@@ -671,17 +712,27 @@ class Veritabani {
       // sayılmıyor — sadece sessizce uygulanıyor. Emin olunamayan
       // durumlarda (bu tablo bu cihazdan hiç gönderilmediyse)
       // ESKİ (güvenli/muhafazakâr) davranışa dönülüyor: yine kaydedilir.
-      final gonderFiligrani = await _sonGonderFiligrani(tablo);
-      final yerelZaman =
-          DateTime.tryParse(yerelSatir['last_updated']?.toString() ?? '');
-      if (!SyncCakismaTespit.gercekCakismaMi(
-          yerelSonGuncelleme: yerelZaman,
-          sonBasariliGonderim: gonderFiligrani)) {
-        return false; // yerel sürüm zaten buluta gönderilmişti — kayıp riski yok
+      final globalId = gelenSatir['global_id']?.toString();
+      // Kuyrukta bekleyen yerel değişiklik varsa kesin çakışma; yoksa
+      // (kuyruğa girmeyen eski/doğrudan yazımlar için) zaman sezgisi.
+      if (!await _kuyruktaBekliyorMu(database, tablo, globalId)) {
+        final gonderFiligrani = await _sonGonderFiligrani(tablo);
+        // Bu tablo bu cihazdan hiç gönderilmediyse ve kuyrukta da bir şey
+        // yoksa kaybolacak yerel değişiklik yoktur (gelen zaten daha yeni
+        // — daha eskiyse çağıran yukarıda atlıyor). ÖNCEDEN bu durum
+        // "emin değilim → çakışma" sayılıyordu: hiç satış yapmamış bir
+        // kasa, diğer kasadaki satış iptallerini ASLA uygulamıyordu.
+        if (gonderFiligrani == null) return false;
+        final yerelZaman =
+            DateTime.tryParse(yerelSatir['last_updated']?.toString() ?? '');
+        if (!SyncCakismaTespit.gercekCakismaMi(
+            yerelSonGuncelleme: yerelZaman,
+            sonBasariliGonderim: gonderFiligrani)) {
+          return false; // yerel sürüm zaten buluta gönderilmişti — kayıp riski yok
+        }
       }
 
       final now = DateTime.now().toIso8601String();
-      final globalId = gelenSatir['global_id']?.toString();
       // 🔴 DEEP_AUDIT (kendi-keşif turu, 2026-09-21): ÖNCEDEN her turda
       // koşulsuz INSERT yapılıyordu — kullanıcı bir çakışmayı hemen
       // çözmezse, her periyodik sync turunda AYNI (tablo, global_id)

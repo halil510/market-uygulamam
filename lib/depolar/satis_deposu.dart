@@ -20,20 +20,32 @@ class SatisDeposu {
   Future<int> satisEkle(SatisModel satis, List<SatisKalemModel> kalemler) async {
     final db = await _d;
     final satisId = await db.transaction((txn) => satisEkleTxn(txn, satis, kalemler));
-    // 🔴 DÜZELTME: 'satis.globalId' çağıranın verdiği ORİJİNAL (çoğu
-    // zaman null) değerdi — asıl DB'ye yazılan global_id, satisEkleTxn
-    // içinde (satis.globalId boşsa) YENİDEN ÜRETİLİYORDU. Önceki hâl
-    // buluta gerçek kayıttan FARKLI (null) bir global_id gönderiyordu.
-    // Artık transaction kapandıktan sonra satırı GERÇEKTEN geri okuyup
-    // onu gönderiyor — projenin geri kalanındaki standart desenle aynı.
-    final satisSatir = await db.query('satislar', where: 'id = ?', whereArgs: [satisId], limit: 1);
-    if (satisSatir.isNotEmpty) {
-      BulutManager().upsert('satislar', Map<String, dynamic>.from(satisSatir.first));
-    }
-    for (final k in kalemler) {
-      BulutManager().upsert('satis_kalem', k.toMap());
-    }
+    await bulutaBildir(satisId);
     return satisId;
+  }
+
+  /// Satış başlığını ve kalemlerini, transaction commit olduktan SONRA,
+  /// DB'den GERİ OKUYARAK buluta bildirir.
+  ///
+  /// 🔴🔴 KÖK NEDEN (2026-09-27 — "sync çakışması"): Hızlı Satış, Masa,
+  /// Toptan ve Bayi Siparişi akışları bu bildirimi bellekteki modelden
+  /// kuruyordu: `{...satis.toMap(), 'global_id': satis.globalId}` (hep
+  /// null → buluta ikinci bir satış kopyası) ve `k.toMap()` (satis_id=0,
+  /// global_id yok → bulutta hiçbir satışa bağlı olmayan kalem satırı).
+  /// satisEkleTxn doğru satırları zaten kuyruğa atomik yazıyor; burada
+  /// DB'deki gerçek satırlar okunduğu için AYNI global_id'ler kullanılır
+  /// ve kuyruktaki kopya güncellenir (mükerrer oluşmaz).
+  Future<void> bulutaBildir(int satisId) async {
+    final db = await _d;
+    final satisSatir = await db.query('satislar',
+        where: 'id = ?', whereArgs: [satisId], limit: 1);
+    if (satisSatir.isEmpty) return;
+    BulutManager().upsert('satislar', Map<String, dynamic>.from(satisSatir.first));
+    final kalemSatirlari = await db.query('satis_kalem',
+        where: 'satis_id = ?', whereArgs: [satisId]);
+    for (final k in kalemSatirlari) {
+      BulutManager().upsert('satis_kalem', Map<String, dynamic>.from(k));
+    }
   }
 
   /// [satisEkle] ile AYNI mantık, VERİLEN transaction içinde çalışır —
@@ -86,8 +98,14 @@ class SatisDeposu {
           where: 'id = ?', whereArgs: [satisMap['kullanici_id']], limit: 1);
       if (kul.isEmpty) satisMap.remove('kullanici_id');
     }
+    // 🔴 DÜZELTME (2026-09-27): ÖNCEDEN ConflictAlgorithm.replace idi.
+    // satislar.fis_no UNIQUE — başka cihazdan senkronlanmış bir satış
+    // aynı fiş no'yu taşıyorsa REPLACE o satışı SİLİP (ON DELETE CASCADE
+    // ile kalemleriyle birlikte) yerine bunu yazıyordu: sessiz veri
+    // kaybı. Artık çakışma hata olarak yükselir (transaction geri alınır);
+    // fisNoUret de yerelde kullanılmış numarayı atlıyor.
     final satisId = await txn.insert('satislar', satisMap,
-        conflictAlgorithm: ConflictAlgorithm.replace);
+        conflictAlgorithm: ConflictAlgorithm.abort);
     // Madde 5 sertleştirmesi: satış başlığı + her kalem, business data
     // ile AYNI transaction'da senkron kuyruğuna yazılıyor (bkz.
     // SyncKuyrukYazici yorumu — rollback olursa hiçbiri kuyrukta kalmaz).
@@ -317,6 +335,19 @@ class SatisDeposu {
     }
 
     // ── 4) Kalemleri değiştir + başlığı güncelle
+    // 🔴 DÜZELTME (2026-09-27): eski kalemler yerelde siliniyor ama
+    // buluta hiç bildirilmiyordu — bulutta fişin eski VE yeni kalemleri
+    // birlikte kalıyor, diğer cihaz detayı/maliyeti çift görüyordu.
+    // satis_kalem'de is_deleted yok → bulutta kalıcı silme kuyruğa girer
+    // (aynı transaction'da, atomik).
+    for (final r in eskiRows) {
+      final eskiGid = r['global_id']?.toString();
+      if (eskiGid == null || eskiGid.isEmpty) continue;
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'satis_kalem',
+          veri: {'global_id': eskiGid},
+          islemTipi: 'HARD_DELETE');
+    }
     await txn.delete('satis_kalem',
         where: 'satis_id = ?', whereArgs: [satisId]);
 

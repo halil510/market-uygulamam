@@ -77,11 +77,8 @@ class ToptanSatisIslemServisi {
 
     // Transaction kalıcı olduktan sonra buluta bildir.
     try {
-      BulutManager().upsert('satislar',
-          {...satis.toMap(), 'id': satisId, 'global_id': satis.globalId});
-      for (final k in kalemler) {
-        BulutManager().upsert('satis_kalem', k.toMap());
-      }
+      // DB'den geri okuyarak (bkz. SatisDeposu.bulutaBildir).
+      await _satisDepo.bulutaBildir(satisId);
       for (final k in stokKalemleri) {
         final gidler = stokHareketGidleri[k.urunId];
         if (gidler == null || gidler.isEmpty) continue;

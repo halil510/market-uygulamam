@@ -341,11 +341,9 @@ class SatisTamamlamaServisi {
     required CariModel? musteri,
   }) async {
     try {
-      BulutManager().upsert('satislar',
-          {...satis.toMap(), 'id': satisId, 'global_id': satis.globalId});
-      for (final k in satisKalemler) {
-        BulutManager().upsert('satis_kalem', k.toMap());
-      }
+      // DB'den geri okuyarak (bkz. SatisDeposu.bulutaBildir — bellekteki
+      // model buluta ikinci bir satış ve satis_id=0 kalemler yolluyordu).
+      await _satisDepo.bulutaBildir(satisId);
       for (final k in kalemler) {
         final gidler = stokHareketGidleri[k.urun.id!];
         if (gidler == null || gidler.isEmpty) continue;

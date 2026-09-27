@@ -259,14 +259,9 @@ class MasaOdemeServisi {
 
     // Transaction kalıcı olduktan sonra buluta bildir.
     try {
-      final satisSatir = await db.query('satislar',
-          where: 'id = ?', whereArgs: [satisId], limit: 1);
-      if (satisSatir.isNotEmpty)
-        BulutManager()
-            .upsert('satislar', Map<String, dynamic>.from(satisSatir.first));
-      for (final k in satisKalemler) {
-        BulutManager().upsert('satis_kalem', k.toMap());
-      }
+      // Kalemler de DB'den geri okunur (bkz. SatisDeposu.bulutaBildir —
+      // k.toMap() satis_id=0 ve kimliksiz kalem satırı yolluyordu).
+      await _satisDepo.bulutaBildir(satisId);
       for (final k in siparis.kalemler) {
         final gidler = stokHareketGidleri[k.urunId];
         if (gidler == null || gidler.isEmpty) continue;

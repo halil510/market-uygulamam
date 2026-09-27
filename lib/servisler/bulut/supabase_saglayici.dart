@@ -98,11 +98,24 @@ class SupabaseSaglayici implements IBulutSaglayici {
   }
 
   /// Kayıtlardaki FK kolonlarını lokal id → bulut id'ye dönüştürür.
-  /// Zincir: lokal id → lokal global_id → buluttaki id. Eşleşme
-  /// bulunamazsa değer olduğu gibi bırakılır (sonraki senkron düzeltir).
-  Future<void> _fkDonustur(String tablo, List<Map<String, dynamic>> kayitlar) async {
+  /// Zincir: lokal id → lokal global_id → buluttaki id.
+  ///
+  /// Dönüş: GÖNDERİLMEMESİ gereken (bekletilecek) kayıtlar — ebeveyni
+  /// yerelde var ama henüz bulutta yok.
+  ///
+  /// 🔴🔴 DÜZELTME (2026-09-27): ÖNCEDEN eşleşme bulunamazsa yerel id
+  /// "olduğu gibi" gönderiliyordu. Yerel id ile bulut id AYNI sayı
+  /// uzayında olduğundan (ikisi de 1'den artan) bu, kalemi buluttaki
+  /// BAŞKA bir satışa sessizce bağlıyordu (ör. yerel satış #57'nin
+  /// kalemi, başka cihazın bulut #57 satışının detayında görünür).
+  /// Artık: ebeveyn bulutta henüz yoksa kayıt bekletilir (sonraki turda,
+  /// ebeveyn gittikten sonra doğru id ile gider); ebeveyn yerelde de
+  /// yoksa (silinmiş/hiç olmamış) yanlış bağ yerine NULL gönderilir.
+  Future<Set<Map<String, dynamic>>> _fkDonustur(
+      String tablo, List<Map<String, dynamic>> kayitlar) async {
+    final bekletilecek = Set<Map<String, dynamic>>.identity();
     final fkMap = KolonHaritalama.fkHarita(tablo);
-    if (fkMap == null || kayitlar.isEmpty) return;
+    if (fkMap == null || kayitlar.isEmpty) return bekletilecek;
     for (final e in fkMap.entries) {
       final kolon = e.key, parent = e.value;
       try {
@@ -120,19 +133,31 @@ class SupabaseSaglayici implements IBulutSaglayici {
             lokalTazelendi = true;
             gid = _fkLokalGidCache[parent]![lid];
           }
-          if (gid == null) continue;
+          if (gid == null) {
+            m[kolon] = null; // ebeveyn yerelde yok — yanlış bağ kurma
+            continue;
+          }
           var cid = _fkGidCloudCache[parent]![gid];
           if (cid == null && !bulutTazelendi) {
             await _fkBulutCacheYukle(parent); // miss-refresh
             bulutTazelendi = true;
             cid = _fkGidCloudCache[parent]![gid];
           }
-          if (cid != null) m[kolon] = cid;
+          if (cid != null) {
+            m[kolon] = cid;
+          } else {
+            bekletilecek.add(m);
+          }
         }
       } catch (_) {
-        // dönüşüm başarısızsa mevcut değer korunur — senkron durmasın
+        // Dönüşüm yapılamadı (ör. ağ) — bu kolonu taşıyan kayıtlar
+        // yanlış bağla gitmesin, bu tur bekletilsin.
+        for (final m in kayitlar) {
+          if (m[kolon] != null) bekletilecek.add(m);
+        }
       }
     }
+    return bekletilecek;
   }
 
   @override String get ad   => 'Supabase';
@@ -218,7 +243,10 @@ class SupabaseSaglayici implements IBulutSaglayici {
     // kendi id'sine asla dokunulmamalı).
     veri.remove('id');
     // FK kolonlarını lokal id → bulut id'ye dönüştür (üstteki nota bkz.)
-    await _fkDonustur(tablo, [veri]);
+    if ((await _fkDonustur(tablo, [veri])).isNotEmpty) {
+      // Ebeveyn henüz bulutta yok — geçici (statusKodu yok) hata.
+      throw BulutIstekHatasi(null, '$tablo: ebeveyn kayıt henüz bulutta yok, bekletildi');
+    }
     // 🔴🔴🔴 KESİN KÖK NEDEN (GitHub supabase-js #1653'te resmi olarak
     // doğrulandı — "DEFAULT is not allowed in this context", 42601):
     // Tekli (dizi bile olsa) bir upsert'te `columns` URL parametresi
@@ -274,6 +302,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
     if (veriler.isEmpty) return const BulutSonuc();
     int basarili = 0, hata = 0;
     final hatalar = <String>[];
+    final bekletilenler = <int>{};
     int? sonStatusKodu;
 
     // Batch olarak gönder (max 200 kayıt/istek)
@@ -305,10 +334,19 @@ class SupabaseSaglayici implements IBulutSaglayici {
           kayit.putIfAbsent(anahtar, () => null);
         }
       }
+      var gonderilecek = batch;
       try {
         // FK kolonlarını lokal id → bulut id'ye dönüştür (sınıf
-        // başındaki FK dönüşüm notuna bkz.)
-        await _fkDonustur(tablo, batch);
+        // başındaki FK dönüşüm notuna bkz.). Ebeveyni henüz bulutta
+        // olmayan kayıtlar bu tur gönderilmez, bekletilir.
+        final bekle = await _fkDonustur(tablo, batch);
+        if (bekle.isNotEmpty) {
+          for (var j = 0; j < batch.length; j++) {
+            if (bekle.contains(batch[j])) bekletilenler.add(i + j);
+          }
+          gonderilecek = batch.where((k) => !bekle.contains(k)).toList();
+          if (gonderilecek.isEmpty) continue;
+        }
         // 🔴🔴🔴 KESİN KÖK NEDEN (GitHub supabase-js #1653) — bkz.
         // upsert()'teki ayrıntılı not. Batch zaten normalize edildiği
         // (tüm kayıtlar aynı anahtar kümesine sahip) için buradaki
@@ -318,18 +356,18 @@ class SupabaseSaglayici implements IBulutSaglayici {
         final r = await http.post(
           Uri.parse('$_rest/$tablo?on_conflict=$uniqueAlan&columns=$sutunlar'),
           headers: _upsertH(uniqueAlan),
-          body: jsonEncode(batch),
+          body: jsonEncode(gonderilecek),
         ).timeout(const Duration(seconds: 30));
         if (r.statusCode >= 400) {
-          hata += batch.length;
+          hata += gonderilecek.length;
           sonStatusKodu = r.statusCode;
           final msg = '$tablo batch ${r.statusCode}: ${r.body.substring(0,r.body.length.clamp(0,150))}';
           if (!hatalar.contains(msg)) hatalar.add(msg);
         } else {
-          basarili += batch.length;
+          basarili += gonderilecek.length;
         }
       } catch (e) {
-        hata += batch.length;
+        hata += gonderilecek.length;
         // Ham ağ/zaman aşımı istisnaları (SocketException/TimeoutException
         // vb.) statusKodu taşımaz — sonStatusKodu null kalır, bu da
         // BulutSonuc.tur'un bunu GEÇİCİ saymasını sağlar (doğru davranış).
@@ -340,7 +378,8 @@ class SupabaseSaglayici implements IBulutSaglayici {
         basarili: basarili,
         hata: hata,
         hataMesajlari: hatalar,
-        sonStatusKodu: sonStatusKodu);
+        sonStatusKodu: sonStatusKodu,
+        bekletilenler: bekletilenler);
   }
 
   @override
@@ -382,6 +421,24 @@ class SupabaseSaglayici implements IBulutSaglayici {
     if (r.statusCode >= 400) {
       throw BulutIstekHatasi(r.statusCode,
           '$tablo sil: ${r.body.substring(0, r.body.length.clamp(0, 200))}');
+    }
+  }
+
+  @override
+  Future<void> kaliciSil({
+    required String tablo,
+    required String uniqueAlan,
+    required String deger,
+  }) async {
+    if (deger.isEmpty) return; // boş filtre TÜM tabloyu silerdi
+    final val = Uri.encodeComponent(deger);
+    final r = await http.delete(
+      Uri.parse('$_rest/$tablo?$uniqueAlan=eq.$val'),
+      headers: _h,
+    ).timeout(const Duration(seconds: 10));
+    if (r.statusCode >= 400) {
+      throw BulutIstekHatasi(r.statusCode,
+          '$tablo kalıcı sil: ${r.body.substring(0, r.body.length.clamp(0, 200))}');
     }
   }
 

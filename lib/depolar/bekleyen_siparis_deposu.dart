@@ -301,11 +301,8 @@ class BekleyenSiparisDeposu {
 
     // Transaction kalıcı olduktan sonra buluta bildir.
     try {
-      BulutManager().upsert('satislar',
-          {...satis.toMap(), 'id': satisId, 'global_id': satis.globalId});
-      for (final k in satisKalemler) {
-        BulutManager().upsert('satis_kalem', k.toMap());
-      }
+      // DB'den geri okuyarak (bkz. SatisDeposu.bulutaBildir).
+      await SatisDeposu().bulutaBildir(satisId);
       for (final k in kalemSatirlari) {
         final urunId = k['urun_id'] as int;
         final gidler = stokHareketGidleri[urunId];

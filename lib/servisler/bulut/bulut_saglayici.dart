@@ -39,6 +39,16 @@ abstract class IBulutSaglayici {
     required String deger,
   });
 
+  /// Kalıcı silme — soft-delete sütunu (is_deleted) OLMAYAN kalem
+  /// tabloları için (ör. satis_kalem: fiş güncellenince eski kalemler
+  /// yerelde silinip yenileri yazılır; bulutta da silinmezse diğer
+  /// cihazlar eski+yeni kalemleri birlikte görür).
+  Future<void> kaliciSil({
+    required String tablo,
+    required String uniqueAlan,
+    required String deger,
+  });
+
   /// Ayarları kaydet
   Future<void> ayarlariKaydet(Map<String, String> ayarlar);
   Future<Map<String, String>> ayarlariYukle();
@@ -90,11 +100,18 @@ class BulutSonuc {
   /// [tur] bu alandan hesaplanır. Ağ/zaman aşımı hatalarında null kalır
   /// (BulutManager bunu geçici sayar).
   final int? sonStatusKodu;
+  /// Gönderilmeyip BEKLETİLEN kayıtların [topluUpsert]'e verilen
+  /// listedeki indeksleri — ebeveyn kaydı (ör. satis_kalem için satış)
+  /// henüz bulutta olmadığı için gönderilmediler. Hata değildir: çağıran
+  /// bunları kuyrukta tutup sonraki turda yeniden dener, geri kalanı
+  /// başarılı sayabilir.
+  final Set<int> bekletilenler;
   const BulutSonuc({
     this.basarili = 0,
     this.hata = 0,
     this.hataMesajlari = const [],
     this.sonStatusKodu,
+    this.bekletilenler = const {},
   });
   bool get tamam => hata == 0;
   BulutHataTuru get tur => bulutHataTuruBelirle(sonStatusKodu);

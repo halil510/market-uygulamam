@@ -192,6 +192,27 @@ class KolonHaritalama {
 
   static Map<String, String>? fkHarita(String tablo) => fkHaritasi[tablo];
 
+  static final Map<String, int> _derinlikOnbellek = {};
+
+  /// [fkHaritasi]'na göre tablonun ebeveyn zincirindeki derinliği:
+  /// ebeveyni olmayan 0, ebeveyni 0 olan 1 … (satislar < satis_kalem).
+  /// Gönderim sırası için kullanılır. Kendine referans (kategoriler)
+  /// ve döngüler yok sayılır.
+  static int derinlik(String tablo, [Set<String>? yol]) {
+    final hazir = _derinlikOnbellek[tablo];
+    if (hazir != null) return hazir;
+    final ziyaret = yol ?? <String>{};
+    if (!ziyaret.add(tablo)) return 0;
+    var d = 0;
+    for (final parent in (fkHaritasi[tablo]?.values ?? const <String>[])) {
+      if (parent == tablo || ziyaret.contains(parent)) continue;
+      final pd = derinlik(parent, ziyaret) + 1;
+      if (pd > d) d = pd;
+    }
+    ziyaret.remove(tablo);
+    return _derinlikOnbellek[tablo] = d;
+  }
+
   // 🔴 Kullanıcının verdiği gerçek Supabase şemasıyla doğrulandı:
   // borc_odemeler tablosunda yerel 'tarih' sütunu YOK — bulutta
   // bunun karşılığı 'odeme_tarihi'. Böyle "aynı bilgi, farklı isim"
@@ -204,9 +225,29 @@ class KolonHaritalama {
       final v = e.value;
       m[e.key] = (v is int && _boollar.contains(e.key)) ? v == 1 : v;
     }
-    m['last_updated'] ??= DateTime.now().toUtc().toIso8601String();
+    m['last_updated'] = utcDamga(m['last_updated']) ??
+        DateTime.now().toUtc().toIso8601String();
     if (m['deleted_at'] == null) m.remove('deleted_at');
     return m;
+  }
+
+  /// Zaman damgasını AÇIK UTC ISO metnine çevirir (…Z).
+  ///
+  /// 🔴 DÜZELTME (2026-09-27): yerel kayıtların çoğu last_updated'i
+  /// `DateTime.now().toIso8601String()` ile — saat dilimi OLMADAN, yerel
+  /// saatle (TR: UTC+3) — yazıyor. Supabase'in TIMESTAMPTZ sütunu dilimsiz
+  /// metni UTC sayar; damga bulutta 3 saat İLERİDE saklanıyordu. Bir kısım
+  /// kod ise gerçek UTC yazıyordu. Bu karışım yüzünden (1) "Buluttan Al"
+  /// filigranı 3 saat ileri kayıp başka cihazların sonraki değişikliklerini
+  /// ATLIYOR, (2) "yerel mi bulut mu daha yeni" karşılaştırmaları ters
+  /// sonuç verebiliyordu. Artık buluta giden damga her zaman gerçek UTC.
+  /// Sadece last_updated'e uygulanır: tarih gibi iş alanları duvar-saati
+  /// olarak tutulmaya devam eder (cihazlar arası gösterim tutarlı kalsın).
+  static String? utcDamga(dynamic v) {
+    if (v == null) return null;
+    if (v is DateTime) return v.toUtc().toIso8601String();
+    final t = DateTime.tryParse(v.toString());
+    return t?.toUtc().toIso8601String();
   }
 
   static Map<String,dynamic> terseCevir(Map<String,dynamic> bulut) {

@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../veri/database/veritabani.dart';
 import 'bulut/supabase_ayarlari.dart';
+import '../cekirdek/sabitler/db_sabitleri.dart';
 
 class _Ayar {
   final String url, key;
@@ -513,7 +514,22 @@ class SupabaseSyncServisi {
     final s = p.getString(_filigranAnahtari(tablo, yon))
         // Eski sürümden gelen tek anahtar — ilk okumada tohum.
         ?? p.getString('mp_sync_$tablo');
-    return s != null ? DateTime.tryParse(s) : null;
+    final t = s != null ? DateTime.tryParse(s) : null;
+    // 🔴 DÜZELTME (2026-09-27): çekme filigranı buluttaki en büyük
+    // last_updated'ten gelir. Eski sürümler damgayı dilimsiz yerel saatle
+    // yazdığı için bulutta 3 saat İLERİDE duran satırlar var; filigran
+    // "gelecekte" kalırsa başka cihazların gerçek-UTC damgalı yeni
+    // kayıtları "> filigran" filtresine hiç takılmaz, sessizce atlanırdı.
+    // Gelecekteki filigran, dilim farkı + 1 saat geriye çekilir (fazladan
+    // çekilen kayıtlar global_id ile eşleştiği için zararsızdır).
+    if (t != null && yon == 'al') {
+      final simdi = DateTime.now().toUtc();
+      if (t.isAfter(simdi.add(const Duration(minutes: 1)))) {
+        final geri = DateTime.now().timeZoneOffset.abs() + const Duration(hours: 1);
+        return simdi.subtract(geri);
+      }
+    }
+    return t;
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -792,7 +808,9 @@ class SupabaseSyncServisi {
 
     // last_updated kontrolü
     if (_lastUpdatedVar.contains(tablo)) {
-      m['last_updated'] ??= now;
+      // Açık UTC (bkz. KolonHaritalama.utcDamga — dilimsiz yerel saat
+      // bulutta 3 saat ileride saklanıyordu).
+      m['last_updated'] = KolonHaritalama.utcDamga(m['last_updated']) ?? now;
     } else {
       m.remove('last_updated');
     }
@@ -1056,12 +1074,19 @@ class SupabaseSyncServisi {
 
         // FK remap (lokal id → bulut id) — açıklama için döngü
         // öncesindeki 🔴 nota bakın.
+        var fkBekletilen = 0;
         final fkMap = _fkHaritasi[tablo];
         if (fkMap != null) {
           log?.call('   ↳ ilişki (FK) dönüşümü...');
           final fkBaslangic = DateTime.now();
-          await _fkLocalToCloudDonustur(
+          final bekle = await _fkLocalToCloudDonustur(
               ayar, tablo, veriler, fkMap, gidCloudCache, lokalGidCache, log);
+          if (bekle.isNotEmpty) {
+            // Yanlış kayda bağlanmasın diye bu tur gönderilmez; filigran
+            // da ilerletilmez ki bir sonraki "Hızlı Gönder" onları alsın.
+            fkBekletilen = bekle.length;
+            veriler.removeWhere(bekle.contains);
+          }
           final fkSure = DateTime.now().difference(fkBaslangic).inSeconds;
           if (fkSure > 3) log?.call('   ↳ FK dönüşümü ${fkSure} sn sürdü');
         }
@@ -1168,7 +1193,7 @@ class SupabaseSyncServisi {
           // senkron zamanı GÜNCELLENMEZ — gönderilemeyen kayıtlar bir
           // sonraki delta'da yeniden yakalanır (gönderilmiş olanlar
           // _cakismaFiltrele sayesinde tekrar gönderilmez).
-          if (batchHatasi == 0) {
+          if (batchHatasi == 0 && fkBekletilen == 0) {
             await _senkronKaydet(tablo, 'gonder');
           } else {
             log?.call('⚠️ $tablo: $batchHatasi batch gönderilemedi — '
@@ -1203,7 +1228,7 @@ class SupabaseSyncServisi {
           }
           sonuc.eklenen[tablo] = basarili;
           // Delta güvenliği (üstteki upsert dalıyla aynı mantık)
-          if (kayitHatasi == 0) {
+          if (kayitHatasi == 0 && fkBekletilen == 0) {
             await _senkronKaydet(tablo, 'gonder');
           } else {
             log?.call('⚠️ $tablo: $kayitHatasi kayıt gönderilemedi — '
@@ -1275,7 +1300,9 @@ class SupabaseSyncServisi {
   /// Eşleşme bulunamazsa kolon OLDUĞU GİBİ bırakılır (eski davranış)
   /// ve log'a uyarı yazılır — parent bir sonraki senkronda buluta
   /// gidince, çocuk kaydın bir sonraki güncellemesi doğru id'yi yazar.
-  static Future<void> _fkLocalToCloudDonustur(
+  /// Dönüş: ebeveyni henüz bulutta olmadığı için GÖNDERİLMEMESİ gereken
+  /// kayıtlar (çağıran bunları bu turdan çıkarır, filigranı ilerletmez).
+  static Future<Set<Map<String, dynamic>>> _fkLocalToCloudDonustur(
     _Ayar ayar,
     String tablo,
     List<Map<String, dynamic>> veriler,
@@ -1284,6 +1311,7 @@ class SupabaseSyncServisi {
     Map<String, Map<int, String>> lokalGidCache,
     void Function(String)? log,
   ) async {
+    final bekletilecek = Set<Map<String, dynamic>>.identity();
     final localDb = await Veritabani().db;
     for (final entry in fkMap.entries) {
       final kolon = entry.key, parent = entry.value;
@@ -1308,28 +1336,43 @@ class SupabaseSyncServisi {
 
         final lokalGid = lokalGidCache[parent]!;
         final gidCloud = gidCloudCache[parent]!;
-        int bulunamadi = 0;
+        int bulunamadi = 0, yerelYok = 0;
         for (final m in veriler) {
           final v = m[kolon];
           if (v == null) continue;
           final lid = v is int ? v : int.tryParse(v.toString());
           if (lid == null) continue;
           final gid = lokalGid[lid];
-          final cid = gid != null ? gidCloud[gid] : null;
+          if (gid == null) {
+            // Ebeveyn yerelde yok — yerel id'yi göndermek buluttaki BAŞKA
+            // bir kayda bağlardı (bkz. SupabaseSaglayici._fkDonustur).
+            m[kolon] = null;
+            yerelYok++;
+            continue;
+          }
+          final cid = gidCloud[gid];
           if (cid != null) {
             m[kolon] = cid;
           } else {
+            bekletilecek.add(m);
             bulunamadi++;
           }
         }
         if (bulunamadi > 0) {
-          log?.call('⚠️ $tablo.$kolon: $bulunamadi kayıtta $parent bulut '
-              'eşleşmesi bulunamadı (lokal değer korundu)');
+          log?.call('⚠️ $tablo.$kolon: $bulunamadi kayıtta $parent henüz bulutta '
+              'yok — bu kayıtlar bekletildi (sonraki gönderimde gider)');
+        }
+        if (yerelYok > 0) {
+          log?.call('⚠️ $tablo.$kolon: $yerelYok kayıtta $parent yerelde de yok — boş gönderildi');
         }
       } catch (e) {
-        log?.call('⚠️ $tablo.$kolon FK dönüşümü atlandı: $e');
+        log?.call('⚠️ $tablo.$kolon FK dönüşümü yapılamadı, kayıtlar bekletildi: $e');
+        for (final m in veriler) {
+          if (m[kolon] != null) bekletilecek.add(m);
+        }
       }
     }
+    return bekletilecek;
   }
 
   // --------------------------------------------------------------
@@ -1579,6 +1622,9 @@ class SupabaseSyncServisi {
     // tablo işlendikçe TAZELENİYOR (bkz. _idHaritasiTabloGuncelle).
     final bulutGidHaritasi = await _bulutGidHaritasiCek(ayar, log: log);
     final idHaritasi = await _idHaritasiOlustur(ayar, log: log);
+    // Bu turda buluttan GÜNCELLENEREK gelen satışlar — kalemleri başka
+    // cihazda değişmiş olabilir (fiş güncelleme), sonda mutabakat yapılır.
+    final guncellenenSatisGidleri = <String>{};
 
     for (final tablo in _tabloSirasi) {
       try {
@@ -1737,6 +1783,12 @@ class SupabaseSyncServisi {
         if (guncel.isNotEmpty) {
           await kayitGuncelle(tablo, guncel);
           sonuc.guncellenen[tablo] = guncel.length;
+          if (tablo == 'satislar') {
+            for (final g in guncel) {
+              final gid = g['global_id']?.toString();
+              if (gid != null && gid.isNotEmpty) guncellenenSatisGidleri.add(gid);
+            }
+          }
         }
 
         // 🔴 KRİTİK: Bu tablo bir "ebeveyn" tablosuysa (cari, urunler,
@@ -1760,8 +1812,91 @@ class SupabaseSyncServisi {
       }
     }
 
+    try {
+      await _satisKalemMutabakati(
+          ayar, guncellenenSatisGidleri, bulutGidHaritasi['satislar'] ?? const {}, log);
+    } catch (e) {
+      log?.call('⚠️ satış kalem mutabakatı atlandı: $e');
+    }
+
     log?.call('────────────────────────');
     log?.call('📊 ${sonuc.ozet}');
     return sonuc;
+  }
+
+  /// Başka cihazda güncellenen (fiş güncelleme: eski kalemler silinip
+  /// yenileri yazılır) satışların, bulutta ARTIK OLMAYAN kalemlerini
+  /// yerelden kaldırır. satis_kalem'de is_deleted olmadığı için silme
+  /// normal çekimle gelemez; bu yapılmazsa bu cihaz eski+yeni kalemleri
+  /// birlikte gösterir (detay/maliyet/ürün raporu şişer).
+  ///
+  /// Güvenlik: bu cihazda henüz gönderilmemiş kalem değişikliği olan
+  /// satışlara dokunulmaz; bulutta hiç kalemi görünmeyen satış (okuma
+  /// eksik/yetki sorunu olabilir) atlanır; okuma hatasında hiçbir şey
+  /// silinmez.
+  static Future<void> _satisKalemMutabakati(
+    _Ayar ayar,
+    Set<String> satisGidleri,
+    Map<String, int> satisGidCloud,
+    void Function(String)? log,
+  ) async {
+    if (satisGidleri.isEmpty) return;
+    final localDb = await Veritabani().db;
+
+    final kuyruktaki = (await localDb.query(DbSabitler.syncQueue,
+            columns: ['kayit_global_id'], where: 'tablo_adi = ?', whereArgs: ['satis_kalem']))
+        .map((r) => r['kayit_global_id']?.toString())
+        .whereType<String>()
+        .toSet();
+
+    // yerel satış id → (bulut satış id, yerel kalemler)
+    final hedefler = <int, ({int bulutId, List<Map<String, Object?>> kalemler})>{};
+    for (final gid in satisGidleri) {
+      final bulutId = satisGidCloud[gid];
+      if (bulutId == null) continue;
+      final s = await localDb.query('satislar',
+          columns: ['id'], where: 'global_id = ?', whereArgs: [gid], limit: 1);
+      if (s.isEmpty) continue;
+      final yerelId = s.first['id'] as int;
+      final kalemler = await localDb.query('satis_kalem',
+          columns: ['id', 'global_id'], where: 'satis_id = ?', whereArgs: [yerelId]);
+      if (kalemler.any((k) => kuyruktaki.contains(k['global_id']?.toString()))) continue;
+      hedefler[yerelId] = (bulutId: bulutId, kalemler: kalemler);
+    }
+    if (hedefler.isEmpty) return;
+
+    final bulutKalemleri = <int, Set<String>>{};
+    final bulutIdler = hedefler.values.map((h) => h.bulutId).toList();
+    for (var i = 0; i < bulutIdler.length; i += 100) {
+      final dilim = bulutIdler.sublist(i, (i + 100).clamp(0, bulutIdler.length));
+      final res = await http.get(
+        Uri.parse('${ayar.rest}/satis_kalem?select=global_id,satis_id'
+            '&satis_id=in.(${dilim.join(',')})'),
+        headers: _getH(ayar.key),
+      ).timeout(const Duration(seconds: 30));
+      if (res.statusCode != 200) return; // emin değilsek hiçbir şey silme
+      for (final r in (jsonDecode(res.body) as List).cast<Map<String, dynamic>>()) {
+        final sid = r['satis_id'];
+        final g = r['global_id']?.toString();
+        if (sid == null || g == null) continue;
+        final id = sid is int ? sid : int.tryParse(sid.toString());
+        if (id != null) bulutKalemleri.putIfAbsent(id, () => <String>{}).add(g);
+      }
+    }
+
+    var silinen = 0;
+    for (final h in hedefler.values) {
+      final buluttaki = bulutKalemleri[h.bulutId];
+      if (buluttaki == null || buluttaki.isEmpty) continue;
+      for (final k in h.kalemler) {
+        final g = k['global_id']?.toString();
+        if (g == null || g.isEmpty || buluttaki.contains(g)) continue;
+        await localDb.delete('satis_kalem', where: 'id = ?', whereArgs: [k['id']]);
+        silinen++;
+      }
+    }
+    if (silinen > 0) {
+      log?.call('🧹 satis_kalem: başka cihazda fişten çıkarılmış $silinen kalem yerelden kaldırıldı');
+    }
   }
 }

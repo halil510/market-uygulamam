@@ -136,29 +136,66 @@ class BulutManager {
     AuditLogServisi().kaydet(tablo, ham, eskiVeri: eskiVeri);
 
     if (_saglayici == null) return;
-    final veri = Map<String, dynamic>.from(ham);
+    unawaited(_kimlikliKuyrugaYaz(tablo, Map<String, dynamic>.from(ham)));
+  }
 
-    // 🔴 ÇOĞALMA SIZINTISI DÜZELTMESİ: Bazı kayıtlar (stok_hareket vb.)
-    // lokalde global_id'siz oluşturuluyor. Kimliksiz kayda burada kalıcı
-    // bir kimlik üretilip LOKALE yazılıyor, kuyruğa kimlikli hali
-    // giriyor — iki yol da hep AYNI kimliği kullanır, on_conflict
-    // eşleşir, çoğalma biter. (Kolon adı dönüşümü — KolonHaritalama.cevir
-    // — artık push anında, BulutManager._veriCoz() içinde yapılıyor;
-    // burada SADECE yerel/ham satır üzerinde çalışıyoruz.)
+  /// [upsert]'ün asenkron gövdesi: satırın kalıcı kimliğini (global_id)
+  /// garanti eder, sonra kuyruğa yazar.
+  ///
+  /// 🔴🔴 KÖK NEDEN DÜZELTMESİ (2026-09-27 — "sync çakışması" /
+  /// hayalet -SYNC satış): ÖNCEDEN global_id'siz gelen her satıra
+  /// KOŞULSUZ yeni bir UUID üretilip yereldeki kayda YAZILIYORDU. Ama
+  /// çağıranların bir kısmı satırı DB'den değil bellekteki modelden
+  /// kuruyordu (`{...satis.toMap(), 'id': satisId, 'global_id':
+  /// satis.globalId}` — globalId hep null). Oysa satış, satisEkleTxn
+  /// içinde ZATEN bir global_id (G1) ile yazılmış ve G1 kuyruğa
+  /// girmişti. Sonuç: her satış buluta İKİ KEZ gidiyordu (G1 ve yeni
+  /// G2), yerel kaydın kimliği G2'ye çevriliyordu; bir sonraki
+  /// "Buluttan Al"da G1 aynı fiş no ile geri inip "-SYNC" kopyası
+  /// oluyordu. Artık önce yereldeki GERÇEK global_id okunuyor; yalnızca
+  /// kayıtta gerçekten yoksa yeni kimlik üretiliyor.
+  Future<void> _kimlikliKuyrugaYaz(String tablo, Map<String, dynamic> veri) async {
     final gid = veri['global_id']?.toString();
-    if ((gid == null || gid.isEmpty) && veri['id'] != null) {
-      final yeniGid = const Uuid().v4();
-      veri['global_id'] = yeniGid;
-      // Lokale kalıcı yaz (beklemeden, arka planda — kuyruk akışını
-      // yavaşlatmasın; yazım bitmeden uygulama kapanırsa bir sonraki
-      // manuel senkronun backfill'i zaten tamamlar).
-      Veritabani().db.then((db) => db.update(
-            tablo, {'global_id': yeniGid},
-            where: 'id = ?', whereArgs: [veri['id']],
-          )).catchError((_) => 0);
+    // Doğal anahtarla eşleşen tablolar (subeler→sube_kodu, kullanicilar→
+    // kullanici_adi, fis_seri…) global_id'ye dayanmaz — olduğu gibi git.
+    final globalIdTablosu =
+        (KolonHaritalama.uniqueAlan(tablo) ?? 'global_id') == 'global_id';
+    if (globalIdTablosu && (gid == null || gid.isEmpty)) {
+      final id = veri['id'];
+      if (id == null) {
+        // Ne yerel id ne global_id: bu satır bulutta HİÇBİR ZAMAN
+        // eşleşemez (on_conflict=global_id NULL ile her gönderimde yeni
+        // satır açar) — ör. eskiden satış kalemleri bellekteki modelden
+        // satis_id=0 ve kimliksiz gönderiliyordu. Göndermek yerine
+        // kaydedip reddediyoruz.
+        LogServisi().hata(
+            'BulutManager.upsert($tablo): kimliksiz satır (id ve global_id yok) buluta gönderilmedi',
+            ek: veri.keys.join(','));
+        return;
+      }
+      try {
+        final db = await Veritabani().db;
+        final r = await db.query(tablo,
+            columns: ['global_id'], where: 'id = ?', whereArgs: [id], limit: 1);
+        final yerelGid = r.isNotEmpty ? r.first['global_id']?.toString() : null;
+        if (yerelGid != null && yerelGid.isNotEmpty) {
+          veri['global_id'] = yerelGid;
+        } else {
+          // Kayıt gerçekten kimliksiz (ör. eski stok_hareket satırları):
+          // kalıcı kimlik üretip LOKALE yaz — hep aynı kimlikle gider.
+          final yeniGid = const Uuid().v4();
+          veri['global_id'] = yeniGid;
+          await db.update(tablo, {'global_id': yeniGid},
+              where: 'id = ? AND (global_id IS NULL OR global_id = \'\')',
+              whereArgs: [id]);
+        }
+      } catch (e, st) {
+        // Okuma başarısızsa eski davranış: bu gönderim için kimlik üret.
+        LogServisi().uyari('BulutManager.upsert($tablo) kimlik çözümü', hata: e, yigin: st);
+        veri['global_id'] ??= const Uuid().v4();
+      }
     }
-
-    unawaited(_kuyrukaYaz(tablo, 'UPSERT', veri));
+    await _kuyrukaYaz(tablo, 'UPSERT', veri);
   }
 
   void sil(String tablo, String globalId) {
@@ -416,6 +453,9 @@ class BulutManager {
       // tutulmuyor, tek doğruluk kaynağı bu sorgu. Tek turda en fazla
       // 500 satır işlenir (bellek/performans için); kalan varsa turun
       // sonunda hemen yeni bir tur tetiklenir.
+      // Bu turda okunacak satırların hepsi bu andan önce kuyruğa girdi —
+      // grup başarıyla gidince "otomatik gönderim zamanı" olarak yazılır.
+      final turBasi = DateTime.now().toUtc();
       final bekleyenSatirlar = await db.query(
         DbSabitler.syncQueue,
         where: 'durum = ?',
@@ -444,22 +484,34 @@ class BulutManager {
 
         final now = DateTime.now().toIso8601String();
 
-        for (final entry in gruplar.entries) {
+        // Ebeveyn tablolar çocuklarından ÖNCE gönderilir (satislar →
+        // satis_kalem, cari → cari_hareket …) — çocuğun FK'sı aynı turda
+        // çözülebilsin, bekletilmesin.
+        final sirali = gruplar.entries.toList()
+          ..sort((a, b) =>
+              KolonHaritalama.derinlik(a.key).compareTo(KolonHaritalama.derinlik(b.key)));
+
+        for (final entry in sirali) {
           final tablo = entry.key;
           final satirlar = entry.value;
           final uniqueAlan = KolonHaritalama.uniqueAlan(tablo) ?? 'id';
 
           // DELETE işlemleri
-          final silinenler =
-              satirlar.where((s) => s['islem_tipi'] == 'DELETE').toList();
+          final silinenler = satirlar
+              .where((s) =>
+                  s['islem_tipi'] == 'DELETE' || s['islem_tipi'] == 'HARD_DELETE')
+              .toList();
           for (final s in silinenler) {
             final veri = _veriCoz(tablo, s);
+            final deger = veri['global_id']?.toString() ?? '';
             try {
-              await _saglayici!.sil(
-                tablo: tablo,
-                uniqueAlan: uniqueAlan,
-                deger: veri['global_id']?.toString() ?? '',
-              );
+              if (s['islem_tipi'] == 'HARD_DELETE') {
+                await _saglayici!.kaliciSil(
+                    tablo: tablo, uniqueAlan: uniqueAlan, deger: deger);
+              } else {
+                await _saglayici!.sil(
+                    tablo: tablo, uniqueAlan: uniqueAlan, deger: deger);
+              }
               await db.delete(DbSabitler.syncQueue,
                   where: 'id = ?', whereArgs: [s['id']]);
               toplamBasarili++;
@@ -502,10 +554,25 @@ class BulutManager {
               // (geçici) ise backoff'la tekrar denenmek üzere kuyrukta
               // kalır.
               if (sonuc.tamam) {
-                final idler = upsertSatirlari.map((s) => s['id'] as int).toList();
-                final ph = idler.map((_) => '?').join(',');
-                await db.delete(DbSabitler.syncQueue,
-                    where: 'id IN ($ph)', whereArgs: idler);
+                // Ebeveyni henüz bulutta olmadığı için gönderilmeyen
+                // (bekletilen) satırlar kuyrukta kalır; gerisi gitti.
+                final idler = <int>[];
+                for (var j = 0; j < upsertSatirlari.length; j++) {
+                  final kuyrukId = upsertSatirlari[j]['id'] as int;
+                  if (sonuc.bekletilenler.contains(j)) {
+                    await _kuyrukSatiriBasarisizIsaretle(db, kuyrukId,
+                        'ebeveyn kayıt henüz bulutta yok — bekletildi', now,
+                        tablo: tablo);
+                  } else {
+                    idler.add(kuyrukId);
+                  }
+                }
+                if (idler.isNotEmpty) {
+                  final ph = idler.map((_) => '?').join(',');
+                  await db.delete(DbSabitler.syncQueue,
+                      where: 'id IN ($ph)', whereArgs: idler);
+                }
+                await _otoGonderZamaniYaz(tablo, turBasi);
               } else {
                 for (final s in upsertSatirlari) {
                   await _kuyrukSatiriBasarisizIsaretle(
@@ -559,6 +626,33 @@ class BulutManager {
     // için 800ms'de bir gereksiz DB sorgusu yapmayı önler — onlar zaten
     // periyodik 8 saniyelik timer'da tekrar değerlendirilecek.
     if (isYapildiMi && _bekleyenSayisiCache > 0) _workerTetikle();
+  }
+
+  /// Tablonun otomatik kuyrukla EN SON başarıyla gönderildiği an —
+  /// Veritabani._sonGonderFiligrani çakışma tespitinde manuel gönderim
+  /// zamanıyla birlikte okur (anahtar sözleşmesi orada da aynı).
+  static String otoGonderAnahtari(String tablo) => 'mp_sync_otogonder_$tablo';
+
+  Future<void> _otoGonderZamaniYaz(String tablo, DateTime zaman) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final mevcut = DateTime.tryParse(p.getString(otoGonderAnahtari(tablo)) ?? '');
+      if (mevcut == null || zaman.isAfter(mevcut)) {
+        await p.setString(otoGonderAnahtari(tablo), zaman.toIso8601String());
+      }
+    } catch (_) {
+      // best-effort — yalnızca çakışma sezgisini besler
+    }
+  }
+
+  /// Testler için: sağlayıcıyı ve periyodik worker'ı kaldırır.
+  @visibleForTesting
+  void testIcinSifirla() {
+    _timer?.cancel();
+    _timer = null;
+    _saglayici = null;
+    _gonderiliyor = false;
+    _bekleyenSayisiCache = 0;
   }
 
   // ── Zorla gönder ───────────────────────────────────────────────────────────

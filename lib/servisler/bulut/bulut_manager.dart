@@ -265,28 +265,10 @@ class BulutManager {
     final ham = Map<String, dynamic>.from(hamJson as Map);
     final veri = KolonHaritalama.cevir(tablo, ham);
 
-    // 🔴🔴🔴 KAPSAMLI DERİN ANALİZ: eski, yerini yeni isimli bir sütunun
-    // aldığı ama hiç silinmemiş sütunlar buluta gitmemeli — aksi hâlde
-    // PostgREST bu tabloların TÜM gönderimini reddeder.
-    if (tablo == 'faturalar') {
-      veri.remove('efatura_uuid');
-      veri.remove('efatura_durum');
-      veri.remove('efatura_tipi');
-    }
-    if (tablo == 'personel') {
-      veri.remove('ise_baslama_tarihi');
-    }
-    // 🔴 DÜZELTME (2026-09-21): satislar.sync_cakisma_kopyasi SADECE
-    // yerel SQLite'ta var (DB v73, Veritabani._cakismaKorumasiUygula
-    // tarafından damgalanır — bkz. o fonksiyonun yorumu) — Supabase
-    // şemasında bu sütun YOK ve BİLİNÇLİ olarak eklenmedi (salt yerel,
-    // cihaza özgü bir "incelemeyi bekliyor" işareti; senkronize edilmesi
-    // gerekmiyor, her cihaz kendi çakışmasını kendi tespit eder). Yukarıdaki
-    // yorumdaki UYARI tam burada geçerli: silinmezse PostgREST bu satırı
-    // (ve aynı turdaki TÜM satislar toplu-upsert'ini) reddeder.
-    if (tablo == 'satislar') {
-      veri.remove('sync_cakisma_kopyasi');
-    }
+    // Yalnızca yerelde olan / eski adıyla kalmış sütunlar buluta gitmemeli —
+    // aksi hâlde PostgREST tablonun TÜM gönderimini reddeder (PGRST204).
+    // Tek liste: KolonHaritalama.yereleOzguSutunlar (manuel yol da kullanır).
+    KolonHaritalama.yereleOzguSutunlariAyikla(tablo, veri);
     // 🔴🔴 KRİTİK, SON HAT DÜZELTMESİ (kullanıcı bulgusu — AYNI Supabase
     // hatası tekrar tekrar geldi: "kredi_kartlari NOT NULL ihlali,
     // kart_no_maskeli"): bu alan ASLA null/boş olarak buluta

@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
 import '../modeller/sync_cakisma_model.dart';
 import '../servisler/log_servisi.dart';
+import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
 
 class SyncCakismaDeposu {
@@ -93,6 +94,14 @@ class SyncCakismaDeposu {
       geriYazilacak['last_updated'] = DateTime.now().toIso8601String();
       await db.update(c.tablo, geriYazilacak,
           where: 'global_id = ?', whereArgs: [c.kayitGlobalId]);
+      // 🔴 DÜZELTME (2026-09-27): ekran "bir sonraki senkronda buluta
+      // gönderilir" diyordu ama satır kuyruğa hiç yazılmıyordu — otomatik
+      // gönderim görmüyor, diğer kasalar buluttaki (eski) değerde kalıyordu.
+      final satir = await db.query(c.tablo,
+          where: 'global_id = ?', whereArgs: [c.kayitGlobalId], limit: 1);
+      if (satir.isNotEmpty) {
+        BulutManager().upsert(c.tablo, Map<String, dynamic>.from(satir.first));
+      }
     }
     await _cozumIsaretle(id, tip: 'yerel', kullanici: kullanici);
   }
@@ -101,6 +110,29 @@ class SyncCakismaDeposu {
   /// düzenledi) — sadece kaydı kapatır, veriye dokunmaz.
   Future<void> manuelCoz(int id, {required String kullanici}) =>
       _cozumIsaretle(id, tip: 'manuel', kullanici: kullanici);
+
+  /// Birden çok çakışmayı AYNI yöntemle çözer ([tip]: 'yerel' | 'gelen' |
+  /// 'manuel'). Biri hata verirse diğerleri devam eder; başarılı sayı döner.
+  Future<int> topluCoz(List<int> idler,
+      {required String tip, required String kullanici}) async {
+    var basarili = 0;
+    for (final id in idler) {
+      try {
+        switch (tip) {
+          case 'yerel':
+            await yerelIleCoz(id, kullanici: kullanici);
+          case 'gelen':
+            await gelenIleCoz(id, kullanici: kullanici);
+          default:
+            await manuelCoz(id, kullanici: kullanici);
+        }
+        basarili++;
+      } catch (e, st) {
+        LogServisi().hata('SyncCakismaDeposu.topluCoz($tip, #$id)', hata: e, yigin: st);
+      }
+    }
+    return basarili;
+  }
 
   Future<void> _cozumIsaretle(int id, {required String tip, required String kullanici}) async {
     try {

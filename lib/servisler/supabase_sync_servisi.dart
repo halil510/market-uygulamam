@@ -619,14 +619,10 @@ class SupabaseSyncServisi {
     //   faturalar: efatura_durum → yerini e_fatura_durum aldı
     //   faturalar: efatura_tipi  → bulutta hiç karşılığı yok (kullanılmıyor)
     //   personel:  ise_baslama_tarihi → yerini ise_baslama aldı
-    if (tablo == 'faturalar') {
-      m.remove('efatura_uuid');
-      m.remove('efatura_durum');
-      m.remove('efatura_tipi');
-    }
-    if (tablo == 'personel') {
-      m.remove('ise_baslama_tarihi');
-    }
+    // Tek liste (otomatik yolla ortak): KolonHaritalama.yereleOzguSutunlar.
+    // 🔴 satislar.sync_cakisma_kopyasi burada ÖNCEDEN ayıklanmıyordu —
+    // "Buluta Gönder" tüm satışları PGRST204 ile reddettiriyordu.
+    KolonHaritalama.yereleOzguSutunlariAyikla(tablo, m);
 
     // 🔥 SATISLAR için NOT NULL sütunları doldur
     if (tablo == 'satislar') {

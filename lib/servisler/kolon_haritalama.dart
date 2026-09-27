@@ -101,7 +101,7 @@ class KolonHaritalama {
     // "Bayilerden Sipariş Alma" (bekleyen sipariş) tabloları:
     'bekleyen_siparisler':    {'cari_id': 'cari', 'kullanici_id': 'kullanicilar', 'sube_id': 'subeler'},
     'bekleyen_siparis_kalem': {'urun_id': 'urunler', 'siparis_id': 'bekleyen_siparisler'},
-    'giderler':               {'cari_id': 'cari', 'kategori_id': 'gider_kategoriler', 'kullanici_id': 'kullanicilar', 'sube_id': 'subeler'},
+    'giderler':               {'cari_id': 'cari', 'kategori_id': 'gider_kategoriler', 'kullanici_id': 'kullanicilar', 'sube_id': 'subeler', 'banka_hesap_id': 'banka_hesaplar', 'kredi_karti_id': 'kredi_kartlari'},
     'faturalar':              {'satis_id': 'satislar', 'cari_id': 'cari', 'iade_id': 'iade', 'sube_id': 'subeler'},
     'fatura_detaylari':       {'urun_id': 'urunler', 'fatura_id': 'faturalar'},
     'stok_hareket':           {'urun_id': 'urunler', 'kullanici_id': 'kullanicilar', 'lot_id': 'lot_seri', 'sube_id': 'subeler'},
@@ -191,6 +191,28 @@ class KolonHaritalama {
   };
 
   static Map<String, String>? fkHarita(String tablo) => fkHaritasi[tablo];
+
+  /// Yalnızca YEREL SQLite'ta olan (bulut şemasında karşılığı olmayan)
+  /// sütunlar. Buluta giderse PostgREST o tablonun TÜM toplu gönderimini
+  /// PGRST204 ile reddeder.
+  ///
+  /// 🔴 DÜZELTME (2026-09-27, kullanıcı hatası "could not find the
+  /// sync_cakisma_kopyasi column of satislar"): bu ayıklama ÖNCEDEN yalnızca
+  /// otomatik gönderimde (BulutManager._veriCoz) vardı; manuel "Buluta
+  /// Gönder" (SupabaseSyncServisi._hazirla) atlıyordu. Artık iki yol da bu
+  /// TEK listeyi kullanıyor — yeni bir yerel sütun eklenince buraya eklemek
+  /// yeterli.
+  static const Map<String, Set<String>> yereleOzguSutunlar = {
+    'satislar': {'sync_cakisma_kopyasi'},
+    // Eski adıyla kalmış, yerini yeni sütunun aldığı kolonlar:
+    'faturalar': {'efatura_uuid', 'efatura_durum', 'efatura_tipi'},
+    'personel': {'ise_baslama_tarihi'},
+  };
+
+  static void yereleOzguSutunlariAyikla(String tablo, Map<String, dynamic> satir) {
+    final s = yereleOzguSutunlar[tablo];
+    if (s != null) satir.removeWhere((k, _) => s.contains(k));
+  }
 
   static const Map<String, String> _referansTuruTablo = {
     'satis': 'satislar', 'satis_iptal': 'satislar',

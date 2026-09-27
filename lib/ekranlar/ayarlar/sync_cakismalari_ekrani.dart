@@ -20,12 +20,17 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../widgetlar/ortak/onay_dialog.dart';
+import '../../servisler/senkron_sonrasi_mutabakat.dart';
 
 const _tabloEtiketleri = {
   'urunler': 'Ürün', 'cari': 'Cari', 'satislar': 'Satış',
   'stok_hareket': 'Stok Hareketi', 'kasa_hareketleri': 'Kasa Hareketi',
   'borclar': 'Borç', 'faturalar': 'Fatura', 'masalar': 'Masa',
   'banka_hesaplar': 'Banka Hesabı', 'kredi_kartlari': 'Kredi Kartı',
+  'cari_hareket': 'Cari Hareket', 'satis_kalem': 'Satış Kalemi',
+  'iade': 'İade', 'iade_kalem': 'İade Kalemi', 'banka_hareketler': 'Banka Hareketi',
+  'kredi_karti_hareket': 'Kart Hareketi', 'vardiyalar': 'Vardiya',
+  'fiyat_gruplari': 'Fiyat Grubu', 'promosyonlar': 'Promosyon',
 };
 
 class SyncCakismalariEkrani extends StatefulWidget {
@@ -47,6 +52,15 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
   List<SatisModel> _syncKopyalari = [];
   bool _yukleniyor = true;
   bool _sadeceCozulmemis = true;
+  /// Toplu çözümü tek tabloyla sınırlamak için (null = tümü).
+  String? _tabloFiltre;
+
+  List<SyncCakismaModel> get _gorunen => _tabloFiltre == null
+      ? _cakismalar
+      : _cakismalar.where((c) => c.tablo == _tabloFiltre).toList();
+
+  List<SyncCakismaModel> get _cozulmemisGorunen =>
+      _gorunen.where((c) => !c.cozuldu).toList();
 
   @override
   void initState() {
@@ -135,7 +149,7 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
         onayYazi: 'Evet, buluttaki değeri uygula', ikon: Icons.cloud_done_outlined);
     if (!onay || c.id == null) return;
     await _depo.gelenIleCoz(c.id!, kullanici: AuthServisi().aktifAd);
-    if (mounted) _yukle();
+    await _cozumSonrasi();
   }
 
   Future<void> _cozYerel(SyncCakismaModel c) async {
@@ -152,7 +166,7 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
         onayRengi: Colors.orange.shade800, ikon: Icons.history);
     if (!onay || c.id == null) return;
     await _depo.yerelIleCoz(c.id!, kullanici: AuthServisi().aktifAd);
-    if (mounted) _yukle();
+    await _cozumSonrasi();
   }
 
   Future<void> _cozManuel(SyncCakismaModel c) async {
@@ -166,13 +180,119 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
     if (mounted) _yukle();
   }
 
+  /// Çözümden sonra türetilmiş değerler (cari bakiye, stok …) yeniden
+  /// hesaplanır — uygulanan kayıt bir hareket olabilir.
+  Future<void> _cozumSonrasi() async {
+    await SenkronSonrasiMutabakat.calistir();
+    if (mounted) _yukle();
+  }
+
+  Future<void> _topluCoz(String tip) async {
+    final hedef = _cozulmemisGorunen;
+    if (hedef.isEmpty) return;
+    final kapsam = _tabloFiltre == null ? 'TÜM' : '"${_tabloAdi(_tabloFiltre!)}"';
+    final (baslik, icerik, renk) = switch (tip) {
+      'yerel' => (
+          'Tümünde bu cihazdaki değer kalsın mı?',
+          '$kapsam ${hedef.length} çakışmada bu cihazdaki (yerel) değer '
+              'uygulanıp buluta gönderilecek. Buluttan gelen değerler kaybolur.',
+          Colors.orange.shade800),
+      'gelen' => (
+          'Tümünde buluttaki değer uygulansın mı?',
+          '$kapsam ${hedef.length} çakışmada buluttan gelen değer uygulanacak. '
+              'Bu cihazdaki değişiklikler kaybolur.',
+          AppRenkler.primary),
+      _ => (
+          'Tümü manuel çözüldü olarak kapatılsın mı?',
+          '$kapsam ${hedef.length} çakışma kapatılacak. Veri DEĞİŞTİRİLMEZ — '
+              'kayıtları ilgili ekranlardan kendiniz düzenlediyseniz seçin.',
+          Colors.blueGrey),
+    };
+    final onay = await OnayDialog.goster(context,
+        baslik: baslik, icerik: icerik, onayYazi: 'Evet, ${hedef.length} kaydı çöz',
+        onayRengi: renk, ikon: Icons.done_all);
+    if (!onay) return;
+    final n = await _depo.topluCoz(
+        hedef.where((c) => c.id != null).map((c) => c.id!).toList(),
+        tip: tip, kullanici: AuthServisi().aktifAd);
+    if (!mounted) return;
+    if (n == hedef.length) {
+      BildirimServisi.basari(context, '$n çakışma çözüldü');
+    } else {
+      BildirimServisi.uyari(context, '$n / ${hedef.length} çakışma çözüldü — kalanlar için kayıtlara bakın');
+    }
+    await _cozumSonrasi();
+  }
+
+  Future<void> _topluGercekSatis() async {
+    final onay = await OnayDialog.goster(context,
+        baslik: 'Tümü gerçek satış mı?',
+        icerik: '${_syncKopyalari.length} satış normal satış olarak Satış '
+            'Listesi\'ne ve Gün Sonu Raporu\'na eklenecek. Kopya olanları '
+            'önce tek tek "Kopya, sil" ile silin.',
+        onayYazi: 'Evet, hepsi gerçek', ikon: Icons.check_circle_outline);
+    if (!onay) return;
+    for (final s in _syncKopyalari) {
+      if (s.id != null) await _satisDepo.syncKopyasiGercekOlarakIsaretle(s.id!);
+    }
+    if (!mounted) return;
+    BildirimServisi.basari(context, 'Satışlar normal listelere eklendi');
+    _yukle();
+  }
+
+  Widget _tabloFiltreleri() {
+    final tablolar = _cakismalar.map((c) => c.tablo).toSet().toList()..sort();
+    if (tablolar.length < 2) return const SizedBox.shrink();
+    Widget cip(String etiket, String? tablo) => Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: ChoiceChip(
+            label: Text(etiket, style: const TextStyle(fontSize: 12)),
+            selected: _tabloFiltre == tablo,
+            onSelected: (_) => setState(() => _tabloFiltre = tablo),
+          ),
+        );
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(children: [
+        cip('Tümü (${_cakismalar.length})', null),
+        ...tablolar.map((t) => cip(
+            '${_tabloAdi(t)} (${_cakismalar.where((c) => c.tablo == t).length})', t)),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final topluAcik = _cozulmemisGorunen.isNotEmpty;
     return Scaffold(
       backgroundColor: context.scaffoldBg,
       appBar: TsAppBar(
         baslik: 'Sync Çakışmaları',
         aksiyonlar: [
+          PopupMenuButton<String>(
+            enabled: topluAcik,
+            tooltip: 'Toplu çöz',
+            icon: const Icon(Icons.done_all),
+            onSelected: _topluCoz,
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                  value: 'yerel',
+                  child: ListTile(
+                      leading: const Icon(Icons.history),
+                      title: Text('Tümü: Benimkini kullan (${_cozulmemisGorunen.length})'))),
+              PopupMenuItem(
+                  value: 'gelen',
+                  child: ListTile(
+                      leading: const Icon(Icons.cloud_done_outlined),
+                      title: Text('Tümü: Buluttakini kullan (${_cozulmemisGorunen.length})'))),
+              PopupMenuItem(
+                  value: 'manuel',
+                  child: ListTile(
+                      leading: const Icon(Icons.edit_outlined),
+                      title: Text('Tümü: Manuel düzenledim (${_cozulmemisGorunen.length})'))),
+            ],
+          ),
           IconButton(
             icon: Icon(_sadeceCozulmemis ? Icons.visibility_off_outlined : Icons.visibility_outlined),
             tooltip: _sadeceCozulmemis ? 'Çözülmüşleri de göster' : 'Sadece çözülmemişler',
@@ -224,6 +344,15 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
                             style: TextStyle(fontSize: 11, color: context.textSecondary),
                           ),
                         ),
+                        if (_syncKopyalari.length > 1)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: _topluGercekSatis,
+                              icon: const Icon(Icons.done_all, size: 18),
+                              label: Text('Tümü gerçek satış (${_syncKopyalari.length})'),
+                            ),
+                          ),
                         ..._syncKopyalari.map((s) => _SyncKopyasiKarti(
                               satis: s,
                               onGercek: () => _syncKopyasiGercek(s),
@@ -231,7 +360,8 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
                             )),
                         if (_cakismalar.isNotEmpty) const Divider(height: 28),
                       ],
-                      ..._cakismalar.map((c) => _CakismaKarti(
+                      _tabloFiltreleri(),
+                      ..._gorunen.map((c) => _CakismaKarti(
                             cakisma: c,
                             tabloAdi: _tabloAdi(c.tablo),
                             onGelen: () => _cozGelen(c),

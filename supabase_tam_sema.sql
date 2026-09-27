@@ -552,7 +552,9 @@ CREATE TABLE IF NOT EXISTS giderler (
   kullanici_id BIGINT,
   sube_id BIGINT,
   last_updated TIMESTAMPTZ,
-  deleted_at TIMESTAMPTZ
+  deleted_at TIMESTAMPTZ,
+  banka_hesap_id BIGINT,  -- [2026-09-27] yerel v76: gider bankadan ödendiyse
+  kredi_karti_id BIGINT   -- [2026-09-27] yerel v76: gider kartla ödendiyse
 );
 
 -- [23/58] iade
@@ -1238,7 +1240,8 @@ CREATE TABLE IF NOT EXISTS vardiyalar (
   durum TEXT,
   onaylayan_kullanici_id BIGINT,
   onaylanma_tarihi TIMESTAMPTZ,
-  last_updated TIMESTAMPTZ
+  last_updated TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ  -- [2026-09-27] yerelde vardı, bulutta eksikti
 );
 
 -- [58/58] zaman_fiyat
@@ -1736,6 +1739,8 @@ ALTER TABLE giderler ADD COLUMN IF NOT EXISTS kullanici_id BIGINT;
 ALTER TABLE giderler ADD COLUMN IF NOT EXISTS sube_id BIGINT;
 ALTER TABLE giderler ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE giderler ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE giderler ADD COLUMN IF NOT EXISTS banka_hesap_id BIGINT;
+ALTER TABLE giderler ADD COLUMN IF NOT EXISTS kredi_karti_id BIGINT;
 ALTER TABLE iade ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE iade ADD COLUMN IF NOT EXISTS satis_id BIGINT;
 ALTER TABLE iade ADD COLUMN IF NOT EXISTS cari_id BIGINT;
@@ -2237,6 +2242,7 @@ ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS durum TEXT;
 ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS onaylayan_kullanici_id BIGINT;
 ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS onaylanma_tarihi TIMESTAMPTZ;
 ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE vardiyalar ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE zaman_fiyat ADD COLUMN IF NOT EXISTS urun_id BIGINT;
 ALTER TABLE zaman_fiyat ADD COLUMN IF NOT EXISTS gun_listesi TEXT;
 ALTER TABLE zaman_fiyat ADD COLUMN IF NOT EXISTS baslangic_saat TEXT;

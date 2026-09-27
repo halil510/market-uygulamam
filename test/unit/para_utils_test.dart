@@ -15,6 +15,9 @@ void main() {
       final sonuc = ParaUtils.kisaFisNo('MKP2026000000001');
       expect(sonuc, equals('MKP-000001'));
     });
+    test('kasa bazlı biçim: kasa no gösterilir', () {
+      expect(ParaUtils.kisaFisNo('MKP2026030000012'), equals('MKP-03-000012'));
+    });
     test('null güvenli', () {
       expect(ParaUtils.kisaFisNo(null), equals('FİŞ'));
     });

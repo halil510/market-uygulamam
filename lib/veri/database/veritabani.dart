@@ -236,10 +236,22 @@ class Veritabani {
     // bir "Merkez Şube"ye düşülüyor — kendi kendini onaran, satışı asla
     // engellemeyen bir yol.
     final gecerliSubeId = await _gecerliSubeIdGetir(database, subeId);
+    // Kasa (terminal) bazlı numara serisi (2026-09-27, kullanıcı onaylı):
+    // aynı şubedeki iki kasa İNTERNETSİZKEN aynı sayaçtan aynı fiş no'yu
+    // üretebiliyordu — diğer kasanın gerçek satışı senkronda "kopya"
+    // sanılıp raporlardan gizleniyordu. Artık her kasanın kendi sayacı
+    // (fis_seri'de 'satis#T03' gibi anahtar — şema değişmedi) ve numarada
+    // 2 haneli kasa no var: MKP 2026 03 0000012 (yine 16 hane → fiş barkodu
+    // ve kısa gösterim çalışmaya devam eder). Terminal kaydı olmayan
+    // cihaz eski biçimle (kasa no yok) devam eder. Fatura (GİB biçimi)
+    // hariç — onun numarası merkezi blok sisteminden gelir.
+    final kasaNo = tip == 'fatura' ? 0 : await _kasaNoGetir(database);
+    final seriAnahtari =
+        kasaNo > 0 ? '$tip#T${kasaNo.toString().padLeft(2, '0')}' : tip;
     final sonuc = await database.transaction((txn) async {
       final result = await txn.rawQuery(
         'SELECT son_fis_no FROM ${DbSabitler.fisSeri} WHERE sube_id = ? AND fis_tipi = ?',
-        [gecerliSubeId, tip],
+        [gecerliSubeId, seriAnahtari],
       );
       final sonNo =
           result.isNotEmpty ? (result.first['son_fis_no'] as int) : 0;
@@ -259,12 +271,13 @@ class Veritabani {
         _ => tip.toUpperCase().substring(0, min(3, tip.length)).padRight(3, 'X'),
       };
       final yil = now.year.toString();
-      String noYap(int n) => '$prefix$yil${n.toString().padLeft(9, '0')}';
+      String noYap(int n) => kasaNo > 0
+          ? '$prefix$yil${kasaNo.toString().padLeft(2, '0')}${n.toString().padLeft(7, '0')}'
+          : '$prefix$yil${n.toString().padLeft(9, '0')}';
       var aday = sonNo + 1;
       // 🔴 DÜZELTME (2026-09-27): sayaç, başka cihazdan senkronlanmış bir
-      // satışın zaten kullandığı numarayı yeniden verebiliyordu (ör. iki
-      // kasa çevrimdışıyken). satislar.fis_no UNIQUE olduğu için bu ya
-      // satışı patlatıyor ya da (eski REPLACE ile) diğer satışı siliyordu.
+      // satışın zaten kullandığı numarayı yeniden verebiliyordu.
+      // satislar.fis_no UNIQUE olduğu için bu satışı patlatırdı.
       // Yerelde kullanılmış numaralar atlanır.
       if (tip == 'satis' || tip == 'cari_satis' || tip == 'masa') {
         for (var deneme = 0; deneme < 10000; deneme++) {
@@ -280,18 +293,34 @@ class Veritabani {
         // Satır yoksa ekle
         await txn.rawInsert(
           'INSERT INTO ${DbSabitler.fisSeri}(sube_id, fis_tipi, son_fis_no) VALUES(?, ?, ?)',
-          [gecerliSubeId, tip, yeniNo],
+          [gecerliSubeId, seriAnahtari, yeniNo],
         );
       } else {
         await txn.rawUpdate(
           'UPDATE ${DbSabitler.fisSeri} SET son_fis_no = ? WHERE sube_id = ? AND fis_tipi = ?',
-          [yeniNo, gecerliSubeId, tip],
+          [yeniNo, gecerliSubeId, seriAnahtari],
         );
       }
-      return noYap(yeniNo); // GIB standartı: 16 karakter
+      return noYap(yeniNo); // 16 karakter
     });
-    unawaited(_fisSeriBulutaPushla(gecerliSubeId, tip, yeniNo));
+    unawaited(_fisSeriBulutaPushla(gecerliSubeId, seriAnahtari, yeniNo));
     return sonuc;
+  }
+
+  /// Bu cihazın fiş numarasına girecek 2 haneli kasa no'su (1–99), buluttaki
+  /// Terminal kaydından (yerel_terminal.terminal_id — şirket genelinde
+  /// benzersiz). Terminal kaydı yoksa 0 (eski biçim). 99'u aşan id'ler
+  /// 1–99'a sarılır.
+  Future<int> _kasaNoGetir(Database database) async {
+    try {
+      final r = await database.query('yerel_terminal',
+          columns: ['terminal_id'], where: 'id = 1', limit: 1);
+      final id = r.isNotEmpty ? (r.first['terminal_id'] as num?)?.toInt() : null;
+      if (id == null || id <= 0) return 0;
+      return ((id - 1) % 99) + 1;
+    } catch (_) {
+      return 0;
+    }
   }
 
   /// [istenenSubeId] gerçekten subeler tablosunda varsa aynen döner;

@@ -166,6 +166,20 @@ void main() {
     expect(no, 'MKP$yil${2.toString().padLeft(9, '0')}');
   });
 
+  test('kasa bazlı fiş no: her kasa kendi serisi, eski seriyle çakışmaz', () async {
+    final yil = DateTime.now().year;
+    final eski = await Veritabani().fisNoUret('satis'); // terminal kaydı yok
+    expect(eski, 'MKP$yil${1.toString().padLeft(9, '0')}');
+
+    await db.insert('yerel_terminal', {'id': 1, 'terminal_id': 3, 'terminal_kodu': 'T3'});
+    final k1 = await Veritabani().fisNoUret('satis');
+    final k2 = await Veritabani().fisNoUret('satis');
+    expect(k1, 'MKP${yil}03${1.toString().padLeft(7, '0')}');
+    expect(k2, 'MKP${yil}03${2.toString().padLeft(7, '0')}');
+    final seri = await db.query('fis_seri', where: 'fis_tipi = ?', whereArgs: ['satis#T03']);
+    expect(seri.single['son_fis_no'], 2);
+  });
+
   test('last_updated buluta açık UTC gider', () {
     final yerel = DateTime(2026, 9, 27, 20, 15).toIso8601String(); // dilimsiz
     final cevrilmis = KolonHaritalama.cevir('satislar', {'last_updated': yerel});

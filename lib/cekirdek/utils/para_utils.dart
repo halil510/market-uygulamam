@@ -23,6 +23,13 @@ class ParaUtils {
     }
     if (fisNo.length == 16 && RegExp(r'^[A-Z]{3}[0-9]{13}$').hasMatch(fisNo)) {
       final prefix = fisNo.substring(0, 3);
+      // Kasa bazlı biçim (2026-09-27): yıldan sonraki 2 hane kasa no'su
+      // (01–99). Eski biçimde bu 2 hane her zaman '00' (sayaç < 10 milyon).
+      final kasa = fisNo.substring(7, 9);
+      if (kasa != '00') {
+        final sira = int.tryParse(fisNo.substring(9)) ?? 0;
+        return '$prefix-$kasa-${sira.toString().padLeft(6, '0')}';
+      }
       final sira   = int.tryParse(fisNo.substring(7)) ?? 0;
       return '$prefix-${sira.toString().padLeft(6, '0')}';
     }

@@ -37,6 +37,7 @@ import '../../cekirdek/sabitler/db_sabitleri.dart';
 import '../../veri/database/veritabani.dart';
 import '../audit_log_servisi.dart';
 import '../log_servisi.dart';
+import '../fatura_seri/terminal_servisi.dart';
 
 // ── Bulut durum ───────────────────────────────────────────────────────────────
 enum BulutDurum {
@@ -111,6 +112,13 @@ class BulutManager {
     durum.value = sonuc.basarili ? BulutDurum.bagli : BulutDurum.hata;
     if (sonuc.basarili) {
       await _kaliciHatalariKuyrugaGeriAl(otomatik: true);
+      // Kasa bazlı fiş numarası için bu cihazın Terminal kaydı olsun
+      // (bkz. Veritabani.fisNoUret) — ilk bağlantıda bir kez, arka planda.
+      if (s is SupabaseSaglayici) {
+        unawaited(TerminalServisi().terminalGarantiEt().then((_) {}, onError: (Object e) {
+          LogServisi().uyari('Terminal kaydı yapılamadı (fiş no eski biçimde devam eder)', hata: e);
+        }));
+      }
       _workerBaslat();
       // 🔴 KURTARMA: bağlantı kurulduğu anda, önceki bir çökme/kapanmadan
       // KALMIŞ olabilecek bekleyen kuyruk satırlarını hemen işlemeye

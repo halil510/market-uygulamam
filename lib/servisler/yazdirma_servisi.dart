@@ -252,7 +252,7 @@ class YazdirmaServisi {
   final _depo = YaziciDeposu();
 
   // Ayarlar (DB'den okunur)
-  String _firmaAdi   = 'MarketPlus';
+  String _firmaAdi   = 'BarkoPro';
 
   /// Etiket/fiş önizlemelerinde işletme adını göstermek için genel erişim.
   String get firmaAdiOnizleme => _firmaAdi;
@@ -411,7 +411,7 @@ class YazdirmaServisi {
           "'fis_cari_bakiye_goster','fis_yaziyla_tutar','fis_alt_barkod_goster',"
           "'fis_cari_goster','fis_logo_goster','fis_logo_yolu')");
       final m = {for (final r in rows) r['anahtar'] as String: r['deger'] as String};
-      _firmaAdi   = m['firma_adi']     ?? 'MarketPlus';
+      _firmaAdi   = m['firma_adi']     ?? 'BarkoPro';
       _firmaAdres = m['firma_adres']   ?? '';
       _firmaTel   = m['firma_telefon'] ?? '';
       _altYazi    = m['fis_alt_yazi']  ?? 'Teşekkür ederiz!';
@@ -1338,7 +1338,7 @@ class YazdirmaServisi {
         styles: const PosStyles(align: PosAlign.center)));
 
     try {
-      final qrVeri = f.eFaturaUuid ?? f.faturaNo ?? 'MarketPlus';
+      final qrVeri = f.eFaturaUuid ?? f.faturaNo ?? 'BarkoPro';
       bytes.addAll(generator.qrcode(qrVeri));
     } catch (_) {/* QR desteklenmiyorsa atla */}
 

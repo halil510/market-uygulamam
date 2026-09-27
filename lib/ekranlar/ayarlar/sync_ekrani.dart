@@ -98,7 +98,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
       final ok = await _bt.taramaBaslat();
       if (mounted) setState(() {
         _btTarama = ok;
-        _btDurum = ok ? '🔍 MarketPlus cihazları aranıyor...' : '❌ BT kapalı veya izin yok';
+        _btDurum = ok ? '🔍 BarkoPro cihazları aranıyor...' : '❌ BT kapalı veya izin yok';
       });
     }
   }
@@ -201,7 +201,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Cihaz Ara (BLE)',
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                Text(_btTarama ? 'MarketPlus cihazları aranıyor...' : 'Yakındaki cihazları bulur',
+                Text(_btTarama ? 'BarkoPro cihazları aranıyor...' : 'Yakındaki cihazları bulur',
                     style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
               ])),
               if (_btTarama)

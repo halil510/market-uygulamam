@@ -555,7 +555,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
             bold: true),
         pw.SizedBox(height: 20),
         pw.Center(
-            child: pw.Text('MarketPlus © ${DateTime.now().year}',
+            child: pw.Text('BarkoPro © ${DateTime.now().year}',
                 style: const pw.TextStyle(fontSize: 9))),
       ]),
     ));

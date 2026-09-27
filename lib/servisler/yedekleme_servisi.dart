@@ -270,7 +270,7 @@ class YedeklemeServisi {
     final tarih = DateFormat('dd.MM.yyyy').format(DateTime.now());
     await Share.shareXFiles(
       [XFile(zipYolu)],
-      text: 'MarketPlus Yedek — $tarih',
+      text: 'BarkoPro Yedek — $tarih',
     );
   }
 

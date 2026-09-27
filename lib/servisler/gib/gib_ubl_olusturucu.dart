@@ -318,7 +318,7 @@ class GibUblOlusturucu {
         <cbc:ID schemeID="VKN">${_xmlEscape(vkn)}</cbc:ID>
       </cac:PartyIdentification>
       <cac:PartyName>
-        <cbc:Name>${_xmlEscape(_ayar.firmaAdi.isNotEmpty ? _ayar.firmaAdi : 'MarketPlus')}</cbc:Name>
+        <cbc:Name>${_xmlEscape(_ayar.firmaAdi.isNotEmpty ? _ayar.firmaAdi : 'BarkoPro')}</cbc:Name>
       </cac:PartyName>
       <cac:PostalAddress>
         <cbc:StreetName>${_xmlEscape(_ayar.firmaAdres)}</cbc:StreetName>
@@ -476,7 +476,7 @@ $satirlar
         <cbc:ID schemeID="VKN">${_xmlEscape(vkn)}</cbc:ID>
       </cac:PartyIdentification>
       <cac:PartyName>
-        <cbc:Name>${_xmlEscape(_ayar.firmaAdi.isNotEmpty ? _ayar.firmaAdi : 'MarketPlus')}</cbc:Name>
+        <cbc:Name>${_xmlEscape(_ayar.firmaAdi.isNotEmpty ? _ayar.firmaAdi : 'BarkoPro')}</cbc:Name>
       </cac:PartyName>
       <cac:PostalAddress>
         <cbc:StreetName>${_xmlEscape(_ayar.firmaAdres)}</cbc:StreetName>

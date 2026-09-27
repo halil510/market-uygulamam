@@ -52,7 +52,7 @@ class BluetoothTransferServisi {
           final ad = r.device.platformName;
           final id = r.device.remoteId.str;
 
-          if ((ad.startsWith('MKP-') || ad.startsWith('MarketPlus')) &&
+          if ((ad.startsWith('MKP-') || ad.startsWith('BarkoPro') || ad.startsWith('MarketPlus')) &&
               !bulunanlar.contains(id)) {
             bulunanlar.add(id);
             // Advertisement data'dan IP'yi çıkar
@@ -72,7 +72,7 @@ class BluetoothTransferServisi {
 
       await FlutterBluePlus.startScan(
         timeout: const Duration(seconds: 30),
-        withKeywords: ['MKP-', 'MarketPlus'],
+        withKeywords: ['MKP-', 'BarkoPro', 'MarketPlus'],
       );
       return true;
     } catch (e) {

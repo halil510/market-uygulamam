@@ -1,6 +1,6 @@
 {
-    "name": "halk_market",
-    "short_name": "halk_market",
+    "name": "BarkoPro",
+    "short_name": "BarkoPro",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

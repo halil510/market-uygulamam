@@ -62,7 +62,7 @@ class _FisOnizlemeEkraniState extends ConsumerState<FisOnizlemeEkrani> {
     }
   }
 
-  String get _firmaAdi   => _ayarlar['firma_adi']    ?? 'MarketPlus';
+  String get _firmaAdi   => _ayarlar['firma_adi']    ?? 'BarkoPro';
   String get _firmaAdres => _ayarlar['firma_adres']  ?? '';
   String get _firmaTel   => _ayarlar['firma_telefon'] ?? '';
   String get _altYazi    => _ayarlar['fis_alt_yazi'] ?? 'Teşekkür ederiz!';

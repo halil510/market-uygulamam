@@ -484,7 +484,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
       if (!mounted) return;
       await Share.shareXFiles(
         [XFile(dosya.path, mimeType: 'text/plain')],
-        subject: 'MarketPlus Etiketler (ZPL)',
+        subject: 'BarkoPro Etiketler (ZPL)',
         text: 'Bu .zpl dosyasını BarTender veya Zebra/ZPL uyumlu '
               'bir etiket yazıcısına "Dosyadan Yazdır" ile gönderebilirsiniz.\n'
               'Etiket boyutu: $_boyutEtiketMetni, Toplam: '

@@ -720,7 +720,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         if (mounted) BildirimServisi.hata(context, 'DB dosyası bulunamadı');
         return;
       }
-      await Share.shareXFiles([XFile(dbYolu)], text: 'MarketPlus Veritabanı');
+      await Share.shareXFiles([XFile(dbYolu)], text: 'BarkoPro Veritabanı');
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }
@@ -787,7 +787,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 ListTile(
                   leading:
                       const Icon(Icons.business, color: AppRenkler.primary),
-                  title: Text(_ayarlar['firma_adi'] ?? 'MarketPlus'),
+                  title: Text(_ayarlar['firma_adi'] ?? 'BarkoPro'),
                   subtitle: Text(_ayarlar['firma_adres'] ?? 'Adres girilmemiş'),
                   trailing: const Icon(Icons.edit_outlined),
                   onTap: _firmaBilgisiDuzenle,
@@ -1126,7 +1126,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 ),
                 const SizedBox(height: 8),
                 Center(
-                    child: Text('MarketPlus v${UygSabitler.versiyon}',
+                    child: Text('BarkoPro v${UygSabitler.versiyon}',
                         style: TextStyle(
                             color: TsRenk.metinIkincil(context),
                             fontSize: 12))),

@@ -586,7 +586,7 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
       ikon: Icons.store,
       renk: _blue,
       children: [
-        _inputField(context, _firmaAdiCtrl, 'Firma Adı *', 'MarketPlus', Icons.store),
+        _inputField(context, _firmaAdiCtrl, 'Firma Adı *', 'BarkoPro', Icons.store),
         const SizedBox(height: 12),
         _inputField(context, _firmaAdresCtrl, 'Adres', 'Atatürk Cad. No:1', Icons.location_on),
         const SizedBox(height: 12),

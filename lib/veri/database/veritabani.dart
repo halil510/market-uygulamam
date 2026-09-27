@@ -134,7 +134,7 @@ class Veritabani {
 
     // Uygulama ayarları
     final ayarlar = {
-      'firma_adi': 'MarketPlus',
+      'firma_adi': 'BarkoPro',
       'firma_adres': '',
       'firma_telefon': '',
       'firma_vergi_no': '',

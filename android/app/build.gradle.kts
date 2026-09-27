@@ -20,7 +20,9 @@ plugins {
     id("io.sentry.android.gradle")
 }
 
-android {
+// AGP 9: eski `android { }` erişimcisi (BaseAppModuleExtension) kaldırılıyor —
+// genel ApplicationExtension DSL tipiyle yapılandırılır.
+configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "com.barkodhalkmarket.marketplus"
 
     compileSdk = 36
@@ -92,8 +94,12 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+}
+
+// Kotlin 2.3+: kotlinOptions kaldırıldı, compilerOptions DSL kullanılır.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
 

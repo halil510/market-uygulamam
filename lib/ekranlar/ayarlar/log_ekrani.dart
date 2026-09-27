@@ -85,7 +85,7 @@ class _LogEkraniState extends ConsumerState<LogEkrani> {
       return;
     }
     final buffer = StringBuffer();
-    buffer.writeln('MarketPlus Log Raporu - ${DateTime.now().toLocal()}');
+    buffer.writeln('BarkoPro Log Raporu - ${DateTime.now().toLocal()}');
     buffer.writeln('─' * 50);
     buffer.writeln('Filtre: $_filtre');
     buffer.writeln('Toplam: ${_loglar.length} kayıt');
@@ -125,7 +125,7 @@ class _LogEkraniState extends ConsumerState<LogEkrani> {
     }
     
     final buffer = StringBuffer();
-    buffer.writeln('MarketPlus Hata Logları - ${DateTime.now().toLocal()}');
+    buffer.writeln('BarkoPro Hata Logları - ${DateTime.now().toLocal()}');
     buffer.writeln('─' * 50);
     buffer.writeln('Toplam ${hataLoglar.length} hata/kritik kaydı');
     buffer.writeln('─' * 50);

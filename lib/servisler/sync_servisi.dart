@@ -141,7 +141,7 @@ class SyncServisi {
       if (metod == 'GET' && yol == '/api/ping') {
         _jsonYanit(req, {
           'ok': true,
-          'app': 'MarketPlus',
+          'app': 'BarkoPro',
           'version': '3.0',
           'cihaz': Platform.isAndroid ? 'Android' : Platform.isIOS ? 'iOS' : 'PC',
           'zaman': DateTime.now().toIso8601String(),
@@ -640,7 +640,7 @@ class SyncServisi {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MarketPlus Veri Merkezi</title>
+<title>BarkoPro Veri Merkezi</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh}
@@ -681,7 +681,7 @@ class SyncServisi {
 </head>
 <body>
 <div class="header">
-  <h1>🏪 MarketPlus Veri Merkezi</h1>
+  <h1>🏪 BarkoPro Veri Merkezi</h1>
   <p>WiFi üzerinden veri aktarım ve yönetim paneli</p>
 </div>
 <div class="container">

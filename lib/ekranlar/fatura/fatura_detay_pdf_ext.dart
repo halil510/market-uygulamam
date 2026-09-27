@@ -7,7 +7,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
   // ── Firma (satıcı) bilgilerini al ───────────────────────────────────────
   Future<Map<String, String>> _firmaBilgileri() async {
     final out = <String, String>{
-      'adi': 'MarketPlus', 'adres': '', 'vergiNo': '', 'vergiDairesi': '',
+      'adi': 'BarkoPro', 'adres': '', 'vergiNo': '', 'vergiDairesi': '',
       'logoYolu': '', 'imzaYolu': '', 'imzaGoster': 'true',
     };
     try {
@@ -203,7 +203,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
         if (firma['qrGoster'] == 'true')
           pw.BarcodeWidget(
             barcode: bc.Barcode.qrCode(),
-            data: f.eFaturaUuid ?? f.faturaNo ?? 'MarketPlus',
+            data: f.eFaturaUuid ?? f.faturaNo ?? 'BarkoPro',
             width: 80, height: 80,
           ),
         pw.SizedBox(height: 6),
@@ -328,7 +328,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
                 if (firma['qrGoster'] == 'true') ...[
                   pw.BarcodeWidget(
                     barcode: bc.Barcode.qrCode(),
-                    data: f.eFaturaUuid ?? f.faturaNo ?? 'MarketPlus',
+                    data: f.eFaturaUuid ?? f.faturaNo ?? 'BarkoPro',
                     width: 56, height: 56,
                   ),
                   pw.SizedBox(width: 6),

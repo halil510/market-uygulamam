@@ -215,7 +215,7 @@ class BildirimZamanlayici {
         NotificationDetails(
           android: AndroidNotificationDetails(
             'marketplus_$id',
-            'MarketPlus Bildirimleri',
+            'BarkoPro Bildirimleri',
             importance: oncelik,
             priority:   oncelik == Importance.high ? Priority.high : Priority.defaultPriority,
             icon:       '@mipmap/ic_launcher',

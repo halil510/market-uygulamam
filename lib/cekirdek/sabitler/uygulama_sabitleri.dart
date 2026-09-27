@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 class UygSabitler {
-  static const String uygulamaAdi = 'MarketPlus';
+  static const String uygulamaAdi = 'BarkoPro';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
       78; // v78: merkezi fatura seri/blok yönetimi için yerel önbellek tabloları (yerel_terminal, yerel_fatura_blok) — bkz. CENTRAL_DOCUMENT_NUMBERING_DEEP_AUDIT.md (2026-09-23)

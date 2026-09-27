@@ -1,10 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.barkodhalkmarket.marketplus">
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- package="..." kaldırıldı: paket adı artık build.gradle.kts'deki
+         namespace ile tanımlı (AGP 8+ uyarı verir, AGP 9 hata verir). -->
 
     <!-- Bluetooth (tekil, neverForLocation flag ile) -->
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <!-- Eski Bluetooth izinleri yalnızca Android 11 (API 30) ve altı içindir;
+         12+ BLUETOOTH_SCAN/CONNECT kullanır. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
@@ -17,9 +20,12 @@
          planda konum takibi yapan hiçbir özellik yok) — Play Store
          onayını riske atmamak için kaldırıldı. Bluetooth taraması için
          gereken normal (ön plan) konum izinleri korundu. -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Konum YALNIZCA Android 11 ve altında Bluetooth taraması için gerekir
+         (12+ BLUETOOTH_SCAN neverForLocation ile konumsuz tarar). Uygulama
+         konum özelliği kullanmıyor — 12+ cihazlarda konum izni istenmez. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />
 
     <!-- Ağ -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -41,10 +47,11 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
 
-    <!-- Android 13+ (API 33+) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!-- Android 13+ READ_MEDIA_IMAGES/VIDEO/AUDIO KALDIRILDI (2026-09-27):
+         kodda hiçbiri istenmiyor — image_picker sistem fotoğraf seçicisini,
+         file_picker sistem dosya seçicisini kullanır, izin gerekmez. Google
+         Play "Fotoğraf ve Video İzinleri" politikası, temel işlevi galeri
+         olmayan uygulamalarda bu izinleri reddediyor. -->
 
     <!-- ÖNCEDEN BURADA MANAGE_EXTERNAL_STORAGE (tüm dosyalara tam
          erişim) de vardı — Google Play'in EN sıkı denetlediği
@@ -61,7 +68,9 @@
 
     <!-- Donanım -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
-    <uses-feature android:name="android.hardware.camera" android:required="true" />
+    <!-- Kamera ZORUNLU DEĞİL: kamerası olmayan POS/el terminali/tablette de
+         kurulabilsin (USB/el tipi okuyucu ile barkod okunur). -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.wifi" android:required="false" />
     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
@@ -128,6 +137,11 @@
         </intent>
         <intent>
             <action android:name="android.bluetooth.adapter.action.REQUEST_ENABLE" />
+        </intent>
+        <!-- Sesli arama (speech_to_text): Android 11+ paket görünürlüğü —
+             bu olmadan tanıma servisi bulunamaz, sesli arama hiç çalışmaz. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 

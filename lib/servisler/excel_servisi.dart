@@ -804,7 +804,7 @@ class ExcelServisi {
   }
 
   Future<void> paylasExcel(String yol) async =>
-      Share.shareXFiles([XFile(yol)], text: 'MarketPlus Excel');
+      Share.shareXFiles([XFile(yol)], text: 'BarkoPro Excel');
 
 
   // ──────────────────────────────────────────────────────────────────────────

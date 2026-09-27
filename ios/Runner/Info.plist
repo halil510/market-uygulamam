@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Halk Market</string>
+	<string>BarkoPro</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>halk_market</string>
+	<string>BarkoPro</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -60,6 +60,10 @@
 	<string>Ürün barkodunu okutmak ve ürün fotoğrafı çekmek için kameraya ihtiyaç duyulur.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Sesli arama ve sesli komut özelliklerini kullanabilmek için mikrofona ihtiyaç duyulur.</string>
+	<!-- 2026-09-27: speech_to_text iOS'ta konuşma tanıma izni ister; bu
+	     açıklama OLMADAN izin istendiği anda uygulama çöker. -->
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Ürünleri sesle arayabilmeniz için konuşma tanıma kullanılır.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Termal fiş yazıcısı ve barkod okuyucu gibi Bluetooth cihazlara bağlanmak için gereklidir.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

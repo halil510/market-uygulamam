@@ -3285,6 +3285,7 @@ ALTER TABLE urun_fiyat_gruplari ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS urun_fiyat_gruplari_all ON urun_fiyat_gruplari;
 ALTER TABLE urunler ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS urunler_all ON urunler;
+DROP POLICY IF EXISTS urunler_anon_qr_menu_okuyabilir ON urunler;
 CREATE POLICY urunler_anon_qr_menu_okuyabilir ON urunler
   FOR SELECT TO anon
   USING (aktif = true AND is_deleted = false AND qr_menude = 1);
@@ -3793,6 +3794,7 @@ BEGIN;
 --    ürünler (uygulama zaten bu filtreyle sorguluyor — RLS aynı kısıtı
 --    sunucu tarafında da uygulasın, savunma derinliği) ──────────────────
 DROP POLICY IF EXISTS urunler_all ON urunler;
+DROP POLICY IF EXISTS urunler_anon_qr_menu_okuyabilir ON urunler;
 CREATE POLICY urunler_anon_qr_menu_okuyabilir ON urunler
   FOR SELECT TO anon
   USING (aktif = true AND is_deleted = false AND qr_menude = 1);

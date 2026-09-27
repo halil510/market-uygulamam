@@ -26,7 +26,10 @@ class SupabaseSaglayici implements IBulutSaglayici {
 
   Future<void> _fkLokalCacheYukle(String parent) async {
     final db = await Veritabani().db;
-    final rows = await db.query(parent, columns: ['id', 'global_id']);
+    // Eşleşme anahtarı: global_id ya da tablonun doğal anahtarı (kategoriler
+    // → ad, subeler → sube_kodu…) — bkz. KolonHaritalama.ebeveynAnahtari.
+    final anahtar = KolonHaritalama.ebeveynAnahtari(parent);
+    final rows = await db.query(parent, columns: ['id', anahtar]);
     final h = <int, String>{};
     // 🔴🔴🔴 KRİTİK DÜZELTME (kök neden — kullanıcı bulgusu: "kredi
     // kartlarında sorun var, Supabase'e göndermemiş"): Bu fonksiyon
@@ -47,14 +50,16 @@ class SupabaseSaglayici implements IBulutSaglayici {
     for (final r in rows) {
       final id = r['id'] as int?;
       if (id == null) continue;
-      final gid = r['global_id']?.toString();
+      final gid = r[anahtar]?.toString();
       if (gid != null && gid.isNotEmpty) {
         h[id] = gid;
       } else {
         eksikler.add(id);
       }
     }
-    if (eksikler.isNotEmpty) {
+    // Eksik kimlik yalnızca global_id eşleşmeli tabloda üretilir (doğal
+    // anahtar boşsa o kayıt zaten eşleşemez).
+    if (eksikler.isNotEmpty && anahtar == 'global_id') {
       final batch = db.batch();
       for (final id in eksikler) {
         final yeniGid = const Uuid().v4();
@@ -78,14 +83,14 @@ class SupabaseSaglayici implements IBulutSaglayici {
     // Güvenlik sınırı — sonsuz döngü fiziksel olarak engellenir
     while (guvenlikSayaci++ < 200) {
       final r = await http.get(
-        Uri.parse('$_rest/$parent?select=id,global_id&limit=1000&offset=$offset'),
+        Uri.parse('$_rest/$parent?select=id,${KolonHaritalama.ebeveynAnahtari(parent)}&limit=1000&offset=$offset'),
         headers: _h,
       ).timeout(const Duration(seconds: 20));
       if (r.statusCode != 200) break;
       final batch = (jsonDecode(r.body) as List).cast<Map<String, dynamic>>();
       if (batch.isEmpty) break;
       for (final row in batch) {
-        final gid = row['global_id']?.toString();
+        final gid = row[KolonHaritalama.ebeveynAnahtari(parent)]?.toString();
         final cid = row['id'];
         if (gid != null && gid.isNotEmpty && cid != null) {
           h[gid] = cid is int ? cid : int.parse(cid.toString());

@@ -89,6 +89,7 @@ import 'rotalar/borc_rotalari.dart';
 import '../../ekranlar/borc/borc_takip_ekrani.dart';
 import '../../ekranlar/borc/borc_ekle_ekrani.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../widgetlar/ortak/eksik_veri_ekrani.dart';
 
 
 
@@ -178,13 +179,17 @@ class UygulamaRouter {
         GoRoute(path: '/tedarik/siparis-olustur', name: 'tedarik_siparis_olustur', parentNavigatorKey: rootNavigatorKey,
           builder: (c, s) {
             final extra = s.extra;
-            if (extra is Map<String, dynamic>) {
+            if (extra is Map<String, dynamic> && extra['tedarikci'] is CariModel) {
               return SiparisOlusturEkrani(
                 tedarikci: extra['tedarikci'] as CariModel,
                 onerilenKalemler: extra['onerilenKalemler'] as List<OnerilenSiparisKalemi>?,
               );
             }
-            return SiparisOlusturEkrani(tedarikci: extra as CariModel);
+            if (extra is CariModel) return SiparisOlusturEkrani(tedarikci: extra);
+            // Tedarikçi bilgisi olmadan açıldı (uygulama geri yüklendi vb.)
+            return const EksikVeriEkrani(
+                baslik: 'Sipariş Oluştur',
+                aciklama: 'Sipariş bir tedarikçi seçilerek açılır. Tedarik ekranından tedarikçiyi seçin.');
           }),
         GoRoute(path: '/tedarik/oneriler', name: 'tedarik_oneriler', parentNavigatorKey: rootNavigatorKey,
           builder: (c, s) => const SatinAlmaOnerileriEkrani()),

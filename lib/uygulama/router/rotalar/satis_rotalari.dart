@@ -13,6 +13,8 @@ import '../../../ekranlar/toptan/toptan_dashboard_ekrani.dart';
 import '../../../ekranlar/toptan/toptan_urun_listesi_ekrani.dart';
 import '../../../ekranlar/toptan/bekleyen_siparisler_ekrani.dart';
 import '../../../ekranlar/satis/fis_onizleme_ekrani.dart';
+import '../../../modeller/satis_model.dart';
+import '../../../widgetlar/ortak/eksik_veri_ekrani.dart';
 import '../../../ekranlar/satis/satis_detay_ekrani.dart';
 import '../../../ekranlar/satis/para_ustu_ekrani.dart';
 import '../../../ekranlar/satis/hizli_tus_yonetim_ekrani.dart';
@@ -20,7 +22,9 @@ import '../../../ekranlar/satis/hizli_tus_yonetim_ekrani.dart';
 List<GoRoute> satisRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
         GoRoute(path: '/satis/sicak', name: 'sicak_satis', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const SicakSogukSatisEkrani(tip: SatisTipi.sicak)),
         GoRoute(path: '/satis/soguk', name: 'soguk_satis', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const SicakSogukSatisEkrani(tip: SatisTipi.soguk)),
-        GoRoute(path: '/satis/fis-onizleme', parentNavigatorKey: rootNavigatorKey, builder: (c, s) => FisOnizlemeEkrani(satis: s.extra as dynamic)),
+        GoRoute(path: '/satis/fis-onizleme', parentNavigatorKey: rootNavigatorKey, builder: (c, s) => s.extra is SatisModel
+            ? FisOnizlemeEkrani(satis: s.extra as SatisModel)
+            : const EksikVeriEkrani(baslik: 'Fiş Önizleme', aciklama: 'Fiş önizlemesi bir satıştan açılır. Satış Listesinden fişi seçin.')),
         GoRoute(path: '/toptan/satis', name: 'toptan_satis', parentNavigatorKey: rootNavigatorKey, builder: (c, s) => const ToptanSatisEkrani()),
         GoRoute(path: '/toptan/dashboard', name: 'toptan_dashboard', parentNavigatorKey: rootNavigatorKey, builder: (c, s) => const ToptanDashboardEkrani()),
         GoRoute(path: '/toptan/urunler', name: 'toptan_urunler', parentNavigatorKey: rootNavigatorKey, builder: (c, s) => const ToptanUrunListesiEkrani()),

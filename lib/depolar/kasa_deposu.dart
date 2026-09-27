@@ -273,6 +273,29 @@ class KasaDeposu {
       // merkezi KasaHareketModel.girisTipleri'nin EKSİK bir kopyasıydı
       // ('Iade Iptali','İade İptali','Ödeme Girişi' unutulmuştu) — bu
       // hareket tipleri günlük özet toplamına hiç dahil edilmiyordu.
+      // 🔴 DÜZELTME (2026-09-28, uygulama robotu buldu): aşağıdaki açıklama
+      // ÖNCEDEN SQL metninin İÇİNE yapıştırılmıştı — SQLite '//' tanımadığı
+      // için sorgu HER ÇAĞRIDA sözdizimi hatası veriyor, kasa günlük özeti
+      // (giriş/çıkış/nakit satış/tahsilat) hiç hesaplanamıyordu.
+      // 🔴 KRİTİK DÜZELTME (derin analiz — gün sonu raporu / kasa özeti):
+      // SQLite'ın DATE('now') fonksiyonu VARSAYILAN OLARAK UTC kullanır.
+      // Ama `tarih` sütunu DateTime.now().toIso8601String() ile YEREL
+      // saatle yazılıyor (satis_model.dart, gider_model.dart, kasa
+      // hareketleri — hepsi aynı desen).
+      // 
+      // Türkiye UTC+3 olduğu için, YEREL saatle 00:00–03:00 arasında
+      // (yani UTC henüz bir önceki güne ait sayılırken) yapılan HER
+      // satış/gider/kasa hareketi bu sorgudan DÜŞÜYORDU:
+      // 
+      //   Yerel 01:00 (27 Tem) → tarih sütunu: '2026-07-27T01:00:00'
+      //   O ANDA UTC saati     : 26 Tem 22:00 → DATE('now') = '2026-07-26'
+      //   DATE(tarih)='2026-07-27' ≠ DATE('now')='2026-07-26' → KAYIP
+      // 
+      // 24 saat açık ya da gece geç saatlere çalışan bir markette, gece
+      // yarısından sonraki 3 saatlik satışlar "Gün Sonu Raporu"na hiç
+      // girmiyordu. 'localtime' değiştiricisi SQLite'a cihazın kendi
+      // saat dilimini kullanmasını söyler — POS cihazı zaten işletmenin
+      // kendi lokasyonunda olduğu için bu doğru varsayımdır.
       final res = await db.rawQuery("""
         SELECT 
           COALESCE(SUM(CASE WHEN hareket_tipi IN ('Satış','Tahsilat','AçılışKasa','Giriş','Virman Giriş','Iade Iptali','İade İptali','Ödeme Girişi','Gider İptali','Alım İptali') THEN tutar ELSE 0 END), 0) as giris,
@@ -280,25 +303,6 @@ class KasaDeposu {
           COALESCE(SUM(CASE WHEN hareket_tipi = 'Satış' AND referans_turu = 'satis' THEN tutar ELSE 0 END), 0) as nakit_satis,
           COALESCE(SUM(CASE WHEN hareket_tipi = 'Tahsilat' THEN tutar ELSE 0 END), 0) as tahsilat
         FROM kasa_hareketleri 
-        // 🔴 KRİTİK DÜZELTME (derin analiz — gün sonu raporu / kasa özeti):
-      // SQLite'ın DATE('now') fonksiyonu VARSAYILAN OLARAK UTC kullanır.
-      // Ama `tarih` sütunu DateTime.now().toIso8601String() ile YEREL
-      // saatle yazılıyor (satis_model.dart, gider_model.dart, kasa
-      // hareketleri — hepsi aynı desen).
-      //
-      // Türkiye UTC+3 olduğu için, YEREL saatle 00:00–03:00 arasında
-      // (yani UTC henüz bir önceki güne ait sayılırken) yapılan HER
-      // satış/gider/kasa hareketi bu sorgudan DÜŞÜYORDU:
-      //
-      //   Yerel 01:00 (27 Tem) → tarih sütunu: '2026-07-27T01:00:00'
-      //   O ANDA UTC saati     : 26 Tem 22:00 → DATE('now') = '2026-07-26'
-      //   DATE(tarih)='2026-07-27' ≠ DATE('now')='2026-07-26' → KAYIP
-      //
-      // 24 saat açık ya da gece geç saatlere çalışan bir markette, gece
-      // yarısından sonraki 3 saatlik satışlar "Gün Sonu Raporu"na hiç
-      // girmiyordu. 'localtime' değiştiricisi SQLite'a cihazın kendi
-      // saat dilimini kullanmasını söyler — POS cihazı zaten işletmenin
-      // kendi lokasyonunda olduğu için bu doğru varsayımdır.
         WHERE DATE(tarih) = DATE('now','localtime') AND deleted_at IS NULL $subeKosulu
       """, subeArgs);
       if (res.isEmpty) return {'giris': 0, 'cikis': 0};

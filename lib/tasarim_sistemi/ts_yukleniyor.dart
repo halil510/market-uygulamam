@@ -25,18 +25,38 @@ class TsYukleniyor extends StatelessWidget {
     // Tema uzantısındaki hazır token — elle brightness kontrolü yerine
     // (uygulama_temasi.dart'ta shimmerBase/shimmerHighlight tanımlı).
     final baz = context.shimmerBase;
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(
-          horizontal: TsBosluk.lg, vertical: TsBosluk.sm),
-      itemCount: iskeletSayisi,
-      separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
-      itemBuilder: (_, __) => Container(
-        height: 68,
-        decoration: BoxDecoration(
-          color: baz,
-          borderRadius: BorderRadius.circular(TsRadius.lg),
-        ),
-      ),
-    );
+    Widget kart() => Container(
+          height: 68,
+          decoration: BoxDecoration(
+            color: baz,
+            borderRadius: BorderRadius.circular(TsRadius.lg),
+          ),
+        );
+    const dolgu = EdgeInsets.symmetric(horizontal: TsBosluk.lg, vertical: TsBosluk.sm);
+    // 🔴 DÜZELTME (2026-09-28, uygulama robotu buldu): iskelet her zaman bir
+    // ListView'dı. Kaydırılabilir bir alanın İÇİNDE (ör. Rapor > Cari,
+    // Rapor > Stok — ListView çocuğu olarak) kullanılınca yükseklik
+    // sınırsız kaldığından "Vertical viewport was given unbounded height"
+    // ile ekran düzeni çöküyordu (veri yüklenirken her açılışta). Yükseklik
+    // sınırsızsa artık sabit bir sütun çiziliyor.
+    return LayoutBuilder(builder: (context, c) {
+      if (!c.hasBoundedHeight) {
+        return Padding(
+          padding: dolgu,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            for (var i = 0; i < iskeletSayisi; i++) ...[
+              if (i > 0) const SizedBox(height: TsBosluk.sm),
+              kart(),
+            ],
+          ]),
+        );
+      }
+      return ListView.separated(
+        padding: dolgu,
+        itemCount: iskeletSayisi,
+        separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
+        itemBuilder: (_, __) => kart(),
+      );
+    });
   }
 }

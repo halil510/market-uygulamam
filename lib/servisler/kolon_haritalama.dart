@@ -270,6 +270,22 @@ class KolonHaritalama {
     return {...?sabit, p.kolon: hedef};
   }
 
+  /// Ebeveyn tablonun cihazlar arası EŞLEŞTİRME anahtarı (FK çevirisinde
+  /// "yerel id → anahtar → bulut id" zinciri bu sütunla kurulur).
+  ///
+  /// 🔴 DÜZELTME (2026-09-28, uygulama robotu buldu): çeviri ÖNCEDEN her
+  /// ebeveyni global_id ile arıyordu. Ama kategoriler/birimler/markalar/
+  /// gider_kategoriler yerelde global_id sütunu HİÇ taşımıyor (bulutta 'ad'
+  /// ile eşleşiyor), subeler/kullanicilar ise sube_kodu/kullanici_adi ile
+  /// eşleşiyor. Sorgu hata verince ürünün kategori_id'si (ve satışın
+  /// sube_id'si) ya yanlış bağlanıyor ya boş kalıyor ya da gönderim
+  /// bekletiliyordu. Artık tablonun kendi eşleşme anahtarı kullanılır.
+  static String ebeveynAnahtari(String parent) {
+    final u = _unique[parent];
+    if (u == null || u.contains(',')) return 'global_id';
+    return u;
+  }
+
   /// Tablonun (sabit + polimorfik) olası tüm ebeveyn tabloları.
   static Set<String> ebeveynler(String tablo) => {
         ...?fkHaritasi[tablo]?.values,

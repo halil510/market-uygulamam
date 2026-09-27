@@ -1229,8 +1229,11 @@ class SupabaseSyncServisi {
   // FK DÖNÜŞÜMÜ — GÖNDERME YÖNÜ (lokal id → bulut id)
   // --------------------------------------------------------------
   /// Tek bir bulut tablosunun (global_id → bulut id) eşlemesini çeker.
+  /// Bulut: eşleşme anahtarı → bulut id (anahtar: global_id ya da tablonun
+  /// doğal anahtarı — bkz. KolonHaritalama.ebeveynAnahtari).
   static Future<Map<String, int>> _tekTabloGidCloud(
       _Ayar ayar, String tablo) async {
+    final anahtar = KolonHaritalama.ebeveynAnahtari(tablo);
     final gidToCloud = <String, int>{};
     int offset = 0;
     // Güvenlik sınırı: sayfalama hiçbir koşulda 200 turdan
@@ -1239,14 +1242,14 @@ class SupabaseSyncServisi {
     int guvenlikSayaci1 = 0;
     while (guvenlikSayaci1++ < 200) {
       final res = await http.get(
-        Uri.parse('${ayar.rest}/$tablo?select=id,global_id&limit=1000&offset=$offset'),
+        Uri.parse('${ayar.rest}/$tablo?select=id,$anahtar&limit=1000&offset=$offset'),
         headers: _getH(ayar.key),
       ).timeout(const Duration(seconds: 30));
       if (res.statusCode != 200) break;
       final batch = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
       if (batch.isEmpty) break;
       for (final r in batch) {
-        final gid = r['global_id']?.toString();
+        final gid = r[anahtar]?.toString();
         final cid = r['id'];
         if (gid != null && gid.isNotEmpty && cid != null) {
           gidToCloud[gid] = cid is int ? cid : int.parse(cid.toString());
@@ -1279,11 +1282,12 @@ class SupabaseSyncServisi {
     Future<void> cacheHazirla(String parent) async {
       // 1) Lokal: id → global_id (cache'li)
       if (lokalGidCache[parent] == null) {
-        final rows = await localDb.query(parent, columns: ['id', 'global_id']);
+        final anahtar = KolonHaritalama.ebeveynAnahtari(parent);
+        final rows = await localDb.query(parent, columns: ['id', anahtar]);
         final h = <int, String>{};
         for (final r in rows) {
           final id = r['id'] as int?;
-          final gid = r['global_id']?.toString();
+          final gid = r[anahtar]?.toString();
           if (id != null && gid != null && gid.isNotEmpty) h[id] = gid;
         }
         lokalGidCache[parent] = h;
@@ -1366,10 +1370,11 @@ class SupabaseSyncServisi {
     if (gidToCloud == null || gidToCloud.isEmpty) return;
     try {
       final localDb = await Veritabani().db;
-      final localRows = await localDb.query(tablo, columns: ['id', 'global_id']);
+      final anahtar = KolonHaritalama.ebeveynAnahtari(tablo);
+      final localRows = await localDb.query(tablo, columns: ['id', anahtar]);
       final harita = <int, int>{};
       for (final lr in localRows) {
-        final gid = lr['global_id']?.toString();
+        final gid = lr[anahtar]?.toString();
         if (gid == null) continue;
         final cloudId = gidToCloud[gid];
         final localId = lr['id'] as int?;

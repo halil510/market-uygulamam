@@ -6,6 +6,7 @@
 // terminale sunucu yeni numara bloğu vermez — bkz.
 // supabase_terminal_aktif_kontrolu.sql).
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:intl/intl.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -46,7 +47,7 @@ class _TerminallerEkraniState extends State<TerminallerEkrani> {
         _yukleniyor = false;
       });
     } catch (e) {
-      if (mounted) setState(() { _hata = '$e'; _yukleniyor = false; });
+      if (mounted) setState(() { _hata = kullaniciyaHataMetni(e); _yukleniyor = false; });
     }
   }
 

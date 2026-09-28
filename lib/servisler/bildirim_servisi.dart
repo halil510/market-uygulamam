@@ -1,6 +1,7 @@
 // lib/servisler/bildirim_servisi.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../cekirdek/utils/hata_utils.dart';
 
 class BildirimServisi {
   static final BildirimServisi _instance = BildirimServisi._internal();
@@ -29,6 +30,8 @@ class BildirimServisi {
   }
 
   static void hata(BuildContext context, String mesaj) {
+    // Ham teknik hata (ağ/Exception) kullanıcıya anlaşılır metinle gösterilir.
+    mesaj = bildirimMetniniSadelestir(mesaj);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(children: [
@@ -45,6 +48,8 @@ class BildirimServisi {
   }
 
   static void uyari(BuildContext context, String mesaj) {
+    // Ham teknik hata (ağ/Exception) kullanıcıya anlaşılır metinle gösterilir.
+    mesaj = bildirimMetniniSadelestir(mesaj);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(children: [

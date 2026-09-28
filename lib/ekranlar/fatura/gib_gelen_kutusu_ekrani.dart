@@ -6,6 +6,7 @@
 // Faturası" kayıtlarından farklı olarak) ve GİB'in yasal olarak
 // zorunlu kıldığı "Uygulama Yanıtı" (Kabul/Red) verilmesini sağlar.
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../servisler/gib_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -54,7 +55,7 @@ class _GibGelenKutusuEkraniState extends State<GibGelenKutusuEkrani> {
       if (!mounted) return;
       setState(() {
         _yukleniyor = false;
-        _hata = 'Gelen kutusu sorgulanamadı: $e';
+        _hata = 'Gelen kutusu sorgulanamadı: ${kullaniciyaHataMetni(e)}';
       });
     }
   }

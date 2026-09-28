@@ -162,6 +162,20 @@ final _dogrulamaRe = RegExp(
     r'zorunlu|gerekli|giriniz|girin|seçiniz|seçin|boş olamaz|geçersiz|en az|hatalı|bulunamadı|zaten',
     caseSensitive: false);
 
+/// Ekranda (metin/uyarı çubuğu olarak) görünen ham hata imzaları —
+/// uygulama hatayı yakalayıp kullanıcıya "Hata: …" diye yazdıysa da bulgu.
+final _ekranHataRe = RegExp(
+    r'Exception|Error:|SqfliteFfiException|DatabaseException|Null check operator|'
+    r'no such (table|column)|is not a subtype of|Bad state:|RangeError|NoSuchMethodError|'
+    r'constraint failed|bir şeyler ters gitti');
+
+/// Robotun asla basmadığı ikonlar (sil, çıkış, temizle…).
+final _yikiciIkonlar = <IconData>{
+  Icons.delete, Icons.delete_forever, Icons.delete_outline, Icons.delete_sweep,
+  Icons.logout, Icons.power_settings_new, Icons.clear_all, Icons.restore,
+  Icons.cloud_upload, Icons.cloud_download, Icons.backup, Icons.block,
+};
+
 /// Uygulamanın başarı bildirimleri (kayıt güncellendi / işlem tamam).
 final _basariRe = RegExp(r'kaydedildi|eklendi|oluşturuldu|güncellendi|tamamlandı|başarı',
     caseSensitive: false);
@@ -346,6 +360,28 @@ void main() {
       }
     }
 
+    /// Buton/öğe sil-çıkış-temizle gibi yıkıcı bir ikon taşıyor mu?
+    bool yikiciIkonluMu(Element e) => find
+        .descendant(of: find.byWidget(e.widget), matching: find.byType(Icon))
+        .evaluate()
+        .any((i) => _yikiciIkonlar.contains((i.widget as Icon).icon));
+
+    /// Ekranda görünen ham hata metinlerini (uygulamanın yakalayıp
+    /// gösterdiği) bulgu olarak ekler.
+    void ekranHataMetni(String asama) {
+      final metinler = find
+          .byWidgetPredicate((w) => w is Text && _ekranHataRe.hasMatch(w.data ?? ''))
+          .evaluate()
+          .map((e) => ((e.widget as Text).data ?? '').trim().split('\n').first)
+          .toSet();
+      for (final m in metinler.take(3)) {
+        final kisa = m.length > 160 ? '${m.substring(0, 160)}…' : m;
+        bulgular.add(_Bulgu(aktifRota,
+            m.contains('MissingPluginException') ? 'ortam' : 'ekranda-hata',
+            '$asama: "$kisa"'));
+      }
+    }
+
     /// İzinli ilk işlem butonu (etkin, görünen, yasak listesinde olmayan).
     (Finder, String)? islemButonu() {
       final adaylar = find.byWidgetPredicate((w) =>
@@ -354,7 +390,7 @@ void main() {
       for (var i = 0; i < adaylar.evaluate().length; i++) {
         final e = adaylar.evaluate().elementAt(i);
         final m = butonMetni(e);
-        if (m.isEmpty || _yasakRe.hasMatch(m)) continue;
+        if (m.isEmpty || _yasakRe.hasMatch(m) || yikiciIkonluMu(e)) continue;
         if (_kaydetRe.hasMatch(m) || _islemRe.hasMatch(m)) return (adaylar.at(i), m);
       }
       return null;
@@ -492,6 +528,8 @@ void main() {
     }
 
     final gezilen = <String, String>{}; // rota → sonuç özeti
+    final acilisMs = <String, int>{};   // rota → açılış süresi (gerçek saat)
+    var kaydirma = 0;
     // Ekranların arka planda fırlattığı (yakalanmamış) hatalar da bulgu olur,
     // testi düşürmez.
     await runZonedGuarded(() async {
@@ -513,6 +551,7 @@ void main() {
       // ignore: avoid_print
       print('🤖 $yol');
       final once = bulgular.length;
+      final kronometre = Stopwatch()..start();
       try {
         // Gerçek kullanımdaki gibi ana sayfanın ÜSTÜNE aç: ekran kaydedip
         // kendini kapattığında (pop) altında bir sayfa bulunsun. Doğrudan
@@ -526,6 +565,8 @@ void main() {
           router.go(yol);
         }
         await bekle();
+        acilisMs[yol] = kronometre.elapsedMilliseconds;
+        ekranHataMetni('açılış');
         // push'ta uri alttaki sayfayı gösterir; en üstteki eşleşmeye bak.
         final yapi = router.routerDelegate.currentConfiguration;
         final varilan = yapi.isEmpty ? yapi.uri.path : Uri.parse(yapi.last.matchedLocation).path;
@@ -557,6 +598,7 @@ void main() {
         // ── 1) Ekranın kendi formu: doldur → Kaydet ──────────────────────
         final sayimOnce = await tabloSayilari();
         var (doldurulan, basildi) = await formuDoldurVeKaydet();
+        if (basildi.isNotEmpty) ekranHataMetni('"$basildi" sonrası');
         var yazilan = artanlar(sayimOnce, await tabloSayilari());
         // Ekleme ekranında Kaydet'e basıldı ama hiçbir tabloya satır
         // eklenmediyse: sessizce kaydetmeyen form ya da robotun
@@ -585,6 +627,7 @@ void main() {
             // + düğmesi kamera tarayıcı açtıysa kapat.
             pencereKapat(find.byType(MobileScanner));
             final (d2, b2) = await formuDoldurVeKaydet();
+            ekranHataMetni('+ ${b2.isEmpty ? 'açılışı' : '"$b2" sonrası'}');
             final y2 = artanlar(onceArti, await tabloSayilari());
             arti = b2.isEmpty ? '+ açıldı (alan:$d2, kaydet yok)' : '+ "$b2" → ${y2.isEmpty ? 'KAYIT YOK' : y2}';
             final neden2 = dogrulamaMesajlari();
@@ -702,6 +745,25 @@ void main() {
             await bekle(6);
             cip++;
           }
+          if (sekme > 0 || cip > 0) ekranHataMetni('sekme/filtre');
+
+          // Uzun listelerin altı: aşağı kaydır (tembel oluşturulan satırlar
+          // da çizilsin), sonra başa dön.
+          final kaydirilabilir = find.byType(Scrollable).hitTestable();
+          if (kaydirilabilir.evaluate().isNotEmpty) {
+            for (var i = 0; i < 3; i++) {
+              await tester.drag(kaydirilabilir.first, const Offset(0, -400), warnIfMissed: false);
+              await bekle(4);
+            }
+            ekranHataMetni('kaydırma');
+            for (var i = 0; i < 3; i++) {
+              if (find.byType(Scrollable).hitTestable().evaluate().isEmpty) break;
+              await tester.drag(find.byType(Scrollable).hitTestable().first,
+                  const Offset(0, 400), warnIfMissed: false);
+              await bekle(4);
+            }
+            kaydirma++;
+          }
         }
 
         // ── 4) Listedeki ilk kayda dokun (detay / düzenleme açılsın) ──────
@@ -711,11 +773,12 @@ void main() {
               w is ListTile && w.onTap != null && w.enabled).hitTestable();
           for (final e in kayitlar.evaluate().take(6)) {
             final m = butonMetni(e);
-            if (m.isEmpty || _yasakRe.hasMatch(m)) continue;
+            if (m.isEmpty || _yasakRe.hasMatch(m) || yikiciIkonluMu(e)) continue;
             final onceki = ustRota();
             await tester.tap(find.byWidget(e.widget).first, warnIfMissed: false);
             await bekle(12);
             detay = ustRota() != onceki ? 'kayıt açıldı: "${m.split(' ').take(4).join(' ')}"' : '';
+            ekranHataMetni('kayıt detayı');
             break;
           }
         }
@@ -785,11 +848,13 @@ void main() {
     FlutterError.onError = eskiOnError;
 
     // ── Rapor ──────────────────────────────────────────────────────────────
-    final gercek = bulgular.where((b) => b.tur == 'HATA').toList();
+    final gercek = bulgular.where((b) => b.tur == 'HATA' || b.tur == 'ekranda-hata').toList();
     final sb = StringBuffer()
       ..writeln('# Uygulama Robotu Raporu — ${DateTime.now()}')
       ..writeln()
-      ..writeln('Gezilen ekran: ${gezilen.length} · HATA: ${gercek.length} · '
+      ..writeln('Gezilen ekran: ${gezilen.length} · HATA: ${gercek.length} '
+          '(ekranda yazılı hata: ${bulgular.where((b) => b.tur == 'ekranda-hata').length}) · '
+          'kaydırılan ekran: $kaydirma · '
           'kayıt oluşmayan: ${bulgular.where((b) => b.tur == 'kayıtsız').length} · '
           'kayıt yazılan: ${gezilen.values.where((s) => RegExp(r'→ [a-z_]+\+').hasMatch(s)).length} · '
           'taşma: ${bulgular.where((b) => b.tur == 'taşma').length} · '
@@ -808,7 +873,11 @@ void main() {
       if (!gorulen.add(anahtar)) continue;
       sb.writeln('| ${b.rota} | ${b.tur} | ${b.mesaj.replaceAll('|', '/')} |');
     }
+    final yavaslar = acilisMs.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     sb
+      ..writeln()
+      ..writeln('## En yavaş açılan 5 ekran (gerçek süre, veritabanı sorguları dahil)')
+      ..writeAll(yavaslar.take(5).map((e) => '- ${e.key}: ${e.value} ms\n'))
       ..writeln()
       ..writeln('## Ekranlar')
       ..writeln('| Ekran | Sonuç |')

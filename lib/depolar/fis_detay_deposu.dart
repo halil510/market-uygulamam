@@ -5,6 +5,7 @@
 // repository katmanını atlıyordu). Fiş tipine göre (Satış/İade/Alım/
 // diğer cari hareketi) doğru tablolardan fiş başlığını ve kalemlerini
 // okuyan mantık BİREBİR buraya taşındı — DAVRANIŞ DEĞİŞMEDİ.
+import 'package:sqflite/sqflite.dart';
 import '../veri/database/veritabani.dart';
 
 class FisDetaySonucu {
@@ -14,11 +15,17 @@ class FisDetaySonucu {
 }
 
 class FisDetayDeposu {
+  // Testlerde gerçek şemayla kurulan bellek-içi veritabanının enjekte
+  // edilebilmesi için opsiyonel; verilmezse üretimde tekil Veritabani().db
+  // kullanılır (davranış değişmedi).
+  final Database? _db;
+  FisDetayDeposu({Database? db}) : _db = db;
+
   Future<FisDetaySonucu> getir({
     required int fisId,
     required String fisTipi,
   }) async {
-    final db = await Veritabani().db;
+    final db = _db ?? await Veritabani().db;
 
     // "Toptan Satış" ve "Toptan Satış (Sipariş)"/"Masa Satış" fişleri de
     // tam olarak aynı satislar/satis_kalem tablolarını kullanır.

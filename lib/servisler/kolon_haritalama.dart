@@ -343,12 +343,25 @@ class KolonHaritalama {
   /// sonuç verebiliyordu. Artık buluta giden damga her zaman gerçek UTC.
   /// Sadece last_updated'e uygulanır: tarih gibi iş alanları duvar-saati
   /// olarak tutulmaya devam eder (cihazlar arası gösterim tutarlı kalsın).
+  ///
+  /// 🔴 DÜZELTME (2026-09-28, bulut kontrolü): SQLite'ın CURRENT_TIMESTAMP /
+  /// datetime('now') değerleri ("2026-09-28 09:26:48" — BOŞLUKLU) zaten UTC'dir
+  /// ama dilimsiz olduğu için yerel sanılıp 3 saat daha geri kaydırılıyordu
+  /// (satislar/cari/masa… DEFAULT CURRENT_TIMESTAMP). Dart'ın yazdığı yerel
+  /// damgalar her zaman 'T' ayraçlı — boşluklu biçim güvenle UTC sayılır.
   static String? utcDamga(dynamic v) {
     if (v == null) return null;
     if (v is DateTime) return v.toUtc().toIso8601String();
-    final t = DateTime.tryParse(v.toString());
+    final s = v.toString().trim();
+    if (_sqliteUtcBicimi.hasMatch(s)) {
+      return DateTime.tryParse('${s.replaceFirst(' ', 'T')}Z')?.toIso8601String();
+    }
+    final t = DateTime.tryParse(s);
     return t?.toUtc().toIso8601String();
   }
+
+  static final _sqliteUtcBicimi =
+      RegExp(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$');
 
   static Map<String,dynamic> terseCevir(Map<String,dynamic> bulut) {
     final m = <String,dynamic>{};

@@ -12,7 +12,6 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../widgetlar/ortak/yukleniyor_widget.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
-import '../../servisler/gib_servisi.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../depolar/bekleyen_siparis_deposu.dart';
 import '../../servisler/excel_servisi.dart';
@@ -412,29 +411,6 @@ class _CariKart extends ConsumerWidget {
   final CariModel cari; final VoidCallback onSil;
   const _CariKart({required this.cari, required this.onSil});
 
-  Future<void> _mukellefSorgula(BuildContext context, WidgetRef ref) async {
-    final vknTckn = (cari.vergiNo?.trim().isNotEmpty ?? false)
-        ? cari.vergiNo!.trim()
-        : cari.tcKimlik?.trim();
-    if (vknTckn == null || vknTckn.isEmpty || cari.id == null) return;
-
-    BildirimServisi.bilgi(context, 'GİB\'de sorgulanıyor...');
-    final sonuc = await GibServisi().mukellefSorgula(vknTckn);
-    if (!context.mounted) return;
-
-    if (sonuc == null) {
-      BildirimServisi.uyari(context,
-          'Sorgu yapılamadı — entegratör ayarlarını (Ayarlar > GİB E-Fatura) kontrol edin.');
-      return;
-    }
-    await CariDeposu().mukellefDurumuGuncelle(cari.id!, sonuc);
-    ref.invalidate(carilerProvider);
-    if (context.mounted) {
-      BildirimServisi.basari(context,
-          sonuc == 'efatura' ? '✅ e-Fatura mükellefi' : 'ℹ️ e-Arşiv kesilmeli (GİB\'de kayıtlı değil)');
-    }
-  }
-
   // NOT: getter'dan metoda çevrildi — gövdesi context.textSecondary
   // kullanıyor, ama _CariKart bir ConsumerWidget (State değil), bu yüzden
   // getter'ın context'e erişimi yok. Çağrı yerlerinin hepsi build() içinde.
@@ -451,29 +427,6 @@ class _CariKart extends ConsumerWidget {
     if (mst) return cari.bakiye > 0 ? 'Alacak' : 'Fazla Ödedi';
     return cari.bakiye < 0 ? 'Borç' : 'Fazla Ödedik';
   }
-
-  // ÖNCEDEN BURADA CİDDİ BİR UYUMLULUK HATASI VARDI: rozet, "VKN(10 hane)
-  // varsa = e-Fatura mükellefi" diye TAHMİN ediyordu (kod yorumunda bile
-  // "GİB'e canlı sorgu yapılmaz" yazıyordu). Bu YANLIŞ bir varsayımdı —
-  // 10 haneli VKN'ye sahip OLMAK, o firmanın e-Fatura'ya KAYITLI olduğu
-  // anlamına gelmez; birçok küçük firma VKN'si olsa da e-Fatura
-  // mükellefi DEĞİLDİR ve yasal olarak e-Arşiv alması gerekir. Bu yanlış
-  // tahmine güvenerek yanlış belge türü (e-Fatura yerine olması gereken
-  // yerde) kesilebilirdi — ciddi bir uyumluluk riski. Artık GERÇEK GİB
-  // sorgusu sonucu (önbelleğe alınmış `cari.mukellefDurumu`) kullanılıyor;
-  // hiç sorgulanmadıysa rozet HİÇ gösterilmiyor (belirsizken tahmin
-  // yürütmüyor).
-  Color? get _eFaturaDurumRengi => switch (cari.mukellefDurumu) {
-    'efatura' => const Color(0xFF2E7D32),
-    'earsiv'  => const Color(0xFF9E9E9E),
-    _ => null,
-  };
-
-  String? get _eFaturaDurumEtiketi => switch (cari.mukellefDurumu) {
-    'efatura' => 'e-Fatura Mükellefi (GİB\'de kayıtlı)',
-    'earsiv'  => 'e-Arşiv Kesilmeli (GİB\'de kayıtlı değil)',
-    _ => null,
-  };
 
   Color get _avatarRenk {
     final tip = cari.cariTipi;
@@ -560,42 +513,16 @@ class _CariKart extends ConsumerWidget {
                 Flexible(child: Text(cari.unvan,
                     style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                     maxLines: 1, overflow: TextOverflow.ellipsis)),
-                if (_eFaturaDurumRengi != null) ...[
+                // Yalnız GİB'de DOĞRULANMIŞ e-Fatura mükellefine küçük
+                // rozet (profesyonel ERP'lerdeki gibi). Müşterilerin çoğu
+                // e-Arşiv olduğundan her kartta etiket kalabalık yaratıyordu;
+                // "Sorgula" çipi de kartın ortasında amblem gibi duruyordu —
+                // sorgulama artık Cari Detay'da (kullanıcı bulgusu 2026-09-28).
+                if (cari.mukellefDurumu == 'efatura') ...[
                   const SizedBox(width: 5),
-                  Tooltip(
-                    message: _eFaturaDurumEtiketi!,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: _eFaturaDurumRengi!.withAlpha(31),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        (_eFaturaDurumRengi == const Color(0xFF2E7D32)) ? 'e-Fatura' : 'e-Arşiv',
-                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: _eFaturaDurumRengi)),
-                    ),
-                  ),
-                ] else if (cari.vergiNo != null || cari.tcKimlik != null) ...[
-                  const SizedBox(width: 5),
-                  Tooltip(
-                    message: 'GİB\'de e-Fatura mükellefi mi diye henüz sorgulanmadı — sorgulamak için dokunun',
-                    child: InkWell(
-                      onTap: () => _mukellefSorgula(context, ref),
-                      borderRadius: BorderRadius.circular(6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: context.borderColor,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.help_outline, size: 10, color: context.textSecondary),
-                          const SizedBox(width: 2),
-                          Text('Sorgula',
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: context.textSecondary)),
-                        ]),
-                      ),
-                    ),
+                  const Tooltip(
+                    message: 'e-Fatura mükellefi (GİB\'de kayıtlı)',
+                    child: Icon(Icons.verified, size: 15, color: Color(0xFF2E7D32)),
                   ),
                 ],
               ]),

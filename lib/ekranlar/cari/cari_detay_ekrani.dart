@@ -12,6 +12,7 @@ import '../../modeller/cari_hareket_model.dart';
 import '../../modeller/fatura_model.dart';
 import '../../depolar/satis_deposu.dart';
 import '../../servisler/faturalandirma_servisi.dart';
+import '../../servisler/gib_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
@@ -813,39 +814,90 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
     );
   }
 
-  /// VKN (10 hane) → e-Fatura mükellefi (kurumsal), TC (11 hane) → e-Arşiv (bireysel).
-  /// GİB canlı sorgusu yapılmaz; format bazlı tahmindir, tooltip'te belirtilir.
+  /// e-Fatura / e-Arşiv durumu — YALNIZ gerçek GİB sorgusunun sonucu
+  /// (`cari.mukellefDurumu`).
+  ///
+  /// 🔴 DÜZELTME (kullanıcı bulgusu 2026-09-28 — "rastgele TC girdim
+  /// e-Fatura yazdı"): önceden numaranın hane sayısından TAHMİN ediliyordu
+  /// (10 hane → e-Fatura, 11 hane → e-Arşiv). İkisi de yanlış olabilir: VKN'si
+  /// olan birçok firma e-Fatura mükellefi değildir, TC ile kayıtlı şahıs
+  /// şirketleri ise e-Fatura mükellefi olabilir. Cari Listesi zaten gerçek
+  /// sonucu kullanıyordu; iki ekran çelişiyordu. Sorgulanmamışsa "bilinmiyor"
+  /// yazılır ve buradan GİB'e sorulabilir.
   Widget _eFaturaRozeti(CariModel c) {
-    final vkn = c.vergiNo?.trim();
-    final tc  = c.tcKimlik?.trim();
-    String etiket; IconData ikon; Color renk;
-    if (vkn != null && vkn.length == 10) {
-      etiket = 'e-Fatura'; ikon = Icons.verified_outlined; renk = const Color(0xFF2E7D32);
-    } else if (tc != null && tc.length == 11) {
-      etiket = 'e-Arşiv'; ikon = Icons.description_outlined; renk = const Color(0xFF1565C0);
-    } else {
-      return const SizedBox.shrink();
-    }
+    final numara = (c.vergiNo?.trim().isNotEmpty ?? false) ? c.vergiNo!.trim() : c.tcKimlik?.trim();
+    if (numara == null || numara.isEmpty) return const SizedBox.shrink();
+
+    final (String etiket, IconData ikon, Color renk, String aciklama) = switch (c.mukellefDurumu) {
+      'efatura' => ('e-Fatura mükellefi', Icons.verified_outlined, const Color(0xFF2E7D32),
+          'GİB e-Fatura kayıtlı kullanıcı listesinde bulundu — faturası e-Fatura olarak kesilir.'),
+      'earsiv' => ('e-Arşiv', Icons.receipt_long_outlined, const Color(0xFF1565C0),
+          'GİB e-Fatura listesinde kayıtlı değil — faturası e-Arşiv olarak kesilir.'),
+      _ => ('Mükellefiyet bilinmiyor · Sorgula', Icons.help_outline, TsRenk.metinIkincil(context),
+          'Bu carinin e-Fatura mükellefi olup olmadığı henüz GİB\'den sorgulanmadı. '
+          'Sorgulamak için dokunun.'),
+    };
+    final sorgu = c.mukellefSorguTarihi == null
+        ? ''
+        : '\nSon sorgu: ${DateTime.tryParse(c.mukellefSorguTarihi!)?.toLocal().toString().substring(0, 16) ?? c.mukellefSorguTarihi}';
     return Tooltip(
-      message: vkn != null && vkn.length == 10
-          ? 'VKN (10 hane) — Kurumsal mükellef. Fatura kesilirken e-Fatura olarak '
-            'düzenlenir (GİB üzerinden gerçek mükellefiyet teyidi yapılmaz).'
-          : 'TC Kimlik No (11 hane) — Bireysel müşteri. Fatura kesilirken '
-            'e-Arşiv Fatura olarak düzenlenir.',
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-        decoration: BoxDecoration(
-          color: Color.fromARGB(40, renk.red, renk.green, renk.blue),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Color.fromARGB(90, renk.red, renk.green, renk.blue)),
+      message: '$aciklama$sorgu',
+      child: InkWell(
+        onTap: _mukellefSorguluyor ? null : () => _mukellefSorgula(c, numara),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+          decoration: BoxDecoration(
+            color: renk.withAlpha(28),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: renk.withAlpha(90)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            _mukellefSorguluyor
+                ? SizedBox(width: 12, height: 12,
+                    child: CircularProgressIndicator(strokeWidth: 1.5, color: renk))
+                : Icon(ikon, size: 13, color: renk),
+            const SizedBox(width: 3),
+            Text(etiket, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: renk)),
+          ]),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(ikon, size: 13, color: renk),
-          const SizedBox(width: 3),
-          Text(etiket, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: renk)),
-        ]),
       ),
     );
+  }
+
+  bool _mukellefSorguluyor = false;
+
+  /// GİB (entegratör) üzerinden e-Fatura mükellefiyetini sorgular ve sonucu
+  /// cariye kaydeder. Entegratör ayarlı değilse açıkça söyler — tahmin YAPMAZ.
+  Future<void> _mukellefSorgula(CariModel c, String numara) async {
+    if (c.id == null) return;
+    setState(() => _mukellefSorguluyor = true);
+    try {
+      final gib = GibServisi();
+      await gib.ayarlariYukle();
+      if (!gib.ayarliMi) {
+        if (mounted) {
+          BildirimServisi.uyari(context,
+              'GİB sorgusu için önce Ayarlar > GİB E-Fatura\'da entegratör bilgilerini girin.');
+        }
+        return;
+      }
+      final sonuc = await gib.mukellefSorgula(numara);
+      if (!mounted) return;
+      if (sonuc == null) {
+        BildirimServisi.uyari(context, 'GİB\'den yanıt alınamadı — daha sonra tekrar deneyin.');
+        return;
+      }
+      await CariDeposu().mukellefDurumuGuncelle(c.id!, sonuc);
+      ref.invalidate(cariDetayProvider(c.id!));
+      ref.invalidate(carilerProvider);
+      if (mounted) {
+        BildirimServisi.basari(context,
+            sonuc == 'efatura' ? 'e-Fatura mükellefi ✓' : 'e-Fatura listesinde yok — e-Arşiv kesilir');
+      }
+    } finally {
+      if (mounted) setState(() => _mukellefSorguluyor = false);
+    }
   }
 
   Widget _bilgiTab(BuildContext ctx, CariModel c) => ListView(

@@ -25,6 +25,8 @@ import '../../veri/database/veritabani.dart';
 import '../log_servisi.dart';
 import '../supabase_sync_servisi.dart';
 import 'bulut_manager.dart';
+import 'supabase_ayarlari.dart';
+import 'supabase_oturum.dart';
 
 class OtomatikBulutCekme with WidgetsBindingObserver {
   static final OtomatikBulutCekme _instance = OtomatikBulutCekme._();
@@ -114,6 +116,10 @@ class OtomatikBulutCekme with WidgetsBindingObserver {
     if (durum == BulutDurum.yapilandirilmamis) return null;
     _calisiyor = true;
     try {
+      // Herkese açık anahtar + giriş yapılmamış/oturum düşmüş: buluttan
+      // okuma izni yok, boşuna 401 üretme.
+      final key = await SupabaseAyarlari.keyOku();
+      if (key == null || !SupabaseOturum.gonderimeHazir(key)) return null;
       final baglanti = await Connectivity().checkConnectivity();
       if (baglanti.every((b) => b == ConnectivityResult.none)) return null;
 

@@ -9,6 +9,7 @@
 // üzerinden yerel masa siparişine dönüştürür — böylece sipariş
 // otomatik olarak masaya düşer, personel Supabase panelini hiç
 // açmak zorunda kalmaz.
+import '../bulut/supabase_oturum.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -74,7 +75,7 @@ class QrSiparisCekiciServisi {
 
       final yanit = await http.get(
         Uri.parse('$url/rest/v1/qr_siparisler?islendi=eq.false&select=*'),
-        headers: {'apikey': key, 'Authorization': 'Bearer $key'},
+        headers: {'apikey': key, 'Authorization': 'Bearer ${SupabaseOturum.bearer(key)}'},
       ).timeout(const Duration(seconds: 10));
 
       if (yanit.statusCode != 200) return;
@@ -88,7 +89,7 @@ class QrSiparisCekiciServisi {
           final sahiplenmeYaniti = await http.patch(
             Uri.parse('$url/rest/v1/qr_siparisler?id=eq.${s['id']}&islendi=eq.false'),
             headers: {
-              'apikey': key, 'Authorization': 'Bearer $key',
+              'apikey': key, 'Authorization': 'Bearer ${SupabaseOturum.bearer(key)}',
               'Content-Type': 'application/json',
               'Prefer': 'return=representation',
             },

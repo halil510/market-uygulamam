@@ -7,6 +7,7 @@
 // erişilemez bir konumdu. Bu servis, kaydedilen görseli Supabase
 // Storage'a (bulut) yükleyip, sonucunda oluşan HERKESE AÇIK adresi
 // döndürüyor — bu adres "resim_url" sütununda saklanıyor.
+import '../bulut/supabase_oturum.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -41,7 +42,7 @@ class UrunResimYuklemeServisi {
         Uri.parse('$url/storage/v1/object/$_bucket/$dosyaAdi'),
         headers: {
           'apikey': key,
-          'Authorization': 'Bearer $key',
+          'Authorization': 'Bearer ${SupabaseOturum.bearer(key)}',
           'Content-Type': _mimeTuru(uzanti),
           'x-upsert': 'true', // aynı ürün tekrar yüklenirse üzerine yazsın
         },

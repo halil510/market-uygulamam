@@ -1,4 +1,5 @@
 // lib/servisler/bulut/supabase_saglayici.dart
+import 'supabase_oturum.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
@@ -175,7 +176,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
 
   Map<String,String> get _h => {
     'apikey': key,
-    'Authorization': 'Bearer $key',
+    'Authorization': 'Bearer ${SupabaseOturum.bearer(key)}',
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };

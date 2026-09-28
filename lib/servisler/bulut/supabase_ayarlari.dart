@@ -12,6 +12,7 @@
 // otomatik güvenli depoya taşınıp SharedPreferences'tan silinir.
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'supabase_oturum.dart';
 
 class SupabaseAyarlari {
   static const _secure = FlutterSecureStorage();
@@ -54,7 +55,18 @@ class SupabaseAyarlari {
     return _secure.read(key: _kUrl);
   }
 
+  /// İstek atmadan önce çağrılan anahtar okuma. İşletme hesabıyla giriş
+  /// yapılmışsa oturum (erişim anahtarı) süresi dolmadan burada yenilenir —
+  /// böylece tüm bulut istek noktaları tek yerden kapsanır. Başlıkta
+  /// `Authorization: Bearer ${SupabaseOturum.bearer(key)}` kullanılmalı.
   static Future<String?> keyOku() async {
+    await SupabaseOturum().tazele();
+    return hamKeyOku();
+  }
+
+  /// Oturum yenilemesi YAPMADAN kayıtlı anahtar (SupabaseOturum'un kendisi
+  /// kullanır — keyOku'yu çağırsa kendi yenilemesini beklerdi).
+  static Future<String?> hamKeyOku() async {
     await _eskiDegerleriTasi();
     return _secure.read(key: _kKey);
   }

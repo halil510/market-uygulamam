@@ -21,6 +21,7 @@
 // yeniden deneniyor, sadece deneme_sayisi/hata_mesaji görünürlük için
 // güncelleniyor.
 // ─────────────────────────────────────────────────────────────────────────────
+import 'supabase_oturum.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -419,6 +420,18 @@ class BulutManager {
   Future<void> _isle() async {
     if (_gonderiliyor || _saglayici == null) return;
     _gonderiliyor = true;
+    // İşletme hesabı oturumu: erişim anahtarı süresi dolmadan yenilensin
+    // (sağlayıcının başlıkları SupabaseOturum.bearer ile bunu okur).
+    await SupabaseOturum().tazele();
+    // Gizli anahtar yok ve geçerli oturum da yoksa (henüz giriş yapılmamış
+    // ya da oturum düşmüş) bu tur GÖNDERME — kayıtlar kuyrukta bekler.
+    // Herkese açık anahtarla gönderim 401 alıp satırları kalıcı hataya
+    // düşürürdü.
+    final s = _saglayici;
+    if (s is SupabaseSaglayici && !SupabaseOturum.gonderimeHazir(s.key)) {
+      _gonderiliyor = false;
+      return;
+    }
 
     int toplamBasarili = 0, toplamHata = 0;
     var isYapildiMi = false;

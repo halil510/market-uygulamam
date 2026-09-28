@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../servisler/supabase_sync_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
 import '../../servisler/bulut/otomatik_bulut_cekme.dart';
+import '../../servisler/bulut/supabase_oturum.dart';
 import '../../veri/database/veritabani.dart';
 import '../../servisler/senkron_sonrasi_mutabakat.dart';
 import '../../servisler/bildirim_servisi.dart';
@@ -191,6 +192,8 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
   void dispose() {
     _urlCtrl.dispose();
     _keyCtrl.dispose();
+    _epostaCtrl.dispose();
+    _sifreCtrl.dispose();
     _qrMenuUrlCtrl.dispose();
     super.dispose();
   }
@@ -219,6 +222,17 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
       return;
     }
     setState(() => _kayitYukleniyor = true);
+    // Herkese açık anahtarla, işletme hesabına giriş yapılmadan önce
+    // bağlantı testi (güvenlik kuralları gereği) 401 döner — adres/anahtar
+    // test edilmeden kaydedilir, test girişten sonra yapılır.
+    if (!SupabaseOturum.gizliAnahtarMi(key) && !SupabaseOturum().girisli) {
+      await SupabaseSyncServisi.ayarlariKaydet(url, key);
+      if (!mounted) return;
+      setState(() => _kayitYukleniyor = false);
+      _snack('Adres ve anahtar kaydedildi ✓ — şimdi aşağıdan işletme hesabıyla giriş yapın.',
+          Colors.green);
+      return;
+    }
     final test = await SupabaseSyncServisi.baglantiTest(url: url, key: key);
     if (!test.basarili) {
       if (!mounted) return;
@@ -237,13 +251,10 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
     // açıkken uygulamada herkese-açık (publishable) anahtar kalırsa
     // TÜM senkron 401 ile reddedilir — ve bunu fark etmek zordu.
     // Artık anahtar tipine göre anında bilgi veriliyor.
-    if (key.startsWith('sb_secret_')) {
-      _snack('Secret anahtar kaydedildi ✓ — tam yetkili senkron aktif', Colors.green);
-    } else if (key.startsWith('sb_publishable_') || key.startsWith('eyJ')) {
-      _snack('⚠️ Bu HERKESE AÇIK (publishable) anahtar. Güvenlik kilidi '
-          'kuruluysa senkron 401 hatası verir — Supabase → Settings → '
-          'API Keys sayfasından sb_secret_ ile başlayan anahtarı girin.',
-          Colors.orange);
+    if (SupabaseOturum.gizliAnahtarMi(key)) {
+      _snack('⚠️ Tam yetkili GİZLİ anahtar kaydedildi — senkron çalışır ama '
+          'cihazda tutulması güvensiz. Herkese açık (sb_publishable_) anahtarı '
+          'girip işletme hesabıyla giriş yapın.', Colors.orange);
     } else {
       _snack('Bağlantı bilgileri kaydedildi ✓', Colors.green);
     }
@@ -253,6 +264,139 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('qr_menu_web_url', _qrMenuUrlCtrl.text.trim());
     if (mounted) _snack('QR Menü adresi kaydedildi ✓', Colors.green);
+  }
+
+  // ── İşletme hesabıyla güvenli giriş (2026-09-28) ─────────────────────────
+  final _epostaCtrl = TextEditingController();
+  final _sifreCtrl = TextEditingController();
+  bool _girisYapiliyor = false;
+
+  Future<void> _girisYap() async {
+    final eposta = _epostaCtrl.text.trim();
+    if (eposta.isEmpty || _sifreCtrl.text.isEmpty) {
+      _snack('E-posta ve şifre girin', Colors.red);
+      return;
+    }
+    setState(() => _girisYapiliyor = true);
+    try {
+      await SupabaseOturum().girisYap(eposta, _sifreCtrl.text);
+      _sifreCtrl.clear();
+      await BulutManager().baslat();
+      // Girişten önce (yetkisiz) denenip kalıcı hataya düşmüş kayıtlar
+      // artık gönderilebilir — kuyruğa geri al.
+      await BulutManager().kaliciHatalariYenidenDene();
+      await _kaliciHatalariYukle();
+      if (!mounted) return;
+      setState(() => _girisYapiliyor = false);
+      _snack('Giriş yapıldı ✓ — bulut bağlantısı işletme hesabıyla güvenli.', Colors.green);
+      _baglantiKontrol();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _girisYapiliyor = false);
+      _snack(e is OturumHatasi ? e.mesaj : 'Giriş yapılamadı: $e', Colors.red);
+    }
+  }
+
+  Future<void> _cikisYap() async {
+    await SupabaseOturum().cikis();
+    if (!mounted) return;
+    setState(() {});
+    _snack('Oturum kapatıldı — cihaz yeniden giriş yapana kadar buluta erişemez.',
+        Colors.orange);
+    _baglantiKontrol();
+  }
+
+  Widget _hesapKarti() {
+    final oturum = SupabaseOturum();
+    final gizli = SupabaseOturum.gizliAnahtarMi(_keyCtrl.text.trim());
+    return TsKart(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [
+          Icon(Icons.verified_user_outlined, size: 20),
+          SizedBox(width: 8),
+          Text('İşletme hesabı (güvenli giriş)',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        ]),
+        const SizedBox(height: 6),
+        if (gizli)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: TsRenk.zemin(TsRenk.uyari),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              'Bu cihazda tam yetkili GİZLİ anahtar kayıtlı. Güvenlik için yukarıya '
+              'herkese açık (sb_publishable_…) anahtarı yazıp kaydedin, sonra işletme '
+              'hesabıyla giriş yapın.',
+              style: TextStyle(fontSize: 12, color: context.textPrimary),
+            ),
+          ),
+        ValueListenableBuilder<bool>(
+          valueListenable: oturum.oturumDustu,
+          builder: (_, dustu, __) => !dustu
+              ? const SizedBox.shrink()
+              : Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text('⚠️ Oturumun süresi doldu veya şifre değişti — yeniden giriş yapın.',
+                      style: TextStyle(fontSize: 12, color: TsRenk.hata)),
+                ),
+        ),
+        if (oturum.girisli) ...[
+          Text('Giriş yapıldı: ${oturum.eposta}',
+              style: TextStyle(fontSize: 13, color: context.textPrimary)),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _cikisYap,
+            icon: const Icon(Icons.logout, size: 16),
+            label: const Text('Oturumu kapat'),
+          ),
+        ] else ...[
+          Text(
+            'Supabase panelinde işletmeniz için açtığınız hesabın e-posta ve şifresi. '
+            'Her cihaz bir kez giriş yapar; kasiyerler yine PIN ile girer.',
+            style: TextStyle(fontSize: 11, color: context.textSecondary),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _epostaCtrl,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              labelText: 'Hesap e-postası',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              prefixIcon: const Icon(Icons.alternate_email, size: 18),
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _sifreCtrl,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: 'Hesap şifresi',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              prefixIcon: const Icon(Icons.lock_outline, size: 18),
+              isDense: true,
+            ),
+            onSubmitted: (_) => _girisYap(),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _girisYapiliyor ? null : _girisYap,
+              icon: _girisYapiliyor
+                  ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.login, size: 18),
+              label: const Text('Giriş yap'),
+            ),
+          ),
+        ],
+      ]),
+    );
   }
 
   Future<void> _baglantiKontrol() async {
@@ -442,7 +586,7 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
                     controller: _keyCtrl,
                     obscureText: _keyGizli,
                     decoration: InputDecoration(
-                      labelText: 'API Key (anon/public)',
+                      labelText: 'API Key (herkese açık — sb_publishable_…)',
                       hintText: 'eyJhbGci... veya sb_publishable_...',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       prefixIcon: const Icon(Icons.key, size: 18),
@@ -580,6 +724,9 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
               ),
               const SizedBox(height: 12),
             ],
+
+            _hesapKarti(),
+            const SizedBox(height: 16),
 
             // SYNC BUTONLARI
             if (_bagliMi == true) ...[

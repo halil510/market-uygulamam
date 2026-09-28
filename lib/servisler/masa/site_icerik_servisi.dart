@@ -9,6 +9,7 @@
 //      (urun_resim_yukleme_servisi ile AYNI kanıtlanmış desen)
 //   2. Adres listesi "site_icerik" tablosunda saklanıyor
 //   3. Web sitesi açılışta bu listeyi çekip galeriyi kendisi kuruyor
+import '../bulut/supabase_oturum.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -38,7 +39,7 @@ class SiteIcerikServisi {
 
   Map<String, String> _h(String key, {String? contentType}) => {
         'apikey': key,
-        'Authorization': 'Bearer $key',
+        'Authorization': 'Bearer ${SupabaseOturum.bearer(key)}',
         if (contentType != null) 'Content-Type': contentType,
       };
 

@@ -10,6 +10,7 @@
 --   5) supabase_fatura_blok_tahsis_yetki_kisitla.sql    → BÖLÜM D
 --   6) supabase_rls_sertlestirme.sql                    → BÖLÜM E
 --   7) supabase_arsiv_plani.sql                         → BÖLÜM F
+--   (2026-09-28) İşletme hesabıyla güvenli giriş        → BÖLÜM G
 --
 -- KULLANIM: Dosyanın TAMAMINI SQL Editor'e yapıştırıp çalıştırın. Her bölüm
 -- "IF NOT EXISTS / CREATE OR REPLACE / DROP ... IF EXISTS" ile yazıldığı için
@@ -30,6 +31,8 @@
 --
 -- ⚠️ Bölüm E öncesi: uygulamada kayıtlı anahtarın "sb_secret_" (service_role)
 -- olduğundan emin olun — ayrıntı Bölüm E başlığında.
+-- ⚠️ 2026-09-28: Bölüm G ile cihazlar işletme hesabıyla giriş yapar; Bölüm G
+-- başlığındaki panel adımlarını (kayıt kapatma, kullanıcı ekleme) önce yapın.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -4493,5 +4496,173 @@ END $$;
 -- DELETE FROM kasa_hareketleri WHERE sube_id = :p_sube_id AND tarih >= :p_baslangic AND tarih <= :p_bitis;
 -- DELETE FROM cari_hareket WHERE tarih >= :p_baslangic AND tarih <= :p_bitis;
 -- DELETE FROM banka_hareketler WHERE tarih >= :p_baslangic AND tarih <= :p_bitis;
+
+-- ###########################################################################
+-- BÖLÜM G — İŞLETME HESABIYLA GÜVENLİ GİRİŞ (Supabase Auth + izin listesi)
+-- 2026-09-28 — bu bölüm TEK BAŞINA da çalıştırılabilir.
+-- ###########################################################################
+--
+-- AMAÇ: cihazlarda tam yetkili gizli anahtar (sb_secret_ / service_role —
+-- RLS'i tamamen atlar) kalmasın. Uygulama artık işletme hesabının
+-- e-posta/şifresiyle giriş yapıp kısa ömürlü erişim anahtarı (JWT) kullanır.
+-- Buluttaki veriye YALNIZCA aşağıdaki izin listesine eklenen hesaplar erişir.
+--
+-- ⚠️ ÇALIŞTIRMADAN ÖNCE (Supabase panelinde):
+--   1) Authentication → Sign In / Providers → "Allow new users to sign up"
+--      KAPATIN. (Herkese açık anahtar QR menü sayfasında görünür; kayıt açık
+--      kalırsa herkes hesap açabilir. İzin listesi yine korur ama kapatın.)
+--   2) Authentication → Users → "Add user" → e-posta + şifre, "Auto Confirm
+--      User" işaretli. İşletme için bir hesap (isterseniz kasa başına bir).
+--
+-- SIRA GÜVENLİDİR: bu bölüm çalıştıktan sonra gizli anahtarla çalışan eski
+-- cihazlar ÇALIŞMAYA DEVAM EDER (service_role kuralları atlar). Cihazları
+-- tek tek herkese açık anahtar + işletme hesabına geçirin; HEPSİ geçince
+-- Settings → API Keys'ten gizli anahtarı iptal edin (roll/revoke).
+-- ###########################################################################
+
+BEGIN;
+
+-- ── G1. İzin listesi ─────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.bulut_yetkili_hesaplar (
+  user_id    UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  aciklama   TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- Politika YOK: yalnız SQL Editor / service_role değiştirebilir. Uygulama
+-- bu tabloya hiç erişmez; kontrol aşağıdaki SECURITY DEFINER fonksiyonla.
+ALTER TABLE public.bulut_yetkili_hesaplar ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.bulut_yetkili_mi() RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $
+  SELECT EXISTS (SELECT 1 FROM public.bulut_yetkili_hesaplar WHERE user_id = auth.uid());
+$;
+REVOKE ALL ON FUNCTION public.bulut_yetkili_mi() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.bulut_yetkili_mi() TO anon, authenticated;
+
+-- ── G2. Eski geniş kuralları kaldır, her tabloya "yalnız izinli hesap" ────
+-- Korunan (bilinçli) kurallar — QR menü sayfası (herkese açık anahtar):
+--   urunler_anon_qr_menu_okuyabilir, qr_siparis_anon_ekleyebilir,
+--   site_icerik_anon_okuyabilir.
+-- Diğer TÜM kurallar kaldırılır — ör. Bölüm F'deki arşiv tablolarının
+-- "anon, authenticated USING (true)" okuma kuralı, arşivlenmiş satış/kasa/
+-- cari verisini herkese açık anahtara açıyordu.
+DO $
+DECLARE
+  p RECORD;
+  t RECORD;
+BEGIN
+  FOR p IN
+    SELECT tablename, policyname FROM pg_policies
+    WHERE schemaname = 'public'
+      AND policyname NOT IN ('urunler_anon_qr_menu_okuyabilir',
+                             'qr_siparis_anon_ekleyebilir',
+                             'site_icerik_anon_okuyabilir')
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', p.policyname, p.tablename);
+    RAISE NOTICE 'Kaldırılan kural: %.%', p.tablename, p.policyname;
+  END LOOP;
+
+  FOR t IN
+    SELECT tablename FROM pg_tables
+    WHERE schemaname = 'public' AND tablename <> 'bulut_yetkili_hesaplar'
+  LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t.tablename);
+    EXECUTE format(
+      'CREATE POLICY isletme_hesabi_tam_erisim ON public.%I FOR ALL TO authenticated '
+      'USING (public.bulut_yetkili_mi()) WITH CHECK (public.bulut_yetkili_mi())',
+      t.tablename);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO authenticated',
+                   t.tablename);
+  END LOOP;
+END $;
+
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+
+-- ── G3. Fatura numara bloğu fonksiyonu: yalnız izinli hesap ──────────────
+-- (Bölüm C'deki gövdenin AYNISI + başta izin kontrolü. Bölüm D'de yalnız
+-- service_role'e açılmıştı; artık uygulama işletme hesabıyla çağırıyor.)
+CREATE OR REPLACE FUNCTION fatura_blok_tahsis_et(
+  p_terminal_id  BIGINT,
+  p_seri         TEXT,
+  p_blok_boyutu  INT DEFAULT 10
+) RETURNS TABLE(blok_baslangic BIGINT, blok_bitis BIGINT, yil INT)
+SECURITY DEFINER
+SET search_path = public
+LANGUAGE plpgsql AS $
+#variable_conflict use_column
+DECLARE
+  v_yil INT := EXTRACT(YEAR FROM now())::INT;
+  v_baslangic BIGINT;
+BEGIN
+  -- service_role (gizli anahtar, geçiş dönemi) veya izinli işletme hesabı.
+  IF coalesce(auth.role(), '') <> 'service_role' AND NOT public.bulut_yetkili_mi() THEN
+    RAISE EXCEPTION 'YETKISIZ: bu hesap buluta erişim iznine sahip değil';
+  END IF;
+
+  IF p_blok_boyutu IS NULL OR p_blok_boyutu <= 0 OR p_blok_boyutu > 1000 THEN
+    RAISE EXCEPTION 'Geçersiz blok boyutu: %', p_blok_boyutu;
+  END IF;
+
+  IF p_terminal_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM terminaller t WHERE t.id = p_terminal_id AND t.aktif
+  ) THEN
+    RAISE EXCEPTION 'TERMINAL_PASIF: terminal % pasif veya kayıtlı değil', p_terminal_id;
+  END IF;
+
+  INSERT INTO fatura_seri_sayaclari (belge_tipi, seri, yil, son_tahsis_edilen, last_updated)
+    VALUES ('FATURA', p_seri, v_yil, p_blok_boyutu, now())
+    ON CONFLICT (belge_tipi, seri, yil)
+    DO UPDATE SET
+      son_tahsis_edilen = fatura_seri_sayaclari.son_tahsis_edilen + p_blok_boyutu,
+      last_updated = now()
+    RETURNING son_tahsis_edilen - p_blok_boyutu + 1 INTO v_baslangic;
+
+  INSERT INTO fatura_seri_bloklari
+    (belge_tipi, seri, yil, terminal_id, blok_baslangic, blok_bitis, durum, aktivasyon_zamani)
+    VALUES
+    ('FATURA', p_seri, v_yil, p_terminal_id, v_baslangic, v_baslangic + p_blok_boyutu - 1, 'aktif', now());
+
+  RETURN QUERY SELECT v_baslangic, v_baslangic + p_blok_boyutu - 1, v_yil;
+END;
+$;
+REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM anon;
+GRANT  EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) TO authenticated, service_role;
+
+COMMIT;
+
+-- ── G4. Dosya depolama (ürün resimleri, işyeri fotoğrafları, QR menü) ────
+-- Okuma: bucket'lar "public" ise herkese açık adresle okunur (QR menü
+-- sayfası bunu kullanır) — burada yalnız YAZMA/SİLME izinli hesaba verilir.
+DROP POLICY IF EXISTS isletme_hesabi_depolama ON storage.objects;
+CREATE POLICY isletme_hesabi_depolama ON storage.objects FOR ALL TO authenticated
+  USING (bucket_id IN ('urun-resimleri', 'isyeri-fotograflari', 'menu')
+         AND public.bulut_yetkili_mi())
+  WITH CHECK (bucket_id IN ('urun-resimleri', 'isyeri-fotograflari', 'menu')
+              AND public.bulut_yetkili_mi());
+-- (G4 ayrı çalışır: "must be owner of table objects" hatası verirse yukarıdaki
+--  G1–G3 yine uygulanmış olur; bu kuralı Storage → Policies ekranından ekleyin.)
+
+-- ── G5. İşletme hesabını izin listesine ekleyin (e-postayı değiştirin) ────
+-- Panelde "Add user" ile açtığınız HER hesap için:
+--
+--   INSERT INTO public.bulut_yetkili_hesaplar (user_id, aciklama)
+--   SELECT id, 'Merkez kasa' FROM auth.users WHERE email = 'kasa@isletmeniz.com'
+--   ON CONFLICT (user_id) DO NOTHING;
+--
+-- Bir hesabın erişimini kaldırmak (ör. çalınan tablet):
+--   DELETE FROM public.bulut_yetkili_hesaplar
+--   WHERE user_id = (SELECT id FROM auth.users WHERE email = '...');
+
+-- ── G6. Doğrulama ─────────────────────────────────────────────────────────
+-- (a) İzinli hesaplar:
+--   SELECT u.email, y.aciklama FROM public.bulut_yetkili_hesaplar y
+--   JOIN auth.users u ON u.id = y.user_id;
+-- (b) RLS kapalı tablo kalmamalı (boş dönmeli):
+--   SELECT tablename FROM pg_tables WHERE schemaname='public' AND NOT rowsecurity;
+-- (c) Herkese açık anahtara açık kalan kurallar — yalnız 3 QR kuralı dönmeli:
+--   SELECT tablename, policyname, roles FROM pg_policies
+--   WHERE schemaname='public' AND 'anon' = ANY(roles);
+
 
 -- ═══ DOSYA SONU ═══

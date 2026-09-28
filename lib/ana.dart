@@ -19,6 +19,7 @@ import 'servisler/bildirim_zamanlayici.dart';
 import 'servisler/log_servisi.dart';
 import 'servisler/bulut/bulut_manager.dart';
 import 'servisler/bulut/otomatik_bulut_cekme.dart';
+import 'servisler/bulut/supabase_oturum.dart';
 import 'servisler/masa/qr_siparis_cekici_servisi.dart';
 import 'servisler/bildirim_merkezi_servisi.dart';
 import 'servisler/borc/borc_bildirim_servisi.dart';
@@ -42,6 +43,8 @@ Future<void> _baslatApp() async {
   await CrashServisi.init();
 
   await LogServisi.init();
+  // İşletme hesabı oturumu (varsa) — bulut istekleri başlamadan önce.
+  await SupabaseOturum().yukle();
   await BulutManager().baslat(); // Bulut sync başlat
   // Diğer kasaların verisini (satış, stok, cari…) belirli aralıkla otomatik
   // çek — önceden yalnız "Buluttan Al" butonu / masa ekranı çekiyordu.

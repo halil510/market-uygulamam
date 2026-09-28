@@ -1,6 +1,7 @@
 // lib/servisler/supabase_sync_servisi.dart
 // ignore_for_file: avoid_print
 
+import 'bulut/supabase_oturum.dart';
 import 'dart:convert';
 import 'kolon_haritalama.dart';
 import 'package:http/http.dart' as http;
@@ -433,13 +434,13 @@ class SupabaseSyncServisi {
 
   static Map<String, String> _getH(String key) => {
     'apikey': key,
-    'Authorization': 'Bearer $key',
+    'Authorization': 'Bearer ${SupabaseOturum.bearer(key)}',
     'Accept': 'application/json',
   };
 
   static Map<String, String> _upsertH(String key) => {
     'apikey': key,
-    'Authorization': 'Bearer $key',
+    'Authorization': 'Bearer ${SupabaseOturum.bearer(key)}',
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'Prefer': 'resolution=merge-duplicates,return=minimal',
@@ -447,7 +448,7 @@ class SupabaseSyncServisi {
 
   static Map<String, String> _insertH(String key) => {
     'apikey': key,
-    'Authorization': 'Bearer $key',
+    'Authorization': 'Bearer ${SupabaseOturum.bearer(key)}',
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'Prefer': 'return=minimal',

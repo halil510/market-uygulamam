@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../servisler/supabase_sync_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
+import '../../servisler/bulut/otomatik_bulut_cekme.dart';
 import '../../veri/database/veritabani.dart';
 import '../../servisler/senkron_sonrasi_mutabakat.dart';
 import '../../servisler/bildirim_servisi.dart';
@@ -41,13 +42,68 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
   SyncSonuc? _sonSonuc;
   int _cozulmemisCakisma = 0;
 
+  int _otoCekmeSn = OtomatikBulutCekme.varsayilanSaniye;
+
   @override
   void initState() {
     super.initState();
     _ayarlariYukle();
     _cakismaSayisiniYukle();
     _kaliciHatalariYukle();
+    OtomatikBulutCekme.aralikOku().then((sn) {
+      if (mounted) setState(() => _otoCekmeSn = sn);
+    });
   }
+
+  String _aralikEtiketi(int sn) => switch (sn) {
+        0 => 'Kapalı',
+        < 60 => '$sn saniyede bir',
+        _ => '${sn ~/ 60} dakikada bir',
+      };
+
+  /// Diğer kasaların verisini otomatik çekme aralığı (kullanıcı isteği
+  /// 2026-09-28 — önceden yalnız "Hızlı Al" butonu / masa ekranı çekiyordu).
+  Widget _otomatikCekmeKarti() => TsKart(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.autorenew, size: 20),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('Otomatik veri çekme',
+                style: TextStyle(fontWeight: FontWeight.w700))),
+            DropdownButton<int>(
+              value: _otoCekmeSn,
+              underline: const SizedBox.shrink(),
+              items: OtomatikBulutCekme.secenekler
+                  .map((sn) => DropdownMenuItem(value: sn, child: Text(_aralikEtiketi(sn))))
+                  .toList(),
+              onChanged: (sn) async {
+                if (sn == null) return;
+                await OtomatikBulutCekme().aralikAyarla(sn);
+                if (mounted) setState(() => _otoCekmeSn = sn);
+              },
+            ),
+          ]),
+          const SizedBox(height: 4),
+          Text(
+            'Uygulama açıkken diğer kasaların satış, stok ve cari değişiklikleri '
+            'bu aralıkla kendiliğinden alınır (yalnız değişenler). İnternet yokken '
+            've uygulama arka plandayken bekler.',
+            style: TextStyle(fontSize: 11, color: context.textSecondary),
+          ),
+          ValueListenableBuilder<DateTime?>(
+            valueListenable: OtomatikBulutCekme().sonKontrol,
+            builder: (_, t, __) => t == null
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Son kontrol: ${t.hour.toString().padLeft(2, '0')}:'
+                      '${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}',
+                      style: TextStyle(fontSize: 11, color: context.textSecondary)),
+                  ),
+          ),
+        ]),
+      );
 
   Future<void> _cakismaSayisiniYukle() async {
     final sayi = await SyncCakismaDeposu().cozulmemisSayisi();
@@ -573,6 +629,8 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
               Text('Hızlı: sadece değişenler  •  Tam: tüm kayıtlar (yavaş)',
                   style: TextStyle(fontSize: 10, color: context.textSecondary),
                   textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              _otomatikCekmeKarti(),
               const SizedBox(height: 8),
             ],
 

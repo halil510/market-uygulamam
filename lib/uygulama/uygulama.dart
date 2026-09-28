@@ -14,6 +14,8 @@ import 'package:go_router/go_router.dart';
 import 'router/uygulama_router.dart';
 import 'tema/uygulama_temasi.dart';
 import '../saglayicilar/riverpod/auth_provider.dart';
+import '../saglayicilar/riverpod/dashboard_provider.dart';
+import '../servisler/bulut/otomatik_bulut_cekme.dart';
 import '../saglayicilar/riverpod/tema_provider.dart';
 import '../tasarim_sistemi/tasarim_sistemi.dart';
 
@@ -32,6 +34,21 @@ class _MarketPlusAppState extends ConsumerState<MarketPlusApp> {
   void initState() {
     super.initState();
     _dispatcher = MarketBackButtonDispatcher(UygulamaRouter.router(ref));
+    OtomatikBulutCekme().sonDegisiklik.addListener(_buluttanVeriGeldi);
+  }
+
+  @override
+  void dispose() {
+    OtomatikBulutCekme().sonDegisiklik.removeListener(_buluttanVeriGeldi);
+    super.dispose();
+  }
+
+  /// Otomatik çekme başka kasadan veri getirdi — ana sayfa özetini (ciro,
+  /// kâr, stok/borç sayaçları) yenile. Diğer ekranlar zaten açılışta
+  /// veritabanından okur; açık liste ekranları kullanıcının kaydırma/arama
+  /// durumu bozulmasın diye zorla yenilenmez.
+  void _buluttanVeriGeldi() {
+    if (mounted) ref.invalidate(dashboardProvider);
   }
 
   @override

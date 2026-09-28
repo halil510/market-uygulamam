@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import 'bulut_saglayici.dart';
 import 'supabase_ayarlari.dart';
+import 'sync_lww_koruma.dart';
 import '../kolon_haritalama.dart';
 import '../../veri/database/veritabani.dart';
 
@@ -302,6 +303,45 @@ class SupabaseSaglayici implements IBulutSaglayici {
     }
   }
 
+  /// Toplu gönderim için: bulutta, satırdan KESİN olarak daha yeni sürümü
+  /// olanları döner. Doğrulama yapılamazsa (ağ hatası, tabloda last_updated
+  /// yok, yanıt beklenmedik) boş döner — gönderime izin verilir; kesin koruma
+  /// sunucu tarafı tetikleyicidir (supabase_lww_koruma.sql).
+  Future<Set<Map<String, dynamic>>> _bulutunDahaYeniOldugu(
+      String tablo, String uniqueAlan, List<Map<String, dynamic>> batch) async {
+    final bos = Set<Map<String, dynamic>>.identity();
+    final anahtarlar = <String>{
+      for (final k in batch)
+        if (k['last_updated'] != null && k[uniqueAlan] != null)
+          k[uniqueAlan].toString(),
+    };
+    if (anahtarlar.isEmpty) return bos;
+    final bulutZamanlari = <String, DateTime>{};
+    try {
+      final liste = anahtarlar.toList();
+      const parca = 50; // URL uzunluğu sınırı
+      for (var i = 0; i < liste.length; i += parca) {
+        final dilim = liste.sublist(i, (i + parca).clamp(0, liste.length));
+        final filtre = Uri.encodeComponent(SyncLwwKoruma.inListesi(dilim));
+        final r = await http.get(
+          Uri.parse('$_rest/$tablo?select=$uniqueAlan,last_updated'
+              '&$uniqueAlan=in.$filtre'),
+          headers: _h,
+        ).timeout(const Duration(seconds: 15));
+        if (r.statusCode != 200) return bos;
+        bulutZamanlari.addAll(SyncLwwKoruma.zamanHaritasi(
+            jsonDecode(r.body) as List, uniqueAlan));
+      }
+    } catch (_) {
+      return bos;
+    }
+    return SyncLwwKoruma.bulutuKesinDahaYeniOlanlar(
+      kayitlar: batch,
+      uniqueAlan: uniqueAlan,
+      bulutZamanlari: bulutZamanlari,
+    );
+  }
+
   @override
   Future<BulutSonuc> topluUpsert({
     required String tablo,
@@ -343,17 +383,28 @@ class SupabaseSaglayici implements IBulutSaglayici {
           kayit.putIfAbsent(anahtar, () => null);
         }
       }
-      var gonderilecek = batch;
+      // Bulutta zaten daha yeni sürümü olan (eski çevrimdışı görüntü) satırlar
+      // gönderilmez — aksi hâlde başka cihazın daha yeni kaydı sessizce geri
+      // alınırdı. Atlananlar "tamamlandı" sayılır (kuyruktan düşer); doğru
+      // sürüm zaten bulutta, bu cihaza da çekmede gelir.
+      var aday = batch;
+      final atlanan = await _bulutunDahaYeniOldugu(tablo, uniqueAlan, batch);
+      if (atlanan.isNotEmpty) {
+        basarili += atlanan.length;
+        aday = batch.where((k) => !atlanan.contains(k)).toList();
+        if (aday.isEmpty) continue;
+      }
+      var gonderilecek = aday;
       try {
         // FK kolonlarını lokal id → bulut id'ye dönüştür (sınıf
         // başındaki FK dönüşüm notuna bkz.). Ebeveyni henüz bulutta
         // olmayan kayıtlar bu tur gönderilmez, bekletilir.
-        final bekle = await _fkDonustur(tablo, batch);
+        final bekle = await _fkDonustur(tablo, aday);
         if (bekle.isNotEmpty) {
           for (var j = 0; j < batch.length; j++) {
             if (bekle.contains(batch[j])) bekletilenler.add(i + j);
           }
-          gonderilecek = batch.where((k) => !bekle.contains(k)).toList();
+          gonderilecek = aday.where((k) => !bekle.contains(k)).toList();
           if (gonderilecek.isEmpty) continue;
         }
         // 🔴🔴🔴 KESİN KÖK NEDEN (GitHub supabase-js #1653) — bkz.

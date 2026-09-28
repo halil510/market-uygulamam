@@ -239,22 +239,26 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 10, offset: Offset(0, 4))],
               ),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: _aramaSonuclari.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (_, i) {
-                  final u = _aramaSonuclari[i];
-                  return ListTile(
-                    dense: true,
-                    leading: _UrunKareGorseli(urun: u, boyut: 36, koseYari: 10, harfBoyut: 13),
-                    title: Text(u.urunAdi, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    subtitle: Text(u.barkod ?? '', style: const TextStyle(fontSize: 11)),
-                    trailing: Text(ParaUtils.formatla(u.satisFiyati),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    onTap: () => _urunEkle(u),
-                  );
-                },
+              // Şeffaf Material: sonuca dokunma dalgası renkli kutunun altında kalmasın.
+              child: Material(
+                type: MaterialType.transparency,
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _aramaSonuclari.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final u = _aramaSonuclari[i];
+                    return ListTile(
+                      dense: true,
+                      leading: _UrunKareGorseli(urun: u, boyut: 36, koseYari: 10, harfBoyut: 13),
+                      title: Text(u.urunAdi, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      subtitle: Text(u.barkod ?? '', style: const TextStyle(fontSize: 11)),
+                      trailing: Text(ParaUtils.formatla(u.satisFiyati),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      onTap: () => _urunEkle(u),
+                    );
+                  },
+                ),
               ),
             ),
           ),

@@ -297,7 +297,10 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     _hesaplamaCalisiyor = true;
     final satis = double.tryParse(_c['satisFiyati']?.text.replaceAll(',', '.') ?? '') ?? 0;
     final oran  = ParaUtils.sayiCoz(_c['indirimOrani']?.text ?? '') ?? 0;
-    if (satis > 0 && oran > 0) {
+    // %100 ve üzeri oran indirimli fiyatı sıfır/eksi yapıyordu (ör. %150
+    // yazım hatası → "İndirimli Fiyat negatif olamaz"); böyle bir oran
+    // hesaba katılmaz, kaydederken açık uyarı verilir.
+    if (satis > 0 && oran > 0 && oran < 100) {
       final indirimli = satis * (1 - oran / 100);
       _c['indirimliFiyat']?.text = indirimli.toStringAsFixed(3);
     } else if (satis > 0) {

@@ -189,21 +189,25 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
                 decoration: BoxDecoration(
                     color: context.cardBg, borderRadius: BorderRadius.circular(12),
                     boxShadow: [BoxShadow(color: Colors.black.withAlpha(20), blurRadius: 8)]),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: _aramaSonuclari.length,
-                  separatorBuilder: (_, __) => Divider(height: 1, color: context.dividerColor),
-                  itemBuilder: (c, i) {
-                    final u = _aramaSonuclari[i];
-                    return ListTile(
-                      dense: true,
-                      leading: _resimGoster(u, boyut: 40),
-                      title: Text(u.urunAdi, style: TextStyle(fontSize: 14, color: context.textPrimary)),
-                      subtitle: _fiyatSatiri(u),
-                      trailing: const Icon(Icons.add_circle_outline, color: Colors.green, size: 22),
-                      onTap: () => _urunEkle(u),
-                    );
-                  },
+                // Şeffaf Material: sonuca dokunma dalgası renkli kutunun altında kalmasın.
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _aramaSonuclari.length,
+                    separatorBuilder: (_, __) => Divider(height: 1, color: context.dividerColor),
+                    itemBuilder: (c, i) {
+                      final u = _aramaSonuclari[i];
+                      return ListTile(
+                        dense: true,
+                        leading: _resimGoster(u, boyut: 40),
+                        title: Text(u.urunAdi, style: TextStyle(fontSize: 14, color: context.textPrimary)),
+                        subtitle: _fiyatSatiri(u),
+                        trailing: const Icon(Icons.add_circle_outline, color: Colors.green, size: 22),
+                        onTap: () => _urunEkle(u),
+                      );
+                    },
+                  ),
                 ),
               )
             else if (_aramaCtrl.text.trim().isNotEmpty)

@@ -57,7 +57,8 @@ class IrsaliyeEkrani extends ConsumerWidget {
             context,
             MaterialPageRoute(builder: (_) => const IrsaliyeEkleEkrani()),
           );
-          ref.invalidate(irsaliyeListesiProvider);
+          // Kullanıcı bu arada başka ekrana geçtiyse liste kapanmıştır.
+          if (context.mounted) ref.invalidate(irsaliyeListesiProvider);
         },
         icon: const Icon(Icons.add),
         label: const Text('Yeni İrsaliye'),
@@ -93,7 +94,10 @@ class IrsaliyeEkrani extends ConsumerWidget {
                       color: context.cardBg,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: context.borderColor)),
-                  child: ListTile(
+                  // Şeffaf Material: karta dokunma dalgası görünsün.
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: ListTile(
                     leading: Container(
                       width: 44, height: 44,
                       decoration: BoxDecoration(
@@ -145,8 +149,9 @@ class IrsaliyeEkrani extends ConsumerWidget {
                               irsaliyeId: r['id'] as int),
                         ),
                       );
-                      ref.invalidate(irsaliyeListesiProvider);
+                      if (context.mounted) ref.invalidate(irsaliyeListesiProvider);
                     },
+                  ),
                   ),
                 );
               },
@@ -402,18 +407,22 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 10, offset: Offset(0, 4))],
               ),
-              child: ListView.builder(
-                itemCount: _aramaSonuclari.length,
-                itemBuilder: (_, i) => ListTile(
-                  dense: true,
-                  title: Text(_aramaSonuclari[i].urunAdi),
-                  subtitle: Text(ParaUtils.formatla(_aramaSonuclari[i].satisFiyati)),
-                  trailing: Text('${_aramaSonuclari[i].stok.toStringAsFixed(0)} stok',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: _aramaSonuclari[i].stok > 0
-                              ? Colors.green : Colors.red)),
-                  onTap: () => _urunEkle(_aramaSonuclari[i]),
+              // Şeffaf Material: sonuçlara dokunma dalgası görünsün.
+              child: Material(
+                type: MaterialType.transparency,
+                child: ListView.builder(
+                  itemCount: _aramaSonuclari.length,
+                  itemBuilder: (_, i) => ListTile(
+                    dense: true,
+                    title: Text(_aramaSonuclari[i].urunAdi),
+                    subtitle: Text(ParaUtils.formatla(_aramaSonuclari[i].satisFiyati)),
+                    trailing: Text('${_aramaSonuclari[i].stok.toStringAsFixed(0)} stok',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: _aramaSonuclari[i].stok > 0
+                                ? Colors.green : Colors.red)),
+                    onTap: () => _urunEkle(_aramaSonuclari[i]),
+                  ),
                 ),
               ),
             ),
@@ -446,7 +455,9 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: context.borderColor),
                       ),
-                      child: ListTile(
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: ListTile(
                         dense: true,
                         leading: Container(
                           width: 36, height: 36,
@@ -516,6 +527,7 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
                             },
                           ),
                         ]),
+                      ),
                       ),
                     );
                   },

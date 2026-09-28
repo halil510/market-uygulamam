@@ -40,7 +40,8 @@ class SatisAltPanel extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(children: [
-                  Container(
+                  // Dar ekranda "N ürün • M çeşit" sığmayıp taşıyordu.
+                  Flexible(child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
@@ -53,6 +54,8 @@ class SatisAltPanel extends StatelessWidget {
                       bos
                           ? 'Sepet boş'
                           : '${sepet.toplamAdet} ürün • ${sepet.kalemler.length} çeşit',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -61,7 +64,7 @@ class SatisAltPanel extends StatelessWidget {
                             : const Color(0xFF4361EE),
                       ),
                     ),
-                  ),
+                  )),
                 ]),
                 const SizedBox(height: 4),
                 Text(

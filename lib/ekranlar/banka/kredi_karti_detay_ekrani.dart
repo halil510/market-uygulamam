@@ -85,7 +85,7 @@ class _KrediKartiDetayEkraniState extends ConsumerState<KrediKartiDetayEkrani> {
                   tooltip: 'Düzenle',
                   onPressed: () async {
                     final guncellendi = await context.push<bool>('/kredi-karti/ekle', extra: kart);
-                    if (guncellendi == true) {
+                    if (guncellendi == true && mounted) {
                       ref.invalidate(krediKartiDetayProvider(kart.id!));
                       ref.invalidate(tumKrediKartlariProvider);
                       ref.invalidate(borcDashboardProvider);

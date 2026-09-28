@@ -137,6 +137,10 @@ class RobotOrtam {
       'global_id': u.v4(),
     });
     v.id['kategori'] = await db.insert('kategoriler', {'ad': 'Gıda'});
+    // Gerçek kurulumda Veritabani ilk açılışta oluşturur (bkz. veritabani.dart).
+    for (final k in ['Kira', 'Elektrik', 'Personel', 'Diğer']) {
+      await db.insert('gider_kategoriler', {'ad': k});
+    }
     await db.insert('birimler', {'ad': 'Adet', 'kisaltma': 'Adet'});
     await db.insert('birimler', {'ad': 'Kilogram', 'kisaltma': 'KG'});
     final urunler = [

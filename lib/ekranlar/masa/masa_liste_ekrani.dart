@@ -196,7 +196,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                           builder: (_) => MasaDetayEkrani(masa: m),
                         ),
                       );
-                      ref.read(masaListesiProvider.notifier).yukle();
+                      if (mounted) ref.read(masaListesiProvider.notifier).yukle();
                     },
                     onLongPress: () => _masaMenusu(m),
                     child: Container(

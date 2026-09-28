@@ -88,6 +88,7 @@ class _DovizKuruEkraniState extends ConsumerState<DovizKuruEkrani> {
       secilen,
       sembol: _dovizSembolleri[secilen.kod] ?? secilen.kod,
     );
+    if (!mounted) return;
     ref.invalidate(dovizKurlariProvider);
     if (mounted) {
       BildirimServisi.basari(context, '${secilen.kod} eklendi ve güncel kuru alındı ✓');
@@ -109,7 +110,7 @@ class _DovizKuruEkraniState extends ConsumerState<DovizKuruEkrani> {
     );
     if (onay != true) return;
     await DovizDeposu().pasifYap(k.kod);
-    ref.invalidate(dovizKurlariProvider);
+    if (mounted) ref.invalidate(dovizKurlariProvider);
   }
 
   @override

@@ -192,7 +192,7 @@ class _AktifBorcListeTab extends ConsumerWidget {
             butonYazisi: 'Borç Ekle',
             onTap: () async {
               final eklendi = await context.push<bool>('/borc-ekle');
-              if (eklendi == true) {
+              if (eklendi == true && context.mounted) {
                 ref.invalidate(aktifBorclarProvider);
                 ref.invalidate(borcDashboardProvider);
               }

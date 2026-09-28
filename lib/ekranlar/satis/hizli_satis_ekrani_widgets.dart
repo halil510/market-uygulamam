@@ -41,7 +41,10 @@ extension _HizliSatisWidgetExt on _HizliSatisEkraniState {
         boxShadow: TsGolge.yumusak,
       ),
       margin: const EdgeInsets.symmetric(horizontal: 12),
-      child: ListView.separated(
+      // Şeffaf Material: sonuca dokunma dalgası renkli kutunun altında kalmasın.
+      child: Material(
+        type: MaterialType.transparency,
+        child: ListView.separated(
         shrinkWrap: true,
         itemCount: _aramaSonuclari.length,
         separatorBuilder: (_, __) => const Divider(height: 1),
@@ -84,6 +87,7 @@ extension _HizliSatisWidgetExt on _HizliSatisEkraniState {
             onTap: () { _urunSepeteEkleAkilli(u); },
           );
         },
+      ),
       ),
     ),
   );

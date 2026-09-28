@@ -801,6 +801,8 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
             label: const Text('Tahsilat/Ödeme'),
             onPressed: () async {
               await context.push('/cari/tahsilat/${c.id}');
+              // Kullanıcı bu arada başka ekrana geçtiyse bu ekran kapanmıştır.
+              if (!mounted) return;
               ref.invalidate(cariDetayProvider(c.id!));
               ref.read(carilerProvider.notifier).yukle();
               _hareketYukle();

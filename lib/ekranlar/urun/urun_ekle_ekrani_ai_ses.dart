@@ -409,6 +409,11 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
       'toptanFiyat': 'Toptan Fiyat',
       'koliIciMiktar': 'Koli İçi Miktar',
     };
+    final indirimOrani = ParaUtils.sayiCoz(_c['indirimOrani']?.text ?? '');
+    if (indirimOrani != null && (indirimOrani < 0 || indirimOrani >= 100)) {
+      BildirimServisi.uyari(context, 'İndirim % 0 ile 100 arasında olmalı.');
+      return;
+    }
     for (final girdi in negatifKontrolAlanlari.entries) {
       final metin = _c[girdi.key]?.text.trim().replaceAll(',', '.') ?? '';
       final deger = double.tryParse(metin);

@@ -27,7 +27,7 @@ class KrediKartiListeEkrani extends ConsumerWidget {
         aksiyonlar: [
           TsYetkili(child: IconButton(icon: const Icon(Icons.add, color: Colors.white), tooltip: 'Kart Ekle', onPressed: () async {
             final eklendi = await context.push<bool>('/kredi-karti/ekle');
-            if (eklendi == true) {
+            if (eklendi == true && context.mounted) {
               ref.invalidate(krediKartlariProvider(bankaId));
               // Borç Dashboard kendi ayrı önbelleğini kullanıyor — kredi
               // kartı eklendiğinde orası da yenilenmezse eklenen kart

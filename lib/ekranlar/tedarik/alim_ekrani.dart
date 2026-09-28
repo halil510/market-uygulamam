@@ -461,24 +461,28 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 10, offset: Offset(0, 4))],
               ),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: _aramaSonuclari.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (_, i) {
-                  final u = _aramaSonuclari[i];
-                  return ListTile(
-                    dense: true,
-                    title: Text(u.urunAdi,
-                        style: const TextStyle(fontSize: 13)),
-                    subtitle: Text(u.barkod ?? u.kod ?? ''),
-                    trailing: Text(
-                      'Alış: ${ParaUtils.formatla(u.alisFiyat)}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    onTap: () => _urunEkle(u),
-                  );
-                },
+              // Şeffaf Material: sonuca dokunma dalgası renkli kutunun altında kalmasın.
+              child: Material(
+                type: MaterialType.transparency,
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _aramaSonuclari.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final u = _aramaSonuclari[i];
+                    return ListTile(
+                      dense: true,
+                      title: Text(u.urunAdi,
+                          style: const TextStyle(fontSize: 13)),
+                      subtitle: Text(u.barkod ?? u.kod ?? ''),
+                      trailing: Text(
+                        'Alış: ${ParaUtils.formatla(u.alisFiyat)}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      onTap: () => _urunEkle(u),
+                    );
+                  },
+                ),
               ),
             ),
           ),

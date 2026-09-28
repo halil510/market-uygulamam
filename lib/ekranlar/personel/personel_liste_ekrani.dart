@@ -569,7 +569,11 @@ class _PersonelFormSheetState extends ConsumerState<_PersonelFormSheet> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-        child: Form(
+        // Şeffaf Material: "Aktif Personel" anahtarının dokunma dalgası
+        // renkli kutunun altında kalmasın.
+        child: Material(
+          type: MaterialType.transparency,
+          child: Form(
           key: _formKey,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 40, height: 4,
@@ -630,6 +634,7 @@ class _PersonelFormSheetState extends ConsumerState<_PersonelFormSheet> {
               ),
             ),
           ]),
+        ),
         ),
       ),
     );

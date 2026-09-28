@@ -481,7 +481,10 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
               decoration: BoxDecoration(
                   border: Border.all(color: context.borderColor),
                   borderRadius: BorderRadius.circular(12)),
-              child: ListView.builder(
+              // Şeffaf Material: sonuçlara dokunma dalgası görünsün.
+              child: Material(
+                type: MaterialType.transparency,
+                child: ListView.builder(
                 shrinkWrap: true,
                 itemCount: _aramaSonuclari.length,
                 itemBuilder: (_, i) => ListTile(
@@ -496,6 +499,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                       _adCtrl.text = '${_seciliUrun!.urunAdi} İndirimi';
                   }),
                 ),
+              ),
               ),
             ),
           const SizedBox(height: 12),

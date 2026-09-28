@@ -14,6 +14,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 import 'package:market_plus/cekirdek/utils/sifre_hash.dart';
 import 'package:market_plus/depolar/kasa_deposu.dart';
+import 'package:market_plus/depolar/masa_deposu.dart';
 import 'package:market_plus/modeller/kasa_hareket_model.dart';
 import 'package:market_plus/veri/database/tablolar/tablo_olusturucu.dart';
 import 'package:market_plus/veri/database/veritabani.dart';
@@ -189,6 +190,9 @@ class RobotOrtam {
     try {
       v.id['masa'] = await db.insert('masalar',
           {'ad': 'Masa 1', 'durum': 'bos', 'global_id': u.v4()});
+      // Açık sipariş: masa detayında "Müşteri Ekle" butonu ancak sipariş
+      // açıkken görünür — robot onu da görüp ölçebilsin.
+      await MasaDeposu().siparisAcVeyaGetir(v.id['masa']!);
     } catch (_) {}
     return v;
   }

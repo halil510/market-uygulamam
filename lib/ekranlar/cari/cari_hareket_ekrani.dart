@@ -23,6 +23,7 @@ import '../../servisler/iade_islem_servisi.dart';
 import '../../depolar/iade_deposu.dart';
 import '../../saglayicilar/riverpod/satis_provider.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/tarih_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import 'fis_detay_ekrani.dart';
 import '../../tasarim_sistemi/ts_kart.dart';
@@ -171,7 +172,8 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
         context: context,
         firstDate: DateTime(2020),
         lastDate: DateTime.now().add(const Duration(days: 1)),
-        initialDateRange: _tarihAralik,
+        initialDateRange: TarihUtils.secimAraligiKirp(_tarihAralik, DateTime(2020),
+            DateTime.now().add(const Duration(days: 1))),
       );
       if (r != null) {
         _tarihAralik = r;

@@ -142,7 +142,7 @@ class _OzetTab extends StatelessWidget {
         Container(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Column(children: enCokSatan.asMap().entries.map((e) {
           final i = e.key;
           final r = e.value;
-          return ListTile(
+          return Material(type: MaterialType.transparency, child: ListTile(
             dense: true,
             leading: CircleAvatar(
               radius: 14,
@@ -154,7 +154,7 @@ class _OzetTab extends StatelessWidget {
               Text('${(r['toplam_adet'] as num?)?.toStringAsFixed(0) ?? 0} adet', style: TsMetin.kucukVurgu.copyWith(color: TsRenk.primary)),
               Text(ParaUtils.formatla((r['toplam_tutar'] as num?)?.toDouble() ?? 0), style: TextStyle(fontSize: 11, color: context.textSecondary)),
             ]),
-          );
+          ));
         }).toList())),
       ],
     ]);
@@ -188,7 +188,7 @@ class _StokTab extends StatelessWidget {
             borderRadius: BorderRadius.circular(TsRadius.lg),
             border: Border.all(color: TsRenk.ayirac(context))),
           margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
+          child: Material(type: MaterialType.transparency, child: ListTile(
             leading: Icon(acil ? Icons.error : Icons.warning_amber,
                 color: acil ? TsRenk.hata : TsRenk.uyari),
             title: Text(r['urun_adi'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
@@ -205,7 +205,7 @@ class _StokTab extends StatelessWidget {
               decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.primary), borderRadius: BorderRadius.circular(12)),
               child: Text('${oneri.toStringAsFixed(0)} al', style: const TextStyle(fontWeight: FontWeight.w700, color: TsRenk.primary)),
             ),
-          ),
+          )),
         );
       }),
     ]);
@@ -233,7 +233,7 @@ class _PromosyonTab extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))),
           margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
+          child: Material(type: MaterialType.transparency, child: ListTile(
             leading: const Icon(Icons.local_offer, color: Colors.purple),
             title: Text(r['urun_adi'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             subtitle: Text(
@@ -245,7 +245,7 @@ class _PromosyonTab extends StatelessWidget {
               Text(ParaUtils.formatla(indirimli), style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.purple, fontSize: 13)),
               const Text('%10 indirim', style: TextStyle(fontSize: 10, color: Colors.purple)),
             ]),
-          ),
+          )),
         );
       }),
     ]);
@@ -278,7 +278,7 @@ class _CariRiskTab extends StatelessWidget {
             borderRadius: BorderRadius.circular(TsRadius.lg),
             border: Border.all(color: TsRenk.ayirac(context))),
           margin: const EdgeInsets.only(bottom: TsBosluk.sm),
-          child: ListTile(
+          child: Material(type: MaterialType.transparency, child: ListTile(
             leading: Icon(doluluk >= 100 ? Icons.error : Icons.warning_amber,
                 color: doluluk >= 100 ? TsRenk.hata : TsRenk.uyari),
             title: Text(r['unvan'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
@@ -294,7 +294,7 @@ class _CariRiskTab extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16,
                     color: doluluk >= 100 ? TsRenk.hata : TsRenk.uyari)),
             onTap: () => context.push('/cari/detay/${r['id']}'),
-          ),
+          )),
         );
       }),
     ]);

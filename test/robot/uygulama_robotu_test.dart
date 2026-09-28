@@ -94,6 +94,14 @@ var _sayac = 0;
 
 /// Ürün arama alanlarına yazılan, tohumda var olan ürün.
 const _aranacakUrun = 'Robot Çikolata';
+const _aranabilir = {_aranacakUrun, 'Robot Tedarikçi', 'Robot Müşteri', 'Robot Bayi'};
+
+/// Kaydet/işlem butonu veritabanına satır yazmayan (hesaplayıcı, sepete/
+/// baskı listesine ekleyen, görsel üreten) ekranlar — "kayıtsız" sayılmaz.
+const _kayitBeklenmeyen = {
+  '/satis/para-ustu', '/barkod/uret', '/barkod/etiket', '/satis/sicak',
+  '/satis/soguk', '/urun/fiyat-simulasyon',
+};
 
 /// 869 önekli, kontrol hanesi doğru, benzersiz EAN-13.
 String _ean13(int n) {
@@ -109,12 +117,20 @@ String _sanalDeger(TextField t) {
   final d = t.decoration;
   final etiket = '${d?.labelText ?? ''} ${d?.hintText ?? ''}'.toLowerCase();
   final sayisal = t.keyboardType == TextInputType.number ||
-      RegExp(r'fiyat|tutar|miktar|stok|adet|oran|limit|bakiye|kdv|iskonto|indirim|puan|gün|vade|sayı|no\b|%')
+      RegExp(r'fiyat|tutar|miktar|stok|adet|oran|limit|bakiye|kdv|iskonto|indirim|puan|gün|vade|sayı|no\b|%|₺|kasa|maaş|kişi')
           .hasMatch(etiket);
   final n = ++_sayac;
   if (t.obscureText) return '1234';
-  // Ürün arama kutusu: tohumdaki gerçek bir ürünü arat (sonuç seçilebilsin).
-  if (etiket.contains('ürün') && etiket.contains('ara')) return _aranacakUrun;
+  // Arama kutuları: tohumdaki gerçek bir kaydı arat (sonuç seçilebilsin).
+  if (etiket.contains('ara') || etiket.contains('seç')) {
+    if (etiket.contains('tedarikçi')) return 'Robot Tedarikçi';
+    if (etiket.contains('cari') || etiket.contains('müşteri') || etiket.contains('bayi')) {
+      return etiket.contains('bayi') ? 'Robot Bayi' : 'Robot Müşteri';
+    }
+    if (etiket.contains('ürün') || etiket.contains('barkod')) return _aranacakUrun;
+  }
+  // Belge numaraları boş bırakılır — uygulama merkezi seriden otomatik verir.
+  if (RegExp(r'fatura no|fiş no|irsaliye no|belge no').hasMatch(etiket)) return '';
   if (etiket.contains('telefon') || etiket.contains('gsm')) return '0532${(1000000 + n).toString().padLeft(7, '0')}';
   if (etiket.contains('mail')) return 'robot$n@test.com';
   if (etiket.contains('barkod')) return _ean13(n);
@@ -146,9 +162,29 @@ final _dogrulamaRe = RegExp(
     r'zorunlu|gerekli|giriniz|girin|seçiniz|seçin|boş olamaz|geçersiz|en az|hatalı|bulunamadı|zaten',
     caseSensitive: false);
 
+/// Uygulamanın başarı bildirimleri (kayıt güncellendi / işlem tamam).
+final _basariRe = RegExp(r'kaydedildi|eklendi|oluşturuldu|güncellendi|tamamlandı|başarı',
+    caseSensitive: false);
+
 final _kaydetRe = RegExp(r'^(kaydet|ekle|tamam|oluştur|onayla|güncelle|kaydet ve kapat|satışı tamamla)$',
     caseSensitive: false);
 final _onayRe = RegExp(r'^(evet.*|tamam|onayla|kaydet|devam.*|sil)$', caseSensitive: false);
+
+/// "Kaydet" dışındaki gerçek işlem butonları (Tahsilat Kaydet, Virmanı
+/// Gerçekleştir, Faturayı Oluştur, Vardiya Aç, Borç Ekle, Sipariş Ver…).
+final _islemRe = RegExp(
+    r'kaydet|ekle$|oluştur|gerçekleştir|başlat|\baç$|al$|ver$|yap$|üret$|kullan$|değiştir$|güncelle',
+    caseSensitive: false);
+
+/// Robotun ASLA basmadığı butonlar: veri silen/sıfırlayan, dönem/devir
+/// yapan, dış servise bağlanan/gönderen, kamera/ağ tarayan, gezinen.
+final _yasakRe = RegExp(
+    // Not: Dart'ta 'İ'.toLowerCase() noktalı i üretir; büyük İ'li kelimeler
+    // (İptal, İade…) ayrıca yazılmalı.
+    r'sil|sıfırla|temizle|iptal|İptal|vazgeç|kapat|test|bağla|tara|okut|dönem|devir|arşiv|geri yükle|gönder|çıkış|'
+    r'doğrula|git$|ana sayfa|tümünü|seç|doldur|birim ekle|dövizle|kalem ekle|tekrar dene|'
+    r'gör$|hareketler|ağı|manuel ip|şifre değiştir',
+    caseSensitive: false);
 
 void main() {
   testWidgets('UYGULAMA ROBOTU — tüm ekranlar', (tester) async {
@@ -228,14 +264,18 @@ void main() {
       for (var i = 0; i < 4; i++) {
         // dynamic erişim: DropdownButton<int>'in onChanged'i
         // DropdownButton<dynamic> tipiyle okunursa tip hatası fırlatıyor.
+        // Ekran dışına kaymış (ör. formun en üstündeki Cari) listeleri de
+        // bul; önce görünür alana kaydır.
         final bos = find.byWidgetPredicate((w) {
           if (w is! DropdownButton) return false;
           final dw = w as dynamic;
           return dw.value == null && dw.onChanged != null &&
               ((dw.items as List?)?.isNotEmpty ?? false);
-        }).hitTestable();
+        });
         if (bos.evaluate().isEmpty) break;
         try {
+          await tester.ensureVisible(bos.first);
+          await bekle(4);
           await tester.tap(bos.first, warnIfMissed: false);
           await bekle(6);
           final ogeler = find.byWidgetPredicate((w) => w is DropdownMenuItem && w.value != null);
@@ -253,8 +293,76 @@ void main() {
     /// Görünen metin alanlarını sanal veriyle doldurur, açılır listeleri
     /// seçer, Kaydet/Ekle'ye basar ve onay penceresini onaylar.
     /// Döner: (doldurulan alan sayısı, basılan buton metni).
-    Future<(int, String)> formuDoldurVeKaydet() async {
-      sonDoldurulan.clear();
+    /// En üstteki (kullanıcının gördüğü) rota — bir butonun yeni pencere/
+    /// sayfa açıp açmadığını anlamak için.
+    ModalRoute<dynamic>? ustRota() {
+      final e = find.byType(Text).hitTestable().evaluate();
+      return e.isEmpty ? null : ModalRoute.of(e.first);
+    }
+
+    /// Butonun görünen metni (içindeki Text'ler).
+    String butonMetni(Element e) => find
+        .descendant(of: find.byWidget(e.widget), matching: find.byType(Text))
+        .evaluate()
+        .map((t) => ((t.widget as Text).data ?? '').trim())
+        .where((s) => s.isNotEmpty)
+        .join(' ');
+
+    /// Açık seçim penceresindeki (en üst popup) ilk kayda dokunur.
+    Future<bool> ilkKaydiSec() async {
+      final ust = ustRota();
+      final ogeler = find.byWidgetPredicate((w) =>
+          w is ListTile && w.onTap != null && w.enabled).hitTestable();
+      for (final e in ogeler.evaluate()) {
+        if (ModalRoute.of(e) != ust) continue;
+        final m = butonMetni(e);
+        if (_yasakRe.hasMatch(m)) continue;
+        await tester.tap(find.byWidget(e.widget).first, warnIfMissed: false);
+        await bekle(10);
+        return true;
+      }
+      return false;
+    }
+
+    /// "Tedarikçi Seç / Cari Seç / Müşteri Seç…" seçicilerine dokunup
+    /// açılan listeden ilk kaydı seçer.
+    Future<void> seciciDoldur() async {
+      final seciciler = find.byWidgetPredicate((w) =>
+          w is Text && RegExp(r'^(Tedarikçi|Cari|Müşteri|Bayi|Banka Hesabı|Hesap) Seç',
+              caseSensitive: false).hasMatch((w.data ?? '').trim())).hitTestable();
+      for (var i = 0; i < 3; i++) {
+        if (seciciler.evaluate().isEmpty) break;
+        final onceki = ustRota();
+        await tester.tap(seciciler.first, warnIfMissed: false);
+        await bekle(10);
+        if (ustRota() == onceki) break;
+        final secildi = await ilkKaydiSec();
+        if (!secildi) {
+          pencereKapat(find.byWidgetPredicate((w) => w is Dialog || w is BottomSheet));
+          await bekle(8);
+          break;
+        }
+        sonDoldurulan.add('seçici=${find.byWidgetPredicate((w) => w is Text).evaluate().isEmpty ? '' : 'ilk kayıt'}');
+      }
+    }
+
+    /// İzinli ilk işlem butonu (etkin, görünen, yasak listesinde olmayan).
+    (Finder, String)? islemButonu() {
+      final adaylar = find.byWidgetPredicate((w) =>
+          (w is ButtonStyleButton && w.onPressed != null) ||
+          (w is FloatingActionButton && w.onPressed != null)).hitTestable();
+      for (var i = 0; i < adaylar.evaluate().length; i++) {
+        final e = adaylar.evaluate().elementAt(i);
+        final m = butonMetni(e);
+        if (m.isEmpty || _yasakRe.hasMatch(m)) continue;
+        if (_kaydetRe.hasMatch(m) || _islemRe.hasMatch(m)) return (adaylar.at(i), m);
+      }
+      return null;
+    }
+
+    Future<(int, String)> formuDoldurVeKaydet({int derinlik = 0}) async {
+      if (derinlik == 0) sonDoldurulan.clear();
+      final baslangicRota = ustRota();
       // Alanlar her adımda YENİDEN bulunur — bir alana yazmak ekranı
       // yeniden çizebilir, eski eleman referansı geçersiz kalır.
       final alanSayisi = find.byType(TextField).hitTestable().evaluate().length;
@@ -267,11 +375,11 @@ void main() {
         try {
           final deger = _sanalDeger(t);
           await tester.enterText(bul.at(i), deger);
-          if (deger == _aranacakUrun) {
-            // Arama sonucunda çıkan ürüne dokun (metin kutusunun kendisi hariç).
+          if (_aranabilir.contains(deger)) {
+            // Arama sonucunda çıkan kayda dokun (metin kutusunun kendisi hariç).
             await bekle(12);
             final sonuc = find.byWidgetPredicate((w) =>
-                w is Text && (w.data ?? '').startsWith('Robot Çikolata 80 G')).hitTestable();
+                w is Text && (w.data ?? '').startsWith(deger)).hitTestable();
             if (sonuc.evaluate().isNotEmpty) {
               await tester.tap(sonuc.first, warnIfMissed: false);
               await bekle(8);
@@ -283,14 +391,45 @@ void main() {
       }
       await bekle(4);
       if (doldurulan > 0) await acilirListeSec();
+      await seciciDoldur();
+      // Bir arama sonucu/seçim başka sayfa ya da pencereye geçirdiyse
+      // (ör. tedarikçi seçildi → Sipariş Oluştur sayfası) oradan devam et.
+      if (derinlik < 2 && ustRota() != baslangicRota &&
+          find.byType(TextField).hitTestable().evaluate().isNotEmpty) {
+        final (d2, b2) = await formuDoldurVeKaydet(derinlik: derinlik + 1);
+        return (doldurulan + d2, b2.isEmpty ? '' : '(geçiş) → $b2');
+      }
 
       var basildi = '';
-      final butonMetni = find.byWidgetPredicate((w) =>
+      Finder? hedef;
+      final kaydetMetni = find.byWidgetPredicate((w) =>
           w is Text && _kaydetRe.hasMatch((w.data ?? '').trim())).hitTestable();
-      if (doldurulan > 0 && butonMetni.evaluate().isNotEmpty) {
-        basildi = (butonMetni.evaluate().first.widget as Text).data ?? '';
-        await tester.tap(butonMetni.first, warnIfMissed: false);
+      if (doldurulan > 0 && kaydetMetni.evaluate().isNotEmpty) {
+        basildi = (kaydetMetni.evaluate().first.widget as Text).data ?? '';
+        hedef = kaydetMetni.first;
+      } else {
+        final islem = islemButonu();
+        if (islem != null) (hedef, basildi) = islem;
+      }
+      if (hedef != null) {
+        final onceki = ustRota();
+        await tester.tap(hedef, warnIfMissed: false);
         await bekle(8);
+        // Buton bir SEÇİM penceresi açtıysa (ör. "Sipariş Ver" → tedarikçi
+        // listesi) ilk kaydı seç.
+        if (ustRota() != onceki && ustRota() is PopupRoute &&
+            find.byType(TextField).hitTestable().evaluate().isEmpty) {
+          if (await ilkKaydiSec()) basildi = '$basildi → (seçildi)';
+        }
+        // Buton yeni pencere/sayfa açtıysa (ör. "Vardiya Aç" → açılış
+        // kasası penceresi, "Cari Ekle" → form sayfası) onu da doldur.
+        if (derinlik < 2 && ustRota() != onceki &&
+            find.byType(TextField).hitTestable().evaluate().isNotEmpty) {
+          final (d2, b2) = await formuDoldurVeKaydet(derinlik: derinlik + 1);
+          doldurulan += d2;
+          if (b2.isNotEmpty) basildi = '$basildi → $b2';
+          return (doldurulan, basildi);
+        }
         // Açılan onay penceresini onayla (bir tur).
         final onay = find.descendant(
             of: find.byType(Dialog),
@@ -327,6 +466,20 @@ void main() {
           .map((e) => ((e.widget as Text).data ?? '').trim())
           .where((s) => s.length > 3 && s.length < 120);
       return {...alanHatalari, ...bildirimler, ...metinler}.take(4).join(' / ');
+    }
+
+    /// Ekranda görünen buton metinleri (sekme adları dahil).
+    List<String> gorunenButonlar() {
+      final butonlar = find.byWidgetPredicate((w) => w is ButtonStyleButton ||
+          w is FloatingActionButton || w is Tab || w is ChoiceChip || w is FilterChip);
+      return butonlar.hitTestable().evaluate().map((e) {
+        final metin = find.descendant(of: find.byWidget(e.widget), matching: find.byType(Text))
+            .evaluate()
+            .map((t) => ((t.widget as Text).data ?? '').trim())
+            .where((s) => s.isNotEmpty)
+            .join(' ');
+        return '${e.widget.runtimeType}:$metin';
+      }).toSet().toList();
     }
 
     /// Ekrandaki "yeni ekle" düğmesi: önce FAB, yoksa + ikonlu düğme.
@@ -396,6 +549,11 @@ void main() {
           await bekle(8);
         }
 
+        if (const bool.fromEnvironment('ROBOT_BUTONLAR')) {
+          // ignore: avoid_print
+          print('BUTONLAR $yol :: ${gorunenButonlar().join(' | ')}');
+        }
+
         // ── 1) Ekranın kendi formu: doldur → Kaydet ──────────────────────
         final sayimOnce = await tabloSayilari();
         var (doldurulan, basildi) = await formuDoldurVeKaydet();
@@ -403,10 +561,17 @@ void main() {
         // Ekleme ekranında Kaydet'e basıldı ama hiçbir tabloya satır
         // eklenmediyse: sessizce kaydetmeyen form ya da robotun
         // dolduramadığı zorunlu alan — nedenini rapora yaz.
-        if (basildi.isNotEmpty && yazilan.isEmpty && yol.contains('ekle')) {
+        // (Ayarlar ekranları ve "güncelle/değiştir" mevcut satırı günceller,
+        // satır sayısı artmaz — onlar sayılmaz.)
+        if (basildi.isNotEmpty && yazilan.isEmpty && !yol.startsWith('/ayarlar') && !_kayitBeklenmeyen.contains(yol) &&
+            !RegExp(r'güncelle|değiştir', caseSensitive: false).hasMatch(basildi)) {
           final neden = dogrulamaMesajlari();
-          bulgular.add(_Bulgu(yol, 'kayıtsız',
-              'Kaydet\'e basıldı, kayıt oluşmadı${neden.isNotEmpty ? ' — ekranda: $neden' : ''} [${sonDoldurulan.join("; ")}]'));
+          // Başarı mesajı çıktıysa mevcut kayıt güncellenmiştir (ör. fatura
+          // ödemesi) — satır sayısı artmaz ama hata değil.
+          if (!_basariRe.hasMatch(neden)) {
+            bulgular.add(_Bulgu(yol, 'kayıtsız',
+                '"$basildi" basıldı, kayıt oluşmadı${neden.isNotEmpty ? ' — ekranda: $neden' : ''} [${sonDoldurulan.join("; ")}]'));
+          }
         }
 
         // ── 2) Liste ekranı: "+" ile yeni kayıt ekle ─────────────────────
@@ -422,8 +587,10 @@ void main() {
             final (d2, b2) = await formuDoldurVeKaydet();
             final y2 = artanlar(onceArti, await tabloSayilari());
             arti = b2.isEmpty ? '+ açıldı (alan:$d2, kaydet yok)' : '+ "$b2" → ${y2.isEmpty ? 'KAYIT YOK' : y2}';
-            if (b2.isNotEmpty && y2.isEmpty) {
-              final neden = dogrulamaMesajlari();
+            final neden2 = dogrulamaMesajlari();
+            if (b2.isNotEmpty && y2.isEmpty && !_kayitBeklenmeyen.contains(yol) &&
+                !_basariRe.hasMatch(neden2)) {
+              final neden = neden2;
               bulgular.add(_Bulgu(yol, 'kayıtsız',
                   '+ ile açılan formda "$b2"e basıldı, kayıt oluşmadı${neden.isNotEmpty ? ' — ekranda: $neden' : ''} [${sonDoldurulan.join("; ")}]'));
             }
@@ -442,10 +609,123 @@ void main() {
           await tester.tap(kapat.first, warnIfMissed: false);
           await bekle(4);
         }
+        for (var i = 0; i < 3; i++) {
+          final p = find.byWidgetPredicate((w) => w is Dialog || w is BottomSheet || w is MobileScanner);
+          if (!pencereKapat(p)) break;
+          await bekle(8);
+        }
+
+        // ── 2b) Hızlı Satış: sepete ekle → Ödeme Al → Kart / Nakit ────────
+        var satis = '';
+        if (yol == '/satis') {
+          for (final yontem in ['Kredi Kartı', 'Nakit']) {
+            final once2 = await tabloSayilari();
+            // Sepet boşsa ürünü aratıp ekle (ilk turda genel adım eklemişti).
+            if (find.text('Sepet boş').evaluate().isNotEmpty) {
+              final ara = find.byType(TextField).hitTestable();
+              if (ara.evaluate().isNotEmpty) {
+                await tester.enterText(ara.first, _aranacakUrun);
+                await bekle(12);
+                final sonuc = find.byWidgetPredicate((w) =>
+                    w is Text && (w.data ?? '').startsWith('Robot Çikolata 80 G')).hitTestable();
+                if (sonuc.evaluate().isNotEmpty) {
+                  await tester.tap(sonuc.first, warnIfMissed: false);
+                  await bekle(8);
+                }
+              }
+            }
+            final odeme = find.text('Ödeme Al').hitTestable();
+            if (odeme.evaluate().isEmpty) {
+              bulgular.add(_Bulgu(yol, 'kayıtsız', '$yontem: "Ödeme Al" bulunamadı (sepete ürün eklenemedi?)'));
+              continue;
+            }
+            await tester.tap(odeme.first, warnIfMissed: false);
+            await bekle(10);
+            final secenek = find.descendant(of: find.byType(BottomSheet), matching: find.text(yontem));
+            if (secenek.evaluate().isNotEmpty) {
+              await tester.tap(secenek.first, warnIfMissed: false);
+              await bekle(10);
+            }
+            if (yontem == 'Nakit') {
+              final tamam = find.descendant(of: find.byType(Dialog), matching: find.text('Tamam'));
+              if (tamam.evaluate().isNotEmpty) {
+                await tester.tap(tamam.first, warnIfMissed: false);
+                await bekle(12);
+              }
+            }
+            final y = artanlar(once2, await tabloSayilari());
+            satis += ' · $yontem satış → ${y.isEmpty ? 'KAYIT YOK' : y.split(',').where((s) => s.startsWith('satis')).join(',')}';
+            if (!y.contains('satislar+1')) {
+              bulgular.add(_Bulgu(yol, 'kayıtsız',
+                  '$yontem ile ödeme alındı ama satış kaydı oluşmadı — ekranda: ${dogrulamaMesajlari()}'));
+            }
+            for (var i = 0; i < 4; i++) {
+              final p = find.byWidgetPredicate((w) => w is Dialog || w is BottomSheet);
+              if (!pencereKapat(p)) break;
+              await bekle(8);
+            }
+            // Satış sonrası fiş önizleme gibi bir sayfaya geçildiyse geri dön.
+            if (Uri.parse(router.routerDelegate.currentConfiguration.last.matchedLocation).path != '/satis') {
+              router.go('/');
+              await bekle(6);
+              unawaited(router.push('/satis'));
+              await bekle();
+            }
+          }
+        }
+
+        // ── 3) Sekmeler ve filtre çipleri: hepsini tek tek aç ─────────────
+        // (Yalnız bu ekranın sayfasındakiler — robot başka sayfaya geçtiyse
+        // atlanır.)
+        var sekme = 0, cip = 0;
+        final sayfaYolu = Uri.decodeComponent(Uri.parse(
+            router.routerDelegate.currentConfiguration.last.matchedLocation).path);
+        if (sayfaYolu == yol) {
+          final sekmeSayisi = find.byType(Tab).hitTestable().evaluate().length;
+          for (var i = 1; i < sekmeSayisi && i < 8; i++) {
+            final s = find.byType(Tab).hitTestable();
+            if (s.evaluate().length <= i) break;
+            await tester.tap(s.at(i), warnIfMissed: false);
+            await bekle(10);
+            sekme++;
+          }
+          if (sekmeSayisi > 1) {
+            await tester.tap(find.byType(Tab).hitTestable().first, warnIfMissed: false);
+            await bekle(8);
+          }
+          final cipSayisi = find.byWidgetPredicate((w) => w is FilterChip || w is ChoiceChip)
+              .hitTestable().evaluate().length;
+          for (var i = 0; i < cipSayisi && i < 10; i++) {
+            final c = find.byWidgetPredicate((w) => w is FilterChip || w is ChoiceChip).hitTestable();
+            if (c.evaluate().length <= i) break;
+            await tester.tap(c.at(i), warnIfMissed: false);
+            await bekle(6);
+            cip++;
+          }
+        }
+
+        // ── 4) Listedeki ilk kayda dokun (detay / düzenleme açılsın) ──────
+        var detay = '';
+        if (sayfaYolu == yol) {
+          final kayitlar = find.byWidgetPredicate((w) =>
+              w is ListTile && w.onTap != null && w.enabled).hitTestable();
+          for (final e in kayitlar.evaluate().take(6)) {
+            final m = butonMetni(e);
+            if (m.isEmpty || _yasakRe.hasMatch(m)) continue;
+            final onceki = ustRota();
+            await tester.tap(find.byWidget(e.widget).first, warnIfMissed: false);
+            await bekle(12);
+            detay = ustRota() != onceki ? 'kayıt açıldı: "${m.split(' ').take(4).join(' ')}"' : '';
+            break;
+          }
+        }
+
         final yeni = bulgular.length - once;
         gezilen[yol] = '${yeni == 0 ? '✅' : '⚠️'} alan:$doldurulan'
             '${basildi.isNotEmpty ? ' buton:"$basildi" → ${yazilan.isEmpty ? 'yeni satır yok' : yazilan}' : ''}'
-            '${arti.isNotEmpty ? ' · $arti' : ''}${yeni > 0 ? ' bulgu:$yeni' : ''}';
+            '${arti.isNotEmpty ? ' · $arti' : ''}$satis'
+            '${sekme > 0 ? ' · sekme:$sekme' : ''}${cip > 0 ? ' · filtre:$cip' : ''}'
+            '${detay.isNotEmpty ? ' · $detay' : ''}${yeni > 0 ? ' bulgu:$yeni' : ''}';
       } catch (e, st) {
         // ignore: avoid_print
         if (_tekRota.isNotEmpty) print('ROBOT HATASI: $e\n$st');

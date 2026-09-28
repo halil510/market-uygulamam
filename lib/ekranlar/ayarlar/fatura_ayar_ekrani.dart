@@ -781,7 +781,11 @@ class _Kart extends StatelessWidget {
     decoration: BoxDecoration(
         color: context.cardBg, borderRadius: BorderRadius.circular(12),
         boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 6)]),
-    child: Column(children: children),
+    // Şeffaf Material: içteki ListTile/Switch dokunma dalgası görünsün.
+    child: Material(
+      type: MaterialType.transparency,
+      child: Column(children: children),
+    ),
   );
 }
 

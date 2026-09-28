@@ -645,7 +645,8 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
                           color: _tedarikci != null ? Colors.teal : context.textSecondary),
                       const SizedBox(width: 8),
                       Expanded(child: Text(
-                        _tedarikci != null ? _tedarikci!.unvan : 'Tedarikçi Seç (opsiyonel)',
+                        // Tedarikçi artık zorunlu (bkz. _kaydet) — etiket "(opsiyonel)" diyordu.
+                        _tedarikci != null ? _tedarikci!.unvan : 'Tedarikçi Seç *',
                         style: TextStyle(
                           fontSize: 13,
                           color: _tedarikci != null ? Colors.teal.shade700 : TsRenk.metinIkincil(context),

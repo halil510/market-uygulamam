@@ -16,6 +16,7 @@ import 'package:intl/intl.dart';
 import '../../saglayicilar/riverpod/satis_provider.dart';
 import '../../modeller/satis_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/tarih_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/satis_deposu.dart';
@@ -54,12 +55,13 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
 
   Future<void> _tarihSec() async {
     final filtre  = ref.read(satisFiltresiProvider);
+    final ilk = DateTime(2020), son = DateTime.now();
     final secilen = await showDateRangePicker(
       context:     context,
-      firstDate:   DateTime(2020),
-      lastDate:    DateTime.now(),
-      initialDateRange: DateTimeRange(
-          start: filtre.basTarih, end: filtre.bitTarih),
+      firstDate:   ilk,
+      lastDate:    son,
+      initialDateRange: TarihUtils.secimAraligiKirp(
+          DateTimeRange(start: filtre.basTarih, end: filtre.bitTarih), ilk, son),
       locale: const Locale('tr', 'TR'),
     );
     if (secilen != null) {

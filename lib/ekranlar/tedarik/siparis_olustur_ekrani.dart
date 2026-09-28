@@ -239,13 +239,13 @@ class _SiparisOlusturEkraniState extends ConsumerState<SiparisOlusturEkrani> {
                 separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (_, i) {
                   final u = _aramaSonuclari[i];
-                  return ListTile(
+                  return Material(type: MaterialType.transparency, child: ListTile(
                     dense: true,
                     title: Text(u.urunAdi, style: const TextStyle(fontSize: 13)),
                     subtitle: Text(u.barkod ?? u.kod ?? ''),
                     trailing: Text('Alış: ${ParaUtils.formatla(u.alisFiyat)}', style: const TextStyle(fontSize: 12)),
                     onTap: () => _urunEkle(u),
-                  );
+                  ));
                 },
               ),
             ),

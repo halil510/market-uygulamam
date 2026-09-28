@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import '../../saglayicilar/riverpod/kasa_rapor_provider.dart';

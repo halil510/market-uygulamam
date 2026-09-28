@@ -6,6 +6,7 @@
 // terminale sunucu yeni numara bloğu vermez — bkz.
 // supabase_terminal_aktif_kontrolu.sql).
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:intl/intl.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -72,7 +73,7 @@ class _TerminallerEkraniState extends State<TerminallerEkrani> {
         ],
       ),
     );
-    ctrl.dispose();
+    dialogSonrasiBirak([ctrl]);
     if (yeniAd == null || yeniAd.isEmpty || yeniAd == t.ad) return;
     await _guncelle(t, ad: yeniAd, basari: 'Ad güncellendi');
   }

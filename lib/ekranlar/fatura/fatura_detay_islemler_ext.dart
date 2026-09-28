@@ -20,52 +20,24 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
   Future<void> _odemeKaydet() async {
     if (_fatura == null || !mounted || _islemDevam) return;
     setState(() => _islemDevam = true);
-    final ctrl = TextEditingController();
-    // 🔴 DÜZELTME (komple derin analizde bulundu): bu controller hiçbir
-    // zaman dispose edilmiyordu — dış try/finally ile artık her çıkış
-    // yolunda (erken dönüş, hata, başarı) garanti altına alındı.
-    try {
-      await _odemeKaydetIc(ctrl);
-    } finally {
-      ctrl.dispose();
-    }
-  }
-
-  Future<void> _odemeKaydetIc(TextEditingController ctrl) async {
-    final ok = await showDialog<bool>(
+    // 🔴 DÜZELTME (uygulama robotu bulgusu): controller önceden burada
+    // oluşturulup dialog kapanır kapanmaz dispose ediliyordu — dialog'un
+    // kapanma animasyonu sürerken TextField hâlâ onu kullandığı için
+    // "TextEditingController was used after being disposed" hatası
+    // oluşuyordu. Artık controller'ın sahibi dialog'un kendisi; dialog
+    // girilen metni döndürüyor.
+    final girilen = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Ödeme Kaydet'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('Kalan: ${ParaUtils.formatla(_fatura!.kalanTutar)}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          TextField(
-            controller: ctrl,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-                labelText: 'Ödenen Tutar',
-                suffixText: 'TL',
-                border: OutlineInputBorder()),
-          ),
-        ]),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('İptal')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Kaydet')),
-        ],
-      ),
+      builder: (_) => _OdemeTutariDialog(kalan: _fatura!.kalanTutar),
     );
 
-    if (ok != true || !mounted) { setState(() => _islemDevam = false); return; }
+    if (girilen == null || !mounted) {
+      if (mounted) setState(() => _islemDevam = false);
+      return;
+    }
 
     try {
-      final odenen = double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 0;
+      final odenen = double.tryParse(girilen.replaceAll(',', '.')) ?? 0;
       if (odenen <= 0) {
         if (mounted) BildirimServisi.uyari(context, 'Geçerli tutar girin');
         return;
@@ -416,4 +388,53 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }
   }
+}
+
+/// Ödenen tutarı soran dialog — metin kutusu controller'ının sahibi (kapanma
+/// animasyonu bittikten sonra, kendi dispose'unda bırakır). Kaydet'te girilen
+/// metni, İptal'de null döndürür.
+class _OdemeTutariDialog extends StatefulWidget {
+  final double kalan;
+  const _OdemeTutariDialog({required this.kalan});
+
+  @override
+  State<_OdemeTutariDialog> createState() => _OdemeTutariDialogState();
+}
+
+class _OdemeTutariDialogState extends State<_OdemeTutariDialog> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Ödeme Kaydet'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('Kalan: ${ParaUtils.formatla(widget.kalan)}',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+                labelText: 'Ödenen Tutar',
+                suffixText: 'TL',
+                border: OutlineInputBorder()),
+          ),
+        ]),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('İptal')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, _ctrl.text),
+              child: const Text('Kaydet')),
+        ],
+      );
 }

@@ -1,4 +1,5 @@
 // lib/cekirdek/utils/tarih_utils.dart
+import 'package:flutter/material.dart' show DateTimeRange;
 import 'package:intl/intl.dart';
 
 class TarihUtils {
@@ -31,6 +32,24 @@ class TarihUtils {
   static DateTime ayBaslangici() {
     final now = DateTime.now();
     return DateTime(now.year, now.month, 1);
+  }
+
+  /// showDateRangePicker'ın başlangıç aralığını [ilk]–[son] sınırına kırpar
+  /// (gün bazında). "Bu Ay / Bu Yıl" filtresi bitişi ileri bir tarihe
+  /// koyuyordu; aralık lastDate'i aşınca tarih seçici çöküyordu.
+  static DateTimeRange? secimAraligiKirp(
+      DateTimeRange? aralik, DateTime ilk, DateTime son) {
+    if (aralik == null) return null;
+    DateTime gun(DateTime d) => DateTime(d.year, d.month, d.day);
+    DateTime kirp(DateTime d) {
+      final g = gun(d);
+      if (g.isBefore(gun(ilk))) return gun(ilk);
+      if (g.isAfter(gun(son))) return gun(son);
+      return g;
+    }
+    final bas = kirp(aralik.start);
+    final bit = kirp(aralik.end);
+    return DateTimeRange(start: bas.isAfter(bit) ? bit : bas, end: bit);
   }
 
   static String kacGunOnce(DateTime dt) {

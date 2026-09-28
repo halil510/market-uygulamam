@@ -14,6 +14,7 @@ import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import '../../modeller/kasa_hareket_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/tarih_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../saglayicilar/riverpod/kasa_rapor_provider.dart' as merkezi;
@@ -136,7 +137,8 @@ class _KasaRaporEkraniState extends ConsumerState<KasaRaporEkrani> {
         context: context,
         firstDate: DateTime(2020),
         lastDate:  DateTime.now(),
-        initialDateRange: _aralik,
+        initialDateRange:
+            TarihUtils.secimAraligiKirp(_aralik, DateTime(2020), DateTime.now()),
         locale: const Locale('tr', 'TR'),
       );
       if (secilen != null) setState(() => _aralik = secilen);

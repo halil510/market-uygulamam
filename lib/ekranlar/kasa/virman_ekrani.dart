@@ -74,8 +74,13 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
         _kasaBakiye = bakiye;
         _bankaHesaplari = bankalar;
         _krediKartlari  = kartlar;
-        _seciliBanka ??= bankalar.isNotEmpty ? bankalar.first : null;
-        _seciliKart  ??= kartlar.isNotEmpty ? kartlar.first : null;
+        // Seçili kayıt YENİ listeden (id ile) yeniden seçilir: eski nesne
+        // listede bulunamazsa açılır liste "exactly one item" hatasıyla
+        // çöküyordu (virman sonrası yenilemede — uygulama robotu bulgusu).
+        _seciliBanka = bankalar.where((b) => b.id == _seciliBanka?.id).firstOrNull ??
+            (bankalar.isNotEmpty ? bankalar.first : null);
+        _seciliKart = kartlar.where((k) => k.id == _seciliKart?.id).firstOrNull ??
+            (kartlar.isNotEmpty ? kartlar.first : null);
         _yukleniyor = false;
       });
     } catch (_) {

@@ -13,6 +13,8 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 import 'package:market_plus/cekirdek/utils/sifre_hash.dart';
+import 'package:market_plus/depolar/kasa_deposu.dart';
+import 'package:market_plus/modeller/kasa_hareket_model.dart';
 import 'package:market_plus/veri/database/tablolar/tablo_olusturucu.dart';
 import 'package:market_plus/veri/database/veritabani.dart';
 
@@ -173,6 +175,17 @@ class RobotOrtam {
         'global_id': u.v4(),
       });
     } catch (_) {/* şema farkı — banka ekranları parametresiz denenir */}
+    // Kasada açılış parası (virman / ödeme gibi işlemler "bakiye yetersiz"
+    // uyarısına takılmasın) — uygulamanın kendi deposuyla, zincir tutarlı.
+    await KasaDeposu().hareketEkle(KasaHareketModel(
+        hareketTipi: 'AçılışKasa', tutar: 5000, tarih: DateTime.now(),
+        aciklama: 'Robot açılış kasası'));
+    // Merkezi fatura numara bloğu — bulutsuz ortamda önceden tahsis edilmiş
+    // gibi (yoksa otomatik numaralı fatura bulut RPC'sini bekler).
+    await db.insert('yerel_fatura_blok', {
+      'seri': 'FTR', 'yil': DateTime.now().year, 'blok_baslangic': 1,
+      'blok_bitis': 1000, 'siradaki': 1, 'durum': 'aktif',
+    });
     try {
       v.id['masa'] = await db.insert('masalar',
           {'ad': 'Masa 1', 'durum': 'bos', 'global_id': u.v4()});

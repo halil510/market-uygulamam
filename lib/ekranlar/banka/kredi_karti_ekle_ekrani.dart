@@ -194,7 +194,9 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
               data: (bankalar) {
                 _seciliBankayiAyarla(bankalar);
                 return DropdownButtonFormField<BankaModel>(
-                  value: _seciliBanka,
+                  // Liste yenilenince (yeni nesneler) seçili banka id ile
+                  // eşlenir — yoksa "exactly one item" hatasıyla çöker.
+                  value: bankalar.where((b) => b.id == _seciliBanka?.id).firstOrNull,
                   isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Banka *',

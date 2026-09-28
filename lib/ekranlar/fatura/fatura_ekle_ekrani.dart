@@ -250,7 +250,13 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
   }
 
   Future<void> _kaydet() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      // Hatalı alan (ör. en üstteki Cari) ekran dışında kalabiliyor —
+      // kullanıcı butona basınca hiçbir şey olmamış sanıyordu.
+      BildirimServisi.uyari(context,
+          _seciliCari == null ? 'Cari seçin' : 'Eksik alanları doldurun (kırmızı işaretli)');
+      return;
+    }
     if (_seciliCari == null) {
       BildirimServisi.uyari(context, 'Cari seçin');
       return;

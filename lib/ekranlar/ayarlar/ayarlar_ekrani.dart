@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:typed_data';
 // lib/ekranlar/ayarlar/ayarlar_ekrani.dart
@@ -171,10 +172,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         ],
       ),
     );
-    adCtrl.dispose();
-    adrCtrl.dispose();
-    telCtrl.dispose();
-    verCtrl.dispose();
+    dialogSonrasiBirak([adCtrl, adrCtrl, telCtrl, verCtrl]);
   }
 
   // ── VERİTABANINI İÇE AKTAR (DÜZELTİLMİŞ) ─────────────────────────────────────
@@ -393,14 +391,12 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         ),
       ),
     );
-    if (sifreDogruMu != true) {
-      sifreCtrl.dispose();
-      return;
-    }
+    final girilenSifre = sifreCtrl.text;
+    dialogSonrasiBirak([sifreCtrl]);
+    if (sifreDogruMu != true) return;
 
     final girisSonucu = await KullaniciDeposu()
-        .girisKontrol(aktifKullanici.kullaniciAdi, sifreCtrl.text);
-    sifreCtrl.dispose();
+        .girisKontrol(aktifKullanici.kullaniciAdi, girilenSifre);
     if (girisSonucu == null) {
       if (mounted)
         BildirimServisi.hata(context, 'Şifre yanlış. Temizleme iptal edildi.');

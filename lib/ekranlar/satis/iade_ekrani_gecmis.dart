@@ -368,8 +368,7 @@ extension _GecmisTabExt on _IadeEkraniState {
     final yeniIskStr    = iskCtrl.text;
     final yeniAciklama  = aciklamaCtrl.text.trim();
 
-    miktarCtrl.dispose(); fiyatCtrl.dispose();
-    iskCtrl.dispose(); aciklamaCtrl.dispose();
+    dialogSonrasiBirak([miktarCtrl, fiyatCtrl, iskCtrl, aciklamaCtrl]);
 
     if (onay != true || !mounted) return;
 
@@ -898,7 +897,7 @@ extension _GecmisTabExt on _IadeEkraniState {
     try {
       await _gecmisIadeDuzeltIc(iade, notCtrl);
     } finally {
-      notCtrl.dispose();
+      dialogSonrasiBirak([notCtrl]);
     }
   }
 

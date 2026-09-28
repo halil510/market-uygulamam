@@ -15,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import '../../saglayicilar/riverpod/kar_zarar_provider.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/tarih_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/bildirim_servisi.dart';
@@ -52,12 +53,13 @@ class _KarZararEkraniState extends ConsumerState<KarZararEkrani>
 
   Future<void> _ozelAralikSec() async {
     final filtre = ref.read(karZararFiltresiProvider);
+    final ilk = DateTime(2020), son = DateTime.now();
     final secilen = await showDateRangePicker(
       context: context,
-      firstDate: DateTime(2020),
-      lastDate:  DateTime.now(),
-      initialDateRange: DateTimeRange(
-          start: filtre.basTarih, end: filtre.bitTarih),
+      firstDate: ilk,
+      lastDate:  son,
+      initialDateRange: TarihUtils.secimAraligiKirp(
+          DateTimeRange(start: filtre.basTarih, end: filtre.bitTarih), ilk, son),
       locale: const Locale('tr', 'TR'),
     );
     if (secilen != null && mounted) {

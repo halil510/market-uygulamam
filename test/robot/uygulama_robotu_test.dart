@@ -21,6 +21,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -366,6 +367,75 @@ void main() {
         .evaluate()
         .any((i) => _yikiciIkonlar.contains((i.widget as Icon).icon));
 
+    /// "Beyaz üstüne beyaz" — yazı rengi ile ÜSTÜNE ÇİZİLDİĞİ zemin arasındaki
+    /// kontrast çok düşükse (okunmuyorsa) bulgu. Zemin: en yakın opak Material /
+    /// ColoredBox / düz renkli kutu; gradyan veya resim görülürse kontrol edilmez.
+    void okunmayanYazilar(String asama) {
+      double parlaklik(Color c) {
+        double k(double v) => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) * ((v + 0.055) / 1.055);
+        return 0.2126 * k(c.r) + 0.7152 * k(c.g) + 0.0722 * k(c.b);
+      }
+      double kontrast(Color a, Color b) {
+        final x = parlaklik(a), y = parlaklik(b);
+        return (x > y ? x + 0.05 : y + 0.05) / (x > y ? y + 0.05 : x + 0.05);
+      }
+      Color? zeminBul(Element e) {
+        Color? sonuc;
+        var bilinmiyor = false;
+        e.visitAncestorElements((a) {
+          final w = a.widget;
+          Color? c;
+          if (w is Material && w.type != MaterialType.transparency) c = w.color;
+          if (w is ColoredBox) c = w.color;
+          if (w is DecoratedBox && w.decoration is BoxDecoration) {
+            final d = w.decoration as BoxDecoration;
+            if (d.gradient != null || d.image != null) { bilinmiyor = true; return false; }
+            c = d.color;
+          }
+          if (w is Ink) {
+            // Çipler zeminlerini Ink(decoration: ShapeDecoration/BoxDecoration) ile çizer.
+            final d = w.decoration;
+            if (d is BoxDecoration && d.gradient == null && d.image == null) c = d.color;
+            else if (d is ShapeDecoration && d.gradient == null && d.image == null) c = d.color;
+            else { bilinmiyor = true; return false; }
+          }
+          // Degrade başlık çubukları / üst üste katmanlar: zemin yazının atası
+          // değil yanındaki katman — güvenle bilinemez, kontrol edilmez.
+          if (w is Image || w is AppBar || w is SliverAppBar || w is FlexibleSpaceBar ||
+              w is Stack) { bilinmiyor = true; return false; }
+          if (w is Scaffold) c = w.backgroundColor ?? Theme.of(a).scaffoldBackgroundColor;
+          if (c != null && c.a > 0.85) { sonuc = c; return false; }
+          return true;
+        });
+        return bilinmiyor ? null : sonuc;
+      }
+      final goruldu = <String>{};
+      for (final e in find.byType(RichText).hitTestable().evaluate()) {
+        final ro = e.renderObject;
+        if (ro is! RenderParagraph) continue;
+        final metin = ro.text.toPlainText().trim();
+        if (metin.length < 2 || !goruldu.add(metin)) continue;
+        Color? renk = ro.text.style?.color;
+        ro.text.visitChildren((s) { renk ??= s.style?.color; return renk == null; });
+        // Rengi tanımsız yazıyı çizim motoru BEYAZ çizer (txt varsayılanı).
+        renk ??= const Color(0xFFFFFFFF);
+        final zemin = zeminBul(e);
+        const izle = String.fromEnvironment('ROBOT_RENK');
+        if (izle.isNotEmpty && metin.contains(izle)) {
+          // ignore: avoid_print
+          print('RENK [$asama] "$metin": yazı=$renk zemin=$zemin '
+              '${renk != null && zemin != null ? 'kontrast=${kontrast(renk!, zemin).toStringAsFixed(2)}' : ''}');
+        }
+        if (renk == null || zemin == null || renk!.a < 0.3) continue;
+        final k = kontrast(renk!, zemin);
+        if (k < 1.6) {
+          final kisa = metin.length > 40 ? '${metin.substring(0, 40)}…' : metin;
+          bulgular.add(_Bulgu(aktifRota, 'okunmuyor',
+              '$asama: "$kisa" yazısı zeminle aynı renkte (kontrast ${k.toStringAsFixed(2)})'));
+        }
+      }
+    }
+
     /// Ekranda görünen ham hata metinlerini (uygulamanın yakalayıp
     /// gösterdiği) bulgu olarak ekler.
     void ekranHataMetni(String asama) {
@@ -380,6 +450,7 @@ void main() {
             m.contains('MissingPluginException') ? 'ortam' : 'ekranda-hata',
             '$asama: "$kisa"'));
       }
+      okunmayanYazilar(asama);
     }
 
     /// İzinli ilk işlem butonu (etkin, görünen, yasak listesinde olmayan).
@@ -534,7 +605,7 @@ void main() {
     // testi düşürmez.
     await runZonedGuarded(() async {
     await tester.pumpWidget(const ProviderScope(
-        child: MarketPlusApp(baslangicTema: 'light')));
+        child: MarketPlusApp(baslangicTema: robotTema)));
     await bekle(30);
 
     final router = GoRouter.of(tester.element(find.byType(Scaffold).first));

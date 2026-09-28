@@ -118,7 +118,7 @@ class RobotOrtam {
 
   static Future<void> hazirla() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    SharedPreferences.setMockInitialValues({'tema_adi': 'light'});
+    SharedPreferences.setMockInitialValues({'tema_adi': robotTema});
     _guvenliDepo.clear();
     kanallariKur();
     await initializeDateFormatting('tr_TR');
@@ -193,3 +193,7 @@ class RobotOrtam {
     return v;
   }
 }
+
+/// Robotun uygulamayı açtığı tema (light, dark, mavi, yesil, okyanus):
+///   --dart-define=ROBOT_TEMA=dark
+const robotTema = String.fromEnvironment('ROBOT_TEMA', defaultValue: 'light');

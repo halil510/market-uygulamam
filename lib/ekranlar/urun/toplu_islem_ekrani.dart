@@ -420,7 +420,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
               ]),
             ),
           // Arama + seç butonları
-          Container(color: Colors.white, padding: const EdgeInsets.all(12),
+          Container(color: context.cardBg, padding: const EdgeInsets.all(12),
             child: Column(children: [
               TextField(
                 controller: _araCtrl,
@@ -473,7 +473,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                       margin: const EdgeInsets.only(bottom: 6),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
-                        color: secili ? Color.fromARGB(20, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue) : Colors.white,
+                        color: secili ? Color.fromARGB(20, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue) : context.cardBg,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                             color: secili ? AppRenkler.primary : Colors.transparent, width: 1.5),
@@ -485,7 +485,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                           duration: const Duration(milliseconds: 150),
                           width: 22, height: 22,
                           decoration: BoxDecoration(
-                            color: secili ? AppRenkler.primary : Colors.white,
+                            color: secili ? AppRenkler.primary : context.cardBg,
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
                                 color: secili ? AppRenkler.primary : context.borderColor)),
@@ -582,7 +582,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                       duration: const Duration(milliseconds: 150),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: secili ? a.renk : Colors.white,
+                        color: secili ? a.renk : context.cardBg,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: secili ? a.renk : context.borderColor),
                         boxShadow: secili ? [] :
@@ -662,7 +662,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                     ? '${_islem == IslemTuru.artir ? "Artış" : "Azalış"} Miktarı'
                     : 'Yeni Değer',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                filled: true, fillColor: Colors.white,
+                filled: true, fillColor: context.cardBg,
                 suffixText: _alan!.sayisal && _yuzde && _islem != IslemTuru.degistir ? '%' : null,
                 prefixIcon: Icon(_alan!.ikon ?? Icons.edit_outlined, color: _alan!.renk),
               ),

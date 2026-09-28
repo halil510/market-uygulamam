@@ -201,7 +201,7 @@ class _BorcKarti extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: odendi ? context.borderColor : (vadesiGecti ? TsRenk.zemin(TsRenk.hata) : Colors.white),
+        color: odendi ? context.borderColor : (vadesiGecti ? TsRenk.zemin(TsRenk.hata) : context.cardBg),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: vadesiGecti ? Colors.red.shade300 : (odendi ? TsRenk.ayirac(context) : renk.withAlpha(77)),

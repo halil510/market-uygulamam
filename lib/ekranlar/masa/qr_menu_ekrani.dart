@@ -341,7 +341,8 @@ class _UrunKartiMusteri extends StatelessWidget {
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   Text(ParaUtils.formatla(urun.satisFiyati),
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: TsRenk.primaryKoyu)),
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14,
+                          color: Theme.of(context).colorScheme.primary)),
                   const SizedBox(height: 8),
                   if (sepette)
                     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [

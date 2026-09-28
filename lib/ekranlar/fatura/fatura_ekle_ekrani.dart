@@ -579,7 +579,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                 _toplamSatir('KDV', _kdvToplam),
                 const Divider(height: 16),
                 _toplamSatir('GENEL TOPLAM', _genelToplam,
-                    bold: true, renk: TsRenk.primaryKoyu),
+                    bold: true, renk: Theme.of(context).colorScheme.primary),
               ]),
             ),
             const SizedBox(height: 100),
@@ -703,10 +703,10 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                   TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
           Text(
             ParaUtils.formatla(k.toplam),
-            style: const TextStyle(
+            style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: TsRenk.primaryKoyu),
+                color: Theme.of(context).colorScheme.primary),
           ),
         ]),
       ]),
@@ -716,13 +716,15 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
   Widget _bolum(String title, IconData icon) => Padding(
         padding: const EdgeInsets.only(top: 16, bottom: 10),
         child: Row(children: [
-          Icon(icon, size: 16, color: TsRenk.primaryKoyu),
+          // Temanın vurgu rengi: sabit koyu renk (primaryKoyu) koyu temada
+          // zeminle kayboluyordu (robot bulgusu).
+          Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 6),
           Text(title,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: TsRenk.primaryKoyu,
+                  color: Theme.of(context).colorScheme.primary,
                   letterSpacing: 0.5)),
           const Expanded(child: Divider(indent: 8)),
         ]),

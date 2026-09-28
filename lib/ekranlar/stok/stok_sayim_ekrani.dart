@@ -389,7 +389,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
       body: Column(children: [
         // Arama
         Container(
-          color: Colors.white,
+          color: context.cardBg,
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
           child: TextField(
             controller: _araCtrl,
@@ -543,7 +543,7 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
       decoration: BoxDecoration(
         color: sayildi
             ? TsRenk.zemin(TsRenk.basarili, opaklik: 0.5)
-            : Colors.white,
+            : context.cardBg,
         border: sayildi
             ? Border.all(color: Colors.green.shade200)
             : Border.all(color: Colors.transparent),

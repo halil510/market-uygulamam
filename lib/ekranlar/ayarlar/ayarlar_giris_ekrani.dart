@@ -282,7 +282,11 @@ class _AyarlarGirisEkraniState extends ConsumerState<AyarlarGirisEkrani> {
                                   : _dogrula,
                           style: FilledButton.styleFrom(
                             foregroundColor: Colors.white,
-          backgroundColor: AppRenkler.primary,
+                            backgroundColor: AppRenkler.primary,
+                            // PIN girilmeden (devre dışı) buton açık gri zemin +
+                            // sabit beyaz yazıyla görünmüyordu (robot bulgusu).
+                            disabledBackgroundColor: AppRenkler.divider,
+                            disabledForegroundColor: AppRenkler.textSecondary,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14)),
                           ),
@@ -295,8 +299,7 @@ class _AyarlarGirisEkraniState extends ConsumerState<AyarlarGirisEkrani> {
                               : const Text('Doğrula',
                                   style: TextStyle(
                                       fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white)),
+                                      fontWeight: FontWeight.w700)),
                         ),
                       ),
                     ]),

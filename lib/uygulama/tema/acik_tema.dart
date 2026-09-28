@@ -167,8 +167,18 @@ ThemeData acikTema() {
     chipTheme: ChipThemeData(
       backgroundColor: AppRenkler.background,
       selectedColor: const Color(0x1A4361EE),
+      // 🔴 Renk VERİLMELİ (kullanıcı bulgusu 2026-09-28 — masa "Müşteri Ekle",
+      // Lot/Seri filtreleri görünmüyordu): çip kendi yazı stilini kurduğu için
+      // sayfanın yazı rengini devralmaz; rengi tanımsız yazıyı motor BEYAZ
+      // çizer → açık zeminde beyaz üstüne beyaz.
       labelStyle: const TextStyle(
-        fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w500),
+        fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w500,
+        color: AppRenkler.textPrimary),
+      secondaryLabelStyle: const TextStyle(
+        fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600,
+        color: AppRenkler.primary),
+      iconTheme: const IconThemeData(color: AppRenkler.textSecondary, size: 16),
+      checkmarkColor: AppRenkler.primary,
       side: const BorderSide(color: AppRenkler.divider),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

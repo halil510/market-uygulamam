@@ -45,12 +45,112 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
 
   int _otoCekmeSn = OtomatikBulutCekme.varsayilanSaniye;
 
+  ({int bekleyen, int yenidenDenenen, DateTime? enEski, String? sonHata})? _ozet;
+  bool _simdiGonderiliyor = false;
+
+  Future<void> _ozetiYukle() async {
+    try {
+      final o = await BulutManager().bekleyenOzeti();
+      if (mounted) setState(() => _ozet = o);
+    } catch (_) {
+      // görünürlük amaçlı — ekranı bozmamalı
+    }
+  }
+
+  void _kuyrukDegisti() {
+    _ozetiYukle();
+    _kaliciHatalariYukle();
+  }
+
+  Future<void> _simdiGonder() async {
+    setState(() => _simdiGonderiliyor = true);
+    try {
+      await BulutManager().simdiGonder();
+      await _ozetiYukle();
+      await _kaliciHatalariYukle();
+    } finally {
+      if (mounted) setState(() => _simdiGonderiliyor = false);
+    }
+  }
+
+  String _gecenSure(DateTime t) {
+    final fark = DateTime.now().difference(t);
+    if (fark.inMinutes < 1) return 'az önce';
+    if (fark.inHours < 1) return '${fark.inMinutes} dk önce';
+    if (fark.inDays < 1) return '${fark.inHours} sa önce';
+    return '${fark.inDays} gün önce';
+  }
+
+  /// Bulut gönderim kuyruğunun tek bakışta özeti (kullanıcı isteği
+  /// 2026-09-28: senkron sessiz bozulunca görünürlük yoktu).
+  Widget _senkronOzetKarti() {
+    final ozet = _ozet;
+    final durum = BulutManager().durum.value;
+    final sonGonderim = BulutManager().istatistik.value.sonGonderim;
+    final sorunlu = durum.sorun || (ozet?.yenidenDenenen ?? 0) > 0;
+    final renk = sorunlu ? Colors.orange : Colors.green;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: TsRenk.kart(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: renk.withAlpha(120)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(sorunlu ? Icons.sync_problem : Icons.cloud_done_outlined, color: renk, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text(durum.metin,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          ozet == null
+              ? 'Kuyruk okunuyor…'
+              : 'Bekleyen: ${ozet.bekleyen} kayıt'
+                '${ozet.yenidenDenenen > 0 ? ' (${ozet.yenidenDenenen} tanesi hata alıp yeniden deneniyor)' : ''}'
+                '${ozet.enEski != null ? '\nEn eski bekleyen: ${_gecenSure(ozet.enEski!)}' : ''}',
+          style: const TextStyle(fontSize: 12),
+        ),
+        Text(
+          sonGonderim != null
+              ? 'Son başarılı gönderim: ${_gecenSure(sonGonderim)}'
+              : 'Bu oturumda henüz gönderim yapılmadı',
+          style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context)),
+        ),
+        if (ozet?.sonHata != null) ...[
+          const SizedBox(height: 4),
+          SelectableText(
+            'Son hata: ${ozet!.sonHata!.length > 160 ? '${ozet.sonHata!.substring(0, 160)}…' : ozet.sonHata!}',
+            style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context)),
+          ),
+        ],
+        if ((ozet?.bekleyen ?? 0) > 0)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _simdiGonderiliyor ? null : _simdiGonder,
+              icon: _simdiGonderiliyor
+                  ? const SizedBox(width: 14, height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.cloud_upload_outlined, size: 16),
+              label: const Text('Şimdi gönder'),
+            ),
+          ),
+      ]),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _ayarlariYukle();
     _cakismaSayisiniYukle();
     _kaliciHatalariYukle();
+    _ozetiYukle();
+    BulutManager().durum.addListener(_kuyrukDegisti);
+    BulutManager().istatistik.addListener(_kuyrukDegisti);
     OtomatikBulutCekme.aralikOku().then((sn) {
       if (mounted) setState(() => _otoCekmeSn = sn);
     });
@@ -190,6 +290,8 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
 
   @override
   void dispose() {
+    BulutManager().durum.removeListener(_kuyrukDegisti);
+    BulutManager().istatistik.removeListener(_kuyrukDegisti);
     _urlCtrl.dispose();
     _keyCtrl.dispose();
     _epostaCtrl.dispose();
@@ -781,6 +883,7 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
               const SizedBox(height: 8),
             ],
 
+            _senkronOzetKarti(),
             if (_kaliciHatalar.isNotEmpty) _kaliciHataKarti(),
 
             // SONUÇ KARTI + KOPYALA BUTONU

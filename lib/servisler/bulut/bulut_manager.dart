@@ -260,6 +260,10 @@ class BulutManager {
     _timer = Timer.periodic(const Duration(seconds: 8), (_) => _isle());
   }
 
+  /// Bekleyen kayıtlar için bir gönderim turunu hemen başlatır (backoff'u
+  /// atlamaz; yalnız 8 sn'lik döngüyü beklemez).
+  Future<void> simdiGonder() => _isle();
+
   void _workerTetikle() {
     if (!_gonderiliyor) {
       Future.delayed(const Duration(milliseconds: 800), _isle);
@@ -393,6 +397,36 @@ class BulutManager {
               ornekHata: r['ornek']?.toString(),
             ))
         .toList();
+  }
+
+  /// Gönderim bekleyen kayıtların özeti: toplam, en az bir kez denenip
+  /// geçici hata alanlar (ağ/5xx — otomatik yeniden denenir), en eski
+  /// bekleyen kaydın oluşturulma zamanı ve son geçici hata metni.
+  Future<({int bekleyen, int yenidenDenenen, DateTime? enEski, String? sonHata})>
+      bekleyenOzeti() async {
+    final db = await Veritabani().db;
+    final r = (await db.rawQuery(
+        'SELECT COUNT(*) AS toplam, '
+        'SUM(CASE WHEN deneme_sayisi > 0 THEN 1 ELSE 0 END) AS denenen, '
+        'MIN(created_at) AS en_eski '
+        "FROM ${DbSabitler.syncQueue} WHERE durum = 'beklemede'"))
+        .first;
+    final hataSatiri = await db.rawQuery(
+        'SELECT hata_mesaji FROM ${DbSabitler.syncQueue} '
+        "WHERE durum = 'beklemede' AND deneme_sayisi > 0 AND hata_mesaji IS NOT NULL "
+        'ORDER BY son_deneme DESC LIMIT 1');
+    // created_at SQLite CURRENT_TIMESTAMP: UTC, dilimsiz "YYYY-MM-DD HH:MM:SS".
+    final ham = r['en_eski']?.toString();
+    final enEski = ham == null
+        ? null
+        : DateTime.tryParse('${ham.replaceFirst(' ', 'T')}${ham.contains('Z') || ham.contains('+') ? '' : 'Z'}')
+            ?.toLocal();
+    return (
+      bekleyen: (r['toplam'] as int?) ?? 0,
+      yenidenDenenen: (r['denenen'] as int?) ?? 0,
+      enEski: enEski,
+      sonHata: hataSatiri.isEmpty ? null : hataSatiri.first['hata_mesaji']?.toString(),
+    );
   }
 
   /// Tüm kalıcı hatalı satırları deneme sayısı sıfırlanarak yeniden

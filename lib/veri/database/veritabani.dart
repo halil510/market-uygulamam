@@ -12,6 +12,7 @@ import '../../cekirdek/utils/sifre_hash.dart';
 import '../../cekirdek/sabitler/uygulama_sabitleri.dart';
 import 'migrasyon_yonetici.dart';
 import 'tablolar/tablo_olusturucu.dart';
+import 'sema_onarici.dart';
 import 'sync_cakisma_tespit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -21,18 +22,31 @@ class Veritabani {
   Veritabani._internal();
 
   static Database? _db;
+  static Future<Database>? _acilis;
 
   /// Testlerde bellek-içi veritabanını singleton'a bağlamak için.
   @visibleForTesting
-  static set testVeritabani(Database? db) => _db = db;
+  static set testVeritabani(Database? db) {
+    _db = db;
+    _acilis = null;
+  }
 
   // Tek kaynak: UygSabitler.dbVersiyon ile eşleşmeli
   static const int _versiyon = UygSabitler.dbVersiyon;
 
-  Future<Database> get db async {
-    if (_db != null) return _db!;
-    _db = await _baslatDb();
-    return _db!;
+  /// 🔴 Açılış TEK SEFERLİK (2026-09-28): önceden `_db` null iken gelen her
+  /// eşzamanlı çağrı ayrı bir `_baslatDb()` başlatıyordu. Açılış sırasında
+  /// (migrasyon / şema onarımı) yazılan loglar da veritabanını istediği için
+  /// ikinci bir açılış tetikleniyor, şema onarımı iki kez paralel çalışıyor
+  /// ve geç biten açılış `_db`'nin üzerine yazabiliyordu. Artık açılış
+  /// sürerken gelen çağrılar AYNI açılışı bekler.
+  Future<Database> get db {
+    final mevcut = _db;
+    if (mevcut != null) return Future.value(mevcut);
+    return _acilis ??= _baslatDb().then((d) {
+      _db ??= d; // bu arada testVeritabani atandıysa ona dokunma
+      return _db!;
+    }).whenComplete(() => _acilis = null);
   }
 
   Future<Database> _baslatDb() async {
@@ -40,13 +54,31 @@ class Veritabani {
     // DbSabitler.dbAdi = 'market.db' — tek kaynak
     final yol = join(dbPath, DbSabitler.dbAdi);
 
-    return await openDatabase(
+    final database = await openDatabase(
       yol,
       version: _versiyon,
       onCreate: _olustur,
       onUpgrade: _guncelle,
       onConfigure: _onConfigure,
     );
+    await _semaOnarGerekirse(database);
+    return database;
+  }
+
+  /// Eski sürümden yükseltilmiş cihazlarda migrasyonun atladığı sütun/tablo/
+  /// indeksleri güncel şemaya tamamlar — her DB sürümünde BİR KEZ (bkz.
+  /// SemaOnarici; kullanıcı bulgusu 2026-09-28 "cari_hareket 119/119
+  /// yazılamadı"). Hata olursa açılışı engellemez.
+  static Future<void> _semaOnarGerekirse(Database database) async {
+    final anahtar = 'mp_sema_onarim_v$_versiyon';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(anahtar) == true) return;
+      await SemaOnarici.onar(database);
+      await prefs.setBool(anahtar, true);
+    } catch (e, st) {
+      LogServisi().hata('Veritabani._semaOnarGerekirse', hata: e, yigin: st);
+    }
   }
 
   Future<void> _onConfigure(Database db) async {
@@ -900,6 +932,8 @@ class Veritabani {
     // filigran o tablo için İLERLEMEZ, başarısız satır BİR SONRAKİ
     // senkronda tekrar çekilip denenir.
     var basarisizSayisi = 0;
+    String? ilkHata;
+    Map<String, dynamic>? ilkHataliSatir;
     try {
       for (final kayit in kayitlar) {
         final temiz = Map<String, dynamic>.from(kayit);
@@ -909,6 +943,8 @@ class Veritabani {
           await database.insert(tablo, temiz, conflictAlgorithm: conflict);
         } catch (e) {
           basarisizSayisi++;
+          ilkHata ??= e.toString();
+          ilkHataliSatir ??= temiz;
           if (kDebugMode) {
             debugPrint('supaKayitlariEkle ($tablo) satır hatası: $e');
           }
@@ -918,10 +954,21 @@ class Veritabani {
       await database.execute('PRAGMA foreign_keys = ON');
     }
     if (basarisizSayisi > 0) {
-      throw Exception(
-          '$tablo: $basarisizSayisi/${kayitlar.length} kayıt yazılamadı');
+      // 🔴 (2026-09-28, kullanıcı bulgusu "cari_hareket: 119/119 kayıt
+      // yazılamadı"): gerçek SQLite hatası yalnız debug'da yazılıyordu —
+      // sahada nedeni görmek imkânsızdı. İlk hata + örnek satırın alanları
+      // mesaja ve kalıcı log'a eklenir.
+      final ornek = ilkHataliSatir == null
+          ? ''
+          : ' | örnek alanlar: ${ilkHataliSatir!.keys.join(',')}';
+      LogServisi().hata('supaKayitlariEkle($tablo)',
+          hata: ilkHata, ek: 'örnek satır: ${ilkHataliSatir.toString()}');
+      throw Exception('$tablo: $basarisizSayisi/${kayitlar.length} kayıt yazılamadı — '
+          'ilk hata: ${_kisalt(ilkHata ?? '')}$ornek');
     }
   }
+
+  static String _kisalt(String s) => s.length > 300 ? '${s.substring(0, 300)}…' : s;
 
   /// Mevcut kayıtları güncelle (Supabase'den gelen)
   Future<void> supaKayitlariGuncelle(

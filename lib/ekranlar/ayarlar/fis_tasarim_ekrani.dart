@@ -711,16 +711,20 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
       border: Border.all(color: TsRenk.ayirac(context)),
       boxShadow: [BoxShadow(color: Colors.black.withAlpha(15), blurRadius: 6)],
     ),
-    child: Column(
-      children: items.map((sw) => SwitchListTile(
-        secondary: Icon(sw.ikon, size: 18, color: TsRenk.metinIkincil(context)),
-        title: Text(sw.baslik,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: TsRenk.metinBirincil(context))),
-        value: sw.deger,
-        onChanged: sw.onChange,
-        dense: true,
-        activeColor: AppRenkler.primary,
-      )).toList(),
+    // Şeffaf Material: dokunma dalgası renkli kutunun altında kalmasın.
+    child: Material(
+      type: MaterialType.transparency,
+      child: Column(
+        children: items.map((sw) => SwitchListTile(
+          secondary: Icon(sw.ikon, size: 18, color: TsRenk.metinIkincil(context)),
+          title: Text(sw.baslik,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: TsRenk.metinBirincil(context))),
+          value: sw.deger,
+          onChanged: sw.onChange,
+          dense: true,
+          activeColor: AppRenkler.primary,
+        )).toList(),
+      ),
     ),
   );
 }

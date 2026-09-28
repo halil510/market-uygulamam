@@ -213,7 +213,8 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
           const SizedBox(height: 10),
           // Değer girişi
           if (_islem != 'sabitFiyat')
-            Container(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
+            // Şeffaf Material: RadioListTile dokunma dalgası renkli kutunun altında kalmasın.
+            Container(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Material(type: MaterialType.transparency, child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
               Row(children: [
                 Expanded(child: RadioListTile<String>(dense: true, title: const Text('Yüzde (%)'),
                     value: 'yuzde', groupValue: _tipi,
@@ -228,7 +229,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
                   labelText: _tipi == 'yuzde' ? 'Oran (%)' : 'Tutar (₺)',
                   prefixIcon: const Icon(Icons.edit), border: const OutlineInputBorder()),
                 onChanged: (_) => setState(() {})),
-            ]))),
+            ])))),
           if (_islem == 'sabitFiyat')
             Container(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(14), child:
               TextField(controller: _yeniCtrl,

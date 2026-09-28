@@ -73,6 +73,34 @@ class RobotOrtam {
     kur('dexterous.com/flutter/local_notifications', (c) async => null);
     kur('plugins.flutter.io/url_launcher', (c) async => false);
     kur('flutter_blue_plus/methods', (c) async => null);
+    // Kamera barkod tarayıcı (mobile_scanner 7.x): izin verilmiş, kamera
+    // "açılmış" gibi yanıt verir — hiç barkod olayı gelmez. Böylece Fiyat Gör
+    // gibi otomatik kamera açan ekranlar robotu kilitlemez.
+    kur('dev.steenbakker.mobile_scanner/scanner/method', (c) async {
+      switch (c.method) {
+        case 'state':
+          return 1; // authorized
+        case 'request':
+          return true;
+        case 'start':
+          return <String, Object?>{
+            'textureId': 1,
+            'cameraDirection': 1,
+            'numberOfCameras': 1,
+            'currentTorchState': -1,
+            'size': {'width': 640.0, 'height': 480.0},
+            'handlesCropAndRotation': true,
+            'naturalDeviceOrientation': 'PORTRAIT_UP',
+            'sensorOrientation': 90,
+          };
+        case 'getSupportedLenses':
+          return <Object?>[];
+      }
+      return null;
+    });
+    // EventChannel dinle/iptal mesajları aynı adlı method kanalından gelir.
+    kur('dev.steenbakker.mobile_scanner/scanner/event', (c) async => null);
+    kur('dev.steenbakker.mobile_scanner/scanner/deviceOrientation', (c) async => null);
   }
 
   /// Bellek içi, AYNI isolate'te çalışan (sahte zamanlı widget testlerinde

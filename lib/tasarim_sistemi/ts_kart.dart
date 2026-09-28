@@ -126,16 +126,20 @@ class TsKart extends StatelessWidget {
         ),
       );
 
-  Widget _saril(BuildContext context, Widget icerik) => Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          borderRadius: BorderRadius.circular(TsRadius.lg),
-          child: Container(
-            decoration: _govdeDekorasyon(context),
-            padding: padding ?? const EdgeInsets.all(TsBosluk.lg),
-            child: icerik,
+  // Material, renkli gövdenin ÜSTÜNDE: kartın ve içindeki ListTile'ların
+  // dokunma dalgası zeminin altında kalıp görünmez olmasın.
+  Widget _saril(BuildContext context, Widget icerik) => DecoratedBox(
+        decoration: _govdeDekorasyon(context),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            onLongPress: onLongPress,
+            borderRadius: BorderRadius.circular(TsRadius.lg),
+            child: Padding(
+              padding: padding ?? const EdgeInsets.all(TsBosluk.lg),
+              child: icerik,
+            ),
           ),
         ),
       );

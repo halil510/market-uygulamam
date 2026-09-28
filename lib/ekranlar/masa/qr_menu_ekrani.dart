@@ -215,7 +215,9 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     // Telefonda 2 kolon; tablet/PC’de sığdığı kadar (sabit 2 idi).
                     maxCrossAxisExtent: 200,
-                    childAspectRatio: 1.1,
+                    // Sabit yükseklik: ad (2 satır) + fiyat + buton her
+                    // genişlikte sığsın (oranla 41px taşıyordu).
+                    mainAxisExtent: 220,
                     mainAxisSpacing: 10,
                     crossAxisSpacing: 10,
                   ),
@@ -327,12 +329,11 @@ class _UrunKartiMusteri extends StatelessWidget {
             ),
           ),
           // Ürün bilgisi
-          Expanded(
-            flex: 2,
-            child: Padding(
+          Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(urun.urunAdi,
                       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
@@ -341,7 +342,7 @@ class _UrunKartiMusteri extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(ParaUtils.formatla(urun.satisFiyati),
                       style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: TsRenk.primaryKoyu)),
-                  const Spacer(),
+                  const SizedBox(height: 8),
                   if (sepette)
                     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                       GestureDetector(
@@ -376,7 +377,6 @@ class _UrunKartiMusteri extends StatelessWidget {
                     ),
                 ],
               ),
-            ),
           ),
         ],
       ),

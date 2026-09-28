@@ -158,13 +158,16 @@ class FormAlisKdvSecim extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: DropdownButtonFormField<String>(
         value: gecerli,
+        // Dar sütunda "%18" + ok simgesi sığmayıp taşıyordu.
+        isExpanded: true,
         decoration: const InputDecoration(
           labelText: 'Alış KDV%',
           border: OutlineInputBorder(),
           isDense: true,
         ),
         items: _oranlar
-            .map((v) => DropdownMenuItem(value: v, child: Text('%$v')))
+            .map((v) => DropdownMenuItem(
+                value: v, child: Text('%$v', overflow: TextOverflow.ellipsis)))
             .toList(),
         onChanged: (v) { if (v != null) onDegisti(v); },
       ),

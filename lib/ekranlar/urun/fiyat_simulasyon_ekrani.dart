@@ -145,15 +145,19 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
                 borderRadius: BorderRadius.circular(TsRadius.md),
                 border: Border.all(color: TsRenk.ayirac(context)),
               ),
-              child: Column(
-                children: _sonuclar
-                    .map((u) => ListTile(
-                          dense: true,
-                          title: Text(u.urunAdi),
-                          subtitle: Text(ParaUtils.formatla(u.satisFiyati)),
-                          onTap: () => _urunSec(u),
-                        ))
-                    .toList(),
+              // Şeffaf Material: dokunma dalgası renkli kutunun altında kalmasın.
+              child: Material(
+                type: MaterialType.transparency,
+                child: Column(
+                  children: _sonuclar
+                      .map((u) => ListTile(
+                            dense: true,
+                            title: Text(u.urunAdi),
+                            subtitle: Text(ParaUtils.formatla(u.satisFiyati)),
+                            onTap: () => _urunSec(u),
+                          ))
+                      .toList(),
+                ),
               ),
             ),
           if (_secili != null) ...[

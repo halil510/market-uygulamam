@@ -23,6 +23,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:market_plus/depolar/cari_deposu.dart';
 import 'package:market_plus/servisler/auth_servisi.dart';
+import 'package:market_plus/servisler/masa/qr_siparis_cekici_servisi.dart';
 import 'package:market_plus/uygulama/uygulama.dart';
 import 'package:market_plus/veri/database/veritabani.dart';
 import 'robot_ortam.dart';
@@ -134,6 +135,21 @@ void main() {
       }
     }
 
+    /// Bulunan pencerelerden hâlâ AKTİF ve EN ÜSTTE olanın rotasını kapatır.
+    /// Kapanış animasyonundaki pencere ağaçta görünmeye devam eder; ona
+    /// tekrar pop çağırmak alttaki SAYFAYI kapatıyordu (go_router "son sayfa
+    /// kapatıldı" iddiası — Fiyat Gör kilidi).
+    bool pencereKapat(Finder f) {
+      for (final e in f.evaluate()) {
+        final rota = ModalRoute.of(e);
+        if (rota != null && rota.isActive && rota.isCurrent && rota is PopupRoute) {
+          rota.navigator!.pop();
+          return true;
+        }
+      }
+      return false;
+    }
+
     final gezilen = <String, String>{}; // rota → sonuç özeti
     // Ekranların arka planda fırlattığı (yakalanmamış) hatalar da bulgu olur,
     // testi düşürmez.
@@ -157,10 +173,22 @@ void main() {
       print('🤖 $yol');
       final once = bulgular.length;
       try {
-        router.go(yol);
+        // Gerçek kullanımdaki gibi ana sayfanın ÜSTÜNE aç: ekran kaydedip
+        // kendini kapattığında (pop) altında bir sayfa bulunsun. Doğrudan
+        // go ile açınca pop yığında sayfa bırakmıyor, yarım kalan geçiş
+        // sonraki tüm ekranlara "animasyon" bulgusu olarak bulaşıyordu.
+        if (yol != '/') {
+          router.go('/');
+          await bekle(6);
+          unawaited(router.push(yol));
+        } else {
+          router.go(yol);
+        }
         await bekle();
-        final varilan = router.routerDelegate.currentConfiguration.uri.path;
-        if (varilan != yol && yol != '/') {
+        // push'ta uri alttaki sayfayı gösterir; en üstteki eşleşmeye bak.
+        final yapi = router.routerDelegate.currentConfiguration;
+        final varilan = yapi.isEmpty ? yapi.uri.path : Uri.parse(yapi.last.matchedLocation).path;
+        if (Uri.decodeComponent(varilan) != yol && yol != '/') {
           bulgular.add(_Bulgu(yol, 'yönlendirildi', 'açılmadı, $varilan adresine gitti'));
         }
         if (find.byType(ErrorWidget).evaluate().isNotEmpty) {
@@ -176,10 +204,8 @@ void main() {
         // Gör) formlara dokunmadan kapat — test ortamında kamera yok, açık
         // kalırsa robotu kilitler.
         for (var i = 0; i < 3; i++) {
-          final kamera = find.byType(MobileScanner);
-          if (kamera.evaluate().isEmpty) break;
-          Navigator.of(tester.element(kamera.first)).pop();
-          await bekle(4);
+          if (!pencereKapat(find.byType(MobileScanner))) break;
+          await bekle(8);
         }
 
         // ── Sanal veri girişi ────────────────────────────────────────────
@@ -246,9 +272,8 @@ void main() {
         // yok; açık kalırsa robotu kilitler — ör. Fiyat Gör otomatik açar).
         final pencere = find.byWidgetPredicate(
             (w) => w is Dialog || w is BottomSheet || w is MobileScanner);
-        if (pencere.evaluate().isEmpty) break;
-        Navigator.of(tester.element(pencere.first)).pop();
-        await bekle(4);
+        if (!pencereKapat(pencere)) break;
+        await bekle(8);
       }
       // Bitmeyen sayfa geçişi (performans modu açık kaldı) — hangi ekran?
       await bekle(10);
@@ -317,6 +342,9 @@ void main() {
     // ignore: avoid_print
     print(sb.toString());
 
+    // Masalar ekranının başlattığı oturum boyu QR sipariş zamanlayıcısı
+    // (bilinçli olarak ekran kapanınca durmaz) test sonunda durdurulur.
+    QrSiparisCekiciServisi().durdur();
     // Açık animasyon/geçiş kalmasın (Flutter test değişmezleri).
     await tester.pumpWidget(const SizedBox());
     for (var i = 0; i < 30; i++) {

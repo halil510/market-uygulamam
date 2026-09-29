@@ -1297,3 +1297,47 @@ Future<void> _v77denV78e(Database db) async {
   await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN terminal_id INTEGER');
   await _calistir(db, 'ALTER TABLE faturalar ADD COLUMN blok_id INTEGER');
 }
+
+// v78'den v79'a — migrasyon tam yükseltme testi bulgusu (2026-09-29):
+// eski sürümden yükseltilen cihazlarda yeni kurulumda OLMAYAN 4 trigger
+// çalışmaya devam ediyordu ve fiyat trigger'ının gövdesi farklıydı:
+//  • trg_urun_fiyat_gecmis — trg_fiyat_gecmis ile AYNI işi yapıyordu, her
+//    fiyat değişikliği fiyat_gecmis'e İKİ KEZ yazılıyordu.
+//  • trg_kredi_karti_limit(_upd) — kalan_limit'i hesaplıyordu; kod
+//    (KrediKartiDeposu) bunu zaten açıkça yazıyor.
+//  • trg_soft_delete_satis — satislar.deleted_at'i UTC dolduruyordu; hiçbir
+//    kod okumuyor, yeni kurulumda yok.
+// Kanonik kaynak yeni kurulum şeması (semalar/diger_semasi.dart). Önceki
+// çift yazımın bıraktığı kopya fiyat_gecmis satırları da temizlenir
+// (aynı ürün/değerler/zaman — değiştireni boş olan ikiz silinir).
+Future<void> _v78denV79a(Database db) async {
+  for (final t in [
+    'trg_urun_fiyat_gecmis',
+    'trg_kredi_karti_limit',
+    'trg_kredi_karti_limit_upd',
+    'trg_soft_delete_satis',
+    'trg_fiyat_gecmis',
+  ]) {
+    await _calistir(db, 'DROP TRIGGER IF EXISTS $t');
+  }
+  await _calistir(db, '''
+    CREATE TRIGGER IF NOT EXISTS trg_fiyat_gecmis
+    AFTER UPDATE OF alis_fiyat, satis_fiyati ON urunler
+    WHEN OLD.alis_fiyat != NEW.alis_fiyat OR OLD.satis_fiyati != NEW.satis_fiyati
+    BEGIN
+      INSERT INTO fiyat_gecmis(
+        urun_id, eski_alis, yeni_alis, eski_satis, yeni_satis, degistiren
+      ) VALUES (NEW.id, OLD.alis_fiyat, NEW.alis_fiyat, OLD.satis_fiyati, NEW.satis_fiyati,
+        NEW.fiyat_guncelleyen_kullanici);
+    END
+  ''');
+  await _calistir(db, '''
+    DELETE FROM fiyat_gecmis WHERE degistiren IS NULL AND EXISTS (
+      SELECT 1 FROM fiyat_gecmis f2
+      WHERE f2.id != fiyat_gecmis.id AND f2.urun_id = fiyat_gecmis.urun_id
+        AND f2.tarih = fiyat_gecmis.tarih
+        AND f2.eski_alis IS fiyat_gecmis.eski_alis AND f2.yeni_alis IS fiyat_gecmis.yeni_alis
+        AND f2.eski_satis IS fiyat_gecmis.eski_satis AND f2.yeni_satis IS fiyat_gecmis.yeni_satis
+        AND (f2.degistiren IS NOT NULL OR f2.id < fiyat_gecmis.id))
+  ''');
+}

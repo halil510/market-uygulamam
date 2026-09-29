@@ -84,6 +84,42 @@ class SemaOnarici {
           if (kDebugMode) debugPrint('SemaOnarici indeks atlandı ($ad): $e');
         }
       }
+
+      // Trigger'lar (2026-09-29): yükseltilmiş cihazlarda eski migrasyonların
+      // bıraktığı fazla trigger'lar (ör. fiyat geçmişini ikinci kez yazan)
+      // ve gövdesi eski kalmış trigger'lar sessizce çalışıyordu. Yeni kurulum
+      // kanonik: eksik olan kurulur, gövdesi farklı olan yenilenir, fazla
+      // olan silinir.
+      String normal(String sql) => sql
+          .replaceAll(RegExp(r'IF NOT EXISTS\s+', caseSensitive: false), '')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      Future<Map<String, String>> tetikleyiciler(Database db) async => {
+            for (final r in await db.rawQuery(
+                "SELECT name, sql FROM sqlite_master WHERE type='trigger' AND sql IS NOT NULL"))
+              r['name'] as String: r['sql'] as String
+          };
+      final refTrigger = await tetikleyiciler(referans);
+      final hedefTrigger = await tetikleyiciler(hedef);
+      for (final e in refTrigger.entries) {
+        final mevcut = hedefTrigger[e.key];
+        if (mevcut != null && normal(mevcut) == normal(e.value)) continue;
+        try {
+          if (mevcut != null) await hedef.execute('DROP TRIGGER IF EXISTS "${e.key}"');
+          await hedef.execute(e.value);
+          yapilan.add(mevcut == null ? 'trigger eklendi: ${e.key}' : 'trigger yenilendi: ${e.key}');
+        } catch (err) {
+          LogServisi().uyari('SemaOnarici: trigger kurulamadı (${e.key})', hata: err);
+        }
+      }
+      for (final ad in hedefTrigger.keys.where((a) => !refTrigger.containsKey(a))) {
+        try {
+          await hedef.execute('DROP TRIGGER IF EXISTS "$ad"');
+          yapilan.add('eski trigger silindi: $ad');
+        } catch (err) {
+          LogServisi().uyari('SemaOnarici: trigger silinemedi ($ad)', hata: err);
+        }
+      }
     } finally {
       await referans.close();
     }

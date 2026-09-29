@@ -226,5 +226,9 @@ class MigrasyonYonetici {
     // v77'den v78'e — merkezi fatura seri/blok yönetimi için yerel
     // önbellek tabloları (bkz. _v77denV78e yorumu, 2026-09-23).
     if (eskiVersiyon < 78) await _v77denV78e(db);
+
+    // v78'den v79'a — eski sürümlerden kalan trigger'lar temizlendi,
+    // fiyat geçmişi trigger'ı yeni kurulumla eşitlendi (bkz. _v78denV79a).
+    if (eskiVersiyon < 79) await _v78denV79a(db);
   }
 }

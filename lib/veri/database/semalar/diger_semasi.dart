@@ -71,6 +71,9 @@ class DigerSemasi {
   // zaten her yazma yolunda doğru set ettiği için tetikleyici tamamen
   // kaldırıldı (yükseltilen kurulumlar için bkz. migrasyon_yonetici.dart
   // v54→v55 — aynı tetikleyiciyi ve eşdeğerini DROP eder).
+  // trg_fiyat_gecmis 'degistiren'i de yazar (2026-09-29): yeni kurulumlar
+  // yazmıyor, eski sürümden yükseltilenler yazıyordu — iki kurulum tipi
+  // fiyat geçmişini farklı tutuyordu (bkz. migrasyon v78→v79).
   static Future<void> _triggerlar(Database db) async {
     await db.execute('''
       CREATE TRIGGER IF NOT EXISTS trg_fiyat_gecmis
@@ -78,8 +81,9 @@ class DigerSemasi {
       WHEN OLD.alis_fiyat != NEW.alis_fiyat OR OLD.satis_fiyati != NEW.satis_fiyati
       BEGIN
         INSERT INTO ${DbSabitler.fiyatGecmis}(
-          urun_id, eski_alis, yeni_alis, eski_satis, yeni_satis
-        ) VALUES (NEW.id, OLD.alis_fiyat, NEW.alis_fiyat, OLD.satis_fiyati, NEW.satis_fiyati);
+          urun_id, eski_alis, yeni_alis, eski_satis, yeni_satis, degistiren
+        ) VALUES (NEW.id, OLD.alis_fiyat, NEW.alis_fiyat, OLD.satis_fiyati, NEW.satis_fiyati,
+          NEW.fiyat_guncelleyen_kullanici);
       END
     ''');
 

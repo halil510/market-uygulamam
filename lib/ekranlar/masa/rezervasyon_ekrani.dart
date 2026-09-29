@@ -86,7 +86,7 @@ class _RezervasyonEkraniState extends ConsumerState<RezervasyonEkrani>
   }
 
   Future<void> _rezervasyonEkle() async {
-    final masalar = ref.read(masaListesiProvider).valueOrNull ?? [];
+    final masalar = ref.read(masaListesiProvider).value ?? [];
     RezervasyonModel? yeniRezervasyon;
     
     await showModalBottomSheet(

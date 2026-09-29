@@ -140,13 +140,13 @@ class Auth extends _$Auth {
 
 // Granular — sadece ilgili parça rebuild olur
 @riverpod
-KullaniciModel? aktifKullanici(AktifKullaniciRef ref) =>
+KullaniciModel? aktifKullanici(Ref ref) =>
     ref.watch(authProvider.select((s) => s.kullanici));
 
 @riverpod
-bool girisYapildiMi(GirisYapildiMiRef ref) =>
+bool girisYapildiMi(Ref ref) =>
     ref.watch(authProvider.select((s) => s.girisYapildi));
 
 @riverpod
-bool isAdmin(IsAdminRef ref) =>
+bool isAdmin(Ref ref) =>
     ref.watch(authProvider.select((s) => s.isAdmin));

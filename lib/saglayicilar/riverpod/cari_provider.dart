@@ -1,4 +1,5 @@
 // lib/saglayicilar/riverpod/cari_provider.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../modeller/cari_model.dart';
@@ -91,7 +92,7 @@ class Cariler extends _$Cariler {
 
 // Granular
 @riverpod
-List<CariModel> filtreliMusteriler(FiltreliMusterilerRef ref) {
+List<CariModel> filtreliMusteriler(Ref ref) {
   final d = ref.watch(carilerProvider);
   final f = ref.watch(cariFiltresiProvider);
   return switch (f.bakiyeFiltre) {
@@ -103,7 +104,7 @@ List<CariModel> filtreliMusteriler(FiltreliMusterilerRef ref) {
 }
 
 @riverpod
-List<CariModel> filtreliTedarikciler(FiltreliTedarikcilerRef ref) {
+List<CariModel> filtreliTedarikciler(Ref ref) {
   final d = ref.watch(carilerProvider);
   final f = ref.watch(cariFiltresiProvider);
   return switch (f.bakiyeFiltre) {
@@ -115,9 +116,9 @@ List<CariModel> filtreliTedarikciler(FiltreliTedarikcilerRef ref) {
 }
 
 @riverpod
-Future<CariModel?> cariDetay(CariDetayRef ref, int id) =>
+Future<CariModel?> cariDetay(Ref ref, int id) =>
     CariDeposu().idileGetir(id);
 
 @riverpod
-bool cariYukleniyor(CariYukleniyorRef ref) =>
+bool cariYukleniyor(Ref ref) =>
     ref.watch(carilerProvider.select((s) => s.yukleniyor));

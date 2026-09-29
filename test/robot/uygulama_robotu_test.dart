@@ -605,7 +605,7 @@ void main() {
     // testi düşürmez.
     await runZonedGuarded(() async {
     await tester.pumpWidget(const ProviderScope(
-        child: MarketPlusApp(baslangicTema: robotTema)));
+        child: BarkoProApp(baslangicTema: robotTema)));
     await bekle(30);
 
     final router = GoRouter.of(tester.element(find.byType(Scaffold).first));

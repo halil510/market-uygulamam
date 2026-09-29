@@ -1,5 +1,6 @@
 // lib/saglayicilar/riverpod/mail_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../servisler/mail/mail_service.dart';
@@ -73,6 +74,6 @@ final mailListesiProvider = FutureProvider.autoDispose<List<Mail>>((ref) async {
 /// mail_parser.dart'taki hazır regex mantığıyla gelen kutusundan otomatik
 /// fatura/borç tespiti.
 final mailBorcProvider = Provider.autoDispose<List<Map<String, dynamic>>>((ref) {
-  final mails = ref.watch(mailListesiProvider).valueOrNull ?? [];
+  final mails = ref.watch(mailListesiProvider).value ?? [];
   return MailParser.borcTespitEt(mails);
 });

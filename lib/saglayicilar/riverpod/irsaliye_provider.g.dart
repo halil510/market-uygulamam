@@ -6,24 +6,46 @@ part of 'irsaliye_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$irsaliyeListesiHash() => r'f46485553384639b1e5f5309b7ae0f9953d7ae6f';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [irsaliyeListesi].
 @ProviderFor(irsaliyeListesi)
-final irsaliyeListesiProvider =
-    AutoDisposeFutureProvider<List<Map<String, dynamic>>>.internal(
-  irsaliyeListesi,
-  name: r'irsaliyeListesiProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$irsaliyeListesiHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final irsaliyeListesiProvider = IrsaliyeListesiProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef IrsaliyeListesiRef
-    = AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class IrsaliyeListesiProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Map<String, dynamic>>>,
+          List<Map<String, dynamic>>,
+          FutureOr<List<Map<String, dynamic>>>
+        >
+    with
+        $FutureModifier<List<Map<String, dynamic>>>,
+        $FutureProvider<List<Map<String, dynamic>>> {
+  IrsaliyeListesiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'irsaliyeListesiProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$irsaliyeListesiHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<Map<String, dynamic>>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<Map<String, dynamic>>> create(Ref ref) {
+    return irsaliyeListesi(ref);
+  }
+}
+
+String _$irsaliyeListesiHash() => r'f46485553384639b1e5f5309b7ae0f9953d7ae6f';

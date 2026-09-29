@@ -66,7 +66,7 @@ class KarZararVeri {
 }
 
 @riverpod
-Future<KarZararVeri> karZarar(KarZararRef ref) async {
+Future<KarZararVeri> karZarar(Ref ref) async {
   final f   = ref.watch(karZararFiltresiProvider);
   final db  = await Veritabani().db;
   final bas = f.basTarih.toIso8601String();

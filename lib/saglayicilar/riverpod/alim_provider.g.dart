@@ -6,19 +6,56 @@ part of 'alim_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$alimHash() => r'd76d6a746637b7cd15ff0139ea759d36702be3c2';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [Alim].
 @ProviderFor(Alim)
-final alimProvider = AutoDisposeNotifierProvider<Alim, AlimDurum>.internal(
-  Alim.new,
-  name: r'alimProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$alimHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final alimProvider = AlimProvider._();
 
-typedef _$Alim = AutoDisposeNotifier<AlimDurum>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class AlimProvider extends $NotifierProvider<Alim, AlimDurum> {
+  AlimProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'alimProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$alimHash();
+
+  @$internal
+  @override
+  Alim create() => Alim();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AlimDurum value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AlimDurum>(value),
+    );
+  }
+}
+
+String _$alimHash() => r'7e9ed080dfe9b86ce0b62d4cfe3b0836c60da24e';
+
+abstract class _$Alim extends $Notifier<AlimDurum> {
+  AlimDurum build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AlimDurum, AlimDurum>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AlimDurum, AlimDurum>,
+              AlimDurum,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

@@ -15,7 +15,6 @@ val keystoreVar = if (keystorePropertiesFile.exists()) {
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
     id("io.sentry.android.gradle")
 }
@@ -25,7 +24,8 @@ plugins {
 configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "com.barkodhalkmarket.marketplus"
 
-    compileSdk = 36
+    // 37: permission_handler 13 en az 37 ile derlenmeyi istiyor (targetSdk ayrı, 36).
+    compileSdk = 37
 
     ndkVersion = "28.2.13676358"
 
@@ -89,8 +89,8 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
 
@@ -99,12 +99,12 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
 // Kotlin 2.3+: kotlinOptions kaldırıldı, compilerOptions DSL kullanılır.
 kotlin {
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation("com.google.mlkit:text-recognition:16.0.1")
 }
 

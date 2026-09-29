@@ -323,10 +323,9 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
     
     File(filePath).writeAsBytesSync(excel.encode()!);
     
-    await Share.shareXFiles(
-      [XFile(filePath)], 
+    await SharePlus.instance.share(ShareParams(files: [XFile(filePath)], 
       text: 'Gun Sonu Raporu - ${DateFormat('dd.MM.yyyy').format(_baslangic)}',
-    );
+    ));
     
     if (mounted) {
       basariMesaji(context, '$toplamKalemSayisi kalem iceren Excel raporu olusturuldu');

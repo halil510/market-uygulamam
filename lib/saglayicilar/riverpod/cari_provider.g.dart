@@ -6,240 +6,308 @@ part of 'cari_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(CariFiltresi)
+final cariFiltresiProvider = CariFiltresiProvider._();
+
+final class CariFiltresiProvider
+    extends $NotifierProvider<CariFiltresi, CariFiltre> {
+  CariFiltresiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'cariFiltresiProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$cariFiltresiHash();
+
+  @$internal
+  @override
+  CariFiltresi create() => CariFiltresi();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CariFiltre value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CariFiltre>(value),
+    );
+  }
+}
+
+String _$cariFiltresiHash() => r'd268cb56a4ae06503da0f45205a12812a9b665ad';
+
+abstract class _$CariFiltresi extends $Notifier<CariFiltre> {
+  CariFiltre build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<CariFiltre, CariFiltre>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<CariFiltre, CariFiltre>,
+              CariFiltre,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(Cariler)
+final carilerProvider = CarilerProvider._();
+
+final class CarilerProvider extends $NotifierProvider<Cariler, CariListeDurum> {
+  CarilerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'carilerProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$carilerHash();
+
+  @$internal
+  @override
+  Cariler create() => Cariler();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CariListeDurum value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CariListeDurum>(value),
+    );
+  }
+}
+
+String _$carilerHash() => r'9469e3f97334c0c2d5e091c44e73a2079f7b98de';
+
+abstract class _$Cariler extends $Notifier<CariListeDurum> {
+  CariListeDurum build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<CariListeDurum, CariListeDurum>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<CariListeDurum, CariListeDurum>,
+              CariListeDurum,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(filtreliMusteriler)
+final filtreliMusterilerProvider = FiltreliMusterilerProvider._();
+
+final class FiltreliMusterilerProvider
+    extends
+        $FunctionalProvider<List<CariModel>, List<CariModel>, List<CariModel>>
+    with $Provider<List<CariModel>> {
+  FiltreliMusterilerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'filtreliMusterilerProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$filtreliMusterilerHash();
+
+  @$internal
+  @override
+  $ProviderElement<List<CariModel>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  List<CariModel> create(Ref ref) {
+    return filtreliMusteriler(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<CariModel> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<CariModel>>(value),
+    );
+  }
+}
+
 String _$filtreliMusterilerHash() =>
     r'd229c534a8d9889d53b91eda40c6521ff9089307';
 
-/// See also [filtreliMusteriler].
-@ProviderFor(filtreliMusteriler)
-final filtreliMusterilerProvider =
-    AutoDisposeProvider<List<CariModel>>.internal(
-  filtreliMusteriler,
-  name: r'filtreliMusterilerProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$filtreliMusterilerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(filtreliTedarikciler)
+final filtreliTedarikcilerProvider = FiltreliTedarikcilerProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef FiltreliMusterilerRef = AutoDisposeProviderRef<List<CariModel>>;
+final class FiltreliTedarikcilerProvider
+    extends
+        $FunctionalProvider<List<CariModel>, List<CariModel>, List<CariModel>>
+    with $Provider<List<CariModel>> {
+  FiltreliTedarikcilerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'filtreliTedarikcilerProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$filtreliTedarikcilerHash();
+
+  @$internal
+  @override
+  $ProviderElement<List<CariModel>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  List<CariModel> create(Ref ref) {
+    return filtreliTedarikciler(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<CariModel> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<CariModel>>(value),
+    );
+  }
+}
+
 String _$filtreliTedarikcilerHash() =>
     r'28e6384cb1780614433b8e5dd687cbc899f6edb4';
 
-/// See also [filtreliTedarikciler].
-@ProviderFor(filtreliTedarikciler)
-final filtreliTedarikcilerProvider =
-    AutoDisposeProvider<List<CariModel>>.internal(
-  filtreliTedarikciler,
-  name: r'filtreliTedarikcilerProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$filtreliTedarikcilerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef FiltreliTedarikcilerRef = AutoDisposeProviderRef<List<CariModel>>;
-String _$cariDetayHash() => r'130fa4fcd23bb17e21d1e3d6fadb256dc1217dc2';
-
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
-/// See also [cariDetay].
 @ProviderFor(cariDetay)
-const cariDetayProvider = CariDetayFamily();
+final cariDetayProvider = CariDetayFamily._();
 
-/// See also [cariDetay].
-class CariDetayFamily extends Family<AsyncValue<CariModel?>> {
-  /// See also [cariDetay].
-  const CariDetayFamily();
+final class CariDetayProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<CariModel?>,
+          CariModel?,
+          FutureOr<CariModel?>
+        >
+    with $FutureModifier<CariModel?>, $FutureProvider<CariModel?> {
+  CariDetayProvider._({
+    required CariDetayFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'cariDetayProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
-  /// See also [cariDetay].
-  CariDetayProvider call(
-    int id,
-  ) {
-    return CariDetayProvider(
-      id,
-    );
+  @override
+  String debugGetCreateSourceHash() => _$cariDetayHash();
+
+  @override
+  String toString() {
+    return r'cariDetayProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  CariDetayProvider getProviderOverride(
-    covariant CariDetayProvider provider,
-  ) {
-    return call(
-      provider.id,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
+  $FutureProviderElement<CariModel?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
 
   @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'cariDetayProvider';
-}
-
-/// See also [cariDetay].
-class CariDetayProvider extends AutoDisposeFutureProvider<CariModel?> {
-  /// See also [cariDetay].
-  CariDetayProvider(
-    int id,
-  ) : this._internal(
-          (ref) => cariDetay(
-            ref as CariDetayRef,
-            id,
-          ),
-          from: cariDetayProvider,
-          name: r'cariDetayProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$cariDetayHash,
-          dependencies: CariDetayFamily._dependencies,
-          allTransitiveDependencies: CariDetayFamily._allTransitiveDependencies,
-          id: id,
-        );
-
-  CariDetayProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.id,
-  }) : super.internal();
-
-  final int id;
-
-  @override
-  Override overrideWith(
-    FutureOr<CariModel?> Function(CariDetayRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: CariDetayProvider._internal(
-        (ref) => create(ref as CariDetayRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        id: id,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<CariModel?> createElement() {
-    return _CariDetayProviderElement(this);
+  FutureOr<CariModel?> create(Ref ref) {
+    final argument = this.argument as int;
+    return cariDetay(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is CariDetayProvider && other.id == id;
+    return other is CariDetayProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, id.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin CariDetayRef on AutoDisposeFutureProviderRef<CariModel?> {
-  /// The parameter `id` of this provider.
-  int get id;
-}
+String _$cariDetayHash() => r'130fa4fcd23bb17e21d1e3d6fadb256dc1217dc2';
 
-class _CariDetayProviderElement
-    extends AutoDisposeFutureProviderElement<CariModel?> with CariDetayRef {
-  _CariDetayProviderElement(super.provider);
+final class CariDetayFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<CariModel?>, int> {
+  CariDetayFamily._()
+    : super(
+        retry: null,
+        name: r'cariDetayProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  CariDetayProvider call(int id) =>
+      CariDetayProvider._(argument: id, from: this);
 
   @override
-  int get id => (origin as CariDetayProvider).id;
+  String toString() => r'cariDetayProvider';
+}
+
+@ProviderFor(cariYukleniyor)
+final cariYukleniyorProvider = CariYukleniyorProvider._();
+
+final class CariYukleniyorProvider extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  CariYukleniyorProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'cariYukleniyorProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$cariYukleniyorHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return cariYukleniyor(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
 }
 
 String _$cariYukleniyorHash() => r'7bcbb8f03bb64972473af6b9d6d7c77d3fe01756';
-
-/// See also [cariYukleniyor].
-@ProviderFor(cariYukleniyor)
-final cariYukleniyorProvider = AutoDisposeProvider<bool>.internal(
-  cariYukleniyor,
-  name: r'cariYukleniyorProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$cariYukleniyorHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef CariYukleniyorRef = AutoDisposeProviderRef<bool>;
-String _$cariFiltresiHash() => r'd268cb56a4ae06503da0f45205a12812a9b665ad';
-
-/// See also [CariFiltresi].
-@ProviderFor(CariFiltresi)
-final cariFiltresiProvider =
-    AutoDisposeNotifierProvider<CariFiltresi, CariFiltre>.internal(
-  CariFiltresi.new,
-  name: r'cariFiltresiProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$cariFiltresiHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$CariFiltresi = AutoDisposeNotifier<CariFiltre>;
-String _$carilerHash() => r'9469e3f97334c0c2d5e091c44e73a2079f7b98de';
-
-/// See also [Cariler].
-@ProviderFor(Cariler)
-final carilerProvider =
-    AutoDisposeNotifierProvider<Cariler, CariListeDurum>.internal(
-  Cariler.new,
-  name: r'carilerProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$carilerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$Cariler = AutoDisposeNotifier<CariListeDurum>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

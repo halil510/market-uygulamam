@@ -17,7 +17,7 @@ class KasaRaporVeri {
 }
 
 @riverpod
-Future<KasaRaporVeri> kasaRapor(KasaRaporRef ref, DateTimeRange aralik) async {
+Future<KasaRaporVeri> kasaRapor(Ref ref, DateTimeRange aralik) async {
   final depo       = KasaDeposu();
   final ozet       = await depo.aralikOzet(aralik.start, aralik.end);
   final hareketler = await depo.hareketleriniGetir(baslangic: aralik.start, bitis: aralik.end);

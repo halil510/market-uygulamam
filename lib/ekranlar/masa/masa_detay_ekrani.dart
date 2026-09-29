@@ -472,12 +472,12 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
           // olan ama HİÇ UI'ı olmayan bu iki işlem artık burada.
           // Sektör araştırması (Odoo, Lightspeed, Eats365): standart
           // desen "Actions" menüsünden "Transfer/Merge" seçimi.
-          if (siparisAsync.valueOrNull != null)
+          if (siparisAsync.value != null)
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
               tooltip: 'Diğer İşlemler',
               onSelected: (v) {
-                final s = siparisAsync.valueOrNull;
+                final s = siparisAsync.value;
                 if (s == null) return;
                 if (v == 'tasi') _masayiTasi(s);
                 if (v == 'iptal') _siparisiIptalEt(s);

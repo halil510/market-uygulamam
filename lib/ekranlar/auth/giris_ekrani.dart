@@ -199,10 +199,8 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
     try {
       final basarili = await _localAuth.authenticate(
         localizedReason: 'Giriş yapmak için parmak izinizi okutun',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-        ),
+        biometricOnly: true,
+        persistAcrossBackgrounding: true, // local_auth 3: eski stickyAuth
       );
       if (!basarili || !mounted) return;
 

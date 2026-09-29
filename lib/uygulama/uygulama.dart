@@ -19,15 +19,15 @@ import '../servisler/bulut/otomatik_bulut_cekme.dart';
 import '../saglayicilar/riverpod/tema_provider.dart';
 import '../tasarim_sistemi/tasarim_sistemi.dart';
 
-class MarketPlusApp extends ConsumerStatefulWidget {
+class BarkoProApp extends ConsumerStatefulWidget {
   final String baslangicTema;
-  const MarketPlusApp({super.key, required this.baslangicTema});
+  const BarkoProApp({super.key, required this.baslangicTema});
 
   @override
-  ConsumerState<MarketPlusApp> createState() => _MarketPlusAppState();
+  ConsumerState<BarkoProApp> createState() => _BarkoProAppState();
 }
 
-class _MarketPlusAppState extends ConsumerState<MarketPlusApp> {
+class _BarkoProAppState extends ConsumerState<BarkoProApp> {
   late final MarketBackButtonDispatcher _dispatcher;
 
   @override

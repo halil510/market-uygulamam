@@ -6,384 +6,416 @@ part of 'urun_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(UrunFiltresi)
+final urunFiltresiProvider = UrunFiltresiProvider._();
+
+final class UrunFiltresiProvider
+    extends $NotifierProvider<UrunFiltresi, UrunFiltre> {
+  UrunFiltresiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'urunFiltresiProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$urunFiltresiHash();
+
+  @$internal
+  @override
+  UrunFiltresi create() => UrunFiltresi();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(UrunFiltre value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<UrunFiltre>(value),
+    );
+  }
+}
+
+String _$urunFiltresiHash() => r'4d1862d646580569503162e945cbcd2b137044e1';
+
+abstract class _$UrunFiltresi extends $Notifier<UrunFiltre> {
+  UrunFiltre build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<UrunFiltre, UrunFiltre>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<UrunFiltre, UrunFiltre>,
+              UrunFiltre,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(Urunler)
+final urunlerProvider = UrunlerProvider._();
+
+final class UrunlerProvider extends $NotifierProvider<Urunler, UrunListeDurum> {
+  UrunlerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'urunlerProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$urunlerHash();
+
+  @$internal
+  @override
+  Urunler create() => Urunler();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(UrunListeDurum value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<UrunListeDurum>(value),
+    );
+  }
+}
+
+String _$urunlerHash() => r'a08fa0ba5460824b064bd48d631845720b54ae02';
+
+abstract class _$Urunler extends $Notifier<UrunListeDurum> {
+  UrunListeDurum build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<UrunListeDurum, UrunListeDurum>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<UrunListeDurum, UrunListeDurum>,
+              UrunListeDurum,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(urunYukleniyor)
+final urunYukleniyorProvider = UrunYukleniyorProvider._();
+
+final class UrunYukleniyorProvider extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  UrunYukleniyorProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'urunYukleniyorProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$urunYukleniyorHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return urunYukleniyor(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
 String _$urunYukleniyorHash() => r'23c29c66cfdbb73031ab5e5bdd55b2fcb7be707b';
 
-/// See also [urunYukleniyor].
-@ProviderFor(urunYukleniyor)
-final urunYukleniyorProvider = AutoDisposeProvider<bool>.internal(
-  urunYukleniyor,
-  name: r'urunYukleniyorProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$urunYukleniyorHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(urunSecimModu)
+final urunSecimModuProvider = UrunSecimModuProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef UrunYukleniyorRef = AutoDisposeProviderRef<bool>;
+final class UrunSecimModuProvider extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  UrunSecimModuProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'urunSecimModuProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$urunSecimModuHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return urunSecimModu(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
 String _$urunSecimModuHash() => r'82b5ec609099c8ad98fbea677c6934d921e00e7b';
 
-/// See also [urunSecimModu].
-@ProviderFor(urunSecimModu)
-final urunSecimModuProvider = AutoDisposeProvider<bool>.internal(
-  urunSecimModu,
-  name: r'urunSecimModuProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$urunSecimModuHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(urunSeciliSayisi)
+final urunSeciliSayisiProvider = UrunSeciliSayisiProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef UrunSecimModuRef = AutoDisposeProviderRef<bool>;
+final class UrunSeciliSayisiProvider extends $FunctionalProvider<int, int, int>
+    with $Provider<int> {
+  UrunSeciliSayisiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'urunSeciliSayisiProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$urunSeciliSayisiHash();
+
+  @$internal
+  @override
+  $ProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  int create(Ref ref) {
+    return urunSeciliSayisi(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(int value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<int>(value),
+    );
+  }
+}
+
 String _$urunSeciliSayisiHash() => r'907996388ddb8feee153c93d9776354af75c2a36';
 
-/// See also [urunSeciliSayisi].
-@ProviderFor(urunSeciliSayisi)
-final urunSeciliSayisiProvider = AutoDisposeProvider<int>.internal(
-  urunSeciliSayisi,
-  name: r'urunSeciliSayisiProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$urunSeciliSayisiHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(kritikStokSayisi)
+final kritikStokSayisiProvider = KritikStokSayisiProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef UrunSeciliSayisiRef = AutoDisposeProviderRef<int>;
+final class KritikStokSayisiProvider extends $FunctionalProvider<int, int, int>
+    with $Provider<int> {
+  KritikStokSayisiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'kritikStokSayisiProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$kritikStokSayisiHash();
+
+  @$internal
+  @override
+  $ProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  int create(Ref ref) {
+    return kritikStokSayisi(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(int value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<int>(value),
+    );
+  }
+}
+
 String _$kritikStokSayisiHash() => r'ae47ca9f3c88ff364faf00612c663332c7f87871';
 
-/// See also [kritikStokSayisi].
-@ProviderFor(kritikStokSayisi)
-final kritikStokSayisiProvider = AutoDisposeProvider<int>.internal(
-  kritikStokSayisi,
-  name: r'kritikStokSayisiProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$kritikStokSayisiHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef KritikStokSayisiRef = AutoDisposeProviderRef<int>;
-String _$urunDetayHash() => r'db75bc247cd02278c87dd9faae0493e57cecbb91';
-
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
-/// See also [urunDetay].
 @ProviderFor(urunDetay)
-const urunDetayProvider = UrunDetayFamily();
+final urunDetayProvider = UrunDetayFamily._();
 
-/// See also [urunDetay].
-class UrunDetayFamily extends Family<AsyncValue<UrunModel?>> {
-  /// See also [urunDetay].
-  const UrunDetayFamily();
+final class UrunDetayProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<UrunModel?>,
+          UrunModel?,
+          FutureOr<UrunModel?>
+        >
+    with $FutureModifier<UrunModel?>, $FutureProvider<UrunModel?> {
+  UrunDetayProvider._({
+    required UrunDetayFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'urunDetayProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
-  /// See also [urunDetay].
-  UrunDetayProvider call(
-    int id,
-  ) {
-    return UrunDetayProvider(
-      id,
-    );
+  @override
+  String debugGetCreateSourceHash() => _$urunDetayHash();
+
+  @override
+  String toString() {
+    return r'urunDetayProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  UrunDetayProvider getProviderOverride(
-    covariant UrunDetayProvider provider,
-  ) {
-    return call(
-      provider.id,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
+  $FutureProviderElement<UrunModel?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
 
   @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'urunDetayProvider';
-}
-
-/// See also [urunDetay].
-class UrunDetayProvider extends AutoDisposeFutureProvider<UrunModel?> {
-  /// See also [urunDetay].
-  UrunDetayProvider(
-    int id,
-  ) : this._internal(
-          (ref) => urunDetay(
-            ref as UrunDetayRef,
-            id,
-          ),
-          from: urunDetayProvider,
-          name: r'urunDetayProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$urunDetayHash,
-          dependencies: UrunDetayFamily._dependencies,
-          allTransitiveDependencies: UrunDetayFamily._allTransitiveDependencies,
-          id: id,
-        );
-
-  UrunDetayProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.id,
-  }) : super.internal();
-
-  final int id;
-
-  @override
-  Override overrideWith(
-    FutureOr<UrunModel?> Function(UrunDetayRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: UrunDetayProvider._internal(
-        (ref) => create(ref as UrunDetayRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        id: id,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<UrunModel?> createElement() {
-    return _UrunDetayProviderElement(this);
+  FutureOr<UrunModel?> create(Ref ref) {
+    final argument = this.argument as int;
+    return urunDetay(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is UrunDetayProvider && other.id == id;
+    return other is UrunDetayProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, id.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin UrunDetayRef on AutoDisposeFutureProviderRef<UrunModel?> {
-  /// The parameter `id` of this provider.
-  int get id;
-}
+String _$urunDetayHash() => r'db75bc247cd02278c87dd9faae0493e57cecbb91';
 
-class _UrunDetayProviderElement
-    extends AutoDisposeFutureProviderElement<UrunModel?> with UrunDetayRef {
-  _UrunDetayProviderElement(super.provider);
+final class UrunDetayFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<UrunModel?>, int> {
+  UrunDetayFamily._()
+    : super(
+        retry: null,
+        name: r'urunDetayProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  UrunDetayProvider call(int id) =>
+      UrunDetayProvider._(argument: id, from: this);
 
   @override
-  int get id => (origin as UrunDetayProvider).id;
+  String toString() => r'urunDetayProvider';
+}
+
+@ProviderFor(barkodileUrunBul)
+final barkodileUrunBulProvider = BarkodileUrunBulFamily._();
+
+final class BarkodileUrunBulProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<UrunModel?>,
+          UrunModel?,
+          FutureOr<UrunModel?>
+        >
+    with $FutureModifier<UrunModel?>, $FutureProvider<UrunModel?> {
+  BarkodileUrunBulProvider._({
+    required BarkodileUrunBulFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'barkodileUrunBulProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$barkodileUrunBulHash();
+
+  @override
+  String toString() {
+    return r'barkodileUrunBulProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<UrunModel?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<UrunModel?> create(Ref ref) {
+    final argument = this.argument as String;
+    return barkodileUrunBul(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is BarkodileUrunBulProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
 }
 
 String _$barkodileUrunBulHash() => r'd06323bb5169b4c1a8a5182e710ea7c3829e85f1';
 
-/// See also [barkodileUrunBul].
-@ProviderFor(barkodileUrunBul)
-const barkodileUrunBulProvider = BarkodileUrunBulFamily();
-
-/// See also [barkodileUrunBul].
-class BarkodileUrunBulFamily extends Family<AsyncValue<UrunModel?>> {
-  /// See also [barkodileUrunBul].
-  const BarkodileUrunBulFamily();
-
-  /// See also [barkodileUrunBul].
-  BarkodileUrunBulProvider call(
-    String barkod,
-  ) {
-    return BarkodileUrunBulProvider(
-      barkod,
-    );
-  }
-
-  @override
-  BarkodileUrunBulProvider getProviderOverride(
-    covariant BarkodileUrunBulProvider provider,
-  ) {
-    return call(
-      provider.barkod,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'barkodileUrunBulProvider';
-}
-
-/// See also [barkodileUrunBul].
-class BarkodileUrunBulProvider extends AutoDisposeFutureProvider<UrunModel?> {
-  /// See also [barkodileUrunBul].
-  BarkodileUrunBulProvider(
-    String barkod,
-  ) : this._internal(
-          (ref) => barkodileUrunBul(
-            ref as BarkodileUrunBulRef,
-            barkod,
-          ),
-          from: barkodileUrunBulProvider,
-          name: r'barkodileUrunBulProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$barkodileUrunBulHash,
-          dependencies: BarkodileUrunBulFamily._dependencies,
-          allTransitiveDependencies:
-              BarkodileUrunBulFamily._allTransitiveDependencies,
-          barkod: barkod,
-        );
-
-  BarkodileUrunBulProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.barkod,
-  }) : super.internal();
-
-  final String barkod;
-
-  @override
-  Override overrideWith(
-    FutureOr<UrunModel?> Function(BarkodileUrunBulRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: BarkodileUrunBulProvider._internal(
-        (ref) => create(ref as BarkodileUrunBulRef),
-        from: from,
-        name: null,
+final class BarkodileUrunBulFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<UrunModel?>, String> {
+  BarkodileUrunBulFamily._()
+    : super(
+        retry: null,
+        name: r'barkodileUrunBulProvider',
         dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        barkod: barkod,
-      ),
-    );
-  }
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  BarkodileUrunBulProvider call(String barkod) =>
+      BarkodileUrunBulProvider._(argument: barkod, from: this);
 
   @override
-  AutoDisposeFutureProviderElement<UrunModel?> createElement() {
-    return _BarkodileUrunBulProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is BarkodileUrunBulProvider && other.barkod == barkod;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, barkod.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
+  String toString() => r'barkodileUrunBulProvider';
 }
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin BarkodileUrunBulRef on AutoDisposeFutureProviderRef<UrunModel?> {
-  /// The parameter `barkod` of this provider.
-  String get barkod;
-}
-
-class _BarkodileUrunBulProviderElement
-    extends AutoDisposeFutureProviderElement<UrunModel?>
-    with BarkodileUrunBulRef {
-  _BarkodileUrunBulProviderElement(super.provider);
-
-  @override
-  String get barkod => (origin as BarkodileUrunBulProvider).barkod;
-}
-
-String _$urunFiltresiHash() => r'631916fc9487496640e254b6d718ee0850b6ff33';
-
-/// See also [UrunFiltresi].
-@ProviderFor(UrunFiltresi)
-final urunFiltresiProvider =
-    AutoDisposeNotifierProvider<UrunFiltresi, UrunFiltre>.internal(
-  UrunFiltresi.new,
-  name: r'urunFiltresiProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$urunFiltresiHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$UrunFiltresi = AutoDisposeNotifier<UrunFiltre>;
-String _$urunlerHash() => r'b8c7e7dd1a4baa9df24b86fcdedf13c89980946a';
-
-/// See also [Urunler].
-@ProviderFor(Urunler)
-final urunlerProvider =
-    AutoDisposeNotifierProvider<Urunler, UrunListeDurum>.internal(
-  Urunler.new,
-  name: r'urunlerProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$urunlerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$Urunler = AutoDisposeNotifier<UrunListeDurum>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

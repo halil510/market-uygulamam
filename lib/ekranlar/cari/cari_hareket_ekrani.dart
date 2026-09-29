@@ -519,8 +519,8 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       final path =
           '${dir.path}/${_cari?.unvan ?? 'cari'}_hareketler_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       File(path).writeAsBytesSync(ex.encode()!);
-      await Share.shareXFiles([XFile(path)],
-          text: '${_cari?.unvan ?? ''} Hareketleri');
+      await SharePlus.instance.share(ShareParams(files: [XFile(path)],
+          text: '${_cari?.unvan ?? ''} Hareketleri'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Excel hatası: $e');
     }
@@ -556,7 +556,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       final dir = await getTemporaryDirectory();
       final path = '${dir.path}/${_cari?.unvan ?? 'cari'}_hareketler.csv';
       File(path).writeAsStringSync(buf.toString());
-      await Share.shareXFiles([XFile(path)], text: 'CSV');
+      await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'CSV'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'CSV hatası: $e');
     }

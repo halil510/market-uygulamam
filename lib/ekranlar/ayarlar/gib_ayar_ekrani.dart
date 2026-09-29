@@ -252,7 +252,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
                   ]),
                   const SizedBox(height: 8),
                   Text(
-                    'Market Plus → e-Fatura Servisi (Özel Entegratör) → GİB\n\n'
+                    'BarkoPro → e-Fatura Servisi (Özel Entegratör) → GİB\n\n'
                     'Bu ekran, GİB uyumlu bir özel entegratör (Foriba, Sovos, '
                     'Uyumsoft, Nilvera vb.) ile bağlantı kurar. Entegratör '
                     'portal\'ından aldığınız Kullanıcı Adı ve Şifre '

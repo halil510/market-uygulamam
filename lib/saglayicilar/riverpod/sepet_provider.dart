@@ -45,7 +45,7 @@ class SepetDurum {
 
 @riverpod
 Future<Map<int, List<PromosyonModel>>> aktifPromosyonlar(
-    AktifPromosyonlarRef ref) async {
+    Ref ref) async {
   try {
     final tum = await PromosyonDeposu().tumunuGetir(sadecaAktif: true);
     final map = <int, List<PromosyonModel>>{};
@@ -220,17 +220,17 @@ class Sepet extends _$Sepet {
 
 // Granular — sadece ilgili parça rebuild olur
 @riverpod
-int sepetKalemSayisi(SepetKalemSayisiRef ref) =>
+int sepetKalemSayisi(Ref ref) =>
     ref.watch(sepetProvider.select((s) => s.kalemSayisi));
 
 @riverpod
-double sepetToplamTutar(SepetToplamTutarRef ref) =>
+double sepetToplamTutar(Ref ref) =>
     ref.watch(sepetProvider.select((s) => s.genelToplam));
 
 @riverpod
-bool sepetBos(SepetBosRef ref) =>
+bool sepetBos(Ref ref) =>
     ref.watch(sepetProvider.select((s) => s.bos));
 
 @riverpod
-CariModel? sepetMusteri(SepetMusteriRef ref) =>
+CariModel? sepetMusteri(Ref ref) =>
     ref.watch(sepetProvider.select((s) => s.musteri));

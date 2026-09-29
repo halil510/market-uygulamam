@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
@@ -145,7 +146,7 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
       final dir  = await getApplicationDocumentsDirectory();
       final path = '${dir.path}/satis_raporu_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       await File(path).writeAsBytes(excel.encode()!);
-      await Share.shareXFiles([XFile(path)], text: 'Satış Raporu');
+      await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Satış Raporu'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Excel hatası: $e');
     }

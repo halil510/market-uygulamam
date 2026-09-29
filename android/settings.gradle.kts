@@ -18,8 +18,8 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "8.11.1" apply false
-    id("org.jetbrains.kotlin.android") version "2.2.20" apply false   // Kararlı sürüm
+    id("com.android.application") version "9.4.1" apply false
+    id("org.jetbrains.kotlin.android") version "2.4.20" apply false
     // 🔴 Derin denetimde bulundu (P2): R8/ProGuard minification aktif
     // edildikten sonra (bkz. proguard-rules.pro) native (Kotlin/Java
     // katmanı) çökme raporları Sentry'de OKUNAMAZ hale gelebilirdi —
@@ -29,7 +29,7 @@ plugins {
     // android/sentry.properties YOKSA (varsayılan, bu depoda YOK)
     // sessizce atlar — build ASLA bundan etkilenmez, sadece token
     // eklenirse devreye girer.
-    id("io.sentry.android.gradle") version "6.22.0" apply false
+    id("io.sentry.android.gradle") version "6.23.0" apply false
 }
 
 include(":app")

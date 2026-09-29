@@ -8,7 +8,7 @@
 PRODUCT_NAME = BarkoPro
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.halkMarket
+PRODUCT_BUNDLE_IDENTIFIER = com.barkodhalkmarket.marketplus
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2025 BarkoPro. All rights reserved.

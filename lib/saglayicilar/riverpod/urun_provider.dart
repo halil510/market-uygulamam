@@ -159,26 +159,26 @@ class Urunler extends _$Urunler {
 
 // ── Granular ─────────────────────────────────────────────────────
 @riverpod
-bool urunYukleniyor(UrunYukleniyorRef ref) =>
+bool urunYukleniyor(Ref ref) =>
     ref.watch(urunlerProvider.select((s) => s.yukleniyor));
 
 @riverpod
-bool urunSecimModu(UrunSecimModuRef ref) =>
+bool urunSecimModu(Ref ref) =>
     ref.watch(urunlerProvider.select((s) => s.secimModu));
 
 @riverpod
-int urunSeciliSayisi(UrunSeciliSayisiRef ref) =>
+int urunSeciliSayisi(Ref ref) =>
     ref.watch(urunlerProvider.select((s) => s.seciliIds.length));
 
 @riverpod
-int kritikStokSayisi(KritikStokSayisiRef ref) =>
+int kritikStokSayisi(Ref ref) =>
     ref.watch(urunlerProvider.select(
         (s) => s.urunler.where((u) => u.kritikStok).length));
 
 @riverpod
-Future<UrunModel?> urunDetay(UrunDetayRef ref, int id) =>
+Future<UrunModel?> urunDetay(Ref ref, int id) =>
     UrunDeposu().idileGetir(id);
 
 @riverpod
-Future<UrunModel?> barkodileUrunBul(BarkodileUrunBulRef ref, String barkod) =>
+Future<UrunModel?> barkodileUrunBul(Ref ref, String barkod) =>
     UrunDeposu().barkodlaGetir(barkod);

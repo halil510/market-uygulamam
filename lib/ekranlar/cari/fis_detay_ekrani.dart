@@ -205,8 +205,8 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
       final dir  = await getTemporaryDirectory();
       final path = '${dir.path}/fis_${widget.fisId}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       File(path).writeAsBytesSync(ex.encode()!);
-      await Share.shareXFiles([XFile(path)],
-          text: 'Fiş Detayı — ${widget.fisTipi} / ${widget.cariUnvan}');
+      await SharePlus.instance.share(ShareParams(files: [XFile(path)],
+          text: 'Fiş Detayı — ${widget.fisTipi} / ${widget.cariUnvan}'));
       if (mounted) BildirimServisi.basari(context, 'Excel oluşturuldu');
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Excel hatası: $e');

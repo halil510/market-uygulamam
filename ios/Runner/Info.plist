@@ -56,6 +56,9 @@
 	     ANINDA ÇÖKERTİR (Android'in aksine sessizce reddetmez). Bu
 	     anahtarlar olmadan uygulama iOS'ta barkod okutma/yazıcı bağlama/
 	     biyometrik giriş/fotoğraf ekleme denendiği an kesin çöker. -->
+	<!-- Yalnız standart HTTPS/TLS kullanılıyor (muaf) — App Store her yüklemede ihracat uyumluluğu sormasın. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Ürün barkodunu okutmak ve ürün fotoğrafı çekmek için kameraya ihtiyaç duyulur.</string>
 	<key>NSMicrophoneUsageDescription</key>

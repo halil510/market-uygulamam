@@ -33,7 +33,7 @@ final bildirimlerProvider = FutureProvider.autoDispose<List<_BildirimItem>>((ref
 });
 
 final okunmamisSayiProvider = Provider.autoDispose<int>((ref) =>
-    ref.watch(bildirimlerProvider).valueOrNull?.where((b) => !b.okundu).length ?? 0);
+    ref.watch(bildirimlerProvider).value?.where((b) => !b.okundu).length ?? 0);
 
 class BildirimMerkeziEkrani extends ConsumerStatefulWidget {
   const BildirimMerkeziEkrani({super.key});

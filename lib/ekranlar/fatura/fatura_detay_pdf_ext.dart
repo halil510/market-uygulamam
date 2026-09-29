@@ -73,13 +73,12 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
       final dosya = File('${dir.path}/Fatura_${_fatura!.faturaNo ?? "fatura"}.pdf');
       await dosya.writeAsBytes(bytes);
       if (!mounted) return;
-      await Share.shareXFiles(
-        [XFile(dosya.path, mimeType: 'application/pdf')],
+      await SharePlus.instance.share(ShareParams(files: [XFile(dosya.path, mimeType: 'application/pdf')],
         subject: '${_fatura!.faturaTipi ?? "Fatura"} - ${_fatura!.faturaNo ?? ""}',
         text: 'Sayın ${_fatura!.cariUnvan ?? ""},\n\n'
               '${_fatura!.faturaNo ?? "Fatura"} numaralı faturanız ekte yer almaktadır.\n\n'
               'İyi çalışmalar dileriz.',
-      );
+      ));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Paylaşım hatası: $e');
     }

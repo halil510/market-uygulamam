@@ -6,69 +6,178 @@ part of 'auth_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(Auth)
+final authProvider = AuthProvider._();
+
+final class AuthProvider extends $NotifierProvider<Auth, AuthState> {
+  AuthProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'authProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$authHash();
+
+  @$internal
+  @override
+  Auth create() => Auth();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AuthState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AuthState>(value),
+    );
+  }
+}
+
+String _$authHash() => r'88a727731206408d0a7915f8de900e3c69a016f7';
+
+abstract class _$Auth extends $Notifier<AuthState> {
+  AuthState build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AuthState, AuthState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AuthState, AuthState>,
+              AuthState,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(aktifKullanici)
+final aktifKullaniciProvider = AktifKullaniciProvider._();
+
+final class AktifKullaniciProvider
+    extends
+        $FunctionalProvider<KullaniciModel?, KullaniciModel?, KullaniciModel?>
+    with $Provider<KullaniciModel?> {
+  AktifKullaniciProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'aktifKullaniciProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$aktifKullaniciHash();
+
+  @$internal
+  @override
+  $ProviderElement<KullaniciModel?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  KullaniciModel? create(Ref ref) {
+    return aktifKullanici(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(KullaniciModel? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<KullaniciModel?>(value),
+    );
+  }
+}
+
 String _$aktifKullaniciHash() => r'25d2a7698549817451bea99625e8b4fd290c25ea';
 
-/// See also [aktifKullanici].
-@ProviderFor(aktifKullanici)
-final aktifKullaniciProvider = AutoDisposeProvider<KullaniciModel?>.internal(
-  aktifKullanici,
-  name: r'aktifKullaniciProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$aktifKullaniciHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(girisYapildiMi)
+final girisYapildiMiProvider = GirisYapildiMiProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef AktifKullaniciRef = AutoDisposeProviderRef<KullaniciModel?>;
+final class GirisYapildiMiProvider extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  GirisYapildiMiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'girisYapildiMiProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$girisYapildiMiHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return girisYapildiMi(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
 String _$girisYapildiMiHash() => r'0241521ceead8e75a1c8ad583f30b2eb69b96990';
 
-/// See also [girisYapildiMi].
-@ProviderFor(girisYapildiMi)
-final girisYapildiMiProvider = AutoDisposeProvider<bool>.internal(
-  girisYapildiMi,
-  name: r'girisYapildiMiProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$girisYapildiMiHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef GirisYapildiMiRef = AutoDisposeProviderRef<bool>;
-String _$isAdminHash() => r'752d7e15978376ea6d64670c3e3fe7bca17407a0';
-
-/// See also [isAdmin].
 @ProviderFor(isAdmin)
-final isAdminProvider = AutoDisposeProvider<bool>.internal(
-  isAdmin,
-  name: r'isAdminProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$isAdminHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final isAdminProvider = IsAdminProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef IsAdminRef = AutoDisposeProviderRef<bool>;
-String _$authHash() => r'af52e09835cc1e4b2c2f13ddbaebdf1d3e10d369';
+final class IsAdminProvider extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  IsAdminProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'isAdminProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [Auth].
-@ProviderFor(Auth)
-final authProvider = AutoDisposeNotifierProvider<Auth, AuthState>.internal(
-  Auth.new,
-  name: r'authProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$authHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+  @override
+  String debugGetCreateSourceHash() => _$isAdminHash();
 
-typedef _$Auth = AutoDisposeNotifier<AuthState>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return isAdmin(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$isAdminHash() => r'752d7e15978376ea6d64670c3e3fe7bca17407a0';

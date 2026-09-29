@@ -85,7 +85,7 @@ class _KarZararEkraniState extends ConsumerState<KarZararEkrani>
       final path = '${dir.path}/kar_zarar_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       final file = File(path);
       await file.writeAsBytes(excel.encode()!);
-      await Share.shareXFiles([XFile(path)], text: 'Kâr-Zarar Raporu');
+      await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Kâr-Zarar Raporu'));
     } catch (e) {
       if (mounted) {
         BildirimServisi.hata(context, 'Excel hatası: $e');

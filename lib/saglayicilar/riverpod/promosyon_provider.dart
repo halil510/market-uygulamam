@@ -21,11 +21,11 @@ class PromosyonFiltresi extends _$PromosyonFiltresi {
 }
 
 @riverpod
-Future<List<PromosyonModel>> promosyonlar(PromosyonlarRef ref) =>
+Future<List<PromosyonModel>> promosyonlar(Ref ref) =>
     PromosyonDeposu().tumunuGetir();
 
 @riverpod
-List<PromosyonModel> filtreliPromosyonlar(FiltreliPromosyonlarRef ref) {
+List<PromosyonModel> filtreliPromosyonlar(Ref ref) {
   final f     = ref.watch(promosyonFiltresiProvider);
   final async = ref.watch(promosyonlarProvider);
   final now   = DateTime.now();
@@ -57,9 +57,9 @@ List<PromosyonModel> filtreliPromosyonlar(FiltreliPromosyonlarRef ref) {
 }
 
 @riverpod
-int aktifPromosyonSayisi(AktifPromosyonSayisiRef ref) =>
+int aktifPromosyonSayisi(Ref ref) =>
     // 🔴 DÜZELTME: Sadece 'p.aktif' bakıyordu — süresi dolmuş veya
     // henüz başlamamış bir promosyon bile (aktif=true olduğu sürece)
     // "aktif promosyon sayısı"na dahil ediliyordu. Artık kanonik
     // 'gecerli' kontrolü de aranıyor.
-    ref.watch(promosyonlarProvider).valueOrNull?.where((p) => p.aktif && p.gecerli).length ?? 0;
+    ref.watch(promosyonlarProvider).value?.where((p) => p.aktif && p.gecerli).length ?? 0;

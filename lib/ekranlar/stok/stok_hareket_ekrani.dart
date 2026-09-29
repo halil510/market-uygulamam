@@ -98,7 +98,7 @@ class _StokHareketEkraniState extends ConsumerState<StokHareketEkrani> {
       final dir = await getTemporaryDirectory();
       final path = '${dir.path}/stok_hareketleri_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       File(path).writeAsBytesSync(excel.encode()!);
-      await Share.shareXFiles([XFile(path)], text: 'Stok Hareketleri');
+      await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Stok Hareketleri'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }

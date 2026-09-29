@@ -28,7 +28,7 @@ class BorcBildirimServisi {
     // kullanıcı "vade yaklaşıyor" bildirimini görüp neyle ilgili
     // olduğunu tahmin etmek zorunda kalıyordu. Artık doğrudan Borç
     // Takip ekranına götürüyor.
-    await _notifications.initialize(settings, onDidReceiveNotificationResponse: (response) {
+    await _notifications.initialize(settings: settings, onDidReceiveNotificationResponse: (response) {
       final ctx = rootNavigatorKey.currentContext;
       if (ctx != null) GoRouter.of(ctx).push('/borc-takip');
     });
@@ -74,7 +74,7 @@ class BorcBildirimServisi {
     );
     const iosDetails = DarwinNotificationDetails();
     const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
-    await _notifications.show(id, title, body, details);
+    await _notifications.show(id: id, title: title, body: body, notificationDetails: details);
   }
 
   void dispose() => _gunlukTimer?.cancel();

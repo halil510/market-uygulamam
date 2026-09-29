@@ -53,9 +53,10 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
 
   // ── Excel İçe Al ──────────────────────────────────────────────────────────
   Future<void> _excelIceAl() async {
-    final result = await FilePicker.platform.pickFiles(
+    final secilen = await FilePicker.pickFile(
         type: FileType.custom, allowedExtensions: ['xlsx']);
-    if (result == null || result.files.first.bytes == null) return;
+    if (secilen == null) return;
+    final secilenBytes = await secilen.readAsBytes();
     if (!mounted) return;
     // 🔴 Derin analizde bulundu: dosya seçilir seçilmez, hiçbir önizleme
     // veya onay olmadan doğrudan uygulanıyordu — manuel sayım akışının
@@ -68,7 +69,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Text('Excel İçe Al'),
         content: Text(
-          '"${result.files.first.name}" dosyasındaki miktarlara göre stok '
+          '"${secilen.name}" dosyasındaki miktarlara göre stok '
           'güncellenecek.\nBu işlem geri alınamaz. Devam etmek istiyor musunuz?',
         ),
         actions: [
@@ -92,7 +93,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
         ]),
       ));
     try {
-      final sonuc = await ExcelServisi().stokSayimExcelIceAl(result.files.first.bytes!);
+      final sonuc = await ExcelServisi().stokSayimExcelIceAl(secilenBytes);
       if (!mounted) return;
       Navigator.pop(context);
       ref.read(stokSayimProvider.notifier).yukle(sifirla: true);
@@ -123,7 +124,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
         };
       }).toList();
       final yol = await ExcelServisi().stokSayimExcelDisaAl(stoklar);
-      await Share.shareXFiles([XFile(yol)], text: 'Stok Sayım Listesi');
+      await SharePlus.instance.share(ShareParams(files: [XFile(yol)], text: 'Stok Sayım Listesi'));
     } catch (e) { if (mounted) BildirimServisi.hata(context, 'Hata: $e'); }
   }
 
@@ -219,7 +220,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
           };
         }).toList();
       final yol = await ExcelServisi().stokSayimExcelDisaAl(stoklar);
-      if (mounted) await Share.shareXFiles([XFile(yol)], text: 'Stok Sayım Listesi');
+      if (mounted) await SharePlus.instance.share(ShareParams(files: [XFile(yol)], text: 'Stok Sayım Listesi'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Dışa aktarma hatası: $e');
     }
@@ -228,12 +229,11 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
   // Excel içe aktar → sayım listesine yükle
   Future<void> _excelIceAktar() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom, allowedExtensions: ['xlsx', 'xls', 'csv'],
-        withData: true);
-      if (result == null || result.files.single.bytes == null || !mounted) return;
+      final secilen = await FilePicker.pickFile(
+        type: FileType.custom, allowedExtensions: ['xlsx', 'xls', 'csv']);
+      if (secilen == null || !mounted) return;
 
-      final bytes = result.files.single.bytes!;
+      final bytes = await secilen.readAsBytes();
       final liste = await ExcelServisi().stokSayimListesiIceAl(bytes);
       if (!mounted) return;
 

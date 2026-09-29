@@ -308,7 +308,7 @@ extension _UrunListeDialoglarExt on _UrunListeEkraniState {
       final path =
           '${dir.path}/urunler_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       await File(path).writeAsBytes(excel.encode()!);
-      await Share.shareXFiles([XFile(path)], text: 'Ürün Listesi');
+      await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Ürün Listesi'));
     } catch (e) {
       if (mounted) hataMesaji(context, 'Excel hatası: $e');
     }

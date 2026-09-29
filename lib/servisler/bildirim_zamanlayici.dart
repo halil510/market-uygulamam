@@ -50,7 +50,7 @@ class BildirimZamanlayici {
       requestSoundPermission:  false,
     );
     await _plugin.initialize(
-      const InitializationSettings(android: androidSetting, iOS: iosSetting),
+      settings: const InitializationSettings(android: androidSetting, iOS: iosSetting),
       // ÖNCEDEN bildirime dokunulduğunda HİÇBİR YERE yönlendirme
       // yapılmıyordu — kullanıcı sadece uygulamayı önceden bulunduğu
       // ekranda buluyordu, "3 ürün kritik stokta" bildirimi neyle
@@ -209,10 +209,10 @@ class BildirimZamanlayici {
   }) async {
     try {
       await _plugin.show(
-        id,
-        baslik,
-        icerik,
-        NotificationDetails(
+        id: id,
+        title: baslik,
+        body: icerik,
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             'marketplus_$id',
             'BarkoPro Bildirimleri',

@@ -3,7 +3,6 @@
 // sonuç/hata dialog'u göster) tek bir yerden sunmak. lib/widgetlar/urun/
 // excel_ice_aktar_yardimcisi.dart (ürün) ile AYNI desen — kullanıcı isteği,
 // 2026-09-21.
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -18,16 +17,12 @@ class CariExcelIceAktarYardimcisi {
   /// gösterir. Başarılı olursa [onTamamlandi] çağrılır (liste yenilensin diye).
   static Future<void> iceAktar(BuildContext context, {required VoidCallback onTamamlandi}) async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final dosya = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['xlsx', 'xls'],
-        withData: true,
       );
-      if (result == null || result.files.isEmpty) return;
-
-      final dosya = result.files.single;
-      final Uint8List? fileBytes = dosya.bytes ??
-          (dosya.path != null ? await File(dosya.path!).readAsBytes() : null);
+      if (dosya == null) return;
+      final Uint8List? fileBytes = await dosya.readAsBytes();
       if (fileBytes == null) {
         if (context.mounted) BildirimServisi.hata(context, 'Dosya okunamadı');
         return;

@@ -132,9 +132,9 @@ class Satislar extends _$Satislar {
 }
 
 @riverpod
-Future<Map<String, dynamic>> gunlukSatisOzeti(GunlukSatisOzetiRef ref) =>
+Future<Map<String, dynamic>> gunlukSatisOzeti(Ref ref) =>
     SatisDeposu().gunlukIstatistik();
 
 @riverpod
-Future<SatisModel?> satisDetayi(SatisDetayiRef ref, int id) =>
+Future<SatisModel?> satisDetayi(Ref ref, int id) =>
     SatisDeposu().idileGetir(id);

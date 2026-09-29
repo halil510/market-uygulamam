@@ -5,7 +5,7 @@ import '../../veri/database/veritabani.dart';
 part 'irsaliye_provider.g.dart';
 
 @riverpod
-Future<List<Map<String, dynamic>>> irsaliyeListesi(IrsaliyeListesiRef ref) async {
+Future<List<Map<String, dynamic>>> irsaliyeListesi(Ref ref) async {
   final db = await Veritabani().db;
   return db.rawQuery('''
     SELECT i.*, c.unvan as cari_adi FROM irsaliyeler i

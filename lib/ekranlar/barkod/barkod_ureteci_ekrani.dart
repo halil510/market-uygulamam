@@ -121,7 +121,7 @@ class _BarkodUreteciEkraniState extends ConsumerState<BarkodUreteciEkrani> {
       final dir = await getTemporaryDirectory();
       final f = File("${dir.path}/barkod_$_gosterilen.png");
       await f.writeAsBytes(bytes.buffer.asUint8List());
-      await Share.shareXFiles([XFile(f.path)], text: "Barkod: $_gosterilen");
+      await SharePlus.instance.share(ShareParams(files: [XFile(f.path)], text: "Barkod: $_gosterilen"));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, "Paylaşım hatası: $e");
     }

@@ -81,7 +81,7 @@ class YedeklemeServisi {
       final yedekDir = await _yedekDizini();
       final tarih    = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
       final prefix   = otomatik ? 'oto' : 'manuel';
-      final zipYolu  = '${yedekDir.path}/marketplus_${prefix}_$tarih.zip';
+      final zipYolu  = '${yedekDir.path}/barkopro_${prefix}_$tarih.zip';
 
       final encoder = ZipFileEncoder();
       encoder.create(zipYolu);
@@ -159,10 +159,9 @@ class YedeklemeServisi {
   // ── Paylaş ────────────────────────────────────────────────────────────
   Future<void> paylasYedek(String zipYolu) async {
     final tarih = DateFormat('dd.MM.yyyy').format(DateTime.now());
-    await Share.shareXFiles(
-      [XFile(zipYolu)],
+    await SharePlus.instance.share(ShareParams(files: [XFile(zipYolu)],
       text: 'BarkoPro Yedek — $tarih',
-    );
+    ));
   }
 
   // ── Yedek listesi ─────────────────────────────────────────────────────

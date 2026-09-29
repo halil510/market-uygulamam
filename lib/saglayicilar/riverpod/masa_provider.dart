@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../depolar/masa_deposu.dart';
 import '../../modeller/masa_model.dart';
@@ -151,7 +152,7 @@ class MasaSiparisNotifier extends StateNotifier<AsyncValue<MasaSiparisModel?>> {
   }
 
   Future<void> musteriBagla(int? cariId, String? cariAdi) async {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s?.id == null) return;
     await _depo.musteriBagla(s!.id!, cariId, cariAdi);
     await yukle();

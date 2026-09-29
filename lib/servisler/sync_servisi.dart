@@ -724,7 +724,7 @@ class SyncServisi {
       <div class="card-icon">🔄</div>
       <h3>Tüm Veriyi Al</h3>
       <p>Tüm tabloları tek JSON dosyasında alın. Tam yedek için.</p>
-      <a class="btn btn-outline" href="/$token/api/export" download="marketplus_export.json">⬇ Tam Export</a>
+      <a class="btn btn-outline" href="/$token/api/export" download="barkopro_export.json">⬇ Tam Export</a>
     </div>
     <div class="card">
       <div class="card-icon">⬆</div>

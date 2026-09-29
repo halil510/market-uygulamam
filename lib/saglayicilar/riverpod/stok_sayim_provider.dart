@@ -1,4 +1,5 @@
 // lib/saglayicilar/riverpod/stok_sayim_provider.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/stok_deposu.dart';
@@ -93,7 +94,7 @@ class StokSayimHesap {
 }
 
 @riverpod
-Future<List<Map<String, dynamic>>> sayimGecmis(SayimGecmisRef ref) =>
+Future<List<Map<String, dynamic>>> sayimGecmis(Ref ref) =>
     StokDeposu().geciciSayimListesi();
 
 @riverpod
@@ -233,5 +234,5 @@ class StokSayim extends _$StokSayim {
 }
 
 @riverpod
-int sayilanSayisi(SayilanSayisiRef ref) =>
+int sayilanSayisi(Ref ref) =>
     ref.watch(stokSayimProvider.select((s) => s.sayilanUrunSayisi));

@@ -6,75 +6,188 @@ part of 'promosyon_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$promosyonlarHash() => r'da4fee95c23b67b9ccba46060449520284f583ac';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [promosyonlar].
-@ProviderFor(promosyonlar)
-final promosyonlarProvider =
-    AutoDisposeFutureProvider<List<PromosyonModel>>.internal(
-  promosyonlar,
-  name: r'promosyonlarProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$promosyonlarHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(PromosyonFiltresi)
+final promosyonFiltresiProvider = PromosyonFiltresiProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef PromosyonlarRef = AutoDisposeFutureProviderRef<List<PromosyonModel>>;
-String _$filtreliPromosyonlarHash() =>
-    r'b509b7ad544183cac75cf63e54ead5096e4a3348';
+final class PromosyonFiltresiProvider
+    extends $NotifierProvider<PromosyonFiltresi, PromosyonFiltre> {
+  PromosyonFiltresiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'promosyonFiltresiProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [filtreliPromosyonlar].
-@ProviderFor(filtreliPromosyonlar)
-final filtreliPromosyonlarProvider =
-    AutoDisposeProvider<List<PromosyonModel>>.internal(
-  filtreliPromosyonlar,
-  name: r'filtreliPromosyonlarProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$filtreliPromosyonlarHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+  @override
+  String debugGetCreateSourceHash() => _$promosyonFiltresiHash();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef FiltreliPromosyonlarRef = AutoDisposeProviderRef<List<PromosyonModel>>;
-String _$aktifPromosyonSayisiHash() =>
-    r'e2e54191351c2775c640047d372ea19a1402894f';
+  @$internal
+  @override
+  PromosyonFiltresi create() => PromosyonFiltresi();
 
-/// See also [aktifPromosyonSayisi].
-@ProviderFor(aktifPromosyonSayisi)
-final aktifPromosyonSayisiProvider = AutoDisposeProvider<int>.internal(
-  aktifPromosyonSayisi,
-  name: r'aktifPromosyonSayisiProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$aktifPromosyonSayisiHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PromosyonFiltre value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PromosyonFiltre>(value),
+    );
+  }
+}
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef AktifPromosyonSayisiRef = AutoDisposeProviderRef<int>;
 String _$promosyonFiltresiHash() => r'9282175fcec18894ae1ea42c6a3d14fd1e89fae2';
 
-/// See also [PromosyonFiltresi].
-@ProviderFor(PromosyonFiltresi)
-final promosyonFiltresiProvider =
-    AutoDisposeNotifierProvider<PromosyonFiltresi, PromosyonFiltre>.internal(
-  PromosyonFiltresi.new,
-  name: r'promosyonFiltresiProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$promosyonFiltresiHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+abstract class _$PromosyonFiltresi extends $Notifier<PromosyonFiltre> {
+  PromosyonFiltre build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<PromosyonFiltre, PromosyonFiltre>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<PromosyonFiltre, PromosyonFiltre>,
+              PromosyonFiltre,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
 
-typedef _$PromosyonFiltresi = AutoDisposeNotifier<PromosyonFiltre>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+@ProviderFor(promosyonlar)
+final promosyonlarProvider = PromosyonlarProvider._();
+
+final class PromosyonlarProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<PromosyonModel>>,
+          List<PromosyonModel>,
+          FutureOr<List<PromosyonModel>>
+        >
+    with
+        $FutureModifier<List<PromosyonModel>>,
+        $FutureProvider<List<PromosyonModel>> {
+  PromosyonlarProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'promosyonlarProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$promosyonlarHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<PromosyonModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<PromosyonModel>> create(Ref ref) {
+    return promosyonlar(ref);
+  }
+}
+
+String _$promosyonlarHash() => r'da4fee95c23b67b9ccba46060449520284f583ac';
+
+@ProviderFor(filtreliPromosyonlar)
+final filtreliPromosyonlarProvider = FiltreliPromosyonlarProvider._();
+
+final class FiltreliPromosyonlarProvider
+    extends
+        $FunctionalProvider<
+          List<PromosyonModel>,
+          List<PromosyonModel>,
+          List<PromosyonModel>
+        >
+    with $Provider<List<PromosyonModel>> {
+  FiltreliPromosyonlarProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'filtreliPromosyonlarProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$filtreliPromosyonlarHash();
+
+  @$internal
+  @override
+  $ProviderElement<List<PromosyonModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  List<PromosyonModel> create(Ref ref) {
+    return filtreliPromosyonlar(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<PromosyonModel> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<PromosyonModel>>(value),
+    );
+  }
+}
+
+String _$filtreliPromosyonlarHash() =>
+    r'18b98f1b858f1448f6f83068de2fa46975d691ca';
+
+@ProviderFor(aktifPromosyonSayisi)
+final aktifPromosyonSayisiProvider = AktifPromosyonSayisiProvider._();
+
+final class AktifPromosyonSayisiProvider
+    extends $FunctionalProvider<int, int, int>
+    with $Provider<int> {
+  AktifPromosyonSayisiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'aktifPromosyonSayisiProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$aktifPromosyonSayisiHash();
+
+  @$internal
+  @override
+  $ProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  int create(Ref ref) {
+    return aktifPromosyonSayisi(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(int value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<int>(value),
+    );
+  }
+}
+
+String _$aktifPromosyonSayisiHash() =>
+    r'3804945bf4793d15e5bb2bb18dc97644cbc44ec3';

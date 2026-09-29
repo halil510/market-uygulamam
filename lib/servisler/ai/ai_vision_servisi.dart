@@ -338,7 +338,8 @@ null veya 0 bırak. Fotoğrafta hiçbir ürün satırı okunamıyorsa
       path = kaynak.path;
     } else if (kaynak is PlatformFile) {
       path = kaynak.path;
-      bytes = kaynak.bytes;
+      // file_picker 13: içerik her zaman readAsBytes() ile (web'de path yok).
+      if (path == null) bytes = await kaynak.readAsBytes();
     } else if (kaynak is Uint8List) {
       bytes = kaynak;
     }

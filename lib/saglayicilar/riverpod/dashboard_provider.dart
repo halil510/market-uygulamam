@@ -194,5 +194,5 @@ class Dashboard extends _$Dashboard {
 
 // Granular
 @riverpod
-double gunlukCiro(GunlukCiroRef ref) =>
-    ref.watch(dashboardProvider).valueOrNull?.gunlukCiro ?? 0;
+double gunlukCiro(Ref ref) =>
+    ref.watch(dashboardProvider).value?.gunlukCiro ?? 0;

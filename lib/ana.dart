@@ -106,7 +106,11 @@ Future<void> _baslatApp() async {
         overrides: const [],
         // ─── Riverpod observer — prod'da logları izle ────────────────────
         observers: [if (_debugMod) _RiverpodLogger()],
-        child: MarketPlusApp(baslangicTema: baslangicTema),
+        // Riverpod 3 hata veren provider'ları varsayılan olarak otomatik
+        // tekrar dener. Kasa/DB hatalarının arka planda sessizce yeniden
+        // denenmesi istenmez — Riverpod 2 davranışı (tekrar yok) korunur.
+        retry: (_, _) => null,
+        child: BarkoProApp(baslangicTema: baslangicTema),
       ),
     );
   } catch (e, st) {
@@ -120,23 +124,20 @@ const _debugMod = bool.fromEnvironment('dart.vm.product') == false;
 
 // ── Riverpod Observer (debug) ────────────────────────────────────────────────
 
-class _RiverpodLogger extends ProviderObserver {
+final class _RiverpodLogger extends ProviderObserver {
   @override
-  void didAddProvider(
-    ProviderBase<Object?> provider,
-    Object? value,
-    ProviderContainer container,
-  ) {
+  void didAddProvider(ProviderObserverContext context, Object? value) {
+    final provider = context.provider;
     if (kDebugMode) debugPrint('[Riverpod] EKLENDI: ${provider.name ?? provider.runtimeType}');
   }
 
   @override
   void providerDidFail(
-    ProviderBase<Object?> provider,
+    ProviderObserverContext context,
     Object error,
     StackTrace stackTrace,
-    ProviderContainer container,
   ) {
+    final provider = context.provider;
     if (kDebugMode) debugPrint(
         '[Riverpod] HATA: ${provider.name ?? provider.runtimeType}: $error');
   }

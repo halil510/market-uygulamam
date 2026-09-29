@@ -614,14 +614,11 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     // çıkarılamadı" hatası alıyordu — desteklenmeyen bir format
     // seçtirilebiliyor olması yanıltıcıydı. PDF artık gerçekten
     // destekleniyor (bkz. AiVisionServisi._pdfIlkSayfayiResmeCevir).
-    final result = await FilePicker.platform.pickFiles(
+    final dosya = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
-      withData: true,
     );
-    if (result == null || result.files.isEmpty || !mounted) return;
-
-    final dosya = result.files.first;
+    if (dosya == null || !mounted) return;
     final scaffold = ScaffoldMessenger.of(context);
     final snack = SnackBar(
       content: Row(children: [

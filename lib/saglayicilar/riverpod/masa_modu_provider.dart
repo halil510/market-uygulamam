@@ -2,7 +2,7 @@
 // Tek sorumluluk: "Masa Modu" (Restoran/Cafe modülünün dashboard'da
 // görünüp görünmeyeceği) ayarını SharedPreferences'tan okur/yazar.
 // Market-only şubelerde Masalar/Mutfak menüsünü gizlemek için kullanılır.
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const masaModuAnahtari = 'masa_modu_aktif';

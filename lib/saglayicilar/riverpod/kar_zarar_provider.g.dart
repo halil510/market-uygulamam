@@ -6,37 +6,96 @@ part of 'kar_zarar_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$karZararHash() => r'fd1dce40708bb84d5ab95fe1e779065cb9618bf8';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [karZarar].
-@ProviderFor(karZarar)
-final karZararProvider = AutoDisposeFutureProvider<KarZararVeri>.internal(
-  karZarar,
-  name: r'karZararProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$karZararHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(KarZararFiltresi)
+final karZararFiltresiProvider = KarZararFiltresiProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef KarZararRef = AutoDisposeFutureProviderRef<KarZararVeri>;
+final class KarZararFiltresiProvider
+    extends $NotifierProvider<KarZararFiltresi, KarZararFiltre> {
+  KarZararFiltresiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'karZararFiltresiProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$karZararFiltresiHash();
+
+  @$internal
+  @override
+  KarZararFiltresi create() => KarZararFiltresi();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(KarZararFiltre value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<KarZararFiltre>(value),
+    );
+  }
+}
+
 String _$karZararFiltresiHash() => r'aa3783aa288d6b9c9d096754f4dec4434ef82622';
 
-/// See also [KarZararFiltresi].
-@ProviderFor(KarZararFiltresi)
-final karZararFiltresiProvider =
-    AutoDisposeNotifierProvider<KarZararFiltresi, KarZararFiltre>.internal(
-  KarZararFiltresi.new,
-  name: r'karZararFiltresiProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$karZararFiltresiHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+abstract class _$KarZararFiltresi extends $Notifier<KarZararFiltre> {
+  KarZararFiltre build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<KarZararFiltre, KarZararFiltre>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<KarZararFiltre, KarZararFiltre>,
+              KarZararFiltre,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
 
-typedef _$KarZararFiltresi = AutoDisposeNotifier<KarZararFiltre>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+@ProviderFor(karZarar)
+final karZararProvider = KarZararProvider._();
+
+final class KarZararProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<KarZararVeri>,
+          KarZararVeri,
+          FutureOr<KarZararVeri>
+        >
+    with $FutureModifier<KarZararVeri>, $FutureProvider<KarZararVeri> {
+  KarZararProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'karZararProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$karZararHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<KarZararVeri> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<KarZararVeri> create(Ref ref) {
+    return karZarar(ref);
+  }
+}
+
+String _$karZararHash() => r'de698fc30d1f4671adc09824b08b566666a9e99a';

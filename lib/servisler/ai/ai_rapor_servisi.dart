@@ -56,7 +56,7 @@ class AiRaporServisi {
                COALESCE(SUM(iskonto_tutar),0) as iskonto,
                COALESCE(SUM(kdv_tutar),0) as kdv
         FROM satislar
-        WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 $subeKosulu
+        WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0 $subeKosulu
       ''', [_bas(bas), _bit(bit), ...subeArgs])).first;
 
       final odemeler = await db.rawQuery('''
@@ -64,7 +64,7 @@ class AiRaporServisi {
                COUNT(*) as adet,
                COALESCE(SUM(genel_toplam),0) as tutar
         FROM satislar
-        WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 $subeKosulu
+        WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0 $subeKosulu
         GROUP BY odeme_yontemi ORDER BY tutar DESC
       ''', [_bas(bas), _bit(bit), ...subeArgs]);
 
@@ -77,7 +77,7 @@ class AiRaporServisi {
         SELECT COALESCE(SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)),0) as mal
         FROM satis_kalem sk
         JOIN satislar s ON sk.satis_id = s.id
-        WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0 $subeKosuluJoin
+        WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0 $subeKosuluJoin
       ''', [_bas(bas), _bit(bit), ...subeArgs])).first;
 
       final kasa = (await db.rawQuery('''
@@ -154,7 +154,7 @@ class AiRaporServisi {
                SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)) as maliyet
         FROM satis_kalem sk
         JOIN satislar s ON sk.satis_id = s.id
-        WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0
+        WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
         GROUP BY sk.urun_adi
         ORDER BY tutar DESC
         LIMIT ?
@@ -203,25 +203,25 @@ class AiRaporServisi {
                COALESCE(SUM(genel_toplam),0) as ciro,
                COALESCE(SUM(iskonto_tutar),0) as iskonto,
                COALESCE(SUM(kdv_tutar),0) as kdv
-        FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0
+        FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
       ''', [_bas(bas), _bit(bit)])).first;
 
       final maliyet = (await db.rawQuery('''
         SELECT COALESCE(SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)),0) as mal
         FROM satis_kalem sk JOIN satislar s ON sk.satis_id=s.id
-        WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0
+        WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
       ''', [_bas(bas), _bit(bit)])).first;
 
       final odemeler = await db.rawQuery('''
         SELECT odeme_yontemi, COALESCE(SUM(genel_toplam),0) as tutar
-        FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0
+        FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
         GROUP BY odeme_yontemi ORDER BY tutar DESC
       ''', [_bas(bas), _bit(bit)]);
 
       final enCok = await db.rawQuery('''
         SELECT sk.urun_adi, SUM(sk.miktar) as miktar, SUM(sk.toplam_tutar) as tutar
         FROM satis_kalem sk JOIN satislar s ON sk.satis_id=s.id
-        WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0
+        WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
         GROUP BY sk.urun_adi ORDER BY tutar DESC LIMIT 10
       ''', [_bas(bas), _bit(bit)]);
 
@@ -229,7 +229,7 @@ class AiRaporServisi {
         SELECT DATE(tarih) as gun,
                COUNT(*) as islem,
                COALESCE(SUM(genel_toplam),0) as ciro
-        FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0
+        FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
         GROUP BY DATE(tarih) ORDER BY gun
       ''', [_bas(bas), _bit(bit)]);
 
@@ -304,7 +304,7 @@ class AiRaporServisi {
         FROM satis_kalem sk
         JOIN satislar s ON sk.satis_id = s.id
         LEFT JOIN urunler u ON sk.urun_id = u.id
-        WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0
+        WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
         GROUP BY u.$kolon
         ORDER BY tutar DESC
       ''', [_bas(bas), _bit(bit)]);
@@ -362,12 +362,12 @@ class AiRaporServisi {
       Future<Map<String, double>> ozet(DateTime b, DateTime e) async {
         final s = (await db.rawQuery('''
           SELECT COALESCE(SUM(genel_toplam),0) as ciro
-          FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0
+          FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
         ''', [_bas(b), _bit(e)])).first;
         final m = (await db.rawQuery('''
           SELECT COALESCE(SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)),0) as mal
           FROM satis_kalem sk JOIN satislar st ON sk.satis_id = st.id
-          WHERE st.tarih BETWEEN ? AND ? AND st.iptal=0 AND st.is_deleted=0
+          WHERE st.tarih BETWEEN ? AND ? AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
         ''', [_bas(b), _bit(e)])).first;
         final g = (await db.rawQuery('''
           SELECT COALESCE(SUM(tutar),0) as gider
@@ -391,7 +391,7 @@ class AiRaporServisi {
         final rows = await db.rawQuery('''
           SELECT sk.urun_adi, SUM(sk.toplam_tutar) as tutar
           FROM satis_kalem sk JOIN satislar s ON sk.satis_id = s.id
-          WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0
+          WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
           GROUP BY sk.urun_adi
         ''', [_bas(b), _bit(e)]);
         return {
@@ -466,7 +466,7 @@ class AiRaporServisi {
 
       final satislar = await db.rawQuery('''
         SELECT fis_no, tarih, genel_toplam FROM satislar
-        WHERE tarih >= ? AND iptal=0 AND is_deleted=0
+        WHERE tarih >= ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
       ''', [_bas(bas)]);
       final iadeler = await db.rawQuery('''
         SELECT fis_no, tarih, toplam_tutar FROM iade

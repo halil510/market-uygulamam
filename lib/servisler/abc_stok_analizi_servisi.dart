@@ -87,7 +87,7 @@ class AbcStokAnaliziServisi {
              SUM(sk.toplam_tutar) AS tutar, SUM(sk.miktar) AS miktar
       FROM satis_kalem sk
       JOIN satislar s ON s.id = sk.satis_id
-      WHERE s.iptal = 0 AND s.is_deleted = 0
+      WHERE s.iptal = 0 AND s.is_deleted = 0 AND s.sync_cakisma_kopyasi = 0
         AND DATE(s.tarih) >= DATE('now', 'localtime', ?)
       GROUP BY sk.urun_id
     ''', ['-$gunSayisi days']);

@@ -13,7 +13,7 @@ class RaporDeposu {
       final res = await db.rawQuery(
         "SELECT SUM(genel_toplam) as ciro, COUNT(*) as satis_sayisi, "
         "SUM(iskonto_tutar) as iskonto FROM satislar "
-        "WHERE strftime('%Y', tarih) = ? AND strftime('%m', tarih) = ? AND iptal = 0 AND is_deleted = 0",
+        "WHERE strftime('%Y', tarih) = ? AND strftime('%m', tarih) = ? AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0",
         [yil.toString(), ay.toString().padLeft(2, '0')],
       );
       if (res.isEmpty) return {};
@@ -40,7 +40,7 @@ class RaporDeposu {
       return await db.rawQuery(
         'SELECT sk.urun_adi, SUM(sk.miktar) as toplam_miktar, SUM(sk.toplam_tutar) as toplam_tutar '
         'FROM satis_kalem sk JOIN satislar s ON sk.satis_id = s.id '
-        'WHERE s.iptal = 0 AND s.is_deleted = 0 AND DATE(s.tarih) >= DATE("now", "localtime", "-30 days") '
+        'WHERE s.iptal = 0 AND s.is_deleted = 0 AND s.sync_cakisma_kopyasi = 0 AND DATE(s.tarih) >= DATE("now", "localtime", "-30 days") '
         'GROUP BY sk.urun_id ORDER BY toplam_miktar DESC LIMIT ?',
         [limit],
       );
@@ -55,7 +55,7 @@ class RaporDeposu {
       final db = await _d;
       return await db.rawQuery(
         "SELECT strftime('%m', tarih) as ay, SUM(genel_toplam) as ciro "
-        "FROM satislar WHERE strftime('%Y', tarih) = ? AND iptal = 0 AND is_deleted = 0 "
+        "FROM satislar WHERE strftime('%Y', tarih) = ? AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 "
         "GROUP BY strftime('%m', tarih) ORDER BY ay",
         [yil.toString()],
       );

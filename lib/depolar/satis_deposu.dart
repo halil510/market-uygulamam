@@ -552,7 +552,7 @@ class SatisDeposu {
     return db.rawQuery('''
       SELECT strftime('%Y-%m', tarih) AS ay, SUM(genel_toplam) AS toplam
       FROM satislar
-      WHERE cari_id = ? AND iptal = 0 AND is_deleted = 0
+      WHERE cari_id = ? AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0
         AND tarih >= date('now', 'localtime', '-6 months')
       GROUP BY ay ORDER BY ay ASC
     ''', [cariId]);
@@ -567,7 +567,7 @@ class SatisDeposu {
       SELECT sk.urun_adi, SUM(sk.miktar) AS toplam_miktar, SUM(sk.toplam_tutar) AS toplam_tutar
       FROM satis_kalem sk
       JOIN satislar s ON sk.satis_id = s.id
-      WHERE s.cari_id = ? AND s.iptal = 0 AND s.is_deleted = 0
+      WHERE s.cari_id = ? AND s.iptal = 0 AND s.is_deleted = 0 AND s.sync_cakisma_kopyasi = 0
       GROUP BY sk.urun_adi ORDER BY toplam_tutar DESC LIMIT ?
     ''', [cariId, limit]);
   }
@@ -582,7 +582,7 @@ class SatisDeposu {
     final baslangic = DateTime(bugun.year, bugun.month, bugun.day).toIso8601String();
     final res = await db.rawQuery(
       "SELECT COALESCE(SUM(genel_toplam),0) AS toplam FROM satislar "
-      "WHERE fis_tipi = 'Toptan Satış' AND iptal = 0 AND tarih >= ?",
+      "WHERE fis_tipi = 'Toptan Satış' AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 AND tarih >= ?",
       [baslangic],
     );
     return (res.first['toplam'] as num?)?.toDouble() ?? 0;
@@ -607,7 +607,7 @@ class SatisDeposu {
     final rows = await db.rawQuery(
       'SELECT s.*, c.unvan as cari_adi '
       'FROM satislar s LEFT JOIN cari c ON s.cari_id = c.id '
-      'WHERE s.cari_id = ? AND s.iptal = 0 AND s.is_deleted = 0 '
+      'WHERE s.cari_id = ? AND s.iptal = 0 AND s.is_deleted = 0 AND s.sync_cakisma_kopyasi = 0 '
       'ORDER BY s.tarih DESC LIMIT ?',
       [cariId, limit],
     );
@@ -648,7 +648,7 @@ class SatisDeposu {
       // girmiyordu. 'localtime' değiştiricisi SQLite'a cihazın kendi
       // saat dilimini kullanmasını söyler — POS cihazı zaten işletmenin
       // kendi lokasyonunda olduğu için bu doğru varsayımdır.
-      "WHERE DATE(tarih) = DATE('now','localtime') AND iptal = 0 AND is_deleted = 0",
+      "WHERE DATE(tarih) = DATE('now','localtime') AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0",
     );
     if (res.isEmpty) return {};
     final r = res.first;
@@ -684,7 +684,7 @@ class SatisDeposu {
       JOIN satislar s ON sk.satis_id = s.id
       LEFT JOIN urunler u ON sk.urun_id = u.id
       WHERE DATE(s.tarih) = DATE('now','localtime')
-        AND s.iptal = 0 AND s.is_deleted = 0
+        AND s.iptal = 0 AND s.is_deleted = 0 AND s.sync_cakisma_kopyasi = 0
     ''');
     return (rows.first['maliyet'] as num?)?.toDouble() ?? 0;
   }
@@ -709,7 +709,7 @@ class SatisDeposu {
     final rows = await db.rawQuery(
       "SELECT DATE(tarih) as gun, SUM(genel_toplam) as ciro "
       "FROM satislar "
-      "WHERE tarih >= ? AND iptal = 0 AND is_deleted = 0 "
+      "WHERE tarih >= ? AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 "
       "GROUP BY DATE(tarih)",
       [pazartesi.toIso8601String()],
     );

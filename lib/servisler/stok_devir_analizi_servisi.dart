@@ -129,7 +129,7 @@ class StokDevirAnaliziServisi {
         SELECT sk.urun_id AS urun_id, SUM(sk.miktar) AS satilan
         FROM satis_kalem sk
         JOIN satislar s ON s.id = sk.satis_id
-        WHERE s.iptal = 0 AND s.is_deleted = 0
+        WHERE s.iptal = 0 AND s.is_deleted = 0 AND s.sync_cakisma_kopyasi = 0
           AND DATE(s.tarih) >= DATE('now', 'localtime', ?)
         GROUP BY sk.urun_id
       ) sub ON sub.urun_id = u.id

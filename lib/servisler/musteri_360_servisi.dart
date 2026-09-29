@@ -104,7 +104,7 @@ class Musteri360Servisi {
     final db = await Veritabani().db;
     final satirlar = await db.rawQuery('''
       SELECT tarih, genel_toplam FROM satislar
-      WHERE cari_id = ? AND iptal = 0 AND is_deleted = 0
+      WHERE cari_id = ? AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0
       ORDER BY tarih ASC
     ''', [cariId]);
 
@@ -130,7 +130,7 @@ class Musteri360Servisi {
       SELECT sk.urun_adi AS urun_adi, SUM(sk.miktar) AS miktar, SUM(sk.toplam_tutar) AS tutar
       FROM satis_kalem sk
       JOIN satislar s ON s.id = sk.satis_id
-      WHERE s.cari_id = ? AND s.iptal = 0 AND s.is_deleted = 0
+      WHERE s.cari_id = ? AND s.iptal = 0 AND s.is_deleted = 0 AND s.sync_cakisma_kopyasi = 0
       GROUP BY sk.urun_adi
       ORDER BY tutar DESC
       LIMIT 5
@@ -176,7 +176,7 @@ class Musteri360Servisi {
     final db = await Veritabani().db;
     final satirlar = await db.rawQuery('''
       SELECT tarih FROM satislar
-      WHERE cari_id = ? AND iptal = 0 AND is_deleted = 0
+      WHERE cari_id = ? AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0
     ''', [cariId]);
     var adet = 0;
     for (final s in satirlar) {

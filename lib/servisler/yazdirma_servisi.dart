@@ -544,6 +544,16 @@ class YazdirmaServisi {
     }
   }
 
+  /// Özel (yerel) IPv4 aralıkları: 10/8, 172.16/12, 192.168/16. Önceden
+  /// yalnız '192.' aranıyordu — 10.x / 172.x ağlarında tarama boş dönüyordu.
+  static bool _yerelAgMi(String ip) {
+    final p = ip.split('.').map(int.tryParse).toList();
+    if (p.length != 4 || p.contains(null)) return false;
+    return p[0] == 10 ||
+        (p[0] == 172 && p[1]! >= 16 && p[1]! <= 31) ||
+        (p[0] == 192 && p[1] == 168);
+  }
+
   /// WiFi yazıcıyı tara (ağdaki potansiyel yazıcıları bul)
   /// Port 9100'de dinleyen cihazları bul
   static Future<List<String>> wifiYazicilariTara({
@@ -560,7 +570,7 @@ class YazdirmaServisi {
         for (final iface in interfaces) {
           for (final addr in iface.addresses) {
             if (addr.type == InternetAddressType.IPv4 &&
-                !addr.isLoopback && addr.address.startsWith('192.')) {
+                !addr.isLoopback && _yerelAgMi(addr.address)) {
               final parts = addr.address.split('.');
               networkBase = '${parts[0]}.${parts[1]}.${parts[2]}';
               break;
@@ -809,8 +819,12 @@ class YazdirmaServisi {
       await _tekYazmaDene(bytes);
     } catch (e) {
       if (kDebugMode) debugPrint('🔴 Yazdırma başarısız, yeniden bağlanıp tekrar deneniyor: $e');
-      _aktif?.bagliMi = false;
+      // Eski bağlantı KAPATILMALI: tek bağlantı kabul eden yazıcılar açık
+      // kalan (ölü ya da yavaş) soketi tutarken yenisini reddeder; ayrıca
+      // her başarısız yazmada bir soket/GATT bağlantısı sızıyordu.
+      final eski = _aktif;
       _aktif = null;
+      await eski?.kapat();
       final yenidenBaglandi = await _yenidenBaglanCircuitBreaker();
       if (!yenidenBaglandi || _aktif == null || !_aktif!.bagliMi) {
         throw Exception('Yazıcıya yazılamadı ve yeniden bağlanma başarısız oldu: $e');
@@ -921,7 +935,9 @@ class YazdirmaServisi {
         // ikinci bir satıra KAYDIRILIYORDU (taşma) — 80mm kağıtta bu,
         // fişin okunmasını zorlaştırıyor ve dağınık görünüyordu. Artık
         // "…" ile KESİLİYOR, tek satırda kalıyor.
-        final ad = k.urunAdi.length > 20 ? '${k.urunAdi.substring(0, 17)}...' : k.urunAdi;
+        // 58 mm'de 6/12 sütun 16 karakter — 20'lik ad orada da taşıyordu.
+        final adMax = _kagit == PaperSize.mm58 ? 16 : 20;
+        final ad = k.urunAdi.length > adMax ? '${k.urunAdi.substring(0, adMax - 3)}...' : k.urunAdi;
         // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu): "Fiyat" sütunu
         // ÖNCEDEN her zaman k.birimFiyat (İNDİRİMSİZ, orijinal fiyat)
         // gösteriyordu — ama "Toplam" sütunu k.toplamTutar (netFiyat ×
@@ -1048,7 +1064,7 @@ class YazdirmaServisi {
       bytes.addAll(generator.cut());
 
       await _yazdir(bytes);
-      if (kopya < _fisKopyaSayisi - 1) {
+      if (kopya < _fisKopyaSayisi.clamp(1, 5) - 1) {
         await Future.delayed(const Duration(milliseconds: 300));
       }
     }

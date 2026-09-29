@@ -5,6 +5,7 @@
 // düzeltme, yüksek gider, borç silme) SONRADAN incelenebildiği liste.
 // İşlemler burada oluşmadan ÖNCE tamamlanmış olur — bu ekran salt
 // görüntüleme + "görüldü" işaretleme yapar, hiçbir işlemi geri almaz.
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -49,7 +50,7 @@ class OnayMerkeziEkrani extends ConsumerWidget {
       body: async.when(
         loading: () => const TsYukleniyor(iskelet: true),
         error: (e, _) => TsBosDurum(
-            ikon: Icons.error_outline, baslik: 'Yüklenemedi: $e', renk: TsRenk.hata),
+            ikon: Icons.error_outline, baslik: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}', renk: TsRenk.hata),
         data: (satirlar) {
           if (satirlar.isEmpty) {
             return const TsBosDurum(

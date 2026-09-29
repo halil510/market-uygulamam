@@ -1,4 +1,5 @@
 // lib/ekranlar/borc/borc_takip_ekrani.dart
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -90,7 +91,7 @@ class _BorcTakipEkraniState extends ConsumerState<BorcTakipEkrani> {
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             const Icon(Icons.error_outline, size: 56, color: Colors.red),
             const SizedBox(height: 12),
-            Text('Hata: $e', style: const TextStyle(color: Colors.red)),
+            Text('Hata: ${bildirimMetniniSadelestir(e.toString())}', style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () => ref.invalidate(tumBorclarProvider),

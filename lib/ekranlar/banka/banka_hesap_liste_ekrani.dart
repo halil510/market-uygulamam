@@ -1,4 +1,5 @@
 // lib/ekranlar/banka/banka_hesap_liste_ekrani.dart
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,7 +34,7 @@ class BankaHesapListeEkrani extends ConsumerWidget {
         error: (e, _) => TsBosDurum(
           ikon: Icons.error_outline,
           baslik: 'Bir hata oluştu',
-          altyazi: '$e',
+          altyazi: bildirimMetniniSadelestir(e.toString()),
           renk: TsRenk.hata,
           aksiyonMetni: 'Tekrar dene',
           aksiyon: () => ref.invalidate(bankaHesaplarProvider(bankaId)),

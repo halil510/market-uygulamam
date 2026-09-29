@@ -1,4 +1,5 @@
 // lib/ekranlar/banka/kredi_karti_detay_ekrani.dart
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -118,7 +119,7 @@ class _KrediKartiDetayEkraniState extends ConsumerState<KrediKartiDetayEkrani> {
             children: [
               const Icon(Icons.error_outline, size: 56, color: Colors.red),
               const SizedBox(height: 12),
-              Text('Hata: $e', style: const TextStyle(color: Colors.red)),
+              Text('Hata: ${bildirimMetniniSadelestir(e.toString())}', style: const TextStyle(color: Colors.red)),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => ref.invalidate(krediKartiDetayProvider(widget.kartId)),
@@ -376,7 +377,7 @@ class _KartDetayIcerik extends ConsumerWidget {
                   }
                 } catch (e) {
                   setStateDialog(() => isleniyor = false);
-                  if (context.mounted) BildirimServisi.hata(context, 'Hata: $e');
+                  if (context.mounted) BildirimServisi.hata(context, 'Hata: ${bildirimMetniniSadelestir(e.toString())}');
                 }
               },
               child: isleniyor

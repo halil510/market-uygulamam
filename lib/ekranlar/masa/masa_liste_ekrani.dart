@@ -107,7 +107,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
       ),
       body: durum.when(
         loading: () => const Center(child: AppYukleniyor()),
-        error: (e, _) => Center(child: Text('Hata: $e')),
+        error: (e, _) => Center(child: Text('Hata: ${bildirimMetniniSadelestir(e.toString())}')),
         data: (masalar) {
           if (masalar.isEmpty) {
             return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [

@@ -5,6 +5,7 @@
 // para birimlerini çeker" — TCMB entegrasyonu ile tamamen yeniden
 // yazıldı. Profesyonel muhasebe programları gibi: TCMB'den GERÇEK
 // kurları çeker, kullanıcı hangi dövizleri takip edeceğini seçer.
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -141,7 +142,7 @@ class _DovizKuruEkraniState extends ConsumerState<DovizKuruEkrani> {
       body: kurlarAsync.when(
         loading: () => const TsYukleniyor(iskelet: true),
         error: (e, _) => TsBosDurum(
-            ikon: Icons.error_outline, baslik: 'Yüklenemedi: $e', renk: TsRenk.hata),
+            ikon: Icons.error_outline, baslik: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}', renk: TsRenk.hata),
         data: (kurlar) => ListView(
           padding: const EdgeInsets.all(TsBosluk.lg),
           children: [

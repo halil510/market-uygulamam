@@ -14,6 +14,7 @@
 //   İkisi farklı amaçlara hizmet ettiği için ayrı bölümlerde, açıkça
 //   etiketlenerek gösterilir; aynı borç iki kez sayılmaz.
 
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -179,7 +180,7 @@ class _BorcDashboardEkraniState extends ConsumerState<BorcDashboardEkrani>
               Expanded(
                 child: dashAsync.when(
                   loading: () => _heroSkeleton(),
-                  error: (e, __) => _HataKart(mesaj: 'Yüklenemedi: $e'),
+                  error: (e, __) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
                   data: (v) => _heroKart(
                     'Toplam Borç (Kart Dahil)',
                     ParaUtils.formatla(v.ozet['kalan_borc'] ?? 0),
@@ -194,7 +195,7 @@ class _BorcDashboardEkraniState extends ConsumerState<BorcDashboardEkrani>
               Expanded(
                 child: bankaHesaplariAsync.when(
                   loading: () => _heroSkeleton(),
-                  error: (e, __) => _HataKart(mesaj: 'Yüklenemedi: $e'),
+                  error: (e, __) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
                   data: (hesaplar) {
                     final toplam = hesaplar.fold<double>(0, (s, h) => s + h.bakiye);
                     final kullanilabilir =

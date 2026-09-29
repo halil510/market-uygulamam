@@ -1,4 +1,6 @@
 // lib/ekranlar/gider/gider_liste_ekrani.dart
+import '../../servisler/bildirim_servisi.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -38,7 +40,7 @@ class GiderListeEkrani extends ConsumerWidget {
         error: (e, _) => TsBosDurum(
           ikon: Icons.error_outline,
           baslik: 'Bir hata oluştu',
-          altyazi: '$e',
+          altyazi: bildirimMetniniSadelestir(e.toString()),
           renk: TsRenk.hata,
           aksiyonMetni: 'Tekrar dene',
           aksiyon: () => ref.invalidate(_giderListeProvider),
@@ -89,8 +91,15 @@ class GiderListeEkrani extends ConsumerWidget {
                       ),
                     );
                     if (onay == true) {
-                      await GiderDeposu().sil(g.id!);
-                      ref.invalidate(_giderListeProvider);
+                      try {
+                        await GiderDeposu().sil(g.id!);
+                        ref.invalidate(_giderListeProvider);
+                      } catch (e) {
+                        // Silinemezse kullanıcı sessizce yanıltılmasın.
+                        if (ctx.mounted) {
+                          BildirimServisi.hata(ctx, 'Gider silinemedi: $e');
+                        }
+                      }
                     }
                     return false;
                   },

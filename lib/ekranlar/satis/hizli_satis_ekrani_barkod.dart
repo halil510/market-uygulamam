@@ -640,6 +640,8 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
       } else {
         await ref.read(sepetProvider.notifier).ekleAsync(urun);
       }
+      // Ekran await sırasında kapanmış olabilir (barkod okutma anında).
+      if (!mounted) return;
       _araCtrl.clear();
       setState(() => _aramaSonuclari = []);
       Future.microtask(() {

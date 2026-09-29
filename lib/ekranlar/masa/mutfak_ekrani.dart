@@ -1,5 +1,6 @@
 // lib/ekranlar/masa/mutfak_ekrani.dart
 // Mutfak / Bar Ekranı (Kitchen Display System)
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -60,7 +61,7 @@ class MutfakEkrani extends ConsumerWidget {
       ),
       body: durum.when(
         loading: () => const Center(child: AppYukleniyor()),
-        error: (e, _) => Center(child: Text('Hata: $e')),
+        error: (e, _) => Center(child: Text('Hata: ${bildirimMetniniSadelestir(e.toString())}')),
         data: (d) {
           final aktifSiparisler = d.siparisler.where((s) =>
               s.kalemler.any((k) => k.durum != 'servis_edildi')).toList();

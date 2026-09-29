@@ -5,6 +5,7 @@
 // - Parmak izi / biyometrik destekli (pulse animasyonu)
 // - Responsive ve şık tasarım
 
+import '../../cekirdek/utils/hata_utils.dart';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -325,7 +326,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
         }
       }
     } catch (e) {
-      if (mounted) _hata.value = 'Bağlantı hatası: $e';
+      if (mounted) _hata.value = 'Bağlantı hatası: ${bildirimMetniniSadelestir(e.toString())}';
     } finally {
       if (mounted) _yukleniyor.value = false;
     }

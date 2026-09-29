@@ -3,6 +3,7 @@
 // Fatura Seri Mutabakatı — bu cihaza verilmiş merkezi numara bloklarının
 // kullanım durumu ve boşluk (tüketilmiş ama faturası olmayan numara)
 // tespiti. Salt okunur. Bkz. SeriMutabakatServisi.
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -34,7 +35,7 @@ class _SeriMutabakatiEkraniState extends State<SeriMutabakatiEkrani> {
       if (!mounted) return;
       setState(() { _rapor = r; _yukleniyor = false; });
     } catch (e) {
-      if (mounted) setState(() { _hata = '$e'; _yukleniyor = false; });
+      if (mounted) setState(() { _hata = bildirimMetniniSadelestir(e.toString()); _yukleniyor = false; });
     }
   }
 

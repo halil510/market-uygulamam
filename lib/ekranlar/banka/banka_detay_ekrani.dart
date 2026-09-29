@@ -1,4 +1,5 @@
 // lib/ekranlar/banka/banka_detay_ekrani.dart
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -52,7 +53,7 @@ class _BankaDetayEkraniState extends ConsumerState<BankaDetayEkrani> {
             children: [
               const Icon(Icons.error_outline, size: 56, color: Colors.red),
               const SizedBox(height: 12),
-              Text('Hata: $e', style: const TextStyle(color: Colors.red)),
+              Text('Hata: ${bildirimMetniniSadelestir(e.toString())}', style: const TextStyle(color: Colors.red)),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => ref.invalidate(bankaDetayProvider(widget.bankaId)),
@@ -250,7 +251,7 @@ class _BankaDetayIcerik extends StatelessWidget {
         context.pop();
       }
     } catch (e) {
-      if (context.mounted) BildirimServisi.hata(context, 'Hata: $e');
+      if (context.mounted) BildirimServisi.hata(context, 'Hata: ${bildirimMetniniSadelestir(e.toString())}');
     }
   }
 }

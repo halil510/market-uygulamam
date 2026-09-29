@@ -148,32 +148,62 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
       appBar: TsAppBar(
         baslikWidget: Text(duzenleme ? 'Ürünü Düzenle' : 'Yeni Ürün'),
         aksiyonlar: [
-          // API anahtarını değiştirmek için buton (isteğe bağlı)
-          IconButton(
-            icon: const Icon(Icons.key, color: Colors.white),
-            tooltip: 'API Anahtarını Değiştir',
-            onPressed: _geminiApiAnahtarDialogu,
-          ),
-          IconButton(
-            icon: const Icon(Icons.camera_alt, color: Colors.amber),
-            tooltip: 'Kamera ile Fatura/Ürün Resmi Çek (AI)',
-            onPressed: _yukleniyor ? null : _kameraIleOku,
-          ),
-          IconButton(
-            icon: const Icon(Icons.mic_none_outlined, color: Colors.white),
-            tooltip: 'Sesle Doldur: "ürün adı çikolata", "alış fiyat 25,50", '
-                '"satış fiyat 35" gibi söyleyin',
-            onPressed: _yukleniyor ? null : _sesliKomut,
-          ),
-          IconButton(
-            icon: const Icon(Icons.receipt_long_outlined, color: Colors.white),
-            tooltip: 'Faturadan Ürün Ekle (AI)',
-            onPressed: _yukleniyor ? null : _faturadanUrunEkle,
-          ),
-          IconButton(
-            icon: const Icon(Icons.qr_code, color: Colors.amber),
-            tooltip: 'Otomatik Barkod Üret',
-            onPressed: _yukleniyor ? null : _otomatikBarkodUret,
+          // 5 yardımcı işlev tek menüde: 6 ikon başlığı "Y…" diye kesiyordu.
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            tooltip: 'Yardımcı işlemler',
+            enabled: !_yukleniyor,
+            onSelected: (v) {
+              switch (v) {
+                case 'api':
+                  _geminiApiAnahtarDialogu();
+                  break;
+                case 'kamera':
+                  _kameraIleOku();
+                  break;
+                case 'ses':
+                  _sesliKomut();
+                  break;
+                case 'fatura':
+                  _faturadanUrunEkle();
+                  break;
+                case 'barkod':
+                  _otomatikBarkodUret();
+                  break;
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                  value: 'kamera',
+                  child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.camera_alt),
+                      title: Text('Kamera ile Fatura/Ürün Oku (AI)'))),
+              PopupMenuItem(
+                  value: 'ses',
+                  child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.mic_none_outlined),
+                      title: Text('Sesle Doldur'))),
+              PopupMenuItem(
+                  value: 'fatura',
+                  child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.receipt_long_outlined),
+                      title: Text('Faturadan Ürün Ekle (AI)'))),
+              PopupMenuItem(
+                  value: 'barkod',
+                  child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.qr_code),
+                      title: Text('Otomatik Barkod Üret'))),
+              PopupMenuItem(
+                  value: 'api',
+                  child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.key),
+                      title: Text('API Anahtarını Değiştir'))),
+            ],
           ),
           if (duzenleme)
             IconButton(

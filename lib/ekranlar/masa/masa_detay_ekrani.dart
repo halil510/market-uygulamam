@@ -511,7 +511,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       ),
       body: siparisAsync.when(
         loading: () => const Center(child: AppYukleniyor()),
-        error: (e, _) => Center(child: Text('Hata: $e')),
+        error: (e, _) => Center(child: Text('Hata: ${bildirimMetniniSadelestir(e.toString())}')),
         data: (siparis) => _MasaDetayIcerik(
           masa: widget.masa,
           siparis: siparis,

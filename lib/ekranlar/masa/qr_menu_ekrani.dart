@@ -44,6 +44,7 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
     setState(() => _yukleniyor = true);
     try {
       final urunler = await _urunDepo.tumunuGetir();
+      if (!mounted) return;
       final kategoriler = urunler
           .map((u) => u.anaGrup ?? 'Diğer')
           .toSet()
@@ -55,7 +56,7 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
         _yukleniyor = false;
       });
     } catch (e) {
-      setState(() => _yukleniyor = false);
+      if (mounted) setState(() => _yukleniyor = false);
     }
   }
   

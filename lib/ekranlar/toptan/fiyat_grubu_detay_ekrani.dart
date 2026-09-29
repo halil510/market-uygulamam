@@ -48,6 +48,7 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _tab.dispose();
     _aramaCtrl.dispose();
     super.dispose();
@@ -62,17 +63,23 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
         if (mounted) setState(() => _aramaSonuc = []);
         return;
       }
+      if (!mounted) return;
       setState(() => _araniyor = true);
-      final sonuc = await _urunDepo.ara(sorgu, limit: 30);
-      if (!mounted) return;
-      // Bu ürünlerin, bu grup için ZATEN kayıtlı özel fiyatlarını çek.
-      final fiyatlar = <int, double>{};
-      for (final u in sonuc) {
-        final f = await _depo.urunGrupFiyatiGetir(u.id!, widget.grup.id!);
-        if (f != null) fiyatlar[u.id!] = f;
+      // Hata olursa _araniyor sonsuza kadar true kalmasın (sonsuz dönen çubuk).
+      try {
+        final sonuc = await _urunDepo.ara(sorgu, limit: 30);
+        if (!mounted) return;
+        // Bu ürünlerin, bu grup için ZATEN kayıtlı özel fiyatlarını çek.
+        final fiyatlar = <int, double>{};
+        for (final u in sonuc) {
+          final f = await _depo.urunGrupFiyatiGetir(u.id!, widget.grup.id!);
+          if (f != null) fiyatlar[u.id!] = f;
+        }
+        if (!mounted) return;
+        setState(() { _aramaSonuc = sonuc; _ozelFiyatlar = fiyatlar; _araniyor = false; });
+      } catch (_) {
+        if (mounted) setState(() => _araniyor = false);
       }
-      if (!mounted) return;
-      setState(() { _aramaSonuc = sonuc; _ozelFiyatlar = fiyatlar; _araniyor = false; });
     });
   }
 

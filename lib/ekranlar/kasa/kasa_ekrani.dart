@@ -1,4 +1,5 @@
 // lib/ekranlar/kasa/kasa_ekrani.dart
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -123,7 +124,7 @@ class KasaEkrani extends ConsumerWidget {
             loading: () => const TsYukleniyor(iskelet: true),
             error: (e, _) => TsBosDurum(
                 ikon: Icons.error_outline, baslik: 'Hareketler yüklenemedi',
-                altyazi: '$e', renk: TsRenk.hata),
+                altyazi: bildirimMetniniSadelestir(e.toString()), renk: TsRenk.hata),
             data: (hareketler) {
               if (hareketler.isEmpty) {
                 return const TsBosDurum(

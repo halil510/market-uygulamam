@@ -128,7 +128,7 @@ extension _BulutSyncIslemlerExt on _BulutSyncEkraniState {
     } catch (e) {
       // 🔴 DÜZELTME: try-catch yoktu — servis hata verirse ekran
       // sonsuza kadar "Test ediliyor..." durumunda kalabilirdi.
-      if (mounted) setState(() { _bagliMi = false; _baglantiMesaj = 'Hata: $e'; });
+      if (mounted) setState(() { _bagliMi = false; _baglantiMesaj = 'Hata: ${bildirimMetniniSadelestir(e.toString())}'; });
     }
   }
 

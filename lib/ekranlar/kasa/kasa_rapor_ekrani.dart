@@ -3,6 +3,7 @@
 // YENİ EKRAN — Kasa Raporu
 // Kasa hareketleri ve bakiye grafikleri
 
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:market_plus/servisler/pdf_font_servisi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -123,7 +124,7 @@ class _KasaRaporEkraniState extends ConsumerState<KasaRaporEkrani> {
       ),
       body: raporAsync.when(
         loading: () => const Center(child: const AppYukleniyor()),
-        error:   (e, _) => BosEkran(ikon: Icons.inbox_outlined, baslik: 'Hata: $e'),
+        error:   (e, _) => BosEkran(ikon: Icons.inbox_outlined, baslik: 'Hata: ${bildirimMetniniSadelestir(e.toString())}'),
         data:    (veri) => _Icerik(
           veri: veri, aralik: _aralik,
           onRefresh: () async => ref.invalidate(kasaRaporProvider(_aralik)),
@@ -144,7 +145,7 @@ class _KasaRaporEkraniState extends ConsumerState<KasaRaporEkrani> {
       );
       if (secilen != null) setState(() => _aralik = secilen);
         } catch (e) {
-      if (kDebugMode) if (mounted) debugPrint('Hata: $e');
+      if (kDebugMode) if (mounted) debugPrint('Hata: ${bildirimMetniniSadelestir(e.toString())}');
     }
   }
 

@@ -10,6 +10,7 @@
 // widgets/sync_mini_buton.dart'a taşındı (normal import ile kullanılıyor
 // — diğerleri gibi part-of yapılmadı çünkü zaten kendi kendine yeten,
 // _DashboardEkraniState'in private üyelerine hiç ihtiyaç duymuyordu).
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../cekirdek/utils/metin_arama.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -232,7 +233,7 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                   child: TsBosDurum(
                     ikon: Icons.error_outline,
                     baslik: 'Veri yüklenemedi',
-                    altyazi: '$e',
+                    altyazi: bildirimMetniniSadelestir(e.toString()),
                     renk: TsRenk.hata,
                     aksiyonMetni: 'Tekrar Dene',
                     aksiyon: () =>

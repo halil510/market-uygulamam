@@ -1,4 +1,5 @@
 // lib/ekranlar/ai/ai_panel_ekrani.dart ✅ TAM YAZILDI
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
@@ -414,7 +415,7 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _mesajlar.add({'tip': 'ai', 'metin': 'Hata: $e'});
+        _mesajlar.add({'tip': 'ai', 'metin': 'Hata: ${bildirimMetniniSadelestir(e.toString())}'});
         _bekliyor = false;
       });
     }

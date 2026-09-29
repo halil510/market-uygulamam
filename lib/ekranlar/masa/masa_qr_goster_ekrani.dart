@@ -41,6 +41,7 @@ class _MasaQrGosterEkraniState extends State<MasaQrGosterEkrani> {
       // sağlıyor — müşterinin işletme WiFi'sine bağlı olması
       // gerekmiyor.
       final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
       final bulutUrl = prefs.getString('qr_menu_web_url');
       if (bulutUrl != null && bulutUrl.trim().isNotEmpty) {
         final ayrac = bulutUrl.contains('?') ? '&' : '?';
@@ -55,8 +56,8 @@ class _MasaQrGosterEkraniState extends State<MasaQrGosterEkrani> {
       // Bulut adresi henüz girilmemişse, yerel WiFi sunucusuna dön
       // (işletme WiFi'si ile çalışır, mobil veriyle çalışmaz).
       final ip = await QrMenuSunucuServisi().baslatVeIpAl();
+      if (!mounted) return;
       if (ip == null) {
-        if (!mounted) return;
         setState(() {
           _hata = 'WiFi bağlantısı bulunamadı. Bu cihazın (tablet/telefon) '
               'bir WiFi ağına bağlı olması gerekiyor — müşterilerin '
@@ -70,6 +71,7 @@ class _MasaQrGosterEkraniState extends State<MasaQrGosterEkrani> {
       final url = QrMenuSunucuServisi().masaUrlOlustur(widget.masaId);
       setState(() { _url = url; _bulutModu = false; _yukleniyor = false; });
     } catch (e) {
+      if (!mounted) return;
       setState(() { _hata = 'Sunucu başlatılamadı: $e'; _yukleniyor = false; });
     }
   }

@@ -5,6 +5,7 @@
 //   - context.read<IrsaliyeNotifier>().listYukle() → ref.invalidate(irsaliyeListesiProvider)
 //   - StatefulWidget → ConsumerStatefulWidget
 
+import '../../cekirdek/utils/hata_utils.dart';
 import 'dart:async';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter/material.dart';
@@ -64,7 +65,7 @@ class IrsaliyeEkrani extends ConsumerWidget {
       )),
       body: irsaliyelerAsync.when(
         loading: () => const TsYukleniyor(),
-        error: (e, _) => BosEkran(ikon: Icons.inbox_outlined, baslik: 'Hata: $e'),
+        error: (e, _) => BosEkran(ikon: Icons.inbox_outlined, baslik: 'Hata: ${bildirimMetniniSadelestir(e.toString())}'),
         data: (irsaliyeler) {
           if (irsaliyeler.isEmpty) {
             return Center(
@@ -314,7 +315,7 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
       BildirimServisi.basari(context, 'İrsaliye oluşturuldu ✓');
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+      if (mounted) BildirimServisi.hata(context, 'Hata: ${bildirimMetniniSadelestir(e.toString())}');
     } finally {
       if (mounted) setState(() => _kayit = false);
     }
@@ -642,7 +643,7 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
       if (!mounted) return;
       BildirimServisi.basari(context, 'Durum güncellendi: $yeniDurum');
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+      if (mounted) BildirimServisi.hata(context, 'Hata: ${bildirimMetniniSadelestir(e.toString())}');
     }
   }
 
@@ -696,7 +697,7 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
         BildirimServisi.hata(context, sonuc.hata ?? 'Gönderim başarısız');
       }
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+      if (mounted) BildirimServisi.hata(context, 'Hata: ${bildirimMetniniSadelestir(e.toString())}');
     } finally {
       if (mounted) setState(() => _islemDevam = false);
     }
@@ -746,7 +747,7 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
             'Bu irsaliye GİB\'e hiç ulaşmamış. Güvenle yeniden gönderebilirsiniz.');
       }
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+      if (mounted) BildirimServisi.hata(context, 'Hata: ${bildirimMetniniSadelestir(e.toString())}');
     } finally {
       if (mounted) setState(() => _islemDevam = false);
     }

@@ -1,4 +1,5 @@
 // lib/ekranlar/ayarlar/sync_ekrani.dart
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../servisler/veritabani_dosya_servisi.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -391,7 +392,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
         _islemde = false;
       });
     } catch (e) {
-      if (mounted) setState(() { _durum = '❌ Hata: $e'; _islemde = false; });
+      if (mounted) setState(() { _durum = '❌ Hata: ${bildirimMetniniSadelestir(e.toString())}'; _islemde = false; });
     }
   }
 

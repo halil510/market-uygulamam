@@ -10,6 +10,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../servisler/masa/qr_menu_sunucu_servisi.dart';
+import '../../servisler/masa/masa_qr_yazdir_servisi.dart';
+import '../../servisler/bildirim_servisi.dart';
 
 class MasaQrGosterEkrani extends StatefulWidget {
   final int masaId;
@@ -125,6 +127,18 @@ class _MasaQrGosterEkraniState extends State<MasaQrGosterEkrani> {
                             borderRadius: BorderRadius.circular(10)),
                         child: SelectableText(_url!,
                             style: TextStyle(fontSize: 12, color: context.textPrimary)),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: () async {
+                          final ok = await MasaQrYazdirServisi.yazdir(
+                              [(id: widget.masaId, ad: widget.masaAdi)]);
+                          if (!ok && mounted) {
+                            BildirimServisi.hata(context, 'QR adresi üretilemedi (WiFi yok)');
+                          }
+                        },
+                        icon: const Icon(Icons.print_outlined),
+                        label: const Text('QR Kartını Yazdır'),
                       ),
                       const SizedBox(height: 16),
                       // Bulut modundaysa "mobil veriyle de çalışır"

@@ -6,6 +6,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../servisler/masa/qr_siparis_cekici_servisi.dart';
+import '../../servisler/masa/masa_qr_yazdir_servisi.dart';
 
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../widgetlar/ortak/bulut_durum_widget.dart';
@@ -85,6 +86,11 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
             icon: const Icon(Icons.checklist_rtl),
             tooltip: 'QR Menü Ürünlerini Seç',
             onPressed: () => context.push('/masa/qr-urun-secim'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.qr_code_2),
+            tooltip: 'Tüm Masaların QR Kartlarını Yazdır',
+            onPressed: _tumQrYazdir,
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.add),
@@ -347,6 +353,22 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
     ));
   }
 
+  Future<void> _tumQrYazdir() async {
+    final masalar = ref.read(masaListesiProvider).value ?? const <MasaModel>[];
+    final liste = [
+      for (final m in masalar)
+        if (m.id != null) (id: m.id!, ad: m.ad),
+    ];
+    if (liste.isEmpty) {
+      BildirimServisi.hata(context, 'Yazdırılacak masa yok');
+      return;
+    }
+    final ok = await MasaQrYazdirServisi.yazdir(liste);
+    if (!ok && mounted) {
+      BildirimServisi.hata(context, 'QR adresi üretilemedi (WiFi yok)');
+    }
+  }
+
   void _masaEkleDialog({MasaModel? duzenle}) {
     final adCtrl = TextEditingController(text: duzenle?.ad ?? '');
     final kapasiteCtrl = TextEditingController(text: (duzenle?.kapasite ?? 4).toString());
@@ -419,6 +441,11 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
     final kapasiteCtrl = TextEditingController(text: '4');
     String kategori = 'Salon';
     const presetler = ['Salon', 'Bahçe', 'Teras', 'Veranda'];
+    Future<void> baslangicGuncelle() async {
+      final n = await MasaDeposu().sonrakiNo(onekCtrl.text);
+      baslangicCtrl.text = n.toString();
+    }
+    baslangicGuncelle();
 
     showDialog(context: context, builder: (ctx) => StatefulBuilder(
       builder: (ctx, setLocal) => AlertDialog(
@@ -452,11 +479,13 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                 onSelected: (_) => setLocal(() {
                   kategori = k;
                   onekCtrl.text = k;
+                  baslangicGuncelle();
                 }),
               ),
           ]),
           const SizedBox(height: 14),
           TextField(controller: onekCtrl,
+            onChanged: (_) => baslangicGuncelle(),
             decoration: const InputDecoration(labelText: 'Masa Önek Adı', hintText: 'Örn: Salon, Bahçe Masası',
                 border: OutlineInputBorder())),
           const SizedBox(height: 12),

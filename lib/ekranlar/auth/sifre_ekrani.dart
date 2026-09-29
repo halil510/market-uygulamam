@@ -1,5 +1,6 @@
 // lib/ekranlar/auth/sifre_ekrani.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../depolar/kullanici_deposu.dart';
@@ -50,6 +51,15 @@ class _SifreEkraniState extends ConsumerState<SifreEkrani> {
         return;
       }
       await KullaniciDeposu().sifreDegistir(kullanici.id!, _yeniCtrl.text);
+      // Kayıt gerçekten yazıldı mı? Yeni şifreyle doğrulayarak kontrol et.
+      final dogrula = await KullaniciDeposu()
+          .girisKontrol(kullanici.kullaniciAdi, _yeniCtrl.text);
+      if (dogrula == null) {
+        if (mounted) {
+          BildirimServisi.hata(context, 'Şifre kaydedilemedi, tekrar deneyin');
+        }
+        return;
+      }
       if (mounted) {
         BildirimServisi.basari(context, 'Şifre değiştirildi ✓');
         // Zorunlu akışta (varsayılan "1234" şifresiyle giriş sonrası)
@@ -240,6 +250,13 @@ class _SifreEkraniState extends ConsumerState<SifreEkrani> {
                       TextFormField(
                         controller: _yeniCtrl,
                         obscureText: !_yeniGoster,
+                        // Giriş ekranında yalnızca rakam tuş takımı var;
+                        // harfli şifre belirlenirse tekrar girilemez.
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(12),
+                        ],
                         decoration: _alanSusu(
                           context,
                           etiket: 'Yeni Şifre',
@@ -249,7 +266,7 @@ class _SifreEkraniState extends ConsumerState<SifreEkrani> {
                               setState(() => _yeniGoster = !_yeniGoster),
                         ),
                         validator: (v) =>
-                            v == null || v.length < 4 ? 'En az 4 karakter' : null,
+                            v == null || v.length < 4 ? 'En az 4 rakam (giriş ekranı rakamlıdır)' : null,
                       ),
                       const SizedBox(height: 10),
                       _sifreGucuCubugu(context, gucu, gucEtiket, gucRenk),
@@ -258,6 +275,11 @@ class _SifreEkraniState extends ConsumerState<SifreEkrani> {
                       TextFormField(
                         controller: _tekrarCtrl,
                         obscureText: !_yeniGoster,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(12),
+                        ],
                         decoration: _alanSusu(
                           context,
                           etiket: 'Yeni Şifre Tekrar',

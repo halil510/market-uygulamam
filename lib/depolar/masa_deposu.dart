@@ -98,6 +98,23 @@ class MasaDeposu {
     return id;
   }
 
+  /// [onek] ile başlayan masaların (örn. "Salon 7") en yüksek numarasının
+  /// bir fazlasını döner; hiç yoksa 1.
+  Future<int> sonrakiNo(String onek) async {
+    final db = await _d;
+    final rows = await db.query(DbSabitler.masalar,
+        columns: ['ad'], where: 'is_deleted = 0');
+    final desen = RegExp('^${RegExp.escape(onek.trim())}\\s+(\\d+)\$',
+        caseSensitive: false);
+    var enBuyuk = 0;
+    for (final r in rows) {
+      final m = desen.firstMatch((r['ad'] as String? ?? '').trim());
+      final n = m == null ? null : int.tryParse(m.group(1)!);
+      if (n != null && n > enBuyuk) enBuyuk = n;
+    }
+    return enBuyuk + 1;
+  }
+
   /// "10 masa ekle" gibi toplu masa oluşturma — her biri kalıcı, ayrı bir
   /// satır olarak `masalar` tablosuna yazılır (sabit kalırlar).
   /// Örn: onek='Salon', adet=10, baslangic=1 → "Salon 1".."Salon 10"
@@ -109,6 +126,11 @@ class MasaDeposu {
     int baslangic = 1,
   }) async {
     final db = await _d;
+    // Aynı önekle mevcut masa numaralarını çakıştırma: Salon 1..10 varken
+    // "Başlangıç 1" girilse bile 11'den devam eder.
+    baslangic = baslangic > await sonrakiNo(onek)
+        ? baslangic
+        : await sonrakiNo(onek);
     // Mevcut en yüksek sira değerinden devam et — sıralama bozulmasın
     final maxSira = await db.rawQuery('SELECT MAX(sira) as m FROM ${DbSabitler.masalar}');
     int sira = (maxSira.first['m'] as int?) ?? 0;

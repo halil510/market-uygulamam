@@ -38,6 +38,8 @@ import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../depolar/fis_detay_deposu.dart';
 import '../../depolar/satis_deposu.dart';
+import '../../servisler/yazdirma_servisi.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 
 class FisDetayEkrani extends ConsumerStatefulWidget {
   final int fisId;
@@ -135,6 +137,18 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
     if (val == null) return '-';
     final dt = val is DateTime ? val : DateTime.tryParse(val.toString());
     return dt != null ? _fmt.format(dt) : val.toString();
+  }
+
+  /// Termal fiş yazdırma — Satış Detayı / Hızlı Satış ile aynı kod yolu.
+  Future<void> _fisYazdir() async {
+    try {
+      final satis = await SatisDeposu().idileGetir(widget.fisId);
+      if (satis == null) throw Exception('Satış bulunamadı (silinmiş olabilir)');
+      await YazdirmaServisi().fisYazdir(satis, cariUnvan: widget.cariUnvan);
+      if (mounted) BildirimServisi.basari(context, 'Yazdırıldı');
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Yazıcı hatası: ${kullaniciyaHataMetni(e)}');
+    }
   }
 
   // ── Excel ──────────────────────────────────────────────────────────────
@@ -323,6 +337,11 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
         baslik: '${widget.fisTipi} Detayı',
         aksiyonlar: [
           if (!_yukleniyor && _hata == null) ...[
+            if (_satisFisTipleri.contains(widget.fisTipi))
+              IconButton(
+                  icon: const Icon(Icons.print_outlined),
+                  tooltip: 'Fişi Yazdır',
+                  onPressed: _fisYazdir),
             IconButton(icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, __, ___) => const Icon(Icons.picture_as_pdf)), tooltip: 'PDF', onPressed: _exportPdf),
             IconButton(icon: const Icon(Icons.download), tooltip: 'Excel', onPressed: _exportExcel),
           ],

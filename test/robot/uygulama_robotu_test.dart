@@ -77,6 +77,11 @@ const _atlanacak = {'/splash', '/giris', '/kullanici-degistir'};
 ///   flutter test test/robot --dart-define=ROBOT_ROTA=/stok/transfer
 const _tekRota = String.fromEnvironment('ROBOT_ROTA');
 
+/// Gerçek cihazda tüm rotaları tek seferde koşmak telefonu zorlar: rota
+/// listesini dilimlemek için (ör. --dart-define=ROBOT_BASLA=20 --dart-define=ROBOT_ADET=20).
+const _dilimBasla = int.fromEnvironment('ROBOT_BASLA', defaultValue: 0);
+const _dilimAdet = int.fromEnvironment('ROBOT_ADET', defaultValue: 0);
+
 /// Bulgu sınıfı: HATA yalnızca gerçek uygulama hatası; eklenti eksikliği,
 /// taşma, görsel uyarı ve gezinme (ekran parametresiz açılınca kendini
 /// kapatma / robotun sayfa kapatması) ayrı sayılır.
@@ -203,9 +208,20 @@ final _yasakRe = RegExp(
 
 void main() {
   testWidgets('UYGULAMA ROBOTU — tüm ekranlar', (tester) async {
-    tester.view.physicalSize = const Size(1280, 2000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
+    // Gerçek cihazda (Android) telefonun kendi ekran boyutu kullanılır;
+    // masaüstü/CI'da sabit tablet boyutu.
+    if (!Platform.isAndroid) {
+      // ROBOT_EKRAN=telefon → Galaxy A51 (SM-A515F): 1080x2400, DPR 2.625
+      // (411x914 dp) — gerçek telefon ölçüsünde taşma taraması.
+      if (const String.fromEnvironment('ROBOT_EKRAN') == 'telefon') {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.625;
+      } else {
+        tester.view.physicalSize = const Size(1280, 2000);
+        tester.view.devicePixelRatio = 1.0;
+      }
+      addTearDown(tester.view.reset);
+    }
 
     await RobotOrtam.hazirla();
     final db = await RobotOrtam.veritabaniAc();
@@ -609,12 +625,17 @@ void main() {
     await bekle(30);
 
     final router = GoRouter.of(tester.element(find.byType(Scaffold).first));
-    final rotalar = _rotalariTopla(router.configuration.routes)
+    var rotalar = _rotalariTopla(router.configuration.routes)
         .where((r) => !_atlanacak.contains(r) && !r.startsWith('/bayi'))
         .where((r) => _tekRota.isEmpty || r == _tekRota)
         .toSet()
         .toList()
       ..sort();
+    // ignore: avoid_print
+    print('🤖 TOPLAM ROTA: ${rotalar.length}');
+    if (_dilimAdet > 0) {
+      rotalar = rotalar.skip(_dilimBasla).take(_dilimAdet).toList();
+    }
 
     for (final sablon in rotalar) {
       final yol = _parametreDoldur(sablon, veri);
@@ -954,8 +975,11 @@ void main() {
       ..writeln('| Ekran | Sonuç |')
       ..writeln('|---|---|');
     gezilen.forEach((k, v) => sb.writeln('| $k | $v |'));
-    Directory('build').createSync(recursive: true);
-    File('build/robot_raporu.md').writeAsStringSync(sb.toString());
+    try {
+      final klasor = Platform.isAndroid ? Directory.systemTemp : Directory('build');
+      klasor.createSync(recursive: true);
+      File('${klasor.path}/robot_raporu.md').writeAsStringSync(sb.toString());
+    } catch (_) {/* rapor konsola da basılıyor */}
     // ignore: avoid_print
     print(sb.toString());
 

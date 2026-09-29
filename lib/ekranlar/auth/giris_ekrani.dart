@@ -420,10 +420,6 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                                   ),
                                   const SizedBox(height: 28),
                                   _buildKullaniciSecici(),
-                                  const SizedBox(height: 20),
-                                  _buildPinGosterge(),
-                                  const SizedBox(height: 10),
-                                  _buildHataMesaji(),
                                 ],
                               ),
                             ),
@@ -484,6 +480,13 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // PIN göstergesi + hata mesajı tuş takımının HEMEN ÜSTÜNDE:
+                  // kısa ekranlarda (ör. 914 dp telefon) kaydırılabilir üst
+                  // bölümün dibinde kalıp panelin altında kesiliyordu.
+                  _buildPinGosterge(),
+                  const SizedBox(height: 8),
+                  _buildHataMesaji(),
+                  const SizedBox(height: 10),
                   _buildNumPad(),
                   const SizedBox(height: 16),
                   _buildGirisButonu(),
@@ -585,7 +588,13 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                 fontWeight: FontWeight.w500,
               ),
               decoration: const InputDecoration(
+                // Global tema filled:true + neredeyse beyaz dolgu uygular; beyaz
+                // yazı görünmez olurdu — dolgu bilinçli kapatıldı.
+                filled: false,
+                fillColor: Colors.transparent,
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 prefixIcon: Icon(Icons.person_outline, color: Color(0xFF4361EE)),
               ),

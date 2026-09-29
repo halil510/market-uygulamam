@@ -109,8 +109,13 @@ class RobotOrtam {
   /// Bellek içi, AYNI isolate'te çalışan (sahte zamanlı widget testlerinde
   /// takılmayan) gerçek şemalı veritabanı.
   static Future<Database> veritabaniAc() async {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfiNoIsolate;
+    // Gerçek Android cihazda (integration_test) FFI/sqlite3 yok: cihazın
+    // kendi sqflite motoru, yine bellek içi veritabanıyla kullanılır (uygulamanın
+    // gerçek verisine dokunmaz).
+    if (!Platform.isAndroid) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfiNoIsolate;
+    }
     final db = await openDatabase(inMemoryDatabasePath,
         version: 1, onCreate: (db, _) => TabloOlusturucu.olustur(db));
     Veritabani.testVeritabani = db;

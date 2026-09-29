@@ -60,6 +60,11 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
     }
 
     buildTypes {
+        // Debug/robot yapısı gerçek uygulamayla YAN YANA kurulur (farklı paket
+        // adı): test kurulumu gerçek uygulamayı/verisini silmez.
+        debug {
+            applicationIdSuffix = ".robot"
+        }
         release {
             // key.properties varsa gerçek release anahtarıyla, yoksa
             // (ör. bu dosyayı görmeyen bir CI ortamı) debug anahtarıyla

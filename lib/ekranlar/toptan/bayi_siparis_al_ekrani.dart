@@ -400,7 +400,7 @@ class _KalemDialogState extends State<_KalemDialog> {
   }
 
   double get _toplamAdet {
-    final miktar = double.tryParse(_miktarCtrl.text.replaceAll(',', '.')) ?? 0;
+    final miktar = ParaUtils.sayiCoz(_miktarCtrl.text) ?? 0;
     return miktar * _carpan;
   }
 
@@ -478,9 +478,9 @@ class _KalemDialogState extends State<_KalemDialog> {
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Vazgeç')),
         FilledButton(
           onPressed: () {
-            final miktar = double.tryParse(_miktarCtrl.text.replaceAll(',', '.')) ?? 0;
-            final fiyat = double.tryParse(_fiyatCtrl.text.replaceAll(',', '.')) ?? 0;
-            final iskonto = double.tryParse(_iskontoCtrl.text.replaceAll(',', '.')) ?? 0;
+            final miktar = ParaUtils.sayiCoz(_miktarCtrl.text) ?? 0;
+            final fiyat = ParaUtils.sayiCoz(_fiyatCtrl.text) ?? 0;
+            final iskonto = ParaUtils.sayiCoz(_iskontoCtrl.text) ?? 0;
             if (miktar <= 0 || fiyat <= 0) return;
             Navigator.pop(context, BekleyenSiparisKalemGirdi(
               urunId: widget.urun.id!,

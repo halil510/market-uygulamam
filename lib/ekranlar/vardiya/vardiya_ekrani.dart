@@ -178,7 +178,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
                 foregroundColor: Colors.white, backgroundColor: Colors.green),
             onPressed: () {
               final v =
-                  double.tryParse(kasaCtrl.text.replaceAll(',', '.')) ?? 0;
+                  ParaUtils.sayiCoz(kasaCtrl.text) ?? 0;
               Navigator.pop(ctx, v);
             },
             child: const Text('Aç'),
@@ -322,7 +322,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     final sonuc = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setS) {
-        final sayim = double.tryParse(sayimCtrl.text.replaceAll(',', '.')) ?? 0;
+        final sayim = ParaUtils.sayiCoz(sayimCtrl.text) ?? 0;
         final fark = sayim - beklenenNakit;
         return AlertDialog(
           shape:
@@ -430,7 +430,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
                   backgroundColor: Colors.orange),
               onPressed: () => Navigator.pop(ctx, {
                 'sayim':
-                    double.tryParse(sayimCtrl.text.replaceAll(',', '.')) ?? 0,
+                    ParaUtils.sayiCoz(sayimCtrl.text) ?? 0,
                 'fark': fark,
               }),
               child: const Text('Kapat'),

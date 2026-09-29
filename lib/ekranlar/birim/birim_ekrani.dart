@@ -10,6 +10,7 @@
 // bir tutarsızlık. Artık SQLite tablosu kullanılıyor; dış API
 // (birimListesiGetir() → List<String>) AYNI kaldığı için Ürün Ekle
 // gibi bu listeyi kullanan diğer ekranlar hiç etkilenmiyor.
+import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -99,7 +100,7 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
     );
     if (ok != true) return;
     final yeni = ctrl.text.trim().toUpperCase();
-    final carpan = double.tryParse(carpanCtrl.text.replaceAll(',', '.')) ?? 1;
+    final carpan = ParaUtils.sayiCoz(carpanCtrl.text) ?? 1;
     if (_birimler.contains(yeni)) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -146,7 +147,7 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
       ),
     );
     if (ok != true) return;
-    final carpan = double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 1;
+    final carpan = ParaUtils.sayiCoz(ctrl.text) ?? 1;
     try {
       // Varsayılan listeden (henüz db satırı olmayan) bir birimin çarpanı
       // ilk kez ayarlanıyorsa BirimDeposu.carpanGuncelle satırı oluşturur.

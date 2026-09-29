@@ -163,7 +163,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
               suffixText: urun.birimAdi,
             ),
             onSubmitted: (v) {
-              final d = double.tryParse(v.replaceAll(',', '.'));
+              final d = ParaUtils.sayiCoz(v);
               Navigator.pop(ctx, d);
             },
           ),
@@ -172,7 +172,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
           FilledButton(
             onPressed: () {
-              final d = double.tryParse(ctrl.text.replaceAll(',', '.'));
+              final d = ParaUtils.sayiCoz(ctrl.text);
               Navigator.pop(ctx, d);
             },
             child: const Text('Kaydet'),

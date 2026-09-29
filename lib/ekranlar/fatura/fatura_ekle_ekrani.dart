@@ -32,8 +32,8 @@ class _Kalem {
   // dışarıdan (yüklenen ayardan) verilebiliyor.
   _Kalem({String varsayilanKdv = '18'}) : kdvOran = varsayilanKdv;
 
-  double get miktar      => double.tryParse(miktCtrl.text.replaceAll(',', '.')) ?? 1;
-  double get birimFiyat  => double.tryParse(fiyCtrl.text.replaceAll(',', '.'))  ?? 0;
+  double get miktar      => ParaUtils.sayiCoz(miktCtrl.text) ?? 1;
+  double get birimFiyat  => ParaUtils.sayiCoz(fiyCtrl.text)  ?? 0;
   double get iskontoOran => ParaUtils.sayiCoz(iskCtrl.text) ?? 0;
   double get araToplam   => birimFiyat * miktar;
   double get iskontoTut  => araToplam * (iskontoOran / 100);

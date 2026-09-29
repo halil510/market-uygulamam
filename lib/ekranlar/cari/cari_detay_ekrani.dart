@@ -641,7 +641,7 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
     );
     if (ok != true) return;
 
-    final tutar = double.tryParse(tutarCtrl.text.replaceAll(',', '.')) ?? 0;
+    final tutar = ParaUtils.sayiCoz(tutarCtrl.text) ?? 0;
     final sebep = sebepCtrl.text.trim();
     if (tutar <= 0 || tutar > c.bakiye + 0.01) {
       if (context.mounted) {

@@ -28,7 +28,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(builder: (ctx, ss) {
         void oranDegisti(String v) {
-          final oran = double.tryParse(v.replaceAll(',', '.'));
+          final oran = ParaUtils.sayiCoz(v);
           if (oran != null && oran > 0 && oran < 100) {
             fiyatCtrl.text = (normalFiyat * (1 - oran / 100)).toStringAsFixed(2);
           } else if (oran == 0) {
@@ -37,7 +37,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
           ss(() {});
         }
         void fiyatDegisti(String v) {
-          final fiyat = double.tryParse(v.replaceAll(',', '.'));
+          final fiyat = ParaUtils.sayiCoz(v);
           if (fiyat != null && fiyat > 0 && fiyat < normalFiyat) {
             oranCtrl.text = ((1 - fiyat / normalFiyat) * 100).toStringAsFixed(1);
           } else if (fiyat != null && fiyat >= normalFiyat) {
@@ -82,7 +82,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
 
     if (_kameraAcik && mounted) { try { _scanCtrl.start(); } catch (e) { /* ignore */ } }
     if (uygula != true || !mounted) return;
-    final yeniFiyat = double.tryParse(fiyatCtrl.text.replaceAll(',', '.'));
+    final yeniFiyat = ParaUtils.sayiCoz(fiyatCtrl.text);
     if (yeniFiyat != null && yeniFiyat > 0) {
       ref.read(sepetProvider.notifier).fiyatGuncelle(index, yeniFiyat);
     }
@@ -464,7 +464,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
 
     if (_kameraAcik && mounted) { try { _scanCtrl.start(); } catch (e) { /* ignore */ } }
     if (ok != true || !mounted) return;
-    final yeniMiktar = double.tryParse(ctrl.text.replaceAll(',', '.'));
+    final yeniMiktar = ParaUtils.sayiCoz(ctrl.text);
     if (yeniMiktar == null || yeniMiktar <= 0) {
       ref.read(sepetProvider.notifier).sil(index);
     } else {

@@ -55,6 +55,13 @@ void main() {
       expect(ParaUtils.sayiCoz('12.50'), 12.50);
       expect(ParaUtils.sayiCoz('12.5'), 12.5);
     });
+
+    test('birden fazla nokta (virgülsüz) binliktir — ondalık olamaz', () {
+      // Önceden null dönüyordu; çoğu ekranda "?? 0" ile sessizce 0 oluyordu.
+      expect(ParaUtils.sayiCoz('1.500.000'), 1500000.0);
+      expect(ParaUtils.sayiCoz('12.345.678'), 12345678.0);
+      expect(ParaUtils.sayiCoz('-1.000.000'), -1000000.0);
+    });
   });
 
   group('ParaUtils.sayiCoz — kirli girdi', () {

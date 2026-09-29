@@ -37,7 +37,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
     }
 
     try {
-      final odenen = double.tryParse(girilen.replaceAll(',', '.')) ?? 0;
+      final odenen = ParaUtils.sayiCoz(girilen) ?? 0;
       if (odenen <= 0) {
         if (mounted) BildirimServisi.uyari(context, 'Geçerli tutar girin');
         return;

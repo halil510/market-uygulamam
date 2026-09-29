@@ -71,7 +71,7 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
   void _yuzdedenFiyatHesapla(String yuzdeStr) {
     final u = _secili;
     if (u == null) return;
-    final yuzde = double.tryParse(yuzdeStr.replaceAll(',', '.'));
+    final yuzde = ParaUtils.sayiCoz(yuzdeStr);
     if (yuzde == null) return;
     final yeni = u.satisFiyati * (1 + yuzde / 100);
     _yeniFiyatCtrl.text = yeni.toStringAsFixed(2);
@@ -80,7 +80,7 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
 
   Future<void> _simuleEt() async {
     final u = _secili;
-    final yeniFiyat = double.tryParse(_yeniFiyatCtrl.text.replaceAll(',', '.'));
+    final yeniFiyat = ParaUtils.sayiCoz(_yeniFiyatCtrl.text);
     if (u == null || yeniFiyat == null || u.id == null) return;
     final sira = ++_simulasyonSira;
     setState(() => _hesaplaniyor = true);

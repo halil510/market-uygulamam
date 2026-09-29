@@ -5,6 +5,7 @@
 // para birimlerini çeker" — TCMB entegrasyonu ile tamamen yeniden
 // yazıldı. Profesyonel muhasebe programları gibi: TCMB'den GERÇEK
 // kurları çeker, kullanıcı hangi dövizleri takip edeceğini seçer.
+import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -285,8 +286,8 @@ class _KurKartiState extends State<_KurKarti> {
   }
 
   Future<void> _kaydet() async {
-    final alis = double.tryParse(_alisCtrl.text.replaceAll(',', '.'));
-    final satis = double.tryParse(_satisCtrl.text.replaceAll(',', '.'));
+    final alis = ParaUtils.sayiCoz(_alisCtrl.text);
+    final satis = ParaUtils.sayiCoz(_satisCtrl.text);
     if (satis == null || satis <= 0) {
       BildirimServisi.uyari(context, 'Geçerli bir satış kuru girin');
       return;

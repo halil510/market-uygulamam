@@ -125,7 +125,7 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
               )),
     );
     if (ok != true) return;
-    final tutar = double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 0;
+    final tutar = ParaUtils.sayiCoz(ctrl.text) ?? 0;
     if (tutar <= 0) return;
     await _depo.hareketEkle(KasaHareketModel(
       hareketTipi: tip,

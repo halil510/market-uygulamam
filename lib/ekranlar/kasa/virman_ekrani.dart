@@ -94,7 +94,7 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
   bool get _kartGerekli  => _kaynakHesap == 'Kredi Kartı' || _hedefHesap == 'Kredi Kartı';
 
   Future<void> _virmanYap() async {
-    final tutar = double.tryParse(_tutarCtrl.text.replaceAll(',', '.')) ?? 0;
+    final tutar = ParaUtils.sayiCoz(_tutarCtrl.text) ?? 0;
     if (tutar <= 0) {
       BildirimServisi.uyari(context, 'Geçerli tutar girin');
       return;

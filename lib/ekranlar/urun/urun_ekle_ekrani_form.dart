@@ -206,7 +206,7 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
   void _alisFiyatHesapla() {
     if (_hesaplamaCalisiyor) return;
     _hesaplamaCalisiyor = true;
-    final alisHam = double.tryParse(_c['alisFiyat']?.text.replaceAll(',', '.') ?? '') ?? 0;
+    final alisHam = ParaUtils.sayiCoz(_c['alisFiyat']?.text) ?? 0;
     final alisKdvOranDeger = ParaUtils.sayiCoz(_c['alisKdvOran']?.text ?? '') ?? 0;
     if (alisHam > 0) {
       final alisKdvli = alisHam * (1 + alisKdvOranDeger / 100);
@@ -221,9 +221,9 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
   void _alisKdvOranHesapla() {
     if (_hesaplamaCalisiyor) return;
     _hesaplamaCalisiyor = true;
-    final alisHam = double.tryParse(_c['alisFiyat']?.text.replaceAll(',', '.') ?? '') ?? 0;
+    final alisHam = ParaUtils.sayiCoz(_c['alisFiyat']?.text) ?? 0;
     final alisKdvOranDeger = ParaUtils.sayiCoz(_c['alisKdvOran']?.text ?? '') ?? 0;
-    final alisKdvli = double.tryParse(_c['alisFiyatKdvDahil']?.text.replaceAll(',', '.') ?? '') ?? 0;
+    final alisKdvli = ParaUtils.sayiCoz(_c['alisFiyatKdvDahil']?.text) ?? 0;
     if (alisHam > 0) {
       final yeniKdvli = alisHam * (1 + alisKdvOranDeger / 100);
       _c['alisFiyatKdvDahil']?.text = yeniKdvli.toStringAsFixed(3);
@@ -238,7 +238,7 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
   void _alisKdvliFiyatHesapla() {
     if (_hesaplamaCalisiyor) return;
     _hesaplamaCalisiyor = true;
-    final alisKdvli = double.tryParse(_c['alisFiyatKdvDahil']?.text.replaceAll(',', '.') ?? '') ?? 0;
+    final alisKdvli = ParaUtils.sayiCoz(_c['alisFiyatKdvDahil']?.text) ?? 0;
     final alisKdvOranDeger = ParaUtils.sayiCoz(_c['alisKdvOran']?.text ?? '') ?? 0;
     if (alisKdvli > 0 && alisKdvOranDeger > 0) {
       final alisHam = alisKdvli / (1 + alisKdvOranDeger / 100);
@@ -255,8 +255,8 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
   void _karHesapla() {
     if (_hesaplamaCalisiyor) return;
     _hesaplamaCalisiyor = true;
-    final alisKdvli = double.tryParse(_c['alisFiyatKdvDahil']?.text.replaceAll(',', '.') ?? '') ?? 0;
-    final satis = double.tryParse(_c['satisFiyati']?.text.replaceAll(',', '.') ?? '') ?? 0;
+    final alisKdvli = ParaUtils.sayiCoz(_c['alisFiyatKdvDahil']?.text) ?? 0;
+    final satis = ParaUtils.sayiCoz(_c['satisFiyati']?.text) ?? 0;
     if (satis > 0 && alisKdvli > 0) {
       final kar = ((satis - alisKdvli) / alisKdvli) * 100;
       _c['karOrani']?.text = kar.toStringAsFixed(2);
@@ -295,7 +295,7 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
   void _indirimHesapla() {
     if (_hesaplamaCalisiyor) return;
     _hesaplamaCalisiyor = true;
-    final satis = double.tryParse(_c['satisFiyati']?.text.replaceAll(',', '.') ?? '') ?? 0;
+    final satis = ParaUtils.sayiCoz(_c['satisFiyati']?.text) ?? 0;
     final oran  = ParaUtils.sayiCoz(_c['indirimOrani']?.text ?? '') ?? 0;
     // %100 ve üzeri oran indirimli fiyatı sıfır/eksi yapıyordu (ör. %150
     // yazım hatası → "İndirimli Fiyat negatif olamaz"); böyle bir oran
@@ -312,8 +312,8 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
   void _indirimTersHesapla() {
     if (_hesaplamaCalisiyor) return;
     _hesaplamaCalisiyor = true;
-    final satis = double.tryParse(_c['satisFiyati']?.text.replaceAll(',', '.') ?? '') ?? 0;
-    final indirimli = double.tryParse(_c['indirimliFiyat']?.text.replaceAll(',', '.') ?? '') ?? 0;
+    final satis = ParaUtils.sayiCoz(_c['satisFiyati']?.text) ?? 0;
+    final indirimli = ParaUtils.sayiCoz(_c['indirimliFiyat']?.text) ?? 0;
     if (satis > 0 && indirimli > 0 && indirimli < satis) {
       final oran = ((satis - indirimli) / satis) * 100;
       _c['indirimOrani']?.text = oran.toStringAsFixed(2);

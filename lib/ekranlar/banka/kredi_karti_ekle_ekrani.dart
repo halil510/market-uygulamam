@@ -1,4 +1,5 @@
 // lib/ekranlar/banka/kredi_karti_ekle_ekrani.dart
+import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -105,8 +106,8 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
         kartAdi: _adCtrl.text.trim(),
         kartNoMaskeli: KrediKartiModel.maskele(_noCtrl.text.trim()),
         kartTipi: _kartTipi,
-        kartLimit: double.tryParse(_limitCtrl.text.replaceAll(',', '.')) ?? 0,
-        faizOrani: double.tryParse(_faizCtrl.text.replaceAll(',', '.')) ?? 0,
+        kartLimit: ParaUtils.sayiCoz(_limitCtrl.text) ?? 0,
+        faizOrani: ParaUtils.sayiCoz(_faizCtrl.text) ?? 0,
         taksitSayisi: _taksitSayisi,
         aktif: _aktif,
         kesimTarihi: _kesimTarihi,
@@ -117,8 +118,8 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
         kartAdi: _adCtrl.text.trim(),
         kartNoMaskeli: KrediKartiModel.maskele(_noCtrl.text.trim()),
         kartTipi: _kartTipi,
-        kartLimit: double.tryParse(_limitCtrl.text.replaceAll(',', '.')) ?? 0,
-        faizOrani: double.tryParse(_faizCtrl.text.replaceAll(',', '.')) ?? 0,
+        kartLimit: ParaUtils.sayiCoz(_limitCtrl.text) ?? 0,
+        faizOrani: ParaUtils.sayiCoz(_faizCtrl.text) ?? 0,
         taksitSayisi: _taksitSayisi,
         aktif: _aktif,
         kesimTarihi: _kesimTarihi,

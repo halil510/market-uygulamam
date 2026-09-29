@@ -1,4 +1,5 @@
 // lib/ekranlar/borc/borc_ekle_ekrani.dart
+import '../../cekirdek/utils/para_utils.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -98,7 +99,7 @@ void initState() {
         baslik: _baslikCtrl.text.trim(),
         tur: _tur,
         altTur: _altTur,
-        tutar: double.tryParse(_tutarCtrl.text.replaceAll(',', '.')) ?? 0,
+        tutar: ParaUtils.sayiCoz(_tutarCtrl.text) ?? 0,
         odenenTutar: widget.duzenlenecekBorc?.odenenTutar ?? 0,
         kesimTarihi: _kesimTarihi,
         sonOdemeTarihi: _sonOdemeTarihi,
@@ -222,7 +223,7 @@ void initState() {
               ),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Zorunlu';
-                final val = double.tryParse(v.replaceAll(',', '.'));
+                final val = ParaUtils.sayiCoz(v);
                 if (val == null || val <= 0) return 'Geçerli tutar girin';
                 return null;
               },

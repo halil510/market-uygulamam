@@ -1,4 +1,5 @@
 // lib/ekranlar/gider/gider_ekle_ekrani.dart
+import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -125,7 +126,7 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
       BildirimServisi.uyari(context, 'Kategori seçin');
       return;
     }
-    final tutar = double.tryParse(_tutarCtrl.text.replaceAll(',', '.'));
+    final tutar = ParaUtils.sayiCoz(_tutarCtrl.text);
     if (tutar == null || tutar <= 0) {
       BildirimServisi.uyari(context, 'Geçerli bir tutar girin');
       return;

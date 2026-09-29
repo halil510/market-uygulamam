@@ -1,4 +1,5 @@
 // lib/ekranlar/banka/banka_hesap_ekle_ekrani.dart
+import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -50,7 +51,7 @@ class _BankaHesapEkleEkraniState extends ConsumerState<BankaHesapEkleEkrani> {
       return;
     }
     if (!_formKey.currentState!.validate()) return;
-    final bakiye = double.tryParse(_bakiyeCtrl.text.replaceAll(',', '.')) ?? 0;
+    final bakiye = ParaUtils.sayiCoz(_bakiyeCtrl.text) ?? 0;
 
     setState(() => _kayit = true);
     try {

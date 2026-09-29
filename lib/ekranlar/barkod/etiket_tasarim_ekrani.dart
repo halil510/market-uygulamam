@@ -109,10 +109,10 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
   List<Map<String, dynamic>> _ozelSablonlar = [];
 
   double get _efGenislik => _ozelBoyutAktif
-      ? (double.tryParse(_ozelGenislikCtrl.text.replaceAll(',', '.')) ?? _boyut.w).clamp(20.0, 200.0)
+      ? (ParaUtils.sayiCoz(_ozelGenislikCtrl.text) ?? _boyut.w).clamp(20.0, 200.0)
       : _boyut.w;
   double get _efYukseklik => _ozelBoyutAktif
-      ? (double.tryParse(_ozelYukseklikCtrl.text.replaceAll(',', '.')) ?? _boyut.h).clamp(15.0, 200.0)
+      ? (ParaUtils.sayiCoz(_ozelYukseklikCtrl.text) ?? _boyut.h).clamp(15.0, 200.0)
       : _boyut.h;
   PaperSize get _efKagit => _efGenislik > 65 ? PaperSize.mm80 : PaperSize.mm58;
   String get _boyutEtiketMetni => _ozelBoyutAktif

@@ -193,7 +193,7 @@ class _DovizleHesaplaDialogState extends State<_DovizleHesaplaDialog> {
   }
 
   void _hesapla() {
-    final tutar = double.tryParse(_tutarCtrl.text.replaceAll(',', '.')) ?? 0;
+    final tutar = ParaUtils.sayiCoz(_tutarCtrl.text) ?? 0;
     setState(() => _sonuc = tutar * _secili.satisKuru);
   }
 
@@ -258,7 +258,7 @@ class _DovizleHesaplaDialogState extends State<_DovizleHesaplaDialog> {
               ? () => Navigator.pop(context, _DovizSonuc(_sonuc,
                   dovizKodu: _dovizBazliTakip ? _secili.kod : null,
                   dovizTutari: _dovizBazliTakip
-                      ? double.tryParse(_tutarCtrl.text.replaceAll(',', '.'))
+                      ? ParaUtils.sayiCoz(_tutarCtrl.text)
                       : null))
               : null,
           child: const Text('Kullan'),

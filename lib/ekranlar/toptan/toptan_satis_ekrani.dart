@@ -1195,7 +1195,7 @@ class _MiktarBirimDialogState extends State<_MiktarBirimDialog> {
         FilledButton(
           onPressed: () {
             final miktar =
-                double.tryParse(_miktarCtrl.text.replaceAll(',', '.')) ?? 0;
+                ParaUtils.sayiCoz(_miktarCtrl.text) ?? 0;
             if (miktar <= 0) {
               setState(() => _hata = 'Geçerli bir miktar girin');
               return;

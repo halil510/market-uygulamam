@@ -311,8 +311,8 @@ class _ToptanKademeleriBolumuState extends State<_ToptanKademeleriBolumu> {
     );
     if (kaydet != true) return;
 
-    final minMiktar = double.tryParse(miktarCtrl.text.replaceAll(',', '.'));
-    final fiyat = double.tryParse(fiyatCtrl.text.replaceAll(',', '.'));
+    final minMiktar = ParaUtils.sayiCoz(miktarCtrl.text);
+    final fiyat = ParaUtils.sayiCoz(fiyatCtrl.text);
     if (minMiktar == null || minMiktar <= 0 || fiyat == null || fiyat <= 0) {
       if (mounted) BildirimServisi.uyari(context, 'Geçerli miktar ve fiyat girin');
       return;

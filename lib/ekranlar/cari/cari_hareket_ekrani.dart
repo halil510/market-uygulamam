@@ -442,7 +442,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       ),
     );
     if (ok != true) return;
-    final tutar = double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 0;
+    final tutar = ParaUtils.sayiCoz(ctrl.text) ?? 0;
     if (tutar <= 0) {
       BildirimServisi.uyari(context, 'Geçerli tutar girin');
       return;

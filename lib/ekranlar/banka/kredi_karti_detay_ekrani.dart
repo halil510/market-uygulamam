@@ -1,4 +1,5 @@
 // lib/ekranlar/banka/kredi_karti_detay_ekrani.dart
+import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -346,7 +347,7 @@ class _KartDetayIcerik extends ConsumerWidget {
             ),
             FilledButton(
               onPressed: isleniyor ? null : () async {
-                final tutar = double.tryParse(ctrl.text.trim().replaceAll(',', '.'));
+                final tutar = ParaUtils.sayiCoz(ctrl.text);
                 if (tutar == null || tutar <= 0) {
                   BildirimServisi.uyari(context, 'Geçerli bir tutar girin');
                   return;

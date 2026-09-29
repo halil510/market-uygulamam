@@ -1,4 +1,5 @@
 // lib/ekranlar/toptan/fiyat_gruplari_ekrani.dart
+import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -78,7 +79,7 @@ class _FiyatGruplariEkraniState extends State<FiyatGruplariEkrani> {
       globalId: mevcut?.globalId,
       ad: adCtrl.text.trim(),
       aciklama: aciklamaCtrl.text.trim().isEmpty ? null : aciklamaCtrl.text.trim(),
-      varsayilanIskontoOrani: double.tryParse(iskontoCtrl.text.replaceAll(',', '.')) ?? 0,
+      varsayilanIskontoOrani: ParaUtils.sayiCoz(iskontoCtrl.text) ?? 0,
     );
     if (mevcut == null) {
       await _depo.grupEkle(grup);

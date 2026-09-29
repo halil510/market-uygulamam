@@ -544,7 +544,7 @@ class _PersonelFormSheetState extends ConsumerState<_PersonelFormSheet> {
         // doldursa bile veri sessizce kayboluyordu.
         telefon: _telCtrl.text.trim().isEmpty ? null : _telCtrl.text.trim(),
         email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
-        maas: double.tryParse(_maasCtrl.text.replaceAll(',', '.')) ?? 0,
+        maas: ParaUtils.sayiCoz(_maasCtrl.text) ?? 0,
         aktif: _aktif,
       );
       if (mounted) Navigator.pop(context, true);

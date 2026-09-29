@@ -357,8 +357,8 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
         urunId:          _seciliUrun!.id!,
         urunAdi:         _seciliUrun!.urunAdi,
         promosyonAdi:    _adCtrl.text.trim(),
-        iskontoOran:     double.tryParse(_oranCtrl.text.replaceAll(',', '.')) ?? 0,
-        minMiktar:       double.tryParse(_minMiktarCtrl.text.replaceAll(',', '.')) ?? 1,
+        iskontoOran:     ParaUtils.sayiCoz(_oranCtrl.text) ?? 0,
+        minMiktar:       ParaUtils.sayiCoz(_minMiktarCtrl.text) ?? 1,
         baslangicTarihi: _baslangic,
         bitisTarihi:     _bitis,
         aktif:           true,
@@ -523,7 +523,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                 labelText: 'İskonto %', border: OutlineInputBorder(), suffixText: '%'),
               onChanged: (v) {
                 if (_seciliUrun == null) return;
-                final oran = double.tryParse(v.replaceAll(',', '.')) ?? 0;
+                final oran = ParaUtils.sayiCoz(v) ?? 0;
                 if (oran > 0 && oran <= 100) {
                   final minMik = ParaUtils.sayiCoz(_minMiktarCtrl.text) ?? 1;
                   final indirimliB = _seciliUrun!.satisFiyati * (1 - oran / 100);
@@ -532,7 +532,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                 }
               },
               validator: (v) {
-                final d = double.tryParse(v?.replaceAll(',', '.') ?? '');
+                final d = ParaUtils.sayiCoz(v);
                 if (d == null || d <= 0 || d > 100) return '0-100 arası';
                 return null;
               },
@@ -554,7 +554,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
               ),
               onChanged: (v) {
                 if (_seciliUrun == null) return;
-                final toplam = double.tryParse(v.replaceAll(',', '.')) ?? 0;
+                final toplam = ParaUtils.sayiCoz(v) ?? 0;
                 final minMik = ParaUtils.sayiCoz(_minMiktarCtrl.text) ?? 1;
                 final maxToplam = _seciliUrun!.satisFiyati * minMik;
                 if (toplam > 0 && toplam < maxToplam) {
@@ -580,7 +580,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                 prefixIcon: Icon(Icons.production_quantity_limits, size: 18)),
             onChanged: (v) {
               if (_seciliUrun == null) return;
-              final minMik = double.tryParse(v.replaceAll(',', '.')) ?? 1;
+              final minMik = ParaUtils.sayiCoz(v) ?? 1;
               final oran = ParaUtils.sayiCoz(_oranCtrl.text) ?? 0;
               if (oran > 0 && minMik > 0) {
                 final indirimliB = _seciliUrun!.satisFiyati * (1 - oran / 100);

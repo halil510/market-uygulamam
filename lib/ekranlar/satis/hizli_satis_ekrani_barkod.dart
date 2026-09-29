@@ -512,7 +512,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
                 border: const OutlineInputBorder(),
               ),
               onChanged: (v) {
-                m = double.tryParse(v.replaceAll(',', '.')) ?? 0;
+                m = ParaUtils.sayiCoz(v) ?? 0;
                 ss(() {});
               },
             ),
@@ -554,7 +554,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
             ),
             FilledButton.icon(
               onPressed: () {
-                final mv = double.tryParse(ctrl.text.replaceAll(',', '.'));
+                final mv = ParaUtils.sayiCoz(ctrl.text);
                 if (mv == null || mv <= 0) return;
                 _dialogAcik = false;
                 _islemAktif = false;

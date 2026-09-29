@@ -418,7 +418,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
             ),
             FilledButton(
               onPressed: () {
-                final tutar = double.tryParse(ctrl.text.replaceAll(',', '.'));
+                final tutar = ParaUtils.sayiCoz(ctrl.text);
                 if (tutar == null || tutar <= 0) return;
                 Navigator.pop(ctx, {
                   'tip': tip,

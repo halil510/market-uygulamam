@@ -73,7 +73,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
   bool get _kartSecimiGerekli => _odemeYontemi == 'Kredi Kartı';
 
   Future<void> _odemeYap() async {
-    final tutar = double.tryParse(_tutarCtrl.text.replaceAll(',', '.'));
+    final tutar = ParaUtils.sayiCoz(_tutarCtrl.text);
     if (tutar == null || tutar <= 0) {
       BildirimServisi.uyari(context, 'Geçerli tutar girin');
       return;

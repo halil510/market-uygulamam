@@ -82,7 +82,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
   }
 
   double _yeniFiyatHesapla(UrunModel u) {
-    final deger = double.tryParse(_degerCtrl.text.replaceAll(',', '.')) ?? 0;
+    final deger = ParaUtils.sayiCoz(_degerCtrl.text) ?? 0;
     switch (_islem) {
       case 'zam':
         return _tipi == 'yuzde'
@@ -93,7 +93,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
             ? u.satisFiyati * (1 - deger / 100)
             : u.satisFiyati - deger;
       case 'sabitFiyat':
-        return double.tryParse(_yeniCtrl.text.replaceAll(',', '.')) ?? u.satisFiyati;
+        return ParaUtils.sayiCoz(_yeniCtrl.text) ?? u.satisFiyati;
       case 'alisUstune':
         return u.alisFiyat * (1 + deger / 100);
       default: return u.satisFiyati;
@@ -104,7 +104,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
     final hedefIds = _tumunuSec ? _secili.map((u) => u.id!).toSet() : _seciliIds;
     if (hedefIds.isEmpty) { BildirimServisi.uyari(context, 'Ürün seçin'); return; }
 
-    final deger = double.tryParse(_degerCtrl.text.replaceAll(',', '.')) ?? 0;
+    final deger = ParaUtils.sayiCoz(_degerCtrl.text) ?? 0;
     if (deger <= 0 && _islem != 'sabitFiyat') {
       BildirimServisi.uyari(context, 'Geçerli değer girin'); return;
     }

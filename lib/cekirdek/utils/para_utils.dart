@@ -99,10 +99,10 @@ class ParaUtils {
   ///     diğeri binlik ayırıcı sayılır.
   ///       "1.234,56" → 1234.56   (Türkçe)
   ///       "1,234.56" → 1234.56   (İngilizce)
-  ///   • Sadece `,` varsa → ondalık ayırıcı        "12,50" → 12.5
-  ///   • Sadece `.` varsa → ondalık ayırıcı        "12.50" → 12.5
+  ///   • Tek `.` varsa → ondalık ayırıcı           "12.50" → 12.5
   ///     (binlik olarak YORUMLANMAZ — "12.50" markette fiyattır,
   ///      12500 değil. Bu bilinçli bir tercih.)
+  ///   • Birden fazla `.` (virgülsüz) → binlik       "1.500.000" → 1500000
   ///   • Para simgesi, boşluk, tırnak temizlenir   "₺ 12,50" → 12.5
   ///   • Boş / anlamsız girdi → null (çağıran karar versin)
   static double? sayiCoz(String? metin) {
@@ -134,8 +134,12 @@ class ParaUtils {
       if (s.indexOf('.', ilk + 1) > 0) {
         s = s.substring(0, ilk + 1) + s.substring(ilk + 1).replaceAll('.', '');
       }
+    } else if (sonNokta >= 0 && s.indexOf('.') != sonNokta) {
+      // Birden fazla nokta, virgül yok → ondalık olamaz, binlik ayırıcı:
+      // "1.500.000" → 1500000 (önceden null dönüyordu).
+      s = s.replaceAll('.', '');
     }
-    // Sadece nokta varsa dokunma — zaten Dart'ın anladığı biçim.
+    // Tek nokta varsa dokunma — zaten Dart'ın anladığı biçim.
 
     final d = double.tryParse(s);
     if (d == null) return null;

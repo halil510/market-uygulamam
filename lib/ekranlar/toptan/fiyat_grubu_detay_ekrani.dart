@@ -128,7 +128,7 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
       return;
     }
 
-    final yeniFiyat = double.tryParse(sonuc.replaceAll(',', '.'));
+    final yeniFiyat = ParaUtils.sayiCoz(sonuc);
     if (yeniFiyat == null || yeniFiyat <= 0) {
       if (mounted) BildirimServisi.uyari(context, 'Geçerli bir fiyat girin');
       return;

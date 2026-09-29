@@ -14,7 +14,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:vibration/vibration.dart';
+import '../barkod_servisi.dart';
 import 'package:go_router/go_router.dart';
 import '../../depolar/masa_deposu.dart';
 import '../../uygulama/router/uygulama_router.dart' show rootNavigatorKey;
@@ -79,8 +80,15 @@ class QrSiparisCekiciServisi {
   Future<void> _uyariGoster(Set<int> masaIdleri) async {
     final ctx = rootNavigatorKey.currentContext;
     if (ctx == null) return;
-    try { await SystemSound.play(SystemSoundType.alert); } catch (_) {}
-    try { HapticFeedback.heavyImpact(); } catch (_) {}
+    // Uygulamadaki barkod bip sesi (assets/sounds/bip.mp3) + titreşim; dikkat
+    // çekmesi için iki kez.
+    try {
+      final b = BarkodServisi();
+      await b.sesCardir();
+      Vibration.vibrate(duration: 400);
+      await Future.delayed(const Duration(milliseconds: 350));
+      await b.sesCardir();
+    } catch (_) {}
     _bekleyenMasalar.addAll(masaIdleri);
     final adlar = await MasaDeposu().masaAdlariHaritasi();
     final liste = _bekleyenMasalar.map((id) => adlar[id] ?? 'Masa $id').toList();

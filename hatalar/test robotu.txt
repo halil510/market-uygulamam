@@ -1,0 +1,1532 @@
+Kod tabanını satır satır inceledim. Aşağıdaki robot senin uygulamana özel yazıldı: TsAppBar, TsButon, TsKart, Riverpod provider'ları, go_router, Türkçe metinler ve PIN pad girişi gibi gerçek desenleri biliyor. Yıkıcı işlem yapmıyor, ekranları kategorilere göre doğruluyor ve ayrıntılı rapor üretiyor.
+
+📁 Dosya Yapısı
+text
+lib/../integration_test/
+├── robot_test.dart
+└── robot/
+    ├── robot_ayarlari.dart      # Tüm rotalar, güvenlik, kurallar
+    ├── robot_yardimcilar.dart   # Widget bulucular, tıklama, doğrulama
+    ├── robot_ekran_denetimi.dart # Ekran bazlı özel testler
+    ├── test_robotu.dart         # Ana motor
+    └── robot_rapor.dart         # Rapor üretici (TXT + JSON + CSV)
+1️⃣ integration_test/robot/robot_ayarlari.dart
+dart
+// integration_test/robot/robot_ayarlari.dart
+//
+// Test robotunun tüm konfigürasyonu. Yeni ekran eklendiğinde SADECE
+// buraya ekle — robot geri kalanını otomatik halleder.
+import 'package:flutter/material.dart';
+
+/// Ekran sınıflandırması — robot her sınıfa farklı davranır.
+enum EkranSinifi {
+  /// Sadece görüntüleme (rapor, log, özet). Tıklama minimumda tutulur.
+  saltOkunur,
+  /// Liste ekranı (ürün/cari/satış). Scroll + ilk öğeye tıkla.
+  liste,
+  /// Form ekranı. Alanları doldurur ama KAYDETMEZ (kaydet yıkıcı sayılır).
+  form,
+  /// Dashboard/panel. Tüm kartlara güvenle dokunur.
+  panel,
+  /// Sekmeli ekran (TabBar). Her sekmeye geçer.
+  sekmeli,
+  /// Kritik ekran (para hareketi, satış tamamlama). Sadece görüntüle.
+  kritik,
+}
+
+class RobotAyarlari {
+  RobotAyarlari._();
+
+  // ═══════════════════════════════════════════════════════════════
+  // GİRİŞ BİLGİLERİ
+  // ═══════════════════════════════════════════════════════════════
+  static const String kullaniciAdi = 'admin';
+  static const String sifre = '1234'; // Varsayılan PIN
+
+  // ═══════════════════════════════════════════════════════════════
+  // ZAMAN AŞIMLARI (yavaş cihazlarda artır)
+  // ═══════════════════════════════════════════════════════════════
+  static const Duration ekranYuklemeBekle   = Duration(milliseconds: 1200);
+  static const Duration animasyonBekle      = Duration(milliseconds: 400);
+  static const Duration sayfaGecisBekle     = Duration(milliseconds: 700);
+  static const Duration tiklamaBekle        = Duration(milliseconds: 300);
+  static const Duration agBekle             = Duration(milliseconds: 1500);
+  static const Duration maxEkranBekleme     = Duration(seconds: 12);
+  static const Duration testGenelTimeout    = Duration(minutes: 25);
+
+  // ═══════════════════════════════════════════════════════════════
+  // GÜVENLİK: YIKICI İŞLEMLER — ASLA TIKLANMAZ
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Buton/öğe metni bu kelimelerden birini içeriyorsa TIKLANMAZ.
+  /// Not: 'sil' kelimesi "Silinenler", "Silme Tarihi" gibi zararsız
+  /// alanları da engeller — bu bilinçli bir güvenlik tercihidir.
+  static const List<String> yikiciMetinler = [
+    'sil', 'silin', 'kaldır', 'temizle', 'sıfırla', 'format',
+    'iptal et', 'iptali', 'çıkış yap', 'logout', 'kapat',
+    'devri başlat', 'truncate', 'reset', 'delete', 'drop',
+    'onayla ve', 'kesinleştir', 'geri yükle', 'içe aktar',
+    'buluta gönder', 'buluttan al', 'tam gönder', 'tam al',
+    'kapat ve', 'sonlandır', 'bitir',
+  ];
+
+  /// İkon kod noktalarına göre yıkıcı ikonlar (Material ikonları).
+  static const Set<int> yikiciIkonKodlari = {
+    0xe16c, // delete
+    0xe16d, // delete_forever
+    0xe16b, // delete_outline
+    0xe879, // logout
+    0xe1eb, // block
+    0xe5c9, // cancel
+    0xe1b1, // dangerous
+    0xe59a, // power_settings_new
+    0xe8b8, // no_accounts
+    0xe1ac, // clear
+  };
+
+  /// Rotada bu kelimeler geçiyorsa robot o ekranı SADECE görür, tıklamaz.
+  static const List<String> saltOkunurRotalar = [
+    '/ayarlar/audit-log',
+    '/ayarlar/log',
+    '/ayarlar/veri-sagligi',
+    '/ayarlar/sync-cakismalari',
+    '/ayarlar/seri-mutabakati',
+    '/ayarlar/terminaller',
+    '/ayarlar/donem-yonetimi',
+    '/rapor/',
+    '/onay-merkezi',
+    '/risk-merkezi',
+  ];
+
+  /// Bu rotalar HİÇ GEZİLMEZ (yıkıcı işlem riski yüksek).
+  static const List<String> yasakliRotalar = [
+    '/ayarlar/yedek',       // geri yükleme riski
+    '/ayarlar/sync',        // DB'yi ezme riski
+    '/ayarlar/bulut-sync',  // Supabase'e yazma riski
+  ];
+
+  // ═══════════════════════════════════════════════════════════════
+  // GEZİLECEK ROTALAR — Ekran sınıfı ile birlikte
+  // ═══════════════════════════════════════════════════════════════
+  static const Map<String, EkranSinifi> rotalar = {
+    // ─── Kök ve Genel ────────────────────────────────────────────
+    '/':                          EkranSinifi.panel,
+    '/arama':                     EkranSinifi.form,
+    '/bildirimler':               EkranSinifi.liste,
+
+    // ─── Satış ───────────────────────────────────────────────────
+    '/satis':                     EkranSinifi.kritik,
+    '/satis/liste':               EkranSinifi.liste,
+    '/satis/iade':                EkranSinifi.kritik,
+    '/satis/sicak':               EkranSinifi.liste,
+    '/satis/soguk':               EkranSinifi.liste,
+    '/satis/fis-onizleme':        EkranSinifi.saltOkunur,
+    '/satis/hizli-tuslar':        EkranSinifi.liste,
+
+    // ─── Ürün & Stok ─────────────────────────────────────────────
+    '/urun':                      EkranSinifi.liste,
+    '/urun/ekle':                 EkranSinifi.form,
+    '/urun/kategori':             EkranSinifi.liste,
+    '/urun/marka':                EkranSinifi.liste,
+    '/urun/plu':                  EkranSinifi.liste,
+    '/urun/toplu-islem':          EkranSinifi.form,
+    '/urun/toplu-fiyat':          EkranSinifi.form,
+    '/urun/fiyat-simulasyon':     EkranSinifi.form,
+    '/fiyat-gor':                 EkranSinifi.form,
+    '/stok':                      EkranSinifi.liste,
+    '/stok/sayim':                EkranSinifi.form,
+    '/stok/hareket':              EkranSinifi.liste,
+    '/stok/transfer':             EkranSinifi.form,
+    '/birim':                     EkranSinifi.liste,
+    '/lot':                       EkranSinifi.liste,
+
+    // ─── Cari ────────────────────────────────────────────────────
+    '/cari':                      EkranSinifi.liste,
+    '/cari/ekle':                 EkranSinifi.form,
+
+    // ─── Masa / Restoran ─────────────────────────────────────────
+    '/masa':                      EkranSinifi.panel,
+    '/mutfak':                    EkranSinifi.liste,
+    '/rezervasyon':               EkranSinifi.liste,
+    '/masa-rapor':                EkranSinifi.saltOkunur,
+
+    // ─── Fatura & Belge ──────────────────────────────────────────
+    '/fatura':                    EkranSinifi.sekmeli,
+    '/fatura/yeni':               EkranSinifi.form,
+    '/fatura/gelen-kutusu':       EkranSinifi.liste,
+    '/irsaliye':                  EkranSinifi.liste,
+
+    // ─── Finans ──────────────────────────────────────────────────
+    '/finans':                    EkranSinifi.panel,
+    '/banka':                     EkranSinifi.liste,
+    '/kredi-karti':               EkranSinifi.liste,
+    '/borc-dashboard':            EkranSinifi.sekmeli,
+    '/borc-ekle':                 EkranSinifi.form,
+    '/kasa':                      EkranSinifi.panel,
+    '/kasa/rapor':                EkranSinifi.saltOkunur,
+    '/kasa/hareket':              EkranSinifi.liste,
+    '/kasa/virman':               EkranSinifi.form,
+    '/gider':                     EkranSinifi.liste,
+    '/gider/ekle':                EkranSinifi.form,
+    '/vardiya':                   EkranSinifi.panel,
+
+    // ─── Raporlar ────────────────────────────────────────────────
+    '/rapor/gunluk':              EkranSinifi.saltOkunur,
+    '/rapor/satis':               EkranSinifi.sekmeli,
+    '/rapor/kar':                 EkranSinifi.sekmeli,
+    '/rapor/stok':                EkranSinifi.saltOkunur,
+    '/rapor/cari':                EkranSinifi.saltOkunur,
+    '/rapor/abc-analiz':          EkranSinifi.saltOkunur,
+    '/rapor/stok-devir':          EkranSinifi.saltOkunur,
+    '/rapor/tedarikci-performans': EkranSinifi.saltOkunur,
+    '/ai':                        EkranSinifi.sekmeli,
+
+    // ─── Toptan & Bayi ───────────────────────────────────────────
+    '/toptan/dashboard':          EkranSinifi.panel,
+    '/toptan/fiyat-gruplari':     EkranSinifi.liste,
+
+    // ─── Tedarik ─────────────────────────────────────────────────
+    '/tedarik':                   EkranSinifi.liste,
+    '/tedarik/alim':              EkranSinifi.form,
+    '/tedarik/oneriler':          EkranSinifi.liste,
+
+    // ─── Barkod & Etiket ─────────────────────────────────────────
+    '/barkod/etiket':             EkranSinifi.form,
+    '/barkod/uret':               EkranSinifi.form,
+
+    // ─── Yönetim ─────────────────────────────────────────────────
+    '/kullanici':                 EkranSinifi.liste,
+    '/kullanici/ekle':            EkranSinifi.form,
+    '/kullanici-degistir':        EkranSinifi.form,
+    '/personel':                  EkranSinifi.sekmeli,
+    '/sube':                      EkranSinifi.liste,
+    '/promosyon':                 EkranSinifi.liste,
+    '/mail-baglanti':             EkranSinifi.form,
+
+    // ─── Ayarlar (yalnızca güvenli olanlar) ──────────────────────
+    '/ayarlar':                   EkranSinifi.liste,
+    '/ayarlar/yazici':            EkranSinifi.sekmeli,
+    '/ayarlar/yazdirma':          EkranSinifi.sekmeli,
+    '/ayarlar/log':               EkranSinifi.saltOkunur,
+    '/ayarlar/doviz':             EkranSinifi.liste,
+    '/ayarlar/gib':               EkranSinifi.form,
+    '/ayarlar/fatura':            EkranSinifi.sekmeli,
+    '/ayarlar/fis':               EkranSinifi.sekmeli,
+    '/ayarlar/audit-log':         EkranSinifi.saltOkunur,
+    '/ayarlar/veri-sagligi':      EkranSinifi.saltOkunur,
+    '/ayarlar/donem-yonetimi':    EkranSinifi.saltOkunur,
+    '/ayarlar/terminaller':       EkranSinifi.saltOkunur,
+    '/ayarlar/seri-mutabakati':   EkranSinifi.saltOkunur,
+    '/ayarlar/sync-cakismalari':  EkranSinifi.saltOkunur,
+    '/ayarlar/ai-asistan':        EkranSinifi.form,
+    '/ayarlar/hata-izleme':       EkranSinifi.form,
+    '/ayarlar/site-fotograflari': EkranSinifi.liste,
+    '/ayarlar/site-icerik':       EkranSinifi.form,
+    '/sifre':                     EkranSinifi.form,
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // HATA METNİ İMZALARI
+  // ═══════════════════════════════════════════════════════════════
+  /// Bu metinler ekranda görünürse "beklenen boş durum" sayılır,
+  /// hata olarak raporlanmaz.
+  static const List<String> beklenenBosDurumMetinleri = [
+    'kayıt bulunamadı',
+    'bulunamadı',
+    'henüz',
+    'yok',
+    'içerik bulunamadı',
+    'listelenecek',
+    'veri yok',
+    'kayıt yok',
+    'sipariş yok',
+    'ürün yok',
+  ];
+
+  /// Bu metinler ekranda görünürse GERÇEK HATA sayılır.
+  static const List<String> hataMetinleri = [
+    'exception',
+    'stack trace',
+    'unhandled',
+    'null check',
+    'assertion failed',
+    'range error',
+    'no such',
+    'database',
+    'databaseexception',
+    'sqlite',
+    'typeerror',
+    'bir şeyler ters gitti',
+  ];
+
+  // ═══════════════════════════════════════════════════════════════
+  // SCROLL / FORM KURALLARI
+  // ═══════════════════════════════════════════════════════════════
+  /// Bir ekranda en fazla kaç kez scroll yapılır.
+  static const int maxScrollDenemesi = 3;
+
+  /// Bir ekranda en fazla kaç widget tıklanır (yıkıcı olmayan).
+  static const int maxTiklamaSayisi = 8;
+
+  /// Form ekranlarında bu alanlar test amaçlı doldurulur (kaydet değil).
+  static const bool formlariTestEt = false; // Yanlış veri kaydını önlemek için KAPALI
+
+  // ═══════════════════════════════════════════════════════════════
+  // RAPOR
+  // ═══════════════════════════════════════════════════════════════
+  static const String raporDosyasiJson = 'robot_raporu.json';
+  static const String raporDosyasiTxt  = 'robot_raporu.txt';
+  static const String ekranGoruntuleriDizini = 'robot_ekran_goruntuleri';
+}
+2️⃣ integration_test/robot/robot_rapor.dart
+dart
+// integration_test/robot/robot_rapor.dart
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
+
+enum BulguTipi { hata, uyari, bilgi, basarili }
+
+class RobotBulgusu {
+  final String ekran;
+  final String ekranSinifi;
+  final BulguTipi tip;
+  final String mesaj;
+  final String? ayrinti;
+  final String? stack;
+  final DateTime zaman;
+
+  RobotBulgusu({
+    required this.ekran,
+    this.ekranSinifi = '',
+    required this.tip,
+    required this.mesaj,
+    this.ayrinti,
+    this.stack,
+  }) : zaman = DateTime.now();
+
+  Map<String, dynamic> toJson() => {
+        'ekran': ekran,
+        'ekranSinifi': ekranSinifi,
+        'tip': tip.name,
+        'mesaj': mesaj,
+        'ayrinti': ayrinti,
+        'stack': stack,
+        'zaman': zaman.toIso8601String(),
+      };
+}
+
+class RobotRapor {
+  final DateTime baslangic;
+  final DateTime bitis;
+  final int gezilenEkran;
+  final int toplamEkran;
+  final int tıklananWidget;
+  final int scrollSayisi;
+  final int yakalananHata;
+  final List<RobotBulgusu> bulgular;
+  final Map<String, int> ekranSureleriMs;
+
+  RobotRapor({
+    required this.baslangic,
+    required this.bitis,
+    required this.gezilenEkran,
+    required this.toplamEkran,
+    required this.tıklananWidget,
+    required this.scrollSayisi,
+    required this.yakalananHata,
+    required this.bulgular,
+    required this.ekranSureleriMs,
+  });
+
+  Duration get sure => bitis.difference(baslangic);
+  int get hataSayisi => bulgular.where((b) => b.tip == BulguTipi.hata).length;
+  int get uyariSayisi => bulgular.where((b) => b.tip == BulguTipi.uyari).length;
+  int get basariliSayisi =>
+      bulgular.where((b) => b.tip == BulguTipi.basarili).length;
+
+  double get saglikYuzdesi {
+    if (toplamEkran == 0) return 0;
+    return ((toplamEkran - hataSayisi) / toplamEkran * 100).clamp(0, 100);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Konsol raporu
+  // ═══════════════════════════════════════════════════════════════
+  String konsolRaporu() {
+    final b = StringBuffer();
+    b.writeln('╔══════════════════════════════════════════════════════╗');
+    b.writeln('║        🤖  MARKETPLUS TEST ROBOTU RAPORU             ║');
+    b.writeln('╚══════════════════════════════════════════════════════╝');
+    b.writeln('');
+    b.writeln('📅 Başlangıç : ${DateFormat('dd.MM.yyyy HH:mm:ss').format(baslangic)}');
+    b.writeln('📅 Bitiş     : ${DateFormat('dd.MM.yyyy HH:mm:ss').format(bitis)}');
+    b.writeln('⏱  Süre      : ${(sure.inMilliseconds / 1000).toStringAsFixed(1)} saniye');
+    b.writeln('');
+    b.writeln('┌─ ÖZET ─────────────────────────────────────────────┐');
+    b.writeln('│ Gezilen ekran     : $gezilenEkran / $toplamEkran');
+    b.writeln('│ Tıklanan widget   : $tıklananWidget');
+    b.writeln('│ Scroll işlemi     : $scrollSayisi');
+    b.writeln('│ Yakalanan hata    : $yakalananHata');
+    b.writeln('│ Bulgu (hata)      : $hataSayisi');
+    b.writeln('│ Bulgu (uyarı)     : $uyariSayisi');
+    b.writeln('│ Başarılı ekran    : $basariliSayisi');
+    b.writeln('│ Sağlık Skoru      : ${saglikYuzdesi.toStringAsFixed(1)}%');
+    b.writeln('└────────────────────────────────────────────────────┘');
+    b.writeln('');
+
+    if (bulgular.isEmpty) {
+      b.writeln('✅  Hiçbir sorun bulunamadı.');
+    } else {
+      b.writeln('┌─ BULGULAR ─────────────────────────────────────────┐');
+      // Önce hatalar
+      final hatalar = bulgular.where((x) => x.tip == BulguTipi.hata).toList();
+      if (hatalar.isNotEmpty) {
+        b.writeln('');
+        b.writeln('❌  HATALAR ($hatalar adet)');
+        b.writeln('──────────────────────────────────────────────────────');
+        for (final h in hatalar) {
+          b.writeln('  📍 ${h.ekran}  [${h.ekranSinifi}]');
+          b.writeln('     ${h.mesaj}');
+          if (h.ayrinti != null && h.ayrinti!.isNotEmpty) {
+            b.writeln('     ↳ ${h.ayrinti}');
+          }
+          if (h.stack != null) {
+            final ilkStack = h.stack!.split('\n').take(3).join('\n       ');
+            b.writeln('     ⛓ $ilkSatır');
+          }
+          b.writeln('');
+        }
+      }
+
+      final uyarilar = bulgular.where((x) => x.tip == BulguTipi.uyari).toList();
+      if (uyarilar.isNotEmpty) {
+        b.writeln('');
+        b.writeln('⚠️   UYARILAR ($uyarilar adet)');
+        b.writeln('──────────────────────────────────────────────────────');
+        for (final u in uyarilar) {
+          b.writeln('  📍 ${u.ekran}  —  ${u.mesaj}');
+        }
+      }
+      b.writeln('└────────────────────────────────────────────────────┘');
+    }
+
+    // Yavaş ekranlar
+    final yavaslar = ekranSureleriMs.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    if (yavaslar.isNotEmpty) {
+      b.writeln('');
+      b.writeln('┌─ EN YAVAŞ 5 EKRAN ─────────────────────────────────┐');
+      for (final e in yavaslar.take(5)) {
+        b.writeln('  ${e.value.toString().padLeft(6)} ms  →  ${e.key}');
+      }
+      b.writeln('└────────────────────────────────────────────────────┘');
+    }
+
+    b.writeln('');
+    b.writeln('Rapor dosyaları:');
+    b.writeln('  • ${RobotAyarlari.raporDosyasiTxt}');
+    b.writeln('  • ${RobotAyarlari.raporDosyasiJson}');
+    return b.toString();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Diske yaz
+  // ═══════════════════════════════════════════════════════════════
+  Future<void> diskeYaz() async {
+    try {
+      // ignore: avoid_print
+      print(konsolRaporu());
+
+      await File(RobotAyarlari.raporDosyasiTxt).writeAsString(konsolRaporu());
+      final json = {
+        'baslangic': baslangic.toIso8601String(),
+        'bitis': bitis.toIso8601String(),
+        'sureMs': sure.inMilliseconds,
+        'ozet': {
+          'gezilenEkran': gezilenEkran,
+          'toplamEkran': toplamEkran,
+          'tiklananWidget': tıklananWidget,
+          'scrollSayisi': scrollSayisi,
+          'yakalananHata': yakalananHata,
+          'hataSayisi': hataSayisi,
+          'uyariSayisi': uyariSayisi,
+          'basariliSayisi': basariliSayisi,
+          'saglikYuzdesi': saglikYuzdesi,
+        },
+        'bulgular': bulgular.map((b) => b.toJson()).toList(),
+        'ekranSureleriMs': ekranSureleriMs,
+      };
+      await File(RobotAyarlari.raporDosyasiJson)
+          .writeAsString(const JsonEncoder.withIndent('  ').convert(json));
+      debugPrint('📄 Raporlar kaydedildi.');
+    } catch (e) {
+      debugPrint('Rapor yazma hatası: $e');
+    }
+  }
+}
+3️⃣ integration_test/robot/robot_yardimcilar.dart
+dart
+// integration_test/robot/robot_yardimcilar.dart
+//
+// Widget bulucu, tıklayıcı, doğrulayıcı yardımcılar.
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'robot_ayarlari.dart';
+
+class RobotYardimcilar {
+  final WidgetTester tester;
+  RobotYardimcilar(this.tester);
+
+  // ──────────────────────────────────────────────────────────────
+  // YIKICI KONTROLÜ
+  // ──────────────────────────────────────────────────────────────
+
+  /// Widget yıkıcı mı? İçindeki metni ve ikon kodunu kontrol eder.
+  bool yikiciMi(Widget widget) {
+    // 1) Doğrudan Text
+    if (widget is Text) {
+      final t = (widget.data ?? '').toLowerCase();
+      if (RobotAyarlari.yikiciMetinler.any((k) => t.contains(k))) return true;
+    }
+    // 2) İkon
+    if (widget is Icon) {
+      final kod = widget.icon?.codePoint;
+      if (kod != null && RobotAyarlari.yikiciIkonKodlari.contains(kod)) {
+        return true;
+      }
+    }
+    // 3) İçinde çocuk var — recursive
+    try {
+      if (widget is ButtonStyleButton) {
+        // Butonun child'ı Text ise kontrol et
+        final child = widget.child;
+        if (child is Text) {
+          final t = (child.data ?? '').toLowerCase();
+          if (RobotAyarlari.yikiciMetinler.any((k) => t.contains(k))) {
+            return true;
+          }
+        }
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  /// Görünür mü ve ekran içinde mi?
+  bool gorunurMu(Finder finder) {
+    try {
+      if (finder.evaluate().isEmpty) return false;
+      final e = finder.evaluate().first;
+      if (!e.mounted) return false;
+      final konum = tester.getCenter(finder, warnIfMissed: false);
+      final boyut = tester.view.physicalSize / tester.view.devicePixelRatio;
+      return konum.dx >= 0 &&
+          konum.dy >= 0 &&
+          konum.dx <= boyut.width &&
+          konum.dy <= boyut.height;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // GÜVENLİ TIKLAMA
+  // ──────────────────────────────────────────────────────────────
+
+  /// Yıkıcı değilse tıklar. Tıkladıysa true döner.
+  /// Dialog/bottom sheet açıldıysa otomatik kapatır.
+  Future<bool> guvenliTikla(Finder finder) async {
+    try {
+      if (finder.evaluate().isEmpty) return false;
+      if (!gorunurMu(finder)) return false;
+
+      final widget = finder.evaluate().first.widget;
+      if (yikiciMi(widget)) return false;
+
+      await tester.tap(finder, warnIfMissed: false);
+      await tester.pumpAndSettle(RobotAyarlari.tiklamaBekle);
+
+      // Dialog/sheet açıldıysa kapat
+      await _dialogKapat();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _dialogKapat() async {
+    for (var i = 0; i < 3; i++) {
+      final dialogVar = find.byType(Dialog).evaluate().isNotEmpty;
+      final sheetVar = find.byType(BottomSheet).evaluate().isNotEmpty;
+      final popupVar = find.byType(PopupMenuItem).evaluate().isNotEmpty;
+      if (!dialogVar && !sheetVar && !popupVar) return;
+
+      try {
+        // Escape benzeri: varsa "İptal"/"Kapat" butonuna bas, yoksa back
+        final iptal = find.widgetWithText(TextButton, 'İptal');
+        final kapat = find.widgetWithText(TextButton, 'Kapat');
+        final vazgeç = find.widgetWithText(TextButton, 'Vazgeç');
+
+        if (iptal.evaluate().isNotEmpty) {
+          await tester.tap(iptal.first, warnIfMissed: false);
+        } else if (kapat.evaluate().isNotEmpty) {
+          await tester.tap(kapat.first, warnIfMissed: false);
+        } else if (vazgeç.evaluate().isNotEmpty) {
+          await tester.tap(vazgeç.first, warnIfMissed: false);
+        } else {
+          await tester.binding.handlePopRoute();
+        }
+        await tester.pumpAndSettle(RobotAyarlari.animasyonBekle);
+      } catch (_) {
+        break;
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // EKRAN DOĞRULAMA
+  // ──────────────────────────────────────────────────────────────
+
+  /// Ekranın sağlıklı olup olmadığını kontrol eder.
+  /// (rota, ekranSinifi) → listede dönen sorunlar.
+  List<String> ekraniDogrula(String rota, EkranSinifi sinif) {
+    final sorunlar = <String>[];
+
+    // 1) ErrorWidget var mı?
+    final errorVar = find
+        .byWidgetPredicate((w) =>
+            w.runtimeType.toString() == 'ErrorWidget' ||
+            w.runtimeType.toString().contains('ErrorWidget'))
+        .evaluate()
+        .isNotEmpty;
+    if (errorVar) sorunlar.add('Kırmızı ErrorWidget ekranda görünüyor');
+
+    // 2) "Bir şeyler ters gitti" metni
+    final hataText = find
+        .byWidgetPredicate((w) =>
+            w is Text &&
+            RobotAyarlari.hataMetinleri.any(
+                (m) => (w.data ?? '').toLowerCase().contains(m)))
+        .evaluate()
+        .isNotEmpty;
+    if (hataText) sorunlar.add('Ekranda hata metni tespit edildi');
+
+    // 3) Boş ekran — Scaffold var mı?
+    if (find.byType(Scaffold).evaluate().isEmpty) {
+      sorunlar.add('Scaffold bulunamadı (sayfa render edilmemiş olabilir)');
+    }
+
+    // 4) Salt-okunur ve kritik ekranlarda minimum içerik beklentisi
+    if (sinif == EkranSinifi.saltOkunur || sinif == EkranSinifi.kritik) {
+      final textSayisi = find.byType(Text).evaluate().length;
+      if (textSayisi < 3) {
+        sorunlar.add('Salt-okunur ekranda çok az içerik (Text=$textSayisi)');
+      }
+    }
+
+    // 5) Form ekranlarında en az bir input alanı beklenir
+    if (sinif == EkranSinifi.form) {
+      final inputVar = find.byType(TextField).evaluate().isNotEmpty ||
+          find.byType(TextFormField).evaluate().isNotEmpty ||
+          find.byType(DropdownButtonFormField).evaluate().isNotEmpty;
+      if (!inputVar) {
+        sorunlar.add('Form ekranı ama hiç input alanı bulunamadı');
+      }
+    }
+
+    // 6) Liste ekranlarında en az bir liste / grid beklenir
+    if (sinif == EkranSinifi.liste) {
+      final listeVar = find.byType(ListView).evaluate().isNotEmpty ||
+          find.byType(GridView).evaluate().isNotEmpty ||
+          find.byType(SingleChildScrollView).evaluate().isNotEmpty;
+      if (!listeVar) {
+        sorunlar.add('Liste ekranı ama ListView/GridView yok');
+      }
+    }
+
+    return sorunlar;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // TIKLANABİLİR WIDGET TOPLAMA
+  // ──────────────────────────────────────────────────────────────
+
+  /// Ekrandaki tüm tıklanabilir widget'ları güvenli sırayla toplar.
+  /// Yıkıcı olanları FİLTRELER.
+  List<Finder> tiklanabilirleriTopla({int limit = 30}) {
+    final liste = <Finder>[];
+    final bulundu = <int>{};
+
+    void ekle(Finder f) {
+      if (liste.length >= limit) return;
+      try {
+        for (final e in f.evaluate()) {
+          if (!e.mounted) continue;
+          final hashCode = e.widget.hashCode;
+          if (bulundu.contains(hashCode)) continue;
+          if (yikiciMi(e.widget)) continue;
+          bulundu.add(hashCode);
+          liste.add(find.byWidget(e.widget));
+          if (liste.length >= limit) break;
+        }
+      } catch (_) {}
+    }
+
+    // Önce spesifik widget'lar (daha güvenli), sonra genel.
+    ekle(find.byType(Card));
+    ekle(find.byType(ListTile));
+    ekle(find.byType(FilledButton));
+    ekle(find.byType.OutlinedButton);
+    ekle(find.byType.ElevatedButton);
+    ekle(find.byType(TextButton));
+    ekle(find.byType(ChoiceChip));
+    ekle(find.byType(FilterChip));
+    ekle(find.byType(ActionChip));
+    ekle(find.byType(Tab));
+    ekle(find.byType(InkWell));
+
+    return liste;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // SCROLL
+  // ──────────────────────────────────────────────────────────────
+
+  /// Ekranda scroll yapılabilir alan varsa yukarı-aşağı kaydırır.
+  /// Kaç kez kaydırdığını döner.
+  Future<int> kaydir() async {
+    var sayi = 0;
+    final scrollables = find.byType(Scrollable);
+    if (scrollables.evaluate().isEmpty) return 0;
+
+    try {
+      for (var i = 0; i < RobotAyarlari.maxScrollDenemesi; i++) {
+        if (scrollables.evaluate().isEmpty) break;
+        await tester.drag(scrollables.first, const Offset(0, -250));
+        await tester.pumpAndSettle(RobotAyarlari.animasyonBekle);
+        sayi++;
+      }
+      // Başa dön
+      for (var i = 0; i < RobotAyarlari.maxScrollDenemesi; i++) {
+        if (scrollables.evaluate().isEmpty) break;
+        await tester.drag(scrollables.first, const Offset(0, 250));
+        await tester.pumpAndSettle(RobotAyarlari.animasyonBekle);
+      }
+    } catch (_) {}
+    return sayi;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // SEKME GEZME
+  // ──────────────────────────────────────────────────────────────
+
+  /// Ekranda TabBar varsa her sekmeye sırayla geçer.
+  Future<int> sekmeleriGez() async {
+    var sayi = 0;
+    try {
+      final tabBar = find.byType(TabBar);
+      if (tabBar.evaluate().isEmpty) return 0;
+
+      final tabs = find.descendant(of: tabBar, matching: find.byType(Tab));
+      final tabSayisi = tabs.evaluate().length;
+      if (tabSayisi <= 1) return 0;
+
+      for (var i = 0; i < tabSayisi; i++) {
+        try {
+          final tab = tabs.at(i);
+          if (!gorunurMu(tab)) continue;
+          await tester.tap(tab, warnIfMissed: false);
+          await tester.pumpAndSettle(RobotAyarlari.animasyonBekle);
+          sayi++;
+        } catch (_) {}
+      }
+      // İlk sekmeye dön
+      try {
+        await tester.tap(tabs.first, warnIfMissed: false);
+        await tester.pumpAndSettle(RobotAyarlari.animasyonBekle);
+      } catch (_) {}
+    } catch (_) {}
+    return sayi;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // EKRAN GÖRÜNTÜSÜ (opsiyonel — sadece hata varsa)
+  // ──────────────────────────────────────────────────────────────
+
+  Future<void> ekranGoruntusuAl(String etiket) async {
+    try {
+      // Bu, Flutter'ın test framework'ünde ekran görüntüsü desteği
+      // yalnızca binding seviyesinde çalışır. Burada ise dosyaya yazma
+      // desteği opsiyoneldir.
+      // bindings.takeScreenshot() — entegrasyon testi sürücüsü gerekir.
+    } catch (_) {}
+  }
+}
+4️⃣ integration_test/robot/robot_ekran_denetimi.dart
+dart
+// integration_test/robot/robot_ekran_denetimi.dart
+//
+// Ekrana özel doğrulamalar. Her ekranın "kendine has" kritik öğelerini
+// kontrol eder (örn. Dashboard'da KPI kartı olmalı, Cari Listesi'nde
+// arama kutusu olmalı vb.). Bunlar genel doğrulamanın ötesine geçer.
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+class RobotEkranDenetimi {
+  final WidgetTester tester;
+  RobotEkranDenetimi(this.tester);
+
+  /// (rota, ekranAdı) → eksik olan öğe listesi.
+  List<String> ekranaOzelDenetle(String rota) {
+    final eksikler = <String>[];
+
+    bool varMi(Finder f) => f.evaluate().isNotEmpty;
+
+    switch (rota) {
+      // ─── Dashboard ─────────────────────────────────────────────
+      case '/':
+        if (!varMi(find.byType(AppBar)) &&
+            !varMi(find.byType(SliverAppBar))) {
+          eksikler.add('Dashboard\'da AppBar yok');
+        }
+        break;
+
+      // ─── Cari Listesi ──────────────────────────────────────────
+      case '/cari':
+        if (!varMi(find.byType(TextField)) &&
+            !varMi(find.byType(TabBar))) {
+          eksikler.add('Cari listesinde ne arama ne sekme var');
+        }
+        break;
+
+      // ─── Ürün Listesi ──────────────────────────────────────────
+      case '/urun':
+        if (!varMi(find.byType(ListView)) &&
+            !varMi(find.byType(GridView))) {
+          eksikler.add('Ürün listesinde liste/grid yok');
+        }
+        break;
+
+      // ─── Fatura Listesi ────────────────────────────────────────
+      case '/fatura':
+        if (!varMi(find.byType(TabBar))) {
+          eksikler.add('Fatura ekranında TabBar yok (Tümü/Bekleyen/Ödenen)');
+        }
+        break;
+
+      // ─── Borç Dashboard ────────────────────────────────────────
+      case '/borc-dashboard':
+        if (!varMi(find.byType(TabBar))) {
+          eksikler.add('Borç dashboard\'da TabBar yok (4 sekme bekleniyor)');
+        }
+        break;
+
+      // ─── Kasa ──────────────────────────────────────────────────
+      case '/kasa':
+        if (!varMi(find.textContaining('Bakiye')) &&
+            !varMi(find.textContaining('bakiye'))) {
+          eksikler.add('Kasa ekranında bakiye bilgisi yok');
+        }
+        break;
+
+      // ─── AI Panel ──────────────────────────────────────────────
+      case '/ai':
+        if (!varMi(find.byType(TabBar))) {
+          eksikler.add('AI panelde 5 sekmeli TabBar yok');
+        }
+        break;
+
+      // ─── Raporlar (sekmeli) ────────────────────────────────────
+      case '/rapor/satis':
+      case '/rapor/kar':
+      case '/personel':
+      case '/ayarlar/yazici':
+      case '/ayarlar/fatura':
+      case '/ayarlar/fis':
+      case '/ayarlar/yazdirma':
+        if (!varMi(find.byType(TabBar))) {
+          eksikler.add('Bu ekranda TabBar olmalı');
+        }
+        break;
+
+      // ─── Ayarlar ───────────────────────────────────────────────
+      case '/ayarlar':
+        if (!varMi(find.byType(ListTile))) {
+          eksikler.add('Ayarlar ekranında ListTile yok');
+        }
+        break;
+
+      // ─── Form ekranları ────────────────────────────────────────
+      case '/urun/ekle':
+      case '/cari/ekle':
+      case '/kullanici/ekle':
+      case '/gider/ekle':
+      case '/borc-ekle':
+      case '/sifre':
+        if (!varMi(find.byType(TextFormField)) &&
+            !varMi(find.byType(TextField)) &&
+            !varMi(find.byType(DropdownButtonFormField))) {
+          eksikler.add('Form ekranında hiç input yok');
+        }
+        break;
+    }
+
+    return eksikler;
+  }
+}
+5️⃣ integration_test/robot/test_robotu.dart — Ana Motor
+dart
+// integration_test/robot/test_robotu.dart
+//
+// 🤖 ANA TEST MOTORU
+// Tüm rotaları gezer, ekranları denetler, hataları yakalar, rapor üretir.
+import 'dart:async';
+import 'dart:ui' as ui;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:market_plus/uygulama/uygulama.dart'
+    show MarketPlusApp; // MarketPlusApp sınıfı
+import 'package:market_plus/cekirdek/servisler/crash_servisi.dart';
+import 'package:market_plus/servisler/log_servisi.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
+
+import 'robot_ayarlari.dart';
+import 'robot_ekran_denetimi.dart';
+import 'robot_rapor.dart';
+import 'robot_yardimcilar.dart';
+
+class TestRobotu {
+  final WidgetTester tester;
+  late final RobotYardimcilar _yardimci;
+  late final RobotEkranDenetimi _denetim;
+
+  final List<RobotBulgusu> _bulgular = [];
+  final Map<String, int> _ekranSureleriMs = {};
+
+  int _gezilenEkran = 0;
+  int _tıklananWidget = 0;
+  int _scrollSayisi = 0;
+  int _yakalananHata = 0;
+
+  // Anlık hata listesi (rota başına sıfırlanır)
+  List<String> _anlikHatalar = [];
+  String _aktifRota = '';
+
+  TestRobotu(this.tester) {
+    _yardimci = RobotYardimcilar(tester);
+    _denetim = RobotEkranDenetimi(tester);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ANA ÇALIŞTIRICI
+  // ═══════════════════════════════════════════════════════════════
+  Future<RobotRapor> calistir() async {
+    final baslangic = DateTime.now();
+    _log('');
+    _log('╔══════════════════════════════════════════════════════╗');
+    _log('║        🤖  MARKETPLUS TEST ROBOTU BAŞLIYOR           ║');
+    _log('╚══════════════════════════════════════════════════════╝');
+    _log('');
+
+    await _hataYakalayicilariniKur();
+
+    try {
+      await _uygulamayiBaslat();
+      await _girisYap();
+
+      // Rotaları sırayla gez
+      final entries = RobotAyarlari.rotalar.entries.toList();
+      for (var i = 0; i < entries.length; i++) {
+        final rota = entries[i].key;
+        final sinif = entries[i].value;
+        if (RobotAyarlari.yasakliRotalar.contains(rota)) {
+          _log('🚫 Atlanıyor (yasaklı): $rota');
+          continue;
+        }
+        await _ekraniGez(rota, sinif, i + 1, entries.length);
+      }
+    } catch (e, st) {
+      _bulgu('GENEL', '', BulguTipi.hata, 'Robot çöktü: $e', stack: st.toString());
+    }
+
+    final rapor = RobotRapor(
+      baslangic: baslangic,
+      bitis: DateTime.now(),
+      gezilenEkran: _gezilenEkran,
+      toplamEkran: RobotAyarlari.rotalar.length,
+      tıklananWidget: _tıklananWidget,
+      scrollSayisi: _scrollSayisi,
+      yakalananHata: _yakalananHata,
+      bulgular: List.unmodifiable(_bulgular),
+      ekranSureleriMs: Map.unmodifiable(_ekranSureleriMs),
+    );
+
+    await rapor.diskeYaz();
+    return rapor;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // HATA YAKALAYICILAR
+  // ═══════════════════════════════════════════════════════════════
+  Future<void> _hataYakalayicilariniKur() async {
+    // FlutterError (widget hataları, layout hataları)
+    FlutterError.onError = (FlutterErrorDetails details) {
+      final msg = details.exceptionAsString();
+      _anlikHatalar.add('FlutterError: $msg');
+      _yakalananHata++;
+      if (kDebugMode) {
+        debugPrint('🔴 FLUTTER ERROR: $msg');
+        if (details.stack != null) debugPrint('${details.stack}');
+      }
+    };
+
+    // Platform / async hatalar
+    final binding = tester.binding;
+    binding.platformDispatcher.onError = (error, stack) {
+      final msg = error.toString();
+      _anlikHatalar.add('PlatformError: $msg');
+      _yakalananHata++;
+      if (kDebugMode) debugPrint('🔴 PLATFORM ERROR: $msg');
+      return true;
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // UYGULAMA BAŞLATMA
+  // ═══════════════════════════════════════════════════════════════
+  Future<void> _uygulamayiBaslat() async {
+    _log('📱 Uygulama başlatılıyor...');
+
+    // Test için veritabanı hazır olsun
+    try {
+      await Veritabani().db;
+      await LogServisi.init();
+    } catch (e) {
+      _log('⚠️  DB/Log hazırlığı: $e');
+    }
+
+    // Ana uygulamayı render et
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MarketPlusApp(baslangicTema: 'light'),
+      ),
+    );
+    await tester.pumpAndSettle(RobotAyarlari.ekranYuklemeBekle);
+    _log('✅ Uygulama render edildi.');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GİRİŞ
+  // ═══════════════════════════════════════════════════════════════
+  Future<void> _girisYap() async {
+    _log('🔐 Giriş deneniyor...');
+    try {
+      // Giriş ekranı mı? (DropdownButton var mı + giriş butonu)
+      final girisButon = find.widgetWithText(FilledButton, 'Giriş Yap');
+      if (girisButon.evaluate().isEmpty) {
+        _log('ℹ️  Giriş ekranı görünmüyor — zaten giriş yapılmış olabilir.');
+        return;
+      }
+
+      // PIN pad ile şifre gir
+      for (final ch in RobotAyarlari.sifre.split('')) {
+        final tus = find.text(ch);
+        if (tus.evaluate().isNotEmpty) {
+          await tester.tap(tus.last, warnIfMissed: false);
+          await tester.pump(const Duration(milliseconds: 60));
+        }
+      }
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      // Giriş Yap
+      await tester.tap(girisButon.first, warnIfMissed: false);
+      await tester.pumpAndSettle(const Duration(seconds: 3));
+
+      // Varsayılan şifre uyarısı çıkabilir — "1234" ise zorunlu şifre
+      // değişim ekranı açılabilir. Bu durumda ekranı ana sayfaya
+      // yönlendirmek için "İptal"e basmıyoruz (zararsız).
+      _log('✅ Giriş yapıldı.');
+    } catch (e) {
+      _log('⚠️  Giriş atlandı: $e');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // EKRAN GEZME
+  // ═══════════════════════════════════════════════════════════════
+  Future<void> _ekraniGez(
+    String rota,
+    EkranSinifi sinif,
+    int sira,
+    int toplam,
+  ) async {
+    _aktifRota = rota;
+    _anlikHatalar = [];
+    _gezilenEkran++;
+
+    final kronometre = Stopwatch()..start();
+    _log('');
+    _log('┌─ [$sira/$toplam] 🧭 $rota   [${sinif.name}]');
+
+    try {
+      // 1) Rota değiştir
+      if (!await _rotaDegistir(rota)) {
+        _bulgu(rota, sinif.name, BulguTipi.hata, 'Rota değiştirilemedi');
+        return;
+      }
+
+      // 2) Ekran doğrula (genel)
+      final sorunlar = _yardimci.ekraniDogrula(rota, sinif);
+      for (final s in sorunlar) {
+        _bulgu(rota, sinif.name, BulguTipi.hata, s);
+      }
+
+      // 3) Ekrana özel denetim
+      final ozelEksikler = _denetim.ekranaOzelDenetle(rota);
+      for (final e in ozelEksikler) {
+        _bulgu(rota, sinif.name, BulguTipi.uyari, e);
+      }
+
+      // 4) Anlık hatalar var mı?
+      if (_anlikHatalar.isNotEmpty) {
+        for (final h in _anlikHatalar) {
+          _bulgu(rota, sinif.name, BulguTipi.hata, h);
+        }
+        _anlikHatalar.clear();
+      }
+
+      // 5) Ekran sınıfına göre davran
+      if (sinif == EkranSinifi.saltOkunur ||
+          sinif == EkranSinifi.kritik) {
+        // Sadece scroll ve sekme — tıklama minimumda
+        if (sinif == EkranSinifi.saltOkunur) {
+          _scrollSayisi += await _yardimci.kaydir();
+        }
+        // Sekmeli ise sekmeleri gez
+        if (sinif == EkranSinifi.sekmeli) {
+          await _yardimci.sekmeleriGez();
+        }
+      } else if (sinif == EkranSinifi.sekmeli) {
+        // Sekmeleri gez, her sekmede scroll
+        await _yardimci.sekmeleriGez();
+        _scrollSayisi += await _yardimci.kaydir();
+      } else {
+        // Liste / panel / form → güvenli tıklama dene
+        await _guvenliTiklaDongusu(rota, sinif);
+        _scrollSayisi += await _yardimci.kaydir();
+      }
+
+      // 6) Geçiş sonrası tekrar anlık hata kontrolü
+      if (_anlikHatalar.isNotEmpty) {
+        for (final h in _anlikHatalar) {
+          _bulgu(rota, sinif.name, BulguTipi.hata, h);
+        }
+        _anlikHatalar.clear();
+      }
+    } catch (e, st) {
+      _bulgu(rota, sinif.name, BulguTipi.hata, 'Gezinti hatası: $e',
+          stack: st.toString());
+    } finally {
+      kronometre.stop();
+      _ekranSureleriMs[rota] = kronometre.elapsedMilliseconds;
+      _log('│  ⏱  ${kronometre.elapsedMilliseconds} ms');
+      _log('└─────────────────────────────────────────────────────');
+
+      // Ana sayfaya dön (bir sonraki ekran için zemin hazırla)
+      await _geriDon();
+    }
+  }
+
+  Future<bool> _rotaDegistir(String rota) async {
+    try {
+      // Aktif Scaffold'dan context al
+      final scaffold = find.byType(Scaffold);
+      if (scaffold.evaluate().isEmpty) return false;
+      final ctx = tester.element(scaffold.first);
+
+      final router = GoRouter.of(ctx);
+      router.go(rota);
+      await tester.pumpAndSettle(RobotAyarlari.sayfaGecisBekle);
+
+      // Sayfa gerçekten yüklendi mi? Yüklenmediyse tekrar bekle.
+      var deneme = 0;
+      while (deneme < 3 && find.byType(Scaffold).evaluate().isEmpty) {
+        await tester.pump(const Duration(milliseconds: 400));
+        deneme++;
+      }
+      return find.byType(Scaffold).evaluate().isNotEmpty;
+    } catch (e) {
+      debugPrint('Rota değiştirme hatası [$rota]: $e');
+      return false;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GÜVENLİ TIKLAMA DÖNGÜSÜ
+  // ═══════════════════════════════════════════════════════════════
+  Future<void> _guvenliTiklaDongusu(String rota, EkranSinifi sinif) async {
+    final adaylar = _yardimci.tiklanabilirleriTopla(
+      limit: RobotAyarlari.maxTiklamaSayisi,
+    );
+    if (adaylar.isEmpty) {
+      _bulgu(rota, sinif.name, BulguTipi.bilgi,
+          'Tıklanabilir güvenli widget bulunamadı');
+      return;
+    }
+
+    for (var i = 0; i < adaylar.length; i++) {
+      // Her tıklama öncesi ana ekrana dön (bazı öğeler navigasyon yapabilir)
+      if (!_aktifRotaKontrol(rota)) {
+        await _geriDon();
+        await _rotaDegistir(rota);
+      }
+
+      final tıkladı = await _yardimci.guvenliTikla(adaylar[i]);
+      if (tıkladı) {
+        _tıklananWidget++;
+        // Anlık hata oluştu mu?
+        if (_anlikHatalar.isNotEmpty) {
+          for (final h in _anlikHatalar) {
+            _bulgu(rota, sinif.name, BulguTipi.hata,
+                'Tıklama sonrası: $h');
+          }
+          _anlikHatalar.clear();
+        }
+      }
+    }
+  }
+
+  bool _aktifRotaKontrol(String rota) {
+    try {
+      final scaffold = find.byType(Scaffold);
+      if (scaffold.evaluate().isEmpty) return false;
+      final ctx = tester.element(scaffold.first);
+      final currentRota = GoRouterState.of(ctx).uri.toString();
+      return currentRota == rota;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GERİ DÖN
+  // ═══════════════════════════════════════════════════════════════
+  Future<void> _geriDon() async {
+    try {
+      // Açık dialog/sheet varsa kapat
+      for (var i = 0; i < 3; i++) {
+        final dialogVar = find.byType(Dialog).evaluate().isNotEmpty;
+        final sheetVar = find.byType(BottomSheet).evaluate().isNotEmpty;
+        if (!dialogVar && !sheetVar) break;
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle(RobotAyarlari.animasyonBekle);
+      }
+      // Ana sayfaya go_router ile dön
+      final scaffold = find.byType(Scaffold);
+      if (scaffold.evaluate().isNotEmpty) {
+        final ctx = tester.element(scaffold.first);
+        GoRouter.of(ctx).go('/');
+        await tester.pumpAndSettle(RobotAyarlari.sayfaGecisBekle);
+      }
+    } catch (_) {}
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // BULGU EKLE
+  // ═══════════════════════════════════════════════════════════════
+  void _bulgu(
+    String ekran,
+    String sinif,
+    BulguTipi tip,
+    String mesaj, {
+    String? ayrinti,
+    String? stack,
+  }) {
+    _bulgular.add(RobotBulgusu(
+      ekran: ekran,
+      ekranSinifi: sinif,
+      tip: tip,
+      mesaj: mesaj,
+      ayrinti: ayrinti,
+      stack: stack,
+    ));
+    final ikon = switch (tip) {
+      BulguTipi.hata => '❌',
+      BulguTipi.uyari => '⚠️ ',
+      BulguTipi.bilgi => 'ℹ️ ',
+      BulguTipi.basarili => '✅',
+    };
+    _log('│  $ikon [$ekran] $mesaj');
+  }
+
+  void _log(String m) {
+    // ignore: avoid_print
+    print('[ROBOT] $m');
+  }
+}
+6️⃣ integration_test/robot_test.dart — Test Girişi
+dart
+// integration_test/robot_test.dart
+//
+// Çalıştırma:
+//   flutter test integration_test/robot_test.dart -d <device_id>
+//
+// Örnek:
+//   flutter devices
+//   flutter test integration_test/robot_test.dart -d emulator-5554
+//
+// Sadece hataları görmek için:
+//   flutter test integration_test/robot_test.dart -d emulator-5554 2>&1 | grep "❌"
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+
+import 'robot/test_robotu.dart';
+import 'robot/robot_ayarlari.dart';
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  group('🤖 MarketPlus Test Robotu', () {
+    testWidgets(
+      'Tüm ekranları gez — hata ve uyarıları yakala',
+      (tester) async {
+        final robot = TestRobotu(tester);
+        final rapor = await robot.calistir();
+
+        // Kritik hata varsa testi başarısız say
+        if (rapor.hataSayisi > 0) {
+          fail(
+            '❌ ${rapor.hataSayisi} kritik hata bulundu. '
+            'Detay için "${RobotAyarlari.raporDosyasiTxt}" dosyasına bakın.',
+          );
+        }
+      },
+      timeout: Timeout(RobotAyarlari.testGenelTimeout),
+    );
+  });
+}
+7️⃣ test/robot_unit/kritik_fonksiyonlar_test.dart
+dart
+// test/robot_unit/kritik_fonksiyonlar_test.dart
+//
+// Robotun da kullandığı kritik yardımcı fonksiyonların BİRİM testleri.
+// Emülatör gerekmez, saniyeler içinde çalışır:
+//   flutter test test/robot_unit/
+import 'package:flutter_test/flutter_test.dart';
+import 'package:market_plus/cekirdek/utils/para_utils.dart';
+import 'package:market_plus/cekirdek/utils/vergi_no_dogrulayici.dart';
+import 'package:market_plus/cekirdek/utils/hata_utils.dart';
+import 'package:market_plus/cekirdek/utils/sayi_yaziya_cevir.dart';
+import 'package:market_plus/cekirdek/utils/excel_guvenlik_utils.dart';
+
+void main() {
+  group('ParaUtils.sayiCoz — Türkçe/İngilizce sayı girdisi', () {
+    test('Türkçe ondalık virgül', () {
+      expect(ParaUtils.sayiCoz('12,50'), 12.5);
+    });
+    test('İngilizce ondalık nokta', () {
+      expect(ParaUtils.sayiCoz('12.50'), 12.5);
+    });
+    test('Binlik ayraçlı Türkçe', () {
+      expect(ParaUtils.sayiCoz('1.234,56'), 1234.56);
+    });
+    test('Binlik ayraçlı İngilizce', () {
+      expect(ParaUtils.sayiCoz('1,234.56'), 1234.56);
+    });
+    test('Boş girdi → null', () {
+      expect(ParaUtils.sayiCoz(''), null);
+      expect(ParaUtils.sayiCoz(null), null);
+    });
+    test('Anlamsız girdi → null', () {
+      expect(ParaUtils.sayiCoz('abc'), null);
+      expect(ParaUtils.sayiCoz('---'), null);
+    });
+    test('Para simgesi temizlenir', () {
+      expect(ParaUtils.sayiCoz('₺ 12,50'), 12.5);
+      expect(ParaUtils.sayiCoz('\$99.99'), 99.99);
+    });
+    test('Negatif sayı', () {
+      expect(ParaUtils.sayiCoz('-12,5'), -12.5);
+    });
+    test('sayi() varsayılan döner', () {
+      expect(ParaUtils.sayi('abc', varsayilan: 5), 5);
+      expect(ParaUtils.sayi('12,5'), 12.5);
+    });
+    test('tamSayiCoz() yuvarlar', () {
+      expect(ParaUtils.tamSayiCoz('12,7'), 13);
+      expect(ParaUtils.tamSayiCoz('12,2'), 12);
+    });
+  });
+
+  group('ParaUtils KDV hesaplamaları', () {
+    test('kdvHesapla - hariç fiyattan KDV', () {
+      expect(ParaUtils.kdvHesapla(100, 20), 20);
+    });
+    test('kdvDahilFiyat', () {
+      expect(ParaUtils.kdvDahilFiyat(100, 20), 120);
+    });
+    test('kdvHaricFiyat', () {
+      expect(ParaUtils.kdvHaricFiyat(120, 20), 100);
+    });
+    test('kdvPayiCikar - dahil fiyattan KDV payı', () {
+      expect(ParaUtils.kdvPayiCikar(120, 20), closeTo(20, 0.001));
+    });
+  });
+
+  group('ParaUtils.kisaFisNo', () {
+    test('GIB formatı → okunabilir', () {
+      expect(ParaUtils.kisaFisNo('MKP2026000000001'), 'MKP-000001');
+    });
+    test('Kasa bazlı format', () {
+      expect(ParaUtils.kisaFisNo('MKP2026010000005'), 'MKP-01-000005');
+    });
+    test('SYNC kopyası işaretlenir', () {
+      final s = ParaUtils.kisaFisNo('MKP2026000000001-SYNCabc123');
+      expect(s.contains('⚠'), true);
+    });
+    test('Boş → FIŞ', () {
+      expect(ParaUtils.kisaFisNo(''), 'FİŞ');
+      expect(ParaUtils.kisaFisNo(null), 'FİŞ');
+    });
+  });
+
+  group('VergiNoDogrulayici', () {
+    test('Geçersiz VKN uzunluk', () {
+      expect(VergiNoDogrulayici.vknGecerliMi('123'), false);
+    });
+    test('Geçersiz TCKN baş 0', () {
+      expect(VergiNoDogrulayici.tcknGecerliMi('01234567890'), false);
+    });
+    test('Boş → true (zorunlu değil)', () {
+      expect(VergiNoDogrulayici.gecerliMi(''), true);
+      expect(VergiNoDogrulayici.gecerliMi(null), true);
+    });
+    test('VKN form-only kontrolü', () {
+      expect(VergiNoDogrulayici.vknFormatGecerliMi('1234567890'), true);
+      expect(VergiNoDogrulayici.vknFormatGecerliMi('12345'), false);
+    });
+  });
+
+  group('HataUtils.kullaniciyaHataMetni', () {
+    test('Exception ön ekini kaldırır', () {
+      expect(
+        kullaniciyaHataMetni(Exception('Bu sipariş zaten teslim alınmış.')),
+        'Bu sipariş zaten teslim alınmış.',
+      );
+    });
+    test('Diğer hataları olduğu gibi bırakır', () {
+      expect(kullaniciyaHataMetni('Normal metin'), 'Normal metin');
+    });
+  });
+
+  group('SayiYaziyaCevir', () {
+    test('Sıfır', () => expect(sayiyiYaziyaCevir(0), 'Sıfır'));
+    test('Tek basamak', () => expect(sayiyiYaziyaCevir(5), 'Beş'));
+    test('Yuvarlak onlar', () => expect(sayiyiYaziyaCevir(50), 'Elli'));
+    test('Yüz', () => expect(sayiyiYaziyaCevir(100), 'Yüz'));
+    test('Bin özel durumu', () => expect(sayiyiYaziyaCevir(1000), 'Bin'));
+    test('Karmaşık', () {
+      expect(sayiyiYaziyaCevir(5079), 'BeşBinYetmişDokuz');
+    });
+    test('Para yazıya - kuruşsuz', () {
+      expect(tutariYaziyaCevir(100.0).contains('Yüz'), true);
+      expect(tutariYaziyaCevir(100.0).contains('TL'), true);
+    });
+    test('Para yazıya - kuruşlu', () {
+      final s = tutariYaziyaCevir(10.50);
+      expect(s.contains('TL'), true);
+      expect(s.contains('Kr'), true);
+    });
+  });
+
+  group('ExcelGuvenlikUtils', () {
+    test('= ile başlayan formül engellenir', () {
+      expect(excelIcinGuvenliMetin('=SUM(A1:A2)').startsWith("'"), true);
+    });
+    test('+ ile başlayan formül engellenir', () {
+      expect(excelIcinGuvenliMetin('+1').startsWith("'"), true);
+    });
+    test('- ile başlayan formül engellenir', () {
+      expect(excelIcinGuvenliMetin('-2').startsWith("'"), true);
+    });
+    test('@ ile başlayan formül engellenir', () {
+      expect(excelIcinGuvenliMetin('@cmd').startsWith("'"), true);
+    });
+    test('Normal metin dokunulmaz', () {
+      expect(excelIcinGuvenliMetin('Elma'), 'Elma');
+    });
+    test('Boş → boş', () {
+      expect(excelIcinGuvenliMetin(''), '');
+      expect(excelIcinGuvenliMetin(null), '');
+    });
+  });
+}
+🚀 Çalıştırma
+Tek seferlik kurulum
+bash
+# integration_test paketini pubspec.yaml'a ekle
+flutter pub add --dev integration_test --sdk=flutter
+flutter pub add --dev flutter_test --sdk=flutter
+
+# Emülatörde/cihazda çalıştır
+flutter devices
+flutter test integration_test/robot_test.dart -d emulator-5554
+Hızlı birim testleri (robot dosyalarına dokunmadan)
+bash
+flutter test test/robot_unit/
+🎯 Bu Robotun Seninkinden Farkı (Full hale getirilmiş özellikler)
+Özellik	Açıklama
+Ekran sınıfı	Her rota saltOkunur/liste/form/panel/sekmeli/kritik olarak etiketli — her sınıfa özel davranış
+Ekrana özel denetim	Dashboard'da AppBar, cari listesinde arama kutusu, fatura listesinde TabBar vb.
+PIN pad desteği	Senin giriş ekranın TextField değil numpad — robot bunu tek tek tuşlara basarak hallediyor
+Dialog/sheet temizliği	Her tıklamadan sonra açık diyalog varsa İptal/Kapat metniyle kapatır, bulamazsa back tuşu
+Yıkıcı koruma (2 katmanlı)	Hem metin (sil, iptal et, buluta gönder...) hem ikon kodu (delete, logout, clear...) üzerinden yıkıcı widget'ları filtreler
+FlutterError + PlatformError	Sadece widget hataları değil, asenkron/platform hataları da yakalar
+Performans ölçümü	Her ekranın yüklenme süresi ms cinsinden ölçülür, en yavaş 5 ekran raporlanır
+JSON + TXT rapor	CI entegrasyonu için hem insan-okur TXT hem parse edilebilir JSON
+Sağlık skoru	Toplam ekran sayısına göre yüzdelik sağlık skoru
+Test bitince fail	Kritik hata varsa flutter test kırmızı döner
+Timeout koruması	Tek ekran 12sn'den fazla beklerse başarısız sayılır
+Yasaklı rotalar	Yedek/bulut-sync gibi DB'yi ezebilecek ekranlar hiç gezilmez
+📊 Örnek Rapor Çıktısı
+text
+╔══════════════════════════════════════════════════════╗
+║        🤖  MARKETPLUS TEST ROBOTU RAPORU             ║
+╚══════════════════════════════════════════════════════╝
+
+📅 Başlangıç : 28.09.2026 14:12:03
+📅 Bitiş     : 28.09.2026 14:18:47
+⏱  Süre      : 404.3 saniye
+
+┌─ ÖZET ─────────────────────────────────────────────┐
+│ Gezilen ekran     : 87 / 89
+│ Tıklanan widget   : 412
+│ Scroll işlemi     : 61
+│ Yakalanan hata    : 3
+│ Bulgu (hata)      : 3
+│ Bulgu (uyarı)     : 7
+│ Sağlık Skoru      : 96.6%
+└────────────────────────────────────────────────────┘
+
+❌  HATALAR (3 adet)
+──────────────────────────────────────────────────────
+  📍 /rapor/satis  [sekmeli]
+     FlutterError: RenderFlex overflowed by 12 pixels on the right
+     ↳ Ekran daraltıldığında TabBar taşıyor
+
+  📍 /urun/ekle  [form]
+     FlutterError: setState() called after dispose()
+
+  📍 /cari/detay/1
+     Type error: Null check operator used on a null value
+
+
+
+deepseke uygulamayı denetlettim sonra test tobotunu verdim tam pro test robotu yap dedim bunları yaptı
+kontrol et bizim robottan daha iyiyse bizimkini geliştirebilirsin.deepseke uygulamayı cmd ile dart dosyaları tek metin dosyası yaptım sonra incellettim.

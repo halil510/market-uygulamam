@@ -71,6 +71,7 @@ class VeriSagligiServisi {
       _yetimKayitlar(),
       _baslikKalemTutarlilik(),
       _mukerrerGlobalId(),
+      _mukerrerCariUnvan(),
       _negatifStok(),
       _syncKuyrugu(),
       _syncCakismalari(),
@@ -471,6 +472,37 @@ class VeriSagligiServisi {
       }
     });
     return duzeltilen;
+  }
+
+  // ── Aynı unvanlı cari kopyaları ─────────────────────────────────────
+  // Senkron/içe aktarma hatasıyla tüm cari listesi ikinci kez oluşabiliyor
+  // (yeni global_id + yeni kod). Bakiye toplamları iki katına çıkar.
+  // Salt okunur uyarı (sarı).
+  Future<SaglikKontrolSonucu> _mukerrerCariUnvan() async {
+    const id = 'mukerrer_cari';
+    const baslik = 'Aynı Unvanlı Cari';
+    const kategori = 'Veritabanı';
+    try {
+      final db = await _db;
+      final r = await db.rawQuery('''
+        SELECT COUNT(*) AS n FROM (
+          SELECT UPPER(TRIM(unvan)) AS u FROM cari
+          WHERE is_deleted = 0 AND unvan IS NOT NULL AND TRIM(unvan) != ''
+          GROUP BY u HAVING COUNT(*) > 1
+        )
+      ''');
+      final sayi = (r.first['n'] as int?) ?? 0;
+      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
+          durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.sari,
+          mesaj: sayi == 0
+              ? 'Aynı unvanı taşıyan birden fazla cari yok.'
+              : '$sayi unvan birden fazla cari kartında var — mükerrer '
+                  'aktarım olabilir (bakiye toplamları şişer).',
+          sayi: sayi);
+    } catch (e) {
+      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
+          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
+    }
   }
 
   // ── Mükerrer global_id ──────────────────────────────────────────────

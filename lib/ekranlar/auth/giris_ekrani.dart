@@ -392,7 +392,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                       Expanded(
                         child: SingleChildScrollView(
                           physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
+                          padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
                           child: Center(
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(maxWidth: 420),
@@ -400,7 +400,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   _buildLogo(),
-                                  const SizedBox(height: 20),
+                                  const SizedBox(height: 12),
                                   const Text(
                                     'Hoş Geldiniz',
                                     style: TextStyle(
@@ -419,7 +419,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                                       fontWeight: FontWeight.w400,
                                     ),
                                   ),
-                                  const SizedBox(height: 28),
+                                  const SizedBox(height: 16),
                                   _buildKullaniciSecici(),
                                 ],
                               ),
@@ -474,7 +474,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
               top: BorderSide(color: Colors.white12, width: 1),
             ),
           ),
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 10),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
@@ -803,7 +803,9 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                 else _rakamEkle(t);
               },
         child: Container(
-          height: 58,
+          // 58 → 50: PIN göstergesi panele taşınınca panel yükselip üstteki
+          // kullanıcı seçiciyi örtüyordu (914 dp telefon).
+          height: 50,
           alignment: Alignment.center,
           child: isSil
               ? const Icon(Icons.backspace_outlined,

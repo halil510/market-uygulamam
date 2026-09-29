@@ -64,7 +64,7 @@ extension _DashboardAppBarExt on _DashboardEkraniState {
                     // çakışıyordu).
                     Flexible(
                       child: Padding(
-                      padding: const EdgeInsets.only(right: 176),
+                      padding: const EdgeInsets.only(right: 150),
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -133,7 +133,7 @@ extension _DashboardAppBarExt on _DashboardEkraniState {
                                       const SizedBox(width: 4),
                                       ConstrainedBox(
                                         constraints:
-                                            const BoxConstraints(maxWidth: 90),
+                                            const BoxConstraints(maxWidth: 72),
                                         child: Text(AktifSubeServisi().subeAdi,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,

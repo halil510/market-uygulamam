@@ -68,6 +68,8 @@ class VeriSagligiServisi {
       _satisStokTutarliligi(),
       _duplicateBarkod(),
       _yetimKayitlar(),
+      _baslikKalemTutarlilik(),
+      _mukerrerGlobalId(),
       _negatifStok(),
       _syncKuyrugu(),
       _syncCakismalari(),
@@ -347,6 +349,11 @@ class VeriSagligiServisi {
         db.rawQuery("SELECT COUNT(*) as n FROM satis_kalem sk WHERE NOT EXISTS (SELECT 1 FROM satislar s WHERE s.id = sk.satis_id)"),
         db.rawQuery("SELECT COUNT(*) as n FROM cari_hareket ch WHERE NOT EXISTS (SELECT 1 FROM cari c WHERE c.id = ch.cari_id)"),
         db.rawQuery("SELECT COUNT(*) as n FROM stok_hareket sh WHERE NOT EXISTS (SELECT 1 FROM urunler u WHERE u.id = sh.urun_id)"),
+        db.rawQuery("SELECT COUNT(*) as n FROM iade_kalem ik WHERE NOT EXISTS (SELECT 1 FROM iade i WHERE i.id = ik.iade_id)"),
+        db.rawQuery("SELECT COUNT(*) as n FROM fatura_detaylari fd WHERE NOT EXISTS (SELECT 1 FROM faturalar f WHERE f.id = fd.fatura_id)"),
+        db.rawQuery("SELECT COUNT(*) as n FROM tedarikci_siparis_kalem k WHERE NOT EXISTS (SELECT 1 FROM tedarikci_siparisler t WHERE t.id = k.siparis_id)"),
+        db.rawQuery("SELECT COUNT(*) as n FROM satis_kalem sk WHERE NOT EXISTS (SELECT 1 FROM urunler u WHERE u.id = sk.urun_id)"),
+        db.rawQuery("SELECT COUNT(*) as n FROM sube_urun su WHERE NOT EXISTS (SELECT 1 FROM urunler u WHERE u.id = su.urun_id)"),
       ]);
       final sayi = sonuclar.fold<int>(0, (t, r) => t + ((r.first['n'] as int?) ?? 0));
       return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
@@ -354,6 +361,84 @@ class VeriSagligiServisi {
           mesaj: sayi == 0 ? 'Sahipsiz (referansı silinmiş) kayıt yok.'
               : '$sayi kayıt, artık var olmayan bir ana kayda bağlı (satış/cari/ürün silinmiş olabilir).',
           sayi: sayi);
+    } catch (e) {
+      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
+          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
+    }
+  }
+
+  // ── Satış başlık toplamı ↔ kalem toplamı ────────────────────────────
+  // İki cihazda aynı satışın başlığı/kalemleri ayrı ayrı senkronlanınca
+  // (fiş güncelleme + çakışma) başlıkla kalemler ayrışabilir. Salt okunur
+  // uyarı (sarı — devri engellemez); düzeltme kararı kullanıcıda.
+  Future<SaglikKontrolSonucu> _baslikKalemTutarlilik() async {
+    const id = 'baslik_kalem';
+    const baslik = 'Satış Başlık/Kalem Toplamı';
+    const kategori = 'Finans';
+    try {
+      final db = await _db;
+      final rows = await db.rawQuery('''
+        SELECT COUNT(*) AS n FROM (
+          SELECT s.id
+          FROM satislar s
+          JOIN satis_kalem k ON k.satis_id = s.id
+          WHERE s.is_deleted = 0 AND s.iptal = 0 AND s.sync_cakisma_kopyasi = 0
+          GROUP BY s.id
+          HAVING ABS(MAX(s.genel_toplam)
+                     - COALESCE(MAX(s.kargo_ucreti), 0)
+                     - COALESCE(MAX(s.servis_ucreti), 0)
+                     - SUM(k.toplam_tutar)) > 0.10
+        )
+      ''');
+      final sayi = (rows.first['n'] as int?) ?? 0;
+      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
+          durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.sari,
+          mesaj: sayi == 0
+              ? 'Satış toplamları kalemlerle uyumlu.'
+              : '$sayi satışın genel toplamı kalem toplamından farklı '
+                  '(fiş güncelleme / senkron çakışması olabilir).',
+          sayi: sayi);
+    } catch (e) {
+      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
+          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
+    }
+  }
+
+  // ── Mükerrer global_id ──────────────────────────────────────────────
+  // Sync kimliği tekil olmalı: yükseltilmiş cihazlarda UNIQUE indeks yoksa
+  // aynı kayıt iki satır olarak toplamlara girebilir.
+  Future<SaglikKontrolSonucu> _mukerrerGlobalId() async {
+    const id = 'mukerrer_gid';
+    const baslik = 'Mükerrer Sync Kimliği';
+    const kategori = 'Senkronizasyon';
+    const tablolar = [
+      'satislar', 'satis_kalem', 'cari', 'cari_hareket', 'stok_hareket',
+      'kasa_hareketleri', 'urunler', 'iade', 'iade_kalem', 'faturalar',
+      'fatura_detaylari', 'giderler',
+    ];
+    try {
+      final db = await _db;
+      var toplam = 0;
+      final ayrinti = <String>[];
+      for (final t in tablolar) {
+        try {
+          final r = await db.rawQuery(
+              'SELECT COUNT(*) AS n FROM (SELECT global_id FROM $t '
+              "WHERE global_id IS NOT NULL AND global_id != '' "
+              'GROUP BY global_id HAVING COUNT(*) > 1)');
+          final n = (r.first['n'] as int?) ?? 0;
+          if (n > 0) {
+            toplam += n;
+            ayrinti.add('$t: $n');
+          }
+        } catch (_) {/* tablo/sütun yok — atla */}
+      }
+      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
+          durum: toplam == 0 ? SaglikDurum.yesil : SaglikDurum.sari,
+          mesaj: toplam == 0
+              ? 'Mükerrer sync kimliği yok.'
+              : '$toplam mükerrer kimlik (${ayrinti.join(', ')}).',
+          sayi: toplam);
     } catch (e) {
       return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
           durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);

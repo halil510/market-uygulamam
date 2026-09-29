@@ -8,8 +8,10 @@ import 'package:market_plus/servisler/bulut/bulut_saglayici.dart';
 
 void main() {
   group('bulutHataTuruBelirle', () {
-    test('401 (kimlik doğrulama) KALICI sayılır', () {
-      expect(bulutHataTuruBelirle(401), BulutHataTuru.kalici);
+    test('401/408/425/429 (oturum süresi, zaman aşımı, hız sınırı) GEÇİCİ sayılır', () {
+      for (final kod in [401, 408, 425, 429]) {
+        expect(bulutHataTuruBelirle(kod), BulutHataTuru.gecici, reason: '$kod');
+      }
     });
 
     test('403 (yetki) KALICI sayılır', () {
@@ -43,7 +45,7 @@ void main() {
 
   group('BulutIstekHatasi', () {
     test('.tur, statusKodu\'ndan doğru hesaplanır', () {
-      const kalici = BulutIstekHatasi(401, 'yetkisiz');
+      const kalici = BulutIstekHatasi(422, 'geçersiz');
       expect(kalici.tur, BulutHataTuru.kalici);
 
       const gecici = BulutIstekHatasi(503, 'sunucu meşgul');
@@ -62,7 +64,7 @@ void main() {
 
   group('BulutSonuc.tur', () {
     test('sonStatusKodu 4xx ise kalıcı', () {
-      const sonuc = BulutSonuc(basarili: 0, hata: 5, sonStatusKodu: 401);
+      const sonuc = BulutSonuc(basarili: 0, hata: 5, sonStatusKodu: 422);
       expect(sonuc.tur, BulutHataTuru.kalici);
     });
 

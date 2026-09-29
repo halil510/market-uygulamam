@@ -184,6 +184,10 @@ class SyncServisi {
       // ── DB dosyası indir ──
       else if (metod == 'GET' && yol == '/api/db') {
         final db = await Veritabani().db;
+        // Son işlemler WAL'da kalmasın: dosya kopyası eksik/yırtık olmasın.
+        try {
+          await db.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
+        } catch (_) {}
         final dbDosya = File(db.path);
         if (await dbDosya.exists()) {
           req.response.headers.contentType =

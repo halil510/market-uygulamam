@@ -1,4 +1,5 @@
 // lib/ekranlar/ayarlar/sync_ekrani.dart
+import '../../servisler/veritabani_dosya_servisi.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -499,9 +500,10 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
         return;
       }
       setState(() { _progress = 90; _durum = 'Uygulanıyor...'; });
-      final db = await _sync.dbYoluAl();
       await _sync.sunucuKapat();
-      await File(tempYol).copy(db);
+      // Güvenli yol: imza + bütünlük kontrolü, güvenlik kopyası, -wal/-shm
+      // temizliği (açık DB'nin üstüne düz kopyalama WAL'ı bozabiliyordu).
+      await VeritabaniDosyaServisi().iceAktar(tempYol);
       await File(tempYol).delete();
       if (!mounted) return;
       setState(() { _progress = 100; _durum = '✅ Tamamlandı! Uygulamayı yeniden başlatın.'; _islemde = false; });

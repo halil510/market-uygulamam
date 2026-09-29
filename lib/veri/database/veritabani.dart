@@ -1,3 +1,4 @@
+import '../../servisler/kolon_haritalama.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
@@ -1005,8 +1006,14 @@ class Veritabani {
             final yerelSatir = mevcut.first;
             final yerelStr = yerelSatir['last_updated']?.toString();
             final gelenStr = temiz['last_updated']?.toString();
-            final yerelZaman = yerelStr != null ? DateTime.tryParse(yerelStr) : null;
-            final gelenZaman = gelenStr != null ? DateTime.tryParse(gelenStr) : null;
+            // Saat dilimi karışımı (SQLite CURRENT_TIMESTAMP = dilimsiz UTC,
+            // Dart = yerel) yanlış tarafı kazandırmasın: ikisi de UTC'ye çevrilir.
+            final yerelZaman = yerelStr != null
+                ? DateTime.tryParse(KolonHaritalama.utcDamga(yerelStr) ?? yerelStr)
+                : null;
+            final gelenZaman = gelenStr != null
+                ? DateTime.tryParse(KolonHaritalama.utcDamga(gelenStr) ?? gelenStr)
+                : null;
             if (yerelZaman != null && gelenZaman != null &&
                 yerelZaman.isAfter(gelenZaman)) {
               atlanan++;

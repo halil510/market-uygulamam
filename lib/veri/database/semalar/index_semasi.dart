@@ -89,6 +89,7 @@ class IndexSemasi {
 
     // ── SİSTEM / SYNC ──────────────────────────────────────────────────
     "CREATE INDEX IF NOT EXISTS idx_sync_durum ON sync_queue(durum)",
+    "CREATE INDEX IF NOT EXISTS idx_sync_tablo_gid ON sync_queue(tablo_adi, kayit_global_id, durum)",
     "CREATE INDEX IF NOT EXISTS idx_app_log_zaman ON app_log(zaman)",
 
     // ── HIZLI TUŞ / FAVORİ ÜRÜN (yeni ekran için) ──────────────────────

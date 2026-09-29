@@ -71,6 +71,15 @@ class BaglantiSonuc {
 enum BulutHataTuru { gecici, kalici }
 
 BulutHataTuru bulutHataTuruBelirle(int? statusKodu) {
+  // 401 (süresi dolmuş oturum — bir sonraki turda yenilenir), 408 (zaman
+  // aşımı), 425, 429 (hız sınırı) veri hatası DEĞİL, geçicidir: bunlar
+  // yüzlerce sağlam satırı kalici_hata yapmasın.
+  if (statusKodu == 401 ||
+      statusKodu == 408 ||
+      statusKodu == 425 ||
+      statusKodu == 429) {
+    return BulutHataTuru.gecici;
+  }
   if (statusKodu != null && statusKodu >= 400 && statusKodu < 500) {
     return BulutHataTuru.kalici;
   }

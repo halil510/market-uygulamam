@@ -110,6 +110,11 @@ class SyncCakismaTespit {
     'garson_cagri_log',
     'masa_hareket_log',
     'vardiyalar',
+    // Finansal belge başlık/kalemleri: iki cihazda bağımsız düzenlenen tutar
+    // (toplam/kalem) sessizce LWW ile ezilmesin, Sync Çakışmaları'na düşsün.
+    'faturalar', 'fatura_detaylari', 'giderler',
+    'irsaliyeler', 'irsaliye_kalem',
+    'tedarikci_siparisler', 'tedarikci_siparis_kalem',
   };
 
   static bool islemVerisiMi(String tablo) => islemTablolari.contains(tablo);

@@ -181,6 +181,9 @@ class SupabaseSyncServisi {
   // FK haritası: tek doğruluk kaynağı KolonHaritalama (satır bazlı —
   // KolonHaritalama.satirFkHaritasi, polimorfik referanslar dahil).
 
+  /// Bu uygulama oturumunda geniş (48 sa) pencereyle çekilmiş tablolar.
+  static final Set<String> _genisPencereYapilanlar = <String>{};
+
   static const _lastUpdatedVar = {
     'birimler','cari','cari_adres','cari_hareket','fatura_detaylari',
     'faturalar','gider_kategoriler','giderler','iade','iade_kalem',
@@ -1556,6 +1559,14 @@ class SupabaseSyncServisi {
         DateTime? sonSenkron;
         if (sadeceDegisenler && _lastUpdatedVar.contains(tablo)) {
           sonSenkron = await _sonSenkron(tablo, 'al');
+          // Çevrimdışı kalıp geç senkronlanan kayıtlar, kendi (eski)
+          // last_updated damgalarıyla buluta düşer ve imleçten önce kaldığı
+          // için "gt" filtresinde hiç inmezdi. Uygulama oturumundaki İLK
+          // çekimde her tablo için pencere 48 saat geri açılır (LWW
+          // korumalı upsert tekrar inen satırlar için zararsızdır).
+          if (sonSenkron != null && _genisPencereYapilanlar.add(tablo)) {
+            sonSenkron = sonSenkron.subtract(const Duration(hours: 48));
+          }
         }
 
         final tumKayitlar = <Map<String, dynamic>>[];
@@ -1570,7 +1581,11 @@ class SupabaseSyncServisi {
           if (sonSenkron != null) {
             endpoint += '&last_updated=gt.'
                 '${Uri.encodeComponent(sonSenkron.toUtc().toIso8601String())}';
-            endpoint += '&order=last_updated.asc';
+            // id tie-breaker: eşit last_updated'lı (toplu now) satırlar
+            // offset sayfa sınırında atlanmasın/tekrarlanmasın.
+            endpoint += '&order=last_updated.asc,id.asc';
+          } else {
+            endpoint += '&order=id.asc';
           }
 
           final res = await http
@@ -1620,6 +1635,7 @@ class SupabaseSyncServisi {
         // biliniyor.
         final zorunluKolonSeti = await _yerelZorunluKolonlar(localDb, tablo);
 
+        var atlananFk = 0;
         for (final r in tumKayitlar) {
           final m = Map<String, dynamic>.from(r);
           m.remove('id');
@@ -1653,6 +1669,7 @@ class SupabaseSyncServisi {
                 // satışın kalemi: o kalem atlanır, sipariş/satışın
                 // geri kalanı ve tablonun diğer kayıtları kaybolmaz.)
                 atlaSatir = true;
+                atlananFk++;
                 break;
               } else {
                 m.remove(kolon);
@@ -1729,7 +1746,29 @@ class SupabaseSyncServisi {
         log?.call('✅ $tablo: +${yeni.length} ~${guncel.length} -${sonuc.silinen[tablo] ?? 0}');
         // Filigran CİHAZ SAATİNDEN değil, çekilen verideki en büyük
         // last_updated'ten ilerletilir (saat kayması veri kaybı koruması)
-        await _senkronKaydet(tablo, 'al', _enSonZaman(tumKayitlar));
+        // Ebeveyni yerelde bulunamayan (atlanan) çocuk satır varsa filigran
+        // ilerletilmez: ebeveyn sonraki turda gelirse bu satırlar yeniden
+        // çekilip yazılır (önceden kalıcı kalem kaybıydı). Ebeveyn hiç
+        // gelmeyecekse (bulutta silinmiş) sonsuz döngüyü önlemek için 5
+        // ardışık denemeden sonra filigran yine ilerler.
+        final fkSayacAnahtar = 'mp_sync_fk_atla_$tablo';
+        final prefs = await SharedPreferences.getInstance();
+        if (atlananFk > 0) {
+          final deneme = (prefs.getInt(fkSayacAnahtar) ?? 0) + 1;
+          if (deneme < 5) {
+            await prefs.setInt(fkSayacAnahtar, deneme);
+            sonuc.hatalar.add(
+                '⚠️ $tablo: $atlananFk satırın ebeveyni henüz yok — sonraki turda yeniden denenecek ($deneme/5)');
+          } else {
+            await prefs.remove(fkSayacAnahtar);
+            sonuc.hatalar.add(
+                '❌ $tablo: $atlananFk satır ebeveyn kaydı olmadığı için ATLANDI (5 deneme)');
+            await _senkronKaydet(tablo, 'al', _enSonZaman(tumKayitlar));
+          }
+        } else {
+          await prefs.remove(fkSayacAnahtar);
+          await _senkronKaydet(tablo, 'al', _enSonZaman(tumKayitlar));
+        }
       } catch (e) {
         final hata = '❌ $tablo: $e';
         sonuc.hatalar.add(hata);
@@ -1751,7 +1790,15 @@ class SupabaseSyncServisi {
 
     // Türetilmiş değerler (cari bakiye, stok, puan …) hareketlerden yeniden
     // hesaplanır — yalnızca bir şey indiyse (masa ekranı 15 sn'de bir çeker).
-    if (sonuc.toplamEklenen + sonuc.toplamGuncellenen + sonuc.toplamSilinen > 0) {
+    // Çekim eksik/hatalıysa (ör. stok_hareket yarım indi) bu turda türetilmiş
+    // değerler yeniden hesaplanıp buluta itilmez: eksik veriden hesaplanan
+    // yanlış stok/bakiye doğru bulut değerini ezerdi.
+    if (sonuc.hatalar.isNotEmpty) {
+      log?.call('⚠️ çekimde hata var — türetilmiş değer mutabakatı atlandı');
+    } else if (sonuc.toplamEklenen +
+            sonuc.toplamGuncellenen +
+            sonuc.toplamSilinen >
+        0) {
       await SenkronSonrasiMutabakat.calistir(log: log);
     }
 

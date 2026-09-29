@@ -451,12 +451,111 @@ class BulutManager {
     }
   }
 
+  /// Bir tablo grubunu buluta gönderir. Tamamen başarılıysa kuyruktan siler
+  /// (ebeveyni bekleyenler kuyrukta kalır). Kalıcı (4xx) hatada ve grup
+  /// birden fazla satırsa İKİYE BÖLÜNEREK yeniden denenir: tek bozuk satır
+  /// 200-500 satırlık grubun tamamını kalici_hata yapmasın.
+  Future<({int basarili, int hata, List<String> mesajlar})> _upsertGrubuGonder(
+    Database db,
+    String tablo,
+    String uniqueAlan,
+    List<Map<String, dynamic>> satirlar,
+    String now,
+    DateTime turBasi,
+  ) async {
+    final veriler = satirlar.map((s) => _veriCoz(tablo, s)).toList();
+
+    Future<({int basarili, int hata, List<String> mesajlar})> bol() async {
+      final orta = satirlar.length ~/ 2;
+      final a = await _upsertGrubuGonder(
+          db, tablo, uniqueAlan, satirlar.sublist(0, orta), now, turBasi);
+      final b = await _upsertGrubuGonder(
+          db, tablo, uniqueAlan, satirlar.sublist(orta), now, turBasi);
+      return (
+        basarili: a.basarili + b.basarili,
+        hata: a.hata + b.hata,
+        mesajlar: [...a.mesajlar, ...b.mesajlar],
+      );
+    }
+
+    try {
+      final sonuc = await _saglayici!.topluUpsert(
+        tablo: tablo,
+        veriler: veriler,
+        uniqueAlan: uniqueAlan,
+      );
+      if (sonuc.tamam) {
+        // Ebeveyni henüz bulutta olmadığı için gönderilmeyen (bekletilen)
+        // satırlar kuyrukta kalır; gerisi gitti. Upsert idempotenttir.
+        final idler = <int>[];
+        for (var j = 0; j < satirlar.length; j++) {
+          final kuyrukId = satirlar[j]['id'] as int;
+          if (sonuc.bekletilenler.contains(j)) {
+            await _kuyrukSatiriBasarisizIsaretle(db, kuyrukId,
+                'ebeveyn kayıt henüz bulutta yok — bekletildi', now,
+                tablo: tablo);
+          } else {
+            idler.add(kuyrukId);
+          }
+        }
+        if (idler.isNotEmpty) {
+          final ph = idler.map((_) => '?').join(',');
+          await db.delete(DbSabitler.syncQueue,
+              where: 'id IN ($ph)', whereArgs: idler);
+        }
+        await _otoGonderZamaniYaz(tablo, turBasi);
+        return (
+          basarili: sonuc.basarili,
+          hata: 0,
+          mesajlar: sonuc.hataMesajlari,
+        );
+      }
+      if (sonuc.tur == BulutHataTuru.kalici && satirlar.length > 1) {
+        return bol();
+      }
+      for (final s in satirlar) {
+        await _kuyrukSatiriBasarisizIsaretle(db, s['id'] as int,
+            'toplu upsert hata (HTTP ${sonuc.sonStatusKodu ?? "-"})', now,
+            tur: sonuc.tur, tablo: tablo);
+      }
+      return (
+        basarili: sonuc.basarili,
+        hata: sonuc.hata,
+        mesajlar: sonuc.hataMesajlari,
+      );
+    } catch (e) {
+      final tur = e is BulutIstekHatasi ? e.tur : BulutHataTuru.gecici;
+      if (tur == BulutHataTuru.kalici && satirlar.length > 1) {
+        return bol();
+      }
+      for (final s in satirlar) {
+        await _kuyrukSatiriBasarisizIsaretle(db, s['id'] as int, e, now,
+            tur: tur, tablo: tablo);
+      }
+      return (
+        basarili: 0,
+        hata: satirlar.length,
+        mesajlar: ['❌ $tablo toplu upsert: $e'],
+      );
+    }
+  }
+
   Future<void> _isle() async {
     if (_gonderiliyor || _saglayici == null) return;
+    // DB önce açılır (bayrak henüz kapalıyken): açılış hatası bayrağı
+    // true'da bırakıp otomatik senkronu kalıcı durduramasın. Await sonrası
+    // yeniden kontrol edilir (eşzamanlı iki çağrı).
+    final db = await Veritabani().db;
+    if (_gonderiliyor) return;
     _gonderiliyor = true;
     // İşletme hesabı oturumu: erişim anahtarı süresi dolmadan yenilensin
     // (sağlayıcının başlıkları SupabaseOturum.bearer ile bunu okur).
-    await SupabaseOturum().tazele();
+    try {
+      await SupabaseOturum().tazele();
+    } catch (_) {
+      _gonderiliyor = false;
+      return;
+    }
     // Gizli anahtar yok ve geçerli oturum da yoksa (henüz giriş yapılmamış
     // ya da oturum düşmüş) bu tur GÖNDERME — kayıtlar kuyrukta bekler.
     // Herkese açık anahtarla gönderim 401 alıp satırları kalıcı hataya
@@ -470,7 +569,6 @@ class BulutManager {
     int toplamBasarili = 0, toplamHata = 0;
     var isYapildiMi = false;
     final tumHatalar = <String>[];
-    final db = await Veritabani().db;
 
     try {
       // 🔴 KENDİ KENDİNİ ONARAN DÜZELTME (2026-09-22): satislar.
@@ -572,71 +670,16 @@ class BulutManager {
             }
           }
 
-          // UPSERT işlemleri — batch
+          // UPSERT işlemleri — batch (kalıcı hatada grup ikiye bölünerek
+          // zehirli satır tek başına ayıklanır; sağlam satırlar gider).
           final upsertSatirlari =
               satirlar.where((s) => s['islem_tipi'] == 'UPSERT').toList();
           if (upsertSatirlari.isNotEmpty) {
-            final upsertler =
-                upsertSatirlari.map((s) => _veriCoz(tablo, s)).toList();
-            try {
-              final sonuc = await _saglayici!.topluUpsert(
-                tablo: tablo,
-                veriler: upsertler,
-                uniqueAlan: uniqueAlan,
-              );
-              toplamBasarili += sonuc.basarili;
-              toplamHata += sonuc.hata;
-              tumHatalar.addAll(sonuc.hataMesajlari);
-
-              // 🔴 DÜZELTME (eski RAM kuyruğunda bulunan gizli veri kaybı):
-              // topluUpsert satır-bazlı başarı/hata döndürmüyor (sadece
-              // toplam sayaç) — bir satırı güvenle "gitti" sayıp
-              // kuyruktan silebileceğimiz TEK durum, TÜM grubun hatasız
-              // tamamlanmasıdır. Kısmi hata varsa (sonuc.hata>0) hangi
-              // satırın gerçekten gittiği bilinemez — veri kaybetmemek
-              // için TÜMÜ kuyrukta bırakılır (upsert idempotent olduğu
-              // için yeniden denemek güvenlidir, mükerrer satır oluşmaz).
-              // Hata sınıflandırması (Madde 5): sonuc.tur — 4xx (kalıcı,
-              // ör. validation/auth) ise satırlar 'kalici_hata'ya
-              // geçirilip otomatik denemeden çıkarılır; 5xx/ağ hatası
-              // (geçici) ise backoff'la tekrar denenmek üzere kuyrukta
-              // kalır.
-              if (sonuc.tamam) {
-                // Ebeveyni henüz bulutta olmadığı için gönderilmeyen
-                // (bekletilen) satırlar kuyrukta kalır; gerisi gitti.
-                final idler = <int>[];
-                for (var j = 0; j < upsertSatirlari.length; j++) {
-                  final kuyrukId = upsertSatirlari[j]['id'] as int;
-                  if (sonuc.bekletilenler.contains(j)) {
-                    await _kuyrukSatiriBasarisizIsaretle(db, kuyrukId,
-                        'ebeveyn kayıt henüz bulutta yok — bekletildi', now,
-                        tablo: tablo);
-                  } else {
-                    idler.add(kuyrukId);
-                  }
-                }
-                if (idler.isNotEmpty) {
-                  final ph = idler.map((_) => '?').join(',');
-                  await db.delete(DbSabitler.syncQueue,
-                      where: 'id IN ($ph)', whereArgs: idler);
-                }
-                await _otoGonderZamaniYaz(tablo, turBasi);
-              } else {
-                for (final s in upsertSatirlari) {
-                  await _kuyrukSatiriBasarisizIsaretle(
-                      db, s['id'] as int, 'toplu upsert hata (HTTP ${sonuc.sonStatusKodu ?? "-"})', now,
-                      tur: sonuc.tur, tablo: tablo);
-                }
-              }
-            } catch (e) {
-              toplamHata += upsertler.length;
-              tumHatalar.add('❌ $tablo toplu upsert: $e');
-              final tur = e is BulutIstekHatasi ? e.tur : BulutHataTuru.gecici;
-              for (final s in upsertSatirlari) {
-                await _kuyrukSatiriBasarisizIsaretle(
-                    db, s['id'] as int, e, now, tur: tur, tablo: tablo);
-              }
-            }
+            final r = await _upsertGrubuGonder(
+                db, tablo, uniqueAlan, upsertSatirlari, now, turBasi);
+            toplamBasarili += r.basarili;
+            toplamHata += r.hata;
+            tumHatalar.addAll(r.mesajlar);
           }
         }
       }

@@ -74,6 +74,13 @@ class KolonHaritalama {
     'rol_yetkileri':'global_id','roller_yetki':'global_id',
     'zaman_fiyat':'global_id','fiyat_gecmis':'global_id',
     'cari_adres':'global_id','irsaliye_kalem':'global_id',
+    // Onay + dönem/devir tabloları haritada yoktu: BulutManager 'id'ye düşüp
+    // ilk INSERT'ten sonra her UPDATE'i 409 (kalıcı hata) alıyordu.
+    'onay_talepleri':'global_id','donemler':'global_id',
+    'donem_sube_durumlari':'global_id','devir_checkpoint':'global_id',
+    'donem_kilit':'global_id','stok_kapanis_snapshot':'global_id',
+    'cari_kapanis_snapshot':'global_id','kasa_kapanis_snapshot':'global_id',
+    'banka_kapanis_snapshot':'global_id',
   };
 
   static String? uniqueAlan(String tablo) => _unique[tablo];

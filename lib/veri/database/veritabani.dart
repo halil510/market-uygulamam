@@ -941,6 +941,36 @@ class Veritabani {
         temiz.remove('id');
         temiz.removeWhere((_, v) => v == null);
         try {
+          // 🔴 Kullanıcı bulgusu (2026-09-29): "şifreyi değiştiriyorum,
+          // uygulamayı kapatıp açınca eski şifre (1234) geçerli". Yerel
+          // 'admin' satırı buluttaki satırla global_id üzerinden eşleşmediği
+          // için "yeni kayıt" sayılıp REPLACE ile (eski şifre hash'iyle)
+          // ezilebiliyordu. Kullanıcılar kullanici_adi ile eşlenir; yerel
+          // kayıt daha yeni/eşitse dokunulmaz, değilse id korunarak
+          // yerinde güncellenir.
+          if (tablo == DbSabitler.kullanicilar && temiz['kullanici_adi'] != null) {
+            final mevcut = await database.query(tablo,
+                where: 'kullanici_adi = ?',
+                whereArgs: [temiz['kullanici_adi']],
+                limit: 1);
+            if (mevcut.isNotEmpty) {
+              final yerelStr = mevcut.first['last_updated']?.toString();
+              final gelenStr = temiz['last_updated']?.toString();
+              final yerelZaman = yerelStr != null
+                  ? DateTime.tryParse(KolonHaritalama.utcDamga(yerelStr) ?? yerelStr)
+                  : null;
+              final gelenZaman = gelenStr != null
+                  ? DateTime.tryParse(KolonHaritalama.utcDamga(gelenStr) ?? gelenStr)
+                  : null;
+              if (yerelZaman != null &&
+                  (gelenZaman == null || !gelenZaman.isAfter(yerelZaman))) {
+                continue; // yerel kayıt daha yeni (örn. yeni şifre) — koru
+              }
+              await database.update(tablo, temiz,
+                  where: 'id = ?', whereArgs: [mevcut.first['id']]);
+              continue;
+            }
+          }
           await database.insert(tablo, temiz, conflictAlgorithm: conflict);
         } catch (e) {
           basarisizSayisi++;

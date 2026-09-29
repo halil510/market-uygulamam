@@ -28,7 +28,7 @@ List<GoRoute> masaRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
         GoRoute(path: '/qr-menu/:masaId/:masaAdi', name: 'qr_menu', parentNavigatorKey: rootNavigatorKey,
           builder: (c, s) => QrMenuEkrani(
             masaId: int.parse(s.pathParameters['masaId']!),
-            masaAdi: Uri.decodeComponent(s.pathParameters['masaAdi']!),
+            masaAdi: _masaAdiCoz(s.pathParameters['masaAdi']!),
           ),
         ),
         // Kullanıcı isteği: müşteriler kendi telefonuyla QR okutup
@@ -37,7 +37,7 @@ List<GoRoute> masaRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
         GoRoute(path: '/masa/qr-goster/:masaId/:masaAdi', name: 'masa_qr_goster', parentNavigatorKey: rootNavigatorKey,
           builder: (c, s) => MasaQrGosterEkrani(
             masaId: int.parse(s.pathParameters['masaId']!),
-            masaAdi: Uri.decodeComponent(s.pathParameters['masaAdi']!),
+            masaAdi: _masaAdiCoz(s.pathParameters['masaAdi']!),
           ),
         ),
         GoRoute(path: '/masa/detay/:id', name: 'masa_detay', parentNavigatorKey: rootNavigatorKey,
@@ -59,3 +59,14 @@ List<GoRoute> masaRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
           builder: (c, s) => MasaUrunEkleEkrani(masaId: int.parse(s.pathParameters['masaId']!)),
         ),
       ];
+
+/// go_router yol parametresini kısmen çözebildiği için (ör. "Bahçe 1" →
+/// "Bah%E7e 1" benzeri) Uri.decodeComponent "Illegal percent encoding"
+/// ile çöküyordu; Türkçe karakterli masa adları güvenle çözülür.
+String _masaAdiCoz(String ham) {
+  try {
+    return Uri.decodeComponent(ham);
+  } catch (_) {
+    return ham;
+  }
+}

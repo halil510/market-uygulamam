@@ -13,6 +13,11 @@ import '../bulut/supabase_oturum.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import '../../depolar/masa_deposu.dart';
+import '../../uygulama/router/uygulama_router.dart' show rootNavigatorKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../../saglayicilar/riverpod/masa_provider.dart';
@@ -65,6 +70,65 @@ class QrSiparisCekiciServisi {
     _timer = null;
   }
 
+  // ── Sipariş uyarısı (kullanıcı isteği 2026-09-29): hangi ekranda olursa
+  // olsun bip + küçük bildirim; birkaç sn sonra kendiliğinden kapanır.
+  final Set<int> _bekleyenMasalar = {};
+  Timer? _uyariKapatTimer;
+  bool _uyariAcik = false;
+
+  Future<void> _uyariGoster(Set<int> masaIdleri) async {
+    final ctx = rootNavigatorKey.currentContext;
+    if (ctx == null) return;
+    try { await SystemSound.play(SystemSoundType.alert); } catch (_) {}
+    try { HapticFeedback.heavyImpact(); } catch (_) {}
+    _bekleyenMasalar.addAll(masaIdleri);
+    final adlar = await MasaDeposu().masaAdlariHaritasi();
+    final liste = _bekleyenMasalar.map((id) => adlar[id] ?? 'Masa $id').toList();
+    final baslik = liste.length == 1
+        ? '${liste.first} için yeni sipariş var'
+        : '${liste.length} masadan sipariş var';
+
+    // Açık uyarı varsa kapatıp güncel listeyle yeniden aç.
+    if (_uyariAcik) {
+      rootNavigatorKey.currentState?.pop();
+      _uyariAcik = false;
+    }
+    final ctx2 = rootNavigatorKey.currentContext;
+    if (ctx2 == null || !ctx2.mounted) return;
+    _uyariAcik = true;
+    _uyariKapatTimer?.cancel();
+    _uyariKapatTimer = Timer(const Duration(seconds: 12), () {
+      if (_uyariAcik) {
+        rootNavigatorKey.currentState?.pop();
+      }
+    });
+    unawaited(showDialog(
+      context: ctx2,
+      builder: (d) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: const Icon(Icons.notifications_active, color: Colors.orange, size: 36),
+        title: Text(baslik, textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 17)),
+        content: Text(liste.join(', '), textAlign: TextAlign.center),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(onPressed: () => Navigator.of(d).pop(), child: const Text('Tamam')),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(d).pop();
+              rootNavigatorKey.currentContext?.go('/masa');
+            },
+            child: const Text('Masalara Git'),
+          ),
+        ],
+      ),
+    ).whenComplete(() {
+      _uyariAcik = false;
+      _bekleyenMasalar.clear();
+      _uyariKapatTimer?.cancel();
+    }));
+  }
+
   Future<void> _kontrolEt() async {
     if (_isleniyor) return;
     _isleniyor = true;
@@ -83,6 +147,7 @@ class QrSiparisCekiciServisi {
       if (siparisler.isEmpty) return;
 
       bool enAzBirIslendi = false;
+      final yeniMasaIdleri = <int>{};
 
       for (final s in siparisler) {
         try {
@@ -108,11 +173,14 @@ class QrSiparisCekiciServisi {
             not: s['not_'] as String?,
           );
           enAzBirIslendi = true;
+          yeniMasaIdleri.add((s['masa_id'] as num).toInt());
           if (kDebugMode) debugPrint('QR sipariş işlendi: masa=${s['masa_id']}, ${kalemler.length} kalem');
         } catch (e) {
           if (kDebugMode) debugPrint('QR sipariş işleme hatası (id=${s['id']}): $e');
         }
       }
+
+      if (yeniMasaIdleri.isNotEmpty) await _uyariGoster(yeniMasaIdleri);
 
       // En az bir sipariş işlendiyse masa listesini yenile
       if (enAzBirIslendi && _ref != null) {

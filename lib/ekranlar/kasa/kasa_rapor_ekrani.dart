@@ -3,6 +3,7 @@
 // YENİ EKRAN — Kasa Raporu
 // Kasa hareketleri ve bakiye grafikleri
 
+import 'package:market_plus/servisler/pdf_font_servisi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
@@ -148,8 +149,8 @@ class _KasaRaporEkraniState extends ConsumerState<KasaRaporEkrani> {
   }
 
   Future<void> _pdfOlustur(_KasaRaporVeri veri) async {
-    final font     = await PdfGoogleFonts.robotoRegular();
-    final boldFont = await PdfGoogleFonts.robotoBold();
+    final font     = await PdfFontServisi.normal();
+    final boldFont = await PdfFontServisi.kalin();
     final pdf      = pw.Document();
     final fmt      = DateFormat('dd.MM.yyyy');
 

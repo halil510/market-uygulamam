@@ -1,4 +1,5 @@
 // lib/ekranlar/cari/cari_hareket_ekrani.dart
+import 'package:market_plus/servisler/pdf_font_servisi.dart';
 import 'package:flutter/foundation.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'dart:io';
@@ -567,8 +568,8 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       BildirimServisi.uyari(context, 'Veri yok');
       return;
     }
-    final font = await PdfGoogleFonts.robotoRegular();
-    final boldFont = await PdfGoogleFonts.robotoBold();
+    final font = await PdfFontServisi.normal();
+    final boldFont = await PdfFontServisi.kalin();
     final pdf = pw.Document();
     pdf.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4.landscape,

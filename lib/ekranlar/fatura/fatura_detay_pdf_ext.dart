@@ -110,8 +110,8 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
 
   Future<Uint8List> _pdfBytes80mm() async {
     final f        = _fatura!;
-    final font     = await PdfGoogleFonts.robotoRegular();
-    final boldFont = await PdfGoogleFonts.robotoBold();
+    final font     = await PdfFontServisi.normal();
+    final boldFont = await PdfFontServisi.kalin();
     final fmt      = DateFormat('dd.MM.yyyy HH:mm');
     final firma    = await _firmaBilgileri();
     final genislik = 80 * PdfPageFormat.mm;
@@ -225,8 +225,8 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
 
   Future<Uint8List> _pdfBytes() async {
       final f        = _fatura!;
-      final font     = await PdfGoogleFonts.robotoRegular();
-      final boldFont = await PdfGoogleFonts.robotoBold();
+      final font     = await PdfFontServisi.normal();
+      final boldFont = await PdfFontServisi.kalin();
       final pdf      = pw.Document();
       final fmt      = DateFormat('dd-MM-yyyy');
       final fmtSaat  = DateFormat('HH:mm:ss');

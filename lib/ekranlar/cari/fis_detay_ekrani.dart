@@ -19,6 +19,7 @@
 //  - EKLEME: PDF export
 //  - EKLEME: RepaintBoundary
 
+import 'package:market_plus/servisler/pdf_font_servisi.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -217,8 +218,8 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
   Future<void> _exportPdf() async {
     if (!mounted) return;
     try {
-      final font     = await PdfGoogleFonts.robotoRegular();
-      final boldFont = await PdfGoogleFonts.robotoBold();
+      final font     = await PdfFontServisi.normal();
+      final boldFont = await PdfFontServisi.kalin();
       final pdf = pw.Document();
 
       pdf.addPage(pw.MultiPage(

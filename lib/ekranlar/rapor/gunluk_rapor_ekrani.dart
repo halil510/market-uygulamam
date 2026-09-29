@@ -1,6 +1,7 @@
 // lib/ekranlar/rapor/gunluk_rapor_ekrani.dart
 // Eski uygulamadan tam gün sonu mantığı, yeni altyapıya adapte edildi
 
+import 'package:market_plus/servisler/pdf_font_servisi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
@@ -352,8 +353,8 @@ double _toDouble(dynamic value) {
 }
 
   Future<void> _pdfOlustur() async {
-    final font     = await PdfGoogleFonts.robotoRegular();
-    final boldFont = await PdfGoogleFonts.robotoBold();
+    final font     = await PdfFontServisi.normal();
+    final boldFont = await PdfFontServisi.kalin();
     final pdf = pw.Document();
     final fmt = DateFormat('dd.MM.yyyy');
 

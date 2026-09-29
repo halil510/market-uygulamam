@@ -89,6 +89,11 @@ class YazdirmaServisi {
   // başarısız sayılır. İlk deneme (splash ekranındaki otomatikBaglan()
   // çağrısı dahil) buna tabi DEĞİL — sadece _yazdir()'in kendi içindeki
   // yeniden-bağlanma yolu bunu kullanır.
+  // Yetenek profili (68 KB JSON) her yazdırmada yeniden ayrıştırılıyordu.
+  CapabilityProfile? _profilOnbellek;
+  Future<CapabilityProfile> _profil() async =>
+      _profilOnbellek ??= await CapabilityProfile.load();
+
   DateTime? _sonBasarisizYenidenBaglanma;
   static const _yenidenBaglanmaBeklemeSuresi = Duration(seconds: 20);
 
@@ -474,16 +479,16 @@ class YazdirmaServisi {
       final baglanti = YaziciBaglanti(yazici: yazici, tur: YaziciTur.wifi, bagliMi: true);
       baglanti._tcpSocket = socket;
       _aktif = baglanti;
+      _sonAgYazma = DateTime.now();
 
       // Socket kapandığında durumu güncelle
+      // Yalnız BU bağlantı nesnesi işaretlenir — eski soketin geç gelen
+      // done olayı, yenilenmiş (aynı yazıcı id'li) yeni bağlantıyı
+      // yanlışlıkla "bağlı değil" yapmasın.
       socket.done.then((_) {
-        if (_aktif?.yazici.id == yazici.id) {
-          _aktif?.bagliMi = false;
-        }
+        baglanti.bagliMi = false;
       }).catchError((_) {
-        if (_aktif?.yazici.id == yazici.id) {
-          _aktif?.bagliMi = false;
-        }
+        baglanti.bagliMi = false;
       });
 
       if (kDebugMode) debugPrint('WiFi yazıcı bağlandı: $ip:$port');
@@ -538,6 +543,7 @@ class YazdirmaServisi {
         final gecenMs = DateTime.now().difference(baslangic).inMilliseconds;
         debugPrint('[Yazdırma] WiFi yazma başarılı (${bytes.length} bayt, ${gecenMs}ms)');
       }
+      _sonAgYazma = DateTime.now();
     } catch (e) {
       if (kDebugMode) debugPrint('[Yazdırma] WiFi yazma HATASI: $e');
       rethrow;
@@ -695,7 +701,12 @@ class YazdirmaServisi {
     // _wifiYaz ile AYNI 12sn zaman aşımı deseni uygulandı.
     await () async {
       // MTU'ya göre parçala
-      const mtu = 20;
+      // Sabit 20 baytlık parça, 5 KB'lık barkodlu fişte ~250 yazma × 6 ms
+      // + BLE gidiş-dönüşü demekti. Anlaşılan MTU kadar (en az 20) gönderilir.
+      int mtu = 20;
+      try {
+        mtu = (c.device.mtuNow - 3).clamp(20, 244);
+      } catch (_) {}
       for (int i = 0; i < bytes.length; i += mtu) {
         final son   = (i + mtu < bytes.length) ? i + mtu : bytes.length;
         final parca = Uint8List.fromList(bytes.sublist(i, son));
@@ -833,7 +844,27 @@ class YazdirmaServisi {
     }
   }
 
+  /// Ağ yazıcısında bir süredir işlem yapılmadıysa soket "zombi" olabilir
+  /// (yazıcı sessizce bağlantıyı bıraktı; add()+flush() hata vermeden
+  /// başarılı görünür ama fiş çıkmaz, 12 sn'lik bekleme sonra hata gelir).
+  /// Boşta kalan bağlantı yazmadan ÖNCE taze soketle yenilenir — LAN'da
+  /// birkaç ms sürer, "geç çıkıyor / bazen hiç çıkmıyor" durumunu önler.
+  DateTime? _sonAgYazma;
+  Future<void> _agSoketiTazele() async {
+    final a = _aktif;
+    if (a == null || a.tur != YaziciTur.wifi) return;
+    final son = _sonAgYazma;
+    if (son != null &&
+        DateTime.now().difference(son) < const Duration(seconds: 20)) {
+      return;
+    }
+    try {
+      await wifiBaglan(a.yazici);
+    } catch (_) {/* yazma denemesi hatayı zaten yönetir */}
+  }
+
   Future<void> _tekYazmaDene(List<int> bytes) async {
+    await _agSoketiTazele();
     switch (_aktif!.tur) {
       case YaziciTur.wifi:      await _wifiYaz(bytes);
       case YaziciTur.bluetooth: await _btYaz(bytes);
@@ -856,7 +887,7 @@ class YazdirmaServisi {
     double? cariOncekiBakiye, double? cariSonBakiye,
   }) async {
     await ayarlariYukle();
-    final profile   = await CapabilityProfile.load();
+    final profile   = await _profil();
     final generator = Generator(_kagit, profile);
 
     final fa  = firmaAdi   ?? _firmaAdi;
@@ -1110,7 +1141,7 @@ class YazdirmaServisi {
     String? firmaTel,
   }) async {
     await ayarlariYukle();
-    final profile   = await CapabilityProfile.load();
+    final profile   = await _profil();
     final generator = Generator(_kagit, profile);
 
     final tahsilatMi = islemTipi == 'Tahsilat';
@@ -1265,7 +1296,7 @@ class YazdirmaServisi {
   // ══════════════════════════════════════════════════════════════════════════
   Future<void> faturaYazdir(FaturaModel f) async {
     await ayarlariYukle();
-    final profile   = await CapabilityProfile.load();
+    final profile   = await _profil();
     final generator = Generator(_kagit, profile);
     final List<int> bytes = [];
     final tarih = DateFormat('dd.MM.yyyy HH:mm').format(f.duzenlenmeTarihi ?? f.tarih);
@@ -1371,7 +1402,7 @@ class YazdirmaServisi {
 
   Future<void> testFisYazdir() async {
     await ayarlariYukle();
-    final profile   = await CapabilityProfile.load();
+    final profile   = await _profil();
     final generator = Generator(_kagit, profile);
     final bytes     = <int>[];
 
@@ -1444,7 +1475,7 @@ class YazdirmaServisi {
     double? etiketGenislikMm,
   }) async {
     await ayarlariYukle();
-    final profile   = await CapabilityProfile.load();
+    final profile   = await _profil();
     final generator = Generator(etiketBoy, profile);
 
     // 🔴 DÜZELTME (2026-09-28): barkod resmi ÖNCEDEN FİŞ yazıcısının kâğıt
@@ -1458,7 +1489,10 @@ class YazdirmaServisi {
     final barkodPx = (etiketPx * 0.85).round();
     final satirKarakter = (etiketPx / 12).floor().clamp(12, 48); // font A: 12 nokta
 
-    for (int i = 0; i < adet; i++) {
+    // Tüm adetler TEK pakette gönderilir (önceden her etiket ayrı yazma +
+    // 300 ms bekleme idi: 50 etiket ≈ 15 sn ek gecikme).
+    final tumBytes = <int>[];
+    for (int i = 0; i < adet.clamp(1, 500); i++) {
       final bytes = <int>[];
       if (adGoster) {
         // Kelime sınırından en fazla 2 satır (önceden 24. harfte kesiliyordu).
@@ -1519,10 +1553,9 @@ class YazdirmaServisi {
       }
       bytes.addAll(generator.feed(1));
       bytes.addAll(generator.cut(mode: PosCutMode.partial));
-      await _yazdir(bytes);
-      if (adet > 1 && i < adet - 1)
-        await Future.delayed(const Duration(milliseconds: 300));
+      tumBytes.addAll(bytes);
     }
+    await _yazdir(tumBytes);
   }
 
   // Legacy compat

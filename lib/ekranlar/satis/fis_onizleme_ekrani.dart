@@ -1,5 +1,6 @@
 // lib/ekranlar/satis/fis_onizleme_ekrani.dart
 // Fiş önizleme + PDF yazdır + BT yazıcıya gönder
+import 'package:market_plus/servisler/pdf_font_servisi.dart';
 import 'package:flutter/foundation.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter/material.dart';
@@ -131,8 +132,8 @@ class _FisOnizlemeEkraniState extends ConsumerState<FisOnizlemeEkrani> {
 
   Future<pw.Document> _fisPdfOlustur() async {
     final doc  = pw.Document();
-    final font = await PdfGoogleFonts.notoSansRegular();
-    final bold = await PdfGoogleFonts.notoSansBold();
+    final font = await PdfFontServisi.normal();
+    final bold = await PdfFontServisi.kalin();
     final tarih = DateFormat('dd.MM.yyyy HH:mm').format(s.tarih);
 
     doc.addPage(pw.Page(

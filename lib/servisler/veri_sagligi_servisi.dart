@@ -18,6 +18,7 @@ import '../depolar/kredi_karti_deposu.dart';
 import '../depolar/stok_deposu.dart';
 import '../depolar/sync_cakisma_deposu.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/yedekleme_servisi.dart';
 import '../veri/database/veritabani.dart';
@@ -397,11 +398,79 @@ class VeriSagligiServisi {
               ? 'Satış toplamları kalemlerle uyumlu.'
               : '$sayi satışın genel toplamı kalem toplamından farklı '
                   '(fiş güncelleme / senkron çakışması olabilir).',
-          sayi: sayi);
+          sayi: sayi,
+          duzelt: sayi > 0 ? _kalemToplamlariniOnar : null);
     } catch (e) {
       return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
           durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
     }
+  }
+
+  /// Çift-indirim hatasıyla (kalem toplamı birimFiyat × (1 − iskontoOran)
+  /// olarak yeniden hesaplanmış) bozulan kalemleri onarır: SADECE başlık
+  /// toplamı ile `birim_fiyat × miktar` toplamı uyuşan satışlarda kalem
+  /// net/toplam/KDV/iskonto tutarı `birim_fiyat` üzerinden yeniden yazılır
+  /// ve buluta gönderilmek üzere kuyruğa alınır. Uyuşmayan (başka sebepli)
+  /// satışlara DOKUNULMAZ.
+  Future<int> _kalemToplamlariniOnar() async {
+    final db = await _db;
+    var duzeltilen = 0;
+    await db.transaction((txn) async {
+      final satislar = await txn.rawQuery('''
+        SELECT s.id, s.genel_toplam,
+               COALESCE(s.kargo_ucreti,0) + COALESCE(s.servis_ucreti,0) AS ek
+        FROM satislar s
+        WHERE s.is_deleted = 0 AND s.iptal = 0 AND s.sync_cakisma_kopyasi = 0
+      ''');
+      final now = DateTime.now().toUtc().toIso8601String();
+      for (final s in satislar) {
+        final sid = s['id'] as int;
+        final kalemler = await txn.query('satis_kalem',
+            where: 'satis_id = ?', whereArgs: [sid]);
+        if (kalemler.isEmpty) continue;
+        double kayitliToplam = 0, olmasiGereken = 0;
+        for (final k in kalemler) {
+          kayitliToplam += (k['toplam_tutar'] as num?)?.toDouble() ?? 0;
+          olmasiGereken += ((k['birim_fiyat'] as num?)?.toDouble() ?? 0) *
+              ((k['miktar'] as num?)?.toDouble() ?? 0);
+        }
+        final baslik = ((s['genel_toplam'] as num?)?.toDouble() ?? 0) -
+            ((s['ek'] as num?)?.toDouble() ?? 0);
+        if ((baslik - kayitliToplam).abs() <= 0.10) continue;
+        if ((baslik - olmasiGereken).abs() > 0.10) continue;
+        for (final k in kalemler) {
+          final birim = (k['birim_fiyat'] as num?)?.toDouble() ?? 0;
+          final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;
+          final oran = (k['iskonto_oran'] as num?)?.toDouble() ?? 0;
+          final kdvOran = (k['kdv_oran'] as num?)?.toDouble() ?? 0;
+          final toplam = birim * miktar;
+          // Katalog fiyatı = birim / (1 − oran); iskonto = fark × miktar.
+          final iskTutar = (oran > 0 && oran < 100)
+              ? (birim / (1 - oran / 100) - birim) * miktar
+              : 0.0;
+          final kdv = kdvOran > 0 ? toplam * kdvOran / (100 + kdvOran) : 0.0;
+          await txn.update(
+              'satis_kalem',
+              {
+                'net_fiyat': birim,
+                'toplam_tutar': toplam,
+                'iskonto_tutar': iskTutar,
+                'kdv_tutar': kdv,
+                'last_updated': now,
+              },
+              where: 'id = ?',
+              whereArgs: [k['id']]);
+          final yeni = await txn.query('satis_kalem',
+              where: 'id = ?', whereArgs: [k['id']], limit: 1);
+          if (yeni.isNotEmpty) {
+            await SyncKuyrukYazici.ekleTxn(txn,
+                tablo: 'satis_kalem', veri: Map<String, dynamic>.from(yeni.first));
+          }
+          duzeltilen++;
+        }
+      }
+    });
+    return duzeltilen;
   }
 
   // ── Mükerrer global_id ──────────────────────────────────────────────

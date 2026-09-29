@@ -81,6 +81,24 @@ class SatisKalemModel {
   };
 
   SatisKalemModel copyWith({int? satisId, double? miktar, double? birimFiyat, double? iskontoOran}) {
+    // 🔴 KRİTİK: yalnız satisId verilirse (kaydetme anındaki çağrı:
+    // `k.copyWith(satisId: id).toMap()`) tutarlar YENİDEN HESAPLANMAZ.
+    // Önceden her zaman birimFiyat × (1 − iskontoOran) hesaplanıyordu;
+    // kalem oluşturma iskontoOran'ı gerçek katalog indirimiyle doldurduğu
+    // (birimFiyat zaten indirimli) için indirim İKİ KEZ uygulanıyor, kalem
+    // toplamı/KDV'si/iskonto tutarı yanlış (ör. 100 TL → 71,43 TL) kaydediliyordu.
+    if (iskontoOran == null && birimFiyat == null && miktar == null) {
+      return SatisKalemModel(
+        id: id, satisId: satisId ?? this.satisId, urunId: urunId,
+        urunAdi: urunAdi, barkod: barkod,
+        miktar: this.miktar, birimFiyat: this.birimFiyat,
+        iskontoOran: this.iskontoOran, iskontoTutar: iskontoTutar,
+        kdvOran: kdvOran, kdvTutar: kdvTutar,
+        netFiyat: netFiyat, toplamTutar: toplamTutar,
+        lotId: lotId, seriNo: seriNo,
+        alisFiyat: alisFiyat, alisFiyatKdv: alisFiyatKdv,
+      );
+    }
     final isk = iskontoOran ?? this.iskontoOran;
     final fiy = birimFiyat ?? this.birimFiyat;
     final mik = miktar ?? this.miktar;

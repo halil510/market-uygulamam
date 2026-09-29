@@ -115,3 +115,33 @@ SELECT 'cari', COUNT(*) FROM cari_hareket h
 JOIN satislar s ON s.id = h.fis_id AND h.fis_tipi IN ('Satış','Toptan Satış','Toptan Satış (Sipariş)')
 WHERE COALESCE(s.is_deleted,false) = true AND COALESCE(h.is_deleted,false) = false
   AND h.fis_tipi <> 'Satış İptali';
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- ONARIM (İSTEĞE BAĞLI — YAZAR): "çift indirim" hatasıyla bozulan kalemler
+-- Kök neden: kaydetme anında kalem toplamı birim_fiyat × (1 − iskonto_oran)
+-- ile yeniden hesaplanıyordu (100 TL → 71,43 TL). Kod düzeltildi; eski
+-- kayıtlar için önce ÖNİZLEME, sonra (isterseniz) UPDATE:
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- ÖNİZLEME: yalnızca başlık toplamı = SUM(birim_fiyat × miktar) olan satışlar
+WITH aday AS (
+  SELECT s.id
+  FROM satislar s JOIN satis_kalem k ON k.satis_id = s.id
+  WHERE COALESCE(s.is_deleted,false) = false AND COALESCE(s.iptal,false) = false
+  GROUP BY s.id, s.genel_toplam, s.kargo_ucreti, s.servis_ucreti
+  HAVING ABS(s.genel_toplam - COALESCE(s.kargo_ucreti,0) - COALESCE(s.servis_ucreti,0) - SUM(k.toplam_tutar)) > 0.10
+     AND ABS(s.genel_toplam - COALESCE(s.kargo_ucreti,0) - COALESCE(s.servis_ucreti,0) - SUM(k.birim_fiyat * k.miktar)) <= 0.10
+)
+SELECT k.id, k.satis_id, k.urun_adi, k.birim_fiyat, k.miktar, k.toplam_tutar AS eski_toplam,
+       k.birim_fiyat * k.miktar AS yeni_toplam
+FROM satis_kalem k WHERE k.satis_id IN (SELECT id FROM aday);
+
+-- UYGULA (önizleme doğruysa; last_updated güncellenir ki cihazlar çeksin):
+-- UPDATE satis_kalem k SET
+--   net_fiyat     = k.birim_fiyat,
+--   toplam_tutar  = k.birim_fiyat * k.miktar,
+--   kdv_tutar     = CASE WHEN k.kdv_oran > 0 THEN (k.birim_fiyat * k.miktar) * k.kdv_oran / (100 + k.kdv_oran) ELSE 0 END,
+--   iskonto_tutar = CASE WHEN k.iskonto_oran > 0 AND k.iskonto_oran < 100
+--                        THEN (k.birim_fiyat / (1 - k.iskonto_oran/100) - k.birim_fiyat) * k.miktar ELSE 0 END,
+--   last_updated  = now()
+-- WHERE k.satis_id IN (SELECT id FROM aday);   -- yukarıdaki WITH aday ... ile birlikte çalıştırın

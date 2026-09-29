@@ -127,7 +127,8 @@ class _DepoTransferEkraniState extends ConsumerState<DepoTransferEkrani> {
     try {
       final subeUrunDepo = SubeUrunDeposu();
       final basarisizlar = <String>[];
-      for (final entry in _miktarlar.entries) {
+      final basariliAnahtarlar = <int>[];
+      for (final entry in _miktarlar.entries.toList()) {
         if (entry.value <= 0) continue;
         try {
           await subeUrunDepo.transferEt(
@@ -136,15 +137,21 @@ class _DepoTransferEkraniState extends ConsumerState<DepoTransferEkrani> {
             hedefSubeId: _hedefSubeId!,
             miktar: entry.value,
           );
+          basariliAnahtarlar.add(entry.key);
         } catch (e) {
           final urun = _urunler.firstWhere((u) => u.id == entry.key, orElse: () => _urunler.first);
           basarisizlar.add('${urun.urunAdi}: $e');
         }
       }
-      setState(() => _miktarlar.clear());
+      // Sadece başarılı transferler listeden düşer; hatalı satırlar tekrar
+      // denenebilsin diye kalır. Sayı temizlemeden ÖNCE alınır.
+      final basariliSayisi = basariliAnahtarlar.length;
+      if (mounted) {
+        setState(() => basariliAnahtarlar.forEach(_miktarlar.remove));
+      }
       if (mounted) {
         if (basarisizlar.isEmpty) {
-          BildirimServisi.basari(context, '$_seciliSayisi ürün $kaynakAdi → $hedefAdi transfer edildi ✓');
+          BildirimServisi.basari(context, '$basariliSayisi ürün $kaynakAdi → $hedefAdi transfer edildi ✓');
         } else {
           BildirimServisi.uyari(context,
               '${basarisizlar.length} üründe hata: ${basarisizlar.join(", ")}');

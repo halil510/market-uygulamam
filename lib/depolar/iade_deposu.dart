@@ -127,7 +127,7 @@ class IadeDeposu {
       SELECT ik.urun_id AS urun_id, SUM(ik.miktar) AS toplam
       FROM iade_kalem ik
       JOIN iade i ON ik.iade_id = i.id
-      WHERE i.satis_id = ?
+      WHERE i.satis_id = ? AND COALESCE(i.durum, '') != 'iptal'
       GROUP BY ik.urun_id
     ''', [satisId]);
     return {

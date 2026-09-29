@@ -24,6 +24,16 @@ class GibUblOlusturucu {
   final GibAyarYoneticisi _ayar;
   const GibUblOlusturucu(this._ayar);
 
+  /// Fatura tipi yazımı ekrana göre değişiyor ("Iade" ASCII / "İade"
+  /// noktalı) — karşılaştırma büyük/küçük ve İ/ı farkından bağımsız olsun.
+  static String _tipNorm(String? t) => (t ?? "")
+      .replaceAll("İ", "i")
+      .replaceAll("I", "i")
+      .replaceAll("ı", "i")
+      .toLowerCase()
+      .trim();
+  static bool _iadeMi(String? t) => _tipNorm(t) == "iade";
+
   /// Türkçe ödeme şeklini UBL/UNCL4461 standart koduna çevirir — UBL-TR
   /// XML'inde PaymentMeans bölümü için.
   String _odemeSekliKodu(String? odemeSekli) => switch (odemeSekli) {
@@ -260,7 +270,12 @@ class GibUblOlusturucu {
       );
     }
 
-    final invoiceTypeCode = fatura.faturaTipi == 'İade' ? 'IADE' : 'SATIS';
+    final tipNorm = _tipNorm(fatura.faturaTipi);
+    if (tipNorm.isNotEmpty && tipNorm != 'iade' && tipNorm != 'satis') {
+      throw Exception('"${fatura.faturaTipi}" tipi faturalar GİB e-Fatura olarak '
+          'gönderilemez (yalnız Satış ve İade).');
+    }
+    final invoiceTypeCode = _iadeMi(fatura.faturaTipi) ? 'IADE' : 'SATIS';
 
     // GİB'in IADEInvoiceCheck şematron kuralı (2026 güncellemesiyle
     // zorunlu): bir İADE faturası, iadeye konu olan ORİJİNAL faturaya
@@ -270,7 +285,7 @@ class GibUblOlusturucu {
     // kesilmemişse) bu blok atlanır — GİB'e boş/yanlış bir referans
     // göndermek, hiç göndermemekten kötüdür.
     String billingReferenceXml = '';
-    if (fatura.faturaTipi == 'İade' && fatura.iadeId != null) {
+    if (_iadeMi(fatura.faturaTipi) && fatura.iadeId != null) {
       try {
         final db = await Veritabani().db;
         final iadeRows = await db.query('iade', columns: ['satis_id'], where: 'id = ?', whereArgs: [fatura.iadeId], limit: 1);

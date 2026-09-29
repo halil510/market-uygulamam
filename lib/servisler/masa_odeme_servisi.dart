@@ -167,6 +167,13 @@ class MasaOdemeServisi {
         final y = k['yontem'] as String;
         gruplar[y] = (gruplar[y] ?? 0) + (k['tutar'] as num).toDouble();
       }
+      // Para üstü kasaya gelir yazılmasın: fazlalık Nakit'ten düşülür.
+      final fazlaOdeme = toplamOdenen - genelTop;
+      if (fazlaOdeme > 0.005 && (gruplar['Nakit'] ?? 0) > 0) {
+        final dus =
+            fazlaOdeme < gruplar['Nakit']! ? fazlaOdeme : gruplar['Nakit']!;
+        gruplar['Nakit'] = gruplar['Nakit']! - dus;
+      }
       // 🔴 Derin analizde bulundu (kendi-keşif turu — Masa modülü
       // denetimi): SatisTamamlamaServisi.tamamla() (Hızlı Satış) bir
       // müşteri bağlıyken Nakit/Kart payı için de bakiyeyi ETKİLEMEYEN

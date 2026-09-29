@@ -208,7 +208,9 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   /// aşağıda) içeriği — hareketin türüne göre bağlı kasa hareketinin ne
   /// olacağını açıklar.
   bool _satisKokenliMi(CariHareketModel h) =>
-      (h.fisTipi == 'Satış' || h.fisTipi == 'Toptan Satış') &&
+      (h.fisTipi == 'Satış' ||
+          h.fisTipi == 'Toptan Satış' ||
+          h.fisTipi == 'Toptan Satış (Sipariş)') &&
       h.fisId != null &&
       h.fisId! > 0;
 

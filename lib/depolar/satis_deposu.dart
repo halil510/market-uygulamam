@@ -862,8 +862,8 @@ class SatisDeposu {
         // SatisDeposu.sil() ile siler, ikisi de eşleşmeli.
         final orijinalCariSatirlari = await txn.query('cari_hareket',
             where:
-                'fis_id = ? AND cari_id = ? AND fis_tipi IN (?, ?) AND is_deleted = 0',
-            whereArgs: [id, cariId, 'Satış', 'Toptan Satış']);
+                'fis_id = ? AND cari_id = ? AND fis_tipi IN (?, ?, ?) AND is_deleted = 0',
+            whereArgs: [id, cariId, 'Satış', 'Toptan Satış', 'Toptan Satış (Sipariş)']);
         final toplamBorc = orijinalCariSatirlari.fold(
             0.0, (s, r) => s + ((r['borc'] as num?)?.toDouble() ?? 0));
         final toplamAlacak = orijinalCariSatirlari.fold(

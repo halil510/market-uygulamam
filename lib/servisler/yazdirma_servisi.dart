@@ -122,10 +122,30 @@ class YazdirmaServisi {
   /// dokunulmaz, sadece sorunlu 6 karakter ASCII karşılığına çevrilir.
   /// Tüm yazdırma metinleri (sabit + dinamik: ürün adı, masa adı, fiş no,
   /// cari adı, notlar...) bu fonksiyondan geçer.
-  static String _t(String s) => s
-      .replaceAll('İ', 'I').replaceAll('ı', 'i')
-      .replaceAll('Ş', 'S').replaceAll('ş', 's')
-      .replaceAll('Ğ', 'G').replaceAll('ğ', 'g');
+  ///
+  /// Latin-1 dışındaki karakterler (₺ – “ ” … € emoji…) `generator.text`'i
+  /// exception ile patlatıp TÜM fişi/etiketi basılmaz hale getiriyordu
+  /// (Excel'den içe aktarılan ürün adlarında yaygın) — eşlenir ya da atılır.
+  @visibleForTesting
+  static String temizleYaziciMetni(String s) => _t(s);
+
+  static String _t(String s) {
+    final ilk = s
+        .replaceAll('İ', 'I').replaceAll('ı', 'i')
+        .replaceAll('Ş', 'S').replaceAll('ş', 's')
+        .replaceAll('Ğ', 'G').replaceAll('ğ', 'g')
+        .replaceAll('₺', 'TL').replaceAll('€', 'EUR')
+        .replaceAll('–', '-').replaceAll('—', '-')
+        .replaceAll('“', '"').replaceAll('”', '"')
+        .replaceAll('‘', "'").replaceAll('’', "'")
+        .replaceAll('…', '...');
+    if (ilk.codeUnits.every((c) => c <= 255)) return ilk;
+    final sb = StringBuffer();
+    for (final r in ilk.runes) {
+      if (r <= 255) sb.writeCharCode(r);
+    }
+    return sb.toString();
+  }
 
   // ══════════════════════════════════════════════════════════════════════
   // 🔴 BARKODU RESİM OLARAK ÜRET (kullanıcı bulgusu — "çizgi oluşmuyor")
@@ -798,7 +818,17 @@ class YazdirmaServisi {
   // ORTAK: byte yazma (WiFi veya BT'ye göre yönlendir)
   // ══════════════════════════════════════════════════════════════════════════
 
-  Future<void> _yazdir(List<int> bytes) async {
+  // Yazdırma işleri sırayla çalışır: iki eşzamanlı çağrı (satış sonrası fiş +
+  // etiket) birbirinin soketini kapatıp baytları karıştırabiliyordu.
+  Future<void> _yazdirKuyrukSonu = Future.value();
+
+  Future<void> _yazdir(List<int> bytes) {
+    final sonuc = _yazdirKuyrukSonu.then((_) => _yazdirSirali(bytes));
+    _yazdirKuyrukSonu = sonuc.catchError((_) {});
+    return sonuc;
+  }
+
+  Future<void> _yazdirSirali(List<int> bytes) async {
     // ÖNCEDEN BURADA CİDDİ BİR HATA VARDI: bağlantı (_aktif) herhangi
     // bir nedenle kopmuşsa (uygulama arka plana atılıp WiFi/Bluetooth
     // kısa süreliğine kesilmesi, yazıcının uykuya geçmesi, splash'teki

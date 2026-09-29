@@ -170,6 +170,19 @@ class SatisTamamlamaServisi {
           final y = k['yontem'] as String;
           gruplar[y] = (gruplar[y] ?? 0) + (k['tutar'] as num).toDouble();
         }
+        // Para üstü kasaya gelir yazılmasın: alınan toplam satış tutarını
+        // aşıyorsa fazlalık Nakit grubundan düşülür (çekmeceye giren gerçek
+        // tutar = genelToplam).
+        final cariKismi = karmaKalemler
+            .where((k) => k['yontem'] == 'Cari')
+            .fold(0.0, (s, k) => s + (k['tutar'] as num).toDouble());
+        final fazla = gruplar.values.fold(0.0, (s, v) => s + v) +
+            cariKismi -
+            genelToplam;
+        if (fazla > 0.005 && (gruplar['Nakit'] ?? 0) > 0) {
+          final dus = fazla < gruplar['Nakit']! ? fazla : gruplar['Nakit']!;
+          gruplar['Nakit'] = gruplar['Nakit']! - dus;
+        }
         for (final girdi in gruplar.entries) {
           if (girdi.value <= 0.005) continue;
           final kgid = const Uuid().v4();
@@ -195,7 +208,8 @@ class SatisTamamlamaServisi {
             KasaHareketModel(
               globalId: kgid,
               hareketTipi: 'Satış',
-              tutar: odenenTutar,
+              // Para üstü hariç: kasaya en fazla satış tutarı girer.
+              tutar: odenenTutar > genelToplam ? genelToplam : odenenTutar,
               referansId: satisId,
               referansTuru: 'satis',
               tarih: tarih,

@@ -81,7 +81,7 @@ class GiderListeEkrani extends ConsumerWidget {
                       builder: (c) => AlertDialog(
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(TsRadius.lg)),
                         title: const Text('Gider Sil'),
-                        content: Text('${g.aciklama} silinecek?'),
+                        content: Text('${g.aciklama ?? g.kategoriAdi} (${ParaUtils.formatla(g.tutar)}) silinecek?'),
                         actions: [
                           TsButon(tur: TsButonTuru.metin, metin: 'İptal', onPressed: () => Navigator.pop(c, false)),
                           TsButon.tehlike(metin: 'Sil', onPressed: () => Navigator.pop(c, true)),

@@ -290,6 +290,7 @@ class GiderDeposu {
         final s = await db.query('kredi_karti_hareket', where: 'id = ?', whereArgs: [id], limit: 1);
         if (s.isNotEmpty) BulutManager().upsert('kredi_karti_hareket', Map<String, dynamic>.from(s.first));
       }
+      await _hesapVeKartlariBulutaGonder(db, bankaHareketIdleri, krediHareketIdleri);
     } catch (e, st) {
       LogServisi().hata('Gider.guncelle', hata: e, yigin: st);
       rethrow;
@@ -368,16 +369,45 @@ class GiderDeposu {
         final s = await db.query('kredi_karti_hareket', where: 'id = ?', whereArgs: [hid], limit: 1);
         if (s.isNotEmpty) BulutManager().upsert('kredi_karti_hareket', Map<String, dynamic>.from(s.first));
       }
+      await _hesapVeKartlariBulutaGonder(db, bankaHareketIdleri, krediHareketIdleri);
     } catch (e, st) {
       LogServisi().hata('Gider.sil', hata: e, yigin: st);
       rethrow;
     }
   }
 
+  /// Düzeltme/iptal hareketleri banka_hesaplar.bakiye ve
+  /// kredi_kartlari.kullanilan_limit'i yerelde değiştirir — ekle()'deki gibi
+  /// bu satırlar da buluta gitmeli, yoksa diğer cihazlar eski bakiyeyi görür
+  /// (önceden guncelle()/sil()'de eksikti).
+  Future<void> _hesapVeKartlariBulutaGonder(
+      Database db, List<int> bankaHareketIdleri, List<int> krediHareketIdleri) async {
+    Future<void> gonder(String hareketTablo, String fkAlan, String anaTablo, List<int> idler) async {
+      if (idler.isEmpty) return;
+      final yer = List.filled(idler.length, '?').join(',');
+      final anaIdler = (await db.rawQuery(
+              'SELECT DISTINCT $fkAlan AS id FROM $hareketTablo WHERE id IN ($yer)', idler))
+          .map((r) => r['id'])
+          .whereType<int>();
+      for (final id in anaIdler) {
+        final s = await db.query(anaTablo, where: 'id = ?', whereArgs: [id], limit: 1);
+        if (s.isNotEmpty) BulutManager().upsert(anaTablo, Map<String, dynamic>.from(s.first));
+      }
+    }
+
+    await gonder('banka_hareketler', 'banka_hesap_id', 'banka_hesaplar', bankaHareketIdleri);
+    await gonder('kredi_karti_hareket', 'kredi_karti_id', 'kredi_kartlari', krediHareketIdleri);
+  }
+
   Future<List<GiderModel>> tumunuGetir({int limit = 200}) async {
     final db = await _d;
-    final rows = await db.query(
-      'giderler', where: 'deleted_at IS NULL', orderBy: 'tarih DESC', limit: limit);
+    // Kategori adı JOIN'siz gelmiyordu — listede her gider "Genel" görünüyordu.
+    final rows = await db.rawQuery(
+      'SELECT g.*, k.ad as kategori_adi FROM giderler g '
+      'LEFT JOIN gider_kategoriler k ON g.kategori_id = k.id '
+      'WHERE g.deleted_at IS NULL ORDER BY g.tarih DESC LIMIT ?',
+      [limit],
+    );
     return rows.map(GiderModel.fromMap).toList();
   }
 

@@ -146,14 +146,22 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
     try {
       final duzenleniyor = widget.duzenlenecek != null;
       if (duzenleniyor) {
-        await _depo.guncelle(widget.duzenlenecek!.copyWith(
+        // copyWith null'ı "değiştirme" sayar — yöntem Banka'dan Nakit'e
+        // dönünce eski hesap kalırdı; model açıkça kuruluyor.
+        final d = widget.duzenlenecek!;
+        await _depo.guncelle(GiderModel(
+          id: d.id,
+          globalId: d.globalId,
           kategoriId: _seciliKategori!,
           tutar: tutar,
           aciklama: _aciklamaCtrl.text.trim().isEmpty ? null : _aciklamaCtrl.text.trim(),
+          tarih: d.tarih,
           belgeNo: _belgeCtrl.text.trim().isEmpty ? null : _belgeCtrl.text.trim(),
           odemeYontemi: _odemeYontemi,
-          bankaHesapId: _secilenHesap?.id,
-          krediKartiId: _secilenKart?.id,
+          cariId: d.cariId,
+          kullaniciId: d.kullaniciId,
+          bankaHesapId: _bankaSecimiGerekli ? _secilenHesap?.id : null,
+          krediKartiId: _kartSecimiGerekli ? _secilenKart?.id : null,
         ));
       } else {
         final yeniId = await _depo.ekle(GiderModel(
@@ -164,8 +172,10 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
           belgeNo: _belgeCtrl.text.trim().isEmpty ? null : _belgeCtrl.text.trim(),
           odemeYontemi: _odemeYontemi,
           kullaniciId: AuthServisi().aktifKullanici?.id,
-          bankaHesapId: _secilenHesap?.id,
-          krediKartiId: _secilenKart?.id,
+          // Ekran ilk hesabı/kartı varsayılan seçiyor — yalnız ilgili
+          // yöntemde kaydedilmeli (önceden Nakit gidere de yazılıyordu).
+          bankaHesapId: _bankaSecimiGerekli ? _secilenHesap?.id : null,
+          krediKartiId: _kartSecimiGerekli ? _secilenKart?.id : null,
         ));
         // FAZ 9 — Onay Merkezi (bildirim tipi): gider ENGELLENMEDİ,
         // zaten kaydedildi — sadece eşik aşımı sonradan incelenebilsin

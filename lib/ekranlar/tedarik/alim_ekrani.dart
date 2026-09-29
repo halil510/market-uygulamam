@@ -40,7 +40,7 @@ class _AlimKalem {
   _AlimKalem({required this.urun, required this.miktar, required this.alisFiyat}) {
     miktarCtrl = TextEditingController(
         text: miktar % 1 == 0 ? miktar.toStringAsFixed(0) : miktar.toStringAsFixed(3));
-    fiyatCtrl  = TextEditingController(text: alisFiyat.toStringAsFixed(2));
+    fiyatCtrl  = TextEditingController(text: alisFiyat.toStringAsFixed(2).replaceAll('.', ','));
     lotNoCtrl  = TextEditingController();
     sktCtrl    = TextEditingController();
   }

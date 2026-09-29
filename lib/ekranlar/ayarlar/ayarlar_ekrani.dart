@@ -217,6 +217,15 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                   onChanged: (v) =>
                       ref.read(masaModuProvider.notifier).degistir(v),
                 ),
+                if (ref.watch(masaModuProvider))
+                  ListTile(
+                      leading: const Icon(Icons.add_box_outlined,
+                          color: Color(0xFF6D4C41)),
+                      title: const Text('Masa Ekle / Yönet'),
+                      subtitle: const Text(
+                          'Tek veya toplu masa ekle · QR menü kartlarını yazdır'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/masa/yonet')),
                 ListTile(
                     leading: const Icon(Icons.print, color: AppRenkler.primary),
                     title: const Text('Yazdırma Merkezi'),

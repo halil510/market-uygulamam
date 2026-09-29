@@ -22,7 +22,9 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../widgetlar/ortak/onay_dialog.dart';
 
 class MasaListeEkrani extends ConsumerStatefulWidget {
-  const MasaListeEkrani({super.key});
+  /// true: Ayarlar'dan açılan yönetim görünümü (masa ekleme + QR yazdırma).
+  final bool yonetim;
+  const MasaListeEkrani({super.key, this.yonetim = false});
   @override
   ConsumerState<MasaListeEkrani> createState() => _MasaListeEkraniState();
 }
@@ -77,7 +79,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
     return Scaffold(
       backgroundColor: context.scaffoldBg,
       appBar: TsAppBar(
-        baslik: 'Masalar',
+        baslik: widget.yonetim ? 'Masa Yönetimi' : 'Masalar',
         aksiyonlar: [
           const BulutDurumIkonu(),
           // Kullanıcı isteği: 400 üründen QR menüde hangilerinin
@@ -87,12 +89,12 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
             tooltip: 'QR Menü Ürünlerini Seç',
             onPressed: () => context.push('/masa/qr-urun-secim'),
           ),
-          IconButton(
+          if (widget.yonetim) IconButton(
             icon: const Icon(Icons.qr_code_2),
             tooltip: 'Tüm Masaların QR Kartlarını Yazdır',
             onPressed: _tumQrYazdir,
           ),
-          PopupMenuButton<String>(
+          if (widget.yonetim) PopupMenuButton<String>(
             icon: const Icon(Icons.add),
             tooltip: 'Masa Ekle',
             onSelected: (v) {
@@ -122,9 +124,11 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
               Text('Henüz masa eklenmedi', style: TextStyle(color: context.textSecondary)),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: _masaEkleDialog,
+                onPressed: widget.yonetim
+                    ? _masaEkleDialog
+                    : () => context.push('/masa/yonet'),
                 icon: const Icon(Icons.add),
-                label: const Text('İlk Masayı Ekle'),
+                label: Text(widget.yonetim ? 'İlk Masayı Ekle' : 'Ayarlar\'dan Masa Ekle'),
               ),
             ]));
           }
@@ -266,7 +270,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
           ]);
         },
       ),
-      floatingActionButton: TsYetkili(child: FloatingActionButton.extended(
+      floatingActionButton: !widget.yonetim ? null : TsYetkili(child: FloatingActionButton.extended(
         elevation: 6,
         backgroundColor: TsRenk.masaAcik,
         foregroundColor: Colors.white,

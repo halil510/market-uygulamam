@@ -240,7 +240,7 @@ class FaturaDeposu {
         [faturaNo],
       );
       if (rows.isEmpty) return null;
-      return idileGetir(rows.first['id'] as int);
+      return await idileGetir(rows.first['id'] as int);
     } catch (e, st) {
       LogServisi().hata('Fatura.faturaNoileGetir', hata: e, yigin: st);
       rethrow;

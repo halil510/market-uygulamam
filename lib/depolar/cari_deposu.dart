@@ -328,7 +328,7 @@ class CariDeposu {
   // tumunuGetir()'deki AYNI varsayılan (500) ile tutarlı tutuldu.
   Future<List<CariModel>> ara(String sorgu, {String? tip, int limit = 500}) async {
     try {
-      if (sorgu.isEmpty) return tumunuGetir(tip: tip, limit: limit);
+      if (sorgu.isEmpty) return await tumunuGetir(tip: tip, limit: limit);
       final db = await _d;
       final q = '%$sorgu%';
       // 🔴 DÜZELTME: 'cari_tipi = ...' hem TAM eşleşme (dual-tip

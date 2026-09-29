@@ -197,41 +197,41 @@ class AiSohbetServisi {
 
       switch (q.intent) {
         case AiIntent.sohbet:         return _sohbet(soru);
-        case AiIntent.zRaporu:        return AiRaporServisi.zRaporu(bas);
-        case AiIntent.urunZRaporu:    return AiRaporServisi.urunZRaporu(bas);
-        case AiIntent.aylikRapor:     return AiRaporServisi.aylikRapor(bas);
-        case AiIntent.grupRaporu:     return AiRaporServisi.grupRaporu(bas, bit);
-        case AiIntent.markaRaporu:    return AiRaporServisi.grupRaporu(bas, bit, kolon: 'marka', baslik: 'MARKA');
-        case AiIntent.alan1Raporu:    return AiRaporServisi.grupRaporu(bas, bit, kolon: 'alan1', baslik: 'ALAN1');
-        case AiIntent.kategoriAnaliz: return AiRaporServisi.grupRaporu(bas, bit);
+        case AiIntent.zRaporu:        return await AiRaporServisi.zRaporu(bas);
+        case AiIntent.urunZRaporu:    return await AiRaporServisi.urunZRaporu(bas);
+        case AiIntent.aylikRapor:     return await AiRaporServisi.aylikRapor(bas);
+        case AiIntent.grupRaporu:     return await AiRaporServisi.grupRaporu(bas, bit);
+        case AiIntent.markaRaporu:    return await AiRaporServisi.grupRaporu(bas, bit, kolon: 'marka', baslik: 'MARKA');
+        case AiIntent.alan1Raporu:    return await AiRaporServisi.grupRaporu(bas, bit, kolon: 'alan1', baslik: 'ALAN1');
+        case AiIntent.kategoriAnaliz: return await AiRaporServisi.grupRaporu(bas, bit);
         case AiIntent.gunlukSatis:
         case AiIntent.haftalikSatis:
         case AiIntent.aylikSatis:
         case AiIntent.yillikSatis:
-        case AiIntent.ciroRaporu:     return _satisCevap(bas, bit, periyot);
-        case AiIntent.netKar:         return _netKarCevap(bas, bit, periyot);
-        case AiIntent.karDegisimAciklama: return AiRaporServisi.karDegisimAciklama();
-        case AiIntent.anormalTespit:      return AiRaporServisi.anormalIslemleriTespitEt();
-        case AiIntent.stokTukenmeTahmini: return AiRaporServisi.stokTukenmeTahmini();
-        case AiIntent.kasaDurumu:     return _kasaCevap();
-        case AiIntent.odemeYontemi:   return _odemeDagilimCevap(bas, bit, periyot);
-        case AiIntent.kritikStok:     return _kritikStokCevap();
-        case AiIntent.stokSorgula:    return _stokSorgulaCevap(_sonUrun ?? _araUrunIsmi(soru));
-        case AiIntent.stokDeger:      return _stokDegerCevap();
-        case AiIntent.stokHareket:    return _stokHareketCevap(bas, bit, periyot);
-        case AiIntent.enCokSatan:     return _enCokSatanCevap(bas, bit, p['sayi'] as int? ?? 10);
-        case AiIntent.enKarli:        return _enKarliCevap();
-        case AiIntent.urunAra:        return _urunAraCevap(_sonUrun ?? _araUrunIsmi(soru));
-        case AiIntent.urunListele:    return _urunListeleCevap(p['sayi'] as int? ?? 20);
-        case AiIntent.cariListele:    return _cariListeleCevap();
-        case AiIntent.cariBorc:       return _cariBorcCevap(_sonMusteri ?? _araMusteriIsmi(soru));
-        case AiIntent.cariHareket:    return _cariHareketCevap(p['sayi'] as int? ?? 10);
-        case AiIntent.tahsilat:       return _tahsilatCevap(bas, bit, periyot);
-        case AiIntent.tahmin:         return _tahminCevap(p['sayi'] as int? ?? 7);
-        case AiIntent.oneri:          return _oneriCevap();
-        case AiIntent.grupDetay:        return _grupDetayCevap();
-        case AiIntent.alan1Detay:       return _alan1DetayCevap();
-        case AiIntent.stokGenelDurum:   return _stokGenelDurumCevap();
+        case AiIntent.ciroRaporu:     return await _satisCevap(bas, bit, periyot);
+        case AiIntent.netKar:         return await _netKarCevap(bas, bit, periyot);
+        case AiIntent.karDegisimAciklama: return await AiRaporServisi.karDegisimAciklama();
+        case AiIntent.anormalTespit:      return await AiRaporServisi.anormalIslemleriTespitEt();
+        case AiIntent.stokTukenmeTahmini: return await AiRaporServisi.stokTukenmeTahmini();
+        case AiIntent.kasaDurumu:     return await _kasaCevap();
+        case AiIntent.odemeYontemi:   return await _odemeDagilimCevap(bas, bit, periyot);
+        case AiIntent.kritikStok:     return await _kritikStokCevap();
+        case AiIntent.stokSorgula:    return await _stokSorgulaCevap(_sonUrun ?? _araUrunIsmi(soru));
+        case AiIntent.stokDeger:      return await _stokDegerCevap();
+        case AiIntent.stokHareket:    return await _stokHareketCevap(bas, bit, periyot);
+        case AiIntent.enCokSatan:     return await _enCokSatanCevap(bas, bit, p['sayi'] as int? ?? 10);
+        case AiIntent.enKarli:        return await _enKarliCevap();
+        case AiIntent.urunAra:        return await _urunAraCevap(_sonUrun ?? _araUrunIsmi(soru));
+        case AiIntent.urunListele:    return await _urunListeleCevap(p['sayi'] as int? ?? 20);
+        case AiIntent.cariListele:    return await _cariListeleCevap();
+        case AiIntent.cariBorc:       return await _cariBorcCevap(_sonMusteri ?? _araMusteriIsmi(soru));
+        case AiIntent.cariHareket:    return await _cariHareketCevap(p['sayi'] as int? ?? 10);
+        case AiIntent.tahsilat:       return await _tahsilatCevap(bas, bit, periyot);
+        case AiIntent.tahmin:         return await _tahminCevap(p['sayi'] as int? ?? 7);
+        case AiIntent.oneri:          return await _oneriCevap();
+        case AiIntent.grupDetay:        return await _grupDetayCevap();
+        case AiIntent.alan1Detay:       return await _alan1DetayCevap();
+        case AiIntent.stokGenelDurum:   return await _stokGenelDurumCevap();
         default:
           // Kural tabanlı sistem bu soruyu tanımadı — önceden burada
           // sadece bir "örnek komutlar" listesi dönülüyordu, soruya

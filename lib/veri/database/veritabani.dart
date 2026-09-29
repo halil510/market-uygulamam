@@ -960,7 +960,7 @@ class Veritabani {
       // mesaja ve kalıcı log'a eklenir.
       final ornek = ilkHataliSatir == null
           ? ''
-          : ' | örnek alanlar: ${ilkHataliSatir!.keys.join(',')}';
+          : ' | örnek alanlar: ${ilkHataliSatir.keys.join(',')}';
       LogServisi().hata('supaKayitlariEkle($tablo)',
           hata: ilkHata, ek: 'örnek satır: ${ilkHataliSatir.toString()}');
       throw Exception('$tablo: $basarisizSayisi/${kayitlar.length} kayıt yazılamadı — '

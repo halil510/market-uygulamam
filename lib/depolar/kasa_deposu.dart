@@ -102,7 +102,7 @@ class KasaDeposu {
   Future<double> guncelBakiye() async {
     try {
       final db = await _d;
-      return _sonBakiyeTxn(db);
+      return await _sonBakiyeTxn(db);
     } catch (e, st) {
       LogServisi().hata('Kasa.guncelBakiye', hata: e, yigin: st);
       rethrow;

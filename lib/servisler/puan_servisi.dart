@@ -22,21 +22,23 @@ class PuanServisi {
     required double tutar,
     required int satisId,
     double puanOrani = 1.0, // 1 puan per TL
+    String? aciklama,
   }) async {
     if (tutar <= 0 || puanOrani <= 0) return;
     final kazanilanPuan = (tutar * puanOrani).floorToDouble();
     if (kazanilanPuan <= 0) return;
 
     final db = await Veritabani().db;
+    final now = DateTime.now().toIso8601String();
     await db.transaction((txn) async {
       // musteri_puan upsert
       await txn.rawInsert('''
         INSERT INTO ${DbSabitler.musteriPuan}(cari_id, toplam_puan, kullanilan, son_islem, global_id)
-        VALUES(?, ?, 0, datetime('now'), ?)
+        VALUES(?, ?, 0, ?, ?)
         ON CONFLICT(cari_id) DO UPDATE SET
           toplam_puan = toplam_puan + excluded.toplam_puan,
           son_islem   = excluded.son_islem
-      ''', [cariId, kazanilanPuan, const Uuid().v4()]);
+      ''', [cariId, kazanilanPuan, now, const Uuid().v4()]);
 
       // Hareket kaydı
       await txn.insert(DbSabitler.puanHareket, {
@@ -45,7 +47,8 @@ class PuanServisi {
         'islem_tipi': 'Kazanıldı',
         'puan':       kazanilanPuan,
         'referans_id': satisId,
-        'aciklama':   'Satış puanı (${tutar.toStringAsFixed(2)} ₺)',
+        'aciklama':   aciklama ?? 'Satış puanı (${tutar.toStringAsFixed(2)} ₺)',
+        ..._damga(now),
       });
     });
     // 🔴 Derin analizde bulundu: bu servis hiçbir zaman BulutManager
@@ -82,18 +85,26 @@ class PuanServisi {
     required double istenenPuan,
     required int satisId,
   }) async {
-    final bakiye = await puanBakiyesi(cariId);
-    final kullanilanPuan = istenenPuan.clamp(0.0, bakiye);
-    if (kullanilanPuan <= 0) return 0;
-
     final db = await Veritabani().db;
+    final now = DateTime.now().toIso8601String();
+    var kullanilanPuan = 0.0;
+    // Bakiye kontrolü yazma ile AYNI transaction'da — önceden dışarıdaydı,
+    // çift dokunuşta iki çağrı da aynı bakiyeyi görüp fazla harcayabiliyordu.
     await db.transaction((txn) async {
+      final rows = await txn.query(DbSabitler.musteriPuan,
+          where: 'cari_id = ?', whereArgs: [cariId], limit: 1);
+      if (rows.isEmpty) return;
+      final bakiye = ((rows.first['toplam_puan'] as num?)?.toDouble() ?? 0) -
+          ((rows.first['kullanilan'] as num?)?.toDouble() ?? 0);
+      kullanilanPuan = istenenPuan.clamp(0.0, bakiye < 0 ? 0.0 : bakiye);
+      if (kullanilanPuan <= 0) return;
+
       await txn.rawUpdate('''
         UPDATE ${DbSabitler.musteriPuan}
         SET kullanilan   = kullanilan + ?,
-            son_islem    = datetime('now')
+            son_islem    = ?
         WHERE cari_id = ?
-      ''', [kullanilanPuan, cariId]);
+      ''', [kullanilanPuan, now, cariId]);
 
       await txn.insert(DbSabitler.puanHareket, {
         'global_id':   const Uuid().v4(),
@@ -102,8 +113,10 @@ class PuanServisi {
         'puan':        -kullanilanPuan,
         'referans_id': satisId,
         'aciklama':    'Ödeme puanı kullanıldı',
+        ..._damga(now),
       });
     });
+    if (kullanilanPuan <= 0) return 0;
     await _bulutBildir(cariId, satisId, kazanilanTip: false);
     return kullanilanPuan;
   }
@@ -160,6 +173,7 @@ class PuanServisi {
           'puan': -kazanilanToplam,
           'referans_id': satisId,
           'aciklama': 'Satış iptali/silindi — kazanılan puan geri alındı',
+          ..._damga(now),
         });
         iptalGlobalIdleri.add(gid);
       }
@@ -177,6 +191,7 @@ class PuanServisi {
           'puan': harcananToplam,
           'referans_id': satisId,
           'aciklama': 'Satış iptali/silindi — kullanılan puan iade edildi',
+          ..._damga(now),
         });
         iptalGlobalIdleri.add(gid);
       }
@@ -199,6 +214,36 @@ class PuanServisi {
       if (kDebugMode) debugPrint('PuanServisi.puanIptalEt bulut bildirimi hatası: $e');
     }
   }
+
+  /// Hareketlerden (toplam_puan, kullanilan) sayaçlarını puanIptalEt ile
+  /// AYNI kuralla hesaplar: 'İptal' satırı kendi sayacını geri alır (eksi
+  /// İptal → kazanılanı düşürür, artı İptal → harcananı düşürür). Önceden
+  /// mutabakat yalnız işarete bakıyordu — eksi İptal'i "harcandı" sayıp
+  /// her senkronda sayaçları değiştiriyor ve buluta yeniden gönderiyordu.
+  @visibleForTesting
+  static (double, double) sayaclariHesapla(List<Map<String, Object?>> hareketler) {
+    double kazanilan = 0, harcanan = 0;
+    for (final h in hareketler) {
+      final puan = (h['puan'] as num?)?.toDouble() ?? 0;
+      if (h['islem_tipi'] == 'İptal') {
+        if (puan < 0) {
+          kazanilan += puan;
+        } else {
+          harcanan -= puan;
+        }
+      } else if (puan > 0) {
+        kazanilan += puan;
+      } else {
+        harcanan += puan.abs();
+      }
+    }
+    return (kazanilan < 0 ? 0 : kazanilan, harcanan < 0 ? 0 : harcanan);
+  }
+
+  /// SQLite CURRENT_TIMESTAMP UTC yazar; ekran yerel saat beklediğinden
+  /// geçmiş 3 saat geride görünüyordu — tarih açıkça yerel yazılır.
+  static Map<String, Object> _damga(String now) =>
+      {'tarih': now, 'last_updated': now};
 
   /// Mevcut kullanılabilir puan bakiyesi
   Future<double> puanBakiyesi(int cariId) async {
@@ -247,15 +292,7 @@ class PuanServisi {
       final eskiKullanilan = (m['kullanilan'] as num?)?.toDouble() ?? 0;
       final hareketler = await db.query(DbSabitler.puanHareket,
           where: 'cari_id = ?', whereArgs: [cariId]);
-      double dogruKazanilan = 0, dogruHarcanan = 0;
-      for (final h in hareketler) {
-        final puan = (h['puan'] as num?)?.toDouble() ?? 0;
-        if (puan > 0) {
-          dogruKazanilan += puan;
-        } else {
-          dogruHarcanan += puan.abs();
-        }
-      }
+      final (dogruKazanilan, dogruHarcanan) = sayaclariHesapla(hareketler);
       if ((eskiToplam - dogruKazanilan).abs() > 0.01 ||
           (eskiKullanilan - dogruHarcanan).abs() > 0.01) {
         await db.update(DbSabitler.musteriPuan, {

@@ -186,7 +186,8 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
             setState(() => _islemAktif = true);
             try {
               await _puan.puanEkle(
-                cariId: widget.cariId, tutar: puan, satisId: 0, puanOrani: 1.0);
+                cariId: widget.cariId, tutar: puan, satisId: 0, puanOrani: 1.0,
+                aciklama: 'Manuel puan ekleme');
               await _yukle();
               if (mounted) basariMesaji(context, '${puan.toStringAsFixed(0)} puan eklendi ✓');
             } catch (e) {
@@ -280,7 +281,13 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
                     final kazandi = puan > 0;
                     final tarih = h['tarih'] as String? ?? '';
                     DateTime? tarihDt;
-                    try { tarihDt = DateTime.parse(tarih); } catch (e) { /* ignore */ }
+                    // Eski kayıtlar SQLite CURRENT_TIMESTAMP ile UTC ('2026-09-29 06:00:00')
+                    // yazıldı — 'T'siz biçim UTC sayılıp yerele çevrilir.
+                    try {
+                      tarihDt = tarih.contains('T')
+                          ? DateTime.parse(tarih)
+                          : DateTime.parse('${tarih.replaceFirst(' ', 'T')}Z').toLocal();
+                    } catch (e) { /* ignore */ }
 
                     return ListTile(
                       leading: CircleAvatar(

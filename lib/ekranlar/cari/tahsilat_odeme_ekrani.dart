@@ -428,7 +428,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
                       height: 20,
                       child: CircularProgressIndicator(
                           color: Colors.white, strokeWidth: 2))
-                  : Text('$_islemTipi Kaydet',
+                  : Text('${_islemTipi == 'Odeme' ? 'Ödeme' : _islemTipi} Kaydet',
                       style: const TextStyle(fontSize: 16)),
             ),
           ),

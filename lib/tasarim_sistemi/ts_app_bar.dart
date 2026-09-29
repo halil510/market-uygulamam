@@ -197,6 +197,10 @@ class TsAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: TsModulRenk.koyu(modul),
       surfaceTintColor: Colors.transparent,
       foregroundColor: Colors.white,
+      // baslikWidget (düz Text) verilince temanın koyu titleTextStyle'ı
+      // uygulanıyor, foregroundColor onu ezmiyor: mor zeminde koyu başlık
+      // (Hızlı Satış, Yeni Ürün, Yeni Cari, Mal Alımı, cari detay...).
+      titleTextStyle: TsMetin.baslikL.copyWith(color: Colors.white),
       iconTheme: const IconThemeData(color: Colors.white),
       actionsIconTheme: const IconThemeData(color: Colors.white),
       flexibleSpace: DecoratedBox(

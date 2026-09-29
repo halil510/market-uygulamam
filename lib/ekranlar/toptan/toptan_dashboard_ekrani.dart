@@ -97,6 +97,10 @@ class _ToptanDashboardEkraniState extends State<ToptanDashboardEkrani> {
         SliverAppBar(
           expandedHeight: 150,
           pinned: true,
+          // Gerçek AppBar başlığı: FlexibleSpaceBar.title genişlemiş durumda
+          // KPI kartlarının üstüne biniyordu.
+          title: const Text('Toptan Satış',
+              style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
           // ══════════════════════════════════════════════════════════════
           // 🔴 DÜZELTME (kullanıcı bulgusu — "ikonlar gözükmüyor")
           //
@@ -136,8 +140,6 @@ class _ToptanDashboardEkraniState extends State<ToptanDashboardEkrani> {
           iconTheme: const IconThemeData(color: Colors.white),
           actionsIconTheme: const IconThemeData(color: Colors.white),
           flexibleSpace: FlexibleSpaceBar(
-            title: const Text('Toptan Satış',
-                style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
             background: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: TsModulRenk.gradyan(TsModul.ana),

@@ -228,13 +228,13 @@ class _KartDetayIcerik extends ConsumerWidget {
             const SizedBox(height: 12),
             Row(children: [
               Expanded(
-                child: _LimitItem(context, 'Limit', kart.kartLimit.toStringAsFixed(2)),
+                child: _LimitItem(context, 'Limit', ParaUtils.formatla(kart.kartLimit)),
               ),
               Expanded(
-                child: _LimitItem(context, 'Kullanılan', kart.kullanilanLimit.toStringAsFixed(2)),
+                child: _LimitItem(context, 'Kullanılan', ParaUtils.formatla(kart.kullanilanLimit)),
               ),
               Expanded(
-                child: _LimitItem(context, 'Kalan', kart.kalanLimit.toStringAsFixed(2)),
+                child: _LimitItem(context, 'Kalan', ParaUtils.formatla(kart.kalanLimit)),
               ),
             ]),
           ]),

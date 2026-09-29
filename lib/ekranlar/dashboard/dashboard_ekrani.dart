@@ -10,6 +10,7 @@
 // widgets/sync_mini_buton.dart'a taşındı (normal import ile kullanılıyor
 // — diğerleri gibi part-of yapılmadı çünkü zaten kendi kendine yeten,
 // _DashboardEkraniState'in private üyelerine hiç ihtiyaç duymuyordu).
+import '../../cekirdek/utils/metin_arama.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -70,7 +71,7 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
           .addPostFrameCallback((_) => AktifSubeServisi().baslat());
     }
     _aramaCtrl.addListener(() {
-      setState(() => _aramaMetni = _aramaCtrl.text.toLowerCase());
+      setState(() => _aramaMetni = aramaNormalize(_aramaCtrl.text.trim()));
     });
     // Play Store öncesi güvenlik denetiminde bulundu: admin varsayılan
     // "1234" şifresini hâlâ kullanıyorsa fark edilir bir uyarı göster.

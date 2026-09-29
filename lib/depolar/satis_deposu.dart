@@ -509,6 +509,30 @@ class SatisDeposu {
     return (rows.first['maliyet'] as num?)?.toDouble() ?? 0;
   }
 
+  /// Aralıktaki (iptal edilmemiş) iadelerin tutarı ve maliyeti — Gün Sonu
+  /// net ciro/kâr hesabı için. Önceden iadeler raporda hiç düşülmüyordu
+  /// (600 TL iade sonrası ciro ve kâr şişik kalıyordu).
+  Future<({double tutar, double maliyet})> iadeTutarVeMaliyet(
+      DateTime bas, DateTime bit) async {
+    final db = await _d;
+    final rows = await db.rawQuery('''
+      SELECT
+        COALESCE(SUM(ik.toplam), 0) AS tutar,
+        COALESCE(SUM(ik.miktar * COALESCE(u.alis_fiyat_kdv_dahil, 0)), 0) AS maliyet
+      FROM iade_kalem ik
+      JOIN iade i ON ik.iade_id = i.id
+      LEFT JOIN urunler u ON ik.urun_id = u.id
+      WHERE i.tarih BETWEEN ? AND ?
+        AND COALESCE(i.durum, '') != 'iptal'
+        AND i.deleted_at IS NULL
+    ''', [bas.toIso8601String(), bit.toIso8601String()]);
+    final r = rows.first;
+    return (
+      tutar: (r['tutar'] as num?)?.toDouble() ?? 0,
+      maliyet: (r['maliyet'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
   /// Gün Sonu Excel dışa aktarımı için detaylı satış kalemleri (fiş no,
   /// cari unvanı, ürün, miktar, fiyat...) — tarihe göre, aktif şubeye
   /// göre filtrelenir. Madde 2 mimari denetimi: gunluk_rapor_ekrani.dart
@@ -621,8 +645,9 @@ class SatisDeposu {
     final res = await db.rawQuery(
       "SELECT COUNT(*) as satis_sayisi, SUM(genel_toplam) as ciro, "
       "SUM(iskonto_tutar) as iskonto, "
-      "SUM(CASE WHEN odeme_yontemi = 'Nakit' THEN odenen_tutar ELSE 0 END) as nakit, "
-      "SUM(CASE WHEN odeme_yontemi = 'Kredi Kartı' THEN odenen_tutar ELSE 0 END) as kart, "
+      // Para üstü hariç: alınan tutar satış tutarını aşamaz.
+      "SUM(CASE WHEN odeme_yontemi = 'Nakit' THEN MIN(odenen_tutar, genel_toplam) ELSE 0 END) as nakit, "
+      "SUM(CASE WHEN odeme_yontemi = 'Kredi Kartı' THEN MIN(odenen_tutar, genel_toplam) ELSE 0 END) as kart, "
       // Madde 31 (Dashboard) denetimi, 2026-09-20: Cari için odenen_tutar
       // DEĞİL genel_toplam kullanılır — gunluk_rapor_ekrani.dart'taki
       // AYNI kırılım desenine hizalı (Cari satışta odenen_tutar tipik

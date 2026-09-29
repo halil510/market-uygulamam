@@ -158,12 +158,12 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     _c['barkodlar']?.text     = u.barkodlar ?? '';
     _c['urunAdi']?.text       = u.urunAdi;
     _c['altUrunAdi']?.text    = u.alternatifUrunAdi ?? '';
-    _c['alisFiyat']?.text     = u.alisFiyat > 0 ? u.alisFiyat.toStringAsFixed(3) : '';
-    _c['alisFiyatKdvDahil']?.text = u.alisFiyatKdvDahil > 0 ? u.alisFiyatKdvDahil.toStringAsFixed(3) : '';
+    _c['alisFiyat']?.text     = u.alisFiyat > 0 ? u.alisFiyat.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '') : '';
+    _c['alisFiyatKdvDahil']?.text = u.alisFiyatKdvDahil > 0 ? u.alisFiyatKdvDahil.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '') : '';
     _c['alisKdvOran']?.text   = u.alisKdvOran.toStringAsFixed(0);
-    _c['satisFiyati']?.text   = u.satisFiyati.toStringAsFixed(3);
+    _c['satisFiyati']?.text   = u.satisFiyati.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '');
     _c['indirimOrani']?.text  = u.indirimOrani > 0 ? u.indirimOrani.toStringAsFixed(2) : '';
-    _c['indirimliFiyat']?.text = u.indirimliFiyat > 0 ? u.indirimliFiyat.toStringAsFixed(3) : '';
+    _c['indirimliFiyat']?.text = u.indirimliFiyat > 0 ? u.indirimliFiyat.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '') : '';
     _c['karOrani']?.text      = u.karOrani > 0 ? u.karOrani.toStringAsFixed(2) : '';
     _c['stok']?.text          = u.stok.toStringAsFixed(u.birimAdi == 'KG' ? 3 : 0);
     _c['minimumStok']?.text   = u.minimumStok > 0 ? u.minimumStok.toStringAsFixed(0) : '';
@@ -210,7 +210,7 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     final alisKdvOranDeger = ParaUtils.sayiCoz(_c['alisKdvOran']?.text ?? '') ?? 0;
     if (alisHam > 0) {
       final alisKdvli = alisHam * (1 + alisKdvOranDeger / 100);
-      _c['alisFiyatKdvDahil']?.text = alisKdvli.toStringAsFixed(3);
+      _c['alisFiyatKdvDahil']?.text = alisKdvli.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '');
     } else {
       _c['alisFiyatKdvDahil']?.text = '0';
     }
@@ -226,10 +226,10 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     final alisKdvli = ParaUtils.sayiCoz(_c['alisFiyatKdvDahil']?.text) ?? 0;
     if (alisHam > 0) {
       final yeniKdvli = alisHam * (1 + alisKdvOranDeger / 100);
-      _c['alisFiyatKdvDahil']?.text = yeniKdvli.toStringAsFixed(3);
+      _c['alisFiyatKdvDahil']?.text = yeniKdvli.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '');
     } else if (alisKdvli > 0) {
       final yeniAlis = alisKdvli / (1 + alisKdvOranDeger / 100);
-      _c['alisFiyat']?.text = yeniAlis.toStringAsFixed(3);
+      _c['alisFiyat']?.text = yeniAlis.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '');
     }
     _karHesapla();
     _hesaplamaCalisiyor = false;
@@ -242,9 +242,9 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     final alisKdvOranDeger = ParaUtils.sayiCoz(_c['alisKdvOran']?.text ?? '') ?? 0;
     if (alisKdvli > 0 && alisKdvOranDeger > 0) {
       final alisHam = alisKdvli / (1 + alisKdvOranDeger / 100);
-      _c['alisFiyat']?.text = alisHam.toStringAsFixed(3);
+      _c['alisFiyat']?.text = alisHam.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '');
     } else if (alisKdvli > 0) {
-      _c['alisFiyat']?.text = alisKdvli.toStringAsFixed(3);
+      _c['alisFiyat']?.text = alisKdvli.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '');
     } else {
       _c['alisFiyat']?.text = '0';
     }
@@ -302,9 +302,9 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     // hesaba katılmaz, kaydederken açık uyarı verilir.
     if (satis > 0 && oran > 0 && oran < 100) {
       final indirimli = satis * (1 - oran / 100);
-      _c['indirimliFiyat']?.text = indirimli.toStringAsFixed(3);
+      _c['indirimliFiyat']?.text = indirimli.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '');
     } else if (satis > 0) {
-      _c['indirimliFiyat']?.text = satis.toStringAsFixed(3);
+      _c['indirimliFiyat']?.text = satis.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '');
     }
     _hesaplamaCalisiyor = false;
   }

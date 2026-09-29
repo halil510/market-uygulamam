@@ -58,14 +58,23 @@ extension _DashboardAppBarExt on _DashboardEkraniState {
                     // olmadan diziliyordu — uzun şube adında dar ekranlarda
                     // RenderFlex taşma hatası riski vardı. Artık gerekirse
                     // yatay kaydırılabilir.
+                    // Sağdaki 4 eylem ikonu (ara/bildirim/yenile/çıkış) AppBar
+                    // eylemleri olarak bu satırın ÜSTÜNE biner: sağ tarafı
+                    // onlara ayır (aksi halde şube çipi arama ikonuyla
+                    // çakışıyordu).
                     Flexible(
+                      child: Padding(
+                      padding: const EdgeInsets.only(right: 176),
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           // Tüm Uygulamalar butonu
                           GestureDetector(
-                            onTap: () => setState(() =>
-                                _tumUygulamalarGoster = !_tumUygulamalarGoster),
+                            onTap: () => setState(() {
+                              _tumUygulamalarGoster = !_tumUygulamalarGoster;
+                              // Ana sayfaya dönünce eski arama metni kalmasın.
+                              if (!_tumUygulamalarGoster) _aramaCtrl.clear();
+                            }),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 6),
@@ -148,6 +157,7 @@ extension _DashboardAppBarExt on _DashboardEkraniState {
                           // yaratıyordu. Yazıcı durumu zaten Ayarlar >
                           // Yazıcı Ayarları ekranından görülüp yönetilebiliyor.
                         ]),
+                      ),
                       ),
                     ),
                   ]),

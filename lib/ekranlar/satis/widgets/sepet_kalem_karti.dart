@@ -199,10 +199,14 @@ class SepetKalemKarti extends StatelessWidget {
                 const SizedBox(width: 8),
 
                 // ── Toplam tutar ───────────────────────────────────────
-                SizedBox(
-                  width: 64,
+                // Sabit 64 dp "₺400,00" gibi tutarları iki satıra bölüyordu:
+                // en az 64, gerekirse içeriğe göre genişler; tek satırda kalır.
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 64),
                   child: Text(
                     ParaUtils.formatla(k.toplamTutar),
+                    maxLines: 1,
+                    softWrap: false,
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       fontWeight: FontWeight.w800,

@@ -1,4 +1,5 @@
 // lib/ekranlar/banka/banka_hesap_liste_ekrani.dart
+import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -47,7 +48,7 @@ class BankaHesapListeEkrani extends ConsumerWidget {
             baslik: hesap.hesapAdi,
             altBaslik: 'No: ${hesap.hesapNo}${hesap.iban != null ? ' · IBAN: ${hesap.iban}' : ''}',
             ikon: const Icon(Icons.account_balance),
-            deger: '${hesap.bakiye.toStringAsFixed(2)} ${hesap.paraBirimi}',
+            deger: hesap.paraBirimi == 'TRY' ? ParaUtils.formatla(hesap.bakiye) : '${ParaUtils.formatla(hesap.bakiye).replaceAll('₺', '')} ${hesap.paraBirimi}',
             onTap: () => context.push('/banka-hareket', extra: {'hesapId': hesap.id}),
           ),
         ),

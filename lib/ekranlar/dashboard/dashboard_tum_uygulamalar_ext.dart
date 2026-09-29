@@ -17,7 +17,7 @@ extension _DashboardTumUygulamalarExt on _DashboardEkraniState {
         ? -1
         : kategoriler
             .expand((k) => k.uygulamalar)
-            .where((u) => u.ad.toLowerCase().contains(_aramaMetni))
+            .where((u) => aramaNormalize(u.ad).contains(_aramaMetni))
             .length;
 
     return SingleChildScrollView(
@@ -73,7 +73,7 @@ extension _DashboardTumUygulamalarExt on _DashboardEkraniState {
             final filtrelenmis = kategori.uygulamalar
                 .where((u) =>
                     _aramaMetni.isEmpty ||
-                    u.ad.toLowerCase().contains(_aramaMetni))
+                    aramaNormalize(u.ad).contains(_aramaMetni))
                 .toList();
             if (filtrelenmis.isEmpty) return const SizedBox.shrink();
 

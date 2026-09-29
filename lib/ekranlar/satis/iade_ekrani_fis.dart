@@ -138,7 +138,7 @@ extension _FisTabExt on _IadeEkraniState {
                         keyboardType:
                             const TextInputType.numberWithOptions(decimal: true),
                         decoration: InputDecoration(
-                          labelText: 'İade miktarı (en fazla $kalanMiktar)',
+                          labelText: 'İade miktarı (en fazla ${kalanMiktar % 1 == 0 ? kalanMiktar.toInt() : kalanMiktar})',
                           border: const OutlineInputBorder(),
                           isDense: true,
                           errorText: (iadeMiktari <= 0 || iadeMiktari > kalanMiktar + 1e-9)
@@ -349,7 +349,7 @@ extension _FisTabExt on _IadeEkraniState {
                                         fontWeight: FontWeight.w600,
                                         fontSize: 13)),
                                 Text(
-                                    '${k.miktar} × ${ParaUtils.formatla(k.birimFiyat)}',
+                                    '${k.miktar % 1 == 0 ? k.miktar.toInt() : k.miktar} × ${ParaUtils.formatla(k.birimFiyat)}',
                                     style: TextStyle(
                                         fontSize: 12,
                                         color: TsRenk.metinIkincil(context))),
@@ -357,7 +357,7 @@ extension _FisTabExt on _IadeEkraniState {
                                   Text(
                                     tamIadeEdildi
                                         ? 'Tamamı iade edildi'
-                                        : '$oncekiIade adet iade edildi',
+                                        : '${oncekiIade % 1 == 0 ? oncekiIade.toInt() : oncekiIade} adet iade edildi',
                                     style: TextStyle(
                                         fontSize: 11,
                                         color: TsRenk.hata,

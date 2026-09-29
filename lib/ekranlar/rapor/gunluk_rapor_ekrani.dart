@@ -52,6 +52,7 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
   double _giderToplam     = 0;
   double _maliyetToplam   = 0;
   double _brutKar         = 0;
+  double _iadeToplam      = 0;
   double _kar             = 0;
   bool _yukleniyor = false;
 
@@ -94,23 +95,28 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
         _satisDepo.tariheGoreGetir(_baslangic, _bitis),
         _giderDepo.aralikToplamGider(_baslangic, _bitis),
         _satisDepo.maliyetToplami(_baslangic, _bitis),
+        _satisDepo.iadeTutarVeMaliyet(_baslangic, _bitis),
       ]);
 
       final satislar = results[0] as List<SatisModel>;
       final gider    = results[1] as double;
       final maliyet  = results[2] as double;
+      final iade     = results[3] as ({double tutar, double maliyet});
 
       double toplam = 0, nakit = 0, kart = 0, cari = 0, havale = 0, diger = 0;
       for (final s in satislar) {
         toplam += s.genelToplam;
+        // Alınan tutar satış tutarını aşıyorsa (nakit para üstü) fazlası
+        // ciroya/nakit satışa girmez.
+        final tahsil = s.odenenTutar > s.genelToplam ? s.genelToplam : s.odenenTutar;
         switch (s.odemeYontemi) {
-          case 'Nakit':       nakit  += s.odenenTutar; break;
-          case 'Kredi Kartı': kart   += s.odenenTutar; break;
+          case 'Nakit':       nakit  += tahsil; break;
+          case 'Kredi Kartı': kart   += tahsil; break;
           case 'Cari':        cari   += s.genelToplam; break;
-          case 'Havale':      havale += s.odenenTutar; break;
+          case 'Havale':      havale += tahsil; break;
           // QR, Karma ve ileride eklenebilecek başka ödeme yöntemleri —
           // kırılım toplamının genel toplamdan eksik görünmemesi için.
-          default:            diger  += s.odenenTutar; break;
+          default:            diger  += tahsil; break;
         }
       }
       if (!mounted) return;
@@ -124,8 +130,10 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
         _digerToplam  = diger;
         _giderToplam  = gider;
         _maliyetToplam= maliyet;
-        _brutKar      = toplam - maliyet;      // Brut kar = ciro - alis maliyeti
-        _kar          = toplam - maliyet - gider; // Net kar = brut kar - giderler
+        _iadeToplam   = iade.tutar;
+        // Net ciro/maliyet: iade edilen mal hem ciroyu hem maliyeti düşürür.
+        _brutKar      = (toplam - iade.tutar) - (maliyet - iade.maliyet);
+        _kar          = _brutKar - gider; // Net kar = brut kar - giderler
         _yukleniyor   = false;
       });
     } catch (e) {
@@ -227,6 +235,7 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
       ozetSayfa.appendRow([TextCellValue('Diger (QR/Karma)'), DoubleCellValue(_digerToplam)]);
     ozetSayfa.appendRow([TextCellValue('Gider'), DoubleCellValue(_giderToplam)]);
     ozetSayfa.appendRow([TextCellValue('Maliyet (Alis)'), DoubleCellValue(_maliyetToplam)]);
+    ozetSayfa.appendRow([TextCellValue('Iade'), DoubleCellValue(_iadeToplam)]);
     ozetSayfa.appendRow([TextCellValue('Brut Kar'), DoubleCellValue(_brutKar)]);
     ozetSayfa.appendRow([TextCellValue('Net Kar'), DoubleCellValue(_kar)]);
     
@@ -694,6 +703,7 @@ double _toDouble(dynamic value) {
                   _bilgiKart('Diğer (QR/Karma)', _digerToplam, Colors.blueGrey),
                 _bilgiKart('Gider',           _giderToplam,   Colors.red),
                 _bilgiKart('Maliyet (Alis)',  _maliyetToplam, Colors.brown),
+                _bilgiKart('İade (−)',         _iadeToplam,    Colors.deepOrange),
                 _bilgiKart('Brut Kar',        _brutKar,       Colors.teal, bold: true),
                 _bilgiKart('Net Kar',         _kar,           Colors.purple, bold: true),
                 const SizedBox(height: 12),

@@ -198,7 +198,9 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
                   color: (giris ? Colors.green : Colors.red).withAlpha(26),
                   shape: BoxShape.circle),
                 child: Icon(
-                  giris ? Icons.add : Icons.remove,
+                  // İkon bakiye etkisiyle aynı yönde: borç (+, kırmızı) bakiyeyi
+                  // artırır, alacak (−, yeşil) azaltır — tutar işaretiyle tutarlı.
+                  giris ? Icons.remove : Icons.add,
                   color: giris ? Colors.green : Colors.red, size: 18)),
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -209,7 +211,7 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 if (borc > 0) Text('+${ParaUtils.formatla(borc)}',
                     style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w700, fontSize: 13)),
-                if (alacak > 0) Text('+${ParaUtils.formatla(alacak)}',
+                if (alacak > 0) Text('−${ParaUtils.formatla(alacak)}',
                     style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w700, fontSize: 13)),
               ]),
               if (satisMi) ...[

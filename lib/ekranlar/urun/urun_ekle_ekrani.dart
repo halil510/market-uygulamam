@@ -233,7 +233,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
 
                   _bolum('TEMEL BİLGİLER', Icons.info_outline),
                   Row(children: [
-                    Expanded(child: _alan('kod', 'Ürün Kodu')),
+                    Expanded(child: _alan('kod', 'Ürün Kodu *')),
                     const SizedBox(width: 8),
                     Expanded(child: _barkodAlani()),
                   ]),

@@ -21,7 +21,6 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../veri/database/veritabani.dart';
 import '../log_servisi.dart';
 import '../supabase_sync_servisi.dart';
 import 'bulut_manager.dart';
@@ -123,12 +122,7 @@ class OtomatikBulutCekme with WidgetsBindingObserver {
       final baglanti = await Connectivity().checkConnectivity();
       if (baglanti.every((b) => b == ConnectivityResult.none)) return null;
 
-      final db = Veritabani();
-      final sonuc = await SupabaseSyncServisi.buluttanAl(
-        kayitEkle: (t, k) => db.supaKayitlariEkle(t, k),
-        kayitGuncelle: (t, k) => db.supaKayitlariGuncelle(t, k),
-        sadeceDegisenler: true,
-      );
+      final sonuc = await SupabaseSyncServisi.yerelBuluttanAl();
       if (!sonuc.basarili) {
         _ardisikHata++;
         LogServisi().uyari('OtomatikBulutCekme: otomatik çekme hatası ($_ardisikHata. kez)',

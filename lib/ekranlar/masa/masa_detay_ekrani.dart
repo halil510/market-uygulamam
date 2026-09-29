@@ -19,9 +19,8 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/masa_odeme_servisi.dart';
 import '../../servisler/yazdirma_servisi.dart';
-import '../../veri/database/veritabani.dart';
+import '../../servisler/belge_no_servisi.dart';
 import '../satis/coklu_odeme_ekrani.dart';
-import '../../servisler/aktif_sube_servisi.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../modeller/cari_model.dart';
 import '../../widgetlar/ortak/musteri_secim_paneli.dart';
@@ -117,7 +116,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       alisFiyatKdv: 0,
     )).toList();
 
-    final temizFisNo = await Veritabani().fisNoUret('masa', subeId: AktifSubeServisi().subeId ?? 1);
+    final temizFisNo = await BelgeNoServisi().uret('masa');
 
     return SatisModel(
       fisNo: temizFisNo,

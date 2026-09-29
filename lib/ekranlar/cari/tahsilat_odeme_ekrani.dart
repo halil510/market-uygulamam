@@ -1,6 +1,6 @@
+import '../../servisler/belge_no_servisi.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import "../../veri/database/veritabani.dart";
 import "../../servisler/yazdirma_servisi.dart";
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
@@ -212,8 +212,8 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
       // diye (kullanıcı isteği 2026-09-22). "Borç Ekle" (paraHareketEdiyor
       // false) için makbuz üretilmiyor — zaten hiç basılmıyor.
       final makbuzNo = _paraHareketEdiyor
-          ? await Veritabani()
-              .fisNoUret(_islemTipi == 'Tahsilat' ? 'tahsilat' : 'tediye')
+          ? await BelgeNoServisi()
+              .uret(_islemTipi == 'Tahsilat' ? 'tahsilat' : 'tediye', subeId: 1)
           : null;
 
       // Cari hareket + (varsa) gerçek para hareketi (kasa/banka/kredi

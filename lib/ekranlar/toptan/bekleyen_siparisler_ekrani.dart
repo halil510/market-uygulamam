@@ -15,11 +15,10 @@ import '../../modeller/fatura_model.dart';
 import '../../depolar/bekleyen_siparis_deposu.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../depolar/irsaliye_deposu.dart';
-import '../../veri/database/veritabani.dart';
+import '../../servisler/belge_no_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/auth_servisi.dart';
-import '../../servisler/aktif_sube_servisi.dart';
 
 class BekleyenSiparislerEkrani extends StatefulWidget {
   /// Belirli bir bayi için filtrelenmiş liste (cari detayından
@@ -335,7 +334,7 @@ class _SiparisDetayEkraniState extends State<_SiparisDetayEkrani> {
   /// akışı stok da düşürür; o akışla KARIŞTIRILMAMALI.
   Future<void> _irsaliyeOlustur(CariModel cari, int satisId) async {
     try {
-      final no = await Veritabani().fisNoUret('irsaliye', subeId: AktifSubeServisi().subeId ?? 1);
+      final no = await BelgeNoServisi().uret('irsaliye');
 
       // Transaction artık IrsaliyeDeposu.olusturSevkKaydi'de — bkz. o
       // metodun doc yorumu, davranış birebir korundu (STOĞA DOKUNMAZ,

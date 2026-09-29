@@ -12,13 +12,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/tedarikci_siparis_deposu.dart';
-import '../../veri/database/veritabani.dart';
+import '../../servisler/belge_no_servisi.dart';
 import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../servisler/auth_servisi.dart';
-import '../../servisler/aktif_sube_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -156,7 +155,7 @@ class _SiparisOlusturEkraniState extends ConsumerState<SiparisOlusturEkrani> {
     if (mounted) setState(() {});
     try {
       final kullanici = AuthServisi().aktifKullanici;
-      final siparisNo = await Veritabani().fisNoUret('siparis', subeId: AktifSubeServisi().subeId ?? 1);
+      final siparisNo = await BelgeNoServisi().uret('siparis');
 
       // Tüm transaction + bulut senkron mantığı artık
       // TedarikciSiparisDeposu.olustur'da — bkz. o metodun doc yorumu,

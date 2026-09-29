@@ -14,6 +14,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'log_servisi.dart';
+import 'veritabani_dosya_servisi.dart';
+import '../cekirdek/sabitler/db_sabitleri.dart';
 import '../veri/database/veritabani.dart';
 
 class YedekBilgi {
@@ -122,18 +124,12 @@ class YedeklemeServisi {
   }
 
   // ── Geri yükle ────────────────────────────────────────────────────────
+  /// ZIP içindeki .db dosyasını geri yükler. İmza, güvenlik kopyası,
+  /// -wal/-shm temizliği, PRAGMA integrity_check ve bozuksa geri alma
+  /// VeritabaniDosyaServisi.dosyayiDegistir()'de (Veritabanını İçe Al ile
+  /// aynı yol) — bozuk yedekte mevcut veri DEĞİŞMEZ.
   Future<void> yedekiGeriYukle(String zipYolu) async {
-    // ÖNCEDEN BURADA CİDDİ BİR VERİ GÜVENLİĞİ AÇIĞI VARDI: mevcut
-    // veritabanı hiçbir güvenlik yedeği alınmadan, dosyanın gerçekten
-    // geçerli bir SQLite veritabanı olup olmadığı hiç doğrulanmadan
-    // doğrudan üzerine yazılıyordu. Bozuk bir ZIP, yanlış bir dosya veya
-    // yarıda kesilen bir işlem, kullanıcının MEVCUT (belki yedekten daha
-    // güncel) verisini GERİ DÖNÜŞSÜZ şekilde kaybetmesine yol açabilirdi
-    // — yedekleme özelliğinin kendisi bir veri kaybı riskine dönüşüyordu.
     try {
-      final dbPath = await getDatabasesPath();
-      final hedef  = p.join(dbPath, 'market.db');
-
       final bytes   = await File(zipYolu).readAsBytes();
       final archive = ZipDecoder().decodeBytes(bytes);
 
@@ -148,120 +144,15 @@ class YedeklemeServisi {
         throw Exception('Yedek dosyasında geçerli bir veritabanı bulunamadı.');
       }
 
-      // 1) Dosyanın GERÇEKTEN bir SQLite veritabanı olduğunu doğrula —
-      // SQLite dosyaları her zaman "SQLite format 3\0" (16 bayt) ile
-      // başlar. Bu kontrol olmadan bozuk/yanlış bir dosya sessizce
-      // market.db'nin üzerine yazılabilirdi.
-      const sqliteImza = 'SQLite format 3';
-      if (dbIcerik.length < 16 ||
-          String.fromCharCodes(dbIcerik.sublist(0, 15)) != sqliteImza) {
-        throw Exception(
-            'Yedek dosyası geçerli bir SQLite veritabanı değil — geri '
-            'yükleme iptal edildi, mevcut verileriniz DEĞİŞTİRİLMEDİ.');
-      }
-
-      // 2) Geri yüklemeden ÖNCE mevcut veritabanının bir güvenlik
-      // kopyasını al — geri yükleme başarısız olursa veya yanlışlıkla
-      // yapıldıysa geri dönebilmek için.
-      final guvenlikYedegi = '$hedef.geri_yukleme_oncesi_${DateTime.now().millisecondsSinceEpoch}.bak';
-      if (await File(hedef).exists()) {
-        await File(hedef).copy(guvenlikYedegi);
-      }
-
-      // 3) Mevcut veritabanı bağlantısını düzgün kapat — açık bir
-      // bağlantı varken dosyayı değiştirmek veri bozulmasına yol
-      // açabilir.
-      await Veritabani().kapat();
-
-      try {
-        await File(hedef).writeAsBytes(dbIcerik);
-      } catch (e) {
-        // Yazma başarısız oldu — güvenlik yedeğinden geri al
-        if (await File(guvenlikYedegi).exists()) {
-          await File(guvenlikYedegi).copy(hedef);
-        }
-        rethrow;
-      }
-
-      // 🔴🔴 KRİTİK DÜZELTME (DEEP_AUDIT_REPORT madde 5 — "Restore sonrası
-      // bütünlük/veri sağlığı kontrolü yok"): yukarıdaki "SQLite format 3"
-      // imza kontrolü sadece dosyanın SQLite BİÇİMİNDE BAŞLADIĞINI
-      // kanıtlar — içeriğin (ör. yarıda kesilmiş bir kopyalama/ZIP nedeniyle
-      // sayfa düzeyinde bozuk) SAĞLAM olduğunu KANITLAMAZ. Restore
-      // buradan sonra sessizce "başarılı" dönüyordu; kullanıcı bozuk bir
-      // veritabanıyla çalışmaya devam edip gerçek sorunu çok daha sonra,
-      // çok daha karışık bir durumda (ör. bir satış ortasında) keşfedebilirdi.
-      // Artık yazılan dosya PRAGMA integrity_check ile TÜM sayfaları
-      // taranarak doğrulanıyor; bozuksa restore İPTAL sayılır ve mevcut
-      // (restore öncesi) veritabanı güvenlik yedeğinden GERİ YÜKLENİR.
-      if (!await _butunlukKontrolEt(hedef)) {
-        if (await File(guvenlikYedegi).exists()) {
-          await File(guvenlikYedegi).copy(hedef);
-        }
-        throw Exception(
-            'Yedek dosyası bozuk (bütünlük kontrolü başarısız) — geri '
-            'yükleme İPTAL edildi, önceki verileriniz korundu.');
-      }
-
-      // 🔴 DÜZELTME (Madde 27 — Yedekleme denetimi, 2026-09-16): her
-      // restore işlemi kendi '.geri_yukleme_oncesi_*.bak' güvenlik
-      // kopyasını oluşturuyordu ama HİÇBİR YERDE temizlenmiyordu —
-      // zamanla (her restore'da market.db boyutunda bir dosya daha
-      // eklenerek) sınırsız birikip depolamayı doldurabilirdi. Son
-      // birkaçı (olası manuel kurtarma ihtiyacı için) tutulup gerisi
-      // siliniyor.
-      await _eskiGuvenlikYedekleriniTemizle(hedef);
+      await VeritabaniDosyaServisi().dosyayiDegistir(
+        hedef: p.join(await getDatabasesPath(), DbSabitler.dbAdi),
+        yeniIcerik: dbIcerik,
+        yedekOneki: 'geri_yukleme_oncesi',
+        kapat: Veritabani().kapat,
+      );
     } catch (e, st) {
       LogServisi().hata('YedeklemeServisi.geriYukle', hata: e, yigin: st);
       rethrow;
-    }
-  }
-
-  /// [dbYolu]'ndaki dosyayı SALT-OKUNUR, İZOLE bir bağlantıyla açıp
-  /// PRAGMA integrity_check çalıştırır — uygulamanın paylaşılan
-  /// Veritabani() singleton'ına HİÇ dokunmaz (onCreate/onUpgrade
-  /// migrasyonlarını erken tetiklemez), sadece dosyanın sayfa düzeyinde
-  /// sağlam olup olmadığını doğrular.
-  Future<bool> _butunlukKontrolEt(String dbYolu) async {
-    Database? kontrolDb;
-    try {
-      kontrolDb = await openDatabase(dbYolu, readOnly: true);
-      final rows = await kontrolDb.rawQuery('PRAGMA integrity_check');
-      final sonuc = rows.isNotEmpty ? rows.first.values.first.toString() : 'unknown';
-      return sonuc == 'ok';
-    } catch (e) {
-      LogServisi().hata('YedeklemeServisi._butunlukKontrolEt', hata: e);
-      return false;
-    } finally {
-      await kontrolDb?.close();
-    }
-  }
-
-  // ── Eski restore-öncesi güvenlik yedeklerini temizle ─────────────────
-  // ('$hedef.geri_yukleme_oncesi_*.bak' — bkz. yedekiGeriYukle yorumu)
-  static const _maxGuvenlikYedegi = 3;
-  Future<void> _eskiGuvenlikYedekleriniTemizle(String hedef) async {
-    try {
-      final dir = Directory(p.dirname(hedef));
-      final onek = '${p.basename(hedef)}.geri_yukleme_oncesi_';
-      final dosyalar = dir
-          .listSync()
-          .whereType<File>()
-          .where((f) => p.basename(f.path).startsWith(onek) &&
-              f.path.endsWith('.bak'))
-          .toList()
-        ..sort((a, b) => b.path.compareTo(a.path)); // en yeni ilk (isimde zaman damgası var)
-
-      if (dosyalar.length <= _maxGuvenlikYedegi) return;
-      for (final f in dosyalar.sublist(_maxGuvenlikYedegi)) {
-        try {
-          await f.delete();
-        } catch (_) {
-          // Tek bir dosya silinemezse akışı bozmasın
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Güvenlik yedeği temizleme hatası: $e');
     }
   }
 

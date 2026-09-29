@@ -8,28 +8,17 @@
 // sayfalar taranıyor; bozuksa restore iptal edilip güvenlik yedeğinden
 // geri dönülüyor.
 //
-// YedeklemeServisi._butunlukKontrolEt() private olduğu için burada
-// BİREBİR AYNI mantık (readOnly bağlantı + PRAGMA integrity_check)
-// gerçek, disk üzerindeki (geçici) SQLite dosyalarına karşı mirror
-// edilip doğrulanıyor.
+// Kontrol artık VeritabaniDosyaServisi.butunlukKontrolEt()'te (Yedekten
+// Geri Yükle ve Veritabanını İçe Al ortak yolu) — gerçek fonksiyon test
+// ediliyor.
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:market_plus/servisler/veritabani_dosya_servisi.dart';
 import 'package:market_plus/veri/database/tablolar/tablo_olusturucu.dart';
 
-Future<bool> _butunlukKontrolEt(String dbYolu) async {
-  Database? kontrolDb;
-  try {
-    kontrolDb = await openDatabase(dbYolu, readOnly: true);
-    final rows = await kontrolDb.rawQuery('PRAGMA integrity_check');
-    final sonuc = rows.isNotEmpty ? rows.first.values.first.toString() : 'unknown';
-    return sonuc == 'ok';
-  } catch (e) {
-    return false;
-  } finally {
-    await kontrolDb?.close();
-  }
-}
+Future<bool> _butunlukKontrolEt(String dbYolu) =>
+    VeritabaniDosyaServisi().butunlukKontrolEt(dbYolu);
 
 void main() {
   late Directory tmpDir;

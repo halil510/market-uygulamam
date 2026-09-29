@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../../cekirdek/utils/denetleyici_birak.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:typed_data';
 // lib/ekranlar/ayarlar/ayarlar_ekrani.dart
 
@@ -9,12 +8,8 @@ import 'package:flutter/material.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path/path.dart' as p;
-import 'package:sqflite/sqflite.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../depolar/kullanici_deposu.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
@@ -24,7 +19,7 @@ import '../../depolar/ayarlar_deposu.dart';
 import '../../servisler/excel_servisi.dart';
 import '../../saglayicilar/riverpod/masa_modu_provider.dart';
 import '../../depolar/urun_deposu.dart';
-import '../../veri/database/veritabani.dart';
+import '../../servisler/veritabani_dosya_servisi.dart';
 import '../../cekirdek/sabitler/db_sabitleri.dart';
 import '../../cekirdek/sabitler/uygulama_sabitleri.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -227,51 +222,9 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
       );
 
       try {
-        final bytes = await File(dosya.path!).readAsBytes();
-        // Basit SQLite imza doğrulaması
-        if (bytes.length < 16 ||
-            String.fromCharCodes(bytes.sublist(0, 15)) != 'SQLite format 3') {
-          if (mounted) Navigator.of(context).pop();
-          if (mounted)
-            BildirimServisi.hata(
-                context, 'Geçerli bir SQLite veritabanı dosyası değil');
-          return;
-        }
-
-        await Veritabani().kapat();
-
-        final dbPath = await getDatabasesPath();
-        final dbFile = File(p.join(dbPath, DbSabitler.dbAdi));
-        // ÖNCEDEN BURADA CİDDİ İKİ EKSİKLİK VARDI:
-        // 1) Sadece ana .db dosyası siliniyordu, -wal ve -shm
-        //    dosyaları SİLİNMİYORDU. SQLite WAL modunda son yazılan
-        //    (henüz ana dosyaya işlenmemiş) veriler -wal dosyasında
-        //    durur — kullanıcının "banka işlemleri temizlenmedi/geri
-        //    geldi" şikayeti tam olarak buydu: eski -wal dosyası
-        //    kalınca, YENİ içe aktarılan veritabanı açıldığında
-        //    SQLite bu ESKİ, artık ilgisiz WAL kayıtlarını yeni
-        //    dosyaya karıştırıyordu.
-        // 2) İçe aktarmadan önce mevcut veritabanının güvenlik
-        //    kopyası alınmıyordu — yanlış bir dosya seçilirse mevcut
-        //    veri geri dönüşsüz kaybolabilirdi (Yedekleme'de daha
-        //    önce bulup düzelttiğim aynı hata sınıfı).
-        final walFile = File(p.join(dbPath, '${DbSabitler.dbAdi}-wal'));
-        final shmFile = File(p.join(dbPath, '${DbSabitler.dbAdi}-shm'));
-        final guvenlikYedegi =
-            '${dbFile.path}.import_oncesi_${DateTime.now().millisecondsSinceEpoch}.bak';
-        if (await dbFile.exists()) await dbFile.copy(guvenlikYedegi);
-
-        if (await dbFile.exists()) await dbFile.delete();
-        if (await walFile.exists()) await walFile.delete();
-        if (await shmFile.exists()) await shmFile.delete();
-        await dbFile.writeAsBytes(bytes);
-
-        final prefs = await SharedPreferences.getInstance();
-        final savedTheme = prefs.getString('tema_adi');
-        await prefs.clear();
-        if (savedTheme != null) {
-          await prefs.setString('tema_adi', savedTheme);
-        }
+        // İmza + güvenlik kopyası + -wal/-shm temizliği + bütünlük kontrolü
+        // (bozuksa önceki veri geri konur) — bkz. VeritabaniDosyaServisi.
+        await VeritabaniDosyaServisi().iceAktar(dosya.path!);
 
         if (mounted) Navigator.of(context).pop();
 
@@ -413,43 +366,9 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
     );
 
     try {
-      // 1. Veritabanı bağlantısını kapat
-      await Veritabani().kapat();
-
-      // 2. DB dosyasının tam yolunu al
-      final dbPath = await getDatabasesPath();
-      final dbFile = File(p.join(dbPath, DbSabitler.dbAdi));
-      final walFile = File(p.join(dbPath, '${DbSabitler.dbAdi}-wal'));
-      final shmFile = File(p.join(dbPath, '${DbSabitler.dbAdi}-shm'));
-
-      // 3. Dosyaları sil (WAL modunda -wal ve -shm de silinmeli)
-      if (await dbFile.exists()) await dbFile.delete();
-      if (await walFile.exists()) await walFile.delete();
-      if (await shmFile.exists()) await shmFile.delete();
-
-      // 4. Uygulama belgelerindeki gereksiz klasörleri temizle
-      final appDir = await getApplicationDocumentsDirectory();
-      for (final dir in ['urun_resimleri', 'yedekler', 'raporlar']) {
-        final d = Directory('${appDir.path}/$dir');
-        if (await d.exists()) {
-          await d.delete(recursive: true);
-        }
-      }
-
-      // 5. SharedPreferences'ta sadece tema bilgisini koru
-      final prefs = await SharedPreferences.getInstance();
-      final savedTheme = prefs.getString('tema_adi');
-      await prefs.clear();
-      if (savedTheme != null) {
-        await prefs.setString('tema_adi', savedTheme);
-      }
-
-      // 6. ÖNCEDEN BURASI HİÇ YOKTU: flutter_secure_storage temizlenmiyordu.
-      // Bu, GİB şifresi, oturum token'ı gibi hassas bilgilerin "tam
-      // temizlik" sonrası bile cihazda KALMASINA yol açıyordu — "temizle"
-      // dediğinizde gerçekten HER ŞEYİN silinmesi bekleniyor.
-      const secure = FlutterSecureStorage();
-      await secure.deleteAll();
+      // Veritabanı (+wal/shm), resim/yedek/rapor klasörleri, ayarlar (tema
+      // hariç) ve güvenli depo (GİB şifresi, oturum) — bkz. servis.
+      await VeritabaniDosyaServisi().cihaziSifirla();
 
       // 6. Dialog'u kapat
       if (mounted) Navigator.of(context).pop();
@@ -710,7 +629,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
 
   Future<void> _dbDisariAktar() async {
     try {
-      final dbYolu = await Veritabani().dbYolu();
+      final dbYolu = await VeritabaniDosyaServisi().dosyaYolu();
       final dbDosya = File(dbYolu);
       if (!await dbDosya.exists()) {
         if (mounted) BildirimServisi.hata(context, 'DB dosyası bulunamadı');

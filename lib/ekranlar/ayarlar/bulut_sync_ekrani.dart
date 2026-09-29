@@ -8,7 +8,6 @@ import '../../servisler/supabase_sync_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
 import '../../servisler/bulut/otomatik_bulut_cekme.dart';
 import '../../servisler/bulut/supabase_oturum.dart';
-import '../../veri/database/veritabani.dart';
 import '../../servisler/senkron_sonrasi_mutabakat.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -548,9 +547,7 @@ Future<void> _bulutaGonder({bool tamSync = false}) async {
   if (!mounted) return;
   setState(() { _yukleniyor = true; _loglar.clear(); _sonSonuc = null; });
   try {
-    final db = Veritabani();
-    final sonuc = await SupabaseSyncServisi.bulutaGonder(
-      veriGetir: (tablo, filtrele) => db.supaTumKayitlariGetirTemiz(tablo, filtrele),
+    final sonuc = await SupabaseSyncServisi.yerelBulutaGonder(
       log: _log,
       sadeceDegisenler: !tamSync,
     );
@@ -573,10 +570,7 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
   if (!mounted) return;
   setState(() { _yukleniyor = true; _loglar.clear(); _sonSonuc = null; });
   try {
-    final db = Veritabani();
-    final sonuc = await SupabaseSyncServisi.buluttanAl(
-      kayitEkle: (t, k) => db.supaKayitlariEkle(t, k),
-      kayitGuncelle: (t, k) => db.supaKayitlariGuncelle(t, k),
+    final sonuc = await SupabaseSyncServisi.yerelBuluttanAl(
       sadeceDegisenler: !tamSync,
       log: _log,
     );

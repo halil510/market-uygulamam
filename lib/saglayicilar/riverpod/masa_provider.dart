@@ -7,7 +7,6 @@ import '../../depolar/masa_deposu.dart';
 import '../../modeller/masa_model.dart';
 import '../../modeller/masa_siparis_model.dart';
 import '../../servisler/supabase_sync_servisi.dart';
-import '../../veri/database/veritabani.dart';
 
 final masaDeposuProvider = Provider<MasaDeposu>((ref) => MasaDeposu());
 
@@ -41,12 +40,7 @@ Future<void> otoMasaBulutCek() async {
   }
   _otoCekmeCalisiyor = true;
   try {
-    final db = Veritabani();
-    await SupabaseSyncServisi.buluttanAl(
-      kayitEkle: (t, k) => db.supaKayitlariEkle(t, k),
-      kayitGuncelle: (t, k) => db.supaKayitlariGuncelle(t, k),
-      sadeceDegisenler: true,
-    );
+    await SupabaseSyncServisi.yerelBuluttanAl();
     _sonOtoCekme = DateTime.now();
   } catch (_) {
     // Sessizce yut — bu arka plan otomatik çekmesi, kullanıcıya hata

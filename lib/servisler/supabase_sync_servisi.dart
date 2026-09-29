@@ -900,6 +900,34 @@ class SupabaseSyncServisi {
     }
   }
 
+  /// Bu cihazın yerel veritabanını buluta gönderir — ekranlar/sağlayıcılar
+  /// Veritabani()'na dokunmadan bunu çağırır.
+  static Future<SyncSonuc> yerelBulutaGonder({
+    void Function(String)? log,
+    bool sadeceDegisenler = true,
+  }) {
+    final db = Veritabani();
+    return bulutaGonder(
+      veriGetir: (t, f) => db.supaTumKayitlariGetirTemiz(t, f),
+      log: log,
+      sadeceDegisenler: sadeceDegisenler,
+    );
+  }
+
+  /// Buluttaki veriyi bu cihazın yerel veritabanına alır.
+  static Future<SyncSonuc> yerelBuluttanAl({
+    void Function(String)? log,
+    bool sadeceDegisenler = true,
+  }) {
+    final db = Veritabani();
+    return buluttanAl(
+      kayitEkle: (t, k) => db.supaKayitlariEkle(t, k),
+      kayitGuncelle: (t, k) => db.supaKayitlariGuncelle(t, k),
+      sadeceDegisenler: sadeceDegisenler,
+      log: log,
+    );
+  }
+
   static Future<SyncSonuc> bulutaGonder({
     required Future<List<Map<String, dynamic>>> Function(String, bool) veriGetir,
     void Function(String)? log,

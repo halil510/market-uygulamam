@@ -30,12 +30,11 @@ import '../../depolar/cari_deposu.dart';
 import '../../depolar/satis_deposu.dart';
 import '../../depolar/iade_deposu.dart';
 import '../../servisler/auth_servisi.dart';
-import '../../veri/database/veritabani.dart';
+import '../../servisler/belge_no_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/excel_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
-import '../../servisler/aktif_sube_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../servisler/iade_islem_servisi.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
@@ -284,8 +283,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   // Oturum için yeni fiş no oluştur
   Future<void> _yeniFisNoOlustur() async {
     try {
-      final no = await Veritabani()
-          .fisNoUret('iade', subeId: AktifSubeServisi().subeId ?? 1);
+      final no = await BelgeNoServisi().uret('iade');
       if (mounted)
         setState(() {
           _oturumFisNo = no;
@@ -456,8 +454,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
 
       // Fiş no transaction dışında (sequence güncelleme ayrı transaction gerektirir)
       if (_oturumFisNo.isEmpty)
-        _oturumFisNo = await Veritabani()
-            .fisNoUret('iade', subeId: AktifSubeServisi().subeId ?? 1);
+        _oturumFisNo = await BelgeNoServisi().uret('iade');
 
       // Tüm transaction + bulut senkron mantığı artık
       // IadeIslemServisi.manuelKalemEkle'de — bkz. o metodun doc yorumu,

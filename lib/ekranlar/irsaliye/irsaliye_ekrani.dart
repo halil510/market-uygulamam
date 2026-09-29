@@ -12,7 +12,7 @@ import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../veri/database/veritabani.dart';
+import '../../servisler/belge_no_servisi.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../modeller/urun_model.dart';
@@ -24,7 +24,6 @@ import '../../depolar/irsaliye_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../saglayicilar/riverpod/irsaliye_provider.dart';
 import '../../tasarim_sistemi/ts_yetki.dart';
-import '../../servisler/aktif_sube_servisi.dart';
 import '../../servisler/gib_servisi.dart';
 
 class IrsaliyeEkrani extends ConsumerWidget {
@@ -290,7 +289,7 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
       // cari numarasında bulup düzelttiğim AYNI çakışma riskini
       // taşıyordu. Meğer doğru, GİB-standardı, kalıcı sayaç tabanlı
       // fonksiyon (fisNoUret) ZATEN varmış, sadece kullanılmıyormuş.
-      final no     = await Veritabani().fisNoUret('irsaliye', subeId: AktifSubeServisi().subeId ?? 1);
+      final no     = await BelgeNoServisi().uret('irsaliye');
 
       // Tüm transaction + bulut senkron mantığı artık
       // IrsaliyeDeposu.olustur'da — bkz. o metodun doc yorumu, davranış

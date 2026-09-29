@@ -22,12 +22,11 @@ import '../../modeller/fatura_model.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../depolar/satis_deposu.dart';
-import '../../veri/database/veritabani.dart';
+import '../../servisler/belge_no_servisi.dart';
 import '../../servisler/fiyat_hesaplama_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/auth_servisi.dart';
-import '../../servisler/aktif_sube_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../servisler/toptan_satis_islem_servisi.dart';
 import '../../widgetlar/ortak/donanim_barkod_dinleyici.dart';
@@ -408,8 +407,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
 
       final kullanici = AuthServisi().aktifKullanici;
       final tarih = DateTime.now();
-      final fisNo = await Veritabani()
-          .fisNoUret('cari_satis', subeId: AktifSubeServisi().subeId ?? 1);
+      final fisNo = await BelgeNoServisi().uret('cari_satis');
 
       final satisKalemler = _sepet.map((k) {
         final kdvOran = double.tryParse(k.urun.kdvOran) ?? 18;

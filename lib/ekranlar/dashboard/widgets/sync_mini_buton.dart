@@ -11,7 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../servisler/supabase_sync_servisi.dart';
-import '../../../veri/database/veritabani.dart';
 import '../../../widgetlar/ortak/app_widgetlar.dart';
 
 class SyncMiniButon extends ConsumerStatefulWidget {
@@ -53,18 +52,9 @@ class _SyncMiniButonState extends ConsumerState<SyncMiniButon>
     });
     _dondurmeCtrl.repeat();
     try {
-      final db = Veritabani();
-      // Gönder (sadece değişenler)
-      final gonderSonuc = await SupabaseSyncServisi.bulutaGonder(
-        veriGetir: (t, f) => db.supaTumKayitlariGetirTemiz(t, f),
-        sadeceDegisenler: true,
-      );
-      // Al (sadece değişenler)
-      final alSonuc = await SupabaseSyncServisi.buluttanAl(
-        kayitEkle: (t, k) => db.supaKayitlariEkle(t, k),
-        kayitGuncelle: (t, k) => db.supaKayitlariGuncelle(t, k),
-        sadeceDegisenler: true,
-      );
+      // Gönder + al (sadece değişenler)
+      final gonderSonuc = await SupabaseSyncServisi.yerelBulutaGonder();
+      final alSonuc = await SupabaseSyncServisi.yerelBuluttanAl();
       final hatalar = [...gonderSonuc.hatalar, ...alSonuc.hatalar];
       if (mounted) {
         setState(() {

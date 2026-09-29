@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../saglayicilar/riverpod/providers.dart';
-import '../../veri/database/veritabani.dart';
+import '../../servisler/veritabani_dosya_servisi.dart';
 import '../../uygulama/tema/acik_tema.dart';
 import '../../cekirdek/sabitler/uygulama_sabitleri.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -58,7 +58,7 @@ class _SplashEkraniState extends ConsumerState<SplashEkrani>
     _fadeCtrl.forward();
 
     // DB başlatma
-    await _adim('Veritabanı hazırlanıyor…', 0.25, () => Veritabani().db);
+    await _adim('Veritabanı hazırlanıyor…', 0.25, VeritabaniDosyaServisi().hazirla);
     await _adim('Kullanıcı bilgileri yükleniyor…', 0.55, () async {
       // Auth provider build'da _oturumKontrol() çalıştırır
       // Yukleniyor durumundan çıkmasını bekle

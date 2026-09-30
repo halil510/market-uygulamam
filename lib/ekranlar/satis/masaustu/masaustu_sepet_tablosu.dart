@@ -61,8 +61,8 @@ class MasaustuSepetTablosu extends StatelessWidget {
       'Tutar', 'İndirim', 'Net Tutar',
     ];
     return Container(
-      color: TsRenk.primary,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      color: const Color(0xFF1F2A5C),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       child: Row(children: [
         for (var i = 0; i < adlar.length; i++)
           _hucre(

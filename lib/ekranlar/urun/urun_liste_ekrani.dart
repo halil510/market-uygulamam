@@ -28,6 +28,7 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import 'masaustu/urun_masaustu_gorunum.dart';
 
 // God-class sertleştirmesi (2026-09-22, kullanıcı onayıyla): bu dosya
 // 1225 satırdı. İçerik davranış DEĞİŞTİRİLMEDEN 2 parçaya ayrıldı:
@@ -118,6 +119,18 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
       if (durum.dahaSonraVar && !durum.yukleniyor) {
         ref.read(urunlerProvider.notifier).yukle(sifirla: false);
       }
+    }
+  }
+
+  /// Geniş pencerede (masaüstü) tablo görünümü kullanılır.
+  bool _masaustuMu(BuildContext context) =>
+      MediaQuery.sizeOf(context).width > 1100;
+
+  Future<void> _urunEkle() async {
+    final result = await context.push<bool>('/urun/ekle',
+        extra: {'barkod': _araCtrl.text, 'kaynak': 'urun_liste'});
+    if (result == true) {
+      ref.read(urunlerProvider.notifier).yukle(sifirla: true);
     }
   }
 
@@ -329,22 +342,27 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                             })
                         : _izgara
                             ? _izgaraView(durum.urunler, durum)
-                            : _listeView(durum.urunler, durum),
+                            : (_masaustuMu(context)
+                                ? UrunMasaustuGorunum(
+                                    urunler: durum.urunler,
+                                    scrollController: _scrollCtrl,
+                                    onEkle: _urunEkle,
+                                    onSil: (u) => _seciliUrunleriSil({u.id!}),
+                                    onExcel: _excelAktar,
+                                    onYenile: () => ref
+                                        .read(urunlerProvider.notifier)
+                                        .yukle(sifirla: true),
+                                  )
+                                : _listeView(durum.urunler, durum)),
                   ),
           ),
         ]),
-        floatingActionButton: TsYetkili(
+        floatingActionButton: _masaustuMu(context) ? null : TsYetkili(
             child: FloatingActionButton(
           backgroundColor: AppRenkler.primary,
           foregroundColor: Colors.white,
           tooltip: 'Ürün Ekle',
-          onPressed: () async {
-            final result = await context.push<bool>('/urun/ekle',
-                extra: {'barkod': _araCtrl.text, 'kaynak': 'urun_liste'});
-            if (result == true) {
-              ref.read(urunlerProvider.notifier).yukle(sifirla: true);
-            }
-          },
+          onPressed: _urunEkle,
           child: const Icon(Icons.add),
         )),
       ),

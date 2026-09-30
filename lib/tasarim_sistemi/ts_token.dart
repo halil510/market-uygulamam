@@ -9,6 +9,7 @@
 // Amaç: Logo Yazılım / kurumsal ERP hissi veren, tutarlı, sade bir görünüm.
 // ------------------------------------------------------------------
 import 'package:flutter/material.dart';
+import '../uygulama/tema/masaustu_tema.dart';
 
 /// Marka & durum renkleri. acik_tema.dart / koyu_tema.dart içindeki
 /// AppRenkler ile birebir aynı paleti kullanır — burada tema-bağımsız
@@ -55,20 +56,24 @@ class TsRenk {
       Theme.of(c).brightness == Brightness.dark ? kartKoyu : kartAcik;
 
   static Color arkaplan(BuildContext c) =>
-      Theme.of(c).brightness == Brightness.dark ? arkaplanKoyu : arkaplanAcik;
+      Theme.of(c).brightness == Brightness.dark
+          ? arkaplanKoyu
+          : (masaustuMu ? MasaustuPalet.zemin : arkaplanAcik);
 
   static Color ayirac(BuildContext c) =>
-      Theme.of(c).brightness == Brightness.dark ? ayiracKoyu : ayiracAcik;
+      Theme.of(c).brightness == Brightness.dark
+          ? ayiracKoyu
+          : (masaustuMu ? MasaustuPalet.ayirac : ayiracAcik);
 
   static Color metinBirincil(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark
           ? metinBirincilKoyu
-          : metinBirincilAcik;
+          : (masaustuMu ? MasaustuPalet.metin : metinBirincilAcik);
 
   static Color metinIkincil(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark
           ? metinIkincilKoyu
-          : metinIkincilAcik;
+          : (masaustuMu ? MasaustuPalet.metin2 : metinIkincilAcik);
 }
 
 /// 4pt tabanlı boşluk skalası. Ekranlarda EdgeInsets.all(16) yerine

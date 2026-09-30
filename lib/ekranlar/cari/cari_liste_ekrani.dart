@@ -1,6 +1,7 @@
 // lib/ekranlar/cari/cari_liste_ekrani.dart — Modern v2
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'masaustu/cari_masaustu_gorunum.dart';
 import '../../widgetlar/ortak/bulut_durum_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -352,7 +353,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
                 ]),
         ),
       ]),
-      floatingActionButton: TsYetkili(child: FloatingActionButton.extended(
+      floatingActionButton: MediaQuery.sizeOf(context).width > 1100 ? null : TsYetkili(child: FloatingActionButton.extended(
         elevation: 6,
         backgroundColor: AppRenkler.primary,
         foregroundColor: Colors.white,
@@ -396,6 +397,10 @@ class _CariTab extends StatelessWidget {
       ikon: Icons.people_outline,
       baslik: 'Kayıt bulunamadı',
     );
+    // Geniş pencerede (masaüstü) tablo görünümü.
+    if (MediaQuery.sizeOf(context).width > 1100) {
+      return CariMasaustuGorunum(cariler: cariler, onSil: onSil, onYenile: onRefresh);
+    }
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.builder(

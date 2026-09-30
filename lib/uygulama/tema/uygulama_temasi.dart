@@ -2,11 +2,14 @@
 import 'package:flutter/material.dart';
 import 'acik_tema.dart';
 import 'koyu_tema.dart';
+import 'masaustu_tema.dart';
 
 export 'acik_tema.dart' show AppRenkler;
 
 class UygulamaTemasi {
-  static ThemeData getTema(String adi) {
+  static ThemeData getTema(String adi) => masaustuIyilestir(_temaSec(adi));
+
+  static ThemeData _temaSec(String adi) {
     switch (adi) {
       case 'dark':  return koyuTema();
       case 'blue':  return _mavi();
@@ -44,7 +47,7 @@ extension ThemeColors on BuildContext {
 
   Color get scaffoldBg => isDark
       ? const Color(0xFF0D0F1A)
-      : const Color(0xFFF8F9FE);
+      : (masaustuMu ? MasaustuPalet.zemin : const Color(0xFFF8F9FE));
 
   Color get cardBg => isDark
       ? const Color(0xFF151729)
@@ -52,19 +55,19 @@ extension ThemeColors on BuildContext {
 
   Color get dividerColor => isDark
       ? Colors.white12
-      : const Color(0xFFE8ECF4);
+      : (masaustuMu ? MasaustuPalet.ayirac : const Color(0xFFE8ECF4));
 
   Color get textPrimary => isDark
       ? const Color(0xFFE8EAFF)
-      : const Color(0xFF1A1D2E);
+      : (masaustuMu ? MasaustuPalet.metin : const Color(0xFF1A1D2E));
 
   Color get textSecondary => isDark
       ? const Color(0xFF8B90B8)
-      : const Color(0xFF6B7280);
+      : (masaustuMu ? MasaustuPalet.metin2 : const Color(0xFF6B7280));
 
   Color get textHint => isDark
       ? const Color(0xFF555B8A)
-      : const Color(0xFF9CA3AF);
+      : (masaustuMu ? MasaustuPalet.ipucu : const Color(0xFF9CA3AF));
 
   Color get inputFill => isDark
       ? const Color(0xFF1C1F35)
@@ -72,7 +75,7 @@ extension ThemeColors on BuildContext {
 
   Color get borderColor => isDark
       ? const Color(0xFF2A2D42)
-      : const Color(0xFFE8ECF4);
+      : (masaustuMu ? MasaustuPalet.kenar : const Color(0xFFE8ECF4));
 
   Color get shimmerBase => isDark
       ? const Color(0xFF1C1F35)

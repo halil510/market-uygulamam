@@ -20,6 +20,30 @@ extension _HizliSatisWidgetExt on _HizliSatisEkraniState {
     onGonder: _aramaGonderildi,
   );
 
+  /// Geniş ekranda (masaüstü/tablet) sol bölmede gömülü hızlı tuş ızgarası.
+  /// Tuşa basış mantığı bottom-sheet sürümüyle (_hizliTusAc) aynıdır.
+  Widget _gomuluHizliTus() => HizliTusPaneli(
+    key: ValueKey('hizli_tus_$_hizliTusSurum'),
+    gomulu: true,
+    onUrunSec: (urun) async {
+      if (_kgBirimMi(urun.birimAdi)) {
+        await _kgIleEkle(urun);
+      } else {
+        await ref.read(sepetProvider.notifier).ekleAsync(urun);
+      }
+      if (!mounted) return;
+      _bipSes();
+      if (_sepetScroll.hasClients) _sepetScroll.jumpTo(0);
+    },
+    onDuzenle: () async {
+      await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const HizliTusYonetimEkrani()),
+      );
+      if (mounted) setState(() => _hizliTusSurum++);
+    },
+  );
+
   Widget _kameraPaneli() => SatisKameraPaneli(
     controller: _scanCtrl,
     flash: _flash,

@@ -22,6 +22,7 @@ import 'widgets/hizli_tus_paneli.dart';
 import 'hizli_tus_yonetim_ekrani.dart';
 import 'para_ustu_ekrani.dart';
 import 'widgets/hizli_satis_sepet_listesi.dart';
+import 'masaustu/masaustu_hizli_satis_duzeni.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -60,6 +61,7 @@ import '../../widgetlar/ortak/donanim_barkod_dinleyici.dart';
 part 'hizli_satis_ekrani_barkod.dart';
 part 'hizli_satis_ekrani_odeme.dart';
 part 'hizli_satis_ekrani_widgets.dart';
+part 'hizli_satis_ekrani_masaustu.dart';
 
 class HizliSatisEkrani extends ConsumerStatefulWidget {
   const HizliSatisEkrani({super.key});
@@ -117,6 +119,8 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   List<UrunModel> _aramaSonuclari = [];
   bool _kameraAcik = false;
   bool _flash = false;
+  // Geniş ekranda gömülü hızlı tuş panelini yeniden yüklemek için (düzenlemeden dönünce).
+  int _hizliTusSurum = 0;
 
   @override
   void initState() {
@@ -382,6 +386,9 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
           child: sepet.satisIsleniyor
           ? const TsYukleniyor()
           : LayoutBuilder(builder: (ctx, constraints) {
+              if (constraints.maxWidth > _masaustuEsigi) {
+                return _masaustuDuzen();
+              }
               if (constraints.maxWidth > 700) {
                 return Row(children: [
                   Expanded(flex: 5, child: Column(children: [
@@ -389,10 +396,15 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                     if (_kameraAcik) _kameraPaneli(),
                     if (_aramaSonuclari.isNotEmpty && !_kameraAcik)
                       _aramaSonucListesi(),
-                    const Spacer(),
+                    // Geniş ekranda boş kalan alan: hızlı tuşlar doğrudan
+                    // görünür (mobilde bottom-sheet olarak açılmaya devam eder).
+                    if (_aramaSonuclari.isEmpty && !_kameraAcik)
+                      Expanded(child: _gomuluHizliTus())
+                    else
+                      const Spacer(),
                   ])),
                   const VerticalDivider(width: 1, thickness: 1),
-                  SizedBox(width: 360, child: Column(children: [
+                  SizedBox(width: constraints.maxWidth > 1000 ? 440 : 360, child: Column(children: [
                     Expanded(child: _sepetListesi()),
                     _altPanel(sepet),
                   ])),

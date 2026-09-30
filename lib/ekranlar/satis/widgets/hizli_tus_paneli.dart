@@ -46,7 +46,16 @@ class HizliTusPaneli extends ConsumerStatefulWidget {
   /// "Düzenle" butonuna basılınca çağrılır (yönetim ekranını açar).
   final VoidCallback? onDuzenle;
 
-  const HizliTusPaneli({super.key, required this.onUrunSec, this.onDuzenle});
+  /// true ise panel ekranın içine GÖMÜLÜ gösterilir (masaüstü/geniş ekran):
+  /// tutma çubuğu, kapat düğmesi, sabit yükseklik ve üst yuvarlatma yok.
+  final bool gomulu;
+
+  const HizliTusPaneli({
+    super.key,
+    required this.onUrunSec,
+    this.onDuzenle,
+    this.gomulu = false,
+  });
 
   @override
   ConsumerState<HizliTusPaneli> createState() => _HizliTusPaneliState();
@@ -95,15 +104,18 @@ class _HizliTusPaneliState extends ConsumerState<HizliTusPaneli> {
 
   @override
   Widget build(BuildContext context) {
+    final g = widget.gomulu;
     return Container(
-      height: MediaQuery.of(context).size.height * 0.82,
+      height: g ? null : MediaQuery.of(context).size.height * 0.82,
       decoration: BoxDecoration(
         color: context.scaffoldBg,
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(TsRadius.xl)),
+        borderRadius: g
+            ? null
+            : const BorderRadius.vertical(top: Radius.circular(TsRadius.xl)),
       ),
       child: Column(children: [
         // ── Tutma çubuğu ──────────────────────────────────────────────
+        if (!g)
         Center(
           child: Container(
             margin: const EdgeInsets.only(top: 10, bottom: 2),
@@ -121,11 +133,14 @@ class _HizliTusPaneliState extends ConsumerState<HizliTusPaneli> {
           padding: const EdgeInsets.fromLTRB(
               TsBosluk.xs, 0, TsBosluk.md, TsBosluk.xs),
           child: Row(children: [
-            IconButton(
-              icon: Icon(Icons.close, color: context.textSecondary),
-              tooltip: 'Kapat',
-              onPressed: () => Navigator.pop(context),
-            ),
+            if (!g)
+              IconButton(
+                icon: Icon(Icons.close, color: context.textSecondary),
+                tooltip: 'Kapat',
+                onPressed: () => Navigator.pop(context),
+              )
+            else
+              const SizedBox(width: TsBosluk.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

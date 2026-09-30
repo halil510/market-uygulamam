@@ -39,7 +39,7 @@ class GirisEkrani extends ConsumerStatefulWidget {
 }
 
 class _GirisEkraniState extends ConsumerState<GirisEkrani>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   // ─── ValueNotifier'lar (performans için) ────────────────────────────────
   final _sifre = ValueNotifier<String>('');
   final _hata = ValueNotifier<String>('');

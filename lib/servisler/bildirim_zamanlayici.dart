@@ -42,7 +42,12 @@ class BildirimZamanlayici {
     _haftalikYedekZamanla();
   }
 
+  /// Masaüstünde (Windows/Linux) yerel bildirim eklentisi kullanılmaz:
+  /// paket Windows için ayrı ayar ister ve kasada uygulama içi uyarı yeterli.
+  bool get _masaustu => Platform.isWindows || Platform.isLinux;
+
   Future<void> _pluginiBaslat() async {
+    if (_masaustu) return;
     const androidSetting = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSetting     = DarwinInitializationSettings(
       requestAlertPermission:  true,
@@ -207,6 +212,7 @@ class BildirimZamanlayici {
     Importance oncelik = Importance.defaultImportance,
     String? payload,
   }) async {
+    if (_masaustu) return;
     try {
       await _plugin.show(
         id: id,

@@ -108,6 +108,15 @@ flutter_launcher_icons:
   adaptive_icon_background: "#4361EE"
   adaptive_icon_foreground: "assets/icons/ic_launcher.png"
 
+dependency_overrides:
+  # Yerel kopya (yalnız Windows'u etkiler): pub.dev 4.2.2 dosya yolunu
+  # path.canonicalize() ile KÜÇÜK HARFE çeviriyor; kullanıcı adında Türkçe
+  # "İ" olan Windows hesaplarında (ör. C:\Users\HALİL) yol bozuluyor, güvenli
+  # depo yazımı sonsuz döngüye giriyor ve giriş ekranı donuyor.
+  # Tek değişiklik: canonicalize → normalize (packages/.../flutter_secure_storage_windows_ffi.dart).
+  flutter_secure_storage_windows:
+    path: packages/flutter_secure_storage_windows
+
 flutter:
   uses-material-design: true
   generate: true

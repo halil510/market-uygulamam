@@ -1,5 +1,6 @@
 // lib/servisler/borc/borc_bildirim_servisi.dart
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 import '../../depolar/borc_deposu.dart'; // ✅ Doğru yol: iki üst -> depolar
@@ -20,7 +21,11 @@ class BorcBildirimServisi {
     Future.delayed(const Duration(seconds: 5), () => _kontrolEt(null));
   }
 
+  // Masaüstünde (Windows/Linux) yerel bildirim eklentisi kullanılmaz.
+  bool get _masaustu => Platform.isWindows || Platform.isLinux;
+
   Future<void> _initNotifications() async {
+    if (_masaustu) return;
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const ios = DarwinInitializationSettings();
     const settings = InitializationSettings(android: android, iOS: ios);
@@ -66,6 +71,7 @@ class BorcBildirimServisi {
     required int id,
     Priority priority = Priority.defaultPriority,
   }) async {
+    if (_masaustu) return;
     const androidDetails = AndroidNotificationDetails(
       'borc_takip_channel',
       'Borç Takip Bildirimleri',

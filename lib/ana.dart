@@ -8,10 +8,13 @@
 
 import 'package:flutter/foundation.dart';
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart'
+    show sqfliteFfiInit, databaseFactory, databaseFactoryFfi;
 import 'uygulama/uygulama.dart';
 import 'veri/database/veritabani.dart';
 import 'servisler/bildirim_servisi.dart';
@@ -37,6 +40,13 @@ void main() {
 
 Future<void> _baslatApp() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Masaüstü (Windows/Linux): sqflite yerel eklenti sağlamaz, FFI fabrikası
+  // gerekir. Android/iOS'ta bu blok ÇALIŞMAZ — mobil akış aynen kalır.
+  if (Platform.isWindows || Platform.isLinux) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
 
   // Hata görünürlüğü — release modda ekranın "bembeyaz" kalmasını önler,
   // gerçek hata mesajını ekranda ve logcat'te gösterir.

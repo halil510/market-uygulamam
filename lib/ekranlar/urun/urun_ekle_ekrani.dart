@@ -257,7 +257,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                                     Icon(Icons.add_photo_alternate_outlined,
                                         size: 48, color: context.textSecondary),
                                     const SizedBox(height: 8),
-                                    Text('Resim Ekle (Kamera / Galeri)',
+                                    Text(Platform.isWindows ? 'Resim Ekle (Dosyadan seç)' : 'Resim Ekle (Kamera / Galeri)',
                                         style: TextStyle(color: context.textSecondary, fontSize: 13)),
                                   ],
                                 ),

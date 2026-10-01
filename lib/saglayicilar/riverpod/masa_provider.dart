@@ -75,9 +75,10 @@ class MasaListesiNotifier extends StateNotifier<AsyncValue<List<MasaModel>>> {
   Future<void> yukle() async {
     try {
       final masalar = await _depo.masalariGetir();
+      if (!mounted) return; // ekran kapandıysa yazma
       state = AsyncValue.data(masalar);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (mounted) state = AsyncValue.error(e, st);
     }
   }
 }
@@ -113,9 +114,10 @@ class MasaSiparisNotifier extends StateNotifier<AsyncValue<MasaSiparisModel?>> {
   Future<void> yukle() async {
     try {
       final siparis = await _depo.acikSiparisGetir(masaId);
+      if (!mounted) return; // ekran kapandıysa yazma
       state = AsyncValue.data(siparis);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (mounted) state = AsyncValue.error(e, st);
     }
   }
 

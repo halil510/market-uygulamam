@@ -72,7 +72,7 @@ class MasaustuAltSerit extends StatelessWidget {
           onTap: t.onTap,
           child: SizedBox(
             width: 104,
-            height: 52,
+            height: 58,
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               Icon(t.ikon, color: Colors.white, size: 18),
               const SizedBox(height: 2),

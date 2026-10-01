@@ -16,6 +16,7 @@ import '../../servisler/barkod_servisi.dart';
 import '../../servisler/excel_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import 'masaustu/stok_masaustu_gorunum.dart';
 
 class StokListeEkrani extends ConsumerStatefulWidget {
   const StokListeEkrani({super.key});
@@ -309,6 +310,15 @@ class _StokListeEkraniState extends ConsumerState<StokListeEkrani>
             label: const Text('Yeni Ürün Ekle'),
           ),
       ]));
+    }
+    // Geniş pencere (masaüstü): tablo görünümü.
+    if (MediaQuery.sizeOf(context).width > 1100) {
+      return StokMasaustuGorunum(
+        urunler: liste,
+        scrollController: _scrollCtrl,
+        onYenile: () => _yukle(reset: true),
+        onExcel: _topluExcel,
+      );
     }
     return ListView.builder(
       controller: _scrollCtrl,

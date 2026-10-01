@@ -227,24 +227,30 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
       appBar: TsAppBar(
         baslik: 'Etiket Yazdırma',
         aksiyonlar: [
-          // BT durum chip
-          Padding(
+          // Yazıcı durum chip (Windows'ta Bluetooth değil, kurulu yazıcı)
+          Builder(builder: (context) {
+            final win = Platform.isWindows;
+            final bagli = win ? _yazdirma.bagliMi : _btBagliMi;
+            return Padding(
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
             child: GestureDetector(
               onTap: () => context.push('/ayarlar/yazici'),
               child: Chip(
                 avatar: Icon(
-                  _btBagliMi ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+                  win
+                      ? Icons.print
+                      : (bagli ? Icons.bluetooth_connected : Icons.bluetooth_disabled),
                   size: 14,
-                  color: _btBagliMi ? Colors.green : Colors.red,
+                  color: bagli ? Colors.green : Colors.red,
                 ),
-                label: Text(_btBagliMi ? 'Bağlı' : 'Yok',
+                label: Text(win ? (bagli ? 'Yazıcı Bağlı' : 'Yazıcı Yok') : (bagli ? 'Bağlı' : 'Yok'),
                     style: TextStyle(fontSize: 11,
-                        color: _btBagliMi ? Colors.green.shade700 : Colors.red.shade700)),
-                backgroundColor: _btBagliMi ? TsRenk.zemin(TsRenk.basarili) : TsRenk.zemin(TsRenk.hata),
+                        color: bagli ? Colors.green.shade700 : Colors.red.shade700)),
+                backgroundColor: bagli ? TsRenk.zemin(TsRenk.basarili) : TsRenk.zemin(TsRenk.hata),
               ),
             ),
-          ),
+          );
+          }),
           // Yazdır butonu
           if (_sepet.isNotEmpty) ...[
             IconButton(

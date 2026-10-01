@@ -66,8 +66,12 @@ class Cariler extends _$Cariler {
         ]);
         m = r[0]; t = r[1];
       }
+      // Ekran kapandıysa (provider dispose) sonuç yazılmaz.
+      if (!ref.mounted) return;
       state = state.copyWith(musteriler: m, tedarikciler: t, yukleniyor: false);
-    } catch (_) { state = state.copyWith(yukleniyor: false); }
+    } catch (_) {
+      if (ref.mounted) state = state.copyWith(yukleniyor: false);
+    }
   }
 
   Future<List<CariModel>> musterileriGetir() async {

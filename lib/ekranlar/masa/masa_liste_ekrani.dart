@@ -190,7 +190,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
                 // Telefonda 2 kolon; tablet/PC'de sığdığı kadar (sabit 2 idi).
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 200, childAspectRatio: 1.05,
+                    maxCrossAxisExtent: 200, childAspectRatio: 0.95,
                     mainAxisSpacing: 10, crossAxisSpacing: 10),
                 itemCount: gosterilen.length,
                 itemBuilder: (_, i) {

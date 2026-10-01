@@ -26,7 +26,7 @@ import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 import '../../servisler/yazdirma_servisi.dart';
-import '../../servisler/fis_fiyat_guncelleme_servisi.dart';
+import '../../widgetlar/ortak/fis_fiyat_guncelle_akisi.dart';
 import '../../cekirdek/utils/hata_utils.dart';
 part 'cari_detay_ekrani_islemler.dart';
 part 'cari_detay_ekrani_sekmeler.dart';

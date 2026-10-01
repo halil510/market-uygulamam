@@ -30,6 +30,8 @@ import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import 'fis_detay_ekrani.dart';
 import '../../tasarim_sistemi/ts_kart.dart';
 import 'cari_detay_ekrani.dart' show cariHareketleriniGrupla;
+import '../../widgetlar/ortak/fis_fiyat_guncelle_akisi.dart';
+import '../../saglayicilar/riverpod/auth_provider.dart';
 
 class CariHareketEkrani extends ConsumerStatefulWidget {
   final int cariId;
@@ -44,6 +46,8 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   final _fmtT = DateFormat('dd.MM.yyyy HH:mm');
 
   CariModel? _cari;
+  // Çoklu fiş seçimi (uzun bas) — "Son fiyata göre güncelle" için.
+  final Set<int> _secimIdleri = {};
   List<CariHareketModel> _tumHareketler = [];
   List<CariHareketModel> _filtreli = [];
   bool _yukleniyor = true;
@@ -65,6 +69,36 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _yukle());
+  }
+
+  Future<void> _secilenleriFiyatGuncelle() async {
+    final ids = _tumHareketler
+        .where((h) =>
+            h.id != null &&
+            _secimIdleri.contains(h.id) &&
+            h.fisTipi == 'Satış' &&
+            h.fisId != null)
+        .map((h) => h.fisId!)
+        .toList();
+    final guncellendi = await fisFiyatGuncelleAkisi(context, ids,
+        kullanici: ref.read(authProvider).kullanici?.adSoyad);
+    if (!guncellendi || !mounted) return;
+    setState(() => _secimIdleri.clear());
+    ref.invalidate(cariDetayProvider(widget.cariId));
+    ref.read(carilerProvider.notifier).yukle();
+    await _yukle();
+  }
+
+  /// Sadece satış fişleri ('Satış' + fis_id) seçilebilir.
+  void _secimDegistir(CariHareketModel h) {
+    if (h.id == null) return;
+    if (h.fisTipi != 'Satış' || h.fisId == null) {
+      BildirimServisi.hata(context, 'Sadece satış fişleri seçilebilir');
+      return;
+    }
+    setState(() {
+      if (!_secimIdleri.remove(h.id)) _secimIdleri.add(h.id!);
+    });
   }
 
   Color _bakiyeRenk() {
@@ -680,8 +714,31 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
     return Scaffold(
       backgroundColor: context.scaffoldBg,
       appBar: TsAppBar(
-        baslikWidget: Text(_cari?.unvan ?? 'Cari Hareketleri'),
+        baslikWidget: Text(_secimIdleri.isNotEmpty
+            ? '${_secimIdleri.length} fiş seçili'
+            : (_cari?.unvan ?? 'Cari Hareketleri')),
         aksiyonlar: [
+          if (_secimIdleri.isNotEmpty) ...[
+            if (ref.read(authProvider).isMudur)
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                tooltip: 'Seçili fişler için işlemler',
+                onSelected: (v) {
+                  if (v == 'fiyat') _secilenleriFiyatGuncelle();
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'fiyat',
+                    child: Text('Son fiyata göre güncelle'),
+                  ),
+                ],
+              ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Seçimi iptal et',
+              onPressed: () => setState(() => _secimIdleri.clear()),
+            ),
+          ],
           IconButton(
               icon: const Icon(Icons.date_range),
               tooltip: 'Tarih Filtresi',
@@ -880,8 +937,15 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                                   padding: const EdgeInsets.only(bottom: 6),
                                   child: TsKart(
                                     padding: EdgeInsets.zero,
-                                    onTap: () => _fisDetayinaGit(h),
+                                    onTap: _secimIdleri.isNotEmpty
+                                        ? () => _secimDegistir(h)
+                                        : () => _fisDetayinaGit(h),
+                                    onLongPress: () => _secimDegistir(h),
                                     child: ListTile(
+                                      selected: h.id != null &&
+                                          _secimIdleri.contains(h.id),
+                                      selectedTileColor:
+                                          TsRenk.primary.withAlpha(30),
                                       leading: Container(
                                         width: 40,
                                         height: 40,

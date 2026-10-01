@@ -6,6 +6,7 @@
 //   - context.read/watch → ref.read/watch
 
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../widgetlar/ortak/bulut_durum_widget.dart';
@@ -20,6 +21,7 @@ import '../../cekirdek/utils/tarih_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/satis_deposu.dart';
+import 'masaustu/satis_liste_masaustu_gorunum.dart';
 
 class SatisListeEkrani extends ConsumerStatefulWidget {
   const SatisListeEkrani({super.key});
@@ -223,6 +225,19 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
               ? const Center(child: const AppYukleniyor())
               : durum.satislar.isEmpty
                   ? _BosEkran()
+                  : (Platform.isWindows && MediaQuery.sizeOf(context).width > 900)
+                  // Masaüstü: tablo görünümü (mobil liste aşağıda aynen duruyor).
+                  ? SatisListeMasaustuGorunum(
+                      satislar: durum.satislar,
+                      seciliIds: durum.seciliIds,
+                      seciliToplam: durum.seciliToplam,
+                      onDetay: (x) => context.push('/satis/detay/${x.id}'),
+                      onSecToggle: (x) => ref
+                          .read(satislarProvider.notifier)
+                          .secimToggle(x.id!),
+                      onYenile: () =>
+                          ref.read(satislarProvider.notifier).yukle(),
+                    )
                   : RefreshIndicator(
                       onRefresh: () =>
                           ref.read(satislarProvider.notifier).yukle(),

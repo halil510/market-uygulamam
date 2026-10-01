@@ -118,6 +118,8 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   Timer? _scannerKilitAcmaTimer;
 
   Timer? _araDebounce;
+  // Windows: okutma/işlem sonrası odak arama kutusuna otomatik dönsün.
+  Timer? _odakKoruTimer;
   int   _aramaId = 0;
   // Arama sonuçları artık local state — sepetProvider'a gerek yok
   List<UrunModel> _aramaSonuclari = [];
@@ -143,12 +145,34 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.invalidate(aktifPromosyonlarProvider);
     });
+    if (Platform.isWindows) {
+      _odakKoruTimer = Timer.periodic(
+          const Duration(milliseconds: 400), (_) => _odakKoru());
+    }
+  }
+
+  /// Kasiyer her seferinde kutuya tıklamasın: bu ekran en üstteyse, bir işlem
+  /// sürmüyorsa ve başka bir metin kutusu odakta değilse odağı arama
+  /// kutusuna (barkod okutma alanı) geri verir.
+  void _odakKoru() {
+    if (!mounted || _islemAktif || _dialogAcik) return;
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+    if (_araFocus.hasFocus) return;
+    final odak = FocusManager.instance.primaryFocus;
+    final ctx = odak?.context;
+    if (ctx != null &&
+        (ctx.widget is EditableText ||
+            ctx.findAncestorWidgetOfExactType<EditableText>() != null)) {
+      return; // başka bir metin kutusunda yazılıyor (ör. miktar/not)
+    }
+    _araFocus.requestFocus();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _araDebounce?.cancel();
+    _odakKoruTimer?.cancel();
     _barkodIslemeTimer?.cancel();
     _scannerKilitAcmaTimer?.cancel();
     if (_kameraAcik) { try { _scanCtrl.stop(); } catch (e) { /* ignore */ } }

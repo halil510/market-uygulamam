@@ -6,6 +6,7 @@
 //   - temaNotifier (ValueNotifier) → temaProvider (Riverpod StateNotifier)
 //   - runZonedGuarded korundu
 
+import 'uygulama/masaustu/pencere_kapatma.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:io' show Platform;
@@ -50,6 +51,7 @@ Future<void> _baslatApp() async {
 
   // Hata görünürlüğü — release modda ekranın "bembeyaz" kalmasını önler,
   // gerçek hata mesajını ekranda ve logcat'te gösterir.
+  await PencereKapatma.baslat(); // Windows: pencere X → Hızlı Satış
   await CrashServisi.init();
 
   await LogServisi.init();

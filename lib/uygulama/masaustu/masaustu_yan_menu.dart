@@ -131,21 +131,40 @@ class MasaustuKabuk extends ConsumerWidget {
       builder: (context, _) {
         final rota = router.routerDelegate.currentConfiguration.uri.path;
         final kok = rota == '/' || rota == '/satis';
-        final geriYok = !(rootNavigatorKey.currentState?.canPop() ?? false);
-        if (kok || !geriYok || _menusuzRotalar.any(rota.startsWith)) {
-          return icerik;
-        }
+        if (kok || _menusuzRotalar.any(rota.startsWith)) return icerik;
         final cs = Theme.of(context).colorScheme;
+        void geri() {
+          final nav = rootNavigatorKey.currentState;
+          if (nav != null && nav.canPop()) {
+            nav.pop();
+          } else {
+            router.go('/satis');
+          }
+        }
         return Column(children: [
           Material(
             color: cs.surfaceContainerHighest,
             child: SizedBox(
-              height: 36,
+              height: 40,
               child: Row(children: [
+                const SizedBox(width: 4),
                 TextButton.icon(
-                  onPressed: () => router.go('/satis'),
+                  onPressed: geri,
                   icon: const Icon(Icons.arrow_back, size: 18),
                   label: const Text('Geri'),
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    final c = rootNavigatorKey.currentContext;
+                    if (c != null) masaustuMenuAc(c);
+                  },
+                  icon: const Icon(Icons.menu, size: 18),
+                  label: const Text('Menü'),
+                ),
+                TextButton.icon(
+                  onPressed: () => router.go('/'),
+                  icon: const Icon(Icons.dashboard_outlined, size: 18),
+                  label: const Text('Ana Ekran'),
                 ),
               ]),
             ),
@@ -156,7 +175,6 @@ class MasaustuKabuk extends ConsumerWidget {
     );
   }
 }
-
 /// Hızlı Satış'taki "Menü" butonu: kategorili tüm modül listesini soldan
 /// açılan bir panelde gösterir. Seçilen ekran ÜSTE açılır (push), böylece
 /// kendi geri okuyla Hızlı Satış'a dönülür.

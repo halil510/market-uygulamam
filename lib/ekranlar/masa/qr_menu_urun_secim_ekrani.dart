@@ -254,7 +254,8 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
                   ),
                 ),
               ),
-              const SizedBox(width: TsBosluk.sm),
+              if (!Platform.isWindows) const SizedBox(width: TsBosluk.sm),
+              if (!Platform.isWindows)
               Container(
                 decoration: BoxDecoration(
                     color: TsRenk.kart(context),

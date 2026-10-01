@@ -172,14 +172,17 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                   break;
               }
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
+            itemBuilder: (_) => [
+              // Windows'ta kamera ve mikrofon yok.
+              if (!Platform.isWindows)
+              const PopupMenuItem(
                   value: 'kamera',
                   child: ListTile(
                       dense: true,
                       leading: Icon(Icons.camera_alt),
                       title: Text('Kamera ile Fatura/Ürün Oku (AI)'))),
-              PopupMenuItem(
+              if (!Platform.isWindows)
+              const PopupMenuItem(
                   value: 'ses',
                   child: ListTile(
                       dense: true,

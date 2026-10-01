@@ -7,6 +7,7 @@
 //  - ITF-14 lojistik barkod tanıma
 //  - Türkiye'ye özel prefix'ler (868-869)
 //  - PLU kodu tanıma (4-5 haneli, 0xxxx ile başlayan)
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -225,6 +226,8 @@ class BarkodServisi {
   // ── Barkod tarama dialog ──────────────────────────────────────────────
 
   Future<String?> barkodTara(BuildContext context) async {
+    // Windows: kamera yok — USB okuyucu klavye gibi yazar; metin kutusu açılır.
+    if (Platform.isWindows) return _masaustuBarkodSor(context);
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -232,6 +235,36 @@ class BarkodServisi {
       builder: (_) => const _BarkodTaramaDialog(),
     );
   }
+}
+
+Future<String?> _masaustuBarkodSor(BuildContext context) {
+  final ctrl = TextEditingController();
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Barkod'),
+      content: SizedBox(
+        width: 360,
+        child: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Barkodu okutun veya yazın',
+            prefixIcon: Icon(Icons.qr_code_scanner),
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim().isEmpty ? null : v.trim()),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, ctrl.text.trim().isEmpty ? null : ctrl.text.trim()),
+          child: const Text('Tamam'),
+        ),
+      ],
+    ),
+  );
 }
 
 // ── Veri modelleri ────────────────────────────────────────────────────────

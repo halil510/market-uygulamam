@@ -728,6 +728,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
               Text('Bağlanmak için QR okutun',
                 style: TextStyle(fontSize: 13, color: TsRenk.metinIkincil(context))),
               const SizedBox(height: 16),
+              if (!Platform.isWindows)
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(

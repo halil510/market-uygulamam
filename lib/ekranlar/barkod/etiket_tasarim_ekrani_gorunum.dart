@@ -40,8 +40,10 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          // Windows'ta kamera yok (USB okuyucu arama kutusuna yazar).
+          if (!Platform.isWindows) const SizedBox(width: 8),
           // Barkod okuyucu butonu
+          if (!Platform.isWindows)
           GestureDetector(
             onTap: _kameraToggle,
             child: Container(

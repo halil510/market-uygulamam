@@ -336,6 +336,7 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
       context: context,
       builder: (_) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (!Platform.isWindows)
           ListTile(
             leading: const Icon(Icons.camera_alt, color: AppRenkler.primary),
             title: const Text('Kameradan Çek'),

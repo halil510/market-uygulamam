@@ -4,6 +4,7 @@
 //  - _ara(): 300ms debounce + _depo.ara() DB sorgusu
 //  - Timer dispose eklendi
 //  - setState batching iyileştirildi
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -480,8 +481,9 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
               ),
               onSubmitted: (v) { if (v.trim().isNotEmpty) _barkodIsleme(v.trim()); },
             )),
-            const SizedBox(width: 8),
-            // Kamera toggle butonu
+            if (!Platform.isWindows) const SizedBox(width: 8),
+            // Kamera toggle butonu (Windows'ta yok)
+            if (!Platform.isWindows)
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(

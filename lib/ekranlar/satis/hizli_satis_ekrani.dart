@@ -14,6 +14,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/ts_token.dart';
@@ -325,12 +326,14 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                   }
                 : null,
           ),
-          _AppBarButon(
-            icon: _kameraAcik ? Icons.search_rounded : Icons.qr_code_scanner_rounded,
-            renk: _kameraAcik ? Colors.green : Colors.white,
-            tooltip: _kameraAcik ? 'Arama Modu' : 'Barkod Tara',
-            onTap: _kameraToggle,
-          ),
+          // Windows'ta kamera taraması yok (USB okuyucu kullanılır).
+          if (!Platform.isWindows)
+            _AppBarButon(
+              icon: _kameraAcik ? Icons.search_rounded : Icons.qr_code_scanner_rounded,
+              renk: _kameraAcik ? Colors.green : Colors.white,
+              tooltip: _kameraAcik ? 'Arama Modu' : 'Barkod Tara',
+              onTap: _kameraToggle,
+            ),
           _AppBarButon(
             icon: Icons.person_add_outlined,
             renk: Colors.white,

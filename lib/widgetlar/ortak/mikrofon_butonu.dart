@@ -3,6 +3,7 @@
 // Herhangi bir TextField'a "suffixIcon" olarak eklenebilen, dinlerken
 // görsel geri bildirim veren mikrofon butonu. Konuşma bitince tanınan
 // metni [onMetin] ile geri döndürür.
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../../servisler/ses_tanima_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
@@ -66,6 +67,8 @@ class _MikrofonButonuState extends State<MikrofonButonu> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    // Windows'ta konuşma tanıma yok — butonu hiç gösterme.
+    if (Platform.isWindows) return const SizedBox.shrink();
     return IconButton(
       tooltip: _dinliyor ? 'Dinleniyor... (durdurmak için dokun)' : widget.ipucu,
       icon: _dinliyor

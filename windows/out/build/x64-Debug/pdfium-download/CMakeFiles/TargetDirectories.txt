@@ -1,3 +1,0 @@
-C:/barkodhalkmarket/windows/out/build/x64-Debug/pdfium-download/CMakeFiles/pdfium-download.dir
-C:/barkodhalkmarket/windows/out/build/x64-Debug/pdfium-download/CMakeFiles/edit_cache.dir
-C:/barkodhalkmarket/windows/out/build/x64-Debug/pdfium-download/CMakeFiles/rebuild_cache.dir

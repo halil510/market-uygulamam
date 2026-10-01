@@ -50,3 +50,6 @@ app.*.map.json
 
 # Yedekler
 /yedekler/
+
+# Visual Studio/CMake derleme çıktıları
+windows/out/

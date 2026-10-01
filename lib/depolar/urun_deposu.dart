@@ -1,4 +1,5 @@
 import '../servisler/bulut/bulut_manager.dart';
+import '../cekirdek/utils/metin_arama.dart';
 // lib/depolar/urun_deposu.dart
 //
 // Düzeltmeler:
@@ -721,12 +722,12 @@ class UrunDeposu {
       args.add(grup);
     }
     if (aramaMetni != null && aramaMetni.isNotEmpty) {
-      final q = '%$aramaMetni%';
+      final q = '%${aramaNormalize(aramaMetni)}%';
       // bkz. ara() üzerindeki aynı kullanıcı bulgusu notu — alternatif
       // barkodlar (`barkodlar`) da aranıyor.
       whereParts.add(
-        '(urun_adi LIKE ? OR barkod LIKE ? OR barkodlar LIKE ? OR kod LIKE ?'
-        ' OR ana_grup LIKE ? OR alternatif_urun_adi LIKE ? OR marka LIKE ?)',
+        '(${aramaSqlKolon('urun_adi')} LIKE ? OR barkod LIKE ? OR barkodlar LIKE ? OR kod LIKE ?'
+        ' OR ${aramaSqlKolon('ana_grup')} LIKE ? OR ${aramaSqlKolon('alternatif_urun_adi')} LIKE ? OR ${aramaSqlKolon('marka')} LIKE ?)',
       );
       args.addAll([q, q, q, q, q, q, q]);
     }
@@ -765,7 +766,7 @@ class UrunDeposu {
       bool sadeceToptan = false}) async {
     if (sorgu.isEmpty) return [];
     final db = await _d;
-    final q = '%$sorgu%';
+    final q = '%${aramaNormalize(sorgu)}%';
     final aktifFiltre = sadecaAktif ? ' AND aktif = 1' : '';
     final toptanFiltre = sadeceToptan ? ' AND toptan_satista = 1' : '';
     // ÖNCEDEN bu fonksiyonun offset parametresi yoktu — "daha fazla
@@ -782,8 +783,8 @@ class UrunDeposu {
     // değil, bu bir metin arama kutusu.
     final rows = await db.rawQuery(
       'SELECT * FROM ${DbSabitler.urunler}'
-      ' WHERE (urun_adi LIKE ? OR barkod LIKE ? OR barkodlar LIKE ? OR kod LIKE ?'
-      '       OR alternatif_urun_adi LIKE ? OR marka LIKE ?)'
+      ' WHERE (${aramaSqlKolon('urun_adi')} LIKE ? OR barkod LIKE ? OR barkodlar LIKE ? OR kod LIKE ?'
+      '       OR ${aramaSqlKolon('alternatif_urun_adi')} LIKE ? OR ${aramaSqlKolon('marka')} LIKE ?)'
       '   AND is_deleted = 0$aktifFiltre$toptanFiltre'
       ' ORDER BY urun_adi ASC LIMIT ? OFFSET ?',
       [q, q, q, q, q, q, limit, offset],

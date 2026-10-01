@@ -1,5 +1,6 @@
 // lib/ekranlar/cari/cari_liste_ekrani.dart — Modern v2
 import 'cari_secim_baglami.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'masaustu/cari_masaustu_gorunum.dart';
@@ -179,7 +180,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
     final filtre = ref.watch(cariFiltresiProvider);
 
     // Filtreleme - memoize için durum değişmeden hesaplamayı atla
-    final aramaMetni = filtre.aramaMetni.toLowerCase();
+    final aramaMetni = aramaNormalize(filtre.aramaMetni);
     // 🔴 DÜZELTME (cari ekranları derin analizi, 2026-09-14): "Tümü"
     // sekmesi ünvan/telefon/cari kodu ÜÇÜNÜ de kontrol ederken, "Müşteri"
     // ve "Tedarikçi" sekmeleri SADECE ünvanı kontrol ediyordu — AYNI arama
@@ -188,9 +189,9 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
     // üç sekme de AYNI eşleşme kuralını kullanıyor.
     bool aramaEslesiyor(CariModel c) =>
         aramaMetni.isEmpty ||
-        c.unvan.toLowerCase().contains(aramaMetni) ||
+        aramaNormalize(c.unvan).contains(aramaMetni) ||
         (c.telefon?.contains(aramaMetni) ?? false) ||
-        (c.cariKodu?.toLowerCase().contains(aramaMetni) ?? false);
+        aramaNormalize(c.cariKodu ?? '').contains(aramaMetni);
     final hepsi = [...durum.musteriler,
       ...durum.tedarikciler.where((t) => !durum.musteriler.any((m) => m.id == t.id))];
     final tum = _filtrele(hepsi.where(aramaEslesiyor).toList());

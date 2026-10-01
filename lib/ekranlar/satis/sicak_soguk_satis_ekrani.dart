@@ -1,5 +1,6 @@
 // lib/ekranlar/satis/sicak_soguk_satis_ekrani.dart
 import 'package:flutter/material.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../servisler/barkod_servisi.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,10 +55,10 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
   }
 
   List<UrunModel> get _filtrelenmis {
-    final q = _araCtrl.text.toLowerCase();
+    final q = aramaNormalize(_araCtrl.text);
     if (q.isEmpty) return _urunler;
     return _urunler.where((u) =>
-        u.urunAdi.toLowerCase().contains(q) ||
+        aramaNormalize(u.urunAdi).contains(q) ||
         (u.barkod?.contains(q) ?? false)).toList();
   }
 

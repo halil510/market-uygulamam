@@ -6,6 +6,7 @@
 // yazıldı. Profesyonel muhasebe programları gibi: TCMB'den GERÇEK
 // kurları çeker, kullanıcı hangi dövizleri takip edeceğini seçer.
 import '../../cekirdek/utils/hata_utils.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -205,8 +206,8 @@ class _ParaBirimiSecSheetState extends State<_ParaBirimiSecSheet> {
     final eklenebilir = widget.tumDovizler
         .where((d) => !widget.mevcutKodlar.contains(d.kod))
         .where((d) => _ara.isEmpty ||
-            d.kod.toLowerCase().contains(_ara.toLowerCase()) ||
-            d.ad.toLowerCase().contains(_ara.toLowerCase()))
+            aramaNormalize(d.kod).contains(aramaNormalize(_ara)) ||
+            aramaNormalize(d.ad).contains(aramaNormalize(_ara)))
         .toList();
 
     return DraggableScrollableSheet(

@@ -5,6 +5,7 @@
 // Özellikler: liste, detay, ekle/düzenle, mesai takibi, maaş raporu
 
 import 'package:flutter/foundation.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'package:flutter/material.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -59,10 +60,10 @@ class _PersonelListeEkraniState extends ConsumerState<PersonelListeEkrani>
 
   List<PersonelModel> _filtrele(List<PersonelModel> liste) {
     if (_aramaMetni.isEmpty) return liste;
-    final q = _aramaMetni.toLowerCase();
+    final q = aramaNormalize(_aramaMetni);
     return liste.where((p) =>
-        p.adSoyad.toLowerCase().contains(q) ||
-        (p.pozisyon?.toLowerCase().contains(q) ?? false) ||
+        aramaNormalize(p.adSoyad).contains(q) ||
+        aramaNormalize(p.pozisyon ?? '').contains(q) ||
         (p.telefon?.contains(q) ?? false)).toList();
   }
 

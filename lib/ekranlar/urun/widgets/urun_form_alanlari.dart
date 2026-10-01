@@ -4,6 +4,7 @@
 // Ürün ekleme formunun yeniden kullanılabilir parçaları.
 
 import 'package:flutter/material.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'package:flutter/services.dart';
 import 'package:market_plus/tasarim_sistemi/tasarim_sistemi.dart';
 // ── Bölüm başlığı ──────────────────────────────────────────────────────────
@@ -201,7 +202,7 @@ class FormOtomatikAlan extends StatelessWidget {
         optionsBuilder: (tv) {
           if (tv.text.isEmpty) return secenekler;
           return secenekler.where(
-              (a) => a.toLowerCase().contains(tv.text.toLowerCase()));
+              (a) => aramaNormalize(a).contains(aramaNormalize(tv.text)));
         },
         fieldViewBuilder: (ctx, ctrl, fn, onSub) {
           // Senkronize et
@@ -277,7 +278,7 @@ class FormGrupSecim extends StatelessWidget {
         optionsBuilder: (tv) {
           if (tv.text.isEmpty) return gruplar;
           return gruplar.where(
-              (g) => g.toLowerCase().contains(tv.text.toLowerCase()));
+              (g) => aramaNormalize(g).contains(aramaNormalize(tv.text)));
         },
         fieldViewBuilder: (ctx, ctrl, fn, onSub) {
           return TextFormField(

@@ -1,5 +1,6 @@
 // lib/ekranlar/satis/iade/iade_cari_dialog.dart
 import 'package:flutter/material.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import '../../../uygulama/tema/uygulama_temasi.dart';
 import '../../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -80,12 +81,12 @@ class CariSecDialogState extends ConsumerState<CariSecDialog> {
                 isDense: true,
               ),
               onChanged: (q) {
-                final ql = q.toLowerCase();
+                final ql = aramaNormalize(q);
                 setState(() {
                   _filtreli = q.isEmpty
                       ? widget.cariler
                       : widget.cariler.where((c) =>
-                          c.unvan.toLowerCase().contains(ql) ||
+                          aramaNormalize(c.unvan).contains(ql) ||
                           (c.telefon?.contains(q) ?? false)).toList();
                 });
               },

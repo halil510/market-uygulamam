@@ -1,5 +1,6 @@
 // lib/saglayicilar/riverpod/satis_provider.dart
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import '../../depolar/satis_deposu.dart';
 import '../../modeller/satis_model.dart';
 import '../../servisler/faturalandirma_servisi.dart';
@@ -75,10 +76,10 @@ class Satislar extends _$Satislar {
       final f = ref.read(satisFiltresiProvider);
       var liste = await _depo.tariheGoreGetir(f.basTarih, f.bitTarih);
       if (f.aramaMetni.isNotEmpty) {
-        final q = f.aramaMetni.toLowerCase();
+        final q = aramaNormalize(f.aramaMetni);
         liste = liste.where((s) =>
-          (s.fisNo?.toLowerCase().contains(q) ?? false) ||
-          (s.cariAdi?.toLowerCase().contains(q) ?? false)).toList();
+          aramaNormalize(s.fisNo ?? '').contains(q) ||
+          aramaNormalize(s.cariAdi ?? '').contains(q)).toList();
       }
       state = state.copyWith(satislar: liste, yukleniyor: false);
     } catch (_) { state = state.copyWith(yukleniyor: false); }

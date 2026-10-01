@@ -1,5 +1,6 @@
 // lib/ekranlar/masa/masa_urun_ekle_ekrani.dart
 import 'dart:async';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -77,15 +78,15 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
   }
 
   List<UrunModel> get _filtrelenmis {
-    final q = _araCtrl.text.toLowerCase().trim();
+    final q = aramaNormalize(_araCtrl.text).trim();
     var liste = _urunler;
     if (_kategori != 'Tümü') {
       liste = liste.where((u) => (u.anaGrup ?? 'Diğer') == _kategori).toList();
     }
     if (q.isEmpty) return liste;
     return liste.where((u) =>
-        u.urunAdi.toLowerCase().contains(q) ||
-        (u.barkod?.toLowerCase().contains(q) ?? false)).toList();
+        aramaNormalize(u.urunAdi).contains(q) ||
+        aramaNormalize(u.barkod ?? '').contains(q)).toList();
   }
 
   List<String> get _kategoriler =>

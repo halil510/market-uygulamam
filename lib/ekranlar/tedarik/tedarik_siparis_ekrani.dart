@@ -1,5 +1,6 @@
 // lib/ekranlar/tedarik/tedarik_siparis_ekrani.dart ✅ TAM YAZILDI
 import 'package:flutter/foundation.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter/material.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
@@ -350,10 +351,10 @@ class _TedarikciSecimPaneliState extends ConsumerState<_TedarikciSecimPaneli> {
 
   @override
   Widget build(BuildContext context) {
-    final q = _araCtrl.text.toLowerCase();
+    final q = aramaNormalize(_araCtrl.text);
     final liste = q.isEmpty
         ? widget.cariler
-        : widget.cariler.where((c) => c.unvan.toLowerCase().contains(q)).toList();
+        : widget.cariler.where((c) => aramaNormalize(c.unvan).contains(q)).toList();
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,

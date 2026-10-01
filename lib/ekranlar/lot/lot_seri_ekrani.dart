@@ -1,6 +1,7 @@
 // lib/ekranlar/lot/lot_seri_ekrani.dart
 // Lot ve seri numarası takibi — ürün bazlı lot listesi, stok detayı
 import 'package:flutter/material.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -61,7 +62,7 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
     final uyari = now.add(const Duration(days: 30));
     setState(() {
       _filtrelenmis = _lotlar.where((r) {
-        final q = aramaMetni.toLowerCase();
+        final q = aramaNormalize(aramaMetni);
         if (q.isNotEmpty) {
           final urunAdi = r['urun_adi']?.toString().toLowerCase() ?? '';
           final lotNo = r['lot_no']?.toString().toLowerCase() ?? '';

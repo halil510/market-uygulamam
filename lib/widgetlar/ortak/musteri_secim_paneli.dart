@@ -4,6 +4,7 @@
 // ortak kullanılır. Hangi carilerin listeleneceğine çağıran karar verir
 // (ör. masa yalnızca müşteri tipindekileri verir).
 import 'package:flutter/material.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import '../../modeller/cari_model.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 
@@ -38,12 +39,12 @@ class _MusteriSecimPaneliState extends State<MusteriSecimPaneli> {
   void dispose() { _araCtrl.dispose(); super.dispose(); }
 
   void _filtrele() {
-    final q = _araCtrl.text.toLowerCase();
+    final q = aramaNormalize(_araCtrl.text);
     setState(() {
       _filtreli = q.isEmpty
           ? widget.cariler
           : widget.cariler.where((c) =>
-              c.unvan.toLowerCase().contains(q) ||
+              aramaNormalize(c.unvan).contains(q) ||
               (c.telefon?.contains(q) ?? false)).toList();
     });
   }

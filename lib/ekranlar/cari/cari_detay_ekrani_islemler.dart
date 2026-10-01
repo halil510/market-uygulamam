@@ -93,6 +93,105 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
     }
   }
 
+  /// Seçili Cari satış fişlerini ürün listesindeki GÜNCEL satış fiyatına
+  /// göre yeniden fiyatlar (önizleme + onay). Bkz. FisFiyatGuncellemeServisi.
+  Future<void> _seciliFisleriFiyatGuncelle() async {
+    final ids = _secimler
+        .where((h) => h.fisTipi == 'Satış' && h.fisId != null)
+        .map((h) => h.fisId!)
+        .toSet()
+        .toList();
+    if (ids.isEmpty) {
+      BildirimServisi.hata(context, 'Seçili hareketler arasında satış fişi yok');
+      return;
+    }
+    final servis = FisFiyatGuncellemeServisi();
+    try {
+      final planlar = await servis.onizle(ids);
+      if (!mounted) return;
+      final degisecek = planlar.where((p) => p.degisecekMi).toList();
+      final atlanan = planlar.where((p) => p.atlamaNedeni != null).toList();
+      final toplamFark = degisecek.fold<double>(0, (a, p) => a + p.fark);
+      if (degisecek.isEmpty) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Güncellenecek fiş yok'),
+            content: Text(atlanan.isEmpty
+                ? 'Seçili fişlerdeki tüm fiyatlar zaten güncel.'
+                : 'Atlananlar:\n${atlanan.map((p) => '• ${p.fisNo}: ${p.atlamaNedeni}').join('\n')}'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam')),
+            ],
+          ),
+        );
+        return;
+      }
+      final onay = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Son Fiyata Göre Güncelle'),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final p in degisecek) ...[
+                    Text(
+                      '${p.fisNo}:  ${ParaUtils.formatla(p.eskiToplam)} → ${ParaUtils.formatla(p.yeniToplam)}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    for (final u in p.degisenUrunler)
+                      Text('   $u', style: const TextStyle(fontSize: 12)),
+                    const SizedBox(height: 8),
+                  ],
+                  if (atlanan.isNotEmpty) ...[
+                    const Divider(),
+                    Text('Atlanacak ${atlanan.length} fiş:',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    for (final p in atlanan)
+                      Text('• ${p.fisNo}: ${p.atlamaNedeni}',
+                          style: const TextStyle(fontSize: 12)),
+                    const SizedBox(height: 8),
+                  ],
+                  const Divider(),
+                  Text(
+                    'Cari bakiyesi ${toplamFark >= 0 ? "+" : "−"}${ParaUtils.formatla(toplamFark.abs())} değişecek.',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text('${degisecek.length} Fişi Güncelle')),
+          ],
+        ),
+      );
+      if (onay != true || !mounted) return;
+      final sonuc = await servis.uygula(
+        degisecek.map((p) => p.satisId).toList(),
+        kullanici: ref.read(authProvider).kullanici?.adSoyad,
+      );
+      if (!mounted) return;
+      setState(() => _secimler.clear());
+      ref.invalidate(cariDetayProvider(widget.cari.id!));
+      ref.read(carilerProvider.notifier).yukle();
+      await _hareketYukle();
+      if (mounted) {
+        BildirimServisi.basari(context,
+            '${sonuc.guncellenen} fiş güncellendi (${sonuc.toplamFark >= 0 ? "+" : "−"}${ParaUtils.formatla(sonuc.toplamFark.abs())})');
+      }
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Fiyat güncelleme hatası: ${kullaniciyaHataMetni(e)}');
+    }
+  }
+
   /// Uzun basılıp seçilen satırı yazdırır — Satış/Toptan Satış için
   /// termal FİŞ (YazdirmaServisi.fisYazdir, hızlı satıştaki AYNI kod
   /// yolu), Tahsilat/Ödeme için MAKBUZ (YazdirmaServisi.makbuzYazdir,

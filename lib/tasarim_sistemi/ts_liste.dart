@@ -18,6 +18,7 @@
 //   )
 // ------------------------------------------------------------------
 import 'package:flutter/material.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'ts_token.dart';
 import 'ts_bos_durum.dart';
 import 'ts_yukleniyor.dart';
@@ -79,9 +80,9 @@ class _TsListeState<T> extends State<TsListe<T>> {
     if (widget.aramaMetniAl == null || _aramaMetni.trim().isEmpty) {
       return widget.ogeler;
     }
-    final q = _aramaMetni.trim().toLowerCase();
+    final q = aramaNormalize(_aramaMetni.trim());
     return widget.ogeler
-        .where((o) => widget.aramaMetniAl!(o).toLowerCase().contains(q))
+        .where((o) => aramaNormalize(widget.aramaMetniAl!(o)).contains(q))
         .toList();
   }
 

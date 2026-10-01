@@ -7,6 +7,7 @@
 // gibi ayrı ekranlar olacak ama altyapı (satış/stok/cari) ortak
 // kullanılacak."
 import 'package:flutter/material.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'package:go_router/go_router.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -76,11 +77,11 @@ class _ToptanDashboardEkraniState extends State<ToptanDashboardEkrani> {
   }
 
   void _filtrele() {
-    final q = _aramaCtrl.text.trim().toLowerCase();
+    final q = aramaNormalize(_aramaCtrl.text.trim());
     setState(() {
       _filtreli = q.isEmpty
           ? _bayiler
-          : _bayiler.where((c) => c.unvan.toLowerCase().contains(q)).toList();
+          : _bayiler.where((c) => aramaNormalize(c.unvan).contains(q)).toList();
     });
   }
 

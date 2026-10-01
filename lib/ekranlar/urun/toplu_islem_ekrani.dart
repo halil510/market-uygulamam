@@ -1,5 +1,6 @@
 // lib/ekranlar/urun/toplu_islem_ekrani.dart — Modern v2
 import 'package:flutter/material.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'package:flutter/foundation.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter/services.dart';
@@ -108,12 +109,12 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
   }
 
   void _filtrele() {
-    final q = _araCtrl.text.toLowerCase();
+    final q = aramaNormalize(_araCtrl.text);
     setState(() {
       _filtrelenmis = q.isEmpty ? _tum : _tum.where((u) =>
-          u.urunAdi.toLowerCase().contains(q) ||
-          (u.barkod?.toLowerCase().contains(q) ?? false) ||
-          (u.anaGrup?.toLowerCase().contains(q) ?? false)).toList();
+          aramaNormalize(u.urunAdi).contains(q) ||
+          aramaNormalize(u.barkod ?? '').contains(q) ||
+          aramaNormalize(u.anaGrup ?? '').contains(q)).toList();
     });
   }
 

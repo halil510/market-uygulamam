@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'package:go_router/go_router.dart';
 // lib/ekranlar/satis/iade_ekrani.dart
 // Eski uygulamanın BarkodluIadeEkrani mantığı yeni altyapıya tam entegre edildi
@@ -241,11 +242,11 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   }
 
   void _ara(String q) {
-    final ql = q.toLowerCase();
+    final ql = aramaNormalize(q);
     final res = _tumUrunler
         .where((u) =>
-            u.ad.toLowerCase().contains(ql) ||
-            (u.barkod?.toLowerCase().contains(ql) ?? false))
+            aramaNormalize(u.ad).contains(ql) ||
+            aramaNormalize(u.barkod ?? '').contains(ql))
         .toList();
     if (!mounted) return;
     _aramaListesi = res;

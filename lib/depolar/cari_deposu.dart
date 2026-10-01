@@ -6,6 +6,7 @@
 //   4. Çift sil metodu düzeltildi
 //   5. KRİTİK: hareketEkle içinde bakiye güncelleme EKLENDİ
 import 'package:sqflite/sqflite.dart';
+import '../cekirdek/utils/metin_arama.dart';
 import 'package:uuid/uuid.dart';
 
 import '../servisler/log_servisi.dart';
@@ -330,7 +331,7 @@ class CariDeposu {
     try {
       if (sorgu.isEmpty) return await tumunuGetir(tip: tip, limit: limit);
       final db = await _d;
-      final q = '%$sorgu%';
+      final q = '%${aramaNormalize(sorgu)}%';
       // 🔴 DÜZELTME: 'cari_tipi = ...' hem TAM eşleşme (dual-tip
       // carileri dışlıyordu, tumunuGetir()'deki AYNI hata) hem de
       // doğrudan string enjeksiyonuydu (parametreli değildi) hem de
@@ -341,7 +342,7 @@ class CariDeposu {
       params.add(limit);
       final rows = await db.rawQuery(
         '''SELECT * FROM cari
-           WHERE (unvan LIKE ? OR cari_kodu LIKE ? OR telefon LIKE ? OR vergi_no LIKE ? OR email LIKE ?)
+           WHERE (${aramaSqlKolon('unvan')} LIKE ? OR ${aramaSqlKolon('cari_kodu')} LIKE ? OR telefon LIKE ? OR vergi_no LIKE ? OR ${aramaSqlKolon('email')} LIKE ?)
            AND is_deleted = 0 AND aktif = 1$tipFilt
            ORDER BY unvan ASC LIMIT ?''',
         params,

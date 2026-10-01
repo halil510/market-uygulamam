@@ -11,6 +11,7 @@
 // döner — tam model nesnesi kurmuyoruz, sadece listede göstermek ve
 // doğru detay ekranına yönlendirmek için gereken alanlar.
 import '../veri/database/veritabani.dart';
+import '../cekirdek/utils/metin_arama.dart';
 
 enum GlobalAramaTuru { urun, cari, satis, fatura, masa }
 
@@ -34,7 +35,7 @@ class GlobalAramaServisi {
     final sorgu = sorguHam.trim();
     if (sorgu.length < 2) return [];
     final db = await Veritabani().db;
-    final q = '%$sorgu%';
+    final q = '%${aramaNormalize(sorgu)}%';
 
     final sonuclar = <GlobalAramaSonucu>[];
 
@@ -43,7 +44,7 @@ class GlobalAramaServisi {
     // üzerindeki aynı düzeltme notu.
     final urunler = await db.rawQuery(
       '''SELECT id, urun_adi, barkod, satis_fiyati FROM urunler
-         WHERE (urun_adi LIKE ? OR barkod LIKE ? OR barkodlar LIKE ? OR kod LIKE ?)
+         WHERE (${aramaSqlKolon('urun_adi')} LIKE ? OR barkod LIKE ? OR barkodlar LIKE ? OR ${aramaSqlKolon('kod')} LIKE ?)
            AND is_deleted = 0
          ORDER BY urun_adi ASC LIMIT ?''',
       [q, q, q, q, _kategoriBasinaLimit],
@@ -59,7 +60,7 @@ class GlobalAramaServisi {
 
     final cariler = await db.rawQuery(
       '''SELECT id, unvan, cari_kodu, telefon, cari_tipi FROM cari
-         WHERE (unvan LIKE ? OR cari_kodu LIKE ? OR telefon LIKE ? OR vergi_no LIKE ?)
+         WHERE (${aramaSqlKolon('unvan')} LIKE ? OR ${aramaSqlKolon('cari_kodu')} LIKE ? OR telefon LIKE ? OR vergi_no LIKE ?)
            AND is_deleted = 0 AND aktif = 1
          ORDER BY unvan ASC LIMIT ?''',
       [q, q, q, q, _kategoriBasinaLimit],
@@ -99,7 +100,7 @@ class GlobalAramaServisi {
 
     final masalar = await db.rawQuery(
       '''SELECT id, ad, durum FROM masalar
-         WHERE ad LIKE ? AND is_deleted = 0
+         WHERE ${aramaSqlKolon('ad')} LIKE ? AND is_deleted = 0
          ORDER BY ad ASC LIMIT ?''',
       [q, _kategoriBasinaLimit],
     );

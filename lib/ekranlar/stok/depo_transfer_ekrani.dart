@@ -8,6 +8,7 @@
 // 'subeler' listesi kullanılıyor — transfer GERÇEKTEN kaynak şubenin
 // payını düşürüp hedef şubenin payını artırıyor.
 import 'package:flutter/material.dart';
+import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../depolar/urun_deposu.dart';
@@ -69,11 +70,11 @@ class _DepoTransferEkraniState extends ConsumerState<DepoTransferEkrani> {
   }
 
   List<UrunModel> get _filtrelenmis {
-    final q = _araCtrl.text.toLowerCase();
+    final q = aramaNormalize(_araCtrl.text);
     final seciliIdsOlanlar = _miktarlar.entries
         .where((e) => e.value > 0).map((e) => e.key).toSet();
     final liste = q.isEmpty ? _urunler
-        : _urunler.where((u) => u.urunAdi.toLowerCase().contains(q)).toList();
+        : _urunler.where((u) => aramaNormalize(u.urunAdi).contains(q)).toList();
     return [
       ...liste.where((u) => seciliIdsOlanlar.contains(u.id)),
       ...liste.where((u) => !seciliIdsOlanlar.contains(u.id)),

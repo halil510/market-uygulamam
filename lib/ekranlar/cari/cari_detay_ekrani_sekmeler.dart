@@ -165,7 +165,7 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
               h.fisTipi == 'Toptan Satış (Sipariş)' ||
               h.fisTipi == 'Masa Satış');
           final yazdirilabilir = _CariDetayIcerikState._yazdirilabilirTipler.contains(h.fisTipi);
-          final secili = _seciliHareket == h;
+          final secili = _secimler.contains(h);
           return Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -174,7 +174,13 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
               boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: satisMi
+              onTap: _secimler.isNotEmpty
+                  ? (yazdirilabilir
+                      ? () => setState(() {
+                            if (!_secimler.remove(h)) _secimler.add(h);
+                          })
+                      : null)
+                  : satisMi
                   ? () => _hareketFaturalandir(h)
                   : detayGorulebilirMi
                       ? () => Navigator.push(context, MaterialPageRoute(
@@ -190,7 +196,9 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
               // tipler (Satış/Toptan Satış/Tahsilat/Odeme) seçilebilir.
               onLongPress: !yazdirilabilir
                   ? () => BildirimServisi.hata(context, 'Bu hareket türü yazdırılamaz')
-                  : () => setState(() => _seciliHareket = secili ? null : h),
+                  : () => setState(() {
+                        if (!_secimler.remove(h)) _secimler.add(h);
+                      }),
               child: Row(children: [
               Container(
                 width: 36, height: 36,

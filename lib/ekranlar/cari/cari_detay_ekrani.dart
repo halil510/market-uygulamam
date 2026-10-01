@@ -26,6 +26,7 @@ import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 import '../../servisler/yazdirma_servisi.dart';
+import '../../servisler/fis_fiyat_guncelleme_servisi.dart';
 import '../../cekirdek/utils/hata_utils.dart';
 part 'cari_detay_ekrani_islemler.dart';
 part 'cari_detay_ekrani_sekmeler.dart';
@@ -235,7 +236,15 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
   static const _yazdirilabilirTipler = {
     'Satış', 'Toptan Satış', 'Tahsilat', 'Odeme',
   };
-  CariHareketModel? _seciliHareket;
+  // Çoklu seçim (2026-10-01): uzun basarak birden fazla fiş seçilebilir —
+  // tek seçimde yazdır, seçili Satış fişlerinde "Son fiyata göre güncelle".
+  final Set<CariHareketModel> _secimler = {};
+  CariHareketModel? get _seciliHareket =>
+      _secimler.length == 1 ? _secimler.first : null;
+  set _seciliHareket(CariHareketModel? v) {
+    _secimler.clear();
+    if (v != null) _secimler.add(v);
+  }
   bool _yazdiriliyor = false;
 
   MusteriIstatistik? _istatistik;
@@ -247,7 +256,7 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
     super.initState();
     _tab = TabController(length: 3, vsync: this);
     _tab.addListener(() {
-      if (_seciliHareket != null) setState(() => _seciliHareket = null);
+      if (_secimler.isNotEmpty) setState(() => _secimler.clear());
     });
     _hareketYukle();
     if (widget.cari.cariTipi.contains('Müşteri')) _analizYukle();
@@ -345,7 +354,8 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
           _eFaturaRozeti(c),
         ]),
         aksiyonlar: [
-          if (_seciliHareket != null) ...[
+          if (_secimler.isNotEmpty) ...[
+            if (_seciliHareket != null)
             IconButton(
               icon: _yazdiriliyor
                   ? const SizedBox(width: 20, height: 20,
@@ -354,10 +364,24 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
               tooltip: 'Seçili fişi/makbuzu yazdır',
               onPressed: _yazdiriliyor ? null : _seciliYazdir,
             ),
+            if (ref.read(authProvider).isMudur)
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.white),
+                tooltip: 'Seçili fişler için işlemler',
+                onSelected: (v) {
+                  if (v == 'fiyat') _seciliFisleriFiyatGuncelle();
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'fiyat',
+                    child: Text('Son fiyata göre güncelle'),
+                  ),
+                ],
+              ),
             IconButton(
               icon: const Icon(Icons.close, color: Colors.white),
               tooltip: 'Seçimi iptal et',
-              onPressed: () => setState(() => _seciliHareket = null),
+              onPressed: () => setState(() => _secimler.clear()),
             ),
           ],
           if (c.cariTipi.contains('Müşteri'))

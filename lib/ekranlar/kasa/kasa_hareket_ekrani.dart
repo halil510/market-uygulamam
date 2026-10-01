@@ -9,6 +9,7 @@ import '../../saglayicilar/riverpod/kasa_rapor_provider.dart';
 import '../../modeller/kasa_hareket_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../widgetlar/masaustu/masaustu_tablo.dart';
 
 class KasaHareketEkrani extends ConsumerStatefulWidget {
   const KasaHareketEkrani({super.key});
@@ -19,6 +20,7 @@ class KasaHareketEkrani extends ConsumerStatefulWidget {
 class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
   final _depo = KasaDeposu();
   List<KasaHareketModel> _hareketler = [];
+  KasaHareketModel? _seciliHareket; // masaüstü tablo seçimi
   bool _yukleniyor = true;
   double _bakiye = 0;
   Map<String, double> _gunlukOzet = {'giris': 0, 'cikis': 0};
@@ -213,6 +215,8 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
                           Text('Henüz hareket yok',
                               style: TextStyle(color: context.textSecondary)),
                         ]))
+                  : MediaQuery.sizeOf(context).width > 1100
+                  ? _masaustuTablo(fmt)
                   : RefreshIndicator(
                       onRefresh: _yukle,
                       child: ListView.builder(
@@ -261,7 +265,10 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
                       )),
         ),
       ]),
-      floatingActionButton: FloatingActionButton.extended(
+      // Masaüstünde (tablo) üst çubuktaki + kullanılır; düğme son satırı örter.
+      floatingActionButton: MediaQuery.sizeOf(context).width > 1100
+          ? null
+          : FloatingActionButton.extended(
         backgroundColor: TsRenk.primary,
         foregroundColor: Colors.white,
         elevation: 2,
@@ -269,6 +276,63 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
         icon: const Icon(Icons.add),
         label: const Text('Hareket Ekle'),
       ),
+    );
+  }
+
+  /// Geniş pencere (masaüstü): sıralanabilir hareket tablosu.
+  Widget _masaustuTablo(DateFormat fmt) {
+    return MasaustuTablo<KasaHareketModel>(
+      satirlar: _hareketler,
+      kolonlar: [
+        TabloKolon(
+            baslik: 'Tarih',
+            genislik: 140,
+            deger: (h) => fmt.format(h.tarih),
+            sirala: (h) => h.tarih),
+        TabloKolon(
+            baslik: 'Tür',
+            genislik: 130,
+            deger: (h) => h.hareketTipi,
+            sirala: (h) => h.hareketTipi),
+        TabloKolon(
+            baslik: 'Açıklama',
+            genislik: 280,
+            esnek: true,
+            deger: (h) => h.aciklama ?? '',
+            sirala: (h) => (h.aciklama ?? '').toLowerCase()),
+        TabloKolon(
+            baslik: 'Ödeme Yöntemi',
+            genislik: 120,
+            deger: (h) => h.odemeYontemi ?? ''),
+        TabloKolon(
+            baslik: 'Giriş',
+            genislik: 110,
+            sagaYasli: true,
+            deger: (h) => KasaHareketModel.girisMi(h.hareketTipi)
+                ? ParaUtils.formatla(h.tutar, simge: '')
+                : '',
+            sirala: (h) => KasaHareketModel.girisMi(h.hareketTipi) ? h.tutar : 0.0,
+            renk: (h) => Colors.green.shade700),
+        TabloKolon(
+            baslik: 'Çıkış',
+            genislik: 110,
+            sagaYasli: true,
+            deger: (h) => KasaHareketModel.girisMi(h.hareketTipi)
+                ? ''
+                : ParaUtils.formatla(h.tutar, simge: ''),
+            sirala: (h) => KasaHareketModel.girisMi(h.hareketTipi) ? 0.0 : h.tutar,
+            renk: (h) => Colors.red.shade700),
+        TabloKolon(
+            baslik: 'Bakiye',
+            genislik: 120,
+            sagaYasli: true,
+            deger: (h) => h.bakiyeSonrasi == null
+                ? ''
+                : ParaUtils.formatla(h.bakiyeSonrasi!, simge: ''),
+            sirala: (h) => h.bakiyeSonrasi ?? 0.0),
+      ],
+      secili: _seciliHareket,
+      onSec: (h) => setState(() => _seciliHareket = h),
     );
   }
 

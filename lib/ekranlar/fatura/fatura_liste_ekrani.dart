@@ -12,6 +12,7 @@ import '../../modeller/fatura_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
+import '../../widgetlar/masaustu/masaustu_tablo.dart';
 
 class FaturaListeEkrani extends ConsumerStatefulWidget {
   const FaturaListeEkrani({super.key});
@@ -26,6 +27,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
 
   List<FaturaModel> _faturalar = [];
   List<FaturaModel> _filtreli  = [];
+  FaturaModel? _seciliFatura; // masaüstü tablo seçimi
   bool _yukleniyor = true;
   String? _filtreDurum; // 'beklemede', 'odendi', null
   String? _filtreEFatura; // null=Tümü, 'hazir', 'gonderildi', 'onaylandi', 'hata'
@@ -220,6 +222,8 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
               onRefresh: _yukle,
               child: _filtreli.isEmpty
                   ? const TsBosDurum(ikon: Icons.receipt_long, baslik: 'Fatura bulunamadı')
+                  : MediaQuery.sizeOf(context).width > 1100
+                  ? _masaustuTablo()
                   : ListView.separated(
                       padding: const EdgeInsets.all(8),
                       itemCount: _filtreli.length,
@@ -229,6 +233,81 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
             ),
         ),
       ]),
+    );
+  }
+
+  // Geniş pencere (masaüstü): sıralanabilir tablo. Çift tık = fatura detayı.
+  static String _tarihYaz(DateTime? d) =>
+      d == null ? '' : DateFormat('dd.MM.yyyy').format(d);
+
+  static String _eDurumYaz(String? d) => switch (d ?? 'hazir') {
+        'onaylandi' => 'GİB Onayladı',
+        'gonderildi' => 'Gönderildi',
+        'gonderiliyor' => 'Gönderiliyor',
+        'reddedildi' => 'GİB Reddetti',
+        'gib_iptal' => 'GİB İptal',
+        'hata' => 'Hata',
+        _ => 'Hazır',
+      };
+
+  Widget _masaustuTablo() {
+    TabloKolon<FaturaModel> yazi(String b, double g, String? Function(FaturaModel) al,
+            {bool esnek = false}) =>
+        TabloKolon(
+            baslik: b,
+            genislik: g,
+            esnek: esnek,
+            deger: (f) => al(f) ?? '',
+            sirala: (f) => (al(f) ?? '').toLowerCase());
+    TabloKolon<FaturaModel> tutar(String b, double g, double Function(FaturaModel) al) =>
+        TabloKolon(
+            baslik: b,
+            genislik: g,
+            sagaYasli: true,
+            deger: (f) => ParaUtils.formatla(al(f), simge: ''),
+            sirala: al);
+    final kolonlar = <TabloKolon<FaturaModel>>[
+      yazi('Fatura No', 150, (f) => f.faturaNo),
+      yazi('Tür', 90, (f) => f.faturaTipi),
+      TabloKolon(
+          baslik: 'Tarih',
+          genislik: 95,
+          deger: (f) => _tarihYaz(f.tarih),
+          sirala: (f) => f.tarih),
+      yazi('Cari', 220, (f) => f.cariUnvan, esnek: true),
+      yazi('Vergi No', 110, (f) => f.cariVergiNo),
+      tutar('Ara Toplam', 100, (f) => f.toplamAraToplam),
+      tutar('KDV', 90, (f) => f.toplamKdv),
+      tutar('Genel Toplam', 110, (f) => f.genelToplam),
+      tutar('Ödenen', 100, (f) => f.odenenTutar),
+      TabloKolon(
+          baslik: 'Kalan',
+          genislik: 100,
+          sagaYasli: true,
+          deger: (f) => ParaUtils.formatla(f.kalanTutar, simge: ''),
+          sirala: (f) => f.kalanTutar,
+          renk: (f) => f.kalanTutar > 0.005 ? Colors.orange.shade800 : null),
+      TabloKolon(
+          baslik: 'Ödeme',
+          genislik: 90,
+          deger: (f) => f.odendi ? 'Ödendi' : (f.vadesiGecti ? 'Vadesi Geçti' : 'Beklemede'),
+          sirala: (f) => f.odendi ? 0 : 1),
+      TabloKolon(
+          baslik: 'e-Fatura',
+          genislik: 110,
+          deger: (f) => f.durum == 'iptal' ? 'İptal' : _eDurumYaz(f.eFaturaDurum),
+          sirala: (f) => _eDurumYaz(f.eFaturaDurum)),
+      TabloKolon(
+          baslik: 'Vade',
+          genislik: 95,
+          deger: (f) => _tarihYaz(f.vadeTarihi)),
+    ];
+    return MasaustuTablo<FaturaModel>(
+      satirlar: _filtreli,
+      kolonlar: kolonlar,
+      secili: _seciliFatura,
+      onSec: (f) => setState(() => _seciliFatura = f),
+      onCift: (f) => context.push('/fatura/detay/${f.id}'),
     );
   }
 

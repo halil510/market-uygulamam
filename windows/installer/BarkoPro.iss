@@ -34,6 +34,8 @@ PrivilegesRequired=admin
 ; Çalışan uygulama güncelleme sırasında otomatik kapatılır.
 CloseApplications=yes
 RestartApplications=no
+; Kurulum sonunda Windows'a "simgeler değişti" bildirimi gönderir (önbellek yenilenir).
+ChangesAssociations=yes
 
 [Languages]
 Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
@@ -44,11 +46,14 @@ Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
 Source: "{#KaynakDizin}\*"; DestDir: "{app}"; \
   Excludes: ".dart_tool\*,*.db,*.db-wal,*.db-shm"; \
   Flags: recursesubdirs createallsubdirs ignoreversion
+; Kısayol simgesi: ayrı bir .ico dosyası (Windows simge önbelleği, aynı yoldaki
+; exe'nin eski simgesini göstermeye devam edebiliyor).
+Source: "..\runner\resources\app_icon.ico"; DestName: "BarkoPro.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#AppAdi}"; Filename: "{app}\{#ExeAdi}"
+Name: "{autoprograms}\{#AppAdi}"; Filename: "{app}\{#ExeAdi}"; IconFilename: "{app}\BarkoPro.ico"
 ; Masaüstü kısayolu her kurulumda otomatik oluşturulur (uygulama logosuyla).
-Name: "{autodesktop}\{#AppAdi}"; Filename: "{app}\{#ExeAdi}"; IconFilename: "{app}\{#ExeAdi}"
+Name: "{autodesktop}\{#AppAdi}"; Filename: "{app}\{#ExeAdi}"; IconFilename: "{app}\BarkoPro.ico"
 
 [Run]
 Filename: "{app}\{#ExeAdi}"; Description: "{#AppAdi} uygulamasını başlat"; \

@@ -17,20 +17,34 @@ class CariSecimBaglami extends InheritedWidget {
   bool updateShouldNotify(CariSecimBaglami old) => false;
 }
 
-/// Cariler listesini büyük bir pencerede açar; seçilen cariyi döndürür.
+/// Cariler listesini TAM EKRAN bir pencerede açar; seçilen cariyi döndürür.
 Future<CariModel?> cariListesindenSec(BuildContext context, Widget cariListesi) {
   return showDialog<CariModel>(
     context: context,
-    builder: (ctx) => Dialog(
-      insetPadding: const EdgeInsets.all(24),
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        width: 980,
-        height: 680,
-        child: CariSecimBaglami(
-          onSec: (c) => Navigator.of(ctx).pop(c),
-          child: cariListesi,
-        ),
+    builder: (ctx) => Dialog.fullscreen(
+      child: CariSecimBaglami(
+        onSec: (c) => Navigator.of(ctx).pop(c),
+        child: Column(children: [
+          Material(
+            color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+            child: SizedBox(
+              height: 44,
+              child: Row(children: [
+                const SizedBox(width: 12),
+                const Text('Müşteri seç — listeden bir cariye tıklayın',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  icon: const Icon(Icons.close, size: 18),
+                  label: const Text('Kapat'),
+                ),
+                const SizedBox(width: 8),
+              ]),
+            ),
+          ),
+          Expanded(child: cariListesi),
+        ]),
       ),
     ),
   );

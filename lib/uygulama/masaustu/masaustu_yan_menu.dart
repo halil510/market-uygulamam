@@ -113,6 +113,13 @@ const _gruplar = <_Grup>[
   ]),
 ];
 
+/// Geçerli adres. push ile açılan ekranlarda uri.path değişmediğinden son
+/// eşleşmeye bakılır; liste boşsa (açılış anı) uri'ye düşülür.
+String mevcutRota(GoRouter router) {
+  final c = router.routerDelegate.currentConfiguration;
+  return c.isEmpty ? c.uri.path : c.last.matchedLocation;
+}
+
 const _masaRotalari = {'/masa', '/mutfak', '/rezervasyon', '/masa-rapor'};
 const _menusuzRotalar = ['/splash', '/giris', '/sifre'];
 
@@ -129,14 +136,13 @@ class MasaustuKabuk extends ConsumerWidget {
     return ListenableBuilder(
       listenable: router.routerDelegate,
       builder: (context, _) {
-        final rota = router.routerDelegate.currentConfiguration.uri.path;
+        final rota = mevcutRota(router);
         final kok = rota == '/panel' || rota == '/satis';
         if (kok || _menusuzRotalar.any(rota.startsWith)) return icerik;
         final cs = Theme.of(context).colorScheme;
         void geri() {
-          final nav = rootNavigatorKey.currentState;
-          if (nav != null && nav.canPop()) {
-            nav.pop();
+          if (router.canPop()) {
+            router.pop();
           } else {
             router.go('/satis');
           }

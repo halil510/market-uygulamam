@@ -151,7 +151,12 @@ class _CariMasaustuGorunumState extends State<CariMasaustuGorunum> {
           satirlar: l,
           kolonlar: _kolonlar,
           secili: s,
-          onSec: (c) => setState(() => _secili = c),
+          onSec: (c) {
+            // Seçim modunda (Hızlı Satış müşteri seçimi) tek tıkla seç.
+            final secim = CariSecimBaglami.maybeOf(context);
+            if (secim != null) { secim.onSec(c); return; }
+            setState(() => _secili = c);
+          },
           onCift: (c) {
             final secim = CariSecimBaglami.maybeOf(context);
             if (secim != null) { secim.onSec(c); return; }

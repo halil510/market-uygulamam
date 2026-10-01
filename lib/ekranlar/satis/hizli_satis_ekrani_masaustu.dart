@@ -19,7 +19,7 @@ extension _HizliSatisMasaustuExt on _HizliSatisEkraniState {
         onKalemDuzenle: _sepetKalemMiktarDuzenle,
         onOdeme: _odemeYontemiSec,
         onAramaOdak: () => _araFocus.requestFocus(),
-        onStok: () => context.push('/stok'),
+        onStok: () => context.push('/urun'),
         onAskiyaAl: _askiyaAl,
         onSonFis: _sonSatis == null ? null : _sonFisiYazdir,
         onCari: _musteriSec,

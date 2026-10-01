@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:window_manager/window_manager.dart';
 import '../router/uygulama_router.dart';
+import 'masaustu_yan_menu.dart' show mevcutRota;
 
 class PencereKapatma with WindowListener {
   PencereKapatma._();
@@ -30,13 +31,13 @@ class PencereKapatma with WindowListener {
       return;
     }
     final router = GoRouter.of(ctx);
-    final rota = router.routerDelegate.currentConfiguration.uri.path;
+    // push ile açılan ekranlarda uri.path değişmez; son eşleşmenin adresi doğrudur.
+    final rota = mevcutRota(router);
     final giris = rota == '/giris' || rota == '/splash';
 
     // Açık pencere/diyalog varsa önce onu kapat.
-    final nav = rootNavigatorKey.currentState;
-    if (!giris && nav != null && nav.canPop()) {
-      nav.pop();
+    if (!giris && router.canPop()) {
+      router.pop();
       return;
     }
     if (!giris && rota != '/satis') {

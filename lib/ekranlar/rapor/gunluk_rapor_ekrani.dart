@@ -1,6 +1,7 @@
 // lib/ekranlar/rapor/gunluk_rapor_ekrani.dart
 // Eski uygulamadan tam gün sonu mantığı, yeni altyapıya adapte edildi
 
+import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:market_plus/servisler/pdf_font_servisi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -333,7 +334,7 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
     
     File(filePath).writeAsBytesSync(excel.encode()!);
     
-    await SharePlus.instance.share(ShareParams(files: [XFile(filePath)], 
+    await DosyaPaylasim.paylas(ShareParams(files: [XFile(filePath)], 
       text: 'Gun Sonu Raporu - ${DateFormat('dd.MM.yyyy').format(_baslangic)}',
     ));
     

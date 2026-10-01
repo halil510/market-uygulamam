@@ -5,6 +5,7 @@
 //   - context.read<UrunListeNotifier>() → ref.read(urunlerProvider.notifier)
 //   - UrunFiltreDurum provider ile filtre yönetimi
 
+import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:io';

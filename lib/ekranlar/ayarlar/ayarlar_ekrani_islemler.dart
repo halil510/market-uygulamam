@@ -523,7 +523,7 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
         if (mounted) BildirimServisi.hata(context, 'DB dosyası bulunamadı');
         return;
       }
-      await SharePlus.instance.share(ShareParams(files: [XFile(dbYolu)], text: 'BarkoPro Veritabanı'));
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(dbYolu)], text: 'BarkoPro Veritabanı'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }

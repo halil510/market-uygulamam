@@ -6,6 +6,7 @@
 //   - Provider.of / context.read kaldırıldı
 //   - Dönem seçici modernize edildi (SegmentedButton)
 
+import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -85,7 +86,7 @@ class _KarZararEkraniState extends ConsumerState<KarZararEkrani>
       final path = '${dir.path}/kar_zarar_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       final file = File(path);
       await file.writeAsBytes(excel.encode()!);
-      await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Kâr-Zarar Raporu'));
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(path)], text: 'Kâr-Zarar Raporu'));
     } catch (e) {
       if (mounted) {
         BildirimServisi.hata(context, 'Excel hatası: $e');

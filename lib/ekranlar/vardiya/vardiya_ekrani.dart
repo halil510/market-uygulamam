@@ -1,4 +1,5 @@
 // lib/ekranlar/vardiya/vardiya_ekrani.dart — Geliştirilmiş
+import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../depolar/kasa_deposu.dart';
@@ -560,10 +560,9 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
       ]),
     ));
 
-    await Printing.sharePdf(
-        bytes: await pdf.save(),
-        filename:
-            'vardiya_raporu_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    await DosyaPaylasim.pdfPaylas(
+        await pdf.save(),
+        'vardiya_raporu_${DateTime.now().millisecondsSinceEpoch}.pdf');
   }
 
   pw.Widget _pdfSatir(String etiket, String deger, {bool bold = false}) =>

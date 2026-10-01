@@ -1,3 +1,4 @@
+import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -121,7 +122,7 @@ class _BarkodUreteciEkraniState extends ConsumerState<BarkodUreteciEkrani> {
       final dir = await getTemporaryDirectory();
       final f = File("${dir.path}/barkod_$_gosterilen.png");
       await f.writeAsBytes(bytes.buffer.asUint8List());
-      await SharePlus.instance.share(ShareParams(files: [XFile(f.path)], text: "Barkod: $_gosterilen"));
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(f.path)], text: "Barkod: $_gosterilen"));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, "Paylaşım hatası: $e");
     }

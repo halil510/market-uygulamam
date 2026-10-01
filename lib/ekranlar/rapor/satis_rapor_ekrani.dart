@@ -1,4 +1,5 @@
 // lib/ekranlar/rapor/satis_rapor_ekrani.dart — Geliştirilmiş
+import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -146,7 +147,7 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
       final dir  = await getApplicationDocumentsDirectory();
       final path = '${dir.path}/satis_raporu_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       await File(path).writeAsBytes(excel.encode()!);
-      await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Satış Raporu'));
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(path)], text: 'Satış Raporu'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Excel hatası: $e');
     }

@@ -277,7 +277,7 @@ extension _EtiketTasarimIslemlerExt on _EtiketTasarimEkraniState {
       await dosya.writeAsString(zpl);
 
       if (!mounted) return;
-      await SharePlus.instance.share(ShareParams(files: [XFile(dosya.path, mimeType: 'text/plain')],
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(dosya.path, mimeType: 'text/plain')],
         subject: 'BarkoPro Etiketler (ZPL)',
         text: 'Bu .zpl dosyasını BarTender veya Zebra/ZPL uyumlu '
               'bir etiket yazıcısına "Dosyadan Yazdır" ile gönderebilirsiniz.\n'

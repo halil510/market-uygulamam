@@ -1,6 +1,7 @@
 // lib/ekranlar/stok/stok_hareket_ekrani.dart
 // Stok giriş/çıkış kayıtları - filtreli, excel export
 
+import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -98,7 +99,7 @@ class _StokHareketEkraniState extends ConsumerState<StokHareketEkrani> {
       final dir = await getTemporaryDirectory();
       final path = '${dir.path}/stok_hareketleri_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       File(path).writeAsBytesSync(excel.encode()!);
-      await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Stok Hareketleri'));
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(path)], text: 'Stok Hareketleri'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }

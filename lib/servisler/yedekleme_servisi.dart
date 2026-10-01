@@ -4,6 +4,7 @@
 // - Eski yedekleri otomatik temizle (max 10 adet tut)
 // - Yedek durumu: son yedek tarihi, boyutu
 // - Paylaş / geri yükle
+import '../cekirdek/utils/dosya_paylasim.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -159,7 +160,7 @@ class YedeklemeServisi {
   // ── Paylaş ────────────────────────────────────────────────────────────
   Future<void> paylasYedek(String zipYolu) async {
     final tarih = DateFormat('dd.MM.yyyy').format(DateTime.now());
-    await SharePlus.instance.share(ShareParams(files: [XFile(zipYolu)],
+    await DosyaPaylasim.paylas(ShareParams(files: [XFile(zipYolu)],
       text: 'BarkoPro Yedek — $tarih',
     ));
   }

@@ -4,6 +4,7 @@
 //   - StatefulWidget → ConsumerStatefulWidget
 //   - StokSayimNotifier → stokSayimProvider
 
+import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'dart:async';
 import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
@@ -124,7 +125,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
         };
       }).toList();
       final yol = await ExcelServisi().stokSayimExcelDisaAl(stoklar);
-      await SharePlus.instance.share(ShareParams(files: [XFile(yol)], text: 'Stok Sayım Listesi'));
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(yol)], text: 'Stok Sayım Listesi'));
     } catch (e) { if (mounted) BildirimServisi.hata(context, 'Hata: $e'); }
   }
 
@@ -220,7 +221,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
           };
         }).toList();
       final yol = await ExcelServisi().stokSayimExcelDisaAl(stoklar);
-      if (mounted) await SharePlus.instance.share(ShareParams(files: [XFile(yol)], text: 'Stok Sayım Listesi'));
+      if (mounted) await DosyaPaylasim.paylas(ShareParams(files: [XFile(yol)], text: 'Stok Sayım Listesi'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Dışa aktarma hatası: $e');
     }

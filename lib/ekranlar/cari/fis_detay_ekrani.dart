@@ -19,6 +19,7 @@
 //  - EKLEME: PDF export
 //  - EKLEME: RepaintBoundary
 
+import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:market_plus/servisler/pdf_font_servisi.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
@@ -220,7 +221,7 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
       final dir  = await getTemporaryDirectory();
       final path = '${dir.path}/fis_${widget.fisId}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       File(path).writeAsBytesSync(ex.encode()!);
-      await SharePlus.instance.share(ShareParams(files: [XFile(path)],
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(path)],
           text: 'Fiş Detayı — ${widget.fisTipi} / ${widget.cariUnvan}'));
       if (mounted) BildirimServisi.basari(context, 'Excel oluşturuldu');
     } catch (e) {

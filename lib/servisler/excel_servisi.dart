@@ -1,4 +1,5 @@
 // lib/servisler/excel_servisi.dart
+import '../cekirdek/utils/dosya_paylasim.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show compute;
@@ -804,7 +805,7 @@ class ExcelServisi {
   }
 
   Future<void> paylasExcel(String yol) async =>
-      SharePlus.instance.share(ShareParams(files: [XFile(yol)], text: 'BarkoPro Excel'));
+      DosyaPaylasim.paylas(ShareParams(files: [XFile(yol)], text: 'BarkoPro Excel'));
 
 
   // ──────────────────────────────────────────────────────────────────────────

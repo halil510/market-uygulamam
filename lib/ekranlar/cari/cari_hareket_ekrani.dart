@@ -1,4 +1,5 @@
 // lib/ekranlar/cari/cari_hareket_ekrani.dart
+import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:market_plus/servisler/pdf_font_servisi.dart';
 import 'package:flutter/foundation.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -522,7 +523,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       final path =
           '${dir.path}/${_cari?.unvan ?? 'cari'}_hareketler_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       File(path).writeAsBytesSync(ex.encode()!);
-      await SharePlus.instance.share(ShareParams(files: [XFile(path)],
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(path)],
           text: '${_cari?.unvan ?? ''} Hareketleri'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Excel hatası: $e');
@@ -559,7 +560,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       final dir = await getTemporaryDirectory();
       final path = '${dir.path}/${_cari?.unvan ?? 'cari'}_hareketler.csv';
       File(path).writeAsStringSync(buf.toString());
-      await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'CSV'));
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(path)], text: 'CSV'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'CSV hatası: $e');
     }

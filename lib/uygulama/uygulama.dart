@@ -12,6 +12,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'router/uygulama_router.dart';
+import 'masaustu/masaustu_yan_menu.dart';
 import 'tema/uygulama_temasi.dart';
 import '../saglayicilar/riverpod/auth_provider.dart';
 import '../saglayicilar/riverpod/dashboard_provider.dart';
@@ -71,7 +72,11 @@ class _BarkoProAppState extends ConsumerState<BarkoProApp> {
       routeInformationParser:   UygulamaRouter.router(ref).routeInformationParser,
       routeInformationProvider: UygulamaRouter.router(ref).routeInformationProvider,
       backButtonDispatcher:     _dispatcher,
-      builder: TsResponsive.uygulamaSarmalayici,
+      builder: Platform.isWindows
+          ? (ctx, child) => MasaustuKabuk(
+              icerik: Builder(
+                  builder: (c) => TsResponsive.uygulamaSarmalayici(c, child)))
+          : TsResponsive.uygulamaSarmalayici,
     );
   }
 }

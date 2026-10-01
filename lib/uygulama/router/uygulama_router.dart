@@ -1,6 +1,7 @@
 // lib/uygulama/router/uygulama_router.dart
 // ✅ TAMAMEN DÜZELTİLDİ - Eksik import'lar eklendi
 
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../tema/uygulama_temasi.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -507,6 +508,8 @@ class _AnaKabukState extends ConsumerState<AnaKabuk> {
 
   @override
   Widget build(BuildContext context) {
+    // Windows: kalıcı yan menüyü MasaustuKabuk (uygulama.dart builder) çizer.
+    if (Platform.isWindows) return Scaffold(body: widget.child);
     final tablet = TsResponsive.tabletMi(context);
 
     void navSecildi(int i) {

@@ -53,3 +53,6 @@ app.*.map.json
 
 # Visual Studio/CMake derleme çıktıları
 windows/out/
+
+# bulut/API anahtarlari asla commitlenmesin
+hatalar/bulut ap*.txt

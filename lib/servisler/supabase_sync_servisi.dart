@@ -921,12 +921,14 @@ class SupabaseSyncServisi {
   static Future<SyncSonuc> yerelBuluttanAl({
     void Function(String)? log,
     bool sadeceDegisenler = true,
+    Set<String>? sadeceTablolar,
   }) {
     final db = Veritabani();
     return buluttanAl(
       kayitEkle: (t, k) => db.supaKayitlariEkle(t, k),
       kayitGuncelle: (t, k) => db.supaKayitlariGuncelle(t, k),
       sadeceDegisenler: sadeceDegisenler,
+      sadeceTablolar: sadeceTablolar,
       log: log,
     );
   }
@@ -1496,23 +1498,41 @@ class SupabaseSyncServisi {
   // vermek — ikinci çağrı yeni bir tarama başlatmak yerine devam eden
   // taramanın sonucunu bekleyip paylaşır.
   static Future<SyncSonuc>? _aktifBuluttanAl;
+  static bool _aktifKismi = false;
 
   static Future<SyncSonuc> buluttanAl({
     required Future<void> Function(String, List<Map<String, dynamic>>) kayitEkle,
     required Future<void> Function(String, List<Map<String, dynamic>>) kayitGuncelle,
     bool sadeceDegisenler = true,
+    Set<String>? sadeceTablolar,
     void Function(String)? log,
   }) {
+    final kismi = sadeceTablolar != null;
     final devamEden = _aktifBuluttanAl;
-    if (devamEden != null) return devamEden;
+    if (devamEden != null) {
+      // Devam eden tam çekim kısmi isteği de kapsar; devam eden kısmi çekim
+      // ise tam isteği kapsamaz — bitmesi beklenip tam çekim sonra başlar.
+      if (!_aktifKismi || kismi) return devamEden;
+      return devamEden.then((_) => buluttanAl(
+            kayitEkle: kayitEkle,
+            kayitGuncelle: kayitGuncelle,
+            sadeceDegisenler: sadeceDegisenler,
+            sadeceTablolar: sadeceTablolar,
+            log: log,
+          ));
+    }
     final gelecek = _buluttanAlCalistir(
       kayitEkle: kayitEkle,
       kayitGuncelle: kayitGuncelle,
       sadeceDegisenler: sadeceDegisenler,
+      sadeceTablolar: sadeceTablolar,
       log: log,
     );
     _aktifBuluttanAl = gelecek;
-    gelecek.whenComplete(() => _aktifBuluttanAl = null);
+    _aktifKismi = kismi;
+    gelecek.whenComplete(() {
+      if (identical(_aktifBuluttanAl, gelecek)) _aktifBuluttanAl = null;
+    });
     return gelecek;
   }
 
@@ -1520,6 +1540,7 @@ class SupabaseSyncServisi {
     required Future<void> Function(String, List<Map<String, dynamic>>) kayitEkle,
     required Future<void> Function(String, List<Map<String, dynamic>>) kayitGuncelle,
     bool sadeceDegisenler = true,
+    Set<String>? sadeceTablolar,
     void Function(String)? log,
   }) async {
     final ayar = await _ayarGetir();
@@ -1553,6 +1574,7 @@ class SupabaseSyncServisi {
     final guncellenenSatisGidleri = <String>{};
 
     for (final tablo in _tabloSirasi) {
+      if (sadeceTablolar != null && !sadeceTablolar.contains(tablo)) continue;
       try {
         log?.call('📥 $tablo...');
 
@@ -1636,6 +1658,7 @@ class SupabaseSyncServisi {
         final zorunluKolonSeti = await _yerelZorunluKolonlar(localDb, tablo);
 
         var atlananFk = 0;
+        var yetimAtlanan = 0;
         for (final r in tumKayitlar) {
           final m = Map<String, dynamic>.from(r);
           m.remove('id');
@@ -1657,7 +1680,17 @@ class SupabaseSyncServisi {
             for (final entry in fkHaritasi.entries) {
               final kolon = entry.key, parentTablo = entry.value;
               final cloudVal = m[kolon];
-              if (cloudVal == null) continue;
+              if (cloudVal == null) {
+                // Bulutta zorunlu FK'sı BOŞ olan satır yetimdir (gönderen
+                // cihazda ebeveyn silinmiş/yoktu); hiçbir turda düzelmez,
+                // yazılırsa NOT NULL ihlaliyle tüm tabloyu hataya düşürür.
+                if (zorunluKolonSeti.contains(kolon)) {
+                  atlaSatir = true;
+                  yetimAtlanan++;
+                  break;
+                }
+                continue;
+              }
               final cloudId = cloudVal is int ? cloudVal : int.tryParse(cloudVal.toString());
               if (cloudId == null) continue;
               final localId = (await idHaritasiGetir(parentTablo))[cloudId];
@@ -1744,6 +1777,9 @@ class SupabaseSyncServisi {
         await _idHaritasiTabloGuncelle(tablo, bulutGidHaritasi, idHaritasi);
 
         log?.call('✅ $tablo: +${yeni.length} ~${guncel.length} -${sonuc.silinen[tablo] ?? 0}');
+        if (yetimAtlanan > 0) {
+          log?.call('ℹ️ $tablo: $yetimAtlanan yetim satır (bulutta ebeveyn bağı boş) atlandı');
+        }
         // Filigran CİHAZ SAATİNDEN değil, çekilen verideki en büyük
         // last_updated'ten ilerletilir (saat kayması veri kaybı koruması)
         // Ebeveyni yerelde bulunamayan (atlanan) çocuk satır varsa filigran
@@ -1793,7 +1829,10 @@ class SupabaseSyncServisi {
     // Çekim eksik/hatalıysa (ör. stok_hareket yarım indi) bu turda türetilmiş
     // değerler yeniden hesaplanıp buluta itilmez: eksik veriden hesaplanan
     // yanlış stok/bakiye doğru bulut değerini ezerdi.
-    if (sonuc.hatalar.isNotEmpty) {
+    if (sadeceTablolar != null) {
+      // Kısmi (masa) çekimde türetilmiş değer mutabakatı çalıştırılmaz;
+      // tam çekim zaten periyodik yapılıyor.
+    } else if (sonuc.hatalar.isNotEmpty) {
       log?.call('⚠️ çekimde hata var — türetilmiş değer mutabakatı atlandı');
     } else if (sonuc.toplamEklenen +
             sonuc.toplamGuncellenen +

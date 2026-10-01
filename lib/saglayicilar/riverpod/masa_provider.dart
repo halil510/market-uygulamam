@@ -41,7 +41,13 @@ Future<void> otoMasaBulutCek() async {
   }
   _otoCekmeCalisiyor = true;
   try {
-    await SupabaseSyncServisi.yerelBuluttanAl();
+    // Yalnız masa tabloları: 58 tablonun tamamını 12 sn'de bir çekmek
+    // masa değişikliğinin diğer cihaza düşmesini geciktiriyordu.
+    await SupabaseSyncServisi.yerelBuluttanAl(sadeceTablolar: const {
+      'masalar',
+      'masa_siparisleri',
+      'masa_siparis_kalem',
+    });
     _sonOtoCekme = DateTime.now();
   } catch (_) {
     // Sessizce yut — bu arka plan otomatik çekmesi, kullanıcıya hata

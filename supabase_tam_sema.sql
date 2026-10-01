@@ -4665,4 +4665,14 @@ CREATE POLICY isletme_hesabi_depolama ON storage.objects FOR ALL TO authenticate
 --   WHERE schemaname='public' AND 'anon' = ANY(roles);
 
 
+-- ── H. Bulutta mevcut olup uygulamanın yerel şemasında bulunmayan sütunlar ─
+-- Canlı bulut şemasıyla birebir aynı kalması için (hepsi NULL kabul eder;
+-- uygulama bunları göndermez/okumaz, yalnız mevcut veri korunur).
+ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS ad TEXT;
+ALTER TABLE promosyonlar ADD COLUMN IF NOT EXISTS created_at TEXT;
+ALTER TABLE faturalar    ADD COLUMN IF NOT EXISTS efatura_uuid TEXT;
+ALTER TABLE faturalar    ADD COLUMN IF NOT EXISTS efatura_durum TEXT;
+ALTER TABLE faturalar    ADD COLUMN IF NOT EXISTS efatura_tipi TEXT;
+ALTER TABLE personel     ADD COLUMN IF NOT EXISTS ise_baslama_tarihi TEXT;
+
 -- ═══ DOSYA SONU ═══

@@ -933,7 +933,9 @@ class Veritabani {
     // filigran o tablo için İLERLEMEZ, başarısız satır BİR SONRAKİ
     // senkronda tekrar çekilip denenir.
     var basarisizSayisi = 0;
+    var yetimSayisi = 0;
     String? ilkHata;
+    String? ilkYetimHata;
     Map<String, dynamic>? ilkHataliSatir;
     try {
       for (final kayit in kayitlar) {
@@ -973,6 +975,14 @@ class Veritabani {
           }
           await database.insert(tablo, temiz, conflictAlgorithm: conflict);
         } catch (e) {
+          // Zorunlu ilişki sütunu boş kalan satır (ebeveyni bulutta/yerelde
+          // olmayan yetim kayıt) hiçbir turda yazılamaz; hata sayıp tabloyu
+          // ve filigranı kilitlemek yerine atlanır ve loglanır.
+          if (e.toString().contains('NOT NULL constraint failed')) {
+            yetimSayisi++;
+            ilkYetimHata ??= _kisalt(e.toString());
+            continue;
+          }
           basarisizSayisi++;
           ilkHata ??= e.toString();
           ilkHataliSatir ??= temiz;
@@ -983,6 +993,11 @@ class Veritabani {
       }
     } finally {
       await database.execute('PRAGMA foreign_keys = ON');
+    }
+    if (yetimSayisi > 0) {
+      LogServisi().uyari('supaKayitlariEkle($tablo): $yetimSayisi yetim satır '
+          'atlandı (zorunlu ilişki alanı boş)',
+          ek: ilkYetimHata);
     }
     if (basarisizSayisi > 0) {
       // 🔴 (2026-09-28, kullanıcı bulgusu "cari_hareket: 119/119 kayıt

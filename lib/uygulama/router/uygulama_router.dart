@@ -270,6 +270,7 @@ class UygulamaRouter {
           builder: (context, state, child) => AnaKabuk(child: child, mevcutRota: state.matchedLocation),
           routes: [
             GoRoute(path: '/', name: 'dashboard', builder: (_, __) => const DashboardEkrani()),
+            GoRoute(path: '/panel', name: 'panel', builder: (_, __) => const DashboardEkrani()),
             GoRoute(path: '/satis', name: 'satis', builder: (_, __) => const HizliSatisEkrani()),
             GoRoute(path: '/urun', name: 'urun_liste', builder: (_, state) => YetkiKoruma(yetkiKodu: 'urun', ekranAdi: 'Ürünler', child: UrunListeEkrani(baslangicArama: state.extra as String?))),
             GoRoute(path: '/cari', name: 'cari_liste', builder: (_, state) => YetkiKoruma(yetkiKodu: 'cari', ekranAdi: 'Cariler', child: CariListeEkrani(baslangicArama: state.extra as String?))),
@@ -417,7 +418,10 @@ class UygulamaRouter {
       return '/bayi';
     }
 
-    if (auth.girisYapildi && gidilen == '/giris') return '/';
+    if (auth.girisYapildi && gidilen == '/giris') return Platform.isWindows ? '/satis' : '/';
+    // Windows kasa bilgisayarı: her ekranın kapat/geri çıkışı ('/') Hızlı
+    // Satış'a döner; ana ekran (pano) '/panel' adresindedir.
+    if (auth.girisYapildi && Platform.isWindows && gidilen == '/') return '/satis';
 
     // 🔴🔴 GÜVENLİK DÜZELTMESİ (derin analizde bulundu): bu blok müdür
     // rolünü de admin gibi TÜM rota yetki kontrollerinden koşulsuz

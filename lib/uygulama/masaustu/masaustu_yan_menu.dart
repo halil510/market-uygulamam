@@ -130,7 +130,7 @@ class MasaustuKabuk extends ConsumerWidget {
       listenable: router.routerDelegate,
       builder: (context, _) {
         final rota = router.routerDelegate.currentConfiguration.uri.path;
-        final kok = rota == '/' || rota == '/satis';
+        final kok = rota == '/panel' || rota == '/satis';
         if (kok || _menusuzRotalar.any(rota.startsWith)) return icerik;
         final cs = Theme.of(context).colorScheme;
         void geri() {
@@ -146,7 +146,11 @@ class MasaustuKabuk extends ConsumerWidget {
             color: cs.surfaceContainerHighest,
             child: SizedBox(
               height: 40,
-              child: Row(children: [
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                    textButtonTheme: TextButtonThemeData(
+                        style: TextButton.styleFrom(foregroundColor: cs.onSurface))),
+                child: Row(children: [
                 const SizedBox(width: 4),
                 TextButton.icon(
                   onPressed: geri,
@@ -162,11 +166,12 @@ class MasaustuKabuk extends ConsumerWidget {
                   label: const Text('Menü'),
                 ),
                 TextButton.icon(
-                  onPressed: () => router.go('/'),
+                  onPressed: () => router.go('/panel'),
                   icon: const Icon(Icons.dashboard_outlined, size: 18),
                   label: const Text('Ana Ekran'),
                 ),
               ]),
+              ),
             ),
           ),
           Expanded(child: icerik),

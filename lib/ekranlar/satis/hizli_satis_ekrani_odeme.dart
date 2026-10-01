@@ -458,6 +458,10 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       ),
     );
 
+    // Pencere Esc/dışarı tıklamayla da kapanabilir (butonlar çalışmaz) —
+    // bayraklar burada kesin sıfırlanır, yoksa Ödeme/barkod sessizce kilitlenir.
+    _dialogAcik = false;
+    _islemAktif = false;
     if (_kameraAcik && mounted) { try { _scanCtrl.start(); } catch (e) { /* ignore */ } }
     if (ok != true || !mounted) return;
     final yeniMiktar = ParaUtils.sayiCoz(ctrl.text);

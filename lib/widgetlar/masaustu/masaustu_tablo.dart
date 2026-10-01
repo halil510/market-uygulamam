@@ -63,6 +63,13 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
   int? _siraKolon;
   bool _artan = true;
   int? _vurgu;
+  final ScrollController _yatayScroll = ScrollController();
+
+  @override
+  void dispose() {
+    _yatayScroll.dispose();
+    super.dispose();
+  }
 
   List<T> get _gorunen {
     final k = _siraKolon;
@@ -101,7 +108,12 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
           (widget.kolonlar.where((k) => k.esnek).length.clamp(1, 99));
       double gen(TabloKolon<T> k) => k.esnek ? esnekGen : k.genislik;
       final liste = _gorunen;
-      return SingleChildScrollView(
+      return Scrollbar(
+        controller: _yatayScroll,
+        thumbVisibility: true,
+        notificationPredicate: (n) => n.depth == 0,
+        child: SingleChildScrollView(
+        controller: _yatayScroll,
         scrollDirection: Axis.horizontal,
         child: SizedBox(
           width: toplam,
@@ -117,6 +129,7 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
             ),
           ]),
         ),
+      ),
       );
     });
   }

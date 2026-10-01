@@ -169,7 +169,7 @@ class TsAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: aksiyonlar,
       leading: lider,
       automaticallyImplyLeading: geriTusu,
-      bottom: alt,
+      bottom: alt == null ? null : _KoyuZeminAlt(alt!),
       centerTitle: ortalaBaslik,
       toolbarHeight: araclarYuksekligi,
       shape: sekil,
@@ -206,6 +206,33 @@ class TsAppBar extends StatelessWidget implements PreferredSizeWidget {
       flexibleSpace: DecoratedBox(
         decoration: BoxDecoration(gradient: TsModulRenk.gradyan(modul)),
       ),
+    );
+  }
+}
+
+/// Gradyanlı (koyu) üst barın altındaki TabBar için varsayılan sekme
+/// renkleri: tema varsayılanı koyu yazı olduğundan seçilmeyen sekmeler koyu
+/// zeminde okunmuyordu (ör. Faturalar: "Beklemede", "Ödendi"). Ekran kendi
+/// renklerini açıkça verdiyse o geçerli kalır.
+class _KoyuZeminAlt extends StatelessWidget implements PreferredSizeWidget {
+  final PreferredSizeWidget alt;
+  const _KoyuZeminAlt(this.alt);
+
+  @override
+  Size get preferredSize => alt.preferredSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Theme(
+      data: t.copyWith(
+        tabBarTheme: t.tabBarTheme.copyWith(
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
+        ),
+      ),
+      child: alt,
     );
   }
 }

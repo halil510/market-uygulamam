@@ -35,6 +35,87 @@ extension _UrunListeDialoglarExt on _UrunListeEkraniState {
     }
   }
 
+  // ── Masaüstü: tablo başlıkları (kolonlar) ───────────────────────────────
+  static const _kolonTercihAnahtari = 'urun_liste_masaustu_kolonlar';
+
+  Future<void> _masaustuKolonTercihiYukle() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final kayitli = prefs.getStringList(_kolonTercihAnahtari);
+      if (kayitli != null && mounted) {
+        final gecerli = UrunMasaustuGorunum.katalog.map((k) => k.anahtar).toSet();
+        final secim = kayitli.where(gecerli.contains).toSet()..add('urunAdi');
+        setState(() => _masaustuKolonlar = secim);
+      }
+    } catch (_) {
+      // Okunamazsa varsayılan kolonlarla devam edilir.
+    }
+  }
+
+  Future<void> _masaustuKolonSecimiAc() async {
+    var secim = Set<String>.from(_masaustuKolonlar);
+    final sonuc = await showDialog<Set<String>>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, ss) {
+        return AlertDialog(
+          title: const Text('Tablo Başlıkları'),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Wrap(spacing: 8, children: [
+                  TextButton(
+                      onPressed: () => ss(() => secim = UrunMasaustuGorunum
+                          .katalog
+                          .map((k) => k.anahtar)
+                          .toSet()),
+                      child: const Text('Tümünü Seç')),
+                  TextButton(
+                      onPressed: () => ss(() =>
+                          secim = UrunMasaustuGorunum.temelKolonlar),
+                      child: const Text('Sadece Temel')),
+                ]),
+                for (final k in UrunMasaustuGorunum.katalog)
+                  CheckboxListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(k.etiket),
+                    value: secim.contains(k.anahtar),
+                    onChanged: k.zorunlu
+                        ? null
+                        : (v) => ss(() {
+                              if (v == true) {
+                                secim.add(k.anahtar);
+                              } else {
+                                secim.remove(k.anahtar);
+                              }
+                            }),
+                  ),
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('İptal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, secim),
+                child: const Text('Uygula')),
+          ],
+        );
+      }),
+    );
+    if (sonuc != null && mounted) {
+      setState(() => _masaustuKolonlar = sonuc);
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList(_kolonTercihAnahtari, sonuc.toList());
+      } catch (_) {
+        // Kaydedilemezse bu oturumda geçerli kalır.
+      }
+    }
+  }
+
   Future<void> _gorunumSecimiAc() async {
     var secim = Set<String>.from(_ekAlanlar);
     final sonuc = await showDialog<Set<String>>(

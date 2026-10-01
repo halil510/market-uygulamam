@@ -83,12 +83,16 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
   };
   Set<String> _ekAlanlar = {};
 
+  /// Masaüstü tablosunda görünen başlıklar (mobil kart ayarından AYRI).
+  Set<String> _masaustuKolonlar = UrunMasaustuGorunum.varsayilanKolonlar;
+
   @override
   void initState() {
     super.initState();
     _araCtrl.addListener(_aramaChanged);
     _scrollCtrl.addListener(_scrollChanged);
     _gorunumTercihiYukle();
+    _masaustuKolonTercihiYukle();
     if (widget.baslangicArama != null &&
         widget.baslangicArama!.trim().isNotEmpty) {
       // addListener sonrası .text ataması _aramaChanged'i otomatik tetikler.
@@ -201,10 +205,14 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                   if (!_izgara)
                     IconButton(
                       icon: Badge(
-                          isLabelVisible: _ekAlanlar.isNotEmpty,
+                          isLabelVisible: !_masaustuMu(context) && _ekAlanlar.isNotEmpty,
                           child: const Icon(Icons.view_column_outlined, size: 22)),
-                      tooltip: 'Kartta Gösterilecek Alanlar',
-                      onPressed: _gorunumSecimiAc,
+                      tooltip: _masaustuMu(context)
+                          ? 'Tablo Başlıkları'
+                          : 'Kartta Gösterilecek Alanlar',
+                      onPressed: _masaustuMu(context)
+                          ? _masaustuKolonSecimiAc
+                          : _gorunumSecimiAc,
                     ),
                   IconButton(
                     icon: Badge(
@@ -353,6 +361,7 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                                     onYenile: () => ref
                                         .read(urunlerProvider.notifier)
                                         .yukle(sifirla: true),
+                                    gorunenKolonlar: _masaustuKolonlar,
                                   )
                                 : _listeView(durum.urunler, durum)),
                   ),

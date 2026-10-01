@@ -22,6 +22,9 @@ class UrunMasaustuGorunum extends StatefulWidget {
   final VoidCallback onExcel;
   final VoidCallback onYenile;
 
+  /// Görünen kolonların anahtarları (bkz. [katalog]).
+  final Set<String> gorunenKolonlar;
+
   const UrunMasaustuGorunum({
     super.key,
     required this.urunler,
@@ -30,7 +33,189 @@ class UrunMasaustuGorunum extends StatefulWidget {
     required this.onSil,
     required this.onExcel,
     required this.onYenile,
+    required this.gorunenKolonlar,
   });
+
+  static String _sayiYaz(double d) =>
+      d == d.roundToDouble() ? d.toStringAsFixed(0) : d.toStringAsFixed(3);
+
+  static TabloKolon<UrunModel> _yazi(String baslik, double genislik,
+          String? Function(UrunModel u) al,
+          {bool esnek = false}) =>
+      TabloKolon(
+          baslik: baslik,
+          genislik: genislik,
+          esnek: esnek,
+          deger: (u) => al(u) ?? '',
+          sirala: (u) => (al(u) ?? '').toLowerCase());
+
+  static TabloKolon<UrunModel> _tutar(String baslik, double genislik,
+          double Function(UrunModel u) al) =>
+      TabloKolon(
+          baslik: baslik,
+          genislik: genislik,
+          sagaYasli: true,
+          deger: (u) => ParaUtils.formatla(al(u), simge: ''),
+          sirala: al);
+
+  static TabloKolon<UrunModel> _miktar(String baslik, double genislik,
+          double Function(UrunModel u) al) =>
+      TabloKolon(
+          baslik: baslik,
+          genislik: genislik,
+          sagaYasli: true,
+          deger: (u) => _sayiYaz(al(u)),
+          sirala: al);
+
+  static TabloKolon<UrunModel> _evet(
+          String baslik, double genislik, bool Function(UrunModel u) al) =>
+      TabloKolon(
+          baslik: baslik,
+          genislik: genislik,
+          deger: (u) => al(u) ? 'Evet' : 'Hayır',
+          sirala: (u) => al(u) ? 1 : 0);
+
+  static TabloKolon<UrunModel> _say(String baslik, double genislik,
+          double Function(UrunModel u) al) =>
+      TabloKolon(
+          baslik: baslik,
+          genislik: genislik,
+          sagaYasli: true,
+          deger: (u) => al(u) == 0 ? '' : _sayiYaz(al(u)),
+          sirala: al);
+
+  /// TÜM seçilebilir başlıklar (ürün tablosunun tüm alanları). Sıra, tablodaki
+  /// sıradır. `temel` = eski, dar görünümün 10 kolonu.
+  static final List<UrunKolonu> katalog = [
+    UrunKolonu('kod', 'Kod', true, _yazi('Kod', 120, (u) => u.kod)),
+    UrunKolonu('barkod', 'Barkod', true, _yazi('Barkod', 140, (u) => u.barkod)),
+    UrunKolonu('urunAdi', 'Ürün Adı', true,
+        _yazi('Ürün Adı', 220, (u) => u.urunAdi, esnek: true),
+        zorunlu: true),
+    UrunKolonu('birim', 'Birim', true,
+        TabloKolon(baslik: 'Birim', genislik: 70, deger: (u) => u.birimAdi)),
+    UrunKolonu('alis', 'Alış Fiyat', true,
+        _tutar('Alış Fiyat', 95, (u) => u.alisFiyat)),
+    UrunKolonu('alisKdv', 'Alış (KDV Dahil)', false,
+        _tutar('Alış KDV Dahil', 110, (u) => u.alisFiyatKdvDahil)),
+    UrunKolonu('satis', 'Satış Fiyatı', true,
+        _tutar('Satış Fiyatı', 100, (u) => u.satisFiyati)),
+    UrunKolonu('toptan', 'Toptan Fiyat', false,
+        _tutar('Toptan Fiyat', 100, (u) => u.toptanFiyat)),
+    UrunKolonu(
+        'stok',
+        'Stok',
+        true,
+        TabloKolon(
+            baslik: 'Stok',
+            genislik: 90,
+            sagaYasli: true,
+            deger: (u) => _sayiYaz(u.stok),
+            sirala: (u) => u.stok,
+            renk: (u) => u.stok <= 0
+                ? TsRenk.hata
+                : (u.kritikStok ? TsRenk.uyari : null))),
+    UrunKolonu('minStok', 'Min. Stok', false,
+        _miktar('Min. Stok', 85, (u) => u.minimumStok)),
+    UrunKolonu('maksStok', 'Maks. Stok', false,
+        _miktar('Maks. Stok', 85, (u) => u.maksimumStok)),
+    UrunKolonu('kdv', 'KDV %', true,
+        TabloKolon(baslik: 'KDV %', genislik: 60, sagaYasli: true, deger: (u) => u.kdvOran)),
+    UrunKolonu('anaGrup', 'Ana Grup', true, _yazi('Ana Grup', 130, (u) => u.anaGrup)),
+    UrunKolonu('altGrup', 'Alt Grup', false, _yazi('Alt Grup', 130, (u) => u.altGrup)),
+    UrunKolonu('marka', 'Marka', false, _yazi('Marka', 120, (u) => u.marka)),
+    UrunKolonu('model', 'Model', false, _yazi('Model', 110, (u) => u.model)),
+    UrunKolonu('uretici', 'Üretici', false, _yazi('Üretici', 130, (u) => u.uretici)),
+    UrunKolonu('mensei', 'Menşei', false, _yazi('Menşei', 100, (u) => u.mensei)),
+    UrunKolonu('rafNo', 'Raf No', false, _yazi('Raf No', 90, (u) => u.rafNumarasi)),
+    UrunKolonu('sonKullanma', 'Son Kullanma', false,
+        _yazi('Son Kullanma', 110, (u) => u.sonKullanmaTarihi)),
+    UrunKolonu(
+        'karOran',
+        'Kâr %',
+        true,
+        TabloKolon(
+            baslik: 'Kâr %',
+            genislik: 70,
+            sagaYasli: true,
+            deger: (u) => u.karOrani.toStringAsFixed(1),
+            sirala: (u) => u.karOrani)),
+    UrunKolonu('karTutari', 'Kâr Tutarı', false,
+        _tutar('Kâr Tutarı', 95, (u) => u.satisFiyati - u.alisFiyatKdvDahil)),
+    UrunKolonu('stokDegeri', 'Stok Değeri', false,
+        _tutar('Stok Değeri', 105, (u) => u.stok * u.alisFiyatKdvDahil)),
+    UrunKolonu('alan1', 'Alan 1', false, _yazi('Alan 1', 100, (u) => u.alan1)),
+    UrunKolonu('alan2', 'Alan 2', false, _yazi('Alan 2', 100, (u) => u.alan2)),
+    UrunKolonu('alan3', 'Alan 3', false, _yazi('Alan 3', 100, (u) => u.alan3)),
+    UrunKolonu('alan4', 'Alan 4', false, _yazi('Alan 4', 100, (u) => u.alan4)),
+    UrunKolonu('barkodlar', 'Ek Barkodlar', false, _yazi('Ek Barkodlar', 150, (u) => u.barkodlar)),
+    UrunKolonu('altAd', 'Alternatif Ad', false, _yazi('Alternatif Ad', 160, (u) => u.alternatifUrunAdi)),
+    UrunKolonu('plu', 'PLU No', false, _yazi('PLU No', 80, (u) => u.pluNumarasi)),
+    UrunKolonu('kartTipi', 'Kart Tipi', false, _yazi('Kart Tipi', 90, (u) => u.kartTipi)),
+    UrunKolonu('eskiKod', 'Eski Kod', false, _yazi('Eski Kod', 100, (u) => u.eskiKodu)),
+    UrunKolonu('muhKod', 'Muhasebe Kodu', false, _yazi('Muhasebe Kodu', 110, (u) => u.muhasebeKodu)),
+    UrunKolonu('muafKod', 'Muafiyet Kodu', false, _yazi('Muafiyet Kodu', 110, (u) => u.muafiyetKodu)),
+    UrunKolonu('paraBirimi', 'Para Birimi', false, _yazi('Para Birimi', 90, (u) => u.paraBirimi)),
+    UrunKolonu('dovizKodu', 'Döviz Kodu', false, _yazi('Döviz Kodu', 90, (u) => u.dovizKodu)),
+    UrunKolonu('dovizTutari', 'Döviz Tutarı', false, _say('Döviz Tutarı', 100, (u) => u.dovizTutari ?? 0)),
+    UrunKolonu('alisKdvOran', 'Alış KDV %', false, _say('Alış KDV %', 85, (u) => u.alisKdvOran)),
+    UrunKolonu('netAlis', 'Net Alış Fiyatı', false, _tutar('Net Alış Fiyatı', 110, (u) => u.netAlisFiyat)),
+    UrunKolonu('indirimOrani', 'İndirim %', false, _say('İndirim %', 85, (u) => u.indirimOrani)),
+    UrunKolonu('indirimliFiyat', 'İndirimli Fiyat', false, _tutar('İndirimli Fiyat', 110, (u) => u.indirimliFiyatKayitli)),
+    UrunKolonu('otoIndirim', 'Otomatik İndirim', false, _evet('Otomatik İndirim', 115, (u) => u.otomatikIndirim)),
+    UrunKolonu('sonAlimIndirim', 'Son Alım İndirim %', false, _say('Son Alım İndirim %', 130, (u) => u.sonAlimIndirimOran)),
+    UrunKolonu('maksSatir', 'Maks. Satır Miktarı', false, _say('Maks. Satır Miktarı', 135, (u) => u.maksimumSatirMiktari)),
+    UrunKolonu('eskiFiyat', 'Eski Fiyat', false, _tutar('Eski Fiyat', 95, (u) => u.eskiFiyat)),
+    UrunKolonu('eskiFiyatTarih', 'Eski Fiyat Tarihi', false, _yazi('Eski Fiyat Tarihi', 125, (u) => u.eskiFiyatTarih?.toIso8601String().split('T').first)),
+    UrunKolonu('promoGrup', 'Promosyon Grubu', false, _yazi('Promosyon Grubu', 125, (u) => u.promosyonGrup)),
+    UrunKolonu('promoAktif', 'Promosyon Aktif', false, _evet('Promosyon Aktif', 115, (u) => u.promosyonAktif)),
+    UrunKolonu('renk', 'Renk', false, _yazi('Renk', 80, (u) => u.renk)),
+    UrunKolonu('beden', 'Beden', false, _yazi('Beden', 80, (u) => u.beden)),
+    UrunKolonu('sube', 'Şube', false, _yazi('Şube', 90, (u) => u.sube)),
+    UrunKolonu('aktif', 'Aktif', false, _evet('Aktif', 70, (u) => u.aktif)),
+    UrunKolonu('seriTakip', 'Seri No Takibi', false, _evet('Seri No Takibi', 105, (u) => u.seriNoTakibi)),
+    UrunKolonu('seriNo', 'Seri No', false, _yazi('Seri No', 100, (u) => u.seriNumarasi)),
+    UrunKolonu('lotTakip', 'Lot Takibi', false, _evet('Lot Takibi', 90, (u) => u.lotTakibi)),
+    UrunKolonu('lotNo', 'Lot No', false, _yazi('Lot No', 90, (u) => u.lotNo)),
+    UrunKolonu('lotAciklama', 'Lot Açıklama', false, _yazi('Lot Açıklama', 130, (u) => u.lotAciklama)),
+    UrunKolonu('qrMenu', 'QR Menüde', false, _evet('QR Menüde', 85, (u) => u.qrMenude)),
+    UrunKolonu('toptanSatista', 'Toptan Satışta', false, _evet('Toptan Satışta', 110, (u) => u.toptanSatista)),
+    UrunKolonu('koliIci', 'Koli İçi Miktar', false, _say('Koli İçi Miktar', 110, (u) => u.koliIciMiktar)),
+    UrunKolonu('koliBirim', 'Koli Birimi', false, _yazi('Koli Birimi', 90, (u) => u.koliBirimAdi)),
+    UrunKolonu('satisBirimTipi', 'Satış Birimi Tipi', false, _yazi('Satış Birimi Tipi', 120, (u) => u.satisBirimiTipi)),
+    UrunKolonu('asgariSiparis', 'Asgari Sipariş', false, _say('Asgari Sipariş', 105, (u) => u.asgariSiparisMiktari)),
+    UrunKolonu('grupSorumlusu', 'Grup Sorumlusu', false, _yazi('Grup Sorumlusu', 120, (u) => u.grupSorumlusu)),
+    UrunKolonu('rafOmru', 'Raf Ömrü', false, _say('Raf Ömrü', 85, (u) => (u.rafOmru ?? 0).toDouble())),
+    UrunKolonu('puanOrani', 'Puan Oranı', false, _say('Puan Oranı', 90, (u) => u.puanOrani)),
+    UrunKolonu('resmiBakiye', 'Resmi Bakiye', false, _say('Resmi Bakiye', 100, (u) => u.resmiBakiye)),
+    UrunKolonu('barkodOlcu', 'Barkod Ölçü Birimi', false, _yazi('Barkod Ölçü Birimi', 130, (u) => u.barkodOlcuBirimi)),
+    UrunKolonu('en', 'En', false, _say('En', 70, (u) => u.en)),
+    UrunKolonu('boy', 'Boy', false, _say('Boy', 70, (u) => u.boy)),
+    UrunKolonu('yukseklik', 'Yükseklik', false, _say('Yükseklik', 85, (u) => u.yukseklik)),
+    UrunKolonu('agirlik', 'Ağırlık', false, _say('Ağırlık', 80, (u) => u.agirlik)),
+    UrunKolonu('hacim', 'Hacim', false, _say('Hacim', 80, (u) => u.hacim)),
+    UrunKolonu('toplamMaliyet', 'Toplam Maliyet', false, _tutar('Toplam Maliyet', 110, (u) => u.toplamMaliyet)),
+    UrunKolonu('toplamStok', 'Toplam Stok', false, _say('Toplam Stok', 95, (u) => u.toplamStok)),
+    UrunKolonu('receteKatsayi', 'Reçete Katsayısı', false, _say('Reçete Katsayısı', 115, (u) => u.receteKatsayi)),
+    UrunKolonu('evrakKontrol', 'Evrak Kontrol', false, _evet('Evrak Kontrol', 100, (u) => u.evrakKontrolAktif)),
+    UrunKolonu('fiyatGuncTarih', 'Fiyat Güncelleme Tarihi', false, _yazi('Fiyat Güncelleme Tarihi', 160, (u) => u.fiyatGuncellemeTarih)),
+    UrunKolonu('fiyatGuncKullanici', 'Fiyatı Güncelleyen', false, _yazi('Fiyatı Güncelleyen', 130, (u) => u.fiyatGuncelleyenKullanici)),
+    UrunKolonu('maliyetGuncTarih', 'Maliyet Güncelleme Tarihi', false, _yazi('Maliyet Güncelleme Tarihi', 170, (u) => u.maliyetGuncellemeTarih)),
+    UrunKolonu('barkodYazTarih', 'Barkod Yazdırma Tarihi', false, _yazi('Barkod Yazdırma Tarihi', 160, (u) => u.barkodYazdirmaTarih)),
+    UrunKolonu('guncellemeTarihi', 'Güncelleme Tarihi', false, _yazi('Güncelleme Tarihi', 135, (u) => u.guncellemeTarihi)),
+    UrunKolonu('guncelleyen', 'Güncelleyen', false, _yazi('Güncelleyen', 110, (u) => u.guncelleyenKullanici)),
+    UrunKolonu('kayitTarihi', 'Kayıt Tarihi', false, _yazi('Kayıt Tarihi', 120, (u) => u.kayitTarihi)),
+    UrunKolonu('kaydeden', 'Kaydeden', false, _yazi('Kaydeden', 100, (u) => u.kaydedenKullanici)),
+    UrunKolonu('sonKullaniciGunc', 'Son Güncelleme', false, _yazi('Son Güncelleme', 140, (u) => u.lastUpdated)),
+  ];
+
+  /// Varsayılan: ürün tablosunun TÜM alanları (yana kaydırarak görülür).
+  static Set<String> get varsayilanKolonlar =>
+      {for (final k in katalog) k.anahtar};
+
+  /// Eski dar görünüm (10 temel kolon).
+  static Set<String> get temelKolonlar =>
+      {for (final k in katalog) if (k.temel) k.anahtar};
 
   @override
   State<UrunMasaustuGorunum> createState() => _UrunMasaustuGorunumState();
@@ -42,62 +227,11 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
   static String _sayi(double d) =>
       d == d.roundToDouble() ? d.toStringAsFixed(0) : d.toStringAsFixed(3);
 
-  late final List<TabloKolon<UrunModel>> _kolonlar = [
-    TabloKolon(
-        baslik: 'Kod',
-        genislik: 120,
-        deger: (u) => u.kod ?? '',
-        sirala: (u) => u.kod ?? ''),
-    TabloKolon(
-        baslik: 'Barkod',
-        genislik: 140,
-        deger: (u) => u.barkod ?? '',
-        sirala: (u) => u.barkod ?? ''),
-    TabloKolon(
-        baslik: 'Ürün Adı',
-        genislik: 220,
-        esnek: true,
-        deger: (u) => u.urunAdi,
-        sirala: (u) => u.urunAdi.toLowerCase()),
-    TabloKolon(baslik: 'Birim', genislik: 70, deger: (u) => u.birimAdi),
-    TabloKolon(
-        baslik: 'Alış Fiyat',
-        genislik: 95,
-        sagaYasli: true,
-        deger: (u) => ParaUtils.formatla(u.alisFiyat, simge: ''),
-        sirala: (u) => u.alisFiyat),
-    TabloKolon(
-        baslik: 'Satış Fiyatı',
-        genislik: 100,
-        sagaYasli: true,
-        deger: (u) => ParaUtils.formatla(u.satisFiyati, simge: ''),
-        sirala: (u) => u.satisFiyati),
-    TabloKolon(
-        baslik: 'Stok',
-        genislik: 90,
-        sagaYasli: true,
-        deger: (u) => _sayi(u.stok),
-        sirala: (u) => u.stok,
-        renk: (u) => u.stok <= 0
-            ? TsRenk.hata
-            : (u.kritikStok ? TsRenk.uyari : null)),
-    TabloKolon(
-        baslik: 'KDV %',
-        genislik: 60,
-        sagaYasli: true,
-        deger: (u) => u.kdvOran),
-    TabloKolon(
-        baslik: 'Ana Grup',
-        genislik: 130,
-        deger: (u) => u.anaGrup ?? '',
-        sirala: (u) => u.anaGrup ?? ''),
-    TabloKolon(
-        baslik: 'Kâr %',
-        genislik: 70,
-        sagaYasli: true,
-        deger: (u) => u.karOrani.toStringAsFixed(1),
-        sirala: (u) => u.karOrani),
-  ];
+  /// Seçili anahtarlara göre (katalog sırasıyla) görünen kolonlar.
+  List<TabloKolon<UrunModel>> get _kolonlar => [
+        for (final k in UrunMasaustuGorunum.katalog)
+          if (widget.gorunenKolonlar.contains(k.anahtar)) k.kolon,
+      ];
 
   void _duzenle(UrunModel u) => context.push('/urun/ekle', extra: u).then((_) {
         widget.onYenile();
@@ -194,4 +328,17 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
       ),
     ]);
   }
+}
+
+/// Tablo kolon kataloğundaki bir başlık.
+class UrunKolonu {
+  final String anahtar;
+  final String etiket;
+  final bool temel;
+
+  /// Kapatılamaz (ör. Ürün Adı).
+  final bool zorunlu;
+  final TabloKolon<UrunModel> kolon;
+  const UrunKolonu(this.anahtar, this.etiket, this.temel, this.kolon,
+      {this.zorunlu = false});
 }

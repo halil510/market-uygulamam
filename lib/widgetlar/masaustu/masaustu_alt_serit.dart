@@ -63,7 +63,9 @@ class MasaustuAltSerit extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(left: 6),
       child: Material(
-        color: aktif ? t.renk : t.renk.withValues(alpha: 0.45),
+        // Pasif: renk gri tona çekilir (yarı saydam yapmak beyaz yazıyı açık
+        // zeminde okunmaz hale getiriyordu).
+        color: aktif ? t.renk : Color.lerp(t.renk, const Color(0xFF7B8794), 0.65),
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),

@@ -216,6 +216,10 @@ void main() {
       if (const String.fromEnvironment('ROBOT_EKRAN') == 'telefon') {
         tester.view.physicalSize = const Size(1080, 2400);
         tester.view.devicePixelRatio = 2.625;
+      } else if (const String.fromEnvironment('ROBOT_EKRAN') == 'masaustu') {
+        // Gerçek kasa bilgisayarı ölçüsü (Windows masaüstü düzeni ≥1000 px).
+        tester.view.physicalSize = const Size(1366, 768);
+        tester.view.devicePixelRatio = 1.0;
       } else {
         tester.view.physicalSize = const Size(1280, 2000);
         tester.view.devicePixelRatio = 1.0;
@@ -417,7 +421,15 @@ void main() {
           }
           // Degrade başlık çubukları / üst üste katmanlar: zemin yazının atası
           // değil yanındaki katman — güvenle bilinemez, kontrol edilmez.
-          if (w is Image || w is AppBar || w is SliverAppBar || w is FlexibleSpaceBar ||
+          // Üst bar: zemin = AppBar.backgroundColor (TsAppBar gradyanda koyu ton
+          // verir) ya da tema rengi — "koyu zemin üstüne koyu başlık" yakalanır.
+          if (w is AppBar) {
+            sonuc = w.backgroundColor ??
+                Theme.of(a).appBarTheme.backgroundColor ??
+                Theme.of(a).colorScheme.surface;
+            return false;
+          }
+          if (w is Image || w is SliverAppBar || w is FlexibleSpaceBar ||
               w is Stack) { bilinmiyor = true; return false; }
           if (w is Scaffold) c = w.backgroundColor ?? Theme.of(a).scaffoldBackgroundColor;
           if (c != null && c.a > 0.85) { sonuc = c; return false; }
@@ -444,7 +456,10 @@ void main() {
         }
         if (renk == null || zemin == null || renk!.a < 0.3) continue;
         final k = kontrast(renk!, zemin);
-        if (k < 1.6) {
+        // ROBOT_KONTRAST: okunurluk eşiği (varsayılan 1.6 = "görünmez";
+        // 3.0 = WCAG büyük yazı alt sınırı, koyu-üstüne-koyu yakalamak için).
+        final esik = double.tryParse(const String.fromEnvironment('ROBOT_KONTRAST')) ?? 1.6;
+        if (k < esik) {
           final kisa = metin.length > 40 ? '${metin.substring(0, 40)}…' : metin;
           bulgular.add(_Bulgu(aktifRota, 'okunmuyor',
               '$asama: "$kisa" yazısı zeminle aynı renkte (kontrast ${k.toStringAsFixed(2)})'));

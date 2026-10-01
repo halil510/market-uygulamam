@@ -44,7 +44,7 @@ class MasaustuFTuslari extends StatelessWidget {
       height: yukseklik,
       width: double.infinity,
       child: Material(
-        color: aktif ? t.renk : t.renk.withValues(alpha: 0.55),
+        color: aktif ? t.renk : Color.lerp(t.renk, const Color(0xFF7B8794), 0.65),
         borderRadius: BorderRadius.circular(6),
         child: InkWell(
           borderRadius: BorderRadius.circular(6),

@@ -256,8 +256,9 @@ class ExcelServisi {
 
     for (final urun in urunler) {
       final stokDegeri = urun.stok * urun.alisFiyat;
-      final karOrani   = urun.alisFiyat > 0
-          ? ((urun.satisFiyati - urun.alisFiyat) / urun.alisFiyat * 100) : 0.0;
+      // Satış fiyatı KDV DAHİL saklanır → kâr oranı da KDV dahil alışa göre
+      // (Ürün Listesi'ndeki Kâr % ile aynı: UrunModel.karOrani).
+      final karOrani   = urun.karOrani;
 
       sheet.appendRow([
         IntCellValue(urun.id ?? 0),

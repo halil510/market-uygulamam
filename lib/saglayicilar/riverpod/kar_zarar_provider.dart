@@ -1,4 +1,5 @@
 // lib/saglayicilar/riverpod/kar_zarar_provider.dart
+import '../../depolar/satis_deposu.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../veri/database/veritabani.dart';
 import '../../servisler/aktif_sube_servisi.dart';
@@ -124,8 +125,12 @@ Future<KarZararVeri> karZarar(Ref ref) async {
   final s    = (results[0] as List<Map<String, dynamic>>).first;
   final m    = (results[1] as List<Map<String, dynamic>>).first;
   final g    = (results[2] as List<Map<String, dynamic>>).first;
-  final ciro = (s['ciro'] as num?)?.toDouble() ?? 0;
-  final ali  = (m['maliyet'] as num?)?.toDouble() ?? 0;
+  // İade edilen mal hem ciroyu hem maliyeti düşürür — Günlük/Gün Sonu
+  // Raporu ile AYNI formül (iadeTutarVeMaliyet). Önceden bu rapor iadeleri
+  // hiç düşmüyordu, iki rapor farklı kâr gösteriyordu.
+  final iade = await SatisDeposu().iadeTutarVeMaliyet(f.basTarih, f.bitTarih);
+  final ciro = ((s['ciro'] as num?)?.toDouble() ?? 0) - iade.tutar;
+  final ali  = ((m['maliyet'] as num?)?.toDouble() ?? 0) - iade.maliyet;
   final gid  = (g['toplam'] as num?)?.toDouble() ?? 0;
 
   return KarZararVeri(

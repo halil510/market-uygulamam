@@ -1,0 +1,235 @@
+Merhaba.bu projeyi masaustuylemi uyarlamak yoksa bu durup bu dosyaları kullanıp başka proje oluşturarak mı devam etmek sence hangisi. Bu proje Flutter ile yazılmış bir market/POS uygulaması (MarketPlus / BarkoPro). 
+Şu an Android ve iOS için çalışıyor. Amacım, MEVCUT MOBİL UYGULAMAYI BOZMADAN 
+Windows masaüstü desteğini de eklemek.
+
+KASITLI SENARYO:
+- Kasa bilgisayarı (Windows 10/11)
+- USB barkod okuyucu (çoğu HID klavye gibi çalışır)
+- USB termal yazıcı (ESC/POS, markası netleşince söyleyeceğim)
+- Kamera, biyometrik, ses, OCR gibi mobil-özel özellikler Windows'ta 
+  DEVRE DIŞI kalabilir, öncelik değil.
+- Bulut senkronizasyonu (Supabase) zaten var, çalışmaya devam etmeli.
+
+MUTLAK KURALLAR:
+1. Android kodu ASLA bozulmayacak. Mevcut ekranlar, servisler, depolar 
+   çalışmaya devam edecek.
+2. İş mantığı (servisler/, depolar/, modeller/) platformdan bağımsız kalacak. 
+   Buralarda mobil-özel import YOK.
+3. Platforma özel kod, "abstract class + platform implementation" deseniyle 
+   ayrılacak. if/else ile değil, interface arkasına alınacak.
+4. Her adımı bana AÇIKLAYACAKSIN, önce onay isteyeceksin. "Yaptım, bitti" 
+   deyip geçmeyeceksin.
+5. flutter build windows komutunu SEN çalıştıracaksın, hata çıkarsa 
+   bana göstereceksin ve birlikte çözeceğiz.
+
+ADIM ADIM GİTMENİ İSTİYORUM. Her adımdan sonra DUR ve bana rapor ver. 
+Ben "devam" dediğimde sonraki adıma geç.
+
+═══════════════════════════════════════════════════════════════════════
+FAZ 0 — ANALİZ (kod yazmadan önce)
+═══════════════════════════════════════════════════════════════════════
+1. pubspec.yaml'ı incele. Hangi paketler Windows'ta çalışır, 
+   hangileri çalışmaz, hangileri kısmen çalışır — 3 liste halinde raporla.
+2. lib/ altındaki tüm dosyaları tara. Şu paketleri import eden dosyaları bul:
+   - google_mlkit_text_recognition
+   - mobile_scanner
+   - speech_to_text
+   - permission_handler
+   - local_auth
+   - vibration
+   - flutter_blue_plus
+   - flutter_local_notifications
+   Her biri için: hangi dosyada, hangi satırda, ne için kullanılıyor — raporla.
+3. sqflite init kodunu bul. Hangi dosyada, nasıl başlatılıyor — raporla.
+4. YazdirmaServisi'ni incele. Bluetooth/WiFi/USB akışını özetle. 
+   Windows'ta neyin değişmesi gerektiğini söyle.
+5. BarkodServisi ve DonanimBarkodDinleyici'yi incele. USB HID okuyucu 
+   Windows'ta nasıl bağlanır — plan çıkar.
+   
+FAZ 0 sonunda: bana tam bir rapor ver, kod YAZMA. Ben onaylayınca FAZ 1'e geç.
+
+═══════════════════════════════════════════════════════════════════════
+FAZ 1 — WINDOWS PLATFORMUNU AÇMA
+═══════════════════════════════════════════════════════════════════════
+1. flutter config --enable-windows-desktop komutunu çalıştır.
+2. flutter create --platforms=windows . komutunu çalıştır.
+3. windows/ klasörü oluştu mu, kontrol et.
+4. flutter pub get çalıştır.
+5. flutter build windows --release komutunu çalıştır.
+6. Çıkan hataları bana göster. Düzeltmeden ilerlemeyelim.
+
+FAZ 1 sonunda: derleme başarılı mı, hangi hatalar var — raporla.
+
+═══════════════════════════════════════════════════════════════════════
+FAZ 2 — SQLITE'I WINDOWS'A HAZIRLAMA
+═══════════════════════════════════════════════════════════════════════
+1. lib/veri/database/veritabani.dart dosyasını bul.
+2. Şu kodu ekle (mevcut kodu BOZMADAN):
+   
+   import 'dart:io';
+   import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+   
+   // main() veya init içinde:
+   if (Platform.isWindows || Platform.isLinux) {
+     sqfliteFfiInit();
+     databaseFactory = databaseFactoryFfi;
+   }
+   
+3. Mevcut Android/iOS akışını DEĞİŞTİRME.
+4. flutter build windows --release çalıştır.
+5. Windows'ta uygulamayı çalıştır, veritabanı açılıyor mu test et.
+
+FAZ 2 sonunda: DB açılıyor mu, tablolar geliyor mu — raporla.
+
+═══════════════════════════════════════════════════════════════════════
+FAZ 3 — MOBİL-ÖZEL PAKETLERİ İZOLE ETME
+═══════════════════════════════════════════════════════════════════════
+Her paket için ayrı ayrı çalış, her birinden sonra DUR:
+
+3.1) vibration
+   - HapticFeedback ve Vibration.vibrate() çağrılarını bul.
+   - lib/cekirdek/utils/titresim_utils.dart adında bir yardımcı oluştur:
+     
+     import 'dart:io';
+     import 'package:flutter/services.dart';
+     import 'package:vibration/vibration.dart';
+     
+     class TitresimUtils {
+       static Future<void> hafif() async {
+         if (Platform.isAndroid || Platform.isIOS) {
+           HapticFeedback.lightImpact();
+         }
+       }
+       static Future<void> orta() async {
+         if (Platform.isAndroid || Platform.isIOS) {
+           HapticFeedback.mediumImpact();
+         }
+       }
+       static Future<void> vibrate({int ms = 50}) async {
+         if (Platform.isAndroid || Platform.isIOS) {
+           final has = await Vibration.hasVibrator() ?? false;
+           if (has) Vibration.vibrate(duration: ms);
+         }
+       }
+     }
+   - Tüm doğrudan HapticFeedback/Vibration çağrılarını bu yardımcıyla değiştir.
+   - Android davranışı BİREBİR AYNI kalmalı.
+
+3.2) permission_handler
+   - Sadece Android/iOS'ta gerekli. Platform.isAndroid kontrolü ekle.
+   - Windows'ta izin isteme kodunu atla.
+
+3.3) local_auth
+   - Biyometrik giriş. Windows'ta devre dışı bırak.
+   - if (Platform.isWindows) return; ekle, mevcut akışı bozma.
+
+3.4) mobile_scanner (kamera ile barkod)
+   - Windows'ta kamera ile tarama yerine USB HID okuyucu kullanılacak.
+   - BarkodServisi.barkodTara() metodunu platform-bazlı yap:
+     Windows'ta kamera açmak yerine "USB okuyucudan bekleniyor" mesajı dön.
+   - Android/iOS akışı AYNI kalsın.
+
+3.5) speech_to_text, google_mlkit_text_recognition
+   - Bu özellikler Windows'ta YOK. Butonları Windows'ta gizle veya 
+     "Bu özellik bu platformda desteklenmiyor" mesajı göster.
+
+3.6) flutter_local_notifications
+   - Windows'ta uygulama içi bildirim (SnackBar) yeterli.
+   - Windows'ta local notification init'i atla.
+
+Her alt adımdan sonra flutter build windows --release çalıştır, hata varsa bana göster.
+
+═══════════════════════════════════════════════════════════════════════
+FAZ 4 — USB BARKOD OKUYUCU (HID KLAVYE)
+═══════════════════════════════════════════════════════════════════════
+1. lib/widgetlar/ortak/donanim_barkod_dinleyici.dart dosyasını incele.
+2. Windows'ta USB barkod okuyucu, klavye gibi davranır — barkodu yazar, 
+   Enter'a basar. Yani mevcut TextField onSubmitted akışı zaten çalışır.
+3. Windows'ta ekran genelinde dinleme için KeyboardListener veya 
+   RawKeyboardListener kullan. Barkod hızlı yazılır + Enter ile biter.
+4. Şu mantığı kur:
+   - Kullanıcı herhangi bir TextField'a odaklanmadıysa bile, 
+     hızlı yazılan (10 karakter/200ms) + Enter ile biten girdiyi barkod kabul et.
+   - Bu barkodu aktif ekranın ilgili metoduna ilet.
+5. Android davranışı DEĞİŞMESİN.
+
+FAZ 4 sonunda: barkod okuyucu Windows'ta çalışıyor mu, raporla.
+
+═══════════════════════════════════════════════════════════════════════
+FAZ 5 — TERMAL YAZICI (EN KRİTİK FAZ)
+═══════════════════════════════════════════════════════════════════════
+⚠️ BU FAZA GEÇMEDEN ÖNCE BANA YAZICI MARKA/MODEL SOR. 
+Ben söyleyene kadar bu fazı BAŞLATMA.
+
+Yazıcı markası belli olduktan sonra:
+1. lib/servisler/yazdirma_servisi.dart dosyasını incele.
+2. Şu yapıyı kur:
+
+   abstract class YaziciPlatform {
+     Future<bool> baglan(YaziciModel yazici);
+     Future<void> fisYazdir(SatisModel satis, {Map<String, String>? ayarlar});
+     Future<void> zplGonder(String zpl);
+     Future<void> baglantiKes();
+     bool get bagliMi;
+   }
+   
+   class AndroidYaziciPlatform implements YaziciPlatform { ... }  // mevcut kod
+   class WindowsYaziciPlatform implements YaziciPlatform { ... }  // yeni
+   
+   YaziciPlatform yaziciPlatformSec() {
+     if (Platform.isWindows) return WindowsYaziciPlatform();
+     return AndroidYaziciPlatform();
+   }
+
+3. Windows için yazıcı bağlantısı:
+   - USB termal yazıcı COM port olarak görünüyorsa: usb_serial ile aç
+   - USB Printer Class ise: printing paketi ile PDF fiş gönder
+   - Marka/model söyleyince hangi yöntem olduğunu belirleyeceğim
+
+4. ESC/POS komutları esc_pos_utils_plus ile üretilmeli (saf Dart, çalışır).
+5. Android tarafı BİREBİR AYNI kalmalı.
+
+FAZ 5 sonunda: test fişi Windows'ta basılıyor mu, raporla.
+
+═══════════════════════════════════════════════════════════════════════
+FAZ 6 — MASAÜSTÜ ARAYÜZÜ (SADECE KRİTİK EKRANLAR)
+═══════════════════════════════════════════════════════════════════════
+Sadece şu 3 ekran için masaüstü düzeni ekle:
+1. Hızlı Satış (hizli_satis_ekrani.dart)
+2. Satış Listesi (satis_liste_ekrani.dart)
+3. Cari Listesi (cari_liste_ekrani.dart)
+
+Her biri için:
+- LayoutBuilder ile 900px üstünde yan panel + içerik düzeni
+- 900px altında MEVCUT MOBİL DÜZEN AYNEN KALSIN
+- Fare hover, sağ tık menüsü, klavye kısayolları (F2, Enter, ESC)
+- Pencere yeniden boyutlandırılabilir olmalı
+
+DİĞER EKRANLAR: Mevcut responsive yapı yeterli, dokunma.
+
+═══════════════════════════════════════════════════════════════════════
+FAZ 7 — TEST VE TEMİZLİK
+═══════════════════════════════════════════════════════════════════════
+1. Android build: flutter build apk --release — HÂLÂ ÇALIŞIYOR MU?
+2. Windows build: flutter build windows --release — çalışıyor mu?
+3. Windows'ta gerçek kullanım testi:
+   - Ürün ekle
+   - Satış yap
+   - Fiş bas
+   - Cari ekle
+   - Rapor al
+4. Hata çıkarsa düzelt, tekrar test et.
+
+═══════════════════════════════════════════════════════════════════════
+GENEL KURALLAR (her fazda geçerli)
+═══════════════════════════════════════════════════════════════════════
+- Kod yazmadan önce bana NEREDE, NE, NEDEN değişecek anlat.
+- Ben "onaylıyorum" demeden kod yazma.
+- Her fazdan sonra DUR, rapor ver.
+- Bir hata çıkarsa bana tam hata mesajını göster, çözüm öner, onay bekle.
+- Mobil kodu bozacak hiçbir değişiklik yapma.
+- Gereksiz refactor yapma — sadece gerekli değişiklikleri yap.
+- Her değişiklikten sonra flutter analyze çalıştır, uyarıları bana göster.
+- Git kullanılıyorsa her fazdan önce commit at ki geri dönebilelim.
+
+BAŞLA: FAZ 0 (Analiz) ile başla. Kod yazma, önce raporu getir.

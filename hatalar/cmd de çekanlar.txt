@@ -1,0 +1,24 @@
+C:\Users\HALİL>& "C:\Program Files (x86)\Microsoft Visual Studio\Installer\setup.exe" modify --installPath "C:\Program Files\Microsoft Visual Studio\2022\Community" --add Microsoft.VisualStudio.Component.VC.CMake.Project --add Microsoft.VisualStudio.Component.Windows10SDK.19041 --passive --norestart
+& was unexpected at this time.
+
+C:\Users\HALİL>flutter doctor
+Doctor summary (to see all details, run flutter doctor -v):
+[☠] Flutter (the doctor check crashed)
+    X Due to an error, the doctor check did not complete. If the error message below is not helpful, please let us know
+      about this issue at https://github.com/flutter/flutter/issues.
+    X FileSystemException: Cannot resolve symbolic links, path = 'C:\Users\HAL˜L\flutter' (OS Error: Sistem belirtilen
+      yolu bulamıyor, errno = 3)
+[√] Windows Version (10 Pro 64 bit, 22H2, 2009)
+[√] Android toolchain - develop for Android devices (Android SDK version 36.0.0)
+[√] Chrome - develop for the web
+[!] Visual Studio - develop Windows apps (Visual Studio Community 2022 17.14.40)
+    X Visual Studio is missing necessary components. Please re-run the Visual Studio installer for the "Desktop
+      development with C++" workload, and include these components:
+        MSVC v142 - VS 2019 C++ x64/x86 build tools
+         - If there are multiple build tool versions available, install the latest
+        C++ CMake tools for Windows
+        Windows 10 SDK
+[√] Connected device (3 available)
+[√] Network resources
+
+! Doctor found issues in 2 categories.

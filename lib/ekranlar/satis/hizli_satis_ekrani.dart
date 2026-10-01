@@ -7,6 +7,7 @@
 //   - Tüm "final n = context.read<HizliSatisNotifier>()" → ref.read(sepetProvider.notifier)
 //   - Otomatik yazdırma kaldırıldı, manuel yazdırma ikonu appBar'a eklendi.
 
+import '../../uygulama/masaustu/masaustu_yan_menu.dart';
 import 'package:flutter/foundation.dart';
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import 'package:intl/intl.dart';
@@ -326,6 +327,13 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                   }
                 : null,
           ),
+          if (Platform.isWindows)
+            _AppBarButon(
+              icon: Icons.menu_rounded,
+              renk: Colors.white,
+              tooltip: 'Menü',
+              onTap: () => masaustuMenuAc(context),
+            ),
           // Windows'ta kamera taraması yok (USB okuyucu kullanılır).
           if (!Platform.isWindows)
             _AppBarButon(

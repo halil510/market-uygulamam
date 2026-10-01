@@ -281,6 +281,89 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
     }
   }
 
+  // ── Windows: kurulu yazıcılar ────────────────────────────────────────────
+  List<String> _winYazicilar = [];
+  bool _winYukleniyor = false;
+
+  Future<void> _winYenile() async {
+    setState(() => _winYukleniyor = true);
+    final l = await _yazdirma.windowsYazicilar();
+    if (!mounted) return;
+    setState(() { _winYazicilar = l; _winYukleniyor = false; });
+  }
+
+  Future<void> _winSec(String ad) async {
+    final yazici = YaziciModel(tur: 'windows', adi: ad, cihazId: ad,
+        kategori: 'fis', varsayilan: true, aktif: true);
+    final ok = await _yazdirma.windowsBaglan(yazici);
+    if (!mounted) return;
+    if (ok) {
+      await _depo.ekle(yazici);
+      await _yukle();
+      if (mounted) BildirimServisi.basari(context, '$ad seçildi ✓');
+    } else {
+      BildirimServisi.hata(context, 'Yazıcıya bağlanılamadı: $ad');
+    }
+  }
+
+  Widget _windowsTab() {
+    if (_winYazicilar.isEmpty && !_winYukleniyor) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _winYazicilar.isEmpty && !_winYukleniyor) _winYenile();
+      });
+    }
+    final kayitli = _kayitlilar.where((y) => y.tur == 'windows').toList();
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      _BaglantiDurumKarti(yazdirma: _yazdirma, onKes: () async {
+        await _yazdirma.baglantiKes();
+        if (!mounted) return;
+        setState(() {});
+        BildirimServisi.uyari(context, 'Bağlantı kesildi');
+      }),
+      const SizedBox(height: 16),
+      _ActionButon(
+        label: _winYukleniyor ? 'Yükleniyor...' : 'Yazıcıları Yenile',
+        icon: _winYukleniyor ? null : Icons.refresh,
+        loading: _winYukleniyor,
+        onTap: _winYukleniyor ? null : _winYenile,
+        renk: _orange,
+        genislik: true,
+      ),
+      const SizedBox(height: 16),
+      if (_winYazicilar.isNotEmpty) ...[
+        _Seksiyon(baslik: 'Windows\'a Kurulu Yazıcılar', sayi: _winYazicilar.length),
+        const SizedBox(height: 8),
+        ..._winYazicilar.map((ad) => _CihazKarti(
+          ikon: Icons.print,
+          renkTon: Colors.deepOrange,
+          baslik: ad,
+          altBaslik: 'Windows yazıcı',
+          altBaslikMono: false,
+          aksiyonEtiket: 'Seç',
+          aksiyonRenk: _orange,
+          onAksiyon: () => _winSec(ad),
+        )),
+        const SizedBox(height: 8),
+      ],
+      _BilgiKutu(
+        renk: _orange,
+        ikon: Icons.print,
+        mesaj: 'Yazıcıyı Windows\'a normal şekilde kurun (Ayarlar > Yazıcılar ve '
+            'tarayıcılar). Burada listelenen herhangi bir yazıcı seçilebilir; '
+            'fiş ve etiketler kurulu sürücü üzerinden doğrudan (RAW ESC/POS) '
+            'gönderilir. Termal yazıcının sürücüsü "Generic / Text Only" ya da '
+            'üretici sürücüsü olabilir.',
+      ),
+      if (kayitli.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        _Seksiyon(baslik: 'Kayıtlı Yazıcılar', sayi: kayitli.length),
+        const SizedBox(height: 8),
+        ...kayitli.map((y) => _KayitliYaziciKarti(
+          yazici: y, onSil: () => _yaziciKaldir(y))),
+      ],
+    ]);
+  }
+
   Future<void> _usbBaglan(UsbDevice cihaz) async {
     final yazici = YaziciModel(tur: 'usb',
         adi: cihaz.productName?.isNotEmpty == true ? cihaz.productName! : 'USB Yazıcı',
@@ -349,7 +432,7 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
       : TabBarView(controller: _tab, children: [
           _wifiTab(),
           _btTab(),
-          _usbTab(),
+          Platform.isWindows ? _windowsTab() : _usbTab(),
           _fisTab(),
         ]);
 
@@ -358,10 +441,10 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
         indicatorColor: widget.gomulu ? _blue : Colors.white,
         labelColor: widget.gomulu ? _blue : Colors.white,
         unselectedLabelColor: widget.gomulu ? context.textSecondary : Colors.white60,
-        tabs: const [
+        tabs: [
           Tab(icon: Icon(Icons.wifi, size: 20), text: 'WiFi/LAN'),
           Tab(icon: Icon(Icons.bluetooth, size: 20), text: 'Bluetooth'),
-          Tab(icon: Icon(Icons.usb, size: 20), text: 'USB'),
+          Tab(icon: Icon(Platform.isWindows ? Icons.print : Icons.usb, size: 20), text: Platform.isWindows ? 'Windows Yazıcı' : 'USB'),
           Tab(icon: Icon(Icons.receipt_long, size: 20), text: 'Fiş Ayarı'),
         ],
       );

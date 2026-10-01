@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:usb_serial/usb_serial.dart';
+import 'package:printing/printing.dart' as pr;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 import 'package:image/image.dart' as img;
@@ -27,7 +28,7 @@ import '../depolar/yazici_deposu.dart';
 import '../veri/database/veritabani.dart';
 
 // ─── Bağlantı türü ────────────────────────────────────────────────────────────
-enum YaziciTur { wifi, bluetooth, usb, rawbt }
+enum YaziciTur { wifi, bluetooth, usb, rawbt, windows }
 
 // ─── Yazıcı bağlantı durumu ───────────────────────────────────────────────────
 class YaziciBaglanti {
@@ -391,6 +392,9 @@ class YazdirmaServisi {
               orElse: () => cihazlar.first);
           return await usbBaglan(yazici, eslesen).timeout(const Duration(seconds: 6), onTimeout: () => false);
 
+        case 'windows':
+          return await windowsBaglan(yazici);
+
         default:
           return false;
       }
@@ -422,6 +426,7 @@ class YazdirmaServisi {
     if (_aktif == null) return 'Bağlı değil';
     final t = _aktif!.tur == YaziciTur.wifi ? 'WiFi'
         : _aktif!.tur == YaziciTur.bluetooth ? 'Bluetooth'
+        : _aktif!.tur == YaziciTur.windows ? 'Windows'
         : 'USB';
     return '$t — ${_aktif!.yazici.adi}';
   }
@@ -806,6 +811,88 @@ class YazdirmaServisi {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
+  // WINDOWS YAZICI (Yazıcılar ve Tarayıcılar'a kurulu herhangi bir yazıcı)
+  // ══════════════════════════════════════════════════════════════════════════
+  // Kurulu yazıcı sürücüsü üzerinden Windows yazdırma kuyruğuna (spooler)
+  // RAW veri olarak ESC/POS/ZPL baytları gönderilir — marka/bağlantı türü
+  // (USB, ağ, paylaşımlı) fark etmez.
+
+  Future<List<String>> windowsYazicilar() async {
+    if (!Platform.isWindows) return [];
+    try {
+      final liste = await pr.Printing.listPrinters();
+      return liste.map((p) => p.name).toList();
+    } catch (e) {
+      if (kDebugMode) debugPrint('Windows yazıcı listesi hatası: $e');
+      return [];
+    }
+  }
+
+  /// [yazici.cihazId] = Windows'taki yazıcı adı.
+  Future<bool> windowsBaglan(YaziciModel yazici) async {
+    if (!Platform.isWindows) return false;
+    final ad = yazici.cihazId;
+    if (ad == null || ad.isEmpty) return false;
+    final kurulular = await windowsYazicilar();
+    if (!kurulular.contains(ad)) return false;
+    await _aktif?.kapat();
+    _aktif = YaziciBaglanti(yazici: yazici, tur: YaziciTur.windows, bagliMi: true);
+    return true;
+  }
+
+  static const _rawPs = r'''
+param([string]$Printer, [string]$File)
+Add-Type -TypeDefinition @"
+using System; using System.Runtime.InteropServices;
+public class RawPrn {
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Ansi)]
+  public class DOCINFO { [MarshalAs(UnmanagedType.LPStr)] public string n; [MarshalAs(UnmanagedType.LPStr)] public string o; [MarshalAs(UnmanagedType.LPStr)] public string d; }
+  [DllImport("winspool.drv", CharSet=CharSet.Ansi, SetLastError=true)] public static extern bool OpenPrinter(string p, out IntPtr h, IntPtr d);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool ClosePrinter(IntPtr h);
+  [DllImport("winspool.drv", CharSet=CharSet.Ansi, SetLastError=true)] public static extern bool StartDocPrinter(IntPtr h, int l, [In] DOCINFO di);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndDocPrinter(IntPtr h);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool StartPagePrinter(IntPtr h);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndPagePrinter(IntPtr h);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool WritePrinter(IntPtr h, byte[] b, int c, out int w);
+  public static void Send(string printer, byte[] bytes) {
+    IntPtr h; if (!OpenPrinter(printer, out h, IntPtr.Zero)) throw new Exception("Yazici acilamadi: " + printer);
+    try {
+      var di = new DOCINFO { n = "BarkoPro", o = null, d = "RAW" };
+      if (!StartDocPrinter(h, 1, di)) throw new Exception("StartDoc basarisiz");
+      StartPagePrinter(h); int w;
+      bool ok = WritePrinter(h, bytes, bytes.Length, out w);
+      EndPagePrinter(h); EndDocPrinter(h);
+      if (!ok) throw new Exception("WritePrinter basarisiz");
+    } finally { ClosePrinter(h); }
+  }
+}
+"@
+[RawPrn]::Send($Printer, [System.IO.File]::ReadAllBytes($File))
+''';
+
+  Future<void> _windowsYaz(List<int> bytes) async {
+    final ad = _aktif?.yazici.cihazId;
+    if (ad == null || ad.isEmpty) throw Exception('Windows yazıcı seçilmemiş');
+    final klasor = await Directory.systemTemp.createTemp('barkopro_yazdir');
+    try {
+      final ps = File('${klasor.path}\\raw.ps1');
+      // PowerShell 5.1 BOM'suz dosyayı ANSI okur; script ASCII olduğundan sorun yok.
+      await ps.writeAsString(_rawPs);
+      final veri = File('${klasor.path}\\veri.bin');
+      await veri.writeAsBytes(bytes);
+      final sonuc = await Process.run('powershell', [
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps.path,
+        '-Printer', ad, '-File', veri.path,
+      ]).timeout(const Duration(seconds: 20));
+      if (sonuc.exitCode != 0) {
+        throw Exception('Yazdırma hatası: ${(sonuc.stderr as Object).toString().trim()}');
+      }
+    } finally {
+      try { await klasor.delete(recursive: true); } catch (_) {}
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
   // BAĞLANTIYI KES
   // ══════════════════════════════════════════════════════════════════════════
 
@@ -900,6 +987,7 @@ class YazdirmaServisi {
       case YaziciTur.bluetooth: await _btYaz(bytes);
       case YaziciTur.rawbt: await _rawbtYaz(Uint8List.fromList(bytes));
       case YaziciTur.usb: await _usbYaz(bytes);
+      case YaziciTur.windows: await _windowsYaz(bytes);
     }
   }
 

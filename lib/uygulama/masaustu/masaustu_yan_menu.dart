@@ -1,9 +1,6 @@
 // lib/uygulama/masaustu/masaustu_yan_menu.dart
 //
-// Windows masaüstü kabuğu: tüm ekranların solunda kalıcı, kategorili menü
-// (telefondaki alt çubuk + "Daha Fazla" yerine) ve üstünde Geri düğmesi.
-// Menü uygulama genelinde (root navigator'ın üstünde) olduğundan, ayrı
-// pencere olarak açılan ekranlarda da görünür ve geri dönüş her yerde var.
+// Windows masaüstü kabuğu: Hızlı Satış "Menü" paneli + geri şeridi.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -119,13 +116,12 @@ const _gruplar = <_Grup>[
 const _masaRotalari = {'/masa', '/mutfak', '/rezervasyon', '/masa-rapor'};
 const _menusuzRotalar = ['/splash', '/giris', '/sifre'];
 
-/// MaterialApp.router builder'ında [icerik] (Navigator) etrafına sarılır.
-/// İçerik alanının genişliği menü düşülerek MediaQuery'ye yansıtılır.
+/// Windows kabuğu: kalıcı menü YOK. Sadece ana ekran ('/') ve Hızlı Satış
+/// ('/satis') dışındaki, geri dönüşü olmayan ekranlarda ince bir "Geri"
+/// şeridi gösterir (Windows'ta donanım geri tuşu yok).
 class MasaustuKabuk extends ConsumerWidget {
   final Widget icerik;
   const MasaustuKabuk({super.key, required this.icerik});
-
-  static const double menuGenislik = 240;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -134,38 +130,54 @@ class MasaustuKabuk extends ConsumerWidget {
       listenable: router.routerDelegate,
       builder: (context, _) {
         final rota = router.routerDelegate.currentConfiguration.uri.path;
-        if (_menusuzRotalar.any(rota.startsWith)) return icerik;
-        final mq = MediaQuery.of(context);
-        return Row(children: [
-          _YanMenu(rota: rota, router: router),
-          const VerticalDivider(width: 1, thickness: 1),
-          Expanded(
-            child: MediaQuery(
-              data: mq.copyWith(
-                  size: Size(mq.size.width - menuGenislik - 1, mq.size.height)),
-              child: icerik,
+        final kok = rota == '/' || rota == '/satis';
+        final geriYok = !(rootNavigatorKey.currentState?.canPop() ?? false);
+        if (kok || !geriYok || _menusuzRotalar.any(rota.startsWith)) {
+          return icerik;
+        }
+        final cs = Theme.of(context).colorScheme;
+        return Column(children: [
+          Material(
+            color: cs.surfaceContainerHighest,
+            child: SizedBox(
+              height: 36,
+              child: Row(children: [
+                TextButton.icon(
+                  onPressed: () => router.go('/satis'),
+                  icon: const Icon(Icons.arrow_back, size: 18),
+                  label: const Text('Geri'),
+                ),
+              ]),
             ),
           ),
+          Expanded(child: icerik),
         ]);
       },
     );
   }
 }
 
-class _YanMenu extends ConsumerWidget {
-  final String rota;
-  final GoRouter router;
-  const _YanMenu({required this.rota, required this.router});
+/// Hızlı Satış'taki "Menü" butonu: kategorili tüm modül listesini soldan
+/// açılan bir panelde gösterir. Seçilen ekran ÜSTE açılır (push), böylece
+/// kendi geri okuyla Hızlı Satış'a dönülür.
+Future<void> masaustuMenuAc(BuildContext context) {
+  return showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Menü',
+    barrierColor: Colors.black38,
+    transitionDuration: const Duration(milliseconds: 150),
+    pageBuilder: (ctx, _, __) => Align(
+      alignment: Alignment.centerLeft,
+      child: Material(
+        elevation: 8,
+        child: SizedBox(width: 280, height: double.infinity, child: _MenuPaneli()),
+      ),
+    ),
+  );
+}
 
-  void _geri() {
-    final nav = rootNavigatorKey.currentState;
-    if (nav != null && nav.canPop()) {
-      nav.pop();
-    } else {
-      router.go('/');
-    }
-  }
-
+class _MenuPaneli extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
@@ -180,62 +192,46 @@ class _YanMenu extends ConsumerWidget {
         .where((g) => g.ogeler.isNotEmpty)
         .toList();
 
-    return Material(
-      color: cs.surface,
-      child: SizedBox(
-        width: MasaustuKabuk.menuGenislik,
-        child: Column(children: [
-          const SizedBox(height: 8),
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.arrow_back),
-            title: const Text('Geri'),
-            onTap: _geri,
-          ),
-          ListTile(
-            dense: true,
-            selected: rota == '/',
-            leading: const Icon(Icons.dashboard_outlined),
-            title: const Text('Ana Ekran'),
-            onTap: () => router.go('/'),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView(children: [
-              for (final g in grupler)
-                Theme(
-                  data: Theme.of(context)
-                      .copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    key: PageStorageKey('mk_${g.ad}'),
-                    dense: true,
-                    initiallyExpanded: g.ogeler.any((o) => o.rota == rota),
-                    leading: Icon(g.ikon, size: 20),
-                    title: Text(g.ad,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 13)),
-                    childrenPadding: EdgeInsets.zero,
-                    children: [
-                      for (final o in g.ogeler)
-                        ListTile(
-                          dense: true,
-                          visualDensity: VisualDensity.compact,
-                          contentPadding:
-                              const EdgeInsets.only(left: 28, right: 8),
-                          selected: o.rota == rota,
-                          selectedTileColor: cs.primaryContainer,
-                          leading: Icon(o.ikon, size: 18),
-                          title:
-                              Text(o.ad, style: const TextStyle(fontSize: 13)),
-                          onTap: () => router.go(o.rota),
-                        ),
-                    ],
-                  ),
-                ),
-            ]),
-          ),
+    void git(String rota) {
+      Navigator.of(context).pop();
+      GoRouter.of(rootNavigatorKey.currentContext ?? context).push(rota);
+    }
+
+    return Column(children: [
+      const SizedBox(height: 8),
+      ListTile(
+        leading: const Icon(Icons.close),
+        title: const Text('Menü', style: TextStyle(fontWeight: FontWeight.w700)),
+        onTap: () => Navigator.of(context).pop(),
+      ),
+      const Divider(height: 1),
+      Expanded(
+        child: ListView(children: [
+          for (final g in grupler)
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                dense: true,
+                leading: Icon(g.ikon, size: 20),
+                title: Text(g.ad,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 13)),
+                childrenPadding: EdgeInsets.zero,
+                children: [
+                  for (final o in g.ogeler)
+                    ListTile(
+                      dense: true,
+                      visualDensity: VisualDensity.compact,
+                      contentPadding: const EdgeInsets.only(left: 28, right: 8),
+                      leading: Icon(o.ikon, size: 18, color: cs.primary),
+                      title: Text(o.ad, style: const TextStyle(fontSize: 13)),
+                      onTap: () => git(o.rota),
+                    ),
+                ],
+              ),
+            ),
         ]),
       ),
-    );
+    ]);
   }
 }

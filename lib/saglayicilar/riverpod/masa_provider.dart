@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import '../../depolar/masa_deposu.dart';
 import '../../modeller/masa_model.dart';
 import '../../modeller/masa_siparis_model.dart';
+import '../../servisler/bulut/anlik_bulut_dinleyici.dart';
 import '../../servisler/supabase_sync_servisi.dart';
 
 final masaDeposuProvider = Provider<MasaDeposu>((ref) => MasaDeposu());
@@ -70,10 +71,12 @@ class MasaListesiNotifier extends StateNotifier<AsyncValue<List<MasaModel>>> {
       await otoMasaBulutCek();
       await yukle();
     });
+    AnlikBulutDinleyici().yenilemeSayaci.addListener(yukle);
   }
 
   @override
   void dispose() {
+    AnlikBulutDinleyici().yenilemeSayaci.removeListener(yukle);
     _otoYenilemeTimer?.cancel();
     super.dispose();
   }
@@ -109,10 +112,12 @@ class MasaSiparisNotifier extends StateNotifier<AsyncValue<MasaSiparisModel?>> {
       await otoMasaBulutCek();
       await yukle();
     });
+    AnlikBulutDinleyici().yenilemeSayaci.addListener(yukle);
   }
 
   @override
   void dispose() {
+    AnlikBulutDinleyici().yenilemeSayaci.removeListener(yukle);
     _autoRefreshTimer?.cancel();
     super.dispose();
   }
@@ -197,6 +202,7 @@ class MutfakNotifier extends StateNotifier<AsyncValue<MutfakDurum>> {
       await otoMasaBulutCek();
       await yukle();
     });
+    AnlikBulutDinleyici().yenilemeSayaci.addListener(yukle);
   }
 
   Future<void> yukle() async {
@@ -237,6 +243,7 @@ class MutfakNotifier extends StateNotifier<AsyncValue<MutfakDurum>> {
 
   @override
   void dispose() {
+    AnlikBulutDinleyici().yenilemeSayaci.removeListener(yukle);
     _timer?.cancel();
     super.dispose();
   }

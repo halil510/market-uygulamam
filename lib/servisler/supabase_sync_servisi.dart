@@ -1510,16 +1510,18 @@ class SupabaseSyncServisi {
     final kismi = sadeceTablolar != null;
     final devamEden = _aktifBuluttanAl;
     if (devamEden != null) {
-      // Devam eden tam çekim kısmi isteği de kapsar; devam eden kısmi çekim
-      // ise tam isteği kapsamaz — bitmesi beklenip tam çekim sonra başlar.
-      if (!_aktifKismi || kismi) return devamEden;
-      return devamEden.then((_) => buluttanAl(
+      // Yalnız tam+tam çakışması paylaşılır. Kısmi istek (anlık bildirim /
+      // masa) devam eden çekimin sonucuna BAĞLANMAZ: o çekim ilgili tabloyu
+      // çoktan geçmiş olabilir ve yeni gelen kayıt bir sonraki turu beklerdi.
+      if (!kismi && !_aktifKismi) return devamEden;
+      Future<SyncSonuc> sonra() => buluttanAl(
             kayitEkle: kayitEkle,
             kayitGuncelle: kayitGuncelle,
             sadeceDegisenler: sadeceDegisenler,
             sadeceTablolar: sadeceTablolar,
             log: log,
-          ));
+          );
+      return devamEden.then<SyncSonuc>((_) => sonra(), onError: (_) => sonra());
     }
     final gelecek = _buluttanAlCalistir(
       kayitEkle: kayitEkle,

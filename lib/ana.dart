@@ -22,6 +22,7 @@ import 'servisler/bildirim_servisi.dart';
 import 'servisler/bildirim_zamanlayici.dart';
 import 'servisler/log_servisi.dart';
 import 'servisler/bulut/bulut_manager.dart';
+import 'servisler/bulut/anlik_bulut_dinleyici.dart';
 import 'servisler/bulut/otomatik_bulut_cekme.dart';
 import 'servisler/bulut/supabase_oturum.dart';
 import 'servisler/masa/qr_siparis_cekici_servisi.dart';
@@ -97,6 +98,8 @@ Future<void> _baslatApp() async {
   // Diğer kasaların verisini (satış, stok, cari…) belirli aralıkla otomatik
   // çek — önceden yalnız "Buluttan Al" butonu / masa ekranı çekiyordu.
   await OtomatikBulutCekme().baslat();
+  // Anlık düşme: Supabase Realtime bildirimiyle değişen tabloyu hemen çek.
+  await AnlikBulutDinleyici().baslat();
   // Kullanıcı isteği: müşteriler kendi telefonlarıyla (internetten,
   // mobil veri dahil) QR menüden sipariş versin — bu servis,
   // Supabase'de bekleyen QR siparişlerini periyodik olarak çekip

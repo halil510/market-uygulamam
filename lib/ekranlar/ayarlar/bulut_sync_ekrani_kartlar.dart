@@ -112,6 +112,17 @@ extension _BulutSyncKartlarExt on _BulutSyncEkraniState {
             've uygulama arka plandayken bekler.',
             style: TextStyle(fontSize: 11, color: context.textSecondary),
           ),
+          ValueListenableBuilder<bool>(
+            valueListenable: AnlikBulutDinleyici().bagli,
+            builder: (_, bagli, __) => Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                bagli
+                    ? 'Anlık senkron: AÇIK — diğer cihazlardaki değişiklik saniyeler içinde gelir.'
+                    : 'Anlık senkron: bağlanıyor / kapalı — değişiklikler yukarıdaki aralıkla gelir.',
+                style: TextStyle(fontSize: 11, color: bagli ? Colors.green : context.textSecondary)),
+            ),
+          ),
           ValueListenableBuilder<DateTime?>(
             valueListenable: OtomatikBulutCekme().sonKontrol,
             builder: (_, t, __) => t == null

@@ -4533,9 +4533,9 @@ CREATE TABLE IF NOT EXISTS public.bulut_yetkili_hesaplar (
 ALTER TABLE public.bulut_yetkili_hesaplar ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.bulut_yetkili_mi() RETURNS BOOLEAN
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (SELECT 1 FROM public.bulut_yetkili_hesaplar WHERE user_id = auth.uid());
-$;
+$$;
 REVOKE ALL ON FUNCTION public.bulut_yetkili_mi() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.bulut_yetkili_mi() TO anon, authenticated;
 
@@ -4546,7 +4546,7 @@ GRANT EXECUTE ON FUNCTION public.bulut_yetkili_mi() TO anon, authenticated;
 -- Diğer TÜM kurallar kaldırılır — ör. Bölüm F'deki arşiv tablolarının
 -- "anon, authenticated USING (true)" okuma kuralı, arşivlenmiş satış/kasa/
 -- cari verisini herkese açık anahtara açıyordu.
-DO $
+DO $$
 DECLARE
   p RECORD;
   t RECORD;
@@ -4574,7 +4574,7 @@ BEGIN
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO authenticated',
                    t.tablename);
   END LOOP;
-END $;
+END $$;
 
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
@@ -4588,7 +4588,7 @@ CREATE OR REPLACE FUNCTION fatura_blok_tahsis_et(
 ) RETURNS TABLE(blok_baslangic BIGINT, blok_bitis BIGINT, yil INT)
 SECURITY DEFINER
 SET search_path = public
-LANGUAGE plpgsql AS $
+LANGUAGE plpgsql AS $$
 #variable_conflict use_column
 DECLARE
   v_yil INT := EXTRACT(YEAR FROM now())::INT;
@@ -4624,7 +4624,7 @@ BEGIN
 
   RETURN QUERY SELECT v_baslangic, v_baslangic + p_blok_boyutu - 1, v_yil;
 END;
-$;
+$$;
 REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) FROM anon;
 GRANT  EXECUTE ON FUNCTION fatura_blok_tahsis_et(BIGINT, TEXT, INT) TO authenticated, service_role;
@@ -4674,5 +4674,46 @@ ALTER TABLE faturalar    ADD COLUMN IF NOT EXISTS efatura_uuid TEXT;
 ALTER TABLE faturalar    ADD COLUMN IF NOT EXISTS efatura_durum TEXT;
 ALTER TABLE faturalar    ADD COLUMN IF NOT EXISTS efatura_tipi TEXT;
 ALTER TABLE personel     ADD COLUMN IF NOT EXISTS ise_baslama_tarihi TEXT;
+
+-- ── I. ANLIK SENKRON (Supabase Realtime) ────────────────────────────────
+-- Bir cihazda eklenen/değişen kayıt diğer cihazlara saniyenin altında düşsün
+-- diye senkron tabloları Realtime yayınına eklenir. Uygulama değişiklik
+-- bildirimini alınca yalnız o tabloyu delta olarak çeker (60 sn beklemez).
+-- audit_log hariç (yüksek hacim, anlık gerekmez). Tekrar çalıştırılabilir.
+DO $$
+DECLARE
+  t TEXT;
+  tablolar TEXT[] := ARRAY[
+  'subeler', 'kullanicilar', 'kategoriler', 'birimler', 'markalar',
+  'gider_kategoriler', 'rol_yetkileri', 'roller_yetki', 'ayarlar', 'urunler',
+  'zaman_fiyat', 'fiyat_gecmis', 'fiyat_gruplari', 'cari', 'cari_adres',
+  'musteri_puan', 'bekleyen_siparisler', 'bekleyen_siparis_kalem', 'lot_seri',
+  'vardiyalar', 'satislar', 'satis_kalem', 'iade', 'iade_kalem',
+  'irsaliyeler', 'irsaliye_kalem', 'promosyonlar', 'promosyon_tanim',
+  'promosyon_kosul', 'promosyon_aksiyon', 'tedarikci_siparisler',
+  'tedarikci_siparis_kalem', 'giderler', 'faturalar', 'fatura_detaylari',
+  'stok_hareket', 'cari_hareket', 'kasa_hareketleri', 'puan_hareket',
+  'personel', 'masalar', 'masa_siparisleri', 'masa_siparis_kalem',
+  'masa_rezervasyon', 'adisyon_log', 'garson_cagri_log', 'masa_hareket_log',
+  'bankalar', 'banka_hesaplar', 'kredi_kartlari', 'banka_hareketler',
+  'kredi_karti_hareket', 'borclar', 'borc_odemeler', 'urun_fiyat_gruplari',
+  'fiyat_kademeleri', 'sube_urun', 'onay_talepleri', 'donemler',
+  'donem_sube_durumlari', 'devir_checkpoint', 'stok_kapanis_snapshot',
+  'cari_kapanis_snapshot', 'kasa_kapanis_snapshot', 'banka_kapanis_snapshot',
+  'donem_kilit'
+  ];
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+  FOREACH t IN ARRAY tablolar LOOP
+    IF to_regclass('public.' || quote_ident(t)) IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM pg_publication_tables
+                       WHERE pubname = 'supabase_realtime'
+                         AND schemaname = 'public' AND tablename = t) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+    END IF;
+  END LOOP;
+END $$;
 
 -- ═══ DOSYA SONU ═══

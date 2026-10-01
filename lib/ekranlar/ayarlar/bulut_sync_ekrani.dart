@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../servisler/supabase_sync_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
+import '../../servisler/bulut/anlik_bulut_dinleyici.dart';
 import '../../servisler/bulut/otomatik_bulut_cekme.dart';
 import '../../servisler/bulut/supabase_oturum.dart';
 import '../../servisler/senkron_sonrasi_mutabakat.dart';

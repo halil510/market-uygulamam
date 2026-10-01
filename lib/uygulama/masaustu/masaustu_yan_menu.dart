@@ -2,6 +2,7 @@
 //
 // Windows masaüstü kabuğu: Hızlı Satış "Menü" paneli + geri şeridi.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../saglayicilar/riverpod/masa_modu_provider.dart';
@@ -147,6 +148,32 @@ class _MasaustuKabukState extends ConsumerState<MasaustuKabuk> {
     super.initState();
     _router = UygulamaRouter.router(ref);
     _router.routerDelegate.addListener(_rotaDegisti);
+    HardwareKeyboard.instance.addHandler(_escGeri);
+  }
+
+  /// Esc = Geri. Yalnız sayfa (PageRoute) üzerinde ve metin kutusunda
+  /// değilken çalışır — açık bir diyalog/menü varsa dokunmaz (kendi Esc'i
+  /// onu kapatır).
+  bool _escGeri(KeyEvent e) {
+    if (e is! KeyDownEvent || e.logicalKey != LogicalKeyboardKey.escape) {
+      return false;
+    }
+    final odak = FocusManager.instance.primaryFocus;
+    final ctx = odak?.context;
+    if (ctx == null || odak?.context?.widget is EditableText) return false;
+    final route = ModalRoute.of(ctx);
+    if (route is! PageRoute || !route.isCurrent) return false;
+    final rota = mevcutRota(_router);
+    if (rota == '/panel' || rota == '/satis' ||
+        _menusuzRotalar.any(rota.startsWith)) {
+      return false;
+    }
+    if (_router.canPop()) {
+      _router.pop();
+    } else {
+      _router.go('/satis');
+    }
+    return true;
   }
 
   void _rotaDegisti() {
@@ -158,6 +185,7 @@ class _MasaustuKabukState extends ConsumerState<MasaustuKabuk> {
   @override
   void dispose() {
     _router.routerDelegate.removeListener(_rotaDegisti);
+    HardwareKeyboard.instance.removeHandler(_escGeri);
     _rotaTik.dispose();
     super.dispose();
   }

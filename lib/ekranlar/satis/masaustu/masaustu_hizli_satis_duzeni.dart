@@ -19,6 +19,7 @@ import '../../../modeller/urun_model.dart';
 import '../../../saglayicilar/riverpod/sepet_provider.dart';
 import '../../../uygulama/tema/uygulama_temasi.dart';
 import 'masaustu_f_tuslari.dart';
+import '../../../widgetlar/ortak/iskonto_dialogu.dart';
 import 'masaustu_sayi_tuslari.dart';
 import 'masaustu_sepet_tablosu.dart';
 import 'masaustu_toplam_karti.dart';
@@ -39,6 +40,7 @@ class MasaustuHizliSatisDuzeni extends ConsumerStatefulWidget {
   final VoidCallback? onSonFis; // null = henüz satış yok
   final VoidCallback onCari;
   final VoidCallback onFiyatGor;
+  final VoidCallback onKasaAc;
 
   const MasaustuHizliSatisDuzeni({
     super.key,
@@ -54,6 +56,7 @@ class MasaustuHizliSatisDuzeni extends ConsumerStatefulWidget {
     required this.onSonFis,
     required this.onCari,
     required this.onFiyatGor,
+    required this.onKasaAc,
   });
 
   @override
@@ -101,12 +104,16 @@ class _MasaustuHizliSatisDuzeniState
       if (!sepet.bos) widget.onAskiyaAl();
     } else if (k == LogicalKeyboardKey.f5) {
       widget.onSonFis?.call();
+    } else if (k == LogicalKeyboardKey.f6) {
+      _iskontoUygula();
     } else if (k == LogicalKeyboardKey.f7) {
       widget.onCari();
     } else if (k == LogicalKeyboardKey.f8) {
       widget.onFiyatGor();
     } else if (k == LogicalKeyboardKey.f9) {
       _sepetiTemizle();
+    } else if (k == LogicalKeyboardKey.f10) {
+      widget.onKasaAc();
     } else if (k == LogicalKeyboardKey.f12) {
       if (odemeAktif) widget.onOdeme();
     } else if (k == LogicalKeyboardKey.delete && !_metinKutusuOdakta()) {
@@ -154,6 +161,47 @@ class _MasaustuHizliSatisDuzeniState
       ),
     );
     if (onay == true && mounted) ref.read(sepetProvider.notifier).temizle();
+  }
+
+  // ── İskonto (F6) ─────────────────────────────────────────────────────
+  // Seçili satır varsa yalnız ona, yoksa tüm sepete uygulanır. Oran (%),
+  // tutar (TL) veya yeni toplam girilir (üçü birbirini hesaplar). Hesap
+  // ürünün LİSTE fiyatı üzerinden yapılır; sepette Fiyat/Tutar aynı kalır,
+  // fark İndirim sütununa yazılır, Net Tutar değişir. Fişe ürün birim
+  // fiyatı düşürülerek (kalem iskontosu olarak) kaydolur.
+  Future<void> _iskontoUygula() async {
+    final sepet = ref.read(sepetProvider);
+    if (sepet.bos || sepet.satisIsleniyor) return;
+    final secili = (_secili != null && _secili! < sepet.kalemler.length)
+        ? _secili
+        : null;
+    final brut = secili != null
+        ? sepet.kalemler[secili].brutTutar
+        : sepet.kalemler.fold<double>(0, (a, k) => a + k.brutTutar);
+    final yeniToplam = await iskontoDialoguGoster(
+      context,
+      baslik: secili != null
+          ? 'İskonto — ${sepet.kalemler[secili].urun.urunAdi}'
+          : 'İskonto — Tüm Sepet',
+      brutToplam: brut,
+    );
+    if (yeniToplam == null || !mounted) return;
+
+    final guncel = ref.read(sepetProvider);
+    if (guncel.bos || brut <= 0) return;
+    final carpan = yeniToplam / brut;
+    final notifier = ref.read(sepetProvider.notifier);
+    final indeksler = secili != null && secili < guncel.kalemler.length
+        ? [secili]
+        : List<int>.generate(guncel.kalemler.length, (i) => i);
+    for (final i in indeksler) {
+      final k = guncel.kalemler[i];
+      if (k.miktar <= 0) continue;
+      // Birim fiyat 6 hane tutulur: ör. 3 adet / 100 TL → 33,333333 × 3 = 100.
+      final yeniBirim =
+          (k.listeFiyat * carpan * 1000000).round() / 1000000;
+      if (yeniBirim > 0) notifier.fiyatGuncelle(i, yeniBirim);
+    }
   }
 
   // ── Sayı tuş takımı ───────────────────────────────────────────────────
@@ -251,10 +299,13 @@ class _MasaustuHizliSatisDuzeniState
           FTus('F4', 'Askıya Al', const Color(0xFF2E7D32),
               sepet.bos ? null : widget.onAskiyaAl),
           FTus('F5', 'Son Fiş', const Color(0xFF6A1B9A), widget.onSonFis),
+          FTus('F6', 'İskonto', const Color(0xFFEF6C00),
+              sepet.bos ? null : _iskontoUygula),
           FTus('F7', 'Cari', const Color(0xFF1565C0), widget.onCari),
           FTus('F8', 'Fiyat Gör', const Color(0xFF00838F), widget.onFiyatGor),
           FTus('F9', 'Temizle', const Color(0xFF546E7A),
               sepet.bos ? null : _sepetiTemizle),
+          FTus('F10', 'Kasa Aç', const Color(0xFF4527A0), widget.onKasaAc),
           FTus('Del', 'Satır Sil', const Color(0xFF8D6E63),
               _secili == null ? null : _seciliyiSil),
         ],

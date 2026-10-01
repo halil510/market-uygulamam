@@ -35,8 +35,11 @@ class SepetKalemKarti extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final k          = kalem;
-    final normalFiyat = k.urun.satisFiyati;
-    final indirimVar  = k.birimFiyat < normalFiyat - 0.001;
+    final indirimVar  = k.toplamIndirim > 0;
+    final indirimOran = k.brutTutar > 0 ? k.toplamIndirim / k.brutTutar * 100 : 0.0;
+    final oranMetni   = indirimOran == indirimOran.roundToDouble()
+        ? indirimOran.toStringAsFixed(0)
+        : indirimOran.toStringAsFixed(1);
     final isKg        = kgMiMi(k.urun.birimAdi);
     final textPrimary = context.textPrimary;
     final textSec     = context.textSecondary;
@@ -118,7 +121,7 @@ class SepetKalemKarti extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            '-%${((1 - k.birimFiyat / normalFiyat) * 100).toStringAsFixed(0)}',
+                            '-%$oranMetni  -${ParaUtils.formatla(k.toplamIndirim)}',
                             style: const TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
@@ -130,27 +133,15 @@ class SepetKalemKarti extends StatelessWidget {
                       ],
                       Text(
                         isKg
-                            ? '${k.miktar.toStringAsFixed(3)} ${k.urun.birimAdi} × ${ParaUtils.formatla(k.birimFiyat)}'
-                            : ParaUtils.formatla(k.birimFiyat),
+                            ? '${k.miktar.toStringAsFixed(3)} ${k.urun.birimAdi} × ${ParaUtils.formatla(k.listeFiyat)}'
+                            : ParaUtils.formatla(k.listeFiyat),
                         style: TextStyle(
                           fontSize: 11,
-                          color: indirimVar ? _orange : textSec,
+                          color: textSec,
                           fontWeight: FontWeight.w500,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
-                      if (indirimVar) ...[
-                        const SizedBox(width: 4),
-                        Text(
-                          ParaUtils.formatla(normalFiyat),
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: textSec,
-                            decoration: TextDecoration.lineThrough,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
-                      ],
                     ]),
                   ],
                 )),
@@ -203,17 +194,35 @@ class SepetKalemKarti extends StatelessWidget {
                 // en az 64, gerekirse içeriğe göre genişler; tek satırda kalır.
                 ConstrainedBox(
                   constraints: const BoxConstraints(minWidth: 64),
-                  child: Text(
-                    ParaUtils.formatla(k.toplamTutar),
-                    maxLines: 1,
-                    softWrap: false,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                      color: indirimVar ? _orange : _primary,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (indirimVar)
+                        Text(
+                          ParaUtils.formatla(k.brutTutar),
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: textSec,
+                            decoration: TextDecoration.lineThrough,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      Text(
+                        ParaUtils.formatla(k.toplamTutar),
+                        maxLines: 1,
+                        softWrap: false,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: indirimVar ? _orange : _primary,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ]),

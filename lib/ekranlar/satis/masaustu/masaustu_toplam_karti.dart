@@ -22,6 +22,8 @@ class MasaustuToplamKarti extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final toplam = sepet.genelToplam;
+    final satirIndirimi =
+        sepet.kalemler.fold<double>(0, (a, k) => a + k.toplamIndirim);
     final paraUstu = alinanPara - toplam;
     final musteri = sepet.musteri;
     return Container(
@@ -58,8 +60,8 @@ class MasaustuToplamKarti extends StatelessWidget {
                 color: Colors.white),
           ),
         ),
-        if (sepet.iskontoTutar > 0)
-          Text('İskonto: -${ParaUtils.formatla(sepet.iskontoTutar, simge: '')}',
+        if (sepet.iskontoTutar + satirIndirimi > 0)
+          Text('İndirim: -${ParaUtils.formatla(sepet.iskontoTutar + satirIndirimi, simge: '')}',
               style: const TextStyle(color: Color(0xFFFF8A80), fontSize: 12)),
         if (alinanPara > 0) ...[
           const SizedBox(height: 2),

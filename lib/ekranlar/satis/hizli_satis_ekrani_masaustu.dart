@@ -24,7 +24,20 @@ extension _HizliSatisMasaustuExt on _HizliSatisEkraniState {
         onSonFis: _sonSatis == null ? null : _sonFisiYazdir,
         onCari: _musteriSec,
         onFiyatGor: () => context.push('/fiyat-gor'),
+        onKasaAc: _kasaCekmecesiniAc,
       );
+
+  /// F10 / "Kasa Aç": para çekmecesini yazıcı üzerinden açar (ESC p).
+  Future<void> _kasaCekmecesiniAc() async {
+    try {
+      await YazdirmaServisi().kasaCekmecesiAc();
+      if (!mounted) return;
+      BildirimServisi.basari(context, 'Kasa çekmecesi açıldı');
+    } catch (e) {
+      if (!mounted) return;
+      BildirimServisi.hata(context, 'Çekmece açılamadı: $e');
+    }
+  }
 
   /// Ürün tuşuna basış — bottom-sheet sürümüyle (_hizliTusAc) aynı mantık.
   Future<void> _masaustuUrunSec(UrunModel urun) async {

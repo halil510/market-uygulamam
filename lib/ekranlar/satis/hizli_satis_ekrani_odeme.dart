@@ -9,82 +9,28 @@ part of 'hizli_satis_ekrani.dart';
 
 extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
   // ── İndirim Dialog ───────────────────────────────────────────────────────────
+  // Oran (%), tutar (₺) ve yeni toplam birbirini hesaplar; liste fiyatı
+  // üzerinden çalışır (bkz. widgetlar/ortak/iskonto_dialogu.dart).
   Future<void> _indirimDuzenle(SepetKalem k, int index) async {
     if (!mounted) return;
     _dialogAcik = true;
     _islemAktif = true;
     if (_kameraAcik) { try { _scanCtrl.stop(); } catch (e) { /* ignore */ } }
 
-    final normalFiyat = k.urun.satisFiyati;
-    final mevcutOran  = k.birimFiyat < normalFiyat - 0.01
-        ? ((1 - k.birimFiyat / normalFiyat) * 100) : 0.0;
-    final oranCtrl  = TextEditingController(
-        text: mevcutOran > 0 ? mevcutOran.toStringAsFixed(1) : '');
-    final fiyatCtrl = TextEditingController(
-        text: k.birimFiyat.toStringAsFixed(2));
-
-    final uygula = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, ss) {
-        void oranDegisti(String v) {
-          final oran = ParaUtils.sayiCoz(v);
-          if (oran != null && oran > 0 && oran < 100) {
-            fiyatCtrl.text = (normalFiyat * (1 - oran / 100)).toStringAsFixed(2);
-          } else if (oran == 0) {
-            fiyatCtrl.text = normalFiyat.toStringAsFixed(2);
-          }
-          ss(() {});
-        }
-        void fiyatDegisti(String v) {
-          final fiyat = ParaUtils.sayiCoz(v);
-          if (fiyat != null && fiyat > 0 && fiyat < normalFiyat) {
-            oranCtrl.text = ((1 - fiyat / normalFiyat) * 100).toStringAsFixed(1);
-          } else if (fiyat != null && fiyat >= normalFiyat) {
-            oranCtrl.text = '';
-          }
-          ss(() {});
-        }
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(k.urun.urunAdi,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            Row(children: [
-              Expanded(child: TextField(
-                controller: oranCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'İndirim %', border: OutlineInputBorder()),
-                onChanged: oranDegisti,
-              )),
-              const SizedBox(width: 12),
-              Expanded(child: TextField(
-                controller: fiyatCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Fiyat ₺', border: OutlineInputBorder()),
-                onChanged: fiyatDegisti,
-              )),
-            ]),
-          ]),
-          actions: [
-            TextButton(
-              onPressed: () { _dialogAcik = false; _islemAktif = false; Navigator.pop(ctx, false); },
-              child: const Text('İptal'),
-            ),
-            FilledButton(
-              onPressed: () { _dialogAcik = false; _islemAktif = false; Navigator.pop(ctx, true); },
-              child: const Text('Uygula'),
-            ),
-          ],
-        );
-      }),
+    final yeniToplam = await iskontoDialoguGoster(
+      context,
+      baslik: k.urun.urunAdi,
+      brutToplam: k.brutTutar,
     );
 
+    _dialogAcik = false;
+    _islemAktif = false;
     if (_kameraAcik && mounted) { try { _scanCtrl.start(); } catch (e) { /* ignore */ } }
-    if (uygula != true || !mounted) return;
-    final yeniFiyat = ParaUtils.sayiCoz(fiyatCtrl.text);
-    if (yeniFiyat != null && yeniFiyat > 0) {
-      ref.read(sepetProvider.notifier).fiyatGuncelle(index, yeniFiyat);
+    if (yeniToplam == null || !mounted || k.miktar <= 0) return;
+    // Birim fiyat 6 hane: ör. 3 adet / 100 ₺ → 33,333333 × 3 = 100.
+    final yeniBirim = (yeniToplam / k.miktar * 1000000).round() / 1000000;
+    if (yeniBirim > 0) {
+      ref.read(sepetProvider.notifier).fiyatGuncelle(index, yeniBirim);
     }
   }
 
@@ -440,6 +386,14 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
           cariAdi: musteri?.unvan,
         );
       });
+
+      // Windows kasa: nakit alınan satışta çekmeceyi otomatik aç (yazıcı
+      // bağlı değilse veya çekmece yoksa sessizce yok sayılır).
+      final nakitVar = odemeYontemi == 'Nakit' ||
+          (karmaKalemler?.any((k) => k['yontem'] == 'Nakit') ?? false);
+      if (Platform.isWindows && nakitVar) {
+        YazdirmaServisi().kasaCekmecesiAc().catchError((_) {});
+      }
 
       ref.read(sepetProvider.notifier).temizle();
       ref.read(dashboardProvider.notifier).yenile();

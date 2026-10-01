@@ -1708,6 +1708,16 @@ public class RawPrn {
     await _yazdir(bytes);
   }
 
+  /// Fiş yazıcısına bağlı para çekmecesini açar (ESC p 0 25 250 — pin 2,
+  /// ~50 ms / 500 ms). Çekmece yoksa yazıcı komutu yok sayar.
+  Future<void> kasaCekmecesiAc() async {
+    if (_aktif == null || !_aktif!.bagliMi) {
+      throw Exception('Yazıcı bağlı değil. Ayarlar > Yazdırma bölümünden '
+          'fiş yazıcısını bağlayın.');
+    }
+    await _yazdir(const [0x1B, 0x70, 0x00, 0x19, 0xFA]);
+  }
+
   Future<bool> get yaziciBagliMi async => bagliMi;
 
 

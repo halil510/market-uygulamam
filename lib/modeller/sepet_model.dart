@@ -36,6 +36,21 @@ class SepetKalem {
   /// KDV dahil satır toplamı — müşteriden tahsil edilen tutarın ta kendisi
   double get toplamTutar => netFiyat * miktar;
 
+  /// İndirim öncesi (liste) birim fiyat. Birim fiyat listeden YÜKSEKSE
+  /// (elle yükseltilmiş / serbest ürün) indirim yoktur, baz = birim fiyat.
+  double get listeFiyat =>
+      urun.satisFiyati > birimFiyat ? urun.satisFiyati : birimFiyat;
+
+  /// İndirim öncesi satır tutarı (liste fiyatı × miktar).
+  double get brutTutar => listeFiyat * miktar;
+
+  /// Satıra uygulanan toplam indirim (promosyon + elle iskonto) — liste
+  /// fiyatına göre, KDV dahil. İndirim yoksa 0.
+  double get toplamIndirim {
+    final f = brutTutar - toplamTutar;
+    return f > 0.004 ? f : 0;
+  }
+
   double get kdvOran => double.tryParse(urun.kdvOran) ?? 18;
 
   /// toplamTutar İÇİNDEKİ KDV payı (toplamTutar zaten KDV dahil)

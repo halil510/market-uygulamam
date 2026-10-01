@@ -74,7 +74,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
   }
 
   Future<void> _promosyonDuzenle(PromosyonModel promo) async {
-    final iskontoCtrl   = TextEditingController(text: promo.iskontoOran.toStringAsFixed(1));
+    final iskontoCtrl   = TextEditingController(text: _oranMetni(promo.iskontoOran));
     final minMiktarCtrl = TextEditingController(text: promo.minMiktar.toStringAsFixed(0));
     final adCtrl        = TextEditingController(text: promo.promosyonAdi);
     bool aktif          = promo.aktif;
@@ -161,7 +161,15 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
     try {
       final guncellenmis = promo.copyWith(
         promosyonAdi: adCtrl.text.trim().isEmpty ? promo.promosyonAdi : adCtrl.text.trim(),
-        iskontoOran: ParaUtils.sayiCoz(iskontoCtrl.text) ?? promo.iskontoOran,
+        // Kutu değiştirilmediyse kayıtlı tam hassasiyetli oran korunur
+        // (16,667 yazan kutu 16,6666… değerini 16,667'ye çevirmesin).
+        iskontoOran: () {
+          final yazilan = ParaUtils.sayiCoz(iskontoCtrl.text);
+          if (yazilan == null) return promo.iskontoOran;
+          return (yazilan - promo.iskontoOran).abs() < 0.0015
+              ? promo.iskontoOran
+              : yazilan;
+        }(),
         minMiktar:   ParaUtils.sayiCoz(minMiktarCtrl.text) ?? promo.minMiktar,
         aktif:       aktif,
       );
@@ -305,6 +313,16 @@ class _PromosyonEkleSheet extends ConsumerStatefulWidget {
   ConsumerState<_PromosyonEkleSheet> createState() => _PromosyonEkleSheetState();
 }
 
+/// İndirim oranını en çok 3 ondalıkla (gereksiz sıfırsız, virgüllü) gösterir:
+/// 16.6667 → "16,667", 10.0 → "10".
+String _oranMetni(double o) {
+  var t = o.toStringAsFixed(3);
+  if (t.contains('.')) {
+    t = t.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+  }
+  return t.replaceAll('.', ',');
+}
+
 class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
   final _formKey = GlobalKey<FormState>();
   final _adCtrl  = TextEditingController();
@@ -314,6 +332,20 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
   final _indirimliCtrl  = TextEditingController();
   final _toplamCtrl     = TextEditingController(); // toplam tutar girişi
   Timer? _araDebounce;
+
+  /// "Toplam fiyat"tan hesaplanan TAM HASSASİYETLİ oran (ör. 16,6666…).
+  /// Kutuda 3 ondalık gösterilir; kayıtta bu ham değer kullanılır ki
+  /// 2 × 60 = 120 → 100 yazınca fiyat tam 100,00 çıksın (99,96 değil).
+  double? _oranHam;
+
+  /// Kayıt/önizleme için geçerli oran: kutu hâlâ hesaplanan değeri
+  /// gösteriyorsa ham değer, kullanıcı elle değiştirdiyse yazdığı değer.
+  double get _oranDeger {
+    final yazilan = ParaUtils.sayiCoz(_oranCtrl.text) ?? 0;
+    final ham = _oranHam;
+    if (ham != null && (yazilan - ham).abs() < 0.0015) return ham;
+    return yazilan;
+  }
 
   UrunModel? _seciliUrun;
   List<UrunModel> _aramaSonuclari = [];
@@ -357,7 +389,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
         urunId:          _seciliUrun!.id!,
         urunAdi:         _seciliUrun!.urunAdi,
         promosyonAdi:    _adCtrl.text.trim(),
-        iskontoOran:     ParaUtils.sayiCoz(_oranCtrl.text) ?? 0,
+        iskontoOran:     _oranDeger,
         minMiktar:       ParaUtils.sayiCoz(_minMiktarCtrl.text) ?? 1,
         baslangicTarihi: _baslangic,
         bitisTarihi:     _bitis,
@@ -430,7 +462,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                   Icon(Icons.arrow_forward, size: 14, color: context.textSecondary),
                   _HesapKutu('İndirimli Birim',
                     _oranCtrl.text.isNotEmpty
-                      ? ParaUtils.formatla(_seciliUrun!.satisFiyati * (1 - (ParaUtils.sayiCoz(_oranCtrl.text) ?? 0)/100))
+                      ? ParaUtils.formatla(_seciliUrun!.satisFiyati * (1 - _oranDeger / 100))
                       : '—',
                     Colors.orange),
                   Icon(Icons.close, size: 14, color: context.textSecondary),
@@ -522,6 +554,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
               decoration: const InputDecoration(
                 labelText: 'İskonto %', border: OutlineInputBorder(), suffixText: '%'),
               onChanged: (v) {
+                _oranHam = null; // elle yazıldı
                 if (_seciliUrun == null) return;
                 final oran = ParaUtils.sayiCoz(v) ?? 0;
                 if (oran > 0 && oran <= 100) {
@@ -561,7 +594,8 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                   final birimIndirimli = toplam / minMik;
                   final oran = (1 - birimIndirimli / _seciliUrun!.satisFiyati) * 100;
                   if (oran >= 0 && oran <= 100) {
-                    _oranCtrl.text = oran.toStringAsFixed(1);
+                    _oranHam = oran;
+                    _oranCtrl.text = _oranMetni(oran);
                     setState(() {});
                   }
                 }
@@ -581,7 +615,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
             onChanged: (v) {
               if (_seciliUrun == null) return;
               final minMik = ParaUtils.sayiCoz(v) ?? 1;
-              final oran = ParaUtils.sayiCoz(_oranCtrl.text) ?? 0;
+              final oran = _oranDeger;
               if (oran > 0 && minMik > 0) {
                 final indirimliB = _seciliUrun!.satisFiyati * (1 - oran / 100);
                 _toplamCtrl.text = (minMik * indirimliB).toStringAsFixed(2);
@@ -703,7 +737,7 @@ class _PromosyonKarti extends StatelessWidget {
         const Divider(height: 1),
         const SizedBox(height: 8),
         Row(children: [
-          _BilgiChip(Icons.discount, '%${promosyon.iskontoOran.toStringAsFixed(0)} İndirim', Colors.orange.shade700),
+          _BilgiChip(Icons.discount, '%${_oranMetni(promosyon.iskontoOran)} İndirim', Colors.orange.shade700),
           const SizedBox(width: 8),
           _BilgiChip(Icons.production_quantity_limits, 'Min: ${promosyon.minMiktar.toStringAsFixed(0)}', Colors.blue.shade700),
         ]),

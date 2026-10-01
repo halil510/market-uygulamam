@@ -113,12 +113,15 @@ class MasaustuSepetTablosu extends StatelessWidget {
             _hucre(1, t(k.urun.urunAdi)),
             _hucre(2, t(_miktar(k.miktar), sag: true)),
             _hucre(3, t('   ${k.urun.birimAdi}')),
-            _hucre(4, t(ParaUtils.formatla(k.birimFiyat, simge: ''), sag: true)),
-            _hucre(5, t(ParaUtils.formatla(k.birimFiyat * k.miktar, simge: ''), sag: true)),
+            _hucre(4, t(ParaUtils.formatla(k.listeFiyat, simge: ''), sag: true)),
+            _hucre(5, t(ParaUtils.formatla(k.brutTutar, simge: ''), sag: true)),
             _hucre(
                 6,
-                t(k.iskontoTutar > 0 ? ParaUtils.formatla(k.iskontoTutar, simge: '') : '',
-                    sag: true)),
+                t(k.toplamIndirim > 0
+                        ? ParaUtils.formatla(k.toplamIndirim, simge: '')
+                        : '',
+                    sag: true,
+                    stil: yazi.copyWith(color: const Color(0xFFD84315)))),
             _hucre(
                 7,
                 t(ParaUtils.formatla(k.toplamTutar, simge: ''),

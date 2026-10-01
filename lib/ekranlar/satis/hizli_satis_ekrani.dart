@@ -27,6 +27,7 @@ import 'hizli_tus_yonetim_ekrani.dart';
 import 'para_ustu_ekrani.dart';
 import 'widgets/hizli_satis_sepet_listesi.dart';
 import 'masaustu/masaustu_hizli_satis_duzeni.dart';
+import '../../widgetlar/ortak/iskonto_dialogu.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';

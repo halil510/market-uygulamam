@@ -22,6 +22,8 @@ DisableProgramGroupPage=yes
 OutputDir=..\..\build\kurulum
 OutputBaseFilename=BarkoPro_Kurulum_{#AppSurum}
 SetupIconFile=..\runner\resources\app_icon.ico
+; Sihirbazın sağ üst köşesinde uygulama logosu
+WizardSmallImageFile=..\..\assets\images\logo.png
 UninstallDisplayIcon={app}\{#ExeAdi}
 Compression=lzma2
 SolidCompression=yes
@@ -36,9 +38,6 @@ RestartApplications=no
 [Languages]
 Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
 
-[Tasks]
-Name: "masaustu"; Description: "Masaüstüne kısayol oluştur"; GroupDescription: "Kısayollar:"
-
 [Files]
 ; Geliştirme klasöründeki .dart_tool (yerel veritabanı) ve *.db dosyaları
 ; ASLA pakete girmez.
@@ -48,7 +47,8 @@ Source: "{#KaynakDizin}\*"; DestDir: "{app}"; \
 
 [Icons]
 Name: "{autoprograms}\{#AppAdi}"; Filename: "{app}\{#ExeAdi}"
-Name: "{autodesktop}\{#AppAdi}"; Filename: "{app}\{#ExeAdi}"; Tasks: masaustu
+; Masaüstü kısayolu her kurulumda otomatik oluşturulur (uygulama logosuyla).
+Name: "{autodesktop}\{#AppAdi}"; Filename: "{app}\{#ExeAdi}"; IconFilename: "{app}\{#ExeAdi}"
 
 [Run]
 Filename: "{app}\{#ExeAdi}"; Description: "{#AppAdi} uygulamasını başlat"; \

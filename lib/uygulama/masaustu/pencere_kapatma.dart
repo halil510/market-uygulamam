@@ -18,6 +18,18 @@ class PencereKapatma with WindowListener {
     if (!Platform.isWindows) return;
     await windowManager.ensureInitialized();
     await windowManager.setPreventClose(true);
+    // Kasa bilgisayarı: en küçük pencere boyutu + açılışta ekranı kapla.
+    await windowManager.waitUntilReadyToShow(
+      const WindowOptions(
+        minimumSize: Size(1024, 680),
+        title: 'BarkoPro',
+      ),
+      () async {
+        await windowManager.show();
+        await windowManager.maximize();
+        await windowManager.focus();
+      },
+    );
     windowManager.addListener(_i);
   }
 

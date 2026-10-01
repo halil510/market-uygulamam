@@ -126,15 +126,47 @@ const _menusuzRotalar = ['/splash', '/giris', '/sifre'];
 /// Windows kabuğu: kalıcı menü YOK. Sadece ana ekran ('/') ve Hızlı Satış
 /// ('/satis') dışındaki, geri dönüşü olmayan ekranlarda ince bir "Geri"
 /// şeridi gösterir (Windows'ta donanım geri tuşu yok).
-class MasaustuKabuk extends ConsumerWidget {
+class MasaustuKabuk extends ConsumerStatefulWidget {
   final Widget icerik;
   const MasaustuKabuk({super.key, required this.icerik});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final router = UygulamaRouter.router(ref);
+  ConsumerState<MasaustuKabuk> createState() => _MasaustuKabukState();
+}
+
+class _MasaustuKabukState extends ConsumerState<MasaustuKabuk> {
+  // Router bildirimi build sırasında gelebilir (ilk açılış); setState'i
+  // kare sonrasına erteleyen ara bildirici.
+  final _rotaTik = ValueNotifier<int>(0);
+  late final GoRouter _router;
+
+  Widget get icerik => widget.icerik;
+
+  @override
+  void initState() {
+    super.initState();
+    _router = UygulamaRouter.router(ref);
+    _router.routerDelegate.addListener(_rotaDegisti);
+  }
+
+  void _rotaDegisti() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _rotaTik.value++;
+    });
+  }
+
+  @override
+  void dispose() {
+    _router.routerDelegate.removeListener(_rotaDegisti);
+    _rotaTik.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final router = _router;
     return ListenableBuilder(
-      listenable: router.routerDelegate,
+      listenable: _rotaTik,
       builder: (context, _) {
         final rota = mevcutRota(router);
         final kok = rota == '/panel' || rota == '/satis';

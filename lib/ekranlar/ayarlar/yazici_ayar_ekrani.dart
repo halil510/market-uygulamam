@@ -65,7 +65,8 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 4, vsync: this);
+    // Windows'ta kurulu yazıcılar sekmesi (3.) varsayılan açılır.
+    _tab = TabController(length: 4, vsync: this, initialIndex: Platform.isWindows ? 2 : 0);
     WidgetsBinding.instance.addPostFrameCallback((_) => _yukle());
   }
 

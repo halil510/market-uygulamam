@@ -2,7 +2,9 @@
 // Modern — ValueNotifier, 0 setState, Riverpod ile giriş
 
 import '../../cekirdek/utils/hata_utils.dart';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -43,6 +45,7 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
   @override
   void initState() {
     super.initState();
+    if (Platform.isWindows) HardwareKeyboard.instance.addHandler(_klavyeTusu);
     _shakeCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 400));
     _shakeAnim = Tween<double>(begin: 0, end: 8)
@@ -53,6 +56,7 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
 
   @override
   void dispose() {
+    if (Platform.isWindows) HardwareKeyboard.instance.removeHandler(_klavyeTusu);
     _kullanicilar.dispose(); _secili.dispose(); _pin.dispose();
     _hata.dispose(); _yukleniyor.dispose(); _girisYapiliyor.dispose();
     _shakeCtrl.dispose();
@@ -75,6 +79,23 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
     _hata.value      = '';
     _hataliGiris     = 0;
     _kilitli         = false;
+  }
+
+  // ─── FİZİKSEL KLAVYE (Windows) ────────────────────────────────────────────
+  bool _klavyeTusu(KeyEvent e) {
+    if (e is! KeyDownEvent || !mounted || _girisYapiliyor.value) return false;
+    final k = e.logicalKey;
+    if (k == LogicalKeyboardKey.backspace) { _silSon(); return true; }
+    if (k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.numpadEnter) {
+      _girisYap();
+      return true;
+    }
+    final c = e.character;
+    if (c != null && c.length == 1 && c.codeUnitAt(0) >= 32) {
+      _rakamEkle(c);
+      return true;
+    }
+    return false;
   }
 
   void _rakamEkle(String r) {

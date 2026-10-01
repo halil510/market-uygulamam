@@ -6,6 +6,7 @@
 //
 // Bakiye işareti (uygulamadaki kural): bakiye > 0 → ALACAĞIMIZ var,
 // bakiye < 0 → BORCUMUZ var.
+import '../cari_secim_baglami.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -151,7 +152,11 @@ class _CariMasaustuGorunumState extends State<CariMasaustuGorunum> {
           kolonlar: _kolonlar,
           secili: s,
           onSec: (c) => setState(() => _secili = c),
-          onCift: (c) => _git('/cari/detay/${c.id}'),
+          onCift: (c) {
+            final secim = CariSecimBaglami.maybeOf(context);
+            if (secim != null) { secim.onSec(c); return; }
+            _git('/cari/detay/${c.id}');
+          },
           onSagTik: _menu,
         ),
       ),

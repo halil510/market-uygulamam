@@ -5,7 +5,9 @@
 // - Yetkisi olmayan kullanıcılar admin şifresi girmek zorunda.
 // - 3 yanlış denemede 60 saniye kilit.
 
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../depolar/kullanici_deposu.dart';
@@ -40,6 +42,35 @@ class _AyarlarGirisEkraniState extends ConsumerState<AyarlarGirisEkrani> {
   String get _aciklama => _yetkiVar
       ? 'Kendi şifrenizi girin'
       : 'Admin şifresi gereklidir';
+
+  // ─── FİZİKSEL KLAVYE (Windows) ────────────────────────────────────────────
+  @override
+  void initState() {
+    super.initState();
+    if (Platform.isWindows) HardwareKeyboard.instance.addHandler(_klavyeTusu);
+  }
+
+  @override
+  void dispose() {
+    if (Platform.isWindows) HardwareKeyboard.instance.removeHandler(_klavyeTusu);
+    super.dispose();
+  }
+
+  bool _klavyeTusu(KeyEvent e) {
+    if (e is! KeyDownEvent || !mounted || _dogruluyor || _kilitli) return false;
+    final k = e.logicalKey;
+    if (k == LogicalKeyboardKey.backspace) { _silSon(); return true; }
+    if (k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.numpadEnter) {
+      _dogrula();
+      return true;
+    }
+    final c = e.character;
+    if (c != null && c.length == 1 && c.codeUnitAt(0) >= 32) {
+      _rakamEkle(c);
+      return true;
+    }
+    return false;
+  }
 
   void _rakamEkle(String r) {
     if (_pin.length < 12) setState(() => _pin += r);

@@ -1,4 +1,5 @@
 // lib/ekranlar/cari/cari_liste_ekrani.dart — Modern v2
+import 'cari_secim_baglami.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'masaustu/cari_masaustu_gorunum.dart';
@@ -490,7 +491,11 @@ class _CariKart extends ConsumerWidget {
     child: Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: TsKart(
-        onTap: () => context.push('/cari/detay/${cari.id}'),
+        onTap: () {
+          final secim = CariSecimBaglami.maybeOf(context);
+          if (secim != null) { secim.onSec(cari); return; }
+          context.push('/cari/detay/${cari.id}');
+        },
         padding: EdgeInsets.zero,
         child: Row(children: [
           // Renkli sol çizgi

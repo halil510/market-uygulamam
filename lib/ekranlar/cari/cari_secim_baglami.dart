@@ -1,0 +1,37 @@
+// lib/ekranlar/cari/cari_secim_baglami.dart
+//
+// Cariler listesini "seçim modunda" kullanmak için (Windows Hızlı Satış:
+// müşteri seçimi). Liste bu bağlamın altında açılırsa, bir cariye
+// dokunmak detay sayfasına gitmek yerine [onSec]'i çağırır.
+import 'package:flutter/material.dart';
+import '../../modeller/cari_model.dart';
+
+class CariSecimBaglami extends InheritedWidget {
+  final void Function(CariModel cari) onSec;
+  const CariSecimBaglami({super.key, required this.onSec, required super.child});
+
+  static CariSecimBaglami? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<CariSecimBaglami>();
+
+  @override
+  bool updateShouldNotify(CariSecimBaglami old) => false;
+}
+
+/// Cariler listesini büyük bir pencerede açar; seçilen cariyi döndürür.
+Future<CariModel?> cariListesindenSec(BuildContext context, Widget cariListesi) {
+  return showDialog<CariModel>(
+    context: context,
+    builder: (ctx) => Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        width: 980,
+        height: 680,
+        child: CariSecimBaglami(
+          onSec: (c) => Navigator.of(ctx).pop(c),
+          child: cariListesi,
+        ),
+      ),
+    ),
+  );
+}

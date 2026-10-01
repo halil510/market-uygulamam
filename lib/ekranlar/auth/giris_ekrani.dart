@@ -6,6 +6,7 @@
 // - Responsive ve şık tasarım
 
 import '../../cekirdek/utils/hata_utils.dart';
+import 'dart:io' show Platform;
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -100,6 +101,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
 
     // Verileri yükle
     _kullanicilariYukle();
+    if (Platform.isWindows) HardwareKeyboard.instance.addHandler(_klavyeTusu);
     _biyometrikKontrolEt();
 
     // Animasyonları başlat
@@ -111,6 +113,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
 
   @override
   void dispose() {
+    if (Platform.isWindows) HardwareKeyboard.instance.removeHandler(_klavyeTusu);
     _sifre.dispose();
     _hata.dispose();
     _yukleniyor.dispose();
@@ -230,6 +233,26 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
         _hata.value = kDebugMode ? 'Parmak izi hatası: $e' : 'Parmak izi doğrulanamadı';
       }
     }
+  }
+
+  // ─── FİZİKSEL KLAVYE (Windows) ────────────────────────────────────────────
+  // Numpad'e ek olarak klavyeden şifre girişi: karakter → ekle, Backspace →
+  // sil, Enter → giriş. Sadece Windows'ta devreye girer.
+  bool _klavyeTusu(KeyEvent e) {
+    if (e is! KeyDownEvent || !mounted) return false;
+    if (_yukleniyor.value) return false;
+    final k = e.logicalKey;
+    if (k == LogicalKeyboardKey.backspace) { _silSon(); return true; }
+    if (k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.numpadEnter) {
+      _girisYap();
+      return true;
+    }
+    final c = e.character;
+    if (c != null && c.length == 1 && c.codeUnitAt(0) >= 32) {
+      _rakamEkle(c);
+      return true;
+    }
+    return false;
   }
 
   // ─── NUM PAD ──────────────────────────────────────────────────────────────

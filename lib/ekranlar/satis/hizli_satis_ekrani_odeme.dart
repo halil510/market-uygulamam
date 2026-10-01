@@ -95,12 +95,15 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
     try {
       final cariler = await _cariDepo.tumunuGetir();
       if (!mounted) return;
-      final secilen = await showModalBottomSheet<CariModel>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => MusteriSecimPaneli(cariler: cariler),
-      );
+      // Windows: seçim, tam Cariler listesinden (arama/filtre/tablo) yapılır.
+      final secilen = Platform.isWindows
+          ? await cariListesindenSec(context, const CariListeEkrani())
+          : await showModalBottomSheet<CariModel>(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => MusteriSecimPaneli(cariler: cariler),
+            );
       if (secilen == null || !mounted) return;
 
       final tedarikciMi = secilen.cariTipi.contains('edarik');
@@ -138,26 +141,58 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
     _islemBasladi();
 
     try {
-      final yontem = await showModalBottomSheet<String>(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (_) => _OdemeSecimSheet(toplam: sepet.genelToplam, musteriSecili: sepet.musteri != null),
-      );
+      final odemeSheet = _OdemeSecimSheet(
+          toplam: sepet.genelToplam, musteriSecili: sepet.musteri != null);
+      final yontem = Platform.isWindows
+          ? await showDialog<String>(
+              context: context,
+              builder: (_) => Dialog(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: odemeSheet,
+                  ),
+                ),
+              ),
+            )
+          : await showModalBottomSheet<String>(
+              context: context,
+              backgroundColor: Colors.transparent,
+              builder: (_) => odemeSheet,
+            );
       if (!mounted || yontem == null) return;
 
       if (yontem == 'Karma') {
-        final sonuc = await showModalBottomSheet<Map<String, dynamic>>(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => SizedBox(
-            height: MediaQuery.of(context).size.height * 0.94,
-            child: CokluOdemeEkrani(
-              toplamTutar: sepet.genelToplam,
-              cariMevcut: sepet.musteri != null,
-            ),
-          ),
+        final karmaEkran = CokluOdemeEkrani(
+          toplamTutar: sepet.genelToplam,
+          cariMevcut: sepet.musteri != null,
         );
+        final sonuc = Platform.isWindows
+            ? await showDialog<Map<String, dynamic>>(
+                context: context,
+                builder: (_) => Dialog(
+                  insetPadding: const EdgeInsets.all(24),
+                  clipBehavior: Clip.antiAlias,
+                  child: SizedBox(
+                    width: 600,
+                    height: (MediaQuery.of(context).size.height * 0.9)
+                        .clamp(420.0, 760.0),
+                    child: karmaEkran,
+                  ),
+                ),
+              )
+            : await showModalBottomSheet<Map<String, dynamic>>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.94,
+                  child: karmaEkran,
+                ),
+              );
         if (!mounted || sonuc == null) return;
         final kalemler = (sonuc['kalemler'] as List).cast<Map<String, dynamic>>();
         final toplamOdenen = (sonuc['toplam_odenen'] as num?)?.toDouble() ?? sepet.genelToplam;
@@ -218,6 +253,13 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
               autofocus: true,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+              // Enter ile onay (klavye/masaüstü).
+              onSubmitted: (_) {
+                final txt = ctrl.text.trim().replaceAll(',', '.');
+                final val = txt.isEmpty ? toplam : double.tryParse(txt);
+                _dialogAcik = false;
+                Navigator.pop(ctx, val);
+              },
               decoration: const InputDecoration(
                 hintText: 'Boş → tam tutar',
                 labelText: 'Alınan Tutar (₺)',

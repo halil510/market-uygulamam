@@ -9,7 +9,7 @@
 import 'uygulama/masaustu/pencere_kapatma.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io' show Directory, File, Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,6 +39,41 @@ void main() {
   });
 }
 
+/// Windows: veritabanı çalışma klasörüne göre (.dart_tool/...) DEĞİL, sabit
+/// bir kullanıcı klasörüne (%APPDATA%/BarkoPro/veri) yazılır. Kurulum
+/// (Program Files) yazılamaz ve çalışma klasörü değişince veri "kaybolurdu".
+/// Hedefte veritabanı yoksa ve eski konumda (çalışma klasörü ya da exe
+/// klasörü) varsa -wal/-shm dosyalarıyla birlikte BİR KEZ kopyalanır; eski
+/// dosyalar silinmez.
+Future<void> _windowsVeriKlasorunuHazirla() async {
+  try {
+    final appData = Platform.environment['APPDATA'];
+    if (appData == null || appData.isEmpty) return;
+    final hedefDizin = Directory('$appData/BarkoPro/veri');
+    await hedefDizin.create(recursive: true);
+    final hedef = File('${hedefDizin.path}/market.db');
+    if (!await hedef.exists()) {
+      final exeDizin = File(Platform.resolvedExecutable).parent.path;
+      for (final dizin in {Directory.current.path, exeDizin}) {
+        final eski = '$dizin/.dart_tool/sqflite_common_ffi/databases';
+        if (await File('$eski/market.db').exists()) {
+          for (final ek in ['', '-wal', '-shm']) {
+            final kaynak = File('$eski/market.db$ek');
+            if (await kaynak.exists()) {
+              await kaynak.copy('${hedef.path}$ek');
+            }
+          }
+          break;
+        }
+      }
+    }
+    await databaseFactory.setDatabasesPath(hedefDizin.path);
+  } catch (e) {
+    // Hazırlanamazsa eski davranışla (çalışma klasörü) devam edilir.
+    debugPrint('Windows veri klasörü hazırlanamadı: $e');
+  }
+}
+
 Future<void> _baslatApp() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -47,6 +82,7 @@ Future<void> _baslatApp() async {
   if (Platform.isWindows || Platform.isLinux) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    if (Platform.isWindows) await _windowsVeriKlasorunuHazirla();
   }
 
   // Hata görünürlüğü — release modda ekranın "bembeyaz" kalmasını önler,

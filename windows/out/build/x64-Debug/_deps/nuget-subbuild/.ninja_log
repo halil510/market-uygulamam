@@ -1,0 +1,24 @@
+# ninja log v6
+2770	2837	8124875382060740	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-subbuild/nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-configure	abd5f956106fe2b4
+5	94	8124875354665176	nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-mkdir	cdcd05de1529290f
+2534	2601	8124875379713972	nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-update	bb59c60a98987ccd
+2770	2837	8124875382060740	nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-configure	abd5f956106fe2b4
+5	94	8124875354665176	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-subbuild/nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-mkdir	cdcd05de1529290f
+95	2534	8124875379095164	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-subbuild/nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-download	5264d177b9dc198b
+95	2534	8124875379095164	nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-download	5264d177b9dc198b
+2837	2905	8124875382745879	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-subbuild/nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-build	afd29f2ec1ec3782
+2534	2601	8124875379713972	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-subbuild/nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-update	bb59c60a98987ccd
+2602	2665	8124875380339026	nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-patch	8d33418e2c6abf70
+2602	2665	8124875380339026	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-subbuild/nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-patch	8d33418e2c6abf70
+2665	2770	8124875381395572	nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-copyfile	373a04d0b397040e
+2665	2770	8124875381395572	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-src/nuget.exe	373a04d0b397040e
+2665	2770	8124875381395572	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-subbuild/nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-copyfile	373a04d0b397040e
+2975	3042	8124875384084036	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-subbuild/nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-test	8c658f6b121d281
+2837	2905	8124875382745879	nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-build	afd29f2ec1ec3782
+2905	2974	8124875383527130	nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-install	b3f26589c3314a41
+2905	2974	8124875383527130	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-subbuild/nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-install	b3f26589c3314a41
+2975	3042	8124875384084036	nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-test	8c658f6b121d281
+3042	3137	8124875385066650	CMakeFiles/nuget-populate-complete	2515a18f8e0c5655
+3042	3137	8124875385066650	nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-done	2515a18f8e0c5655
+3042	3137	8124875385066650	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-subbuild/CMakeFiles/nuget-populate-complete	2515a18f8e0c5655
+3042	3137	8124875385066650	C:/barkodhalkmarket/windows/out/build/x64-Debug/_deps/nuget-subbuild/nuget-populate-prefix/src/nuget-populate-stamp/nuget-populate-done	2515a18f8e0c5655

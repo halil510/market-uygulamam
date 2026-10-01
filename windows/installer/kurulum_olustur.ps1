@@ -17,8 +17,11 @@ Set-Location $kok
 $surum = ((Select-String -Path 'pubspec.yaml' -Pattern '^version:\s*([0-9.]+)').Matches[0].Groups[1].Value)
 Write-Host "Sürüm: $surum"
 
-if (Get-Process halk_market -ErrorAction SilentlyContinue) {
-  Write-Host 'HATA: BarkoPro açık. Kapatıp tekrar çalıştırın (dosyalar kilitli).' -ForegroundColor Red
+# Yalnızca derleme klasöründeki kopya açıksa dosyalar kilitlenir; Program
+# Files'a kurulu başka bir kopya sorun çıkarmaz.
+$derlemeExe = Join-Path $kok 'build\windows\x64\runner\Release\halk_market.exe'
+if (Get-Process halk_market -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $derlemeExe }) {
+  Write-Host 'HATA: Derleme klasöründeki BarkoPro açık. Kapatıp tekrar çalıştırın (dosyalar kilitli).' -ForegroundColor Red
   exit 1
 }
 

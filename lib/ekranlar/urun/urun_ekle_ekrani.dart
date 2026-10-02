@@ -28,6 +28,7 @@ import '../../servisler/ai/ai_vision_servisi.dart'; // API anahtarını set etme
 import '../birim/birim_ekrani.dart';
 import 'widgets/urun_form_alanlari.dart';
 import '../../tasarim_sistemi/ts_responsive.dart';
+import '../../widgetlar/masaustu/masaustu_alt_serit.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/ses_tanima_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
@@ -115,6 +116,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
         }
       }
     });
+    if (Platform.isWindows) HardwareKeyboard.instance.addHandler(_masaustuTus);
     _initControllers();
     _hesaplamaCalisiyor = true;
     if (widget.baslangicBarkod != null) {
@@ -135,14 +137,50 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
 
   @override
   void dispose() {
+    if (Platform.isWindows) HardwareKeyboard.instance.removeHandler(_masaustuTus);
     for (final ctrl in _c.values) ctrl.dispose();
     super.dispose();
+  }
+
+  // ---- MASAÜSTÜ DÜZENİ (geniş pencere) ----
+  bool _masaustuMu(BuildContext context) =>
+      Platform.isWindows && MediaQuery.sizeOf(context).width > 1100;
+
+  /// Geniş pencerede iki sütun (sol: temel/fiyat, sağ: stok/detay), dar
+  /// pencerede/mobilde eskisi gibi tek sütun.
+  Widget _formDuzeni(List<Widget> sol, List<Widget> sag) {
+    if (!_masaustuMu(context)) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [...sol, ...sag]);
+    }
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: sol)),
+      const SizedBox(width: 24),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: sag)),
+    ]);
+  }
+
+  bool _masaustuTus(KeyEvent e) {
+    if (e is! KeyDownEvent || !mounted || _yukleniyor) return false;
+    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    final k = e.logicalKey;
+    final ctrl = HardwareKeyboard.instance.isControlPressed;
+    if (k == LogicalKeyboardKey.f2 || (ctrl && k == LogicalKeyboardKey.keyS)) {
+      _kaydet();
+    } else if (k == LogicalKeyboardKey.f3 && widget.duzenlenecekUrun != null) {
+      _sil();
+    } else if (k == LogicalKeyboardKey.f4) {
+      _otomatikBarkodUret();
+    } else {
+      return false;
+    }
+    return true;
   }
 
   // ---- GEMINI API ANAHTARI KONTROLÜ ----
   @override
   Widget build(BuildContext context) {
     final duzenleme = widget.duzenlenecekUrun != null;
+    final masaustu = _masaustuMu(context);
     return Scaffold(
       backgroundColor: context.scaffoldBg,
       appBar: TsAppBar(
@@ -228,7 +266,8 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                 padding: const EdgeInsets.all(16),
                 child: TsResponsive.formSarmalayici(
                   context: context,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  maxGenislik: masaustu ? 1200 : null,
+                  child: _formDuzeni([
                   _bolum('ÜRÜN RESMİ', Icons.image),
                   GestureDetector(
                     onTap: _resimSec,
@@ -414,6 +453,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                     onChanged: (v) => setState(() => _otomatikInd = v),
                   ),
 
+                  ], [
                   _bolum('STOK BİLGİLERİ', Icons.warehouse),
                   Row(children: [
                     Expanded(child: _alanSayi('stok', 'Mevcut Stok')),
@@ -502,7 +542,24 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                 ),
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
+      // Masaüstü: alt şerit (F2 Kaydet / F3 Sil / F4 Barkod Üret); mobil: FAB.
+      bottomNavigationBar: masaustu
+          ? MasaustuAltSerit(
+              ozetler: [
+                AltOzet('Ctrl+S', 'veya F2 ile kaydet'),
+              ],
+              tuslar: [
+                AltTus('F2', 'Kaydet', Icons.save, const Color(0xFF2E7D32),
+                    _yukleniyor ? null : _kaydet),
+                if (duzenleme)
+                  AltTus('F3', 'Sil', Icons.delete_outline, const Color(0xFFC62828),
+                      _yukleniyor ? null : _sil),
+                AltTus('F4', 'Barkod Üret', Icons.qr_code, const Color(0xFF6A1B9A),
+                    _yukleniyor ? null : _otomatikBarkodUret),
+              ],
+            )
+          : null,
+      floatingActionButton: masaustu ? null : FloatingActionButton.extended(
         backgroundColor: const Color(0xFF4361EE),
         foregroundColor: Colors.white,
         elevation: 2,

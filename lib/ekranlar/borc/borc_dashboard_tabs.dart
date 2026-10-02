@@ -200,6 +200,18 @@ class _AktifBorcListeTab extends ConsumerWidget {
           );
         }
 
+        // Geniş pencerede (masaüstü) tablo görünümü.
+        if (MediaQuery.sizeOf(context).width > 1100) {
+          return BorcMasaustuGorunum(
+            borclar: borclar,
+            onOde: onOde,
+            onYenile: () async {
+              ref.invalidate(aktifBorclarProvider);
+              ref.invalidate(borcDashboardProvider);
+            },
+          );
+        }
+
         final Map<String, List<BorcModel>> gruplar = {};
         for (final b in borclar) {
           final tur = _turEtiketi(b.tur);
@@ -279,6 +291,14 @@ class _OdenenBorcListeTab extends ConsumerWidget {
         final siraliBorclar = [...borclar]
           ..sort((a, b) => (b.odemeTarihi ?? b.sonOdemeTarihi)
               .compareTo(a.odemeTarihi ?? a.sonOdemeTarihi));
+
+        if (MediaQuery.sizeOf(context).width > 1100) {
+          return BorcMasaustuGorunum(
+            borclar: siraliBorclar,
+            odenenMod: true,
+            onYenile: () async => ref.invalidate(odenenBorclarProvider),
+          );
+        }
 
         final toplamOdenen = borclar.fold<double>(0, (s, b) => s + b.tutar);
 

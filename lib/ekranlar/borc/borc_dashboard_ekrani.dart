@@ -30,6 +30,7 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/log_servisi.dart';
 import 'widgets/borc_odeme_bottom_sheet.dart';
+import 'masaustu/borc_masaustu_gorunum.dart';
 
 // God-class sertleştirmesi (2026-09-22, kullanıcı onayıyla): bu dosya
 // 1370 satırdı. İçerik davranış DEĞİŞTİRİLMEDEN 4 parçaya ayrıldı —

@@ -9,6 +9,7 @@ import '../../modeller/banka_model.dart';
 import '../../saglayicilar/riverpod/banka_provider.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import 'masaustu/banka_masaustu_gorunum.dart';
 
 class BankaListeEkrani extends ConsumerWidget {
   const BankaListeEkrani({super.key});
@@ -40,7 +41,15 @@ class BankaListeEkrani extends ConsumerWidget {
           aksiyonMetni: 'Tekrar dene',
           aksiyon: () => ref.invalidate(bankalarProvider),
         ),
-        data: (bankalar) => TsListe<BankaModel>(
+        data: (bankalar) => MediaQuery.sizeOf(context).width > 1100
+            ? (bankalar.isEmpty
+                ? const TsBosDurum(ikon: Icons.business_outlined, baslik: 'Henüz banka eklenmemiş')
+                : BankaMasaustuGorunum(
+                    bankalar: bankalar,
+                    onSil: (b) => _sil(context, ref, b),
+                    onYenile: () async => ref.invalidate(bankalarProvider),
+                  ))
+            : TsListe<BankaModel>(
           ogeler: bankalar,
           aramaMetniAl: (b) => b.ad,
           yenile: () async => ref.invalidate(bankalarProvider),

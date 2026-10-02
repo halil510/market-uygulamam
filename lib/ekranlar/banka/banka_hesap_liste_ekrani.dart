@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../modeller/banka_hesap_model.dart';
 import '../../saglayicilar/riverpod/banka_provider.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import 'masaustu/banka_masaustu_gorunum.dart';
 
 class BankaHesapListeEkrani extends ConsumerWidget {
   final int bankaId;
@@ -39,7 +40,15 @@ class BankaHesapListeEkrani extends ConsumerWidget {
           aksiyonMetni: 'Tekrar dene',
           aksiyon: () => ref.invalidate(bankaHesaplarProvider(bankaId)),
         ),
-        data: (hesaplar) => TsListe<BankaHesapModel>(
+        data: (hesaplar) => MediaQuery.sizeOf(context).width > 1100
+            ? (hesaplar.isEmpty
+                ? const TsBosDurum(ikon: Icons.account_balance_outlined, baslik: 'Hesap bulunamadı')
+                : BankaHesapMasaustuGorunum(
+                    bankaId: bankaId,
+                    hesaplar: hesaplar,
+                    onYenile: () async => ref.invalidate(bankaHesaplarProvider(bankaId)),
+                  ))
+            : TsListe<BankaHesapModel>(
           ogeler: hesaplar,
           aramaMetniAl: (h) => h.hesapAdi,
           yenile: () async => ref.invalidate(bankaHesaplarProvider(bankaId)),

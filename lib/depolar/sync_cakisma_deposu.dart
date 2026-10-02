@@ -9,6 +9,7 @@ import '../modeller/sync_cakisma_model.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
+import '../veri/database/sync_cakisma_tespit.dart';
 
 class SyncCakismaDeposu {
   final Veritabani _db = Veritabani();
@@ -41,8 +42,48 @@ class SyncCakismaDeposu {
     }
   }
 
+  /// Çözülmemiş çakışmaları güncel tespit kurallarıyla yeniden değerlendirir
+  /// ve artık gerçek çakışma olmayanları (ondalık/tarih biçimi farkı, cihaz
+  /// kimliği, canlı masa durumu, sadece boş alan dolması) otomatik kapatır.
+  /// "Sadece boşluk dolduran" kayıtlarda gelen değer yerelde boş alana
+  /// yazılır (yerelde kaybolacak değer yoktur). Kapatılan sayı döner.
+  Future<int> sahteleriTemizle() async {
+    var kapatilan = 0;
+    try {
+      final db = await _d;
+      final rows = await db.query(DbSabitler.syncCakismalar, where: 'cozuldu = 0');
+      for (final r in rows) {
+        final c = SyncCakismaModel.fromMap(r);
+        final yerel = c.yerelKayit, gelen = c.gelenKayit;
+        if (yerel == null || gelen == null || c.kayitGlobalId == null) continue;
+        final farklar = SyncCakismaTespit.farklariBul(yerel, gelen);
+        final sahte = c.tablo == 'masalar' ||
+            farklar.isEmpty ||
+            SyncCakismaTespit.sadeceBoslukDoldurma(farklar);
+        if (!sahte) continue;
+        if (farklar.isNotEmpty && c.tablo != 'masalar') {
+          // Yalnızca yerelde hâlâ boş olan alanları doldur.
+          for (final e in farklar.entries) {
+            if (!RegExp(r'^[a-z0-9_]+$').hasMatch(e.key)) continue;
+            final deger = (e.value as Map)['gelen'];
+            await db.rawUpdate(
+                'UPDATE ${c.tablo} SET ${e.key} = ? WHERE global_id = ? '
+                "AND (${e.key} IS NULL OR ${e.key} = '')",
+                [deger, c.kayitGlobalId]);
+          }
+        }
+        await _cozumIsaretle(c.id!, tip: 'otomatik', kullanici: 'sistem');
+        kapatilan++;
+      }
+    } catch (e, st) {
+      LogServisi().hata('SyncCakismaDeposu.sahteleriTemizle', hata: e, yigin: st);
+    }
+    return kapatilan;
+  }
+
   Future<int> cozulmemisSayisi() async {
     try {
+      await sahteleriTemizle();
       final db = await _d;
       final rows = await db.rawQuery(
           'SELECT COUNT(*) as n FROM ${DbSabitler.syncCakismalar} WHERE cozuldu = 0');

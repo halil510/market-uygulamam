@@ -815,6 +815,12 @@ class Veritabani {
     try {
       final farklar = SyncCakismaTespit.farklariBul(yerelSatir, gelenSatir);
       if (farklar.isEmpty) return false; // gerçek bir fark yok, çakışma sayılmaz
+      // Sadece boşluk dolduran fark (yerel boş, gelen dolu): kaybolacak yerel
+      // değer yok → çakışma değil; çağıran gelen değeri normal uygular.
+      if (SyncCakismaTespit.sadeceBoslukDoldurma(farklar)) return false;
+      // Masa durumu (dolu/boş) canlı bir durumdur, kalıcı iş verisi değil —
+      // iki kasanın anlık farkı kullanıcıdan karar istenecek çakışma değildir.
+      if (tablo == 'masalar') return false;
 
       // 🔴🔴 KÖK NEDEN DÜZELTMESİ (kullanıcı bulgusu — "sync çakışma var
       // diyor"): ÖNCEDEN buraya, yerel satır ile gelen satır sadece

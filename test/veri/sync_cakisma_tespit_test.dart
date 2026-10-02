@@ -49,6 +49,27 @@ void main() {
       expect(farklar.keys.toSet(), equals({'ad', 'fiyat'}));
     });
 
+    test('ondalık gösterim, tarih dilimi ve cihaz_id farkı sahte çakışma üretmez', () {
+      final yerel = {'id': 1, 'global_id': 'g1', 'kdv': 0.8910891089108901,
+        'tarih': '2026-10-02T16:10:25.035286', 'cihaz_id': null};
+      final gelen = {'global_id': 'g1', 'kdv': 0.89108910891089,
+        'tarih': '2026-10-02T16:10:25.035286+00:00', 'cihaz_id': 'cihaz_1'};
+
+      expect(SyncCakismaTespit.farklariBul(yerel, gelen), isEmpty);
+    });
+
+    test('sadece boşluk dolduran fark çakışma sayılmaz, gerçek fark sayılır', () {
+      final bosDolan = SyncCakismaTespit.farklariBul(
+          {'id': 1, 'global_id': 'g1', 'cari_id': null},
+          {'global_id': 'g1', 'cari_id': 41});
+      expect(SyncCakismaTespit.sadeceBoslukDoldurma(bosDolan), isTrue);
+
+      final gercek = SyncCakismaTespit.farklariBul(
+          {'id': 1, 'global_id': 'g1', 'cari_id': 7},
+          {'global_id': 'g1', 'cari_id': 41});
+      expect(SyncCakismaTespit.sadeceBoslukDoldurma(gercek), isFalse);
+    });
+
     test('null vs değer farkı yakalanır', () {
       final yerel = {'id': 1, 'global_id': 'g1', 'aciklama': null,
         'last_updated': '2026-01-01T10:00:00'};

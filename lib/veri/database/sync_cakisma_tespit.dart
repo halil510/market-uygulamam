@@ -4,7 +4,9 @@
 // ayrıldı ki DB/singleton'a bağımlı olmadan izole test edilebilsin.
 class SyncCakismaTespit {
   /// Karşılaştırmadan hariç tutulan, iş verisi olmayan sütunlar.
-  static const Set<String> metaAlanlari = {'id', 'global_id', 'last_updated'};
+  /// 'cihaz_id' kaydı OLUŞTURAN cihazın izidir (iş verisi değil); bir cihaz
+  /// boş, öbürü dolu gönderse de gerçek çakışma sayılmaz.
+  static const Set<String> metaAlanlari = {'id', 'global_id', 'last_updated', 'cihaz_id'};
 
   /// Yerel ve gelen (buluttan) satır arasındaki, metadata dışı gerçek
   /// alan farklarını döner: {alan: {'yerel': x, 'gelen': y}}.
@@ -30,9 +32,39 @@ class SyncCakismaTespit {
   /// (int/double karışık olsa bile — SQLite ve JSON bunu sık karıştırır)
   /// sayısal olarak, aksi halde metin olarak karşılaştırır.
   static bool _esitMi(dynamic a, dynamic b) {
-    if (a is num && b is num) return a.toDouble() == b.toDouble();
-    return (a?.toString() ?? '') == (b?.toString() ?? '');
+    // Ondalık gösterim farkı (0.8910891089108901 ↔ 0.89108910891089) sahte
+    // çakışma üretmesin: ~1e-9 (göreli) altındaki fark eşit sayılır.
+    if (a is num && b is num) {
+      final x = a.toDouble(), y = b.toDouble();
+      final olcek = x.abs() > y.abs() ? x.abs() : y.abs();
+      return (x - y).abs() <= 1e-9 * (olcek < 1.0 ? 1.0 : olcek);
+    }
+    final sa = a?.toString() ?? '', sb = b?.toString() ?? '';
+    if (sa == sb) return true;
+    // Aynı anı farklı yazan tarih damgaları (yerelde dilimsiz, buluttan
+    // '+00:00'/'Z' ekli) eşit sayılır; dilimsiz = UTC.
+    final ta = _tarihCoz(sa), tb = _tarihCoz(sb);
+    if (ta != null && tb != null) return ta.isAtSameMomentAs(tb);
+    return false;
   }
+
+  static final RegExp _isoTarih = RegExp(
+      r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$');
+  static final RegExp _dilimli = RegExp(r'(Z|[+-]\d{2}:?\d{2})$');
+
+  static DateTime? _tarihCoz(String s) {
+    if (!_isoTarih.hasMatch(s)) return null;
+    return DateTime.tryParse(_dilimli.hasMatch(s) ? s : '${s}Z');
+  }
+
+  static bool _bos(dynamic v) => v == null || v.toString().isEmpty;
+
+  /// Tüm farklar "yerel boş, gelen dolu" ise yerelde kaybolacak bir değer
+  /// yoktur — gelen değer sadece boşluğu doldurur, çakışma sayılmamalı
+  /// (ör. cari sonradan inince satış/iade kaydının boş cari_id'sinin dolması).
+  static bool sadeceBoslukDoldurma(Map<String, dynamic> farklar) =>
+      farklar.isNotEmpty &&
+      farklar.values.every((d) => _bos((d as Map)['yerel']) && !_bos(d['gelen']));
 
   /// farklariBul() ile bulunan bir "fark"ın GERÇEK bir çakışma mı,
   /// yoksa bu cihazın hiç dokunmadığı, başka bir cihazın DAHA ÖNCE

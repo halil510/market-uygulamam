@@ -71,6 +71,7 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
   Future<void> _yukle() async {
     setState(() => _yukleniyor = true);
     try {
+      await _depo.sahteleriTemizle();
       final liste = await _depo.listele(sadeceCozulmemis: _sadeceCozulmemis);
       final syncKopyalari = await _satisDepo.syncKopyalariGetir();
       if (!mounted) return;

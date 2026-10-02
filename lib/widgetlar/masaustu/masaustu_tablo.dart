@@ -176,9 +176,9 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
     final secili = identical(s, widget.secili) || s == widget.secili;
     final vurgu = _vurgu == i;
     final zemin = secili
-        ? TsRenk.primary.withValues(alpha: 0.16)
+        ? TsRenk.primary.withValues(alpha: 0.32)
         : vurgu
-            ? TsRenk.primary.withValues(alpha: 0.07)
+            ? TsRenk.primary.withValues(alpha: 0.15)
             : (i.isEven ? context.cardBg : context.scaffoldBg.withValues(alpha: 0.6));
     return MouseRegion(
       onEnter: (_) => setState(() => _vurgu = i),
@@ -194,7 +194,18 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
                 widget.onSagTik!(s, d.globalPosition);
               },
         child: Container(
-          color: zemin,
+          // Seçili satır belirgin: koyu zemin + sol kenarda 4px vurgu çubuğu
+          // (çubuk her satırda yer tutar, seçimle satır kaymaz).
+          decoration: BoxDecoration(
+            color: zemin,
+            border: Border(
+              left: BorderSide(
+                  width: 4,
+                  color: secili
+                      ? TsRenk.primary
+                      : (vurgu ? TsRenk.primary.withValues(alpha: 0.45) : Colors.transparent)),
+            ),
+          ),
           child: Row(children: [
             for (final k in widget.kolonlar)
               SizedBox(

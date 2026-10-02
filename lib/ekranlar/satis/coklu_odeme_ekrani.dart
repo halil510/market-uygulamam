@@ -9,6 +9,7 @@
 // ekrandaki KALAN miktar o yönteme atanır ve kalan 0 olduğunda satış otomatik
 // tamamlanır. Zaten atanmış bir yönteme tekrar basmak o atamayı geri alır
 // (düzeltme/silme).
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -116,6 +117,54 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
     });
   }
 
+  // ── Fiziksel klavye (masaüstü) ───────────────────────────────────────────
+  // Metin kutusu YOK: rakamlar doğrudan ekrandaki tutara yazılır. Rakam/numpad
+  // yazar, nokta/virgül ondalık, Backspace siler, Delete temizler, F1-F4
+  // ödeme yöntemlerini seçer, Enter satışı tamamlar. Esc iletişim kutusunu
+  // kapatır (Dialog'un kendi davranışı).
+  static final _rakamTuslari = <LogicalKeyboardKey, String>{
+    LogicalKeyboardKey.digit0: '0', LogicalKeyboardKey.numpad0: '0',
+    LogicalKeyboardKey.digit1: '1', LogicalKeyboardKey.numpad1: '1',
+    LogicalKeyboardKey.digit2: '2', LogicalKeyboardKey.numpad2: '2',
+    LogicalKeyboardKey.digit3: '3', LogicalKeyboardKey.numpad3: '3',
+    LogicalKeyboardKey.digit4: '4', LogicalKeyboardKey.numpad4: '4',
+    LogicalKeyboardKey.digit5: '5', LogicalKeyboardKey.numpad5: '5',
+    LogicalKeyboardKey.digit6: '6', LogicalKeyboardKey.numpad6: '6',
+    LogicalKeyboardKey.digit7: '7', LogicalKeyboardKey.numpad7: '7',
+    LogicalKeyboardKey.digit8: '8', LogicalKeyboardKey.numpad8: '8',
+    LogicalKeyboardKey.digit9: '9', LogicalKeyboardKey.numpad9: '9',
+  };
+  static const _fTuslari = [
+    LogicalKeyboardKey.f1, LogicalKeyboardKey.f2,
+    LogicalKeyboardKey.f3, LogicalKeyboardKey.f4,
+  ];
+
+  KeyEventResult _klavye(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final k = e.logicalKey;
+    final rakam = _rakamTuslari[k];
+    if (rakam != null) {
+      _rakamBas(rakam);
+    } else if (k == LogicalKeyboardKey.period ||
+        k == LogicalKeyboardKey.comma ||
+        k == LogicalKeyboardKey.numpadDecimal ||
+        k == LogicalKeyboardKey.numpadComma) {
+      _noktaBas();
+    } else if (k == LogicalKeyboardKey.backspace) {
+      _silBas();
+    } else if (k == LogicalKeyboardKey.delete) {
+      _temizleBas();
+    } else if (k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.numpadEnter) {
+      if (_kalan <= 0.005 && _atamalar.isNotEmpty) _tamamla();
+    } else if (e is KeyDownEvent && _fTuslari.contains(k)) {
+      final i = _fTuslari.indexOf(k);
+      if (i < _aktifYontemler.length) _yontemBas(_aktifYontemler[i].ad);
+    } else {
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
+  }
+
   // ── Ödeme yöntemi butonu ─────────────────────────────────────────────────
   void _yontemBas(String yontem) {
     HapticFeedback.lightImpact();
@@ -161,7 +210,10 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
   Widget build(BuildContext context) {
     final tamamlanabilir = _kalan <= 0.005 && _atamalar.isNotEmpty;
 
-    return Scaffold(
+    return Focus(
+      autofocus: true,
+      onKeyEvent: _klavye,
+      child: Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
         margin: const EdgeInsets.all(16),
@@ -181,13 +233,21 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
                 _buildYontemGrid(),
                 const SizedBox(height: 12),
                 _buildTusTakimi(),
+                if (Platform.isWindows)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                        'Klavye: rakam yazın · F1-F4 ödeme yöntemi · Enter satışı tamamla · Del temizle',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
+                  ),
               ]),
             ),
           ),
           _buildBottomBar(tamamlanabilir),
         ]),
       ),
-    );
+    ));
   }
 
   Widget _buildHeader() => Container(
@@ -241,7 +301,9 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
     physics: const NeverScrollableScrollPhysics(),
     mainAxisSpacing: 10, crossAxisSpacing: 10,
     childAspectRatio: 2.6,
-    children: _aktifYontemler.map((y) {
+    children: _aktifYontemler.asMap().entries.map((en) {
+      final y = en.value;
+      final fRozet = Platform.isWindows ? 'F${en.key + 1}' : null;
       final atandi = _atamalar.containsKey(y.ad);
       final tutar = _atamalar[y.ad];
       return Material(
@@ -260,7 +322,7 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
               Icon(y.ikon, color: y.renk, size: 22),
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(y.ad, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                Text(fRozet != null ? '${y.ad}  [$fRozet]' : y.ad, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
                     color: atandi ? y.renk : TsRenk.metinBirincil(context))),
                 if (atandi)
                   Text(ParaUtils.formatla(tutar!), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: y.renk)),

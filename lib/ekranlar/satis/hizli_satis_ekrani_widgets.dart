@@ -147,7 +147,29 @@ class _OdemeSecimSheet extends StatelessWidget {
       (ikon: Icons.tune,            label: 'Karma Ödeme',  renk: Color(0xFF607D8B), deger: 'Karma'),
     ];
 
-    return Container(
+    // Masaüstü klavyesi: 1 Nakit · 2 Kredi Kartı · 3 Havale · 4 Cari · 5 QR ·
+    // 6 Karma (üst sıra ve numpad). Metin kutusu gerekmez.
+    const sayiTuslari = <LogicalKeyboardKey>[
+      LogicalKeyboardKey.digit1, LogicalKeyboardKey.digit2, LogicalKeyboardKey.digit3,
+      LogicalKeyboardKey.digit4, LogicalKeyboardKey.digit5, LogicalKeyboardKey.digit6,
+    ];
+    const numpadTuslari = <LogicalKeyboardKey>[
+      LogicalKeyboardKey.numpad1, LogicalKeyboardKey.numpad2, LogicalKeyboardKey.numpad3,
+      LogicalKeyboardKey.numpad4, LogicalKeyboardKey.numpad5, LogicalKeyboardKey.numpad6,
+    ];
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, e) {
+        if (e is! KeyDownEvent) return KeyEventResult.ignored;
+        var i = sayiTuslari.indexOf(e.logicalKey);
+        if (i < 0) i = numpadTuslari.indexOf(e.logicalKey);
+        if (i < 0 || i >= yontemler.length) return KeyEventResult.ignored;
+        final y = yontemler[i];
+        if (y.deger == 'Cari' && !musteriSecili) return KeyEventResult.handled;
+        Navigator.pop(context, y.deger);
+        return KeyEventResult.handled;
+      },
+      child: Container(
       decoration: BoxDecoration(
         color: context.cardBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -191,7 +213,7 @@ class _OdemeSecimSheet extends StatelessWidget {
                     children: [
                       Icon(y.ikon, color: y.renk, size: 28),
                       const SizedBox(height: 6),
-                      Text(y.label,
+                      Text(Platform.isWindows ? '${i + 1} · ${y.label}' : y.label,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                               fontSize: 11,
@@ -208,8 +230,14 @@ class _OdemeSecimSheet extends StatelessWidget {
             );
           }),
         ),
+        if (Platform.isWindows)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text('Klavye: 1 Nakit · 2 Kart · 3 Havale · 4 Cari · 5 QR · 6 Karma',
+                style: TextStyle(color: context.textSecondary, fontSize: 11)),
+          ),
       ]),
-    );
+    ));
   }
 }
 

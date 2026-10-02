@@ -27,8 +27,11 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
+  // Kasa bilgisayarı: pencere ilk karede tam ekran (maksimize) açılır. Eskiden
+  // burada Show() (SW_SHOWNORMAL) çağrılıyordu; bu, Dart tarafındaki
+  // windowManager.maximize() çağrısını eziyor ve pencere 1280x720 kalıyordu.
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
-    this->Show();
+    ShowWindow(this->GetHandle(), SW_SHOWMAXIMIZED);
   });
 
   // Flutter can complete the first frame before the "show window" callback is

@@ -9,6 +9,7 @@
 // Telefon davranışı bu değişiklikle HİÇBİR ŞEKİLDE etkilenmez — sadece
 // genişlik eşiğini geçen ekranlarda (tablet, katlanabilir telefon açık
 // hali, masaüstü penceresi, yatay mod) ek düzen devreye girer.
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 
 class TsResponsive {
@@ -50,6 +51,9 @@ class TsResponsive {
   /// tablette ([masaustuMaxGenislik] altı) hiçbir etkisi yoktur.
   static Widget uygulamaSarmalayici(BuildContext context, Widget? child) {
     final icerik = child ?? const SizedBox.shrink();
+    // Windows: pencereyi tam kapla (büyük ekran için arayüz zaten MasaustuOlcek
+    // ile orantılı büyütülüyor); 1440 sınırı yalnız mobil/tablet içindir.
+    if (defaultTargetPlatform == TargetPlatform.windows) return icerik;
     final w = MediaQuery.sizeOf(context).width;
     if (w <= masaustuMaxGenislik) return icerik;
     return ColoredBox(

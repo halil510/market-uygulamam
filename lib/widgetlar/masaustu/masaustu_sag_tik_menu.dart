@@ -13,11 +13,15 @@ class MenuOge {
 
 Future<void> masaustuMenuAc(
     BuildContext context, Offset konum, List<MenuOge> ogeler) async {
-  final ekran = MediaQuery.sizeOf(context);
+  // Arayüz büyütülmüşse (MasaustuOlcek) küresel fare konumu ile Overlay'in
+  // yerel koordinatları farklıdır — menü konumu overlay'e göre dönüştürülür.
+  final overlay = Navigator.of(context).overlay?.context.findRenderObject() as RenderBox?;
+  final yerel = overlay != null ? overlay.globalToLocal(konum) : konum;
+  final ekran = overlay?.size ?? MediaQuery.sizeOf(context);
   final secilen = await showMenu<int>(
     context: context,
     position: RelativeRect.fromLTRB(
-        konum.dx, konum.dy, ekran.width - konum.dx, ekran.height - konum.dy),
+        yerel.dx, yerel.dy, ekran.width - yerel.dx, ekran.height - yerel.dy),
     items: [
       for (var i = 0; i < ogeler.length; i++) ...[
         if (ogeler[i].ayiracOnce) const PopupMenuDivider(height: 1),

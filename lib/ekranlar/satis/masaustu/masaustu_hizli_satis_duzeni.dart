@@ -4,7 +4,7 @@
 //
 //   ┌───────────────────────────────┬──────────────────┐
 //   │ arama                         │  TOPLAM  0,00    │
-//   │ sepet tablosu                 │  F12 Ödeme       │
+//   │ sepet tablosu                 │  F12 Ödeme / F1 Nakit │
 //   │───────────────────────────────│  F tuşları       │
 //   │ grup sekmeleri + ürün tuşları │  sayı tuşları    │
 //   └───────────────────────────────┴──────────────────┘
@@ -34,6 +34,9 @@ class MasaustuHizliSatisDuzeni extends ConsumerStatefulWidget {
   final void Function(UrunModel urun) onUrunSec;
   final void Function(SepetKalem kalem, int index) onKalemDuzenle;
   final VoidCallback onOdeme;
+
+  /// F1: ödeme penceresi açmadan satışı doğrudan Nakit olarak bitirir.
+  final VoidCallback onHizliNakit;
   final VoidCallback onAramaOdak;
   final VoidCallback onStok;
   final VoidCallback onAskiyaAl;
@@ -50,6 +53,7 @@ class MasaustuHizliSatisDuzeni extends ConsumerStatefulWidget {
     required this.onUrunSec,
     required this.onKalemDuzenle,
     required this.onOdeme,
+    required this.onHizliNakit,
     required this.onAramaOdak,
     required this.onStok,
     required this.onAskiyaAl,
@@ -96,7 +100,9 @@ class _MasaustuHizliSatisDuzeniState
     final sepet = ref.read(sepetProvider);
     final odemeAktif = !sepet.bos && !sepet.satisIsleniyor;
 
-    if (k == LogicalKeyboardKey.f2) {
+    if (k == LogicalKeyboardKey.f1) {
+      if (odemeAktif) widget.onHizliNakit();
+    } else if (k == LogicalKeyboardKey.f2) {
       widget.onAramaOdak();
     } else if (k == LogicalKeyboardKey.f3) {
       widget.onStok();
@@ -294,6 +300,8 @@ class _MasaustuHizliSatisDuzeniState
         ana: FTus('F12', 'ÖDEME', const Color(0xFFD32F2F),
             odemeAktif ? widget.onOdeme : null),
         tuslar: [
+          FTus('F1', 'Nakit Bitir', const Color(0xFF2E7D32),
+              odemeAktif ? widget.onHizliNakit : null),
           FTus('F2', 'Ara', const Color(0xFFF9A825), widget.onAramaOdak),
           FTus('F3', 'Stok', const Color(0xFFC62828), widget.onStok),
           FTus('F4', 'Askıya Al', const Color(0xFF2E7D32),

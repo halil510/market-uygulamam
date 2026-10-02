@@ -18,6 +18,7 @@ extension _HizliSatisMasaustuExt on _HizliSatisEkraniState {
         onUrunSec: _masaustuUrunSec,
         onKalemDuzenle: _sepetKalemMiktarDuzenle,
         onOdeme: _odemeYontemiSec,
+        onHizliNakit: _hizliNakitSat,
         onAramaOdak: () => _araFocus.requestFocus(),
         onStok: () => context.push('/urun'),
         onAskiyaAl: _askiyaAl,

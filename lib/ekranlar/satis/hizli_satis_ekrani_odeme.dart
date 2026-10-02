@@ -73,6 +73,24 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
     }
   }
 
+  // ── Hızlı Nakit (masaüstü F1) ────────────────────────────────────────────────
+  // F12 ödeme penceresini açar; F1 ise pencere/tutar sormadan satışı DOĞRUDAN
+  // Nakit olarak, tam sepet tutarı alınmış kabul edip bitirir (para üstü 0).
+  // Çift satışı önlemek için F12 akışıyla AYNI korumalar (_islemAktif/_dialogAcik).
+  Future<void> _hizliNakitSat() async {
+    final sepet = ref.read(sepetProvider);
+    if (sepet.bos || sepet.satisIsleniyor || _islemAktif || _dialogAcik) return;
+    _islemBasladi();
+    try {
+      await _satisiTamamla('Nakit', sepet.genelToplam, 0.0);
+    } catch (e) {
+      if (kDebugMode) debugPrint('Hızlı nakit satış hatası: $e');
+      if (mounted) BildirimServisi.hata(context, 'Satış hatası: $e');
+    } finally {
+      _islemBitti();
+    }
+  }
+
   // ── Ödeme Akışı ──────────────────────────────────────────────────────────────
   Future<void> _odemeYontemiSec() async {
     final sepet  = ref.read(sepetProvider);

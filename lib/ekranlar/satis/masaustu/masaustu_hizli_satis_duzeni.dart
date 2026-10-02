@@ -4,7 +4,7 @@
 //
 //   ┌───────────────────────────────┬──────────────────┐
 //   │ arama                         │  TOPLAM  0,00    │
-//   │ sepet tablosu                 │  F12 Ödeme / F1 Nakit │
+//   │ sepet tablosu                 │  F12 Ödeme       │
 //   │───────────────────────────────│  F tuşları       │
 //   │ grup sekmeleri + ürün tuşları │  sayı tuşları    │
 //   └───────────────────────────────┴──────────────────┘
@@ -300,8 +300,6 @@ class _MasaustuHizliSatisDuzeniState
         ana: FTus('F12', 'ÖDEME', const Color(0xFFD32F2F),
             odemeAktif ? widget.onOdeme : null),
         tuslar: [
-          FTus('F1', 'Nakit Bitir', const Color(0xFF2E7D32),
-              odemeAktif ? widget.onHizliNakit : null),
           FTus('F2', 'Ara', const Color(0xFFF9A825), widget.onAramaOdak),
           FTus('F3', 'Stok', const Color(0xFFC62828), widget.onStok),
           FTus('F4', 'Askıya Al', const Color(0xFF2E7D32),

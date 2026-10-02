@@ -535,15 +535,41 @@ class Veritabani {
   Future<void> _cakismaKorumasiUygula(
       Database database, String tablo, List<Map<String, dynamic>> kayitlar) async {
     if (tablo == 'cari') {
-      for (final kayit in kayitlar) {
+      // 🔴 DÜZELTME (2026-10-02, kullanıcı bulgusu: Excel'den aktarılan cariler
+      // bulutta 2 kez, 116'sı aynı "CARIO-128" koduyla görünüyordu): yeni kod
+      // ÖNCEDEN yalnızca DB'deki en büyük numaradan türetiliyordu; gelen
+      // kayıtlar henüz eklenmediği için aynı toplu çekmedeki TÜM çakışanlar
+      // aynı kodu alıyordu. Bu çağrı boyunca atanan en büyük numara tutulur.
+      var buCagriSonNo = 0;
+      String unvanAnahtari(Object? u) =>
+          (u?.toString() ?? '').trim().replaceAll(RegExp(r'\s+'), ' ').toUpperCase();
+      for (final kayit in List<Map<String, dynamic>>.of(kayitlar)) {
         final gelenKod = kayit['cari_kodu'];
         final gelenGlobalId = kayit['global_id'];
         if (gelenKod == null || gelenGlobalId == null) continue;
         final cakisan = await database.query('cari',
-            columns: ['id', 'global_id', 'olusturma_tarihi'],
+            columns: ['id', 'global_id', 'olusturma_tarihi', 'unvan'],
             where: 'cari_kodu = ? AND global_id != ?',
             whereArgs: [gelenKod, gelenGlobalId]);
         if (cakisan.isNotEmpty) {
+          // Aynı kod + aynı unvan = büyük olasılıkla AYNI cari (ör. aynı Excel
+          // iki kez içe aktarıldı). İkinci bir cari olarak saklanıp bakiyesi
+          // (açılış hareketi) ikiye katlanmasın — gelen kopya yerele alınmaz.
+          // Yalnızca gelen kayıt yerelden DAHA YENİ ise atlanır; daha eskiyse
+          // veri kaybetmemek için eski davranış (yeniden adlandırma) sürer.
+          final yerelKayit = cakisan.first;
+          final ayniKisi =
+              unvanAnahtari(kayit['unvan']) == unvanAnahtari(yerelKayit['unvan']);
+          String sira(Object? tarih, Object? gid) => '${tarih ?? '9999'}|${gid ?? ''}';
+          final gelenDahaYeni = sira(kayit['olusturma_tarihi'], gelenGlobalId)
+                  .compareTo(sira(yerelKayit['olusturma_tarihi'], yerelKayit['global_id'])) >=
+              0;
+          if (ayniKisi && gelenDahaYeni) {
+            kayitlar.remove(kayit);
+            LogServisi().bilgi('Senkronizasyon: "${kayit['unvan']}" ($gelenKod) '
+                'zaten aynı kod ve unvanla kayıtlı — gelen kopya yerele alınmadı.');
+            continue;
+          }
           final maxRows = await database.rawQuery(
               "SELECT cari_kodu FROM cari WHERE cari_kodu LIKE 'CARIO-%' "
               "ORDER BY CAST(SUBSTR(cari_kodu, 7) AS INTEGER) DESC LIMIT 1");
@@ -552,6 +578,8 @@ class Veritabani {
             final kod = maxRows.first['cari_kodu'] as String?;
             sonNo = int.tryParse(kod?.replaceFirst('CARIO-', '') ?? '') ?? 0;
           }
+          if (buCagriSonNo > sonNo) sonNo = buCagriSonNo;
+          buCagriSonNo = sonNo + 1;
           final yeniKod = 'CARIO-${sonNo + 1}';
           // 🔴 DÜZELTME (2026-09-27, çoklu terminal): ÖNCEDEN her zaman GELEN
           // cari yeniden adlandırılıyor ve bu yalnızca YERELDE kalıyordu —

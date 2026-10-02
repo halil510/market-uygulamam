@@ -295,6 +295,23 @@ class CariDeposu {
     }
   }
 
+  /// Aynı unvanlı (büyük/küçük harf ve fazla boşluk duyarsız) aktif cari var mı?
+  /// Excel içe aktarmada, kodu farklı yazılmış (ör. CARI0 / CARIO) ya da
+  /// henüz buluttan çekilmemiş kopya carileri yakalamak için.
+  Future<CariModel?> unvanlaGetir(String unvan) async {
+    try {
+      final db = await _d;
+      final rows = await db.query('cari',
+          where: 'UPPER(TRIM(unvan)) = UPPER(TRIM(?)) AND is_deleted = 0',
+          whereArgs: [unvan.replaceAll(RegExp(r'\s+'), ' ')],
+          limit: 1);
+      return rows.isEmpty ? null : CariModel.fromMap(rows.first);
+    } catch (e, st) {
+      LogServisi().hata('Cari.unvanlaGetir', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
   /// Excel dışa aktarım için: TÜM carileri (pasif dahil), her birinin
   /// toplam borç/alacak tutarı (cari_hareket'ten SUM) ve varsayılan
   /// adresiyle birlikte döner. cari.bakiye zaten (borç-alacak) olduğu

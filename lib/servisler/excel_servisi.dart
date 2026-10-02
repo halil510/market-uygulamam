@@ -1433,6 +1433,17 @@ class ExcelServisi {
           }
           guncellenen++;
         } else {
+          // Kod yeni ama aynı unvanlı cari zaten var → büyük olasılıkla aynı
+          // Excel/cari ikinci kez aktarılıyor (kod yazımı farklı ya da bulut
+          // verisi henüz çekilmedi). İkinci kayıt + ikinci açılış bakiyesi
+          // yaratmak yerine atla ve kullanıcıya bildir.
+          final ayniUnvanli = await cariDepo.unvanlaGetir(unvan);
+          if (ayniUnvanli != null) {
+            hata++;
+            hatalar.add('Satır ${i + 1} ($kod): "$unvan" zaten ${ayniUnvanli.cariKodu} '
+                'koduyla kayıtlı — atlandı. Önce "Buluttan Al" yapıp tekrar deneyin.');
+            continue;
+          }
           final yeniId = await cariDepo.ekle(CariModel(
             cariKodu: kod,
             unvan: unvan,

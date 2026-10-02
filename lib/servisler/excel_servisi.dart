@@ -1211,15 +1211,18 @@ class ExcelServisi {
     }
 
     for (final k in iadeler) {
-      final fiyat      = (k['birim_fiyat'] as num?)?.toDouble() ?? 0.0;
+      // Uygulamada birim_fiyat KDV DAHİLdir. Örnek dosyadaki gibi: Fiyat/Tutarı/
+      // Net Fiyat/Net Tutar KDV HARİÇ, "Kdv li ..." sütunları KDV dahildir.
+      final birimKdvli = (k['birim_fiyat'] as num?)?.toDouble() ?? 0.0;
       final miktar     = (k['miktar'] as num?)?.toDouble() ?? 0.0;
       final kdvOran    = (k['kdv_oran'] as num?)?.toDouble() ?? 0.0;
       final iskontoOr  = (k['iskonto_oran'] as num?)?.toDouble() ?? 0.0;
+      final fiyat      = birimKdvli / (1 + kdvOran / 100);
       final tutar      = fiyat * miktar;
       final iskontoTut = tutar * iskontoOr / 100;
       final netFiyat   = fiyat * (1 - iskontoOr / 100);
       final netTutar   = netFiyat * miktar;
-      final kdvliF     = netFiyat * (1 + kdvOran / 100);
+      final kdvliF     = birimKdvli * (1 - iskontoOr / 100);
       final kdvliT     = kdvliF * miktar;
       final kdvTutar   = kdvliT - netTutar;
       sheet.appendRow([
@@ -1241,7 +1244,7 @@ class ExcelServisi {
         DoubleCellValue(kdvOran),
         DoubleCellValue(kdvTutar),
         TextCellValue(''),
-        DoubleCellValue(fiyat),
+        DoubleCellValue((k['kart_satis_fiyati'] as num?)?.toDouble() ?? birimKdvli),
       ]);
     }
 
@@ -1250,6 +1253,76 @@ class ExcelServisi {
     final path  = dir.path + '/iade_alma_' + DateTime.now().millisecondsSinceEpoch.toString() + '.xlsx';
     await File(path).writeAsBytes(bytes);
     return path;
+  }
+
+  /// İADE ALMA Excel içe alma — başlıklar [iadeExcelDisaAl] / örnek "İADE
+  /// ALMA.xlsx" ile birebir. Satırları okur, veritabanına DOKUNMAZ; her satır:
+  /// {kod, barkod, urun_adi, miktar, birim_fiyat (KDV dahil, indirim sonrası),
+  /// kdv_oran, satir}. Ek/eksik sütun sorun değildir; kod ve barkodu boş,
+  /// miktarı 0 olan satırlar atlanır. birim_fiyat okunamazsa null döner
+  /// (çağıran ürünün güncel fiyatını kullanır).
+  Future<List<Map<String, dynamic>>> iadeExcelIceAl(Uint8List bytes) async {
+    final excel = await compute(_decodeExcelIsolate, bytes);
+    if (excel.tables.isEmpty) throw Exception('Excel dosyasında sayfa bulunamadı');
+    final sheet = excel.tables[excel.tables.keys.first]!;
+    if (sheet.rows.isEmpty) return [];
+
+    final idx = <String, int>{};
+    final baslik = sheet.rows.first;
+    for (var i = 0; i < baslik.length; i++) {
+      final b = _normalizeString(_getCellValue(baslik[i]));
+      if (b.isNotEmpty) idx.putIfAbsent(b, () => i);
+    }
+    int? bul(List<String> adlar) {
+      for (final a in adlar) {
+        final i = idx[_normalizeString(a)];
+        if (i != null) return i;
+      }
+      return null;
+    }
+    final kodI = bul(['Kod', 'Stok Kodu']);
+    final barkodI = bul(['Barkod']);
+    if (kodI == null && barkodI == null) {
+      throw Exception('"Kod" veya "Barkod" sütunu bulunamadı');
+    }
+    final adI = bul(['Ürün Adı', 'Urun Adi']);
+    final miktarI = bul(['Miktar', 'Ana Miktar']);
+    final kdvliFiyatI = bul(['Kdv li fiyat']);
+    final netFiyatI = bul(['Net Fiyat']);
+    final fiyatI = bul(['Fiyat']);
+    final iskontoI = bul(['Indirim (%)', 'İndirim (%)']);
+    final kdvI = bul(['Kdv (%)']);
+
+    String metin(List<dynamic> r, int? i) =>
+        (i != null && i < r.length) ? _getCellValue(r[i]) : '';
+    double? sayi(List<dynamic> r, int? i) =>
+        (i != null && i < r.length) ? _getCellDouble(r[i]) : null;
+
+    final sonuc = <Map<String, dynamic>>[];
+    for (var s = 1; s < sheet.rows.length; s++) {
+      final r = sheet.rows[s];
+      final kod = metin(r, kodI), barkod = metin(r, barkodI);
+      if (kod.isEmpty && barkod.isEmpty) continue; // boş/toplam satırı
+      final miktar = sayi(r, miktarI) ?? 0;
+      if (miktar <= 0) continue;
+      final kdv = sayi(r, kdvI) ?? 0;
+      final isk = sayi(r, iskontoI) ?? 0;
+      double? birim = sayi(r, kdvliFiyatI);
+      birim ??= sayi(r, netFiyatI) != null ? sayi(r, netFiyatI)! * (1 + kdv / 100) : null;
+      birim ??= sayi(r, fiyatI) != null
+          ? sayi(r, fiyatI)! * (1 + kdv / 100) * (1 - isk / 100)
+          : null;
+      sonuc.add({
+        'kod': kod,
+        'barkod': barkod,
+        'urun_adi': metin(r, adI),
+        'miktar': miktar,
+        'birim_fiyat': birim,
+        'kdv_oran': kdv,
+        'satir': s + 1,
+      });
+    }
+    return sonuc;
   }
 
   // ══════════════════════════════════════════════════════════════════════

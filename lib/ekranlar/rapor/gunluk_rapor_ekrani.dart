@@ -216,11 +216,49 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
     }
     
     final excel = Excel.createExcel();
-    
-    // ---------- 1. ÖZET SAYFASI ----------
-    final ozetSayfa = excel['Gun Sonu Ozeti'];
+
+    // Başlıklar "GÜNSONU.xlsx" örnek dosyasıyla BİREBİR aynıdır ve detay sayfa
+    // ilk sayfadır (dış programlar ilk sayfayı okur); sondaki Müşteri/Tarih/Saat
+    // ek sütunlardır.
+    final detaySayfa = excel['Günsonu'];
     excel.delete('Sheet1');
-    
+    detaySayfa.appendRow([
+      'Barkod', 'Ürün Adı', 'Miktar', 'Birim', 'Kdv li fiyat', 'Kdv li tutar',
+      'İndirim', 'Kdv (%)', 'Net Tutar TL', 'Müşteri', 'Tarih', 'Saat'
+    ].map((b) => TextCellValue(b)).toList());
+    int toplamKalemSayisi = 0;
+    for (final row in sorguSonucu) {
+      var kod = row['barkod']?.toString() ?? '';
+      if (kod.isEmpty) kod = row['urun_id']?.toString() ?? '';
+      final miktar = _toDouble(row['miktar']);
+      final birimFiyat = _toDouble(row['birim_fiyat']);
+      final kdvliTutar = birimFiyat * miktar;
+      final indirim = _toDouble(row['iskonto_tutar']);
+      final kayitliTutar = _toDouble(row['toplam_tutar']);
+      final tarih = DateTime.tryParse(row['tarih']?.toString() ?? '') ?? DateTime.now();
+      final birim = (row['birim_adi']?.toString() ?? '').isEmpty
+          ? 'ADET'
+          : row['birim_adi'].toString();
+      detaySayfa.appendRow([
+        TextCellValue(excelIcinGuvenliMetin(kod)),
+        TextCellValue(excelIcinGuvenliMetin(row['urun_adi']?.toString() ?? '-')),
+        DoubleCellValue(miktar),
+        TextCellValue(birim),
+        DoubleCellValue(birimFiyat),
+        DoubleCellValue(kdvliTutar),
+        DoubleCellValue(indirim),
+        DoubleCellValue(_toDouble(row['kdv_oran'])),
+        DoubleCellValue(kayitliTutar > 0 ? kayitliTutar : kdvliTutar - indirim),
+        TextCellValue(excelIcinGuvenliMetin(row['cari_unvan']?.toString() ?? 'Perakende')),
+        TextCellValue(DateFormat('dd.MM.yyyy').format(tarih)),
+        TextCellValue(DateFormat('HH:mm:ss').format(tarih)),
+      ]);
+      toplamKalemSayisi++;
+    }
+
+    // ---------- ÖZET SAYFASI ----------
+    final ozetSayfa = excel['Gun Sonu Ozeti'];
+
     ozetSayfa.appendRow([TextCellValue('GUN SONU RAPORU')]);
     ozetSayfa.appendRow([TextCellValue('Tarih Araligi: ${DateFormat('dd.MM.yyyy').format(_baslangic)} - ${DateFormat('dd.MM.yyyy').format(_bitis)}')]);
     ozetSayfa.appendRow([TextCellValue('Olusturma: ${DateFormat('dd.MM.yyyy HH:mm:ss').format(DateTime.now())}')]);
@@ -239,57 +277,6 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
     ozetSayfa.appendRow([TextCellValue('Iade'), DoubleCellValue(_iadeToplam)]);
     ozetSayfa.appendRow([TextCellValue('Brut Kar'), DoubleCellValue(_brutKar)]);
     ozetSayfa.appendRow([TextCellValue('Net Kar'), DoubleCellValue(_kar)]);
-    
-    // ---------- 2. DETAYLI SATIS RAPORU ----------
-    final detaySayfa = excel['Satis Detay Raporu'];
-    
-    final basliklar = [
-      'Kod', 'Urun Adi', 'Miktar', 'Birim',
-      'Kdv li fiyat', 'Kdv li tutar', 'Indirim', 'Kdv (%)', 'Net Tutar TL',
-      'Musteri', 'Tarih', 'Saat'
-    ];
-    
-    detaySayfa.appendRow(basliklar.map((b) => TextCellValue(b)).toList());
-    
-    int toplamKalemSayisi = 0;
-    for (final row in sorguSonucu) {
-      String kod = row['barkod']?.toString() ?? '';
-      if (kod.isEmpty) kod = row['urun_id']?.toString() ?? '';
-      
-      String urunAdi = row['urun_adi']?.toString() ?? '-';
-      double miktar = _toDouble(row['miktar']);
-      String birim = 'ADET';
-      double kdvliFiyat = _toDouble(row['birim_fiyat']);
-      double kdvliTutar = _toDouble(row['toplam_tutar']);
-      double indirimTutari = _toDouble(row['iskonto_tutar']);
-      double kdvOrani = _toDouble(row['kdv_oran']);
-      double netFiyat = _toDouble(row['net_fiyat']);
-      double netTutarTL = netFiyat * miktar;
-      
-      // ★★★★★ DÜZELTİLDİ: cari_unvan kullanılıyor ★★★★★
-      String musteri = row['cari_unvan']?.toString() ?? 'Perakende';
-      
-      DateTime tarih = DateTime.tryParse(row['tarih']?.toString() ?? '') ?? DateTime.now();
-      String tarihStr = DateFormat('dd.MM.yyyy').format(tarih);
-      String saatStr = DateFormat('HH:mm:ss').format(tarih);
-      
-      detaySayfa.appendRow([
-        TextCellValue(excelIcinGuvenliMetin(kod)),
-        TextCellValue(excelIcinGuvenliMetin(urunAdi)),
-        DoubleCellValue(miktar),
-        TextCellValue(birim),
-        DoubleCellValue(kdvliFiyat),
-        DoubleCellValue(kdvliTutar),
-        DoubleCellValue(indirimTutari),
-        DoubleCellValue(kdvOrani),
-        DoubleCellValue(netTutarTL),
-        TextCellValue(excelIcinGuvenliMetin(musteri)),
-        TextCellValue(tarihStr),
-        TextCellValue(saatStr),
-      ]);
-      
-      toplamKalemSayisi++;
-    }
     
     // ---------- 3. KDV OZET SAYFASI ----------
     final kdvOzetSayfa = excel['KDV Ozeti'];

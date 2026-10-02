@@ -212,7 +212,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
           final mevcut = durum.mevcutStok(u);
           return {
             'UrunAdi': u.urunAdi,
-            'Kod': u.kod ?? '',
+            'Kod': (u.barkod ?? '').isNotEmpty ? u.barkod : (u.kod ?? ''),
             'Barkod': u.barkod ?? '',
             'Ana Miktar': durum.sayimMiktarlari[u.id] ?? 0,
             'Stok': mevcut,

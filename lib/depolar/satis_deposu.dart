@@ -556,9 +556,11 @@ class SatisDeposu {
         sk.kdv_tutar,
         sk.net_fiyat,
         sk.toplam_tutar,
-        sk.urun_id
+        sk.urun_id,
+        u.birim_adi
       FROM satislar s
       INNER JOIN satis_kalem sk ON s.id = sk.satis_id
+      LEFT JOIN urunler u ON u.id = sk.urun_id
       LEFT JOIN cari c ON s.cari_id = c.id
       WHERE s.tarih BETWEEN ? AND ?
         AND s.iptal = 0

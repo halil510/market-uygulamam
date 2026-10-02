@@ -17,6 +17,10 @@ import '../../servisler/barkod_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/ts_yetki.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../cekirdek/utils/dosya_paylasim.dart';
+import '../../servisler/excel_servisi.dart';
 
 class PromosyonEkrani extends ConsumerStatefulWidget {
   const PromosyonEkrani({super.key});
@@ -38,6 +42,56 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
 
   @override
   void dispose() { _araCtrl.dispose(); super.dispose(); }
+
+  // ── Excel (PROMOSYON.xlsx başlıklarıyla birebir) ───────────────────────────
+  Future<void> _excelDisaVer() async {
+    try {
+      final liste = await PromosyonDeposu().detayliGetir();
+      if (liste.isEmpty) {
+        BildirimServisi.uyari(context, 'Dışarı verilecek promosyon yok');
+        return;
+      }
+      final yol = await ExcelServisi().promosyonExcelDisaAl(liste);
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(yol)], text: 'Promosyon Listesi'));
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Excel hatası: $e');
+    }
+  }
+
+  Future<void> _excelIceAl() async {
+    final secilen = await FilePicker.pickFile(
+        type: FileType.custom, allowedExtensions: ['xlsx']);
+    if (secilen == null || !mounted) return;
+    final bytes = await secilen.readAsBytes();
+    if (!mounted) return;
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excel içeri al'),
+        content: Text('"${secilen.name}" dosyasındaki promosyonlar eklenecek. '
+            'Aynı ürün için kayıtlı promosyon varsa yenisiyle değiştirilir.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('İçeri Al')),
+        ],
+      ),
+    );
+    if (onay != true || !mounted) return;
+    try {
+      final sonuc = await ExcelServisi().promosyonExcelIceAl(bytes);
+      ref.invalidate(promosyonlarProvider);
+      if (!mounted) return;
+      final hata = sonuc['hata'] as int;
+      final msg = '${sonuc['basarili']} promosyon alındı${hata > 0 ? ', $hata satır atlandı' : ''}';
+      if (hata > 0 && sonuc['basarili'] == 0) {
+        BildirimServisi.hata(context, msg);
+      } else {
+        BildirimServisi.basari(context, msg);
+      }
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Excel hatası: $e');
+    }
+  }
 
   Future<void> _aktiflikToggle(PromosyonModel p) async {
     try {  
@@ -207,6 +261,25 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
       appBar: TsAppBar(
         baslik: 'Promosyonlar',
         aksiyonlar: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.table_chart),
+            tooltip: 'Excel',
+            onSelected: (v) => v == 'ice' ? _excelIceAl() : _excelDisaVer(),
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                  value: 'ice',
+                  child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.file_download_outlined),
+                      title: Text('Excel içeri al'))),
+              PopupMenuItem(
+                  value: 'disa',
+                  child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.file_upload_outlined),
+                      title: Text('Excel dışarı ver'))),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(promosyonlarProvider),

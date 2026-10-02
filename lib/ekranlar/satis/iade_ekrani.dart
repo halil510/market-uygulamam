@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import '../../saglayicilar/riverpod/kasa_rapor_provider.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'iade/iade_arama_widget.dart';
 import 'iade/iade_urun_formu.dart';
@@ -47,6 +48,7 @@ import '../../widgetlar/ortak/donanim_barkod_dinleyici.dart';
 part 'iade_ekrani_gecmis.dart';
 part 'iade_ekrani_fis.dart';
 part 'iade_ekrani_hizli.dart';
+part 'iade_ekrani_excel.dart';
 
 // ─── Renk paleti ─────────────────────────────────────────────────────────────
 // 🔴 DÜZELTME (görsel tutarlılık denetimi — "sırayla" listenin 2.
@@ -539,19 +541,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   // 'iade_ekrani_fis.dart' dosyasına taşındı (extension olarak).
 
   // ── Excel ─────────────────────────────────────────────────────────────────
-  Future<void> _excel() async {
-    if (_iadeListesi.isEmpty) {
-      _msg('İade kaydı yok', err: true);
-      return;
-    }
-    try {
-      final path = await _excelSrv.iadelerExcelEAktar(_iadeListesi);
-      await _excelSrv.paylasExcel(path);
-    } catch (e) {
-      _msg('Excel hatası: $e', err: true);
-    }
-  }
-
   void _msg(String s, {bool err = false}) {
     if (!mounted) return;
     // 🔴 UX TUTARLILIK DÜZELTMESİ: bkz. aynı düzeltme diğer ekranlarda —
@@ -588,13 +577,27 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                   style: TextStyle(color: Colors.white, fontSize: 11)),
               onPressed: _yeniIadeBaslat,
             ),
-          IconButton(
+          PopupMenuButton<String>(
               icon: Image.asset("assets/images/excel_icon.png",
                   width: 22,
                   height: 22,
                   errorBuilder: (_, __, ___) => const Icon(Icons.table_chart)),
               tooltip: 'Excel',
-              onPressed: _excel),
+              onSelected: (v) => v == 'ice' ? _excelIceAl() : _excelDisaVer(),
+              itemBuilder: (_) => const [
+                    PopupMenuItem(
+                        value: 'ice',
+                        child: ListTile(
+                            dense: true,
+                            leading: Icon(Icons.file_download_outlined),
+                            title: Text('Excel içeri al'))),
+                    PopupMenuItem(
+                        value: 'disa',
+                        child: ListTile(
+                            dense: true,
+                            leading: Icon(Icons.file_upload_outlined),
+                            title: Text('Excel dışarı ver'))),
+                  ]),
           if (_secilenCari != null)
             Chip(
                 label: Text(_secilenCari!.unvan,
@@ -795,7 +798,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
         onSilOnay: _oturumIadeSilOnay,
         onSil: _oturumIadeSil,
         onDuzenle: _oturumIadeDuzenle,
-        onExcel: _excel,
+        onExcel: _excelDisaVer,
       );
 
   // ── Hızlı İade Sekmesi ────────────────────────────────────────────────────

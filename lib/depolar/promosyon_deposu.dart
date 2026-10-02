@@ -143,7 +143,7 @@ class PromosyonDeposu {
         // sütuna referans veriyordu — gerçek sütun adı 'satis_fiyati'
         // (snake_case). Çağrılırsa "no such column" hatasıyla çökerdi.
         final rows = await db.rawQuery(
-          'SELECT p.*, u.urun_adi, u.satis_fiyati, u.barkod '
+          'SELECT p.*, u.urun_adi, u.satis_fiyati, u.alis_fiyat, u.barkod, u.kod AS urun_kodu '
           'FROM promosyonlar p '
           'LEFT JOIN urunler u ON p.urun_id = u.id '
           'WHERE p.deleted_at IS NULL AND (u.id IS NULL OR u.is_deleted = 0) '

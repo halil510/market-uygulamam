@@ -7,6 +7,8 @@
 // Cihaz uzun süre çevrimdışı kaldıysa ya da pull başka bir cihazın daha yeni
 // sürümünü zaten uyguladıysa, bu eski görüntü gönderildiğinde buluttaki daha
 // yeni kaydı sessizce geri alırdı.
+import '../kolon_haritalama.dart';
+
 class SyncLwwKoruma {
   /// Bulutta, gönderilecek satırdan KESİN olarak daha yeni sürümü olan
   /// satırların referanslarını döner. Eşit zaman damgası atlanmaz: eşit
@@ -23,7 +25,7 @@ class SyncLwwKoruma {
       if (anahtar == null || anahtar.isEmpty) continue;
       final bulut = bulutZamanlari[anahtar];
       if (bulut == null) continue; // bulutta yok ya da zamanı bilinmiyor
-      final yerel = DateTime.tryParse(k['last_updated']?.toString() ?? '');
+      final yerel = KolonHaritalama.utcZaman(k['last_updated']);
       if (yerel == null) continue; // yerel zaman yok — göndermeye izin ver
       if (bulut.isAfter(yerel)) atlanacak.add(k);
     }
@@ -48,7 +50,7 @@ class SyncLwwKoruma {
     for (final s in satirlar) {
       if (s is! Map) continue;
       final anahtar = s[uniqueAlan]?.toString();
-      final zaman = DateTime.tryParse(s['last_updated']?.toString() ?? '');
+      final zaman = KolonHaritalama.utcZaman(s['last_updated']);
       if (anahtar != null && zaman != null) h[anahtar] = zaman;
     }
     return h;

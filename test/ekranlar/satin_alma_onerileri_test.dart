@@ -107,8 +107,14 @@ void main() {
       final urunId = await TestVeritabani.ornekUrunEkle(db2, urunAdi: 'Süt', barkod: 'SHG-1');
       final digerUrunId =
           await TestVeritabani.ornekUrunEkle(db2, urunAdi: 'Diğer', barkod: 'SHG-2');
+      // Sabit tarih zamanla 30 günlük pencerenin dışına çıkıp testi kırar —
+      // bugüne göre 5 gün önce.
+      final t = DateTime.now().subtract(const Duration(days: 5));
+      final tarihMetni = '${t.year.toString().padLeft(4, '0')}-'
+          '${t.month.toString().padLeft(2, '0')}-'
+          '${t.day.toString().padLeft(2, '0')} 10:00:00';
       final satisId = await db2.insert('satislar', {
-        'fis_no': 'F1', 'genel_toplam': 20, 'tarih': '2026-09-01 10:00:00',
+        'fis_no': 'F1', 'genel_toplam': 20, 'tarih': tarihMetni,
         'iptal': 0, 'is_deleted': 0,
       });
       await db2.insert('satis_kalem', {

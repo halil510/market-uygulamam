@@ -367,6 +367,15 @@ class KolonHaritalama {
     return t?.toUtc().toIso8601String();
   }
 
+  /// [utcDamga] ile aynı kurallarla, ama DateTime (UTC) döner. last_updated
+  /// karşılaştırmalarında ham `DateTime.tryParse` yerine BU kullanılmalı:
+  /// SQLite'ın dilimsiz UTC damgası ("2026-10-03 10:00:00") ham ayrıştırmada
+  /// yerel saat sanılıp dilim farkı (TR: 3 saat) kadar kayar.
+  static DateTime? utcZaman(dynamic v) {
+    final s = utcDamga(v);
+    return s == null ? null : DateTime.tryParse(s);
+  }
+
   static final _sqliteUtcBicimi =
       RegExp(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$');
 

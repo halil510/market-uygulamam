@@ -502,7 +502,7 @@ class SatisDeposu {
       FROM satis_kalem sk
       JOIN satislar s ON sk.satis_id = s.id
       LEFT JOIN urunler u ON sk.urun_id = u.id
-      WHERE s.tarih BETWEEN ? AND ?
+      WHERE datetime(s.tarih) BETWEEN datetime(?) AND datetime(?)
         AND s.iptal = 0 AND s.is_deleted = 0
         AND s.sync_cakisma_kopyasi = 0 $subeKosulu
     ''', [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId]);
@@ -522,7 +522,7 @@ class SatisDeposu {
       FROM iade_kalem ik
       JOIN iade i ON ik.iade_id = i.id
       LEFT JOIN urunler u ON ik.urun_id = u.id
-      WHERE i.tarih BETWEEN ? AND ?
+      WHERE datetime(i.tarih) BETWEEN datetime(?) AND datetime(?)
         AND COALESCE(i.durum, '') != 'iptal'
         AND i.deleted_at IS NULL
     ''', [bas.toIso8601String(), bit.toIso8601String()]);
@@ -562,7 +562,7 @@ class SatisDeposu {
       INNER JOIN satis_kalem sk ON s.id = sk.satis_id
       LEFT JOIN urunler u ON u.id = sk.urun_id
       LEFT JOIN cari c ON s.cari_id = c.id
-      WHERE s.tarih BETWEEN ? AND ?
+      WHERE datetime(s.tarih) BETWEEN datetime(?) AND datetime(?)
         AND s.iptal = 0
         AND s.is_deleted = 0
         AND s.sync_cakisma_kopyasi = 0 $subeKosulu
@@ -608,7 +608,7 @@ class SatisDeposu {
     final baslangic = DateTime(bugun.year, bugun.month, bugun.day).toIso8601String();
     final res = await db.rawQuery(
       "SELECT COALESCE(SUM(genel_toplam),0) AS toplam FROM satislar "
-      "WHERE fis_tipi = 'Toptan Satış' AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 AND tarih >= ?",
+      "WHERE fis_tipi = 'Toptan Satış' AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 AND datetime(tarih) >= datetime(?)",
       [baslangic],
     );
     return (res.first['toplam'] as num?)?.toDouble() ?? 0;
@@ -736,7 +736,7 @@ class SatisDeposu {
     final rows = await db.rawQuery(
       "SELECT DATE(tarih) as gun, SUM(genel_toplam) as ciro "
       "FROM satislar "
-      "WHERE tarih >= ? AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 "
+      "WHERE datetime(tarih) >= datetime(?) AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 "
       "GROUP BY DATE(tarih)",
       [pazartesi.toIso8601String()],
     );

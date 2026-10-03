@@ -882,7 +882,7 @@ class SupabaseSyncServisi {
         final gid = b[uniqueAlan]?.toString();
         final lu = b['last_updated']?.toString();
         if (gid != null && lu != null) {
-          final t = DateTime.tryParse(lu);
+          final t = KolonHaritalama.utcZaman(lu);
           if (t != null) bulutZamanlari[gid] = t;
         }
       }
@@ -893,7 +893,7 @@ class SupabaseSyncServisi {
         if (gid == null || yerelLu == null) return true; // bilgi eksikse eskisi gibi gönder
         final bulutZamani = bulutZamanlari[gid];
         if (bulutZamani == null) return true; // bulut'ta hiç yoksa gönder
-        final yerelZamani = DateTime.tryParse(yerelLu);
+        final yerelZamani = KolonHaritalama.utcZaman(yerelLu);
         if (yerelZamani == null) return true;
         // Bulut ZATEN daha yeni ya da eşitse GÖNDERME (üzerine yazma).
         return yerelZamani.isAfter(bulutZamani);
@@ -981,7 +981,7 @@ class SupabaseSyncServisi {
           rows = rows.where((r) {
             final lu = r['last_updated'];
             if (lu == null) return true;
-            final luDate = lu is DateTime ? lu : DateTime.tryParse(lu.toString());
+            final luDate = KolonHaritalama.utcZaman(lu);
             return luDate != null && luDate.isAfter(sonSenkronZamani!);
           }).toList();
         }

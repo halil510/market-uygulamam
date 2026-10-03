@@ -271,7 +271,7 @@ class AiSohbetServisi {
              COALESCE(SUM(iskonto_tutar),0) as iskonto,
              COALESCE(SUM(kdv_tutar),0) as kdv
       FROM satislar
-      WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+      WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
     ''', [bas.toIso8601String(), bit.toIso8601String()]);
 
     final r    = rows.first;
@@ -291,12 +291,12 @@ class AiSohbetServisi {
     final db     = await Veritabani().db;
     final s      = await db.rawQuery('''
       SELECT COALESCE(SUM(genel_toplam),0) as ciro
-      FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+      FROM satislar WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
     ''', [bas.toIso8601String(), bit.toIso8601String()]);
     final m = await db.rawQuery('''
       SELECT COALESCE(SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)),0) as mal
       FROM satis_kalem sk JOIN satislar st ON sk.satis_id=st.id
-      WHERE st.tarih BETWEEN ? AND ? AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
+      WHERE datetime(st.tarih) BETWEEN datetime(?) AND datetime(?) AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
     ''', [bas.toIso8601String(), bit.toIso8601String()]);
     // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): Bu fonksiyon
     // "NET KÂR" etiketliyordu ama giderler (kira, elektrik, personel
@@ -307,7 +307,7 @@ class AiSohbetServisi {
     // zaten doğru hesaplanan formülle tutarsızdı.
     final g = await db.rawQuery('''
       SELECT COALESCE(SUM(tutar),0) as gider
-      FROM giderler WHERE tarih BETWEEN ? AND ? AND deleted_at IS NULL
+      FROM giderler WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND deleted_at IS NULL
     ''', [bas.toIso8601String(), bit.toIso8601String()]);
 
     final ciro   = (s.first['ciro'] as num?)?.toDouble() ?? 0;
@@ -343,7 +343,7 @@ class AiSohbetServisi {
              COUNT(*) as adet,
              COALESCE(SUM(genel_toplam),0) as tutar
       FROM satislar
-      WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+      WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
       GROUP BY odeme_yontemi ORDER BY tutar DESC
     ''', [bas.toIso8601String(), bit.toIso8601String()]);
     if (rows.isEmpty) return '$periyot döneminde satış bulunamadı.';
@@ -417,7 +417,7 @@ class AiSohbetServisi {
     final db   = await Veritabani().db;
     final rows = await db.rawQuery('''
       SELECT hareket_turu, SUM(miktar) as toplam
-      FROM stok_hareket WHERE tarih BETWEEN ? AND ?
+      FROM stok_hareket WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?)
       GROUP BY hareket_turu
     ''', [bas.toIso8601String(), bit.toIso8601String()]);
     if (rows.isEmpty) return '$periyot döneminde stok hareketi yok.';
@@ -434,7 +434,7 @@ class AiSohbetServisi {
     final rows = await db.rawQuery('''
       SELECT sk.urun_adi, SUM(sk.miktar) as miktar, SUM(sk.toplam_tutar) as tutar
       FROM satis_kalem sk JOIN satislar s ON sk.satis_id=s.id
-      WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
+      WHERE datetime(s.tarih) BETWEEN datetime(?) AND datetime(?) AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
       GROUP BY sk.urun_adi ORDER BY tutar DESC LIMIT ?
     ''', [bas.toIso8601String(), bit.toIso8601String(), limit]);
     if (rows.isEmpty) return 'Bu dönemde satış verisi yok.';
@@ -575,7 +575,7 @@ class AiSohbetServisi {
       SELECT COALESCE(SUM(alacak),0) as tahsilat,
              COALESCE(SUM(borc),0) as odeme
       FROM cari_hareket
-      WHERE tarih BETWEEN ? AND ?
+      WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?)
         AND fis_tipi IN ('Tahsilat', 'Ödeme', 'Odeme')
     ''', [bas.toIso8601String(), bit.toIso8601String()]);
     final tah = (rows.first['tahsilat'] as num?)?.toDouble() ?? 0;
@@ -694,7 +694,7 @@ class AiSohbetServisi {
     final bit = now.toIso8601String();
     final rows = await db.rawQuery('''
       SELECT COALESCE(SUM(genel_toplam),0) as toplam, COUNT(DISTINCT DATE(tarih)) as gun_sayisi
-      FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+      FROM satislar WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
     ''', [bas, bit]);
     final toplam  = (rows.first['toplam'] as num?)?.toDouble() ?? 0;
     final gunSay  = (rows.first['gun_sayisi'] as num?)?.toInt() ?? 1;

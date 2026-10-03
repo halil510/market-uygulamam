@@ -286,7 +286,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
   Future<bool> _bulutDahaYeniMi(
       String tablo, String uniqueAlan, dynamic deger, dynamic yerelLu) async {
     try {
-      final yerelZaman = DateTime.tryParse(yerelLu?.toString() ?? '');
+      final yerelZaman = KolonHaritalama.utcZaman(yerelLu);
       if (yerelZaman == null) return false;
       final r = await http.get(
         Uri.parse('$_rest/$tablo?select=last_updated&$uniqueAlan=eq.$deger'),
@@ -295,7 +295,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
       if (r.statusCode != 200) return false;
       final liste = jsonDecode(r.body) as List;
       if (liste.isEmpty) return false; // bulut'ta yok — gönder
-      final bulutLu = DateTime.tryParse(liste.first['last_updated']?.toString() ?? '');
+      final bulutLu = KolonHaritalama.utcZaman(liste.first['last_updated']);
       if (bulutLu == null) return false;
       return !yerelZaman.isAfter(bulutLu); // bulut >= yerel ise atla
     } catch (_) {

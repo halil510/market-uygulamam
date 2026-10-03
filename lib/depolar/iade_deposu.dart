@@ -96,11 +96,11 @@ class IadeDeposu {
     var where = '1=1';
     final args = <dynamic>[];
     if (baslangic != null) {
-      where += ' AND ia.tarih >= ?';
+      where += ' AND datetime(ia.tarih) >= datetime(?)';
       args.add(baslangic.toIso8601String());
     }
     if (bitis != null) {
-      where += ' AND ia.tarih <= ?';
+      where += ' AND datetime(ia.tarih) <= datetime(?)';
       args.add(bitis.add(const Duration(days: 1)).toIso8601String());
     }
     if (cariId != null) {

@@ -850,7 +850,7 @@ class Veritabani {
         // kasa, diğer kasadaki satış iptallerini ASLA uygulamıyordu.
         if (gonderFiligrani == null) return false;
         final yerelZaman =
-            DateTime.tryParse(yerelSatir['last_updated']?.toString() ?? '');
+            KolonHaritalama.utcZaman(yerelSatir['last_updated']);
         if (!SyncCakismaTespit.gercekCakismaMi(
             yerelSonGuncelleme: yerelZaman,
             sonBasariliGonderim: gonderFiligrani)) {

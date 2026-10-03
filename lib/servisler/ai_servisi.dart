@@ -29,13 +29,13 @@ class AiServisi {
         SELECT COUNT(*) as islem,
                COALESCE(SUM(genel_toplam),0) as ciro,
                COALESCE(SUM(iskonto_tutar),0) as iskonto
-        FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+        FROM satislar WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
       ''', [bas, bit])).first;
 
       final m = (await db.rawQuery('''
         SELECT COALESCE(SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)),0) as mal
         FROM satis_kalem sk JOIN satislar st ON sk.satis_id=st.id
-        WHERE st.tarih BETWEEN ? AND ? AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
+        WHERE datetime(st.tarih) BETWEEN datetime(?) AND datetime(?) AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
       ''', [bas, bit])).first;
 
       final kasa = (await db.rawQuery(
@@ -48,7 +48,7 @@ class AiServisi {
       // giderleri hiç düşmüyordu.
       final g = (await db.rawQuery('''
         SELECT COALESCE(SUM(tutar),0) as toplam
-        FROM giderler WHERE tarih BETWEEN ? AND ? AND deleted_at IS NULL
+        FROM giderler WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND deleted_at IS NULL
       ''', [bas, bit])).first;
 
       final ciro   = (s['ciro'] as num?)?.toDouble() ?? 0;
@@ -83,7 +83,7 @@ class AiServisi {
       final bit = DateTime.now().toIso8601String();
       final r   = (await db.rawQuery('''
         SELECT COALESCE(SUM(genel_toplam),0)/30.0 as ort
-        FROM satislar WHERE tarih BETWEEN ? AND ? AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+        FROM satislar WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
       ''', [bas, bit])).first;
       final ort = (r['ort'] as num?)?.toDouble() ?? 0;
       return {
@@ -114,7 +114,7 @@ class AiServisi {
           SELECT sk.urun_id, SUM(sk.miktar) as satis_adet
           FROM satis_kalem sk
           JOIN satislar st ON sk.satis_id = st.id
-          WHERE st.tarih BETWEEN ? AND ? AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
+          WHERE datetime(st.tarih) BETWEEN datetime(?) AND datetime(?) AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
           GROUP BY sk.urun_id
         ) s ON s.urun_id = u.id
         WHERE u.aktif=1 AND u.is_deleted=0
@@ -157,7 +157,7 @@ class AiServisi {
           SELECT sk.urun_id, SUM(sk.miktar) as satis_adet
           FROM satis_kalem sk
           JOIN satislar st ON sk.satis_id = st.id
-          WHERE st.tarih BETWEEN ? AND ? AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
+          WHERE datetime(st.tarih) BETWEEN datetime(?) AND datetime(?) AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
           GROUP BY sk.urun_id
         ) s ON s.urun_id = u.id
         WHERE u.aktif=1 AND u.is_deleted=0 AND u.stok > 0
@@ -196,7 +196,7 @@ class AiServisi {
                SUM(sk.miktar) as miktar, SUM(sk.miktar) as toplam_adet,
                SUM(sk.toplam_tutar) as tutar, SUM(sk.toplam_tutar) as toplam_tutar
         FROM satis_kalem sk JOIN satislar s ON sk.satis_id=s.id
-        WHERE s.tarih BETWEEN ? AND ? AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
+        WHERE datetime(s.tarih) BETWEEN datetime(?) AND datetime(?) AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
         GROUP BY sk.urun_adi ORDER BY tutar DESC LIMIT ?
       ''', [bas, bit, limit]);
       return List<Map<String, dynamic>>.from(rows);

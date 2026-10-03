@@ -33,6 +33,7 @@ import '../../ekranlar/rapor/gunluk_rapor_ekrani.dart';
 import '../../ekranlar/rapor/satis_rapor_ekrani.dart';
 import '../../ekranlar/rapor/kar_zarar_ekrani.dart';
 import '../../ekranlar/rapor/stok_rapor_ekrani.dart';
+import '../../ekranlar/rapor/urun_rapor_ekrani.dart';
 import '../../ekranlar/rapor/cari_rapor_ekrani.dart';
 import '../../ekranlar/rapor/abc_stok_analizi_ekrani.dart';
 import '../../ekranlar/rapor/stok_devir_analizi_ekrani.dart';
@@ -230,6 +231,7 @@ class UygulamaRouter {
             GoRoute(path: '/rapor/satis', name: 'rapor_satis', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const SatisRaporEkrani()),
             GoRoute(path: '/rapor/kar', name: 'rapor_kar', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const KarZararEkrani()),
             GoRoute(path: '/rapor/stok', name: 'rapor_stok', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const StokRaporEkrani()),
+            GoRoute(path: '/rapor/urun', name: 'rapor_urun', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const UrunRaporEkrani()),
             GoRoute(path: '/rapor/cari', name: 'rapor_cari', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const CariRaporEkrani()),
             GoRoute(path: '/rapor/abc-analiz', name: 'rapor_abc_analiz', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const AbcStokAnaliziEkrani()),
             GoRoute(path: '/rapor/stok-devir', name: 'rapor_stok_devir', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const StokDevirAnaliziEkrani()),

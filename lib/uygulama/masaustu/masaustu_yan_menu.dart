@@ -78,6 +78,7 @@ const _gruplar = <_Grup>[
     _Oge('Kâr / Zarar', Icons.trending_up, '/rapor/kar'),
     _Oge('Kasa Raporu', Icons.account_balance_wallet, '/kasa/rapor'),
     _Oge('Stok Raporu', Icons.inventory_2, '/rapor/stok'),
+    _Oge('Ürün Raporu', Icons.bar_chart, '/rapor/urun'),
     _Oge('Cari Raporu', Icons.people, '/rapor/cari'),
     _Oge('ABC Stok Analizi', Icons.pie_chart_outline, '/rapor/abc-analiz'),
     _Oge('Stok Devir Analizi', Icons.autorenew, '/rapor/stok-devir'),

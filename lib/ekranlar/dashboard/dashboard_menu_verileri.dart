@@ -161,6 +161,8 @@ const List<_Kategori> _tumKategoriler = [
     _UygulamaItem(
         'Stok Raporu', Icons.inventory_2, Color(0xFF3F51B5), '/rapor/stok'),
     _UygulamaItem(
+        'Ürün Raporu', Icons.bar_chart, Color(0xFF283593), '/rapor/urun'),
+    _UygulamaItem(
         'Cari Raporu', Icons.people, Color(0xFF0097A7), '/rapor/cari'),
     _UygulamaItem('ABC Stok Analizi', Icons.pie_chart_outline,
         Color(0xFF00838F), '/rapor/abc-analiz'),

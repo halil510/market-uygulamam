@@ -1,76 +1,15 @@
 // lib/ekranlar/rapor/satis_rapor_ekrani.dart — Geliştirilmiş
-import '../../cekirdek/utils/dosya_paylasim.dart';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
+import 'satis_rapor_ortak.dart';
+import 'masaustu/satis_rapor_masaustu_gorunum.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:excel/excel.dart' hide Border;
-import '../../depolar/satis_deposu.dart';
 import '../../modeller/satis_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
-import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
-
-// ── Providers ─────────────────────────────────────────────────────────────────
-
-class _SatisRaporFiltre {
-  final DateTime bas, bit;
-  final String donem;
-  _SatisRaporFiltre({required this.bas, required this.bit, this.donem = 'Bugün'});
-  _SatisRaporFiltre.bugun() : bas = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
-        bit = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 23, 59, 59), donem = 'Bugün';
-}
-
-final _satisRaporFiltreProvider = StateProvider<_SatisRaporFiltre>(
-  (_) => _SatisRaporFiltre.bugun());
-
-final _satisRaporProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  final f = ref.watch(_satisRaporFiltreProvider);
-  final depo = SatisDeposu();
-  final satislar = await depo.tariheGoreGetir(f.bas, f.bit);
-  final aktif = satislar.where((s) => !s.iptal).toList();
-  // 🔴 Derin analizde bulundu: tariheGoreGetir() zaten SQL seviyesinde
-  // iptal edilmiş satışları filtreliyor — bu yüzden "satislar.length -
-  // aktif.length" her zaman 0 çıkıyordu, "$X iptal satış" uyarısı
-  // ASLA görünmüyordu. Artık gerçek sayı ayrı bir sorgu ile alınıyor.
-  final iptalSayisi = await depo.iptalSayisiGetir(f.bas, f.bit);
-
-  // Özet hesapla
-  double ciro = 0, iskonto = 0;
-  final odemeMap = <String, double>{};
-  for (final s in aktif) {
-    ciro += s.genelToplam;
-    iskonto += s.iskonto;
-    odemeMap[s.odemeYontemi] =
-        (odemeMap[s.odemeYontemi] ?? 0) + s.genelToplam;
-  }
-
-  // Saat bazında dağılım
-  final saatMap = <int, double>{};
-  for (final s in aktif) {
-    final saat = s.tarih.hour;
-    saatMap[saat] = (saatMap[saat] ?? 0) + s.genelToplam;
-  }
-
-  // En çok satan ürünler (basit yaklaşım - kalem bazında)
-  return {
-    'satislar':   satislar,
-    'aktif':      aktif,
-    'ciro':       ciro,
-    'iskonto':    iskonto,
-    'sayi':       aktif.length,
-    'iptal':      iptalSayisi,
-    'odemeMap':   odemeMap,
-    'saatMap':    saatMap,
-    'ortalamaFis': aktif.isEmpty ? 0.0 : ciro / aktif.length,
-  };
-});
 
 // ── Ekran ─────────────────────────────────────────────────────────────────────
 
@@ -85,7 +24,7 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
   late TabController _tab;
   final _fmt = DateFormat('dd.MM.yyyy');
 
-  static const _donemler = ['Bugün', 'Bu Hafta', 'Bu Ay', 'Özel'];
+  static const _donemler = satisRaporDonemler;
 
   @override
   void initState() { super.initState(); _tab = TabController(length: 3, vsync: this); }
@@ -93,23 +32,8 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
   void dispose() { _tab.dispose(); super.dispose(); }
 
   void _donemSec(String donem) {
-    final now = DateTime.now();
-    late DateTime bas, bit;
-    switch (donem) {
-      case 'Bugün':
-        bas = DateTime(now.year, now.month, now.day);
-        bit = DateTime(now.year, now.month, now.day, 23, 59, 59);
-      case 'Bu Hafta':
-        final pzt = now.subtract(Duration(days: now.weekday - 1));
-        bas = DateTime(pzt.year, pzt.month, pzt.day);
-        bit = DateTime(now.year, now.month, now.day, 23, 59, 59);
-      case 'Bu Ay':
-        bas = DateTime(now.year, now.month, 1);
-        bit = DateTime(now.year, now.month, now.day, 23, 59, 59);
-      default: return;
-    }
-    ref.read(_satisRaporFiltreProvider.notifier).state =
-        _SatisRaporFiltre(bas: bas, bit: bit, donem: donem);
+    final f = satisRaporDonemFiltresi(donem);
+    if (f != null) ref.read(satisRaporFiltreProvider.notifier).state = f;
   }
 
   Future<void> _ozelAralik() async {
@@ -119,35 +43,15 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
       locale: const Locale('tr', 'TR'),
     );
     if (r != null && mounted) {
-      ref.read(_satisRaporFiltreProvider.notifier).state =
-          _SatisRaporFiltre(bas: r.start,
+      ref.read(satisRaporFiltreProvider.notifier).state =
+          SatisRaporFiltre(bas: r.start,
               bit: DateTime(r.end.year, r.end.month, r.end.day, 23, 59, 59), donem: 'Özel');
     }
   }
 
   Future<void> _excelAktar(List<SatisModel> satislar) async {
     try {
-      final excel = Excel.createExcel();
-      final sheet = excel['Satışlar'];
-      sheet.appendRow([
-        TextCellValue('Fiş No'), TextCellValue('Tarih'), TextCellValue('Müşteri'),
-        TextCellValue('Ödeme'), TextCellValue('Toplam'), TextCellValue('İptal'),
-      ]);
-      final fmt = DateFormat('dd.MM.yyyy HH:mm');
-      for (final s in satislar) {
-        sheet.appendRow([
-          TextCellValue(excelIcinGuvenliMetin(s.fisNo)),
-          TextCellValue(fmt.format(s.tarih)),
-          TextCellValue(excelIcinGuvenliMetin(s.cariAdi)),
-          TextCellValue(s.odemeYontemi),
-          DoubleCellValue(s.genelToplam),
-          TextCellValue(s.iptal ? 'Evet' : ''),
-        ]);
-      }
-      final dir  = await getApplicationDocumentsDirectory();
-      final path = '${dir.path}/satis_raporu_${DateTime.now().millisecondsSinceEpoch}.xlsx';
-      await File(path).writeAsBytes(excel.encode()!);
-      await DosyaPaylasim.paylas(ShareParams(files: [XFile(path)], text: 'Satış Raporu'));
+      await satisRaporExcelAktar(satislar);
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Excel hatası: $e');
     }
@@ -155,8 +59,8 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
 
   @override
   Widget build(BuildContext context) {
-    final filtre = ref.watch(_satisRaporFiltreProvider);
-    final async  = ref.watch(_satisRaporProvider);
+    final filtre = ref.watch(satisRaporFiltreProvider);
+    final async  = ref.watch(satisRaporProvider);
 
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
@@ -169,7 +73,7 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
             tooltip: 'Excel',
           )) ?? const SizedBox.shrink(),
           IconButton(icon: const Icon(Icons.refresh, color: Colors.white),
-              onPressed: () => ref.invalidate(_satisRaporProvider)),
+              onPressed: () => ref.invalidate(satisRaporProvider)),
         ],
         alt: TabBar(
           controller: _tab,
@@ -180,10 +84,12 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
         ),
         geriTusu: false,
       ),
-      body: Column(children: [
+      body: MediaQuery.sizeOf(context).width > 1100
+          ? const SatisRaporMasaustuGorunum()
+          : Column(children: [
         // Dönem seçici
         Container(
-          color: Colors.white,
+          color: TsRenk.kart(context),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(children: [
             Expanded(
@@ -218,7 +124,7 @@ class _SatisRaporEkraniState extends ConsumerState<SatisRaporEkrani>
               mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(Icons.error_outline, size: 48, color: context.textSecondary),
                 const SizedBox(height: 8),
-                FilledButton(onPressed: () => ref.invalidate(_satisRaporProvider),
+                FilledButton(onPressed: () => ref.invalidate(satisRaporProvider),
                     child: const Text('Tekrar Dene')),
               ])),
             data: (data) => TabBarView(
@@ -249,6 +155,9 @@ class _OzetTab extends StatelessWidget {
     final iptal      = data['iptal'] as int;
     final ortalama   = data['ortalamaFis'] as double;
     final odemeMap   = data['odemeMap'] as Map<String, double>;
+    final iade       = (data['iade'] as double?) ?? 0;
+    final netCiro    = (data['netCiro'] as double?) ?? ciro;
+    final brutKar    = (data['brutKar'] as double?) ?? 0;
 
     return ListView(padding: const EdgeInsets.all(16), children: [
       // KPI grid
@@ -260,6 +169,9 @@ class _OzetTab extends StatelessWidget {
           _KpiKart('Satış Sayısı', '$sayi adet', Icons.receipt_outlined, Colors.green.shade700),
           _KpiKart('Ort. Fiş', ParaUtils.formatla(ortalama), Icons.calculate_outlined, Colors.purple.shade700),
           _KpiKart('İskonto', ParaUtils.formatla(iskonto), Icons.discount_outlined, Colors.orange.shade700),
+          _KpiKart('İade', ParaUtils.formatla(iade), Icons.assignment_return_outlined, Colors.red.shade700),
+          _KpiKart('Net Ciro (iade düşülmüş)', ParaUtils.formatla(netCiro), Icons.account_balance_wallet_outlined, Colors.teal.shade700),
+          _KpiKart('Brüt Kâr', ParaUtils.formatla(brutKar), Icons.savings_outlined, brutKar >= 0 ? Colors.green.shade800 : Colors.red.shade700),
         ],
       ),
       if (iptal > 0) ...[
@@ -364,7 +276,7 @@ class _ListeTab extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: iptal ? TsRenk.zemin(TsRenk.hata) : Colors.white,
+            color: iptal ? TsRenk.zemin(TsRenk.hata) : TsRenk.kart(context),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: iptal ? Colors.red.shade200 : Colors.transparent),
             boxShadow: iptal ? [] : [BoxShadow(color: Color(0x0A000000), blurRadius: 4)],
@@ -470,12 +382,12 @@ class _GrafikTab extends StatelessWidget {
             SizedBox(
               height: 160,
               child: PieChart(PieChartData(
-                sections: _odemeRenkler().entries
-                    .where((e) => odemeMap.containsKey(e.key))
+                sections: odemeMap.entries
+                    .where((e) => e.value > 0)
                     .map((e) {
-                  final val = odemeMap[e.key] ?? 0;
+                  final val = e.value;
                   return PieChartSectionData(
-                    value: val, color: e.value,
+                    value: val, color: satisRaporOdemeRengi(e.key),
                     title: ciro > 0 ? '%${(val / ciro * 100).toStringAsFixed(0)}' : '',
                     titleStyle: TsMetin.kucukVurgu.copyWith(color: Colors.white),
                     radius: 60,
@@ -487,11 +399,11 @@ class _GrafikTab extends StatelessWidget {
             const SizedBox(height: 12),
             Wrap(
               spacing: 12, runSpacing: 6,
-              children: _odemeRenkler().entries
-                  .where((e) => odemeMap.containsKey(e.key))
+              children: odemeMap.entries
+                  .where((e) => e.value > 0)
                   .map((e) => Row(mainAxisSize: MainAxisSize.min, children: [
                     Container(width: 10, height: 10,
-                        decoration: BoxDecoration(color: e.value, shape: BoxShape.circle)),
+                        decoration: BoxDecoration(color: satisRaporOdemeRengi(e.key), shape: BoxShape.circle)),
                     const SizedBox(width: 4),
                     Text(e.key, style: const TextStyle(fontSize: 11)),
                   ])).toList(),
@@ -502,13 +414,4 @@ class _GrafikTab extends StatelessWidget {
     ]);
   }
 
-  Map<String, Color> _odemeRenkler() => const {
-    'Nakit':       Color(0xFF4CAF50),
-    'Kredi Kartı': Color(0xFF2196F3),
-    'Havale':      Color(0xFF9C27B0),
-    'Cari':        Color(0xFFFF9800),
-    'QR':          Color(0xFF00BCD4),
-    'Karma':       Color(0xFF607D8B),
-    'Diğer':       Color(0xFF9E9E9E),
-  };
 }

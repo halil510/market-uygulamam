@@ -893,7 +893,7 @@ class UrunDeposu {
         COUNT(CASE WHEN aktif = 1 AND is_deleted = 0
                         AND stok <= 0 THEN 1 END)                         AS stoksuz,
         COALESCE(SUM(CASE WHEN is_deleted = 0 AND aktif = 1
-                          THEN stok * alis_fiyat END), 0)                 AS stok_degeri
+                          THEN MAX(stok, 0) * alis_fiyat END), 0)       AS stok_degeri
       FROM ${DbSabitler.urunler}
       WHERE is_deleted = 0
     ''');

@@ -277,3 +277,92 @@ class UrunRaporDeposu {
     );
   }
 }
+
+// ── Stok Raporu (masaüstü tablo) ─────────────────────────────────────────────
+
+enum StokDurum { saglikli, kritik, stoksuz }
+
+class StokRaporSatir {
+  final int id;
+  final String ad;
+  final String kod;
+  final String anaGrup;
+  final String marka;
+  final String birim;
+  final double stok;
+  final double minimumStok;
+  final double alisFiyat; // KDV hariç
+  final double satisFiyat; // KDV dahil
+  const StokRaporSatir({
+    required this.id,
+    required this.ad,
+    required this.kod,
+    required this.anaGrup,
+    required this.marka,
+    required this.birim,
+    required this.stok,
+    required this.minimumStok,
+    required this.alisFiyat,
+    required this.satisFiyat,
+  });
+
+  StokDurum get durum => stok <= 0
+      ? StokDurum.stoksuz
+      : (minimumStok > 0 && stok <= minimumStok
+          ? StokDurum.kritik
+          : StokDurum.saglikli);
+
+  /// Negatif stok değeri düşürmesin (istatistikler() ile aynı kural).
+  double get stokDegeri => (stok > 0 ? stok : 0) * alisFiyat;
+  double get satisDegeri => (stok > 0 ? stok : 0) * satisFiyat;
+}
+
+extension StokRaporDeposu on UrunRaporDeposu {
+  /// Aktif ürünlerin stok durumu. [durum] null ise hepsi.
+  Future<List<StokRaporSatir>> stokListesi({
+    String? anaGrup,
+    String? marka,
+    StokDurum? durum,
+    String arama = '',
+  }) async {
+    final db = await Veritabani().db;
+    final where = <String>['is_deleted = 0', 'aktif = 1'];
+    final args = <Object?>[];
+    if (anaGrup != null) {
+      where.add('ana_grup = ?');
+      args.add(anaGrup);
+    }
+    if (marka != null) {
+      where.add('marka = ?');
+      args.add(marka);
+    }
+    final q = arama.trim();
+    if (q.isNotEmpty) {
+      where.add('(urun_adi LIKE ? OR barkod LIKE ? OR kod LIKE ?)');
+      args.addAll(['%$q%', '%$q%', '%$q%']);
+    }
+    final rows = await db.rawQuery(
+        'SELECT id, urun_adi, kod, barkod, ana_grup, marka, birim_adi, stok, '
+        'minimum_stok, alis_fiyat, satis_fiyati FROM urunler '
+        'WHERE ${where.join(' AND ')} ORDER BY urun_adi COLLATE NOCASE',
+        args);
+    double n(Object? v) => (v as num?)?.toDouble() ?? 0;
+    final liste = rows
+        .map((r) => StokRaporSatir(
+              id: r['id'] as int,
+              ad: (r['urun_adi'] as String?) ?? '',
+              kod: ((r['barkod'] as String?)?.isNotEmpty ?? false)
+                  ? r['barkod'] as String
+                  : ((r['kod'] as String?) ?? ''),
+              anaGrup: (r['ana_grup'] as String?) ?? '',
+              marka: (r['marka'] as String?) ?? '',
+              birim: (r['birim_adi'] as String?) ?? '',
+              stok: n(r['stok']),
+              minimumStok: n(r['minimum_stok']),
+              alisFiyat: n(r['alis_fiyat']),
+              satisFiyat: n(r['satis_fiyati']),
+            ))
+        .toList();
+    return durum == null ? liste : liste.where((s) => s.durum == durum).toList();
+  }
+}

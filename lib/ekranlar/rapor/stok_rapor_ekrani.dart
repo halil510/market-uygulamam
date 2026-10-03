@@ -11,6 +11,7 @@ import '../../depolar/urun_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import 'masaustu/stok_rapor_masaustu_gorunum.dart';
 
 final _stokIstatistikProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) => UrunDeposu().istatistikler());
@@ -40,7 +41,9 @@ class StokRaporEkrani extends ConsumerWidget {
           ),
         ],
       ),
-      body: RefreshIndicator(
+      body: MediaQuery.sizeOf(context).width > 1100
+          ? const StokRaporMasaustuGorunum()
+          : RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(_stokIstatistikProvider);
           ref.invalidate(_kritikStoklarProvider);

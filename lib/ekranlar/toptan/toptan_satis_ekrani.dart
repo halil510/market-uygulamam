@@ -53,8 +53,9 @@ class _SepetKalemi {
   // değiştirilmişti. toplamTutar = müşteriden tahsil edilen tutarın ta
   // kendisi (bu her zaman doğruydu, değişmedi); kdvTutari artık bu
   // tutarın İÇİNDEN doğru şekilde ayıklanıyor.
-  double get toplamTutar => miktar * fiyatSonucu.birimFiyat;
-  double get kdvTutari => ParaUtils.kdvPayiCikar(toplamTutar, kdvOran);
+  double get toplamTutar => ParaUtils.yuvarla(miktar * fiyatSonucu.birimFiyat);
+  double get kdvTutari =>
+      ParaUtils.yuvarla(ParaUtils.kdvPayiCikar(toplamTutar, kdvOran));
   // Stoktan gerçekte düşülecek miktar (koli ise adede çevrilir).
   double get stokMiktari => (birim == 'koli' && urun.koliIciMiktar > 0)
       ? miktar * urun.koliIciMiktar

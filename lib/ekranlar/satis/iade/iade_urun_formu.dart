@@ -42,8 +42,8 @@ class IadeUrunFormu extends StatelessWidget {
 
   double get _fiyat => ParaUtils.sayiCoz(fiyatCtrl.text) ?? orijinalFiyat;
   double get _iskonto => ParaUtils.sayiCoz(iskontoCtrl.text) ?? 0;
-  double get _araToplam => miktar * _fiyat;
-  double get _net => _araToplam * (1 - _iskonto / 100);
+  double get _araToplam => ParaUtils.yuvarla(miktar * _fiyat);
+  double get _net => ParaUtils.yuvarla(_araToplam * (1 - _iskonto / 100));
 
   @override
   Widget build(BuildContext context) {

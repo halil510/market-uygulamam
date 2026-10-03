@@ -158,8 +158,8 @@ List<CariHareketModel> cariHareketleriniGrupla(List<CariHareketModel> hamGiris) 
       continue;
     }
 
-    final borcToplam = grup.fold(0.0, (s, g) => s + g.borc);
-    final alacakToplam = grup.fold(0.0, (s, g) => s + g.alacak);
+    final borcToplam = ParaUtils.yuvarla(grup.fold(0.0, (s, g) => s + g.borc));
+    final alacakToplam = ParaUtils.yuvarla(grup.fold(0.0, (s, g) => s + g.alacak));
     final net = borcToplam - alacakToplam;
     sonuc.add(CariHareketModel(
       id: h.id,

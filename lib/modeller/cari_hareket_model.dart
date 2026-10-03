@@ -1,3 +1,4 @@
+import '../cekirdek/utils/para_utils.dart';
 // lib/modeller/cari_hareket_model.dart
 class CariHareketModel {
   final int? id;
@@ -36,9 +37,9 @@ class CariHareketModel {
       fisId: m['fis_id'] as int?,
       fisNo: m['fis_no'] as String?,
       aciklama: m['aciklama'] as String? ?? '',
-      borc: toD(m['borc']),
-      alacak: toD(m['alacak']),
-      bakiye: m['bakiye'] != null ? toD(m['bakiye']) : null,
+      borc: ParaUtils.yuvarla(toD(m['borc'])),
+      alacak: ParaUtils.yuvarla(toD(m['alacak'])),
+      bakiye: m['bakiye'] != null ? ParaUtils.yuvarla(toD(m['bakiye'])) : null,
       odemeTuru: m['odeme_turu'] as String?,
       kullanici: m['kullanici'] as String?,
     );
@@ -52,8 +53,8 @@ class CariHareketModel {
     if (fisId != null) 'fis_id': fisId,
     if (fisNo != null) 'fis_no': fisNo,
     'aciklama': aciklama,
-    'borc': borc, 'alacak': alacak,
-    if (bakiye != null) 'bakiye': bakiye,
+    'borc': ParaUtils.yuvarla(borc), 'alacak': ParaUtils.yuvarla(alacak),
+    if (bakiye != null) 'bakiye': ParaUtils.yuvarla(bakiye!),
     if (odemeTuru != null) 'odeme_turu': odemeTuru,
     if (kullanici != null) 'kullanici': kullanici,
   };

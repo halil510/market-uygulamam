@@ -52,13 +52,16 @@ class BekleyenSiparisKalemGirdi {
   /// stoktan düşülecek/faturaya yazılacak gerçek miktar budur.
   double get toplamMiktar => miktar * birimCarpani;
   double get birimFiyatIskontolu => birimFiyat * (1 - iskontoOran / 100);
-  double get toplamTutar => toplamMiktar * birimFiyatIskontolu;
-  double get iskontoTutar => toplamMiktar * birimFiyat * (iskontoOran / 100);
+  double get toplamTutar =>
+      ParaUtils.yuvarla(toplamMiktar * birimFiyatIskontolu);
+  double get iskontoTutar =>
+      ParaUtils.yuvarla(toplamMiktar * birimFiyat * (iskontoOran / 100));
   // 🔴 DÜZELTME (Madde 21 — Para Hesaplamaları denetimi, 2026-09-16):
   // birimFiyat GERÇEKTEN KDV DAHİL (bkz. sepet_model.dart baş yorumu,
   // kullanıcı onayıyla doğrulandı) — kdvTutar, toplamTutar İÇİNDEN
   // ayıklanmalı, üzerine eklenmemeli.
-  double get kdvTutar => ParaUtils.kdvPayiCikar(toplamTutar, kdvOran);
+  double get kdvTutar =>
+      ParaUtils.yuvarla(ParaUtils.kdvPayiCikar(toplamTutar, kdvOran));
   double get alisToplam => toplamMiktar * alisFiyat;
 }
 
@@ -76,9 +79,12 @@ class BekleyenSiparisDeposu {
 
     final araToplam =
         kalemler.fold(0.0, (s, k) => s + k.toplamMiktar * k.birimFiyat);
-    final iskontoToplam = kalemler.fold(0.0, (s, k) => s + k.iskontoTutar);
-    final kdvToplam = kalemler.fold(0.0, (s, k) => s + k.kdvTutar);
-    final genelToplam = kalemler.fold(0.0, (s, k) => s + k.toplamTutar);
+    final iskontoToplam =
+        ParaUtils.yuvarla(kalemler.fold(0.0, (s, k) => s + k.iskontoTutar));
+    final kdvToplam =
+        ParaUtils.yuvarla(kalemler.fold(0.0, (s, k) => s + k.kdvTutar));
+    final genelToplam =
+        ParaUtils.yuvarla(kalemler.fold(0.0, (s, k) => s + k.toplamTutar));
     final alisToplam = kalemler.fold(0.0, (s, k) => s + k.alisToplam);
 
     late int siparisId;

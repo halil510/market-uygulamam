@@ -110,8 +110,8 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       iskontoOran: 0,
       iskontoTutar: 0,
       kdvOran: k.kdvOran,
-      kdvTutar: ParaUtils.kdvPayiCikar(k.toplam, k.kdvOran),
-      netFiyat: ParaUtils.kdvHaricFiyat(k.toplam, k.kdvOran),
+      kdvTutar: ParaUtils.yuvarla(ParaUtils.kdvPayiCikar(k.toplam, k.kdvOran)),
+      netFiyat: k.birimFiyat,
       alisFiyat: 0,
       alisFiyatKdv: 0,
     )).toList();

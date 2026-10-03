@@ -4,6 +4,7 @@
 // mantığını SCREEN→SERVICE→REPOSITORY mimarisine taşıyan servis. Her
 // metod, taşındığı ekranın orijinal mantığını davranış olarak birebir
 // korur — sadece sorumluluk UI katmanından buraya kaydırılmıştır.
+import '../cekirdek/utils/para_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../depolar/kasa_deposu.dart';
@@ -68,7 +69,7 @@ class IadeIslemServisi {
 
       for (final item in kalemler) {
         final fiyat = item.urun.satisFiyati;
-        final toplam = item.adet * fiyat;
+        final toplam = ParaUtils.yuvarla(item.adet * fiyat);
 
         final kalemSatiri = {
           'global_id': const Uuid().v4(),
@@ -169,7 +170,7 @@ class IadeIslemServisi {
             tablo: 'cari_hareket', veri: {...cariHareketSatiri, 'id': cariHareketId});
         // 'is_deleted = 0' filtresi — kanonik bakiye kuralı.
         await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
+            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0), 2) WHERE id=?',
             [cari.id, cari.id]);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cari.id], limit: 1);
@@ -460,7 +461,7 @@ class IadeIslemServisi {
             tablo: 'cari_hareket', veri: {...cariHareketSatiri, 'id': cariHareketId});
         // 'is_deleted = 0' filtresi — kanonik bakiye kuralı.
         await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
+            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0), 2) WHERE id=?',
             [cariId, cariId]);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cariId], limit: 1);
@@ -653,7 +654,7 @@ class IadeIslemServisi {
               tablo: 'cari_hareket', veri: Map<String, dynamic>.from(c));
         }
         await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0) WHERE id = ?',
+            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2) WHERE id = ?',
             [cariId, cariId]);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cariId], limit: 1);
@@ -879,7 +880,7 @@ class IadeIslemServisi {
               tablo: 'cari_hareket', veri: {...cariHareketSatiri, 'id': cariHareketId});
         }
         await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0) WHERE id = ?',
+            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2) WHERE id = ?',
             [cariId, cariId]);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cariId], limit: 1);
@@ -1111,7 +1112,7 @@ class IadeIslemServisi {
               tablo: 'cari_hareket', veri: Map<String, dynamic>.from(c));
         }
         await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0) WHERE id = ?',
+            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2) WHERE id = ?',
             [cariId, cariId]);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cariId], limit: 1);
@@ -1321,7 +1322,7 @@ class IadeIslemServisi {
               tablo: 'cari_hareket', veri: Map<String, dynamic>.from(c));
         }
         await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0) WHERE id = ?',
+            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2) WHERE id = ?',
             [cariId, cariId]);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cariId], limit: 1);
@@ -1582,7 +1583,7 @@ class IadeIslemServisi {
               veri: Map<String, dynamic>.from(guncelCariHareketSatir.first));
         }
         await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
+            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0), 2) WHERE id=?',
             [cariId, cariId]);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cariId], limit: 1);

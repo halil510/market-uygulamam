@@ -1,3 +1,4 @@
+import '../cekirdek/utils/para_utils.dart';
 // lib/modeller/satis_model.dart
 import 'satis_kalem_model.dart';
 
@@ -81,12 +82,12 @@ class SatisModel {
     if (fisNo != null) 'fis_no': fisNo,
     'tarih': tarih.toIso8601String(),
     if (cariId != null) 'cari_id': cariId,
-    'toplam_tutar': toplamTutar,
-    'iskonto_tutar': iskonto,
+    'toplam_tutar': ParaUtils.yuvarla(toplamTutar),
+    'iskonto_tutar': ParaUtils.yuvarla(iskonto),
     'iskonto_oran': iskontoOran,
-    'kdv_tutar': kdvTutar,
-    'genel_toplam': genelToplam,
-    'odenen_tutar': odenenTutar,
+    'kdv_tutar': ParaUtils.yuvarla(kdvTutar),
+    'genel_toplam': ParaUtils.yuvarla(genelToplam),
+    'odenen_tutar': ParaUtils.yuvarla(odenenTutar),
     'odeme_yontemi': odemeYontemi,
     'fis_tipi': fisTipi,
     if (aciklama != null) 'aciklama': aciklama,

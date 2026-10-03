@@ -1,3 +1,4 @@
+import '../cekirdek/utils/para_utils.dart';
 // lib/modeller/masa_siparis_kalem_model.dart
 class MasaSiparisKalemModel {
   final int? id;
@@ -23,7 +24,7 @@ class MasaSiparisKalemModel {
     this.durum = 'beklemede',
   });
 
-  double get toplam => miktar * birimFiyat;
+  double get toplam => ParaUtils.yuvarla(miktar * birimFiyat);
 
   factory MasaSiparisKalemModel.fromMap(Map<String, dynamic> m) => MasaSiparisKalemModel(
     id:         m['id'] as int?,

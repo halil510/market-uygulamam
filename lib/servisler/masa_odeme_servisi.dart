@@ -89,8 +89,11 @@ class MasaOdemeServisi {
               // toplam KDV DAHİL (bkz. sepet_model.dart baş yorumu) —
               // kdvTutar/netFiyat ParaUtils.kdvPayiCikar/kdvHaricFiyat ile
               // aynı bölme tabanlı formülü artık merkezi olarak kullanıyor.
-              kdvTutar: ParaUtils.kdvPayiCikar(k.toplam, k.kdvOran),
-              netFiyat: ParaUtils.kdvHaricFiyat(k.toplam, k.kdvOran),
+              kdvTutar: ParaUtils.yuvarla(ParaUtils.kdvPayiCikar(k.toplam, k.kdvOran)),
+              // net_fiyat = KDV DAHİL birim fiyat (SepetKalem.netFiyat ile AYNI
+              // anlam; iade ekranı bunu iade birim fiyatı olarak okur). Önceden
+              // KDV HARİÇ satır TOPLAMI yazılıyordu → masa satışı iadesi yanlış tutar.
+              netFiyat: k.birimFiyat,
               alisFiyat: 0,
               alisFiyatKdv: 0,
             ))

@@ -6,6 +6,7 @@
 // (yeni VEYA bekleyen bir siparişin teslim alınması) + kalemler + stok +
 // (varsa) kasa/banka + (varsa) cari hareketi TEK transaction içinde,
 // commit sonrası bulut senkronu.
+import '../cekirdek/utils/para_utils.dart';
 import '../depolar/kasa_deposu.dart';
 import '../depolar/banka_hareket_deposu.dart';
 import '../depolar/stok_deposu.dart';
@@ -171,7 +172,7 @@ class AlimIslemServisi {
                   'global_id': kalemGid,
                   'teslim_mik': k.miktar,
                   'birim_fiyat': k.alisFiyat,
-                  'toplam_tutar': k.miktar * k.alisFiyat,
+                  'toplam_tutar': ParaUtils.yuvarla(k.miktar * k.alisFiyat),
                   'last_updated': now,
                 },
                 where: 'id = ?',
@@ -187,7 +188,7 @@ class AlimIslemServisi {
               'teslim_mik': k.miktar,
               'birim_fiyat': k.alisFiyat,
               'kdv_oran': 0,
-              'toplam_tutar': k.miktar * k.alisFiyat,
+              'toplam_tutar': ParaUtils.yuvarla(k.miktar * k.alisFiyat),
               'last_updated': now,
             });
           }
@@ -209,7 +210,7 @@ class AlimIslemServisi {
             'teslim_mik': k.miktar,
             'birim_fiyat': k.alisFiyat,
             'kdv_oran': 0,
-            'toplam_tutar': k.miktar * k.alisFiyat,
+            'toplam_tutar': ParaUtils.yuvarla(k.miktar * k.alisFiyat),
             'last_updated': now,
           });
           await SyncKuyrukYazici.ekleTxn(txn,
@@ -223,7 +224,7 @@ class AlimIslemServisi {
                 'teslim_mik': k.miktar,
                 'birim_fiyat': k.alisFiyat,
                 'kdv_oran': 0,
-                'toplam_tutar': k.miktar * k.alisFiyat,
+                'toplam_tutar': ParaUtils.yuvarla(k.miktar * k.alisFiyat),
                 'last_updated': now,
               });
         }
@@ -350,7 +351,7 @@ class AlimIslemServisi {
           'last_updated': now,
         });
         await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
+            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0), 2) WHERE id=?',
             [tedarikciId, tedarikciId]);
         await _cariveHareketiKuyrukla(txn, cariHareketGid!, tedarikciId);
       } else if (tedarikciId != null && genelToplam > 0.005) {
@@ -374,7 +375,7 @@ class AlimIslemServisi {
           'last_updated': now,
         });
         await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
+            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0), 2) WHERE id=?',
             [tedarikciId, tedarikciId]);
         await _cariveHareketiKuyrukla(txn, cariHareketGid!, tedarikciId);
       }
@@ -625,7 +626,7 @@ class AlimIslemServisi {
           });
         }
         await txn.rawUpdate(
-            'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), last_updated = ? WHERE id = ?',
+            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2), last_updated = ? WHERE id = ?',
             [cariId, now, cariId]);
       }
     });

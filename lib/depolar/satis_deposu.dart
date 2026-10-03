@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 // lib/depolar/satis_deposu.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
+import '../cekirdek/utils/para_utils.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/aktif_sube_servisi.dart';
 import '../veri/database/veritabani.dart';
@@ -56,6 +57,19 @@ class SatisDeposu {
   Future<int> satisEkleTxn(dynamic txn, SatisModel satis, List<SatisKalemModel> kalemler) async {
     final satisMap = satis.toMap();
     satisMap.remove('id');
+    // KDV ve iskonto başlığa kalemlerden türetilir (çağıran vermediyse):
+    // POS satış servisi bu alanları hiç doldurmuyordu → Kâr/Zarar KDV'si ve
+    // AI raporları (SUM(kdv_tutar)) hep 0 görüyordu.
+    if (kalemler.isNotEmpty) {
+      if (((satisMap['kdv_tutar'] as num?) ?? 0) == 0) {
+        satisMap['kdv_tutar'] = ParaUtils.yuvarla(
+            kalemler.fold(0.0, (s, k) => s + ParaUtils.yuvarla(k.kdvTutar)));
+      }
+      if (((satisMap['iskonto_tutar'] as num?) ?? 0) == 0) {
+        satisMap['iskonto_tutar'] = ParaUtils.yuvarla(kalemler
+            .fold(0.0, (s, k) => s + ParaUtils.yuvarla(k.iskontoTutar)));
+      }
+    }
     // global_id yoksa üret - çok cihaz sync için şart
     satisMap['global_id'] ??= const Uuid().v4();
     // ÖNCEDEN sube_id sadece VERİLMİŞSE doğrulanıyordu, hiç
@@ -370,9 +384,14 @@ class SatisDeposu {
         '${guncelleyenKullanici != null ? " / $guncelleyenKullanici" : ""}]';
 
     await txn.update('satislar', {
-      'genel_toplam': yeniGenelToplam,
-      'toplam_tutar': yeniGenelToplam,
-      'odenen_tutar': yeniOdenenTutar,
+      'genel_toplam': ParaUtils.yuvarla(yeniGenelToplam),
+      'toplam_tutar': ParaUtils.yuvarla(yeniGenelToplam),
+      'odenen_tutar': ParaUtils.yuvarla(yeniOdenenTutar),
+      // Fiş güncellenince KDV/iskonto başlığı da yeni kalemlerden yenilenir.
+      'kdv_tutar': ParaUtils.yuvarla(yeniKalemler
+          .fold(0.0, (s, k) => s + ParaUtils.yuvarla(k.kdvTutar))),
+      'iskonto_tutar': ParaUtils.yuvarla(yeniKalemler
+          .fold(0.0, (s, k) => s + ParaUtils.yuvarla(k.iskontoTutar))),
       'aciklama': eskiAciklama.isEmpty ? not : '$eskiAciklama $not',
       'last_updated': now,
     }, where: 'id = ?', whereArgs: [satisId]);

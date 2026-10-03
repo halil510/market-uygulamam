@@ -35,7 +35,7 @@ class _SiparisKalem {
     fiyatCtrl = TextEditingController(text: birimFiyat.toStringAsFixed(2));
   }
   void dispose() { miktarCtrl.dispose(); fiyatCtrl.dispose(); }
-  double get toplamTutar => miktar * birimFiyat;
+  double get toplamTutar => ParaUtils.yuvarla(miktar * birimFiyat);
 }
 
 class OnerilenSiparisKalemi {

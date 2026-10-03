@@ -742,10 +742,10 @@ extension _GecmisTabExt on _IadeEkraniState {
       final detaylar = kalemler.map((k) {
         final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;
         final birimFiyat = (k['birim_fiyat'] as num?)?.toDouble() ?? 0;
-        final araToplam = miktar * birimFiyat;
+        final araToplam = ParaUtils.yuvarla(miktar * birimFiyat);
         // Ürünün gerçek KDV oranı kullanılır (urunler.kdv_oran); bulunamazsa %20 varsayılır.
         final kdvOran = (k['urun_kdv_oran'] as num?)?.toDouble() ?? 20.0;
-        final kdvTutar = araToplam * kdvOran / (100 + kdvOran);
+        final kdvTutar = ParaUtils.yuvarla(araToplam * kdvOran / (100 + kdvOran));
         // 🔴 DÜZELTME (Madde 21 — GİB/fatura araToplam bulgusu devamı,
         // 2026-09-16): araToplam (yerel değişken, satır 764) KDV DAHİL
         // (brüt) — kdvTutar burada zaten DOĞRU (bölme ile eşdeğer)

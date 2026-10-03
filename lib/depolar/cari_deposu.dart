@@ -402,7 +402,7 @@ class CariDeposu {
     try {
       final db = await _d;
       await db.rawUpdate(
-        'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0) WHERE id = ?',
+        'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2) WHERE id = ?',
         [cariId, cariId]);
       final satir = await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
       if (satir.isNotEmpty) {
@@ -447,10 +447,9 @@ class CariDeposu {
     hm['global_id'] = globalId;
     await txn.insert('cari_hareket', hm);
     await txn.rawUpdate('''
-      UPDATE cari SET bakiye = (
-        SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
+      UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
         FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-      ) WHERE id = ?
+      ), 2) WHERE id = ?
     ''', [hareket.cariId, hareket.cariId]);
     // Madde 5 sertleştirmesi: hareket kaydı VE etkilediği cari bakiyesi
     // AYNI transaction içinde kuyruğa yazılıyor — ikisi de business
@@ -479,10 +478,9 @@ class CariDeposu {
       // bulut hâlâ eski (hatalı) bakiyeyi görmeye devam ediyordu.
       final now = DateTime.now().toIso8601String();
       await db.rawUpdate('''
-        UPDATE cari SET bakiye = (
-          SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
+        UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
           FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-        ), last_updated = ? WHERE id = ?
+        ), 2), last_updated = ? WHERE id = ?
       ''', [cariId, now, cariId]);
       final satir = await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
       if (satir.isNotEmpty) {
@@ -678,10 +676,9 @@ class CariDeposu {
         tersCariGid = tersGid;
 
         await txn.rawUpdate('''
-          UPDATE cari SET bakiye = (
-            SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0)
+          UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0)
             FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-          ), last_updated = ?
+          ), 2), last_updated = ?
           WHERE id = ?
         ''', [h.cariId, now, h.cariId]);
 

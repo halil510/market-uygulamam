@@ -41,9 +41,20 @@ class ParaUtils {
   static final _fmtK  = NumberFormat('#,##0', 'tr_TR');
 
   static String formatla(double tutar, {String simge = '₺'}) =>
-      '$simge${_fmt.format(tutar)}';
+      '$simge${_fmt.format(yuvarla(tutar))}';
 
-  static String formatlaK(double tutar) => _fmtK.format(tutar);
+  static String formatlaK(double tutar) => _fmtK.format(tutar == 0 ? 0 : tutar);
+
+  /// Para tutarını KURUŞA yuvarlar (ticari yuvarlama: 0,5 kuruş yukarı,
+  /// negatifte sıfırdan uzağa). 1.005 gibi ikilik tabanda tam gösterilemeyen
+  /// değerler için küçük bir eşik eklenir. Fiş/cari/kasa/banka'ya yazılan
+  /// HER tutar buradan geçmeli: 26,973 gibi kuruş-altı kalıntılar cari
+  /// bakiyede "0,00 görünüp borçlu sayılan" hayalet borç üretir.
+  static double yuvarla(double v) {
+    if (v.isNaN || v.isInfinite) return 0;
+    final r = (v.abs() * 100 + 0.5 + 1e-7).floorToDouble() / 100;
+    return v < 0 && r != 0 ? -r : r;
+  }
 
   static double kdvHesapla(double fiyat, double oran) =>
       fiyat * (oran / 100);

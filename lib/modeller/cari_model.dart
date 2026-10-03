@@ -1,3 +1,4 @@
+import '../cekirdek/utils/para_utils.dart';
 // lib/modeller/cari_model.dart
 class CariModel {
   final int? id;
@@ -68,7 +69,7 @@ class CariModel {
       vergiDairesi: m['vergi_dairesi'] as String?,
       vergiNo: m['vergi_no'] as String?,
       tcKimlik: m['tc_kimlik'] as String?,
-      bakiye: toD(m['bakiye']),
+      bakiye: ParaUtils.yuvarla(toD(m['bakiye'])),
       limitTutari: toD(m['limit_tutari']),
       vadeGun: (m['vade_gun'] as int?) ?? 0,
       anaGrup: m['ana_grup'] as String?,
@@ -100,7 +101,7 @@ class CariModel {
     if (vergiDairesi != null) 'vergi_dairesi': vergiDairesi,
     if (vergiNo != null) 'vergi_no': vergiNo,
     if (tcKimlik != null) 'tc_kimlik': tcKimlik,
-    'bakiye': bakiye,
+    'bakiye': ParaUtils.yuvarla(bakiye),
     'limit_tutari': limitTutari,
     'vade_gun': vadeGun,
     if (anaGrup != null) 'ana_grup': anaGrup,

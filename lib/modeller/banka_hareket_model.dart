@@ -1,3 +1,4 @@
+import '../cekirdek/utils/para_utils.dart';
 // lib/modeller/banka_hareket_model.dart
 class BankaHareketModel {
   final int? id;
@@ -60,7 +61,7 @@ class BankaHareketModel {
     'banka_hesap_id': bankaHesapId,
     if (krediKartiId != null) 'kredi_karti_id': krediKartiId,
     'islem_tipi': islemTipi,
-    'tutar': tutar,
+    'tutar': ParaUtils.yuvarla(tutar),
     if (aciklama != null) 'aciklama': aciklama,
     'tarih': tarih.toIso8601String(),
     if (referansNo != null) 'referans_no': referansNo,

@@ -1,5 +1,6 @@
 // lib/modeller/masa_siparis_model.dart
 import 'masa_siparis_kalem_model.dart';
+import '../cekirdek/utils/para_utils.dart';
 
 class MasaSiparisModel {
   final int? id;
@@ -31,7 +32,7 @@ class MasaSiparisModel {
   });
 
   double get hesaplananToplam =>
-      kalemler.fold(0.0, (s, k) => s + k.toplam);
+      ParaUtils.yuvarla(kalemler.fold(0.0, (s, k) => s + k.toplam));
 
   factory MasaSiparisModel.fromMap(Map<String, dynamic> m, {List<MasaSiparisKalemModel> kalemler = const []}) => MasaSiparisModel(
     id:        m['id'] as int?,

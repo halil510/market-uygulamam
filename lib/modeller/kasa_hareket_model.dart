@@ -1,3 +1,4 @@
+import '../cekirdek/utils/para_utils.dart';
 // lib/modeller/kasa_hareket_model.dart
 class KasaHareketModel {
   // 🔴 MERKEZİ KAYNAK: Bu sınıflandırma önceden 3 farklı dosyada ayrı
@@ -112,8 +113,8 @@ class KasaHareketModel {
         if (id != null) 'id': id,
         if (globalId != null) 'global_id': globalId,
         'hareket_tipi': hareketTipi,
-        'tutar': tutar,
-        if (bakiyeSonrasi != null) 'bakiye_sonrasi': bakiyeSonrasi,
+        'tutar': ParaUtils.yuvarla(tutar),
+        if (bakiyeSonrasi != null) 'bakiye_sonrasi': ParaUtils.yuvarla(bakiyeSonrasi!),
         if (referansId != null) 'referans_id': referansId,
         if (referansTuru != null) 'referans_turu': referansTuru,
         'tarih': tarih.toIso8601String(),

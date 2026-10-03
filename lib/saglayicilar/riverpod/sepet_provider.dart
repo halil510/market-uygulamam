@@ -1,6 +1,7 @@
 // lib/saglayicilar/riverpod/sepet_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../cekirdek/utils/para_utils.dart';
 import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
 import '../../modeller/sepet_model.dart';
@@ -25,10 +26,13 @@ class SepetDurum {
   bool   get bos          => kalemler.isEmpty;
   int    get kalemSayisi  => kalemler.length;
   int    get toplamAdet   => kalemler.fold(0, (s, k) => s + k.miktar.round());
-  double get araToplam    => kalemler.fold(0.0, (s, k) => s + k.toplamTutar);
-  double get iskontoTutar => araToplam * (genelIskontoYuzde / 100);
-  double get genelToplam  => araToplam - iskontoTutar;
-  double get kdvToplam    => kalemler.fold(0.0, (s, k) => s + k.kdvTutar);
+  double get araToplam    => ParaUtils.yuvarla(kalemler.fold(0.0, (s, k) => s + k.toplamTutar));
+  double get iskontoTutar => ParaUtils.yuvarla(araToplam * (genelIskontoYuzde / 100));
+  double get genelToplam  => ParaUtils.yuvarla(araToplam - iskontoTutar);
+  /// KDV payı: satır KDV'leri toplamı, genel iskonto oranında küçülür
+  /// (genel iskonto matrahı da düşürür).
+  double get kdvToplam    => ParaUtils.yuvarla(
+      kalemler.fold(0.0, (s, k) => s + k.kdvTutar) * (1 - genelIskontoYuzde / 100));
 
   SepetDurum copyWith({
     List<SepetKalem>?    kalemler,

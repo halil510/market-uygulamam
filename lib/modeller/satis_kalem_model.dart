@@ -71,9 +71,9 @@ class SatisKalemModel {
     'satis_id': satisId, 'urun_id': urunId, 'urun_adi': urunAdi,
     if (barkod != null) 'barkod': barkod,
     'miktar': miktar, 'birim_fiyat': birimFiyat,
-    'iskonto_oran': iskontoOran, 'iskonto_tutar': iskontoTutar,
-    'kdv_oran': kdvOran, 'kdv_tutar': kdvTutar,
-    'net_fiyat': netFiyat, 'toplam_tutar': toplamTutar,
+    'iskonto_oran': iskontoOran, 'iskonto_tutar': ParaUtils.yuvarla(iskontoTutar),
+    'kdv_oran': kdvOran, 'kdv_tutar': ParaUtils.yuvarla(kdvTutar),
+    'net_fiyat': netFiyat, 'toplam_tutar': ParaUtils.yuvarla(toplamTutar),
     if (lotId != null) 'lot_id': lotId,
     if (seriNo != null) 'seri_no': seriNo,
     'alis_fiyat': alisFiyat,
@@ -102,18 +102,19 @@ class SatisKalemModel {
     final isk = iskontoOran ?? this.iskontoOran;
     final fiy = birimFiyat ?? this.birimFiyat;
     final mik = miktar ?? this.miktar;
-    final indTutar = fiy * mik * (isk / 100);
+    final indTutar = ParaUtils.yuvarla(fiy * mik * (isk / 100));
     final netF = fiy * (1 - isk / 100);
     // 🔴 DÜZELTME (Madde 21, 2026-09-16): birimFiyat KDV DAHİL — kdvTutar
     // toplam tutarın İÇİNDEN ayıklanır, üzerine eklenmez.
-    final kdvT = ParaUtils.kdvPayiCikar(netF * mik, kdvOran);
+    final topT = ParaUtils.yuvarla(netF * mik);
+    final kdvT = ParaUtils.yuvarla(ParaUtils.kdvPayiCikar(topT, kdvOran));
     return SatisKalemModel(
       id: id, satisId: satisId ?? this.satisId, urunId: urunId,
       urunAdi: urunAdi, barkod: barkod,
       miktar: mik, birimFiyat: fiy,
       iskontoOran: isk, iskontoTutar: indTutar,
       kdvOran: kdvOran, kdvTutar: kdvT,
-      netFiyat: netF, toplamTutar: netF * mik,
+      netFiyat: netF, toplamTutar: topT,
       lotId: lotId, seriNo: seriNo,
       alisFiyat: alisFiyat, alisFiyatKdv: alisFiyatKdv,
     );

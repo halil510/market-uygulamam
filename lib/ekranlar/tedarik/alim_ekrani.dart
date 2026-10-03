@@ -51,7 +51,7 @@ class _AlimKalem {
     lotNoCtrl.dispose();
     sktCtrl.dispose();
   }
-  double get toplamTutar => miktar * alisFiyat;
+  double get toplamTutar => ParaUtils.yuvarla(miktar * alisFiyat);
 }
 
 class AlimEkrani extends ConsumerStatefulWidget {
@@ -350,7 +350,7 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
   }
 
   double get _genelToplam =>
-      _kalemler.fold(0.0, (s, k) => s + k.toplamTutar);
+      ParaUtils.yuvarla(_kalemler.fold(0.0, (s, k) => s + k.toplamTutar));
 
   Future<void> _alimKaydet() async {
     if (_kalemler.isEmpty) {

@@ -1,3 +1,4 @@
+import '../cekirdek/utils/para_utils.dart';
 // lib/modeller/borc_odeme_model.dart
 class BorcOdemeModel {
   final int? id;
@@ -41,7 +42,7 @@ class BorcOdemeModel {
     if (id != null) 'id': id,
     if (globalId != null) 'global_id': globalId,
     'borc_id': borcId,
-    'tutar': tutar,
+    'tutar': ParaUtils.yuvarla(tutar),
     'tarih': tarih.toIso8601String(),
     'odeme_yontemi': odemeYontemi,
     if (aciklama != null) 'aciklama': aciklama,

@@ -438,8 +438,8 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     if (_duzenlemeModu_iadeId != null) {
       final fiyat = ParaUtils.sayiCoz(_fiyatCtrl.text) ?? _orijinalFiyat;
       final isk = ParaUtils.sayiCoz(_iskontoCtrl.text) ?? 0;
-      final toplam = _miktar * fiyat * (1 - isk / 100);
-      await _duzenlemeModu_kalemEkle(fiyat, isk, _miktar * fiyat * (isk / 100),
+      final toplam = ParaUtils.yuvarla(_miktar * fiyat * (1 - isk / 100));
+      await _duzenlemeModu_kalemEkle(fiyat, isk, ParaUtils.yuvarla(_miktar * fiyat * (isk / 100)),
           fiyat * (1 - isk / 100), toplam);
       return;
     }
@@ -450,7 +450,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     try {
       final fiyat = ParaUtils.sayiCoz(_fiyatCtrl.text) ?? _orijinalFiyat;
       final isk = ParaUtils.sayiCoz(_iskontoCtrl.text) ?? 0;
-      final toplam = _miktar * fiyat * (1 - isk / 100);
+      final toplam = ParaUtils.yuvarla(_miktar * fiyat * (1 - isk / 100));
       final neden = _aciklamaCtrl.text.trim().isEmpty
           ? 'Iade'
           : _aciklamaCtrl.text.trim();
@@ -501,7 +501,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
           'miktar': _miktar,
           'birim_fiyat': fiyat,
           'iskonto_oran': isk,
-          'iskonto_tutar': _miktar * fiyat * (isk / 100),
+          'iskonto_tutar': ParaUtils.yuvarla(_miktar * fiyat * (isk / 100)),
           'toplam_tutar': toplam,
           'musteri_adi': _secilenCari?.unvan ?? 'Kayıtsız Müşteri',
           'cari_id': _secilenCari?.id,

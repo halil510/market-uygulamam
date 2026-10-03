@@ -1,3 +1,4 @@
+import '../cekirdek/utils/para_utils.dart';
 // lib/modeller/gider_model.dart
 class GiderModel {
   final int? id;
@@ -72,7 +73,7 @@ class GiderModel {
   Map<String, dynamic> toMap() => {
     if (id != null) 'id': id,
     if (globalId != null) 'global_id': globalId,
-    'kategori_id': kategoriId, 'tutar': tutar,
+    'kategori_id': kategoriId, 'tutar': ParaUtils.yuvarla(tutar),
     if (aciklama != null) 'aciklama': aciklama,
     'tarih': tarih.toIso8601String(),
     if (belgeNo != null) 'belge_no': belgeNo,

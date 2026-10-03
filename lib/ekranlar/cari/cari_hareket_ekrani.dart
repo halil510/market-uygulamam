@@ -177,8 +177,8 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
           .toList();
     }
     _filtreli = list;
-    _toplamBorc = _filtreli.fold(0.0, (s, h) => s + h.borc);
-    _toplamAlacak = _filtreli.fold(0.0, (s, h) => s + h.alacak);
+    _toplamBorc = ParaUtils.yuvarla(_filtreli.fold(0.0, (s, h) => s + h.borc));
+    _toplamAlacak = ParaUtils.yuvarla(_filtreli.fold(0.0, (s, h) => s + h.alacak));
     // 🔴 DÜZELTME (2026-09-27): "Bakiye" ÖNCEDEN yalnızca listedeki
     // hareketlerin netiydi — tarih aralığı seçilince devreden bakiye
     // eklenmiyordu (müşteriye verilen PDF ekstre yanlış bakiye basıyordu);
@@ -542,7 +542,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       ]);
       double runBak = _ekstreBaslangic;
       for (final h in _filtreli.reversed.toList()) {
-        runBak += h.borc - h.alacak;
+        runBak = ParaUtils.yuvarla(runBak + h.borc - h.alacak);
         sh.appendRow([
           TextCellValue(_fmtT.format(h.tarih)),
           TextCellValue(h.fisTipi),
@@ -574,7 +574,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
       buf.writeln('Tarih,Tip,Fiş No,Açıklama,Borç,Alacak,Bakiye');
       double runBak = _ekstreBaslangic;
       for (final h in _filtreli.reversed.toList()) {
-        runBak += h.borc - h.alacak;
+        runBak = ParaUtils.yuvarla(runBak + h.borc - h.alacak);
         // 🔴 Derin denetimde bulundu (P2): _exportExcel() bu oturumda
         // excelIcinGuvenliMetin ile korunmuştu ama hemen altındaki
         // _exportCSV() atlanmıştı — CSV enjeksiyonu Excel'deki AYNI
@@ -639,7 +639,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                 ],
             ];
             return satirlar..addAll(_filtreli.reversed.map((h) {
-              runBak += h.borc - h.alacak;
+              runBak = ParaUtils.yuvarla(runBak + h.borc - h.alacak);
               return [
                 _fmtT.format(h.tarih),
                 h.fisTipi,

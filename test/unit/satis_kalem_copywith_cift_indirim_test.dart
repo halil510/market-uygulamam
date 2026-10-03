@@ -17,7 +17,8 @@ void main() {
     expect((m['toplam_tutar'] as num).toDouble(), 100);
     expect((m['net_fiyat'] as num).toDouble(), 100);
     expect((m['iskonto_tutar'] as num).toDouble(), 40);
-    expect((m['kdv_tutar'] as num).toDouble(), closeTo(16.6667, 1e-9));
+    // Kayıt anında kuruşa yuvarlanır (16,6667 → 16,67).
+    expect((m['kdv_tutar'] as num).toDouble(), 16.67);
   });
 
   test('miktar/fiyat verilirse yeniden hesaplanır (mevcut davranış)', () {

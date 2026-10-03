@@ -35,11 +35,12 @@ class _Kalem {
   double get miktar      => ParaUtils.sayiCoz(miktCtrl.text) ?? 1;
   double get birimFiyat  => ParaUtils.sayiCoz(fiyCtrl.text)  ?? 0;
   double get iskontoOran => ParaUtils.sayiCoz(iskCtrl.text) ?? 0;
-  double get araToplam   => birimFiyat * miktar;
-  double get iskontoTut  => araToplam * (iskontoOran / 100);
-  double get netTutar    => araToplam - iskontoTut;
-  double get kdvTutar    => netTutar * ((double.tryParse(kdvOran) ?? 18) / 100);
-  double get toplam      => netTutar + kdvTutar;
+  double get araToplam   => ParaUtils.yuvarla(birimFiyat * miktar);
+  double get iskontoTut  => ParaUtils.yuvarla(araToplam * (iskontoOran / 100));
+  double get netTutar    => ParaUtils.yuvarla(araToplam - iskontoTut);
+  double get kdvTutar    =>
+      ParaUtils.yuvarla(netTutar * ((double.tryParse(kdvOran) ?? 18) / 100));
+  double get toplam      => ParaUtils.yuvarla(netTutar + kdvTutar);
 
   void dispose() {
     adCtrl.dispose(); miktCtrl.dispose();
@@ -77,7 +78,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
   final _teslimEdenCtrl  = TextEditingController();
   final _teslimAlanCtrl  = TextEditingController();
 
-  double get _araToplam   => _kalemler.fold(0.0, (s, k) => s + k.araToplam);
+  double get _araToplam   => ParaUtils.yuvarla(_kalemler.fold(0.0, (s, k) => s + k.araToplam));
   // 🔴 DÜZELTME (kritik — bağımsız yeniden denetimde bulundu): FaturaModel.
   // toplamAraToplam alanı codebase genelinde NET (indirim uygulanmış)
   // tutar olarak saklanır (Madde 21 kuralı) — ama bu ekran gönderirken
@@ -89,10 +90,10 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
   // yüzeyde) indirimin İKİ KEZ eklenmiş görünmesine yol açıyordu (ör.
   // gerçek brüt 100 iken 110 basılıyordu). Gönderirken KULLANILMASI
   // gereken NET toplam bu.
-  double get _araToplamNet => _kalemler.fold(0.0, (s, k) => s + k.netTutar);
-  double get _iskonto     => _kalemler.fold(0.0, (s, k) => s + k.iskontoTut);
-  double get _kdvToplam   => _kalemler.fold(0.0, (s, k) => s + k.kdvTutar);
-  double get _genelToplam => _kalemler.fold(0.0, (s, k) => s + k.toplam);
+  double get _araToplamNet => ParaUtils.yuvarla(_kalemler.fold(0.0, (s, k) => s + k.netTutar));
+  double get _iskonto     => ParaUtils.yuvarla(_kalemler.fold(0.0, (s, k) => s + k.iskontoTut));
+  double get _kdvToplam   => ParaUtils.yuvarla(_kalemler.fold(0.0, (s, k) => s + k.kdvTutar));
+  double get _genelToplam => ParaUtils.yuvarla(_kalemler.fold(0.0, (s, k) => s + k.toplam));
 
   @override
   void initState() {

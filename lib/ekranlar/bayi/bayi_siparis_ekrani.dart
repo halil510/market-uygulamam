@@ -23,7 +23,7 @@ class _SepetKalemi {
   double miktar;
   double birimFiyat;
   _SepetKalemi({required this.urun, required this.miktar, required this.birimFiyat});
-  double get toplam => miktar * birimFiyat;
+  double get toplam => ParaUtils.yuvarla(miktar * birimFiyat);
 }
 
 class BayiSiparisEkrani extends StatefulWidget {

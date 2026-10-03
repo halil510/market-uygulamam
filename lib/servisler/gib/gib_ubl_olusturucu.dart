@@ -15,6 +15,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../cekirdek/utils/para_utils.dart';
 import '../../modeller/fatura_model.dart';
 import '../../veri/database/veritabani.dart';
 import 'gib_ayar_yoneticisi.dart';
@@ -30,6 +31,8 @@ class GibUblOlusturucu {
       .replaceAll("İ", "i")
       .replaceAll("I", "i")
       .replaceAll("ı", "i")
+      .replaceAll("ş", "s")
+      .replaceAll("Ş", "s")
       .toLowerCase()
       .trim();
   static bool _iadeMi(String? t) => _tipNorm(t) == "iade";
@@ -90,7 +93,8 @@ class GibUblOlusturucu {
     }
 
     final satirlar = fatura.detaylar.map((k) {
-      final kdvTutar = k.kdvTutari;
+      final kdvTutar = ParaUtils.yuvarla(k.kdvTutari);
+      final araTutar = ParaUtils.yuvarla(k.araToplam);
       // 🔴 DÜZELTME (Madde 21, 2026-09-16): UBL-TR'de PriceAmount ×
       // InvoicedQuantity = LineExtensionAmount ilişkisi (ikisi de KDV
       // HARİÇ) beklenir. k.birimFiyat müşteriye gösterilen KDV DAHİL
@@ -103,11 +107,11 @@ class GibUblOlusturucu {
     <cac:InvoiceLine>
       <cbc:ID>${fatura.detaylar.indexOf(k) + 1}</cbc:ID>
       <cbc:InvoicedQuantity unitCode="C62">${k.miktar.toStringAsFixed(4)}</cbc:InvoicedQuantity>
-      <cbc:LineExtensionAmount currencyID="TRY">${k.araToplam.toStringAsFixed(2)}</cbc:LineExtensionAmount>
+      <cbc:LineExtensionAmount currencyID="TRY">${araTutar.toStringAsFixed(2)}</cbc:LineExtensionAmount>
       <cac:TaxTotal>
         <cbc:TaxAmount currencyID="TRY">${kdvTutar.toStringAsFixed(2)}</cbc:TaxAmount>
         <cac:TaxSubtotal>
-          <cbc:TaxableAmount currencyID="TRY">${k.araToplam.toStringAsFixed(2)}</cbc:TaxableAmount>
+          <cbc:TaxableAmount currencyID="TRY">${araTutar.toStringAsFixed(2)}</cbc:TaxableAmount>
           <cbc:TaxAmount currencyID="TRY">${kdvTutar.toStringAsFixed(2)}</cbc:TaxAmount>
           <cbc:Percent>${k.kdvOrani.toStringAsFixed(0)}</cbc:Percent>
           <cac:TaxCategory>
@@ -128,9 +132,15 @@ class GibUblOlusturucu {
     </cac:InvoiceLine>''';
     }).join('\n');
 
-    final genelToplam = fatura.genelToplam;
-    final kdvToplam   = fatura.toplamKdv;
-    final matrah      = genelToplam - kdvToplam;
+    // UBL-TR kuralı: TaxInclusive = TaxExclusive + Tax ve satır toplamları
+    // başlık toplamlarına KURUŞU KURUŞUNA eşit olmalı — başlık, yuvarlanmış
+    // satırlardan türetilir (eski faturalarda saklı toplam 1 kuruş farklı
+    // olsa bile XML şematronu geçsin).
+    final matrah      = ParaUtils.yuvarla(fatura.detaylar
+        .fold<double>(0, (t, k) => t + ParaUtils.yuvarla(k.araToplam)));
+    final kdvToplam   = ParaUtils.yuvarla(fatura.detaylar
+        .fold<double>(0, (t, k) => t + ParaUtils.yuvarla(k.kdvTutari)));
+    final genelToplam = ParaUtils.yuvarla(matrah + kdvToplam);
 
     // ÖNCEDEN BURADA CİDDİ BİR GİB UYUMLULUK HATASI VARDI: fatura
     // seviyesindeki KDV toplamı, kalemlerin GERÇEK oranlarına
@@ -147,14 +157,14 @@ class GibUblOlusturucu {
     for (final k in fatura.detaylar) {
       final mevcut = oranGruplari[k.kdvOrani] ?? (matrah: 0.0, kdv: 0.0);
       oranGruplari[k.kdvOrani] = (
-        matrah: mevcut.matrah + k.araToplam,
-        kdv: mevcut.kdv + k.kdvTutari,
+        matrah: mevcut.matrah + ParaUtils.yuvarla(k.araToplam),
+        kdv: mevcut.kdv + ParaUtils.yuvarla(k.kdvTutari),
       );
     }
     final taxSubtotallar = oranGruplari.entries.map((e) => '''
     <cac:TaxSubtotal>
-      <cbc:TaxableAmount currencyID="TRY">${e.value.matrah.toStringAsFixed(2)}</cbc:TaxableAmount>
-      <cbc:TaxAmount currencyID="TRY">${e.value.kdv.toStringAsFixed(2)}</cbc:TaxAmount>
+      <cbc:TaxableAmount currencyID="TRY">${ParaUtils.yuvarla(e.value.matrah).toStringAsFixed(2)}</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="TRY">${ParaUtils.yuvarla(e.value.kdv).toStringAsFixed(2)}</cbc:TaxAmount>
       <cbc:Percent>${e.key.toStringAsFixed(0)}</cbc:Percent>
       <cac:TaxCategory>
         <cac:TaxScheme>

@@ -742,26 +742,20 @@ extension _GecmisTabExt on _IadeEkraniState {
       final detaylar = kalemler.map((k) {
         final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;
         final birimFiyat = (k['birim_fiyat'] as num?)?.toDouble() ?? 0;
-        final araToplam = ParaUtils.yuvarla(miktar * birimFiyat);
-        // Ürünün gerçek KDV oranı kullanılır (urunler.kdv_oran); bulunamazsa %20 varsayılır.
+        // Ürünün gerçek KDV oranı (urunler.kdv_oran); bulunamazsa %20.
         final kdvOran = (k['urun_kdv_oran'] as num?)?.toDouble() ?? 20.0;
-        final kdvTutar = ParaUtils.yuvarla(araToplam * kdvOran / (100 + kdvOran));
-        // 🔴 DÜZELTME (Madde 21 — GİB/fatura araToplam bulgusu devamı,
-        // 2026-09-16): araToplam (yerel değişken, satır 764) KDV DAHİL
-        // (brüt) — kdvTutar burada zaten DOĞRU (bölme ile eşdeğer)
-        // formülle ayıklanmıştı, ama FaturaDetayModel.araToplam alanına
-        // brüt değer YAZILIYORDU; bu alan NET (matrah) olmalı (bkz.
-        // satis_detay_ekrani.dart'taki aynı düzeltme). toplamTutar zaten
-        // doğru (brüt).
-        return FaturaDetayModel(
+        // İade fişindeki GERÇEK kalem tutarı (iskonto dahil) esas alınır;
+        // yoksa miktar × birim fiyat. Önceden iskontolu iade faturaya
+        // iskontosuz (fazla) tutarla yazılıyordu.
+        final kdvDahilToplam =
+            (k['toplam'] as num?)?.toDouble() ?? miktar * birimFiyat;
+        return FaturaDetayModel.kdvDahilKalemden(
           urunId: k['urun_id'] as int?,
           urunAdi: (k['urun_adi'] ?? k['urun_adi_db'] ?? '-').toString(),
           miktar: miktar,
           birimFiyat: birimFiyat,
           kdvOrani: kdvOran,
-          kdvTutari: kdvTutar,
-          araToplam: araToplam - kdvTutar,
-          toplamTutar: araToplam,
+          kdvDahilToplam: kdvDahilToplam,
         );
       }).toList();
 

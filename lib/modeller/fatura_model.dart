@@ -1,3 +1,4 @@
+import '../cekirdek/utils/para_utils.dart';
 // lib/modeller/fatura_model.dart
 // Bu dosya, fatura ve fatura detaylarını temsil eden modelleri içerir.
 
@@ -233,6 +234,38 @@ class FaturaDetayModel {
     this.kdvTutari = 0, this.araToplam = 0, this.toplamTutar = 0,
     this.lotSeriNo,
   });
+
+  /// KDV DAHİL çalışan kaynaklardan (satış/iade/sipariş kalemi) fatura satırı
+  /// üretir. Fatura kuralı: araToplam = KDV HARİÇ net matrah (indirim
+  /// uygulanmış), iskontoTutari = KDV HARİÇ indirim (matrah + iskonto = brüt
+  /// matrah), toplamTutar = KDV DAHİL. Hepsi kuruşa yuvarlanır ve
+  /// araToplam + kdvTutari == toplamTutar KURUŞU KURUŞUNA tutar.
+  /// [kdvDahilIskontoTutari]: kaynaktaki (KDV dahil) indirim tutarı.
+  factory FaturaDetayModel.kdvDahilKalemden({
+    int? urunId,
+    required String urunAdi,
+    String? barkod,
+    required double miktar,
+    required double birimFiyat,
+    double iskontoOrani = 0,
+    double kdvDahilIskontoTutari = 0,
+    required double kdvOrani,
+    required double kdvDahilToplam,
+    String? lotSeriNo,
+  }) {
+    final toplam = ParaUtils.yuvarla(kdvDahilToplam);
+    final kdv = ParaUtils.yuvarla(ParaUtils.kdvPayiCikar(toplam, kdvOrani));
+    return FaturaDetayModel(
+      urunId: urunId, urunAdi: urunAdi, barkod: barkod,
+      miktar: miktar, birimFiyat: birimFiyat,
+      iskontoOrani: iskontoOrani,
+      iskontoTutari: ParaUtils.yuvarla(
+          ParaUtils.kdvHaricFiyat(kdvDahilIskontoTutari, kdvOrani)),
+      kdvOrani: kdvOrani, kdvTutari: kdv,
+      araToplam: ParaUtils.yuvarla(toplam - kdv), toplamTutar: toplam,
+      lotSeriNo: lotSeriNo,
+    );
+  }
 
   static double _d(dynamic v) {
     if (v == null) return 0.0;

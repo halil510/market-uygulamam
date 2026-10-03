@@ -289,23 +289,15 @@ class _SiparisDetayEkraniState extends State<_SiparisDetayEkrani> {
         final toplamTutar = (k['toplam_tutar'] as num).toDouble();
         final kdvOran = (k['kdv_oran'] as num).toDouble();
         final birimFiyat = toplamMiktar > 0 ? toplamTutar / toplamMiktar : 0.0;
-        return FaturaDetayModel(
+        return FaturaDetayModel.kdvDahilKalemden(
           urunId: k['urun_id'] as int,
           urunAdi: '${k['urun_adi']} (${k['birim_adi']})',
           miktar: toplamMiktar,
           birimFiyat: birimFiyat,
           iskontoOrani: (k['iskonto_oran'] as num).toDouble(),
-          iskontoTutari: (k['iskonto_tutar'] as num).toDouble(),
+          kdvDahilIskontoTutari: (k['iskonto_tutar'] as num).toDouble(),
           kdvOrani: kdvOran,
-          // 🔴 DÜZELTME (Madde 21, 2026-09-16): toplamTutar KDV DAHİL —
-          // kdvTutari İÇİNDEN ayıklanır, üzerine eklenmez. araToplam da
-          // (GİB/fatura matrah zincirindeki ayrı bulgu artık BURADA DA
-          // düzeltildi, bkz. satis_detay_ekrani.dart'taki aynı düzeltme)
-          // artık KDV HARİÇ net tutar — brüt toplamTutar'dan kdvTutari
-          // çıkarılarak türetiliyor.
-          kdvTutari: ParaUtils.kdvPayiCikar(toplamTutar, kdvOran),
-          araToplam: toplamTutar - ParaUtils.kdvPayiCikar(toplamTutar, kdvOran),
-          toplamTutar: toplamTutar,
+          kdvDahilToplam: toplamTutar,
         );
       }).toList();
 

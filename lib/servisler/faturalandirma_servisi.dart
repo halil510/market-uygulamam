@@ -14,6 +14,8 @@ import '../depolar/fatura_deposu.dart';
 import '../modeller/cari_model.dart';
 import '../modeller/fatura_model.dart';
 import '../veri/database/veritabani.dart';
+import '../cekirdek/utils/para_utils.dart';
+import '../cekirdek/utils/para_utils.dart';
 import '../cekirdek/utils/vergi_no_dogrulayici.dart';
 import 'aktif_sube_servisi.dart';
 
@@ -183,9 +185,9 @@ class FaturalandirmaServisi {
     final hicIskontoYok = kalemler.every((k) => k.iskontoOrani == 0 && k.iskontoTutari == 0);
     if (hicIskontoYok && varsayilanIskonto > 0) {
       islenmisKalemler = kalemler.map((k) {
-        final iskontoTutar = k.araToplam * varsayilanIskonto / 100;
-        final netTutar = k.araToplam - iskontoTutar;
-        final kdvTutar = netTutar * k.kdvOrani / 100;
+        final iskontoTutar = ParaUtils.yuvarla(k.araToplam * varsayilanIskonto / 100);
+        final netTutar = ParaUtils.yuvarla(k.araToplam - iskontoTutar);
+        final kdvTutar = ParaUtils.yuvarla(netTutar * k.kdvOrani / 100);
         return FaturaDetayModel(
           urunId: k.urunId, urunAdi: k.urunAdi, barkod: k.barkod,
           miktar: k.miktar, birimFiyat: k.birimFiyat,
@@ -198,15 +200,19 @@ class FaturalandirmaServisi {
           // TEK dalda bozuyordu. Sonuç: bu dalın ürettiği faturalarda
           // basılan "Vergiler Hariç Toplam" indirimi İKİ KEZ düşüyordu
           // (bkz. fatura_detay_pdf_ext.dart'taki aynı düzeltme).
-          araToplam: netTutar, toplamTutar: netTutar + kdvTutar,
+          araToplam: netTutar, toplamTutar: ParaUtils.yuvarla(netTutar + kdvTutar),
         );
       }).toList();
     }
 
-    final toplamAraToplam = islenmisKalemler.fold<double>(0, (t, d) => t + d.araToplam);
-    final toplamIskonto   = islenmisKalemler.fold<double>(0, (t, d) => t + d.iskontoTutari);
-    final toplamKdv       = islenmisKalemler.fold<double>(0, (t, d) => t + d.kdvTutari);
-    final genelToplam     = islenmisKalemler.fold<double>(0, (t, d) => t + d.toplamTutar);
+    double topla(double Function(FaturaDetayModel) f) => ParaUtils.yuvarla(
+        islenmisKalemler.fold<double>(0, (t, d) => t + ParaUtils.yuvarla(f(d))));
+    final toplamAraToplam = topla((d) => d.araToplam);
+    final toplamIskonto   = topla((d) => d.iskontoTutari);
+    final toplamKdv       = topla((d) => d.kdvTutari);
+    // Genel toplam = matrah + KDV: yuvarlanmış satırlarda satır toplamları
+    // toplamına kuruşu kuruşuna eşittir (UBL: TaxInclusive = TaxExclusive + Tax).
+    final genelToplam     = ParaUtils.yuvarla(toplamAraToplam + toplamKdv);
 
     // 🔴 DÜZELTME (kritik — CENTRAL_DOCUMENT_NUMBERING_DEEP_AUDIT.md):
     // fatura_no artık burada ÖNCEDEN hesaplanıp FaturaDeposu().ekle()'ye
@@ -248,7 +254,7 @@ class FaturalandirmaServisi {
       toplamKdv: toplamKdv,
       genelToplam: genelToplam,
       odenenTutar: odenenTutar,
-      kalanTutar: (genelToplam - odenenTutar).clamp(0, double.infinity),
+      kalanTutar: ParaUtils.yuvarla((genelToplam - odenenTutar).clamp(0, double.infinity).toDouble()),
       odemeDurumu: odenenTutar >= genelToplam ? 'odendi' : 'beklemede',
     );
 

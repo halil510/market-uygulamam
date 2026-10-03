@@ -70,13 +70,12 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
       // 🔴 DÜZELTME (Madde 21 — GİB/fatura araToplam bulgusu devamı,
       // 2026-09-16): araToplam KDV DAHİL (brüt) doluyordu — bkz.
       // satis_detay_ekrani.dart'taki aynı düzeltme. Net (matrah) olmalı.
-      final detaylar = satis.kalemler.map((k) => FaturaDetayModel(
-        urunId: k.urunId, urunAdi: k.urunAdi, barkod: k.barkod,
-        miktar: k.miktar, birimFiyat: k.birimFiyat,
-        iskontoOrani: k.iskontoOran, iskontoTutari: k.iskontoTutar,
-        kdvOrani: k.kdvOran, kdvTutari: k.kdvTutar,
-        araToplam: k.toplamTutar - k.kdvTutar, toplamTutar: k.toplamTutar,
-      )).toList();
+      final detaylar = satis.kalemler.map((k) => FaturaDetayModel.kdvDahilKalemden(
+          urunId: k.urunId, urunAdi: k.urunAdi, barkod: k.barkod,
+          miktar: k.miktar, birimFiyat: k.birimFiyat,
+          iskontoOrani: k.iskontoOran, kdvDahilIskontoTutari: k.iskontoTutar,
+          kdvOrani: k.kdvOran, kdvDahilToplam: k.toplamTutar,
+        )).toList();
 
       final yeniId = await FaturalandirmaServisi.faturaOlustur(
         kontrol: kontrol, kalemler: detaylar, faturaTipi: 'Satis',

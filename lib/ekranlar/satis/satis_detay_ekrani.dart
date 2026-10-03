@@ -187,19 +187,12 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
       // GİB şematron doğrulamasında reddedilme riski. k.toplamTutar (KDV
       // dahil, doğru) ve k.kdvTutar (İÇİNDEN doğru ayıklanmış KDV payı)
       // ARTIK doğru olduğundan, net araToplam bu ikisinden türetiliyor.
-      final detaylar = s.kalemler.map((k) => FaturaDetayModel(
-        urunId: k.urunId,
-        urunAdi: k.urunAdi,
-        barkod: k.barkod,
-        miktar: k.miktar,
-        birimFiyat: k.birimFiyat,
-        iskontoOrani: k.iskontoOran,
-        iskontoTutari: k.iskontoTutar,
-        kdvOrani: k.kdvOran,
-        kdvTutari: k.kdvTutar,
-        araToplam: k.toplamTutar - k.kdvTutar,
-        toplamTutar: k.toplamTutar,
-      )).toList();
+      final detaylar = s.kalemler.map((k) => FaturaDetayModel.kdvDahilKalemden(
+          urunId: k.urunId, urunAdi: k.urunAdi, barkod: k.barkod,
+          miktar: k.miktar, birimFiyat: k.birimFiyat,
+          iskontoOrani: k.iskontoOran, kdvDahilIskontoTutari: k.iskontoTutar,
+          kdvOrani: k.kdvOran, kdvDahilToplam: k.toplamTutar,
+        )).toList();
 
       final yeniId = await FaturalandirmaServisi.faturaOlustur(
         kontrol: kontrol,

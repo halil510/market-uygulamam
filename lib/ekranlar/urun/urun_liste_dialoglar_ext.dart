@@ -37,6 +37,7 @@ extension _UrunListeDialoglarExt on _UrunListeEkraniState {
 
   // ── Masaüstü: tablo başlıkları (kolonlar) ───────────────────────────────
   static const _kolonTercihAnahtari = 'urun_liste_masaustu_kolonlar';
+  static const _kolonBilinenAnahtari = 'urun_liste_masaustu_kolonlar_bilinen';
 
   Future<void> _masaustuKolonTercihiYukle() async {
     try {
@@ -44,7 +45,12 @@ extension _UrunListeDialoglarExt on _UrunListeEkraniState {
       final kayitli = prefs.getStringList(_kolonTercihAnahtari);
       if (kayitli != null && mounted) {
         final gecerli = UrunMasaustuGorunum.katalog.map((k) => k.anahtar).toSet();
-        final secim = kayitli.where(gecerli.contains).toSet()..add('urunAdi');
+        final secim = UrunMasaustuGorunum.kolonTercihiBirlestir(
+          kayitli: kayitli,
+          bilinen: prefs.getStringList(_kolonBilinenAnahtari),
+          gecerli: gecerli,
+        );
+        await prefs.setStringList(_kolonBilinenAnahtari, gecerli.toList());
         setState(() => _masaustuKolonlar = secim);
       }
     } catch (_) {
@@ -110,6 +116,8 @@ extension _UrunListeDialoglarExt on _UrunListeEkraniState {
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setStringList(_kolonTercihAnahtari, sonuc.toList());
+        await prefs.setStringList(_kolonBilinenAnahtari,
+            UrunMasaustuGorunum.katalog.map((k) => k.anahtar).toList());
       } catch (_) {
         // Kaydedilemezse bu oturumda geçerli kalır.
       }

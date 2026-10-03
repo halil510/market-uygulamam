@@ -8,7 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../cekirdek/utils/para_utils.dart';
 import '../../../depolar/urun_deposu.dart';
+import 'package:intl/intl.dart';
 import '../../../modeller/urun_model.dart';
+import '../../../servisler/kolon_haritalama.dart';
 import '../../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../../widgetlar/masaustu/masaustu_alt_serit.dart';
 import '../../../widgetlar/masaustu/masaustu_sag_tik_menu.dart';
@@ -36,6 +38,30 @@ class UrunMasaustuGorunum extends StatefulWidget {
     required this.gorunenKolonlar,
   });
 
+  /// Kayıtlı kolon tercihini güncel kataloğla birleştirir. Tercih
+  /// kaydedildikten SONRA kataloğa eklenen kolonlar (ör. Fiyat/Maliyet
+  /// Güncelleme Tarihi) kullanıcının listesinde hiç görünmüyordu.
+  /// [bilinen]: tercih kaydedilirken katalogda olan anahtarlar — bunda
+  /// olmayan (yeni) kolonlar otomatik eklenir; kullanıcının bilerek
+  /// kapattıkları (bilinen ama seçili olmayan) geri açılmaz. [bilinen]
+  /// null ise (eski kayıt) yalnızca fiyat/maliyet güncelleme kolonları eklenir.
+  static Set<String> kolonTercihiBirlestir({
+    required List<String> kayitli,
+    required List<String>? bilinen,
+    required Set<String> gecerli,
+  }) {
+    final secim = kayitli.where(gecerli.contains).toSet()..add('urunAdi');
+    if (bilinen == null) {
+      secim.addAll(const {
+        'fiyatGuncTarih', 'fiyatGuncKullanici',
+        'maliyetGuncTarih', 'maliyetGuncKullanici',
+      }.intersection(gecerli));
+    } else {
+      secim.addAll(gecerli.difference(bilinen.toSet()));
+    }
+    return secim;
+  }
+
   static String _sayiYaz(double d) =>
       d == d.roundToDouble() ? d.toStringAsFixed(0) : d.toStringAsFixed(3);
 
@@ -48,6 +74,23 @@ class UrunMasaustuGorunum extends StatefulWidget {
           esnek: esnek,
           deger: (u) => al(u) ?? '',
           sirala: (u) => (al(u) ?? '').toLowerCase());
+
+  /// Tarih/saat kolonu: ham ISO metin yerine "gg.AA.yyyy SS:dd" (yerel saat)
+  /// gösterilir; sıralama ham UTC zamana göre. SQLite UTC damgası ile Dart
+  /// yerel damgası aynı şekilde doğru çevrilir.
+  static TabloKolon<UrunModel> _tarih(String baslik, double genislik,
+          String? Function(UrunModel u) al) =>
+      TabloKolon(
+          baslik: baslik,
+          genislik: genislik,
+          deger: (u) {
+            final t = KolonHaritalama.utcZaman(al(u));
+            return t == null
+                ? ''
+                : DateFormat('dd.MM.yyyy HH:mm').format(t.toLocal());
+          },
+          sirala: (u) =>
+              KolonHaritalama.utcZaman(al(u))?.millisecondsSinceEpoch ?? 0);
 
   static TabloKolon<UrunModel> _tutar(String baslik, double genislik,
           double Function(UrunModel u) al) =>
@@ -198,15 +241,16 @@ class UrunMasaustuGorunum extends StatefulWidget {
     UrunKolonu('toplamStok', 'Toplam Stok', false, _say('Toplam Stok', 95, (u) => u.toplamStok)),
     UrunKolonu('receteKatsayi', 'Reçete Katsayısı', false, _say('Reçete Katsayısı', 115, (u) => u.receteKatsayi)),
     UrunKolonu('evrakKontrol', 'Evrak Kontrol', false, _evet('Evrak Kontrol', 100, (u) => u.evrakKontrolAktif)),
-    UrunKolonu('fiyatGuncTarih', 'Fiyat Güncelleme Tarihi', false, _yazi('Fiyat Güncelleme Tarihi', 160, (u) => u.fiyatGuncellemeTarih)),
+    UrunKolonu('fiyatGuncTarih', 'Fiyat Güncelleme Tarihi', false, _tarih('Fiyat Güncelleme Tarihi', 160, (u) => u.fiyatGuncellemeTarih)),
     UrunKolonu('fiyatGuncKullanici', 'Fiyatı Güncelleyen', false, _yazi('Fiyatı Güncelleyen', 130, (u) => u.fiyatGuncelleyenKullanici)),
-    UrunKolonu('maliyetGuncTarih', 'Maliyet Güncelleme Tarihi', false, _yazi('Maliyet Güncelleme Tarihi', 170, (u) => u.maliyetGuncellemeTarih)),
-    UrunKolonu('barkodYazTarih', 'Barkod Yazdırma Tarihi', false, _yazi('Barkod Yazdırma Tarihi', 160, (u) => u.barkodYazdirmaTarih)),
-    UrunKolonu('guncellemeTarihi', 'Güncelleme Tarihi', false, _yazi('Güncelleme Tarihi', 135, (u) => u.guncellemeTarihi)),
+    UrunKolonu('maliyetGuncTarih', 'Maliyet Güncelleme Tarihi', false, _tarih('Maliyet Güncelleme Tarihi', 170, (u) => u.maliyetGuncellemeTarih)),
+    UrunKolonu('maliyetGuncKullanici', 'Maliyeti Güncelleyen', false, _yazi('Maliyeti Güncelleyen', 140, (u) => u.maliyetGuncelleyenKullanici)),
+    UrunKolonu('barkodYazTarih', 'Barkod Yazdırma Tarihi', false, _tarih('Barkod Yazdırma Tarihi', 160, (u) => u.barkodYazdirmaTarih)),
+    UrunKolonu('guncellemeTarihi', 'Güncelleme Tarihi', false, _tarih('Güncelleme Tarihi', 135, (u) => u.guncellemeTarihi)),
     UrunKolonu('guncelleyen', 'Güncelleyen', false, _yazi('Güncelleyen', 110, (u) => u.guncelleyenKullanici)),
-    UrunKolonu('kayitTarihi', 'Kayıt Tarihi', false, _yazi('Kayıt Tarihi', 120, (u) => u.kayitTarihi)),
+    UrunKolonu('kayitTarihi', 'Kayıt Tarihi', false, _tarih('Kayıt Tarihi', 120, (u) => u.kayitTarihi)),
     UrunKolonu('kaydeden', 'Kaydeden', false, _yazi('Kaydeden', 100, (u) => u.kaydedenKullanici)),
-    UrunKolonu('sonKullaniciGunc', 'Son Güncelleme', false, _yazi('Son Güncelleme', 140, (u) => u.lastUpdated)),
+    UrunKolonu('sonKullaniciGunc', 'Son Güncelleme', false, _tarih('Son Güncelleme', 140, (u) => u.lastUpdated)),
   ];
 
   /// Varsayılan: ürün tablosunun TÜM alanları (yana kaydırarak görülür).

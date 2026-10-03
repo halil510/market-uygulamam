@@ -126,7 +126,9 @@ class UrunDeposu {
               final eskiSatis = (eskiRows.first['satis_fiyati'] as num?)?.toDouble() ?? 0;
               final eskiAlis  = (eskiRows.first['alis_fiyat'] as num?)?.toDouble() ?? 0;
               if (eskiSatis != s.urun.satisFiyati || eskiAlis != s.urun.alisFiyat) {
-                m['fiyat_guncelleme_tarih'] = DateTime.now().toIso8601String();
+                // satış → Fiyat Güncelleme Tarihi, alış → Maliyet Güncelleme Tarihi
+                fiyatMaliyetDamgala(
+                    m, eskiRows.first, DateTime.now().toIso8601String());
               }
             }
             await txn.update(DbSabitler.urunler, m,
@@ -198,10 +200,42 @@ class UrunDeposu {
     }
   }
 
+  /// SATIŞ fiyatı değiştiyse "Fiyat Güncelleme Tarihi/Güncelleyen", ALIŞ
+  /// fiyatı (maliyet) değiştiyse "Maliyet Güncelleme Tarihi/Güncelleyen"
+  /// damgalanır. [yeni]: yazılacak alanlar (yerinde değiştirilir). [eski]:
+  /// mevcut satır (null → yeni kayıt, mevcut anahtarların hepsi "değişmiş"
+  /// sayılır). Eski satırda olmayan anahtar karşılaştırılmaz.
+  static void fiyatMaliyetDamgala(
+      Map<String, dynamic> yeni, Map<String, Object?>? eski, String now) {
+    bool degisti(String k) {
+      if (!yeni.containsKey(k)) return false;
+      if (eski == null) return true;
+      if (!eski.containsKey(k)) return false;
+      final a = (yeni[k] as num?)?.toDouble() ?? 0;
+      final b = (eski[k] as num?)?.toDouble() ?? 0;
+      return (a - b).abs() > 1e-9;
+    }
+
+    final kul = AuthServisi().aktifAd;
+    if (degisti('satis_fiyati')) {
+      yeni['fiyat_guncelleme_tarih'] = now;
+      if (kul.isNotEmpty) yeni['fiyat_guncelleyen_kullanici'] = kul;
+    }
+    if (degisti('alis_fiyat') || degisti('alis_fiyat_kdv_dahil')) {
+      yeni['maliyet_guncelleme_tarih'] = now;
+      if (kul.isNotEmpty) yeni['maliyet_guncelleyen_kullanici'] = kul;
+    }
+  }
+
   Future<int> ekle(UrunModel urun) async {
     final db = await _d;
     final m = urun.toMap()..remove('id');
     m['global_id'] ??= const Uuid().v4();
+    // Yeni ürün: ilk fiyat ve maliyet de bir "güncelleme" sayılır — listede
+    // Fiyat/Maliyet Güncelleme Tarihi boş kalmasın.
+    final ilkTarih = DateTime.now().toIso8601String();
+    m['fiyat_guncelleme_tarih'] ??= ilkTarih;
+    m['maliyet_guncelleme_tarih'] ??= ilkTarih;
     // 🔴🔴 P0 (derin denetimde bulundu): ConflictAlgorithm.replace,
     // urunler.kod/barkod UNIQUE çakışmasında istisna FIRLATMAZ — SQLite
     // bunun yerine ÇAKIŞAN ESKİ SATIRI SESSİZCE SİLİP yeni bir id ile
@@ -284,8 +318,10 @@ class UrunDeposu {
     // AYNI transaction'da (bkz. guncelle()'deki aynı gerekçe).
     final guncelleme = {
       'alis_fiyat': yeniAlisFiyat, 'alis_fiyat_kdv_dahil': yeniKdvDahil,
-      'fiyat_guncelleme_tarih': now, 'last_updated': now,
+      'last_updated': now,
     };
+    // Alış fiyatı değişti → Maliyet Güncelleme Tarihi (satış fiyatı değil).
+    fiyatMaliyetDamgala(guncelleme, null, now);
     await db.transaction((txn) async {
       await txn.update(DbSabitler.urunler, guncelleme,
           where: 'id = ?', whereArgs: [urunId]);
@@ -332,13 +368,15 @@ class UrunDeposu {
       double? eskiAlis;
       if (urun.id != null) {
         final eski = await db.query(DbSabitler.urunler,
-            columns: ['satis_fiyati', 'alis_fiyat'],
+            columns: ['satis_fiyati', 'alis_fiyat', 'alis_fiyat_kdv_dahil'],
             where: 'id = ?', whereArgs: [urun.id]);
         if (eski.isNotEmpty) {
           eskiSatis = (eski.first['satis_fiyati'] as num?)?.toDouble() ?? 0;
           eskiAlis  = (eski.first['alis_fiyat'] as num?)?.toDouble() ?? 0;
           if (eskiSatis != urun.satisFiyati || eskiAlis != urun.alisFiyat) {
-            m['fiyat_guncelleme_tarih'] = now;
+            // Satış fiyatı → Fiyat Güncelleme Tarihi, alış fiyatı → Maliyet
+            // Güncelleme Tarihi (+ güncelleyen kullanıcı).
+            fiyatMaliyetDamgala(m, eski.first, now);
             // 🔴 DÜZELTME (Madde 14 — Fiyat Onayı denetimi, 2026-09-16):
             // UI katmanında (urun_detay_ekrani.dart) artık TsYetkili ile
             // sadece Admin/Müdür bu forma ulaşabiliyor — ama bu SADECE
@@ -356,6 +394,7 @@ class UrunDeposu {
           }
         } else {
           m['fiyat_guncelleme_tarih'] = now; // yeni kayıt gibi davran
+          m['maliyet_guncelleme_tarih'] = now;
         }
       }
 
@@ -453,6 +492,10 @@ class UrunDeposu {
     final db = await _d;
     final data = Map<String, dynamic>.from(degisenAlanlar);
     data['last_updated'] = DateTime.now().toIso8601String();
+    final eskiSatir = await db.query(DbSabitler.urunler,
+        where: 'id = ?', whereArgs: [id], limit: 1);
+    fiyatMaliyetDamgala(
+        data, eskiSatir.isEmpty ? null : eskiSatir.first, data['last_updated'] as String);
     await db.update(DbSabitler.urunler, data, where: 'id = ?', whereArgs: [id]);
     final satir = await db.query(DbSabitler.urunler, where: 'id = ?', whereArgs: [id], limit: 1);
     if (satir.isNotEmpty) {
@@ -883,6 +926,9 @@ class UrunDeposu {
   }) async {
     final db = await _d;
     final kolon = tip == 'alis' ? 'alis_fiyat' : 'satis_fiyati';
+    // Satış fiyatı → fiyat tarihi, alış fiyatı → maliyet tarihi.
+    final tarihKolon =
+        tip == 'alis' ? 'maliyet_guncelleme_tarih' : 'fiyat_guncelleme_tarih';
     final now = DateTime.now().toIso8601String();
     final guncellenenIds = <int>[];
     for (final id in ids) {
@@ -897,20 +943,30 @@ class UrunDeposu {
         if (yon == 'esitle') {
           await db.rawUpdate(
             'UPDATE ${DbSabitler.urunler}'
-            ' SET $kolon = ?, guncelleme_tarihi = ?, last_updated = ? WHERE id = ?',
-            [oran, now, now, id],
+            ' SET $kolon = ?, guncelleme_tarihi = ?, last_updated = ?, $tarihKolon = ? WHERE id = ?',
+            [oran, now, now, now, id],
           );
         } else if (yon == 'azalt') {
           await db.rawUpdate(
             'UPDATE ${DbSabitler.urunler}'
-            ' SET $kolon = $kolon * ?, guncelleme_tarihi = ?, last_updated = ? WHERE id = ?',
-            [1 - (oran / 100), now, now, id],
+            ' SET $kolon = $kolon * ?, guncelleme_tarihi = ?, last_updated = ?, $tarihKolon = ? WHERE id = ?',
+            [1 - (oran / 100), now, now, now, id],
           );
         } else {
           await db.rawUpdate(
             'UPDATE ${DbSabitler.urunler}'
-            ' SET $kolon = $kolon * ?, guncelleme_tarihi = ?, last_updated = ? WHERE id = ?',
-            [1 + (oran / 100), now, now, id],
+            ' SET $kolon = $kolon * ?, guncelleme_tarihi = ?, last_updated = ?, $tarihKolon = ? WHERE id = ?',
+            [1 + (oran / 100), now, now, now, id],
+          );
+        }
+        // Alış fiyatı değiştiyse KDV dahil maliyet de yeniden hesaplanır
+        // (kâr/maliyet raporları alis_fiyat_kdv_dahil'i kullanır; önceden
+        // bayat kalıyordu).
+        if (tip == 'alis') {
+          await db.rawUpdate(
+            'UPDATE ${DbSabitler.urunler} SET alis_fiyat_kdv_dahil = '
+            'alis_fiyat * (1 + COALESCE(alis_kdv_oran, 0) / 100.0) WHERE id = ?',
+            [id],
           );
         }
         guncellenenIds.add(id);
@@ -956,7 +1012,12 @@ class UrunDeposu {
     await db.transaction((txn) async {
       for (final entry in yeniFiyatlar.entries) {
         await txn.update(DbSabitler.urunler,
-            {'satis_fiyati': entry.value, 'last_updated': now},
+            {
+              'satis_fiyati': entry.value, 'last_updated': now,
+              'fiyat_guncelleme_tarih': now,
+              if (AuthServisi().aktifAd.isNotEmpty)
+                'fiyat_guncelleyen_kullanici': AuthServisi().aktifAd,
+            },
             where: 'id = ?', whereArgs: [entry.key]);
         guncellenenIds.add(entry.key);
       }
@@ -984,6 +1045,9 @@ class UrunDeposu {
       for (final entry in guncellemeler.entries) {
         final data = Map<String, dynamic>.from(entry.value);
         data['last_updated'] = now;
+        final eskiSatir = await txn.query(DbSabitler.urunler,
+            where: 'id = ?', whereArgs: [entry.key], limit: 1);
+        fiyatMaliyetDamgala(data, eskiSatir.isEmpty ? null : eskiSatir.first, now);
         await txn.update(DbSabitler.urunler, data,
             where: 'id = ?', whereArgs: [entry.key]);
         guncellenenIds.add(entry.key);

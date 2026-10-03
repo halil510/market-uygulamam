@@ -10,6 +10,7 @@ import '../cekirdek/utils/para_utils.dart';
 import '../depolar/kasa_deposu.dart';
 import '../depolar/banka_hareket_deposu.dart';
 import '../depolar/stok_deposu.dart';
+import '../depolar/urun_deposu.dart';
 import '../modeller/kasa_hareket_model.dart';
 import '../modeller/banka_hareket_model.dart';
 import '../servisler/aktif_sube_servisi.dart';
@@ -230,16 +231,25 @@ class AlimIslemServisi {
         }
         // Stok güncelle
         final rows = await txn.query('urunler',
-            columns: ['stok'], where: 'id = ?', whereArgs: [k.urunId]);
+            columns: ['stok', 'alis_fiyat', 'alis_kdv_oran'],
+            where: 'id = ?', whereArgs: [k.urunId]);
         if (rows.isNotEmpty) {
           final onceki = (rows.first['stok'] as num).toDouble();
+          final urunGuncelleme = <String, dynamic>{
+            'stok': onceki + k.miktar,
+            'alis_fiyat': k.alisFiyat,
+            // KDV dahil maliyet de yeni alış fiyatından yenilenir (kâr/maliyet
+            // raporları bunu kullanır; önceden bayat kalıyordu).
+            'alis_fiyat_kdv_dahil': k.alisFiyat *
+                (1 + ((rows.first['alis_kdv_oran'] as num?)?.toDouble() ?? 0) / 100),
+            'last_updated': now,
+          };
+          // Alış fiyatı değiştiyse Maliyet Güncelleme Tarihi damgalanır.
+          UrunDeposu.fiyatMaliyetDamgala(urunGuncelleme,
+              {'alis_fiyat': rows.first['alis_fiyat']}, now);
           await txn.update(
               'urunler',
-              {
-                'stok': onceki + k.miktar,
-                'alis_fiyat': k.alisFiyat,
-                'last_updated': now
-              },
+              urunGuncelleme,
               where: 'id = ?',
               whereArgs: [k.urunId]);
           etkilenenUrunIdler.add(k.urunId);

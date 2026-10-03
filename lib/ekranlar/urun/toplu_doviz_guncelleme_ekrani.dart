@@ -121,7 +121,6 @@ class _TopluDovizGuncellemeEkraniState extends State<TopluDovizGuncellemeEkrani>
         guncellemeler[u.id!] = {
           'alis_fiyat': yeni,
           'alis_fiyat_kdv_dahil': yeniKdvDahil,
-          'fiyat_guncelleme_tarih': now,
         };
       }
       final guncellenenIds = await UrunDeposu().topluAlanGuncelle(guncellemeler);

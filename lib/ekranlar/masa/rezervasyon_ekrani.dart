@@ -10,6 +10,7 @@ import '../../modeller/rezervasyon_model.dart';
 import '../../saglayicilar/riverpod/masa_provider.dart';
 import '../../servisler/masa/rezervasyon_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../widgetlar/ortak/onay_dialog.dart';
 
 class RezervasyonEkrani extends ConsumerStatefulWidget {
@@ -92,6 +93,7 @@ class _RezervasyonEkraniState extends ConsumerState<RezervasyonEkrani>
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 560),
       backgroundColor: Colors.transparent,
       builder: (ctx) => _RezervasyonFormSheet(
         masalar: masalar,
@@ -100,7 +102,14 @@ class _RezervasyonEkraniState extends ConsumerState<RezervasyonEkrani>
     );
     
     if (yeniRezervasyon != null && mounted) {
-      await _rezervasyonServisi.ekle(yeniRezervasyon!);
+      // Çakışma ("Bu saat için masa dolu") ve diğer hatalar önceden
+      // yakalanmıyordu: kullanıcı hiçbir şey olmadığını sanıyordu.
+      try {
+        await _rezervasyonServisi.ekle(yeniRezervasyon!);
+      } catch (e) {
+        if (mounted) BildirimServisi.hata(context, kullaniciyaHataMetni(e));
+        return;
+      }
       await _yukle();
       if (mounted) {
         BildirimServisi.basari(context, 'Rezervasyon oluşturuldu');
@@ -118,7 +127,12 @@ class _RezervasyonEkraniState extends ConsumerState<RezervasyonEkrani>
           onayYazi: 'İptal Et', onayRengi: Colors.red);
       if (!onay || !mounted) return;
     }
-    await _rezervasyonServisi.durumGuncelle(r.id!, yeniDurum);
+    try {
+      await _rezervasyonServisi.durumGuncelle(r.id!, yeniDurum);
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, kullaniciyaHataMetni(e));
+      return;
+    }
     if (!mounted) return;
     await _yukle();
     if (!mounted) return;

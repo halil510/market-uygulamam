@@ -54,7 +54,9 @@ class _StokRaporMasaustuGorunumState
     return l;
   }
 
-  void _yenile() => setState(() => _veri = _yukle());
+  void _yenile() => setState(() {
+        _veri = _yukle();
+      });
 
   static String _durumAd(StokDurum d) => switch (d) {
         StokDurum.saglikli => 'Sağlıklı',

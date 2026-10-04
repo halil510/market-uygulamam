@@ -40,7 +40,12 @@ class MasaRaporServisi {
       WHERE is_deleted = 0 AND durum = 'hesap_istendi'
     ''');
     final hesapSayi = (hesapIstendi.first['sayi'] as int).toDouble();
-    
+
+    // Hiç masa tanımlı değilse 0/0 → NaN% yerine sıfır.
+    if (toplamSayi == 0) {
+      return {'Dolu': 0, 'Boş': 0, 'Hesap İstendi': 0};
+    }
+
     return {
       'Dolu': (doluSayi / toplamSayi) * 100,
       'Boş': ((toplamSayi - doluSayi) / toplamSayi) * 100,

@@ -210,6 +210,9 @@ class MutfakNotifier extends StateNotifier<AsyncValue<MutfakDurum>> {
       final siparisler = await _depo.tumAcikSiparisler();
       final adlar = await _depo.masaAdlariHaritasi();
 
+      // Ekran kapandıysa (autoDispose) uçuştaki yükleme bittiğinde state'e
+      // yazılmaz — aksi halde 'bad state' fırlatıp catch'te yine yazıyordu.
+      if (!mounted) return;
       final guncelBeklemede = siparisler
           .expand((s) => s.kalemler)
           .where((k) => k.durum == 'beklemede')
@@ -225,7 +228,7 @@ class MutfakNotifier extends StateNotifier<AsyncValue<MutfakDurum>> {
 
       state = AsyncValue.data(MutfakDurum(siparisler: siparisler, masaAdlari: adlar));
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (mounted) state = AsyncValue.error(e, st);
     }
   }
 

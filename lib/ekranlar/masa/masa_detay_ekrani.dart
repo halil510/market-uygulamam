@@ -1,5 +1,6 @@
 // lib/ekranlar/masa/masa_detay_ekrani.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import '../../saglayicilar/riverpod/kasa_rapor_provider.dart';
@@ -28,7 +29,18 @@ import '../../depolar/adisyon_log_deposu.dart';
 
 class MasaDetayEkrani extends ConsumerStatefulWidget {
   final MasaModel masa;
-  const MasaDetayEkrani({super.key, required this.masa});
+
+  /// true: masaüstü ana-detay görünümünde sağ panel olarak gömülür — kendi
+  /// Scaffold/AppBar'ını çizmez, iş bitince (ödeme, taşıma, iptal) sayfayı
+  /// kapatmak yerine [onKapat]'ı çağırır.
+  final bool gomulu;
+  final VoidCallback? onKapat;
+  const MasaDetayEkrani({
+    super.key,
+    required this.masa,
+    this.gomulu = false,
+    this.onKapat,
+  });
 
   @override
   ConsumerState<MasaDetayEkrani> createState() => _MasaDetayEkraniState();
@@ -44,6 +56,16 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(masaSiparisProvider(widget.masa.id!).notifier).yukle();
     });
+  }
+
+  /// İş bitince ekranı kapatır: tam sayfada geri gider, gömülü panelde
+  /// (masaüstü) seçimi bırakır.
+  void _kapat() {
+    if (widget.gomulu) {
+      widget.onKapat?.call();
+    } else if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   // 🔥 DÜZELTİLDİ: Adisyon fiş no geçerli karakterlerle oluşturuldu
@@ -144,6 +166,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
     final hedefMasa = await showModalBottomSheet<MasaModel>(
       context: context,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 560),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => DraggableScrollableSheet(
         initialChildSize: 0.6, maxChildSize: 0.9, expand: false,
@@ -161,7 +184,10 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
               itemCount: digerMasalar.length,
               itemBuilder: (c, i) {
                 final m = digerMasalar[i];
-                final dolu = m.durum == 'dolu';
+                // Açık siparişi olan her masa (dolu / hesap istendi) birleşir;
+                // önceden yalnız durum=='dolu' sayılıyor, 'hesap_istendi' masa
+                // boş sanılıp onaysız birleştiriliyordu.
+                final dolu = m.aktifSiparisId != null;
                 return InkWell(
                   borderRadius: BorderRadius.circular(14),
                   onTap: () => Navigator.pop(ctx, m),
@@ -190,7 +216,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
 
     // Hedef masa DOLU ise, sektör standardına göre (Lightspeed: "you
     // will be asked if you want to Merge receipts") AÇIKÇA onay iste.
-    if (hedefMasa.durum == 'dolu') {
+    if (hedefMasa.aktifSiparisId != null) {
       final onay = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -214,7 +240,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       ref.read(masaListesiProvider.notifier).yukle();
       if (mounted) {
         BildirimServisi.basari(context, '${widget.masa.ad} → ${hedefMasa.ad} taşındı ✓');
-        context.pop();
+        _kapat();
       }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Taşınamadı: ${kullaniciyaHataMetni(e)}');
@@ -258,7 +284,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       ref.read(masaListesiProvider.notifier).yukle();
       if (mounted) {
         BildirimServisi.basari(context, 'Sipariş iptal edildi');
-        context.pop();
+        _kapat();
       }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'İptal edilemedi: ${kullaniciyaHataMetni(e)}');
@@ -304,6 +330,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       final secilen = await showModalBottomSheet<CariModel>(
         context: context,
         isScrollControlled: true,
+        constraints: const BoxConstraints(maxWidth: 560),
         backgroundColor: Colors.transparent,
         builder: (_) => MusteriSecimPaneli(cariler: cariler, baslik: 'Müşteri Seç'),
       );
@@ -334,6 +361,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       final sonuc = await showModalBottomSheet<Map<String, dynamic>>(
         context: context,
         isScrollControlled: true,
+        constraints: const BoxConstraints(maxWidth: 640),
         backgroundColor: Colors.transparent,
         builder: (_) => SizedBox(
           height: MediaQuery.of(context).size.height * 0.9,
@@ -427,100 +455,177 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
         BildirimServisi.basari(context, paraUstu > 0.005
             ? 'Ödeme alındı ✓ (Fiş: ${odemeSonuc.fisNo}) Para üstü: ${ParaUtils.formatla(paraUstu)}'
             : 'Ödeme alındı ✓ (Fiş: ${odemeSonuc.fisNo})');
-        Navigator.pop(context);
+        _kapat();
       }
     } catch (e) {
+      if (e is MasaSiparisDegistiHatasi) {
+        // Ekranı güncel siparişle yenile; tutar yeniden kontrol edilsin.
+        ref.read(masaSiparisProvider(widget.masa.id!).notifier).yukle();
+        ref.read(masaListesiProvider.notifier).yukle();
+      }
       if (mounted) BildirimServisi.hata(context, 'Ödeme hatası: ${kullaniciyaHataMetni(e)}');
     } finally {
       if (mounted) setState(() => _islemAktif = false);
     }
   }
 
+  /// Masanın CANLI hali (liste sağlayıcısından). Ekrana ilk girişte verilen
+  /// [MasaDetayEkrani.masa] kopyası, ekran açıkken değişen durumu (ör.
+  /// "Hesap İstendi", başka cihazdan açılma) göstermiyordu.
+  MasaModel _canliMasa() {
+    final liste = ref.watch(masaListesiProvider).value;
+    if (liste == null) return widget.masa;
+    for (final m in liste) {
+      if (m.id == widget.masa.id) return m;
+    }
+    return widget.masa;
+  }
+
+  List<Widget> _aksiyonlar(MasaModel masa, AsyncValue<MasaSiparisModel?> siparisAsync) => [
+        IconButton(
+          icon: const Icon(Icons.qr_code_2),
+          // Kullanıcı isteği: müşteriler kendi telefonuyla QR
+          // okutup sipariş versin. Bu, o GERÇEK, taranabilir QR
+          // kodun gösterildiği yeni ekrana gidiyor.
+          tooltip: 'Müşteri İçin QR Kodu Göster',
+          onPressed: () => context.push(
+            '/masa/qr-goster/${widget.masa.id!}/${Uri.encodeComponent(masa.ad)}',
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.tablet_mac),
+          // ÖNCEDEN bu buton "QR Menü Göster" olarak adlandırılmıştı
+          // ama aslında gerçek bir QR kod göstermiyor — uygulama
+          // İÇİNDEN gidilen bir menü tarayıcısı (personelin, elindeki
+          // tablet/telefonla müşteri adına sipariş girmesi için).
+          // Kafa karışıklığını önlemek için adı netleştirildi.
+          tooltip: 'Menüden Sipariş Gir (Bu Cihazdan)',
+          onPressed: () => context.push(
+            '/qr-menu/${widget.masa.id!}/${Uri.encodeComponent(masa.ad)}',
+          ),
+        ),
+        // 🔴 YENİ (kullanıcı isteği: "2. maddeyi yap" — Masa Taşıma /
+        // Sipariş İptali): Backend'de (masaTasi, siparisIptal) hazır
+        // olan ama HİÇ UI'ı olmayan bu iki işlem artık burada.
+        // Sektör araştırması (Odoo, Lightspeed, Eats365): standart
+        // desen "Actions" menüsünden "Transfer/Merge" seçimi.
+        if (siparisAsync.value != null)
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'Diğer İşlemler',
+            onSelected: (v) {
+              final s = siparisAsync.value;
+              if (s == null) return;
+              if (v == 'tasi') _masayiTasi(s);
+              if (v == 'iptal') _siparisiIptalEt(s);
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(value: 'tasi', child: Row(children: [
+                Icon(Icons.swap_horiz, size: 20), SizedBox(width: 10), Text('Masayı Taşı / Birleştir'),
+              ])),
+              const PopupMenuItem(value: 'iptal', child: Row(children: [
+                Icon(Icons.cancel_outlined, size: 20, color: Colors.red),
+                SizedBox(width: 10),
+                Text('Siparişi İptal Et', style: TextStyle(color: Colors.red)),
+              ])),
+            ],
+          ),
+        _durumRozeti(masa),
+      ];
+
+  Widget _durumRozeti(MasaModel masa) => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: _durumRenk(masa.durum).withAlpha(51),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(_durumIkon(masa.durum), size: 14, color: _durumRenk(masa.durum)),
+          const SizedBox(width: 4),
+          Text(_durumEtiket(masa.durum),
+              style: TextStyle(fontSize: 12, color: _durumRenk(masa.durum))),
+        ]),
+      );
+
   @override
   Widget build(BuildContext context) {
     final siparisAsync = ref.watch(masaSiparisProvider(widget.masa.id!));
+    final masa = _canliMasa();
+
+    final govde = siparisAsync.when(
+      loading: () => const Center(child: AppYukleniyor()),
+      error: (e, _) => Center(child: Text('Hata: ${bildirimMetniniSadelestir(e.toString())}')),
+      data: (siparis) => _MasaDetayIcerik(
+        masa: masa,
+        siparis: siparis,
+        onAdisyon: () => _adisyonYazdir(siparis!),
+        onHesapIstendi: () => _hesapIstendi(siparis!),
+        onOdeme: () => _odemeAl(siparis!),
+        onMusteriSec: () => _musteriSec(siparis!),
+        onMusteriKaldir: _musteriKaldir,
+        islemAktif: _islemAktif,
+      ),
+    );
+
+    if (widget.gomulu) return _gomuluDuzen(masa, siparisAsync, govde);
 
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
       appBar: TsAppBar(
-        baslik: '${widget.masa.ad} - Masa Detayı',
-        aksiyonlar: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_2),
-            // Kullanıcı isteği: müşteriler kendi telefonuyla QR
-            // okutup sipariş versin. Bu, o GERÇEK, taranabilir QR
-            // kodun gösterildiği yeni ekrana gidiyor.
-            tooltip: 'Müşteri İçin QR Kodu Göster',
-            onPressed: () => context.push(
-              '/masa/qr-goster/${widget.masa.id!}/${Uri.encodeComponent(widget.masa.ad)}',
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.tablet_mac),
-            // ÖNCEDEN bu buton "QR Menü Göster" olarak adlandırılmıştı
-            // ama aslında gerçek bir QR kod göstermiyor — uygulama
-            // İÇİNDEN gidilen bir menü tarayıcısı (personelin, elindeki
-            // tablet/telefonla müşteri adına sipariş girmesi için).
-            // Kafa karışıklığını önlemek için adı netleştirildi.
-            tooltip: 'Menüden Sipariş Gir (Bu Cihazdan)',
-            onPressed: () => context.push(
-              '/qr-menu/${widget.masa.id!}/${Uri.encodeComponent(widget.masa.ad)}',
-            ),
-          ),
-          // 🔴 YENİ (kullanıcı isteği: "2. maddeyi yap" — Masa Taşıma /
-          // Sipariş İptali): Backend'de (masaTasi, siparisIptal) hazır
-          // olan ama HİÇ UI'ı olmayan bu iki işlem artık burada.
-          // Sektör araştırması (Odoo, Lightspeed, Eats365): standart
-          // desen "Actions" menüsünden "Transfer/Merge" seçimi.
-          if (siparisAsync.value != null)
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
-              tooltip: 'Diğer İşlemler',
-              onSelected: (v) {
-                final s = siparisAsync.value;
-                if (s == null) return;
-                if (v == 'tasi') _masayiTasi(s);
-                if (v == 'iptal') _siparisiIptalEt(s);
-              },
-              itemBuilder: (ctx) => [
-                const PopupMenuItem(value: 'tasi', child: Row(children: [
-                  Icon(Icons.swap_horiz, size: 20), SizedBox(width: 10), Text('Masayı Taşı / Birleştir'),
-                ])),
-                const PopupMenuItem(value: 'iptal', child: Row(children: [
-                  Icon(Icons.cancel_outlined, size: 20, color: Colors.red),
-                  SizedBox(width: 10),
-                  Text('Siparişi İptal Et', style: TextStyle(color: Colors.red)),
-                ])),
-              ],
-            ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _durumRenk(widget.masa.durum).withAlpha(51),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(_durumIkon(widget.masa.durum), size: 14, color: _durumRenk(widget.masa.durum)),
-              const SizedBox(width: 4),
-              Text(_durumEtiket(widget.masa.durum),
-                  style: TextStyle(fontSize: 12, color: _durumRenk(widget.masa.durum))),
-            ]),
-          ),
-        ],
+        baslik: '${masa.ad} - Masa Detayı',
+        aksiyonlar: _aksiyonlar(masa, siparisAsync),
         modul: TsModul.masa,
       ),
-      body: siparisAsync.when(
-        loading: () => const Center(child: AppYukleniyor()),
-        error: (e, _) => Center(child: Text('Hata: ${bildirimMetniniSadelestir(e.toString())}')),
-        data: (siparis) => _MasaDetayIcerik(
-          masa: widget.masa,
-          siparis: siparis,
-          onAdisyon: () => _adisyonYazdir(siparis!),
-          onHesapIstendi: () => _hesapIstendi(siparis!),
-          onOdeme: () => _odemeAl(siparis!),
-          onMusteriSec: () => _musteriSec(siparis!),
-          onMusteriKaldir: _musteriKaldir,
-          islemAktif: _islemAktif,
+      body: govde,
+    );
+  }
+
+  /// Masaüstü ana-detay görünümünün sağ paneli: başlık şeridi + içerik +
+  /// klavye kısayolları (F2 ürün ekle, F3 adisyon, F4 hesap istendi,
+  /// F9 ödeme al). Esc BİLİNÇLİ bağlanmadı: uygulama genelinde "Esc = Geri"
+  /// işleyicisi var (masaustu_yan_menu.dart); ayrıca bağlamak çift çalışır.
+  Widget _gomuluDuzen(MasaModel masa, AsyncValue<MasaSiparisModel?> siparisAsync, Widget govde) {
+    final siparis = siparisAsync.value;
+    final aktif = siparis != null && siparis.kalemler.isNotEmpty;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.f2): () =>
+            context.push('/masa/urun-ekle/${widget.masa.id}'),
+        if (aktif) ...{
+          const SingleActivator(LogicalKeyboardKey.f3): () => _adisyonYazdir(siparis),
+          const SingleActivator(LogicalKeyboardKey.f4): () => _hesapIstendi(siparis),
+          const SingleActivator(LogicalKeyboardKey.f9): () => _odemeAl(siparis),
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Container(
+          color: TsRenk.arkaplan(context),
+          child: Column(children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+              decoration: BoxDecoration(
+                color: TsRenk.kart(context),
+                border: Border(bottom: BorderSide(color: TsRenk.ayirac(context))),
+              ),
+              child: Row(children: [
+                Expanded(
+                  child: Text(masa.ad,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                ),
+                ..._aksiyonlar(masa, siparisAsync),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Paneli kapat',
+                  onPressed: _kapat,
+                ),
+              ]),
+            ),
+            Expanded(child: govde),
+          ]),
         ),
       ),
     );
@@ -674,7 +779,14 @@ class _MasaDetayIcerik extends StatelessWidget {
             ),
             child: SafeArea(
               top: false,
-              child: Wrap(
+              child: LayoutBuilder(builder: (context, c) {
+                // Buton genişliği EKRAN değil bulunduğu alana göre hesaplanır
+                // (masaüstünde sağ panel ~440 px; önceden pencere genişliğine
+                // bakıldığı için butonlar panele sığmayıp taşıyordu).
+                final alan = c.maxWidth.clamp(0.0, 720.0);
+                final kucuk = (alan - 20) / 3;
+                final buyuk = (alan - 10) / 2;
+                return Wrap(
                 spacing: 10,
                 runSpacing: 10,
                 alignment: WrapAlignment.center,
@@ -684,6 +796,7 @@ class _MasaDetayIcerik extends StatelessWidget {
                     label: 'Ürün Ekle',
                     onTap: () => context.push('/masa/urun-ekle/${masa.id}'),
                     outlined: true,
+                    genislik: kucuk,
                   ),
                   _ActionButton(
                     icon: Icons.receipt_long_outlined,
@@ -691,6 +804,7 @@ class _MasaDetayIcerik extends StatelessWidget {
                     onTap: onAdisyon,
                     isLoading: islemAktif,
                     outlined: true,
+                    genislik: kucuk,
                   ),
                   _ActionButton(
                     icon: Icons.notifications_active_outlined,
@@ -698,6 +812,7 @@ class _MasaDetayIcerik extends StatelessWidget {
                     onTap: onHesapIstendi,
                     outlined: true,
                     color: Colors.orange,
+                    genislik: kucuk,
                   ),
                   _ActionButton(
                     icon: Icons.payments_outlined,
@@ -705,9 +820,11 @@ class _MasaDetayIcerik extends StatelessWidget {
                     onTap: onOdeme,
                     isLoading: islemAktif,
                     filled: true,
+                    genislik: buyuk,
                   ),
                 ],
-              ),
+              );
+              }),
             ),
           ),
       ],
@@ -726,6 +843,7 @@ class _ActionButton extends StatelessWidget {
   final bool outlined;
   final bool filled;
   final Color? color;
+  final double? genislik;
 
   const _ActionButton({
     required this.icon,
@@ -735,12 +853,13 @@ class _ActionButton extends StatelessWidget {
     this.outlined = false,
     this.filled = false,
     this.color,
+    this.genislik,
   });
 
   @override
   Widget build(BuildContext context) {
     final btnColor = color ?? const Color(0xFF6D4C41);
-    final width = (MediaQuery.of(context).size.width - 60) / (filled ? 2 : 3);
+    final width = genislik ?? (MediaQuery.of(context).size.width - 60) / (filled ? 2 : 3);
 
     if (filled) {
       return SizedBox(

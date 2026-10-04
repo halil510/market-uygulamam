@@ -35,18 +35,40 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
   String _kategori = 'Tümü';
   Timer? _debounce;
   int _aramaId = 0;
+  final _araOdak = FocusNode();
+
+  /// Geniş pencerede (diğer masaüstü ekranlarıyla aynı 1100 px eşiği):
+  /// ürün ekledikçe ekran KAPANMAZ, sağda canlı adisyon paneli görünür —
+  /// garson/kasiyer tek oturumda çok ürün girebilir. Telefon/tabletteki
+  /// "tek ürün ekle → geri dön" davranışı aynen korunur.
+  bool get _masaustu => MediaQuery.sizeOf(context).width > 1100;
 
   @override
   void initState() {
     super.initState();
     _yukle();
     _araCtrl.addListener(_aramaChanged);
+    // Arama kutusundayken Esc: doluysa önce aramayı temizler. Boşken olay
+    // işlenmez; uygulama genelindeki "Esc = Geri" (masaustu_yan_menu.dart)
+    // sayfayı kapatır. Esc'i burada ayrıca Shortcuts ile bağlamak, genel
+    // işleyiciyle ÇİFT çalışıp iki sayfa geri atıyordu.
+    _araOdak.onKeyEvent = (node, olay) {
+      if (olay is KeyDownEvent &&
+          olay.logicalKey == LogicalKeyboardKey.escape &&
+          _araCtrl.text.isNotEmpty) {
+        setState(() => _araCtrl.clear());
+        _aramaChanged();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    };
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _araCtrl.dispose();
+    _araOdak.dispose();
     super.dispose();
   }
 
@@ -113,7 +135,14 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
       if (mounted) ref.read(masaListesiProvider.notifier).yukle();
       if (mounted) {
         HapticFeedback.lightImpact();
-        if (context.mounted) Navigator.pop(context);
+        if (_masaustu) {
+          // Ekranda kal: aramayı temizle, bir sonraki ürün için odaklan.
+          setState(() => _araCtrl.clear());
+          _aramaChanged();
+          _araOdak.requestFocus();
+        } else if (context.mounted) {
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Ürün eklenemedi: ${kullaniciyaHataMetni(e)}');
@@ -124,19 +153,14 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: TsRenk.arkaplan(context),
-      appBar: TsAppBar(
-        baslik: 'Ürün Ekle',
-        modul: TsModul.masa,
-      ),
-      body: Column(children: [
+    final sol = Column(children: [
         Container(
           padding: const EdgeInsets.all(12),
           child: Row(children: [
             Expanded(
               child: TextField(
                 controller: _araCtrl,
+                focusNode: _araOdak,
                 autofocus: true,
                 textInputAction: TextInputAction.search,
                 // El terminali / USB okuyucu barkodu yazıp Enter'a basar —
@@ -214,7 +238,7 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     // Telefonda 2 kolon; tablet/PC’de sığdığı kadar (sabit 2 idi).
                     maxCrossAxisExtent: 200,
-                    childAspectRatio: 1.1,
+                    mainAxisExtent: 204,
                     mainAxisSpacing: 10,
                     crossAxisSpacing: 10,
                   ),
@@ -263,6 +287,126 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
               ),
             ),
           ),
+      ]);
+
+    return Scaffold(
+      backgroundColor: TsRenk.arkaplan(context),
+      appBar: TsAppBar(
+        baslik: 'Ürün Ekle',
+        modul: TsModul.masa,
+      ),
+      body: !_masaustu
+          ? sol
+          : Row(children: [
+              Expanded(child: sol),
+              VerticalDivider(width: 1, color: TsRenk.ayirac(context)),
+              SizedBox(
+                width: 380,
+                child: _AdisyonOzetPaneli(
+                  masaId: widget.masaId,
+                  onBitti: () => Navigator.pop(context),
+                ),
+              ),
+            ]),
+    );
+  }
+}
+
+// ==================== MASAÜSTÜ: CANLI ADİSYON PANELİ ====================
+/// Ürün ekleme ekranının sağındaki panel: masanın açık siparişini canlı
+/// gösterir, miktar +/- ile düzenlenir (0'a inen kalem silinir).
+class _AdisyonOzetPaneli extends ConsumerWidget {
+  final int masaId;
+  final VoidCallback onBitti;
+  const _AdisyonOzetPaneli({required this.masaId, required this.onBitti});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final siparis = ref.watch(masaSiparisProvider(masaId)).value;
+    final kalemler = siparis?.kalemler ?? const [];
+    final notifier = ref.read(masaSiparisProvider(masaId).notifier);
+
+    return Container(
+      color: TsRenk.kart(context),
+      child: Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          child: Row(children: [
+            const Icon(Icons.receipt_long_outlined, size: 20),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text('Adisyon',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            ),
+            Text('${kalemler.length} kalem',
+                style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
+          ]),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: kalemler.isEmpty
+              ? Center(
+                  child: Text('Henüz ürün eklenmedi',
+                      style: TextStyle(color: TsRenk.metinIkincil(context))))
+              : ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  itemCount: kalemler.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final k = kalemler[i];
+                    return ListTile(
+                      dense: true,
+                      title: Text(k.urunAdi,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(ParaUtils.formatla(k.toplam)),
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline, size: 20),
+                          tooltip: 'Azalt',
+                          onPressed: () => notifier.miktarGuncelle(k.id!, k.miktar - 1),
+                        ),
+                        Text(
+                          k.miktar == k.miktar.roundToDouble()
+                              ? k.miktar.toInt().toString()
+                              : k.miktar.toStringAsFixed(1),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline, size: 20),
+                          tooltip: 'Artır',
+                          onPressed: () => notifier.miktarGuncelle(k.id!, k.miktar + 1),
+                        ),
+                      ]),
+                    );
+                  },
+                ),
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(children: [
+            Row(children: [
+              const Expanded(
+                child: Text('Toplam',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              ),
+              Text(ParaUtils.formatla(siparis?.hesaplananToplam ?? 0),
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.w900, color: TsRenk.masaAcik)),
+            ]),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onBitti,
+                icon: const Icon(Icons.check),
+                label: const Text('Bitti — Adisyona Dön (Esc)'),
+              ),
+            ),
+          ]),
+        ),
       ]),
     );
   }

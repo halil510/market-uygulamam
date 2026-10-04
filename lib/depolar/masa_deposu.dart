@@ -94,6 +94,9 @@ class MasaDeposu {
       }
 
       sonuc.add(masa.copyWith(
+        // Kalemi olan masa 'bos' satırıyla (senkron/eski kayıt) gelirse bile
+        // dolu gösterilir.
+        durum: masa.durum == 'bos' && kalemler.isNotEmpty ? 'dolu' : null,
         aktifSiparisId: s['id'] as int,
         aktifToplam: toplam,
         aktifOzet: ozet,
@@ -282,6 +285,7 @@ class MasaDeposu {
     // aynı anda "ilk ürünü ekle" derse aynı masada iki açık sipariş
     // oluşuyordu (biri ekranda kayboluyor, kalemleri ödenmiyordu).
     var mevcutVar = false;
+    var masaDolulastirildi = false;
     late int yeniId;
     await db.transaction((txn) async {
       final acik = await txn.query(DbSabitler.masaSiparisleri,
@@ -290,6 +294,17 @@ class MasaDeposu {
           whereArgs: [masaId, 'acik'], limit: 1);
       if (acik.isNotEmpty) {
         mevcutVar = true;
+        // Son kalem silinince masa 'bos' olur ama sipariş açık kalır; aynı
+        // siparişe tekrar ürün eklenecekse masa yeniden 'dolu' olmalı —
+        // yoksa ürünlü masa listede boş görünüyordu.
+        final masa = await txn.query(DbSabitler.masalar,
+            columns: ['durum'], where: 'id = ?', whereArgs: [masaId], limit: 1);
+        if (masa.isNotEmpty && masa.first['durum'] == 'bos') {
+          await txn.update(DbSabitler.masalar,
+              {'durum': 'dolu', 'last_updated': simdi.toIso8601String()},
+              where: 'id = ?', whereArgs: [masaId]);
+          masaDolulastirildi = true;
+        }
         return;
       }
       yeniId = await txn.insert(DbSabitler.masaSiparisleri, {
@@ -305,6 +320,10 @@ class MasaDeposu {
           where: 'id = ?', whereArgs: [masaId]);
     });
     if (mevcutVar) {
+      if (masaDolulastirildi) {
+        final masaSatir = await db.query(DbSabitler.masalar, where: 'id = ?', whereArgs: [masaId], limit: 1);
+        if (masaSatir.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(masaSatir.first));
+      }
       final mevcut = await acikSiparisGetir(masaId);
       if (mevcut != null) return mevcut;
     }

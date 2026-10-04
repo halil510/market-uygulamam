@@ -122,6 +122,30 @@ void main() {
     });
   });
 
+  group('son kalem silinip yeniden ürün eklenince', () {
+    test('masa tekrar DOLU olur (sipariş açık kaldığı için önceden boş görünüyordu)', () async {
+      final m = await depo.masaEkle(const MasaModel(ad: 'Masa 1'));
+      final s = await depo.siparisAcVeyaGetir(m);
+      final k = await kalem(s.id!, 'Çay', 1, 10);
+      await depo.kalemSil(k); // son kalem silindi → masa boş
+      expect(await masaDurum(m), 'bos');
+
+      final yine = await depo.siparisAcVeyaGetir(m); // aynı açık sipariş
+      expect(yine.id, s.id);
+      expect(await masaDurum(m), 'dolu', reason: 'ürün eklenecek masa dolu olmalı');
+    });
+
+    test('masa satırı yine de boş kalmışsa (senkron vb.) listede kalemi olan masa DOLU görünür', () async {
+      final m = await depo.masaEkle(const MasaModel(ad: 'Masa 1'));
+      final s = await depo.siparisAcVeyaGetir(m);
+      await kalem(s.id!, 'Çay', 2, 10);
+      await db.update('masalar', {'durum': 'bos'}, where: 'id = ?', whereArgs: [m]);
+      final masa = (await depo.masalariGetir()).single;
+      expect(masa.durum, 'dolu');
+      expect(masa.aktifToplam, 20);
+    });
+  });
+
   group('ödeme — bayat sipariş koruması', () {
     test('ödeme ekranı açıkken başka cihaz ürün eklerse ödeme REDDEDİLİR, hiçbir şey yazılmaz', () async {
       final m = await depo.masaEkle(const MasaModel(ad: 'Masa 1'));

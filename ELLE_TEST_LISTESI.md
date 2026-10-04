@@ -50,6 +50,18 @@ Veriler deneme verisi olduğu sürece yıkıcı testler serbest.
 32. Banka, Borç ve Ürün Kayıt ekranları: F-tuşları, Tab sırası, iki sütunlu ürün formu.
 33. Hızlı Satış ödeme pencerelerini yalnızca klavyeyle kullan (Tab/Enter/Esc).
 
+## I. Masalar (Windows masaüstü + telefon)
+36. Geniş pencerede **Masalar** → bir masaya tıkla → sayfa değişmez, sağda detay paneli açılır; panelde ürün/adisyon/ödeme butonları taşmadan görünür.
+37. Panelde **F2** (ürün ekle), **F3** (adisyon), **F4** (hesap istendi), **F9** (ödeme al), **F5** (liste yenile) çalışıyor.
+38. Ürün ekleme ekranında (masaüstü) ürün tıkla → ekran KAPANMAZ, sağdaki adisyon güncellenir; aynı ürün tekrar → miktar artar; −/+ ile miktar değişir; Esc veya "Bitti" ile dön.
+39. Arama kutusuna yazıp Esc → önce aramayı temizler; boşken Esc → geri döner (tek sayfa, iki değil).
+40. Bir masaya ürün ekle, hepsini sil → masa boş görünür; tekrar ürün ekle → masa **Dolu** olur (önceden boş görünüyordu).
+41. Masa **düzenle** (uzun bas): adı/kategoriyi değiştir. Aynı adlı başka masa varsa uyarı verir. Başka cihazda masa açıkken düzenleyince masa boşa dönmez.
+42. **Ödeme**: ödeme penceresi açıkken başka cihazdan masaya ürün ekle → ödeme "Sipariş değişti, hiçbir ödeme alınmadı" diye reddedilir; ekran yenilenir, tutarı kontrol edip tekrar ödenir.
+43. **Masa taşı**: "Hesap istendi" durumundaki dolu masaya taşımak birleştirme onayı ister.
+44. **Rezervasyon**: aynı masaya 19:00 varken 20:00 veya 18:30 → "Bu saat için masa dolu" uyarısı; 21:00 → kabul edilir.
+45. Telefon: masa kartına tıkla → tam sayfa detay (eski davranış).
+
 ## H. Güvenlik (senin tarafında)
 34. Supabase service anahtarını yenile (sohbete yapıştırılmıştı).
 35. İşletme hesabı SQL adımlarının sonucunu kontrol et (giriş çalışıyor mu).

@@ -2,6 +2,7 @@
 // Masa / Restoran modülü — ana ekran.
 // Tıklama → MasaDetayEkrani'na yönlendirir
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -31,6 +32,13 @@ class MasaListeEkrani extends ConsumerStatefulWidget {
 
 class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
   String _kategori = 'Tümü';
+
+  /// Masaüstü ana-detay görünümünde sağ panelde açık masa (yoksa null).
+  int? _seciliMasaId;
+
+  /// Geniş pencerede (diğer masaüstü ekranlarıyla aynı 1100 px eşiği) liste +
+  /// sağda gömülü detay paneli; yönetim modu her zaman sade liste.
+  bool get _masaustu => !widget.yonetim && MediaQuery.sizeOf(context).width > 1100;
 
   @override
   void initState() {
@@ -141,7 +149,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
           final hesapSayi = masalar.where((m) => m.durum == 'hesap_istendi').length;
           final rezerveSayi = masalar.where((m) => m.durum == 'rezerve').length;
 
-          return Column(children: [
+          final sol = Column(children: [
             // Özet bandı
             Container(
               margin: const EdgeInsets.all(12),
@@ -190,16 +198,22 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
                 // Telefonda 2 kolon; tablet/PC'de sığdığı kadar (sabit 2 idi).
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 200, childAspectRatio: 0.95,
+                    maxCrossAxisExtent: 200, mainAxisExtent: 226,
                     mainAxisSpacing: 10, crossAxisSpacing: 10),
                 itemCount: gosterilen.length,
                 itemBuilder: (_, i) {
                   final m = gosterilen[i];
                   final renk = _durumRenk(m.durum);
+                  final secili = _masaustu && m.id == _seciliMasaId;
                   return InkWell(
                     borderRadius: BorderRadius.circular(16),
-                    // ✅ TIKLAMA → MasaDetayEkrani'na yönlendir
+                    // ✅ TIKLAMA → mobilde MasaDetayEkrani'na yönlendir,
+                    // masaüstünde sağ panelde aç.
                     onTap: () async {
+                      if (_masaustu) {
+                        setState(() => _seciliMasaId = m.id);
+                        return;
+                      }
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -213,7 +227,9 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                       decoration: BoxDecoration(
                         color: context.cardBg,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Color.fromARGB(80, renk.red, renk.green, renk.blue), width: 1.5),
+                        border: secili
+                            ? Border.all(color: TsRenk.masaAcik, width: 2.5)
+                            : Border.all(color: Color.fromARGB(80, renk.red, renk.green, renk.blue), width: 1.5),
                         boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)]),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -268,6 +284,51 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
               ),
             )),
           ]);
+
+          if (!_masaustu) return sol;
+
+          // ── Masaüstü: sol liste + sağ gömülü detay paneli ──────────────
+          MasaModel? secilen;
+          for (final m in masalar) {
+            if (m.id == _seciliMasaId) secilen = m;
+          }
+          return CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.f5): () =>
+                  ref.read(masaListesiProvider.notifier).yukle(),
+            },
+            child: Focus(
+              autofocus: secilen == null,
+              child: Row(children: [
+                Expanded(child: sol),
+                VerticalDivider(width: 1, color: context.borderColor),
+                SizedBox(
+                  width: 460,
+                  child: secilen == null
+                      ? Center(
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.touch_app_outlined, size: 56, color: context.textHint),
+                            const SizedBox(height: 12),
+                            Text('Sipariş için soldan bir masa seçin',
+                                style: TextStyle(color: context.textSecondary)),
+                            const SizedBox(height: 4),
+                            Text('F5: yenile',
+                                style: TextStyle(fontSize: 11, color: context.textHint)),
+                          ]),
+                        )
+                      : MasaDetayEkrani(
+                          key: ValueKey(secilen.id),
+                          masa: secilen,
+                          gomulu: true,
+                          onKapat: () {
+                            if (mounted) setState(() => _seciliMasaId = null);
+                            ref.read(masaListesiProvider.notifier).yukle();
+                          },
+                        ),
+                ),
+              ]),
+            ),
+          );
         },
       ),
       floatingActionButton: !widget.yonetim ? null : TsYetkili(child: FloatingActionButton.extended(
@@ -379,12 +440,36 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
     String kategori = duzenle?.kategori ?? 'Salon';
     const presetler = ['Salon', 'Bahçe', 'Teras', 'Veranda'];
 
+    // Enter / Kaydet ortak yolu. Hata (ör. aynı adlı masa) diyaloğu kapatmaz.
+    Future<void> kaydet(BuildContext ctx) async {
+      final ad = adCtrl.text.trim();
+      if (ad.isEmpty) return;
+      final kapasite = ParaUtils.tamSayiCoz(kapasiteCtrl.text) ?? 4;
+      try {
+        if (duzenle == null) {
+          await MasaDeposu().masaEkle(MasaModel(
+              ad: ad, kategori: kategori, kapasite: kapasite, durum: 'bos', sira: 0));
+        } else {
+          // Yalnız ad/kategori/kapasite — durum bayat kopyadan ezilmez.
+          await MasaDeposu().masaBilgiGuncelle(duzenle.id!,
+              ad: ad, kategori: kategori, kapasite: kapasite);
+        }
+      } catch (e) {
+        if (mounted) BildirimServisi.hata(context, kullaniciyaHataMetni(e));
+        return;
+      }
+      if (ctx.mounted) Navigator.pop(ctx);
+      ref.read(masaListesiProvider.notifier).yukle();
+    }
+
     showDialog(context: context, builder: (ctx) => StatefulBuilder(
       builder: (ctx, setLocal) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(duzenle == null ? 'Masa Ekle' : 'Masayı Düzenle'),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(controller: adCtrl, autofocus: true,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => kaydet(ctx),
             decoration: const InputDecoration(labelText: 'Masa Adı', hintText: 'Örn: Masa 1, Bahçe 3',
                 border: OutlineInputBorder())),
           const SizedBox(height: 14),
@@ -414,25 +499,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
         ])),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
-          FilledButton(onPressed: () async {
-            final ad = adCtrl.text.trim();
-            if (ad.isEmpty) return;
-            final masa = MasaModel(
-              id: duzenle?.id,
-              ad: ad,
-              kategori: kategori,
-              kapasite: ParaUtils.tamSayiCoz(kapasiteCtrl.text) ?? 4,
-              durum: duzenle?.durum ?? 'bos',
-              sira: duzenle?.sira ?? 0,
-            );
-            if (duzenle == null) {
-              await MasaDeposu().masaEkle(masa);
-            } else {
-              await MasaDeposu().masaGuncelle(masa);
-            }
-            if (ctx.mounted) Navigator.pop(ctx);
-            ref.read(masaListesiProvider.notifier).yukle();
-          }, child: const Text('Kaydet')),
+          FilledButton(onPressed: () => kaydet(ctx), child: const Text('Kaydet')),
         ],
       ),
     ));

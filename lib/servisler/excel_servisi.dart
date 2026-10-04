@@ -154,27 +154,7 @@ class ExcelServisi {
     return -1;
   }
 
-  double? _parseDouble(dynamic value) {
-    if (value == null) return null;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    
-    String str = value.toString().trim();
-    if (str.isEmpty || str == '-' || str == '') return null;
-    
-    str = str.replaceAll('₺', '').replaceAll('TL', '').replaceAll(' ', '');
-    
-    if (str.contains(',') && !str.contains('.')) {
-      str = str.replaceAll(',', '.');
-    } else if (str.contains(',') && str.contains('.')) {
-      final parts = str.split(',');
-      str = parts[0].replaceAll('.', '') + '.' + parts[1];
-    }
-    
-    str = str.replaceAll(RegExp(r'[^0-9.-]'), '');
-    if (str.isEmpty) return null;
-    return double.tryParse(str);
-  }
+  double? _parseDouble(dynamic value) => excelSayiAyristir(value);
 
   bool _parseBoolean(dynamic value, {bool defaultValue = true}) {
     if (value == null) return defaultValue;
@@ -483,7 +463,10 @@ class ExcelServisi {
         // KDV oranını oku
         if (kdvIndex != -1) {
           final kdvStr = _getCellValue(row[kdvIndex]);
-          kdvOran = double.tryParse(kdvStr.replaceAll('%', '')) ?? 18;
+          var kdvDeger = excelSayiAyristir(kdvStr);
+          // Excel'de yüzde biçimli hücre 0.18 saklar → 18'e çevir.
+          if (kdvDeger != null && kdvDeger > 0 && kdvDeger < 1) kdvDeger *= 100;
+          kdvOran = kdvDeger ?? 18;
         }
         
         // Alış fiyatı (KDV hariç) var mı?
@@ -1555,4 +1538,37 @@ class ExcelServisi {
       acilisBakiyesiYazilan: acilisYazilan,
     );
   }
+}
+/// Excel hücresindeki sayıyı Türkçe/İngilizce biçimlerin ikisinde de okur:
+/// `1.234,50` · `1,234.50` · `1234,5` · `1.234.567` · `₺12,5 TL` · `-3`.
+/// İki ayraç birlikte varsa SONUNCUSU ondalıktır; tek ayraç birden çok
+/// kez geçiyorsa binliktir; tek bir virgül ondalık, tek bir nokta ondalık
+/// (hücre sayısal ise Dart zaten `12.5` verir) sayılır.
+/// Çözümlenemeyen/boş değer için null.
+double? excelSayiAyristir(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+
+  var str = value.toString().trim();
+  if (str.isEmpty) return null;
+  str = str.replaceAll('₺', '').replaceAll('TL', '').replaceAll(RegExp(r'\s'), '');
+  str = str.replaceAll(RegExp(r'[^0-9.,-]'), '');
+  if (str.isEmpty || str == '-') return null;
+
+  final sonVirgul = str.lastIndexOf(',');
+  final sonNokta = str.lastIndexOf('.');
+  if (sonVirgul != -1 && sonNokta != -1) {
+    final ondalik = sonVirgul > sonNokta ? ',' : '.';
+    final bin = ondalik == ',' ? '.' : ',';
+    str = str.replaceAll(bin, '');
+    if (ondalik == ',') str = str.replaceAll(',', '.');
+  } else if (sonVirgul != -1) {
+    str = str.indexOf(',') == sonVirgul
+        ? str.replaceAll(',', '.')
+        : str.replaceAll(',', '');
+  } else if (sonNokta != -1 && str.indexOf('.') != sonNokta) {
+    str = str.replaceAll('.', '');
+  }
+  return double.tryParse(str);
 }

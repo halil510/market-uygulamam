@@ -25,21 +25,9 @@ class RezervasyonServisi {
     final db = await _db;
     late final int id;
     await db.transaction((txn) async {
-      final check = await txn.rawQuery('''
-        SELECT COUNT(*) as sayi FROM ${DbSabitler.masaRezervasyon}
-        WHERE masa_id = ? AND tarih = ? AND is_deleted = 0
-          AND durum NOT IN ('iptal', 'tamamlandi')
-          AND (saat BETWEEN ? AND ? OR ? BETWEEN saat AND datetime(saat, '+2 hours'))
-      ''', [
-        rezervasyon.masaId,
-        rezervasyon.tarih.toIso8601String(),
-        rezervasyon.saat.toIso8601String(),
-        rezervasyon.saat.add(const Duration(hours: 2)).toIso8601String(),
-        rezervasyon.saat.toIso8601String(),
-      ]);
-
-      final varMi = (check.first['sayi'] as int) > 0;
-      if (varMi) throw Exception('Bu saat için masa dolu');
+      if (await _cakisiyorMu(txn, rezervasyon.masaId, rezervasyon.saat)) {
+        throw Exception('Bu saat için masa dolu');
+      }
 
       // 🔴🔴 Derin analizde bulundu: 'masa_rezervasyon' senkron
       // sisteminde kayıtlı olduğu halde global_id atanmıyordu ve
@@ -58,6 +46,16 @@ class RezervasyonServisi {
   /// Rezervasyon güncelle
   Future<void> guncelle(RezervasyonModel rezervasyon) async {
     final db = await _db;
+    // Saat/masa değiştirilerek başka bir rezervasyonla çakışılmasın
+    // (önceden güncellemede hiç kontrol yoktu). Kendisi sayılmaz; iptal/
+    // tamamlanmış bir rezervasyonun yeniden düzenlenmesi engellenmez.
+    final aktifMi = rezervasyon.durum != RezervasyonDurum.iptal &&
+        rezervasyon.durum != RezervasyonDurum.tamamlandi;
+    if (aktifMi &&
+        await _cakisiyorMu(db, rezervasyon.masaId, rezervasyon.saat,
+            haricId: rezervasyon.id)) {
+      throw Exception('Bu saat için masa dolu');
+    }
     final veri = rezervasyon.toMap();
     veri['last_updated'] = DateTime.now().toIso8601String();
     await db.update(
@@ -179,18 +177,42 @@ class RezervasyonServisi {
   /// Masa müsaitlik kontrolü
   Future<bool> masaMusaitMi(int masaId, DateTime tarih, DateTime saat) async {
     final db = await _db;
-    final rows = await db.rawQuery('''
-      SELECT COUNT(*) as sayi FROM ${DbSabitler.masaRezervasyon}
-      WHERE masa_id = ? AND tarih = ? AND is_deleted = 0
+    return !await _cakisiyorMu(db, masaId, saat);
+  }
+
+  /// Her rezervasyon [rezervasyonSuresi] boyunca masayı tutar; iki
+  /// rezervasyonun başlangıçları bu süreden yakınsa çakışır (ör. 19:00
+  /// varken 20:00 ya da 18:30 çakışır, 21:00 ya da 17:00 çakışmaz).
+  ///
+  /// 🔴 Önceki SQL kontrolü `datetime(saat,'+2 hours')` ('2026-10-04 21:00:00',
+  /// boşluklu) ile ISO 'T' biçimli saat metnini karşılaştırıyordu; 'T' > ' '
+  /// olduğundan "yeni saat mevcut rezervasyonun 2 saatlik penceresinde" hiç
+  /// yakalanmıyor, `tarih = ?` eşitliği de farklı saat bileşenli kayıtları
+  /// kaçırıyordu → aynı masa aynı akşam iki kez rezerve edilebiliyordu.
+  static const rezervasyonSuresi = Duration(hours: 2);
+
+  Future<bool> _cakisiyorMu(DatabaseExecutor ex, int masaId, DateTime saat,
+      {int? haricId}) async {
+    String g(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    // Gece yarısını aşan rezervasyonlar için komşu günler de taranır.
+    final rows = await ex.rawQuery('''
+      SELECT id, saat FROM ${DbSabitler.masaRezervasyon}
+      WHERE masa_id = ? AND is_deleted = 0
         AND durum NOT IN ('iptal', 'tamamlandi')
-        AND (saat BETWEEN ? AND ? OR ? BETWEEN saat AND datetime(saat, '+2 hours'))
+        AND substr(saat, 1, 10) IN (?, ?, ?)
     ''', [
       masaId,
-      tarih.toIso8601String(),
-      saat.toIso8601String(),
-      saat.add(const Duration(hours: 2)).toIso8601String(),
-      saat.toIso8601String(),
+      g(saat.subtract(const Duration(days: 1))),
+      g(saat),
+      g(saat.add(const Duration(days: 1))),
     ]);
-    return (rows.first['sayi'] as int) == 0;
+    for (final r in rows) {
+      if (haricId != null && r['id'] == haricId) continue;
+      final diger = DateTime.tryParse(r['saat']?.toString() ?? '');
+      if (diger == null) continue;
+      if (diger.difference(saat).abs() < rezervasyonSuresi) return true;
+    }
+    return false;
   }
 }

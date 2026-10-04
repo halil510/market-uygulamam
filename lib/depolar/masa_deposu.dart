@@ -24,14 +24,33 @@ class MasaDeposu {
         where: 'durum = ? AND is_deleted = 0', whereArgs: ['acik'],
         orderBy: 'acilis_zamani ASC');
 
-    final sonuc = <MasaSiparisModel>[];
-    for (final s in siparisler) {
-      final kalemRows = await db.query(DbSabitler.masaSiparisKalem,
-          where: 'siparis_id = ? AND is_deleted = 0', whereArgs: [s['id']], orderBy: 'id ASC');
-      final kalemler = kalemRows.map(MasaSiparisKalemModel.fromMap).toList();
-      sonuc.add(MasaSiparisModel.fromMap(s, kalemler: kalemler));
+    final kalemHaritasi = await _kalemleriTopluGetir(
+        db, [for (final s in siparisler) s['id'] as int]);
+    return [
+      for (final s in siparisler)
+        MasaSiparisModel.fromMap(s,
+            kalemler: (kalemHaritasi[s['id'] as int] ?? const [])
+                .map(MasaSiparisKalemModel.fromMap)
+                .toList()),
+    ];
+  }
+
+  /// Birden çok siparişin (silinmemiş) kalemlerini TEK sorguda getirir —
+  /// önceden her sipariş/masa için ayrı sorgu atılıyordu (N+1); masa ve
+  /// mutfak ekranları 5-15 sn'de bir yenilendiği için sürekli tekrarlanıyordu.
+  Future<Map<int, List<Map<String, Object?>>>> _kalemleriTopluGetir(
+      Database db, List<int> siparisIdleri) async {
+    final harita = <int, List<Map<String, Object?>>>{};
+    if (siparisIdleri.isEmpty) return harita;
+    final yerTutucu = List.filled(siparisIdleri.length, '?').join(',');
+    final rows = await db.rawQuery(
+        'SELECT * FROM ${DbSabitler.masaSiparisKalem} '
+        'WHERE is_deleted = 0 AND siparis_id IN ($yerTutucu) ORDER BY id ASC',
+        siparisIdleri);
+    for (final r in rows) {
+      (harita[r['siparis_id'] as int] ??= []).add(r);
     }
-    return sonuc;
+    return harita;
   }
 
   /// Masa adını id ile getirir (mutfak ekranında gösterim için).
@@ -52,6 +71,9 @@ class MasaDeposu {
     final acikSiparisler = await db.query(DbSabitler.masaSiparisleri,
         where: 'durum = ? AND is_deleted = 0', whereArgs: ['acik']);
 
+    final kalemHaritasi = await _kalemleriTopluGetir(
+        db, [for (final s in acikSiparisler) s['id'] as int]);
+
     final sonuc = <MasaModel>[];
     for (final m in masalar) {
       final masa = MasaModel.fromMap(m);
@@ -59,9 +81,7 @@ class MasaDeposu {
       if (siparis.isEmpty) { sonuc.add(masa); continue; }
 
       final s = siparis.first;
-      final kalemler = await db.query(DbSabitler.masaSiparisKalem,
-          where: 'siparis_id = ? AND is_deleted = 0', whereArgs: [s['id']],
-          orderBy: 'id ASC');
+      final kalemler = kalemHaritasi[s['id'] as int] ?? const <Map<String, Object?>>[];
       final toplam = kalemler.fold<double>(0.0, (acc, k) =>
           acc + (k['miktar'] as num).toDouble() * (k['birim_fiyat'] as num).toDouble());
 
@@ -83,7 +103,49 @@ class MasaDeposu {
     return sonuc;
   }
 
+  /// Aynı adlı (büyük/küçük harf ve baştaki/sondaki boşluk duyarsız) aktif
+  /// masa var mı? [haricId] düzenlenen masanın kendisini saymamak için.
+  Future<bool> adKullanimda(String ad, {int? haricId}) async {
+    final db = await _d;
+    final rows = await db.query(DbSabitler.masalar,
+        columns: ['id', 'ad'], where: 'is_deleted = 0');
+    final aranan = ad.trim().toLowerCase();
+    return rows.any((r) =>
+        r['id'] != haricId &&
+        ((r['ad'] as String?) ?? '').trim().toLowerCase() == aranan);
+  }
+
+  /// Düzenleme diyaloğu için: YALNIZCA ad/kategori/kapasite yazılır.
+  /// Önceden [masaGuncelle] ile tüm satır (durum dahil) ekrandaki eski
+  /// kopyadan yazılıyordu — diyalog açıkken başka bir cihaz masayı açarsa
+  /// kaydet masayı "boş"a geri çeviriyordu (açık siparişli ama boş masa).
+  Future<void> masaBilgiGuncelle(int id,
+      {required String ad, required String kategori, required int kapasite}) async {
+    final temiz = ad.trim();
+    if (temiz.isEmpty) throw Exception('Masa adı boş olamaz.');
+    if (await adKullanimda(temiz, haricId: id)) {
+      throw Exception('"$temiz" adında bir masa zaten var.');
+    }
+    final db = await _d;
+    await db.update(
+        DbSabitler.masalar,
+        {
+          'ad': temiz,
+          'kategori': kategori,
+          'kapasite': kapasite,
+          'last_updated': DateTime.now().toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: [id]);
+    final satir = await db.query(DbSabitler.masalar, where: 'id = ?', whereArgs: [id], limit: 1);
+    if (satir.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(satir.first));
+  }
+
   Future<int> masaEkle(MasaModel masa) async {
+    if (masa.ad.trim().isEmpty) throw Exception('Masa adı boş olamaz.');
+    if (await adKullanimda(masa.ad)) {
+      throw Exception('"${masa.ad.trim()}" adında bir masa zaten var.');
+    }
     final db = await _d;
     final m = masa.toMap();
     m['global_id'] = const Uuid().v4();
@@ -213,24 +275,44 @@ class MasaDeposu {
 
   /// Masada açık sipariş yoksa yeni bir sipariş açar, varsa onu döner.
   Future<MasaSiparisModel> siparisAcVeyaGetir(int masaId) async {
-    final mevcut = await acikSiparisGetir(masaId);
-    if (mevcut != null) return mevcut;
-
     final db = await _d;
     final simdi = DateTime.now();
     final gid = const Uuid().v4();
-    final id = await db.insert(DbSabitler.masaSiparisleri, {
-      'global_id': gid,
-      'masa_id': masaId,
-      'durum': 'acik',
-      'acilis_zamani': simdi.toIso8601String(),
-      'toplam_tutar': 0,
-      'last_updated': simdi.toIso8601String(),
+    // Kontrol + ekleme + masa durumu TEK transaction: iki dokunuş/cihaz
+    // aynı anda "ilk ürünü ekle" derse aynı masada iki açık sipariş
+    // oluşuyordu (biri ekranda kayboluyor, kalemleri ödenmiyordu).
+    var mevcutVar = false;
+    late int yeniId;
+    await db.transaction((txn) async {
+      final acik = await txn.query(DbSabitler.masaSiparisleri,
+          columns: ['id'],
+          where: 'masa_id = ? AND durum = ? AND is_deleted = 0',
+          whereArgs: [masaId, 'acik'], limit: 1);
+      if (acik.isNotEmpty) {
+        mevcutVar = true;
+        return;
+      }
+      yeniId = await txn.insert(DbSabitler.masaSiparisleri, {
+        'global_id': gid,
+        'masa_id': masaId,
+        'durum': 'acik',
+        'acilis_zamani': simdi.toIso8601String(),
+        'toplam_tutar': 0,
+        'last_updated': simdi.toIso8601String(),
+      });
+      await txn.update(DbSabitler.masalar,
+          {'durum': 'dolu', 'last_updated': simdi.toIso8601String()},
+          where: 'id = ?', whereArgs: [masaId]);
     });
-    await masaDurumGuncelle(masaId, 'dolu');
+    if (mevcutVar) {
+      final mevcut = await acikSiparisGetir(masaId);
+      if (mevcut != null) return mevcut;
+    }
     final satir = await db.query(DbSabitler.masaSiparisleri, where: 'global_id = ?', whereArgs: [gid], limit: 1);
     if (satir.isNotEmpty) BulutManager().upsert('masa_siparisleri', Map<String, dynamic>.from(satir.first));
-    return MasaSiparisModel(id: id, masaId: masaId, acilisZamani: simdi);
+    final masaSatir = await db.query(DbSabitler.masalar, where: 'id = ?', whereArgs: [masaId], limit: 1);
+    if (masaSatir.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(masaSatir.first));
+    return MasaSiparisModel(id: yeniId, masaId: masaId, acilisZamani: simdi);
   }
 
   /// Açık siparişe ürün ekler. Aynı ürün+not zaten varsa miktarı artırır.

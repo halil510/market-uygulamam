@@ -46,6 +46,16 @@ class MasaOdemeSonuc {
   });
 }
 
+/// Ödeme sırasında siparişin (başka cihazdan) değiştiği anlaşıldı — hiçbir
+/// kayıt yazılmadı; ekran yenilenip tutar kontrol edilerek tekrar denenmeli.
+class MasaSiparisDegistiHatasi implements Exception {
+  @override
+  String toString() =>
+      'Sipariş, ödeme ekranı açıkken değişti (başka bir cihazdan ürün '
+      'eklenmiş/silinmiş olabilir). Hiçbir ödeme alınmadı. Ekran '
+      'yenilendi — güncel tutarı kontrol edip tekrar deneyin.';
+}
+
 class MasaOdemeServisi {
   final _satisDepo = SatisDeposu();
   final _stokDepo = StokDeposu();
@@ -150,6 +160,30 @@ class MasaOdemeServisi {
     final efektifCariId = cariId ?? siparis.cariId;
 
     await db.transaction((txn) async {
+      // Bayat sipariş koruması: ödeme penceresi açıkken başka bir cihaz /
+      // QR sipariş masaya ürün eklediyse (veya birini sildiyse), ekrandaki
+      // kopya güncel değildir. Bu haliyle ödeme alınırsa yeni kalemler
+      // satışa/stoğa/kasaya HİÇ girmeden sipariş 'ödendi' kapanır.
+      // Kalemler transaction içinde yeniden okunur; fark varsa ödeme
+      // yapılmaz (tüm yazımlar geri alınır), kullanıcı yenileyip tekrar dener.
+      final guncelKalemler = await txn.query('masa_siparis_kalem',
+          columns: ['id', 'miktar', 'birim_fiyat'],
+          where: 'siparis_id = ? AND is_deleted = 0',
+          whereArgs: [siparis.id]);
+      final guncelIdler = {for (final k in guncelKalemler) k['id'] as int};
+      final ekrandakiIdler = {for (final k in siparis.kalemler) k.id};
+      final guncelToplam = ParaUtils.yuvarla(guncelKalemler.fold(
+          0.0,
+          (s, k) =>
+              s +
+              (k['miktar'] as num).toDouble() *
+                  (k['birim_fiyat'] as num).toDouble()));
+      if (guncelIdler.length != ekrandakiIdler.length ||
+          !guncelIdler.containsAll(ekrandakiIdler.whereType<int>()) ||
+          (guncelToplam - genelTop).abs() > 0.01) {
+        throw MasaSiparisDegistiHatasi();
+      }
+
       satisId = await _satisDepo.satisEkleTxn(txn, satis, satisKalemler);
 
       for (final k in siparis.kalemler) {

@@ -589,6 +589,12 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
   Future<void> _aramaGonderildi(String q) async {
     final temiz = q.trim();
     if (temiz.isEmpty) return;
+    // "*3" + Enter: sepetin en üstündeki (son okutulan) ürünün miktarını
+    // 3 YAPAR (üstüne eklemez). Ürün araması/barkod akışına hiç girmez.
+    if (temiz.startsWith('*')) {
+      _sonUrunMiktariniAyarla(temiz.substring(1));
+      return;
+    }
     if (barkodaBenziyor(temiz) || _fisBarkoduMu(temiz)) {
       _araDebounce?.cancel();
       ++_aramaId; // uçuştaki arama sonucunu geçersiz kıl
@@ -612,6 +618,25 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
       }
     } catch (_) {
       // arama hatası — kullanıcı listeden seçmeye devam edebilir
+    }
+  }
+
+  void _sonUrunMiktariniAyarla(String metin) {
+    _araDebounce?.cancel();
+    ++_aramaId;
+    _araCtrl.clear();
+    setState(() => _aramaSonuclari = []);
+    _araFocus.requestFocus();
+    final sepet = ref.read(sepetProvider);
+    final n = ParaUtils.sayiCoz(metin.trim());
+    if (sepet.bos) {
+      BildirimServisi.uyari(context, 'Sepet boş — önce ürün okutun');
+    } else if (n == null || n <= 0 || n > 99999) {
+      BildirimServisi.uyari(context, 'Geçersiz miktar: *$metin');
+    } else {
+      // Yeni ürün her zaman 0. sıraya eklenir (bkz. SepetNotifier.ekle).
+      ref.read(sepetProvider.notifier).miktarGuncelle(0, n);
+      if (_sepetScroll.hasClients) _sepetScroll.jumpTo(0);
     }
   }
 

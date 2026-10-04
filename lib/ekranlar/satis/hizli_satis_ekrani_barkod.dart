@@ -589,8 +589,8 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
   Future<void> _aramaGonderildi(String q) async {
     final temiz = q.trim();
     if (temiz.isEmpty) return;
-    // "*3" + Enter: sepetin en üstündeki (son okutulan) ürünün miktarını
-    // 3 YAPAR (üstüne eklemez). Ürün araması/barkod akışına hiç girmez.
+    // "*3" + Enter: sepetin en üstündeki (son okutulan) ürünün miktarına
+    // 3 EKLER (2 iken *5 → 7, *3 → 10). Ürün araması/barkod akışına girmez.
     if (temiz.startsWith('*')) {
       _sonUrunMiktariniAyarla(temiz.substring(1));
       return;
@@ -635,7 +635,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
       BildirimServisi.uyari(context, 'Geçersiz miktar: *$metin');
     } else {
       // Yeni ürün her zaman 0. sıraya eklenir (bkz. SepetNotifier.ekle).
-      ref.read(sepetProvider.notifier).miktarGuncelle(0, n);
+      ref.read(sepetProvider.notifier).miktarGuncelle(0, sepet.kalemler[0].miktar + n);
       if (_sepetScroll.hasClients) _sepetScroll.jumpTo(0);
     }
   }

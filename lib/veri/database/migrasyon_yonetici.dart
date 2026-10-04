@@ -9,6 +9,7 @@ import 'semalar/doviz_semasi.dart';
 part 'migrasyon_yonetici_v1_v12.dart';
 part 'migrasyon_yonetici_v12_v36.dart';
 part 'migrasyon_yonetici_v36_v63.dart';
+part 'migrasyon_yonetici_v63_v79.dart';
 
 class MigrasyonYonetici {
   static Future<void> guncelle(

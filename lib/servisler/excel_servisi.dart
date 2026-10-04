@@ -502,7 +502,7 @@ class ExcelServisi {
         final hacimVal           = hacimIndex != -1 ? _getCellDouble(row[hacimIndex]) ?? 0.0 : 0.0;
         final evrakKontrolVal    = evrakKontrolIndex != -1 ? _parseBoolean(_getCellValue(row[evrakKontrolIndex])) : false;
         final netAlisFiyatVal    = netAlisFiyatIndex != -1 ? _getCellDouble(row[netAlisFiyatIndex]) ?? 0.0 : 0.0;
-        final eskiFiyatTarih     = eskiFiyatTarihStr.isNotEmpty ? DateTime.tryParse(eskiFiyatTarihStr) : null;
+        final eskiFiyatTarih     = eskiFiyatTarihStr.isNotEmpty ? excelTarihAyristir(eskiFiyatTarihStr) : null;
 
         // İndirimOranı hesapla (sadece Excel'de indirimle ilgili EN AZ
         // bir sütun varsa — bkz. aşağıdaki GÜNCELLEME notu):
@@ -1571,4 +1571,21 @@ double? excelSayiAyristir(dynamic value) {
     str = str.replaceAll('.', '');
   }
   return double.tryParse(str);
+}
+
+/// ISO (`2025-12-31`, `2025-12-31T10:00`) ya da Türkçe (`31.12.2025`,
+/// `31/12/2025`, isteğe bağlı saat) tarih metnini okur; çözümlenemezse null.
+DateTime? excelTarihAyristir(String metin) {
+  final s = metin.trim();
+  if (s.isEmpty) return null;
+  final iso = DateTime.tryParse(s);
+  if (iso != null) return iso;
+  final m = RegExp(r'^(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?:[ T](\d{1,2}):(\d{2}))?')
+      .firstMatch(s);
+  if (m == null) return null;
+  final g = int.parse(m.group(1)!), a = int.parse(m.group(2)!), y = int.parse(m.group(3)!);
+  if (a < 1 || a > 12 || g < 1 || g > 31) return null;
+  final sa = int.tryParse(m.group(4) ?? '') ?? 0, dk = int.tryParse(m.group(5) ?? '') ?? 0;
+  final d = DateTime(y, a, g, sa, dk);
+  return d.month == a ? d : null; // 31.02 gibi taşmaları reddet
 }

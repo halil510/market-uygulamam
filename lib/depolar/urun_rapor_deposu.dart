@@ -11,6 +11,7 @@
 //  • Alım = tedarikci_siparisler.durum = 'teslim_alindi' (iptal edilenler hariç).
 //  • Tarih karşılaştırması substr(tarih,1,10) ile yapılır: 'yyyy-MM-dd HH:mm'
 //    ve ISO 'T' biçimlerinin ikisinde de doğru çalışır.
+import '../servisler/aktif_sube_servisi.dart';
 import '../veri/database/veritabani.dart';
 
 enum UrunRaporGruplama { urun, anaGrup, marka, cari }
@@ -159,9 +160,16 @@ class UrunRaporDeposu {
     final String fisFk = satis ? 'satis_id' : 'siparis_id';
     final String tarihKol = satis ? 'f.tarih' : 'f.siparis_tarihi';
     final String miktarKol = satis ? 'k.miktar' : 'k.teslim_mik';
-    final String tutarKol = satis ? 'k.toplam_tutar' : 'k.toplam_tutar';
-    final String maliyetIfade =
-        satis ? 'k.miktar * k.alis_fiyat_kdv' : '0';
+    // Alım tutarı teslim alınan miktar üzerinden (sipariş oluşturma yolu
+    // toplam_tutar'ı sipariş miktarıyla yazar; kısmi teslimde şişerdi).
+    final String tutarKol =
+        satis ? 'k.toplam_tutar' : 'k.teslim_mik * k.birim_fiyat';
+    // Tarihsel maliyet 0 ise (migrasyon öncesi satırlar) güncel KDV dahil
+    // alış maliyetine düşülür — SatisDeposu.maliyetToplami ile aynı kural.
+    final String maliyetIfade = satis
+        ? 'CASE WHEN k.alis_fiyat_kdv > 0 THEN k.miktar * k.alis_fiyat_kdv '
+            'ELSE k.miktar * COALESCE(u.alis_fiyat_kdv_dahil, 0) END'
+        : '0';
 
     final where = <String>[
       'substr($tarihKol,1,10) >= ?',
@@ -175,6 +183,13 @@ class UrunRaporDeposu {
       if (!satis) '${miktarKol} > 0',
     ];
     final args = <Object?>[_gun(f.bas), _gun(f.bit)];
+
+    // Diğer raporlarla aynı: aktif şubeye göre (satışlarda sube_id var).
+    final subeId = AktifSubeServisi().subeId;
+    if (satis && subeId != null) {
+      where.add('f.sube_id = ?');
+      args.add(subeId);
+    }
 
     if (f.anaGrup != null) {
       where.add('u.ana_grup = ?');

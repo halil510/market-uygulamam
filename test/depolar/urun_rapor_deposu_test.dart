@@ -71,6 +71,36 @@ void main() {
     expect(bos.satirlar, isEmpty);
   });
 
+  test('maliyet: tarihsel 0 ise ürünün güncel KDV dahil alışına düşer; doluysa o kullanılır', () async {
+    final a = await TestVeritabani.ornekUrunEkle(db, stok: 50, barkod: 'B-M');
+    await db.update('urunler', {'alis_fiyat_kdv_dahil': 12.0}, where: 'id = ?', whereArgs: [a]);
+    final s1 = await satis('M-1', 100, a, adet: 2);
+    await db.update('satis_kalem', {'alis_fiyat_kdv': 0}, where: 'satis_id = ?', whereArgs: [s1]);
+    final s2 = await satis('M-2', 50, a, adet: 1);
+    await db.update('satis_kalem', {'alis_fiyat_kdv': 20.0}, where: 'satis_id = ?', whereArgs: [s2]);
+
+    final r = await UrunRaporDeposu().satisRaporu(bugun());
+    expect(r.toplamMaliyet, 2 * 12.0 + 1 * 20.0);
+  });
+
+  test('alım tutarı teslim miktarından hesaplanır (kısmi teslim)', () async {
+    final a = await TestVeritabani.ornekUrunEkle(db, stok: 0, barkod: 'B-KT');
+    final id = await db.insert('tedarikci_siparisler', {
+      'cari_id': await db.insert('cari', {'unvan': 'T', 'cari_tipi': 'Tedarikçi', 'bakiye': 0}),
+      'siparis_no': 'KT-1', 'siparis_tarihi': DateTime.now().toIso8601String(),
+      'toplam_tutar': 100, 'durum': 'teslim_alindi',
+    });
+    await db.insert('tedarikci_siparis_kalem', {
+      'siparis_id': id, 'urun_id': a, 'siparis_mik': 20, 'teslim_mik': 4,
+      'birim_fiyat': 5, 'toplam_tutar': 100,
+    });
+    final n = DateTime.now();
+    final d = DateTime(n.year, n.month, n.day);
+    final r = await UrunRaporDeposu().alimRaporu(UrunRaporFiltre(bas: d, bit: d));
+    expect(r.toplamMiktar, 4);
+    expect(r.toplamTutar, 20);
+  });
+
   test('alım raporu: yalnız teslim alınanlar, cari ve marka filtresi', () async {
     final a = await TestVeritabani.ornekUrunEkle(db, stok: 0, barkod: 'B-AL');
     await db.update('urunler', {'marka': 'MarkaX'}, where: 'id = ?', whereArgs: [a]);

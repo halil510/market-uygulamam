@@ -111,7 +111,6 @@ class _TopluDovizGuncellemeEkraniState extends State<TopluDovizGuncellemeEkrani>
       // transaction'da (ya hepsi ya hiçbiri) yazılıyor. alis_kdv_oran
       // her ürün için zaten bellekte olduğundan (u.alisKdvOran), eski
       // yoldaki gereksiz per-ürün SELECT de ayrıca ortadan kalktı.
-      final now = DateTime.now().toIso8601String();
       final guncellemeler = <int, Map<String, dynamic>>{};
       for (final u in _urunler) {
         if (u.id == null || !_secili.contains(u.id)) continue;

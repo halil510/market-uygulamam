@@ -16,7 +16,6 @@
 // birim-çarpanı (Ölçü Birimleri) katmanı ekleniyor. Sonuç doğrudan
 // satışa değil, BekleyenSiparisDeposu üzerinden "Bekleyen Sipariş"e
 // kaydedilir.
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';

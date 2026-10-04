@@ -15,7 +15,6 @@ import '../modeller/cari_model.dart';
 import '../modeller/fatura_model.dart';
 import '../veri/database/veritabani.dart';
 import '../cekirdek/utils/para_utils.dart';
-import '../cekirdek/utils/para_utils.dart';
 import '../cekirdek/utils/vergi_no_dogrulayici.dart';
 import 'aktif_sube_servisi.dart';
 

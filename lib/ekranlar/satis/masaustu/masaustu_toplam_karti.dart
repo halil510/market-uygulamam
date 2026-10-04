@@ -4,8 +4,6 @@
 import 'package:flutter/material.dart';
 import '../../../cekirdek/utils/para_utils.dart';
 import '../../../saglayicilar/riverpod/sepet_provider.dart';
-import '../../../tasarim_sistemi/tasarim_sistemi.dart';
-import '../../../uygulama/tema/uygulama_temasi.dart';
 
 class MasaustuToplamKarti extends StatelessWidget {
   final SepetDurum sepet;

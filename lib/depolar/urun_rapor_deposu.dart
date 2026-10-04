@@ -11,6 +11,7 @@
 //  • Alım = tedarikci_siparisler.durum = 'teslim_alindi' (iptal edilenler hariç).
 //  • Tarih karşılaştırması substr(tarih,1,10) ile yapılır: 'yyyy-MM-dd HH:mm'
 //    ve ISO 'T' biçimlerinin ikisinde de doğru çalışır.
+import '../cekirdek/utils/metin_arama.dart';
 import '../servisler/aktif_sube_servisi.dart';
 import '../veri/database/veritabani.dart';
 
@@ -205,8 +206,8 @@ class UrunRaporDeposu {
     }
     final q = f.arama.trim();
     if (q.isNotEmpty) {
-      where.add('(u.urun_adi LIKE ? OR u.barkod LIKE ? OR u.kod LIKE ?)');
-      args.addAll(['%$q%', '%$q%', '%$q%']);
+      where.add('(${aramaSqlKolon('u.urun_adi')} LIKE ? OR u.barkod LIKE ? OR u.barkodlar LIKE ? OR ${aramaSqlKolon('u.kod')} LIKE ?)');
+      args.addAll(['%${aramaNormalize(q)}%', '%$q%', '%$q%', '%${aramaNormalize(q)}%']);
     }
 
     // Gruplama ifadeleri: anahtar, görünen ad, alt başlık
@@ -353,8 +354,8 @@ extension StokRaporDeposu on UrunRaporDeposu {
     }
     final q = arama.trim();
     if (q.isNotEmpty) {
-      where.add('(urun_adi LIKE ? OR barkod LIKE ? OR kod LIKE ?)');
-      args.addAll(['%$q%', '%$q%', '%$q%']);
+      where.add('(${aramaSqlKolon('urun_adi')} LIKE ? OR barkod LIKE ? OR barkodlar LIKE ? OR ${aramaSqlKolon('kod')} LIKE ?)');
+      args.addAll(['%${aramaNormalize(q)}%', '%$q%', '%$q%', '%${aramaNormalize(q)}%']);
     }
     final rows = await db.rawQuery(
         'SELECT id, urun_adi, kod, barkod, ana_grup, marka, birim_adi, stok, '

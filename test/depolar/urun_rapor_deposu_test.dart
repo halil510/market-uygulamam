@@ -133,4 +133,18 @@ void main() {
     final c = await depo.alimRaporu(UrunRaporFiltre(bas: d, bit: d, gruplama: UrunRaporGruplama.cari));
     expect(c.satirlar.single.ad, 'Tedarik A.Ş.');
   });
+
+  test('arama Türkçe karakter/büyük-küçük harf duyarsız (rapor + stok listesi)', () async {
+    final a = await TestVeritabani.ornekUrunEkle(db, stok: 5, barkod: 'B-TR');
+    await db.update('urunler', {'urun_adi': 'BİSKREM ÇİKOLATA'}, where: 'id = ?', whereArgs: [a]);
+    await satis('TR-1', 30, a);
+    final depo = UrunRaporDeposu();
+    final n = DateTime.now();
+    final d = DateTime(n.year, n.month, n.day);
+    for (final q in ['biskrem', 'cikolata', 'BİSKREM']) {
+      final r = await depo.satisRaporu(UrunRaporFiltre(bas: d, bit: d, arama: q));
+      expect(r.satirlar.length, 1, reason: q);
+      expect((await depo.stokListesi(arama: q)).length, 1, reason: q);
+    }
+  });
 }

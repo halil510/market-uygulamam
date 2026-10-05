@@ -73,7 +73,11 @@ class MasaustuAltSerit extends StatelessWidget {
           child: SizedBox(
             width: 104,
             height: 58,
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            // Alan daralırsa (kısa pencere / üst üste binen ekran) içerik küçülür,
+            // taşma çizgisi çıkmaz.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
               Icon(t.ikon, color: Colors.white, size: 18),
               const SizedBox(height: 2),
               Text('${t.tus} : ${t.etiket}',
@@ -82,6 +86,7 @@ class MasaustuAltSerit extends StatelessWidget {
                       fontSize: 12,
                       fontWeight: FontWeight.w800)),
             ]),
+            ),
           ),
         ),
       ),

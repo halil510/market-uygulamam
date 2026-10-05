@@ -63,7 +63,7 @@ class MasaustuSayiTuslari extends StatelessWidget {
                 for (final p in const [5, 10, 20, 50, 100, 200])
                   Expanded(
                       child: _tus('$p', () => onHizliPara(p),
-                          renk: TsRenk.basarili.withValues(alpha: 0.85),
+                          renk: TsRenk.basarili,
                           yaziRenk: Colors.white)),
               ]),
             ),

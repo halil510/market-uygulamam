@@ -194,34 +194,38 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
                 widget.onSagTik!(s, d.globalPosition);
               },
         child: Container(
-          // Seçili satır belirgin: koyu zemin + sol kenarda 4px vurgu çubuğu
-          // (çubuk her satırda yer tutar, seçimle satır kaymaz).
-          decoration: BoxDecoration(
-            color: zemin,
-            border: Border(
-              left: BorderSide(
-                  width: 4,
+          color: zemin,
+          // Seçili satır belirgin: koyu zemin + sol kenarda 4px vurgu çubuğu.
+          // Çubuk satırın üstüne ÇİZİLİR (kenarlık değil): kenarlık içeriği
+          // 4px daraltıp satırı taşırıyor ve başlıkla kolonları kaydırıyordu.
+          child: Stack(children: [
+            Row(children: [
+              for (final k in widget.kolonlar)
+                SizedBox(
+                  width: gen(k),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(k.deger(s),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: k.sagaYasli ? TextAlign.right : TextAlign.left,
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: secili ? FontWeight.w700 : FontWeight.w500,
+                            color: k.renk?.call(s) ?? context.textPrimary)),
+                  ),
+                ),
+            ]),
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 4,
+              child: ColoredBox(
                   color: secili
                       ? TsRenk.primary
                       : (vurgu ? TsRenk.primary.withValues(alpha: 0.45) : Colors.transparent)),
             ),
-          ),
-          child: Row(children: [
-            for (final k in widget.kolonlar)
-              SizedBox(
-                width: gen(k),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(k.deger(s),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: k.sagaYasli ? TextAlign.right : TextAlign.left,
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: secili ? FontWeight.w700 : FontWeight.w500,
-                          color: k.renk?.call(s) ?? context.textPrimary)),
-                ),
-              ),
           ]),
         ),
       ),

@@ -17,6 +17,7 @@ import '../../depolar/cari_deposu.dart';
 import '../../depolar/satis_deposu.dart';
 import 'toptan_satis_ekrani.dart';
 import 'cari_detay_paneli.dart';
+import 'masaustu/toptan_masaustu_gorunum.dart';
 
 class ToptanDashboardEkrani extends StatefulWidget {
   const ToptanDashboardEkrani({super.key});
@@ -90,8 +91,56 @@ class _ToptanDashboardEkraniState extends State<ToptanDashboardEkrani> {
     _yukle(); // panel kapandıktan sonra (satış/iade yapılmış olabilir) tazele
   }
 
+  void _hizliSatis() =>
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const ToptanSatisEkrani()));
+
+  /// Geniş pencere (masaüstü): bayi tablosu + alt şerit + F kısayolları.
+  Widget _masaustuGovde() {
+    return Scaffold(
+      backgroundColor: context.scaffoldBg,
+      appBar: const TsAppBar(baslik: 'Toptan Satış'),
+      body: Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+          child: TextField(
+            controller: _aramaCtrl,
+            decoration: InputDecoration(
+              hintText: 'Bayi ara...',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              filled: true, fillColor: context.inputFill,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              isDense: true,
+            ),
+          ),
+        ),
+        Expanded(
+          child: _yukleniyor
+              ? const TsYukleniyor()
+              : _filtreli.isEmpty
+                  ? Center(
+                      child: Text(
+                          _bayiler.isEmpty
+                              ? 'Henüz "Bayi/Toptan" tipinde cari yok — cari kartından müşteri tipini "Bayi" veya "Toptan" yapın'
+                              : 'Eşleşen bayi bulunamadı',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 15, color: context.textSecondary)))
+                  : ToptanMasaustuGorunum(
+                      bayiler: _filtreli,
+                      bugunkuCiro: _bugunkuToptanCiro,
+                      onPanel: _paneliAc,
+                      onHizliSatis: _hizliSatis,
+                      onUrunler: () => context.push('/toptan/urunler'),
+                      onBekleyenSiparisler: () => context.push('/toptan/bekleyen-siparisler'),
+                      onFiyatGruplari: () => context.push('/toptan/fiyat-gruplari'),
+                    ),
+        ),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width > 1100) return _masaustuGovde();
     return Scaffold(
       backgroundColor: context.scaffoldBg,
       body: CustomScrollView(slivers: [
@@ -257,7 +306,7 @@ class _ToptanDashboardEkraniState extends State<ToptanDashboardEkrani> {
           ),
       ]),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ToptanSatisEkrani())),
+        onPressed: _hizliSatis,
         icon: const Icon(Icons.add_shopping_cart),
         label: const Text('Hızlı Toptan Satış'),
       ),

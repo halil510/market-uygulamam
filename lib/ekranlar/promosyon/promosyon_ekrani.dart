@@ -21,6 +21,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../cekirdek/utils/dosya_paylasim.dart';
 import '../../servisler/excel_servisi.dart';
+import '../../saglayicilar/riverpod/auth_provider.dart';
+import 'masaustu/promosyon_masaustu_gorunum.dart';
 
 class PromosyonEkrani extends ConsumerStatefulWidget {
   const PromosyonEkrani({super.key});
@@ -137,6 +139,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      constraints: _sheetKisiti(context),
       builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => Container(
         decoration: BoxDecoration(
           color: context.cardBg,
@@ -241,6 +244,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
+        constraints: _sheetKisiti(context),
         builder: (_) => const _PromosyonEkleSheet(),
       );
       if (sonuc == true) ref.invalidate(promosyonlarProvider);
@@ -249,8 +253,14 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
     }
   }
 
+  /// Geniş pencerede alttan açılan form tüm genişliğe yayılmasın.
+  BoxConstraints? _sheetKisiti(BuildContext c) =>
+      MediaQuery.sizeOf(c).width > 1100 ? const BoxConstraints(maxWidth: 560) : null;
+
   @override
   Widget build(BuildContext context) {
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
+    final yetkili = ref.watch(authProvider.select((s) => s.isMudur));
     final filtre = ref.watch(promosyonFiltresiProvider);
     final liste = ref.watch(filtreliPromosyonlarProvider);
     final async = ref.watch(promosyonlarProvider);
@@ -288,7 +298,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
       ),
       body: Column(children: [
         Container(
-          color: Colors.white,
+          color: context.cardBg,
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
           child: Column(children: [
             TextField(
@@ -327,7 +337,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
         ),
         if (async.hasValue)
           Container(
-            color: Colors.white,
+            color: context.cardBg,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: Row(children: [
               _Chip('$aktifSayisi Aktif', Colors.green.shade700),
@@ -352,6 +362,15 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
                     Text(_araCtrl.text.isNotEmpty ? 'Sonuç bulunamadı' : 'Promosyon yok',
                         style: TextStyle(color: context.textSecondary)),
                   ]))
+                : masaustu
+                ? PromosyonMasaustuGorunum(
+                    promosyonlar: liste,
+                    yetkili: yetkili,
+                    onEkle: _promosyonEkleDialog,
+                    onDuzenle: _promosyonDuzenle,
+                    onToggle: _aktiflikToggle,
+                    onSil: _sil,
+                  )
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
                     itemCount: liste.length,
@@ -366,7 +385,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
           ),
         ),
       ]),
-      floatingActionButton: TsYetkili(child: FloatingActionButton.extended(
+      floatingActionButton: masaustu ? null : TsYetkili(child: FloatingActionButton.extended(
         elevation: 6,
         onPressed: _promosyonEkleDialog,
         backgroundColor: AppRenkler.primary,

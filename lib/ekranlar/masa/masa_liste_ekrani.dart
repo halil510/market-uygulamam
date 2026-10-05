@@ -17,6 +17,7 @@ import '../../cekirdek/utils/hata_utils.dart';
 import '../../modeller/masa_model.dart';
 import '../../saglayicilar/riverpod/masa_provider.dart';
 import '../../depolar/masa_deposu.dart';
+import '../../servisler/masa/rezervasyon_servisi.dart';
 import 'masa_detay_ekrani.dart';
 import '../../tasarim_sistemi/ts_yetki.dart';
 import '../../servisler/bildirim_servisi.dart';
@@ -387,10 +388,10 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
               Navigator.pop(ctx);
               final onay = await OnayDialog.goster(context,
                   baslik: 'Rezervasyonu İptal Et',
-                  icerik: '"${m.ad}" rezervasyonu iptal edilip masa boşa alınacak. Emin misiniz?',
+                  icerik: '"${m.ad}" için yaklaşan rezervasyon iptal edilecek. Emin misiniz?',
                   onayYazi: 'İptal Et', onayRengi: Colors.red);
               if (!onay || !mounted) return;
-              await MasaDeposu().masaDurumGuncelle(m.id!, 'bos');
+              await RezervasyonServisi().masaYaklasanRezervasyonlariIptalEt(m.id!);
               ref.read(masaListesiProvider.notifier).yukle();
             },
           ),

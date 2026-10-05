@@ -5,6 +5,7 @@ import '../../veri/database/veritabani.dart';
 import '../../servisler/bulut/bulut_manager.dart';
 import '../../modeller/rezervasyon_model.dart';
 import '../../cekirdek/sabitler/db_sabitleri.dart';
+import '../../depolar/masa_deposu.dart';
 
 class RezervasyonServisi {
   static final RezervasyonServisi _instance = RezervasyonServisi._();
@@ -109,6 +110,29 @@ class RezervasyonServisi {
         if (masaSatir.isNotEmpty) BulutManager().upsert(DbSabitler.masalar, Map<String, dynamic>.from(masaSatir.first));
       }
     }
+  }
+
+  /// Masanın "rezerve" görünmesine yol açan (yaklaşan / yeni başlamış,
+  /// beklemede-onaylı) rezervasyonlarını iptal eder; iptal edilen sayıyı döner.
+  Future<int> masaYaklasanRezervasyonlariIptalEt(int masaId) async {
+    final db = await _db;
+    final simdi = DateTime.now();
+    final rows = await db.query(DbSabitler.masaRezervasyon,
+        columns: ['id', 'saat'],
+        where: "masa_id = ? AND is_deleted = 0 AND durum IN ('beklemede', 'onaylandi')",
+        whereArgs: [masaId]);
+    var adet = 0;
+    for (final r in rows) {
+      final saat = DateTime.tryParse(r['saat']?.toString() ?? '');
+      if (saat == null) continue;
+      if (saat.isAfter(simdi.add(MasaDeposu.rezervasyonOncesi)) ||
+          saat.isBefore(simdi.subtract(MasaDeposu.rezervasyonGecikme))) {
+        continue;
+      }
+      await durumGuncelle(r['id'] as int, RezervasyonDurum.iptal);
+      adet++;
+    }
+    return adet;
   }
 
   /// ID ile getir

@@ -7,6 +7,7 @@ import '../../modeller/cari_model.dart';
 import '../../modeller/sepet_model.dart';
 import '../../modeller/promosyon_model.dart';
 import '../../depolar/promosyon_deposu.dart';
+import '../../servisler/urun_fiyat_hesaplayici.dart';
 
 part 'sepet_provider.g.dart';
 
@@ -65,47 +66,10 @@ class Sepet extends _$Sepet {
   @override
   SepetDurum build() => const SepetDurum();
 
-  double _fiyatHesapla(UrunModel urun, double miktar) {
-    final bazFiyat = urun.satisFiyati;
-
-    // 1. Promosyon eşik kontrolü — artık önbelleğe bağlı değil:
-    //    PromosyonDeposu'ndan ürüne ait aktif promosyonlar zaten
-    //    _urunPromoCache'te tutulur (ilk eklemede yüklenir).
-    //    Bu sayede "provider henüz yüklenmedi" yarış durumu ortadan kalkar.
-    final promoList = _promoCache[urun.id];
-    if (promoList != null && promoList.isNotEmpty) {
-      // ÖNCEDEN BURADA en yüksek minimum miktar eşiğine sahip promosyon
-      // seçiliyordu (indirim yüzdesine BAKILMAKSIZIN) — bu, müşteri
-      // DAHA ÇOK ürün aldığında DAHA AZ indirim alabileceği, kafa
-      // karıştırıcı bir sonuca yol açabiliyordu (örn. 1 adette %10,
-      // 5 adette %5 gibi iki promosyon varsa, 5 adet alan müşteri
-      // yanlışlıkla %5'i alıyordu). Artık, geçerli tüm promosyonlar
-      // arasından HER ZAMAN en yüksek indirim yüzdesi seçiliyor —
-      // müşteri asla "daha az" indirim almıyor.
-      PromosyonModel? best;
-      for (final p in promoList) {
-        if (p.gecerli && miktar >= p.minMiktar) {
-          if (best == null || p.iskontoOran > best.iskontoOran) best = p;
-        }
-      }
-      if (best != null) {
-        return bazFiyat * (1 - best.iskontoOran / 100);
-      }
-    }
-
-    // 2. DB'ye kayıtlı indirimli fiyat
-    if (urun.indirimliFiyatKayitli > 0 && urun.indirimliFiyatKayitli < bazFiyat) {
-      return urun.indirimliFiyatKayitli;
-    }
-
-    // 3. Ürün indirim oranı
-    if (urun.indirimOrani > 0) {
-      return bazFiyat * (1 - urun.indirimOrani / 100);
-    }
-
-    // 4. Normal satış fiyatı
-    return bazFiyat;
-  }
+  // Fiyat kuralı (promosyon → kayıtlı indirimli fiyat → ürün indirimi →
+  // liste fiyatı) masa siparişiyle paylaşılır: UrunFiyatHesaplayici.
+  double _fiyatHesapla(UrunModel urun, double miktar) =>
+      UrunFiyatHesaplayici.hesapla(urun, miktar, _promoCache[urun.id]);
 
   // Ürün bazlı promosyon cache: {urunId → [PromosyonModel, ...]}
   // Her ürün ilk kez sepete eklendiğinde DB'den doldurulur.

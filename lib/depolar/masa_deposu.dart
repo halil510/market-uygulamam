@@ -7,10 +7,15 @@ import 'package:uuid/uuid.dart';
 import '../veri/database/veritabani.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
 import '../modeller/masa_model.dart';
 import '../modeller/masa_siparis_model.dart';
 import '../modeller/masa_siparis_kalem_model.dart';
+import '../modeller/promosyon_model.dart';
+import '../modeller/urun_model.dart';
+import '../servisler/urun_fiyat_hesaplayici.dart';
+import 'promosyon_deposu.dart';
 
 class MasaDeposu {
   final Veritabani _db = Veritabani();
@@ -74,11 +79,24 @@ class MasaDeposu {
     final kalemHaritasi = await _kalemleriTopluGetir(
         db, [for (final s in acikSiparisler) s['id'] as int]);
 
+    final rezervasyonlar = await _yaklasanRezervasyonlar(db);
+
     final sonuc = <MasaModel>[];
     for (final m in masalar) {
       final masa = MasaModel.fromMap(m);
       final siparis = acikSiparisler.where((s) => s['masa_id'] == m['id']).toList();
-      if (siparis.isEmpty) { sonuc.add(masa); continue; }
+      if (siparis.isEmpty) {
+        // Boş masa, yaklaşan/yeni başlamış bir rezervasyona sahipse "rezerve"
+        // GÖSTERİLİR — durum veritabanına yazılmaz (rezervasyon iptal/geç
+        // kalma durumunda eski bir 'rezerve' satırı masayı kilitli bırakırdı).
+        final rez = rezervasyonlar[m['id']];
+        if (masa.durum == 'bos' && rez != null) {
+          sonuc.add(masa.copyWith(durum: 'rezerve', aktifOzet: rez));
+        } else {
+          sonuc.add(masa);
+        }
+        continue;
+      }
 
       final s = siparis.first;
       final kalemler = kalemHaritasi[s['id'] as int] ?? const <Map<String, Object?>>[];
@@ -106,6 +124,35 @@ class MasaDeposu {
     return sonuc;
   }
 
+  /// Rezervasyon saatine [rezervasyonOncesi] kala masa "rezerve" görünür;
+  /// misafir [rezervasyonGecikme] süresi içinde gelmezse görünüm kalkar.
+  static const rezervasyonOncesi = Duration(minutes: 60);
+  static const rezervasyonGecikme = Duration(minutes: 30);
+
+  /// masa_id → "19:30 Ahmet Yılmaz" özeti (iptal/tamamlanan/geldi hariç).
+  Future<Map<int, String>> _yaklasanRezervasyonlar(Database db) async {
+    final simdi = DateTime.now();
+    final rows = await db.query(DbSabitler.masaRezervasyon,
+        columns: ['masa_id', 'saat', 'musteri_adi'],
+        where: "is_deleted = 0 AND durum IN ('beklemede', 'onaylandi')");
+    final sonuc = <int, ({DateTime saat, String ozet})>{};
+    for (final r in rows) {
+      final saat = DateTime.tryParse(r['saat']?.toString() ?? '');
+      final masaId = r['masa_id'] as int?;
+      if (saat == null || masaId == null) continue;
+      if (saat.isAfter(simdi.add(rezervasyonOncesi)) ||
+          saat.isBefore(simdi.subtract(rezervasyonGecikme))) {
+        continue;
+      }
+      final onceki = sonuc[masaId];
+      if (onceki != null && onceki.saat.isBefore(saat)) continue;
+      final hh = saat.hour.toString().padLeft(2, '0');
+      final mm = saat.minute.toString().padLeft(2, '0');
+      sonuc[masaId] = (saat: saat, ozet: '$hh:$mm ${r['musteri_adi'] ?? ''}'.trim());
+    }
+    return {for (final e in sonuc.entries) e.key: e.value.ozet};
+  }
+
   /// Aynı adlı (büyük/küçük harf ve baştaki/sondaki boşluk duyarsız) aktif
   /// masa var mı? [haricId] düzenlenen masanın kendisini saymamak için.
   Future<bool> adKullanimda(String ad, {int? haricId}) async {
@@ -129,19 +176,19 @@ class MasaDeposu {
     if (await adKullanimda(temiz, haricId: id)) {
       throw Exception('"$temiz" adında bir masa zaten var.');
     }
-    final db = await _d;
-    await db.update(
-        DbSabitler.masalar,
-        {
-          'ad': temiz,
-          'kategori': kategori,
-          'kapasite': kapasite,
-          'last_updated': DateTime.now().toIso8601String(),
-        },
-        where: 'id = ?',
-        whereArgs: [id]);
-    final satir = await db.query(DbSabitler.masalar, where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(satir.first));
+    await _yaz((txn, k) async {
+      await txn.update(
+          DbSabitler.masalar,
+          {
+            'ad': temiz,
+            'kategori': kategori,
+            'kapasite': kapasite,
+            'last_updated': DateTime.now().toIso8601String(),
+          },
+          where: 'id = ?',
+          whereArgs: [id]);
+      k.masa(id);
+    });
   }
 
   Future<int> masaEkle(MasaModel masa) async {
@@ -149,18 +196,14 @@ class MasaDeposu {
     if (await adKullanimda(masa.ad)) {
       throw Exception('"${masa.ad.trim()}" adında bir masa zaten var.');
     }
-    final db = await _d;
     final m = masa.toMap();
     m['global_id'] = const Uuid().v4();
     m['last_updated'] = DateTime.now().toIso8601String();
-    final id = await db.insert(DbSabitler.masalar, m);
-    // 🔴 Derin analizde bulundu: MasaDeposu'ndaki 12 fonksiyondan
-    // SADECE BİRİ (masaGuncelle) BulutManager çağırıyordu — masa
-    // açma/sipariş/kapatma gibi restoran modülünün EN SIK kullanılan
-    // işlemleri hiç otomatik senkron olmuyordu.
-    final satir = await db.query(DbSabitler.masalar, where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(satir.first));
-    return id;
+    return _yaz((txn, k) async {
+      final id = await txn.insert(DbSabitler.masalar, m);
+      k.masa(id);
+      return id;
+    });
   }
 
   /// [onek] ile başlayan masaların (örn. "Salon 7") en yüksek numarasının
@@ -169,7 +212,7 @@ class MasaDeposu {
     final db = await _d;
     final rows = await db.query(DbSabitler.masalar,
         columns: ['ad'], where: 'is_deleted = 0');
-    final desen = RegExp('^${RegExp.escape(onek.trim())}\\s+(\\d+)\$',
+    final desen = RegExp('^${RegExp.escape(onek.trim())}\s+(\d+)\$',
         caseSensitive: false);
     var enBuyuk = 0;
     for (final r in rows) {
@@ -190,73 +233,84 @@ class MasaDeposu {
     int kapasite = 4,
     int baslangic = 1,
   }) async {
-    final db = await _d;
     // Aynı önekle mevcut masa numaralarını çakıştırma: Salon 1..10 varken
     // "Başlangıç 1" girilse bile 11'den devam eder.
     baslangic = baslangic > await sonrakiNo(onek)
         ? baslangic
         : await sonrakiNo(onek);
-    // Mevcut en yüksek sira değerinden devam et — sıralama bozulmasın
-    final maxSira = await db.rawQuery('SELECT MAX(sira) as m FROM ${DbSabitler.masalar}');
-    int sira = (maxSira.first['m'] as int?) ?? 0;
-
-    final gidler = <String>[];
-    final batch = db.batch();
-    for (var i = 0; i < adet; i++) {
-      sira++;
-      final gid = const Uuid().v4();
-      gidler.add(gid);
-      batch.insert(DbSabitler.masalar, {
-        'global_id': gid,
-        'ad': '$onek ${baslangic + i}',
-        'kategori': kategori,
-        'kapasite': kapasite,
-        'durum': 'bos',
-        'sira': sira,
-        'last_updated': DateTime.now().toIso8601String(),
-      });
-    }
-    await batch.commit(noResult: true);
-    for (final gid in gidler) {
-      final satir = await db.query(DbSabitler.masalar, where: 'global_id = ?', whereArgs: [gid], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(satir.first));
-    }
+    await _yaz((txn, k) async {
+      // Mevcut en yüksek sira değerinden devam et — sıralama bozulmasın
+      final maxSira = await txn.rawQuery('SELECT MAX(sira) as m FROM ${DbSabitler.masalar}');
+      int sira = (maxSira.first['m'] as int?) ?? 0;
+      for (var i = 0; i < adet; i++) {
+        sira++;
+        final id = await txn.insert(DbSabitler.masalar, {
+          'global_id': const Uuid().v4(),
+          'ad': '$onek ${baslangic + i}',
+          'kategori': kategori,
+          'kapasite': kapasite,
+          'durum': 'bos',
+          'sira': sira,
+          'last_updated': DateTime.now().toIso8601String(),
+        });
+        k.masa(id);
+      }
+    });
   }
 
   Future<void> masaGuncelle(MasaModel masa) async {
-    final db = await _d;
-    await db.update(DbSabitler.masalar, masa.toMap(),
-        where: 'id = ?', whereArgs: [masa.id]);
-    final guncelSatir = await db.query(DbSabitler.masalar, where: 'id = ?', whereArgs: [masa.id], limit: 1);
-    if (guncelSatir.isNotEmpty) {
-      BulutManager().upsert('masalar', Map<String, dynamic>.from(guncelSatir.first));
-    }
+    await _yaz((txn, k) async {
+      await txn.update(DbSabitler.masalar, masa.toMap(),
+          where: 'id = ?', whereArgs: [masa.id]);
+      k.masa(masa.id!);
+    });
   }
 
   Future<void> masaSil(int id) async {
-    final db = await _d;
-    // Açık siparişi varsa silmeye izin verme
-    final acik = await db.query(DbSabitler.masaSiparisleri,
-        where: 'masa_id = ? AND durum = ? AND is_deleted = 0', whereArgs: [id, 'acik']);
-    if (acik.isNotEmpty) {
-      throw Exception('Bu masada açık bir hesap var, önce kapatın.');
-    }
-    await db.update(DbSabitler.masalar,
-        {'is_deleted': 1, 'last_updated': DateTime.now().toIso8601String()},
-        where: 'id = ?', whereArgs: [id]);
-    final satir = await db.query(DbSabitler.masalar, where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(satir.first));
+    await _yaz((txn, k) async {
+      // Açık siparişi varsa silmeye izin verme (kontrol + silme aynı txn)
+      final acik = await txn.query(DbSabitler.masaSiparisleri,
+          where: 'masa_id = ? AND durum = ? AND is_deleted = 0', whereArgs: [id, 'acik']);
+      if (acik.isNotEmpty) {
+        throw Exception('Bu masada açık bir hesap var, önce kapatın.');
+      }
+      await txn.update(DbSabitler.masalar,
+          {'is_deleted': 1, 'last_updated': DateTime.now().toIso8601String()},
+          where: 'id = ?', whereArgs: [id]);
+      k.masa(id);
+    });
   }
 
   Future<void> masaDurumGuncelle(int id, String durum) async {
-    final db = await _d;
-    await db.update(DbSabitler.masalar,
+    await _yaz((txn, k) => _masaDurumTxn(txn, k, id, durum));
+  }
+
+  Future<void> _masaDurumTxn(
+      Transaction txn, _Kuyruk k, int id, String durum) async {
+    await txn.update(DbSabitler.masalar,
         {'durum': durum, 'last_updated': DateTime.now().toIso8601String()},
         where: 'id = ?', whereArgs: [id]);
-    // 🔴 Bu fonksiyon EN SIK çağrılanlardan biri (masa boş/dolu/rezerve
-    // her değiştiğinde) — BulutManager hiç çağrılmıyordu.
-    final satir = await db.query(DbSabitler.masalar, where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(satir.first));
+    k.masa(id);
+  }
+
+  // ── Atomik yazma altyapısı ──────────────────────────────────────────────
+
+  /// Tüm yazmalar TEK transaction'da yapılır ve değişen satırların senkron
+  /// kuyruğu kaydı (sync_queue) AYNI transaction'da diske yazılır: commit
+  /// ile kuyruk kaydı birlikte var olur ya da birlikte hiç olmaz. Önceden
+  /// `BulutManager().upsert()` commit'ten sonra RAM kuyruğuna ekleniyordu —
+  /// arada uygulama kapanırsa masa/sipariş değişikliği buluta hiç gitmiyordu.
+  /// Ağ gönderimi transaction dışında (`zorlaGonder`) tetiklenir.
+  Future<T> _yaz<T>(Future<T> Function(Transaction txn, _Kuyruk k) islem) async {
+    final db = await _d;
+    final sonuc = await db.transaction((txn) async {
+      final k = _Kuyruk();
+      final r = await islem(txn, k);
+      await k.yaz(txn);
+      return r;
+    });
+    BulutManager().zorlaGonder();
+    return sonuc;
   }
 
   // ── Siparişler ───────────────────────────────────────────────────────────
@@ -278,16 +332,14 @@ class MasaDeposu {
 
   /// Masada açık sipariş yoksa yeni bir sipariş açar, varsa onu döner.
   Future<MasaSiparisModel> siparisAcVeyaGetir(int masaId) async {
-    final db = await _d;
     final simdi = DateTime.now();
     final gid = const Uuid().v4();
     // Kontrol + ekleme + masa durumu TEK transaction: iki dokunuş/cihaz
     // aynı anda "ilk ürünü ekle" derse aynı masada iki açık sipariş
     // oluşuyordu (biri ekranda kayboluyor, kalemleri ödenmiyordu).
     var mevcutVar = false;
-    var masaDolulastirildi = false;
     late int yeniId;
-    await db.transaction((txn) async {
+    await _yaz((txn, k) async {
       final acik = await txn.query(DbSabitler.masaSiparisleri,
           columns: ['id'],
           where: 'masa_id = ? AND durum = ? AND is_deleted = 0',
@@ -300,10 +352,7 @@ class MasaDeposu {
         final masa = await txn.query(DbSabitler.masalar,
             columns: ['durum'], where: 'id = ?', whereArgs: [masaId], limit: 1);
         if (masa.isNotEmpty && masa.first['durum'] == 'bos') {
-          await txn.update(DbSabitler.masalar,
-              {'durum': 'dolu', 'last_updated': simdi.toIso8601String()},
-              where: 'id = ?', whereArgs: [masaId]);
-          masaDolulastirildi = true;
+          await _masaDurumTxn(txn, k, masaId, 'dolu');
         }
         return;
       }
@@ -315,152 +364,176 @@ class MasaDeposu {
         'toplam_tutar': 0,
         'last_updated': simdi.toIso8601String(),
       });
-      await txn.update(DbSabitler.masalar,
-          {'durum': 'dolu', 'last_updated': simdi.toIso8601String()},
-          where: 'id = ?', whereArgs: [masaId]);
+      k.siparis(yeniId);
+      await _masaDurumTxn(txn, k, masaId, 'dolu');
     });
     if (mevcutVar) {
-      if (masaDolulastirildi) {
-        final masaSatir = await db.query(DbSabitler.masalar, where: 'id = ?', whereArgs: [masaId], limit: 1);
-        if (masaSatir.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(masaSatir.first));
-      }
       final mevcut = await acikSiparisGetir(masaId);
       if (mevcut != null) return mevcut;
     }
-    final satir = await db.query(DbSabitler.masaSiparisleri, where: 'global_id = ?', whereArgs: [gid], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masa_siparisleri', Map<String, dynamic>.from(satir.first));
-    final masaSatir = await db.query(DbSabitler.masalar, where: 'id = ?', whereArgs: [masaId], limit: 1);
-    if (masaSatir.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(masaSatir.first));
     return MasaSiparisModel(id: yeniId, masaId: masaId, acilisZamani: simdi);
   }
 
   /// Açık siparişe ürün ekler. Aynı ürün+not zaten varsa miktarı artırır.
+  /// Kalem + sipariş toplamı + kuyruk kaydı tek transaction'da yazılır.
   Future<void> kalemEkle(int siparisId, {
     required int urunId, required String urunAdi,
     required double birimFiyat, required double kdvOran,
     double miktar = 1, String? not_,
   }) async {
-    final db = await _d;
-    final mevcut = await db.query(DbSabitler.masaSiparisKalem,
-        where: 'siparis_id = ? AND urun_id = ? AND is_deleted = 0 AND durum = ?'
-            '${not_ == null ? ' AND (not_ IS NULL)' : ' AND not_ = ?'}',
-        whereArgs: not_ == null ? [siparisId, urunId, 'beklemede'] : [siparisId, urunId, 'beklemede', not_]);
+    // Çağıran ürünün LİSTE fiyatını verdiyse (normal akış) promosyon/indirim
+    // Hızlı Satış'taki kuralla uygulanır; farklı (elle verilmiş) bir fiyat
+    // geldiyse aynen korunur.
+    final fiyatci = await _fiyatciGetir(urunId, birimFiyat);
+    await _yaz((txn, k) async {
+      final mevcut = await txn.query(DbSabitler.masaSiparisKalem,
+          where: 'siparis_id = ? AND urun_id = ? AND is_deleted = 0 AND durum = ?'
+              '${not_ == null ? ' AND (not_ IS NULL)' : ' AND not_ = ?'}',
+          whereArgs: not_ == null ? [siparisId, urunId, 'beklemede'] : [siparisId, urunId, 'beklemede', not_]);
 
-    if (mevcut.isNotEmpty) {
-      final mevcutMiktar = (mevcut.first['miktar'] as num).toDouble();
-      final kalemId = mevcut.first['id'];
-      await db.update(DbSabitler.masaSiparisKalem,
-          {'miktar': mevcutMiktar + miktar, 'last_updated': DateTime.now().toIso8601String()},
-          where: 'id = ?', whereArgs: [kalemId]);
-      final satir = await db.query(DbSabitler.masaSiparisKalem, where: 'id = ?', whereArgs: [kalemId], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('masa_siparis_kalem', Map<String, dynamic>.from(satir.first));
-    } else {
-      final gid = const Uuid().v4();
-      await db.insert(DbSabitler.masaSiparisKalem, {
-        'global_id': gid,
-        'siparis_id': siparisId,
-        'urun_id': urunId,
-        'urun_adi': urunAdi,
-        'miktar': miktar,
-        'birim_fiyat': birimFiyat,
-        'kdv_oran': kdvOran,
-        'not_': not_,
-        'durum': 'beklemede',
-        'eklenme_zamani': DateTime.now().toIso8601String(),
-        'last_updated': DateTime.now().toIso8601String(),
-      });
-      // 🔴 Derin analizde bulundu: masa_siparis_kalem eklemesi
-      // BulutManager'ı hiç çağırmıyordu — restoranda masaya ürün
-      // eklemek (en sık yapılan işlem) hiç senkronize olmuyordu.
-      final satir = await db.query(DbSabitler.masaSiparisKalem, where: 'global_id = ?', whereArgs: [gid], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('masa_siparis_kalem', Map<String, dynamic>.from(satir.first));
-    }
-    await _toplamGuncelle(siparisId);
+      if (mevcut.isNotEmpty) {
+        final mevcutMiktar = (mevcut.first['miktar'] as num).toDouble();
+        final kalemId = mevcut.first['id'] as int;
+        final yeniMiktar = mevcutMiktar + miktar;
+        await txn.update(DbSabitler.masaSiparisKalem,
+            {
+              'miktar': yeniMiktar,
+              // Miktar eşikli promosyonlar için fiyat yeni miktara göre tazelenir.
+              if (fiyatci != null) 'birim_fiyat': fiyatci(yeniMiktar),
+              'last_updated': DateTime.now().toIso8601String(),
+            },
+            where: 'id = ?', whereArgs: [kalemId]);
+        k.kalem(kalemId);
+      } else {
+        final kalemId = await txn.insert(DbSabitler.masaSiparisKalem, {
+          'global_id': const Uuid().v4(),
+          'siparis_id': siparisId,
+          'urun_id': urunId,
+          'urun_adi': urunAdi,
+          'miktar': miktar,
+          'birim_fiyat': fiyatci != null ? fiyatci(miktar) : birimFiyat,
+          'kdv_oran': kdvOran,
+          'not_': not_,
+          'durum': 'beklemede',
+          'eklenme_zamani': DateTime.now().toIso8601String(),
+          'last_updated': DateTime.now().toIso8601String(),
+        });
+        k.kalem(kalemId);
+      }
+      await _toplamGuncelleTxn(txn, k, siparisId);
+    });
   }
 
   Future<void> kalemMiktarGuncelle(int kalemId, double miktar) async {
-    final db = await _d;
-    final rows = await db.query(DbSabitler.masaSiparisKalem,
+    // Kalem otomatik fiyatlıysa (liste/promosyon fiyatı) yeni miktara göre
+    // yeniden hesaplanır; elle değiştirilmiş fiyatlara dokunulmaz.
+    final onKalem = await (await _d).query(DbSabitler.masaSiparisKalem,
+        columns: ['urun_id', 'birim_fiyat', 'miktar'],
         where: 'id = ?', whereArgs: [kalemId], limit: 1);
-    if (rows.isEmpty) return;
-    final siparisId = rows.first['siparis_id'] as int;
+    _OtoFiyat? oto;
+    if (onKalem.isNotEmpty && miktar > 0) {
+      oto = await _otoFiyatGetir(onKalem.first['urun_id'] as int?);
+    }
+    await _yaz((txn, k) async {
+      final rows = await txn.query(DbSabitler.masaSiparisKalem,
+          where: 'id = ?', whereArgs: [kalemId], limit: 1);
+      if (rows.isEmpty) return;
+      final siparisId = rows.first['siparis_id'] as int;
 
-    if (miktar <= 0) {
-      await db.update(DbSabitler.masaSiparisKalem,
-          {'is_deleted': 1, 'last_updated': DateTime.now().toIso8601String()},
-          where: 'id = ?', whereArgs: [kalemId]);
-    } else {
-      await db.update(DbSabitler.masaSiparisKalem,
-          {'miktar': miktar, 'last_updated': DateTime.now().toIso8601String()},
-          where: 'id = ?', whereArgs: [kalemId]);
-    }
-    final satir = await db.query(DbSabitler.masaSiparisKalem, where: 'id = ?', whereArgs: [kalemId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masa_siparis_kalem', Map<String, dynamic>.from(satir.first));
-    await _toplamGuncelle(siparisId);
-    // 🔴 Aynı düzeltme: miktar 0'a düşürülerek kalem silindiğinde de
-    // (yukarıdaki 'if (miktar <= 0)' dalı) masa 'dolu' kalabiliyordu.
-    if (miktar <= 0) {
-      final kalanKalemler = await db.query(DbSabitler.masaSiparisKalem,
-          where: 'siparis_id = ? AND is_deleted = 0', whereArgs: [siparisId]);
-      if (kalanKalemler.isEmpty) {
-        final siparis = await db.query(DbSabitler.masaSiparisleri,
-            columns: ['masa_id'], where: 'id = ?', whereArgs: [siparisId], limit: 1);
-        if (siparis.isNotEmpty) {
-          final masaId = siparis.first['masa_id'] as int;
-          await masaDurumGuncelle(masaId, 'bos');
+      if (miktar <= 0) {
+        await txn.update(DbSabitler.masaSiparisKalem,
+            {'is_deleted': 1, 'last_updated': DateTime.now().toIso8601String()},
+            where: 'id = ?', whereArgs: [kalemId]);
+      } else {
+        final eskiFiyat = (rows.first['birim_fiyat'] as num).toDouble();
+        final eskiMiktar = (rows.first['miktar'] as num).toDouble();
+        double? yeniFiyat;
+        if (oto != null && (eskiFiyat - oto.hesapla(eskiMiktar)).abs() < 0.005) {
+          yeniFiyat = oto.hesapla(miktar);
         }
+        await txn.update(DbSabitler.masaSiparisKalem,
+            {
+              'miktar': miktar,
+              if (yeniFiyat != null) 'birim_fiyat': yeniFiyat,
+              'last_updated': DateTime.now().toIso8601String(),
+            },
+            where: 'id = ?', whereArgs: [kalemId]);
       }
+      k.kalem(kalemId);
+      await _toplamGuncelleTxn(txn, k, siparisId);
+      // Miktar 0'a düşürülerek kalem silindiğinde de masa 'dolu' kalmasın.
+      if (miktar <= 0) await _siparisBossaMasayiBosalt(txn, k, siparisId);
+    });
+  }
+
+  /// Ürün + geçerli promosyonları bir kez yükler; miktara göre otomatik
+  /// birim fiyat hesaplayan nesneyi döner (ürün bulunamazsa null).
+  Future<_OtoFiyat?> _otoFiyatGetir(int? urunId) async {
+    if (urunId == null) return null;
+    try {
+      final db = await _d;
+      final rows = await db.query(DbSabitler.urunler,
+          where: 'id = ?', whereArgs: [urunId], limit: 1);
+      if (rows.isEmpty) return null;
+      final promolar = await PromosyonDeposu().urunPromosyonlari(urunId);
+      return _OtoFiyat(UrunModel.fromMap(rows.first), promolar);
+    } catch (_) {
+      return null; // fiyat hesaplanamazsa ham fiyatla devam
     }
+  }
+
+  /// [kalemEkle] için: çağıranın verdiği fiyat ürünün liste fiyatıyla aynıysa
+  /// miktara göre hesaplayan fonksiyon, aksi halde (elle fiyat) null.
+  Future<double Function(double)?> _fiyatciGetir(int urunId, double verilenFiyat) async {
+    final oto = await _otoFiyatGetir(urunId);
+    if (oto == null || (oto.urun.satisFiyati - verilenFiyat).abs() > 0.005) return null;
+    return oto.hesapla;
   }
 
   Future<void> kalemDurumGuncelle(int kalemId, String durum) async {
-    final db = await _d;
-    await db.update(DbSabitler.masaSiparisKalem,
-        {'durum': durum, 'last_updated': DateTime.now().toIso8601String()},
-        where: 'id = ?', whereArgs: [kalemId]);
-    // 🔴 Mutfak/bar ekranı bu fonksiyonu sürekli çağırıyor (hazırlanıyor
-    // → hazır gibi) — senkron hiç yoktu.
-    final satir = await db.query(DbSabitler.masaSiparisKalem, where: 'id = ?', whereArgs: [kalemId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masa_siparis_kalem', Map<String, dynamic>.from(satir.first));
+    await _yaz((txn, k) async {
+      await txn.update(DbSabitler.masaSiparisKalem,
+          {'durum': durum, 'last_updated': DateTime.now().toIso8601String()},
+          where: 'id = ?', whereArgs: [kalemId]);
+      k.kalem(kalemId);
+    });
   }
 
   Future<void> kalemNotGuncelle(int kalemId, String? not_) async {
-    final db = await _d;
-    await db.update(DbSabitler.masaSiparisKalem,
-        {'not_': not_, 'last_updated': DateTime.now().toIso8601String()},
-        where: 'id = ?', whereArgs: [kalemId]);
-    final satir = await db.query(DbSabitler.masaSiparisKalem, where: 'id = ?', whereArgs: [kalemId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masa_siparis_kalem', Map<String, dynamic>.from(satir.first));
+    await _yaz((txn, k) async {
+      await txn.update(DbSabitler.masaSiparisKalem,
+          {'not_': not_, 'last_updated': DateTime.now().toIso8601String()},
+          where: 'id = ?', whereArgs: [kalemId]);
+      k.kalem(kalemId);
+    });
   }
 
   Future<void> kalemSil(int kalemId) async {
-    final db = await _d;
-    final rows = await db.query(DbSabitler.masaSiparisKalem,
-        where: 'id = ?', whereArgs: [kalemId], limit: 1);
-    if (rows.isEmpty) return;
-    final siparisId = rows.first['siparis_id'] as int;
-    await db.update(DbSabitler.masaSiparisKalem,
-        {'is_deleted': 1, 'last_updated': DateTime.now().toIso8601String()},
-        where: 'id = ?', whereArgs: [kalemId]);
-    final satir = await db.query(DbSabitler.masaSiparisKalem, where: 'id = ?', whereArgs: [kalemId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masa_siparis_kalem', Map<String, dynamic>.from(satir.first));
-    await _toplamGuncelle(siparisId);
-    // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu — "masada ürün ekledim
-    // masa dolu oldu, siliyorum çıkıyorum masa boş ama dolu
-    // gösteriyor"): _toplamGuncelle() siparişin toplamını doğru
-    // sıfırlıyordu ama MASANIN 'durum' alanına HİÇ dokunmuyordu — son
-    // kalem silinse bile masa 'dolu' olarak KALICI kalıyordu. Artık
-    // siparişte hiç (silinmemiş) kalem kalmadıysa, masa otomatik
-    // olarak 'bos' durumuna çekiliyor.
-    final kalanKalemler = await db.query(DbSabitler.masaSiparisKalem,
-        where: 'siparis_id = ? AND is_deleted = 0', whereArgs: [siparisId]);
-    if (kalanKalemler.isEmpty) {
-      final siparis = await db.query(DbSabitler.masaSiparisleri,
-          columns: ['masa_id'], where: 'id = ?', whereArgs: [siparisId], limit: 1);
-      if (siparis.isNotEmpty) {
-        final masaId = siparis.first['masa_id'] as int;
-        await masaDurumGuncelle(masaId, 'bos');
-      }
+    await _yaz((txn, k) async {
+      final rows = await txn.query(DbSabitler.masaSiparisKalem,
+          where: 'id = ?', whereArgs: [kalemId], limit: 1);
+      if (rows.isEmpty) return;
+      final siparisId = rows.first['siparis_id'] as int;
+      await txn.update(DbSabitler.masaSiparisKalem,
+          {'is_deleted': 1, 'last_updated': DateTime.now().toIso8601String()},
+          where: 'id = ?', whereArgs: [kalemId]);
+      k.kalem(kalemId);
+      await _toplamGuncelleTxn(txn, k, siparisId);
+      // Siparişte hiç (silinmemiş) kalem kalmadıysa masa 'bos'a çekilir
+      // ("masada ürün ekledim, sildim, masa hâlâ dolu" hatası).
+      await _siparisBossaMasayiBosalt(txn, k, siparisId);
+    });
+  }
+
+  Future<void> _siparisBossaMasayiBosalt(
+      Transaction txn, _Kuyruk k, int siparisId) async {
+    final kalan = await txn.query(DbSabitler.masaSiparisKalem,
+        where: 'siparis_id = ? AND is_deleted = 0', whereArgs: [siparisId], limit: 1);
+    if (kalan.isNotEmpty) return;
+    final siparis = await txn.query(DbSabitler.masaSiparisleri,
+        columns: ['masa_id'], where: 'id = ?', whereArgs: [siparisId], limit: 1);
+    if (siparis.isNotEmpty) {
+      await _masaDurumTxn(txn, k, siparis.first['masa_id'] as int, 'bos');
     }
   }
 
@@ -476,68 +549,59 @@ class MasaDeposu {
   /// çağrılması önerilir.
   Future<int> siparisToplamlariMutabakatYap() async {
     try {
-      final db = await _d;
-      // 🔴 DÜZELTME: WHERE koşulu 'kapatildi' durumunu hariç tutmaya
-      // çalışıyordu ama bu değer HİÇBİR YERDE kullanılmıyor — gerçek
-      // kapanış durumu 'odendi'. Bu yüzden koşul aslında hiçbir şeyi
-      // filtrelemiyordu; zaten ÖDENMİŞ siparişler bile gereksiz yere
-      // taranıp güncelleniyordu.
-      final siparisler = await db.query(DbSabitler.masaSiparisleri,
-          where: "durum != 'odendi' AND durum != 'iptal'",
-          columns: ['id', 'toplam_tutar']);
-      var duzeltilen = 0;
-      for (final s in siparisler) {
-        final siparisId = s['id'] as int;
-        final eskiToplam = (s['toplam_tutar'] as num?)?.toDouble() ?? 0;
-        final kalemler = await db.query(DbSabitler.masaSiparisKalem,
-            where: 'siparis_id = ? AND is_deleted = 0', whereArgs: [siparisId]);
-        final dogruToplam = kalemler.fold<double>(0.0, (acc, k) =>
-            acc + (k['miktar'] as num).toDouble() * (k['birim_fiyat'] as num).toDouble());
-        if ((eskiToplam - dogruToplam).abs() > 0.01) {
-          await db.update(DbSabitler.masaSiparisleri,
-              {'toplam_tutar': dogruToplam, 'last_updated': DateTime.now().toIso8601String()},
-              where: 'id = ?', whereArgs: [siparisId]);
-          // 🔴 Derin analizde bulundu: BulutManager hiç çağrılmıyordu.
-          final satir = await db.query(DbSabitler.masaSiparisleri, where: 'id = ?', whereArgs: [siparisId], limit: 1);
-          if (satir.isNotEmpty) BulutManager().upsert('masa_siparisleri', Map<String, dynamic>.from(satir.first));
-          duzeltilen++;
+      // 'odendi' ve 'iptal' kapanmış sayılır (gerçek kapanış durumu 'odendi').
+      return await _yaz((txn, k) async {
+        final siparisler = await txn.query(DbSabitler.masaSiparisleri,
+            where: "durum != 'odendi' AND durum != 'iptal'",
+            columns: ['id', 'toplam_tutar']);
+        var duzeltilen = 0;
+        for (final s in siparisler) {
+          final siparisId = s['id'] as int;
+          final eskiToplam = (s['toplam_tutar'] as num?)?.toDouble() ?? 0;
+          final dogruToplam = await _kalemToplamiTxn(txn, siparisId);
+          if ((eskiToplam - dogruToplam).abs() > 0.01) {
+            await txn.update(DbSabitler.masaSiparisleri,
+                {'toplam_tutar': dogruToplam, 'last_updated': DateTime.now().toIso8601String()},
+                where: 'id = ?', whereArgs: [siparisId]);
+            k.siparis(siparisId);
+            duzeltilen++;
+          }
         }
-      }
-      if (duzeltilen > 0) {
-        LogServisi().bilgi('Masa siparişi mutabakatı: $duzeltilen sipariş düzeltildi');
-      }
-      return duzeltilen;
+        if (duzeltilen > 0) {
+          LogServisi().bilgi('Masa siparişi mutabakatı: $duzeltilen sipariş düzeltildi');
+        }
+        return duzeltilen;
+      });
     } catch (e, st) {
       LogServisi().hata('Masa.siparisToplamlariMutabakatYap', hata: e, yigin: st);
       return 0;
     }
   }
 
-  Future<void> _toplamGuncelle(int siparisId) async {
-    final db = await _d;
-    final kalemler = await db.query(DbSabitler.masaSiparisKalem,
+  Future<double> _kalemToplamiTxn(Transaction txn, int siparisId) async {
+    final kalemler = await txn.query(DbSabitler.masaSiparisKalem,
         where: 'siparis_id = ? AND is_deleted = 0', whereArgs: [siparisId]);
-    final toplam = kalemler.fold<double>(0.0, (acc, k) =>
+    return kalemler.fold<double>(0.0, (acc, k) =>
         acc + (k['miktar'] as num).toDouble() * (k['birim_fiyat'] as num).toDouble());
-    await db.update(DbSabitler.masaSiparisleri,
+  }
+
+  Future<void> _toplamGuncelleTxn(
+      Transaction txn, _Kuyruk k, int siparisId) async {
+    final toplam = await _kalemToplamiTxn(txn, siparisId);
+    await txn.update(DbSabitler.masaSiparisleri,
         {'toplam_tutar': toplam, 'last_updated': DateTime.now().toIso8601String()},
         where: 'id = ?', whereArgs: [siparisId]);
-    // 🔴 Derin analizde bulundu: bu yardımcı fonksiyon (kalemEkle,
-    // kalemMiktarGuncelle, kalemSil tarafından çağrılıyor — yani
-    // masa siparişindeki HER değişiklik) BulutManager'ı hiç
-    // çağırmıyordu.
-    final satir = await db.query(DbSabitler.masaSiparisleri, where: 'id = ?', whereArgs: [siparisId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masa_siparisleri', Map<String, dynamic>.from(satir.first));
+    k.siparis(siparisId);
   }
 
   /// Müşteri (cari) bağla — fatura/cari ödeme için.
   Future<void> musteriBagla(int siparisId, int? cariId, String? cariAdi) async {
-    final db = await _d;
-    await db.update(DbSabitler.masaSiparisleri,
-        {'cari_id': cariId, 'cari_adi': cariAdi, 'last_updated': DateTime.now().toIso8601String()},
-        where: 'id = ?', whereArgs: [siparisId]);
-    final satir = await db.query(DbSabitler.masaSiparisleri, where: 'id = ?', whereArgs: [siparisId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masa_siparisleri', Map<String, dynamic>.from(satir.first));
+    await _yaz((txn, k) async {
+      await txn.update(DbSabitler.masaSiparisleri,
+          {'cari_id': cariId, 'cari_adi': cariAdi, 'last_updated': DateTime.now().toIso8601String()},
+          where: 'id = ?', whereArgs: [siparisId]);
+      k.siparis(siparisId);
+    });
   }
 
   /// "Hesap istensin" — garson çağırma / ödeme bekleniyor durumu.
@@ -545,33 +609,31 @@ class MasaDeposu {
     await masaDurumGuncelle(masaId, 'hesap_istendi');
   }
 
-  /// Siparişi ödenmiş olarak kapatır, masayı boşa çevirir.
+  /// Siparişi ödenmiş olarak kapatır, masayı boşa çevirir (tek transaction).
   Future<void> siparisKapat(int siparisId, int masaId, {int? satisId}) async {
-    final db = await _d;
-    await db.update(DbSabitler.masaSiparisleri, {
-      'durum': 'odendi',
-      'kapanis_zamani': DateTime.now().toIso8601String(),
-      'satis_id': satisId,
-      'last_updated': DateTime.now().toIso8601String(),
-    }, where: 'id = ?', whereArgs: [siparisId]);
-    // 🔴 Hesap kapatma — restoran akışının en kritik anı — hiç
-    // senkronize olmuyordu.
-    final satir = await db.query(DbSabitler.masaSiparisleri, where: 'id = ?', whereArgs: [siparisId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masa_siparisleri', Map<String, dynamic>.from(satir.first));
-    await masaDurumGuncelle(masaId, 'bos');
+    await _yaz((txn, k) async {
+      await txn.update(DbSabitler.masaSiparisleri, {
+        'durum': 'odendi',
+        'kapanis_zamani': DateTime.now().toIso8601String(),
+        'satis_id': satisId,
+        'last_updated': DateTime.now().toIso8601String(),
+      }, where: 'id = ?', whereArgs: [siparisId]);
+      k.siparis(siparisId);
+      await _masaDurumTxn(txn, k, masaId, 'bos');
+    });
   }
 
   /// Açık siparişi tamamen iptal eder (yanlış açılan masa için).
   Future<void> siparisIptal(int siparisId, int masaId) async {
-    final db = await _d;
-    await db.update(DbSabitler.masaSiparisleri, {
-      'durum': 'iptal',
-      'kapanis_zamani': DateTime.now().toIso8601String(),
-      'last_updated': DateTime.now().toIso8601String(),
-    }, where: 'id = ?', whereArgs: [siparisId]);
-    final satir = await db.query(DbSabitler.masaSiparisleri, where: 'id = ?', whereArgs: [siparisId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('masa_siparisleri', Map<String, dynamic>.from(satir.first));
-    await masaDurumGuncelle(masaId, 'bos');
+    await _yaz((txn, k) async {
+      await txn.update(DbSabitler.masaSiparisleri, {
+        'durum': 'iptal',
+        'kapanis_zamani': DateTime.now().toIso8601String(),
+        'last_updated': DateTime.now().toIso8601String(),
+      }, where: 'id = ?', whereArgs: [siparisId]);
+      k.siparis(siparisId);
+      await _masaDurumTxn(txn, k, masaId, 'bos');
+    });
   }
 
   /// Bir masadaki kalemleri başka bir masaya taşır — "Masa Taşı / Birleştir".
@@ -586,13 +648,12 @@ class MasaDeposu {
   /// seçilirse sipariş kendini iptal edip kayboluyordu (engellendi); masaya
   /// bağlı müşteri (cari) yeni masaya taşınmıyordu (taşınıyor; hedefin kendi
   /// müşterisi varsa o korunur); silinmiş kalemler de taşınıyordu (artık hayır).
-  /// Bulut bildirimi commit'ten SONRA yapılır.
+  /// Kuyruk kaydı aynı transaction'da yazılır, ağ gönderimi commit'ten sonra.
   Future<void> masaTasi(int kaynakSiparisId, int hedefMasaId) async {
-    final db = await _d;
     late int hedefSiparisId;
     late int kaynakMasaId;
 
-    await db.transaction((txn) async {
+    await _yaz((txn, k) async {
       final simdi = DateTime.now().toIso8601String();
       final kaynakRows = await txn.query(DbSabitler.masaSiparisleri,
           where: 'id = ? AND durum = ? AND is_deleted = 0',
@@ -657,21 +718,47 @@ class MasaDeposu {
           where: 'id = ?', whereArgs: [hedefMasaId]);
       await txn.update(DbSabitler.masalar, {'durum': 'bos', 'last_updated': simdi},
           where: 'id = ?', whereArgs: [kaynakMasaId]);
-    });
 
-    // Commit sonrası bulut bildirimi (geri alınan işlem buluta gitmesin).
-    for (final id in [hedefSiparisId, kaynakSiparisId]) {
-      final s = await db.query(DbSabitler.masaSiparisleri, where: 'id = ?', whereArgs: [id], limit: 1);
-      if (s.isNotEmpty) BulutManager().upsert('masa_siparisleri', Map<String, dynamic>.from(s.first));
-    }
-    final tasinanlar = await db.query(DbSabitler.masaSiparisKalem,
-        where: 'siparis_id = ?', whereArgs: [hedefSiparisId]);
-    for (final k in tasinanlar) {
-      BulutManager().upsert('masa_siparis_kalem', Map<String, dynamic>.from(k));
-    }
-    for (final id in [hedefMasaId, kaynakMasaId]) {
-      final m = await db.query(DbSabitler.masalar, where: 'id = ?', whereArgs: [id], limit: 1);
-      if (m.isNotEmpty) BulutManager().upsert('masalar', Map<String, dynamic>.from(m.first));
+      // Kuyruk kaydı AYNI transaction'da (commit ile birlikte kalıcı).
+      k.siparis(hedefSiparisId);
+      k.siparis(kaynakSiparisId);
+      k.masa(hedefMasaId);
+      k.masa(kaynakMasaId);
+      final tasinanlar = await txn.query(DbSabitler.masaSiparisKalem,
+          columns: ['id'], where: 'siparis_id = ?', whereArgs: [hedefSiparisId]);
+      for (final kl in tasinanlar) {
+        k.kalem(kl['id'] as int);
+      }
+    });
+  }
+}
+
+/// Ürün + promosyonlar → miktara göre otomatik birim fiyat.
+class _OtoFiyat {
+  final UrunModel urun;
+  final List<PromosyonModel> promolar;
+  _OtoFiyat(this.urun, this.promolar);
+  double hesapla(double miktar) =>
+      UrunFiyatHesaplayici.hesapla(urun, miktar, promolar);
+}
+
+/// Bir masa işleminde değişen satırları toplar; transaction bitmeden hemen
+/// önce hepsinin güncel hali sync_queue'ya (aynı transaction'da) yazılır.
+class _Kuyruk {
+  final _kayitlar = <String, Set<int>>{};
+
+  void masa(int id) => (_kayitlar[DbSabitler.masalar] ??= {}).add(id);
+  void siparis(int id) => (_kayitlar[DbSabitler.masaSiparisleri] ??= {}).add(id);
+  void kalem(int id) => (_kayitlar[DbSabitler.masaSiparisKalem] ??= {}).add(id);
+
+  Future<void> yaz(Transaction txn) async {
+    for (final e in _kayitlar.entries) {
+      for (final id in e.value) {
+        final r = await txn.query(e.key, where: 'id = ?', whereArgs: [id], limit: 1);
+        if (r.isEmpty) continue;
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: e.key, veri: Map<String, dynamic>.from(r.first));
+      }
     }
   }
 }

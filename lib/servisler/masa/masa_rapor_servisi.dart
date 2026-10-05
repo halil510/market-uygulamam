@@ -4,6 +4,22 @@ import '../../veri/database/veritabani.dart';
 
 class MasaRaporServisi {
   Future<Database> get _db async => Veritabani().db;
+
+  /// Siparişin GERÇEK ciro katkısı: ödenmiş siparişin satışı iptal edilmiş/
+  /// silinmişse 0; tamamlanmış iadeler (satış fişine bağlı) düşülür. Satışı
+  /// olmayan (eski/senkron) siparişlerde sipariş toplamı aynen kullanılır.
+  /// Sorgularda sipariş 's', satış 'sat' takma adlarıyla birleştirilmelidir.
+  static const _netTutar = '''
+    CASE
+      WHEN sat.id IS NOT NULL AND (sat.iptal = 1 OR sat.is_deleted = 1) THEN 0
+      WHEN s.satis_id IS NULL THEN s.toplam_tutar
+      ELSE MAX(0, s.toplam_tutar - COALESCE((
+        SELECT SUM(i.toplam_tutar) FROM iade i
+        WHERE i.satis_id = s.satis_id AND i.durum = 'tamamlandi'), 0))
+    END''';
+  static const _satisJoin = 'LEFT JOIN satislar sat ON sat.id = s.satis_id';
+  static const _gecerliSiparis =
+      "s.durum = 'odendi' AND NOT (sat.id IS NOT NULL AND (sat.iptal = 1 OR sat.is_deleted = 1))";
   
   /// Masa performans analizi (ciro, sipariş sayısı, ortalama)
   Future<List<Map<String, dynamic>>> masaPerformansAnalizi() async {
@@ -12,11 +28,12 @@ class MasaRaporServisi {
       SELECT 
         m.id,
         m.ad as masa_adi,
-        COALESCE(SUM(s.toplam_tutar), 0) as ciro,
-        COUNT(DISTINCT s.id) as siparis_sayisi,
-        COALESCE(AVG(s.toplam_tutar), 0) as ortalama_tutar
+        COALESCE(SUM(${_netTutar}), 0) as ciro,
+        COUNT(DISTINCT CASE WHEN ${_gecerliSiparis} THEN s.id END) as siparis_sayisi,
+        COALESCE(AVG(CASE WHEN ${_gecerliSiparis} THEN ${_netTutar} END), 0) as ortalama_tutar
       FROM masalar m
       LEFT JOIN masa_siparisleri s ON m.id = s.masa_id AND s.durum = 'odendi'
+      ${_satisJoin}
       WHERE m.is_deleted = 0
       GROUP BY m.id
       ORDER BY ciro DESC
@@ -61,12 +78,13 @@ class MasaRaporServisi {
     return db.rawQuery('''
       SELECT 
         m.ad as masa_adi,
-        COALESCE(SUM(s.toplam_tutar), 0) as ciro,
-        COUNT(DISTINCT s.id) as siparis_sayisi
+        COALESCE(SUM(${_netTutar}), 0) as ciro,
+        COUNT(DISTINCT CASE WHEN ${_gecerliSiparis} THEN s.id END) as siparis_sayisi
       FROM masalar m
       LEFT JOIN masa_siparisleri s ON m.id = s.masa_id 
         AND s.durum = 'odendi'
         AND s.kapanis_zamani BETWEEN ? AND ?
+      ${_satisJoin}
       WHERE m.is_deleted = 0
       GROUP BY m.id
       HAVING ciro > 0
@@ -93,10 +111,11 @@ class MasaRaporServisi {
     final bas = DateTime(tarih.year, tarih.month, tarih.day);
     final bit = DateTime(tarih.year, tarih.month, tarih.day, 23, 59, 59);
     final rows = await db.rawQuery('''
-      SELECT COALESCE(SUM(toplam_tutar), 0) as toplam
-      FROM masa_siparisleri
-      WHERE durum = 'odendi' 
-        AND kapanis_zamani BETWEEN ? AND ?
+      SELECT COALESCE(SUM(${_netTutar}), 0) as toplam
+      FROM masa_siparisleri s
+      ${_satisJoin}
+      WHERE s.durum = 'odendi' 
+        AND s.kapanis_zamani BETWEEN ? AND ?
     ''', [bas.toIso8601String(), bit.toIso8601String()]);
     return (rows.first['toplam'] as num?)?.toDouble() ?? 0;
   }

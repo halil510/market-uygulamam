@@ -233,7 +233,11 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
         Expanded(
           child: _yukleniyor
               ? const Center(child: AppYukleniyor())
-              : GridView.builder(
+              : Builder(builder: (_) {
+                  // Filtre/normalizasyon TEK kez hesaplanır (önceden her kart için
+                  // tüm katalog yeniden süzülüyordu — büyük listede O(n²)).
+                  final liste = _filtrelenmis;
+                  return GridView.builder(
                   padding: const EdgeInsets.all(12),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     // Telefonda 2 kolon; tablet/PC’de sığdığı kadar (sabit 2 idi).
@@ -242,16 +246,17 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
                     mainAxisSpacing: 10,
                     crossAxisSpacing: 10,
                   ),
-                  itemCount: _filtrelenmis.length,
+                  itemCount: liste.length,
                   itemBuilder: (_, i) {
-                    final u = _filtrelenmis[i];
+                    final u = liste[i];
                     return _UrunEkleKarti(
                       urun: u,
                       onTap: () => _urunEkle(u),
                       yukleniyor: _islemAktif,
                     );
                   },
-                ),
+                );
+                }),
         ),
 
         if (_aramaSonuclari.isNotEmpty)

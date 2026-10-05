@@ -3,6 +3,7 @@
 // Ürün Listesi — masaüstü (geniş pencere) görünümü: tablo + alt şerit +
 // sağ tık menüsü + F1/F2/F3/F6 kısayolları. Veri ve iş mantığı çağıran
 // ekrandan gelir (sadece görünüm).
+import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -315,7 +316,7 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
 
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     final s = _secili;
     if (k == LogicalKeyboardKey.f1) {

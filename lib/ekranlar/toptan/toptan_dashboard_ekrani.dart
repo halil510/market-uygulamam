@@ -116,15 +116,7 @@ class _ToptanDashboardEkraniState extends State<ToptanDashboardEkrani> {
         Expanded(
           child: _yukleniyor
               ? const TsYukleniyor()
-              : _filtreli.isEmpty
-                  ? Center(
-                      child: Text(
-                          _bayiler.isEmpty
-                              ? 'Henüz "Bayi/Toptan" tipinde cari yok — cari kartından müşteri tipini "Bayi" veya "Toptan" yapın'
-                              : 'Eşleşen bayi bulunamadı',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 15, color: context.textSecondary)))
-                  : ToptanMasaustuGorunum(
+              : ToptanMasaustuGorunum(
                       bayiler: _filtreli,
                       bugunkuCiro: _bugunkuToptanCiro,
                       onPanel: _paneliAc,
@@ -132,6 +124,9 @@ class _ToptanDashboardEkraniState extends State<ToptanDashboardEkrani> {
                       onUrunler: () => context.push('/toptan/urunler'),
                       onBekleyenSiparisler: () => context.push('/toptan/bekleyen-siparisler'),
                       onFiyatGruplari: () => context.push('/toptan/fiyat-gruplari'),
+                      bosMesaj: _bayiler.isEmpty
+                          ? 'Henüz "Bayi/Toptan" tipinde cari yok — cari kartından müşteri tipini "Bayi" veya "Toptan" yapın'
+                          : 'Eşleşen bayi bulunamadı',
                     ),
         ),
       ]),

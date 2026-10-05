@@ -5,6 +5,7 @@
 // - Ürün adına göre kategori (ana_grup) ve marka (alan1) otomatik belirlenir
 // - Gemini API anahtarı kullanıcıdan alınır ve SharedPreferences'ta saklanır
 
+import '../../widgetlar/masaustu/ekran_ustte.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -161,7 +162,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
 
   bool _masaustuTus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted || _yukleniyor) return false;
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     final ctrl = HardwareKeyboard.instance.isControlPressed;
     if (k == LogicalKeyboardKey.f2 || (ctrl && k == LogicalKeyboardKey.keyS)) {

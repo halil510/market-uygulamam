@@ -355,7 +355,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
               const SizedBox(height: 8),
               FilledButton(onPressed: () => ref.invalidate(promosyonlarProvider), child: const Text('Tekrar Dene')),
             ])),
-            data: (_) => liste.isEmpty
+            data: (_) => liste.isEmpty && !masaustu
                 ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Icon(Icons.local_offer_outlined, size: 64, color: context.textHint),
                     const SizedBox(height: 12),
@@ -370,6 +370,9 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
                     onDuzenle: _promosyonDuzenle,
                     onToggle: _aktiflikToggle,
                     onSil: _sil,
+                    bosMesaj: _araCtrl.text.isNotEmpty
+                        ? 'Sonuç bulunamadı'
+                        : 'Promosyon yok — F1 ile ekleyin',
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
@@ -437,6 +440,18 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
     final ham = _oranHam;
     if (ham != null && (yazilan - ham).abs() < 0.0015) return ham;
     return yazilan;
+  }
+
+  /// Önizlemedeki "Toplam": kullanıcı elle toplam girdiyse o, girmediyse
+  /// indirimli birim × min. miktar (önceden boşken "—" görünüyordu).
+  String get _toplamOnizleme {
+    if (_toplamCtrl.text.isNotEmpty) {
+      return ParaUtils.formatla(ParaUtils.sayiCoz(_toplamCtrl.text) ?? 0);
+    }
+    final urun = _seciliUrun;
+    if (urun == null || _oranCtrl.text.isEmpty) return '—';
+    final adet = ParaUtils.sayiCoz(_minMiktarCtrl.text) ?? 1;
+    return ParaUtils.formatla(urun.satisFiyati * (1 - _oranDeger / 100) * (adet <= 0 ? 1 : adet));
   }
 
   UrunModel? _seciliUrun;
@@ -560,18 +575,14 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                   Icon(Icons.close, size: 14, color: context.textSecondary),
                   _HesapKutu('Min Miktar', _minMiktarCtrl.text.isEmpty ? '1' : _minMiktarCtrl.text, Colors.purple),
                   Icon(Icons.drag_handle, size: 14, color: context.textSecondary),
-                  _HesapKutu('Toplam',
-                    _toplamCtrl.text.isNotEmpty
-                      ? ParaUtils.formatla(ParaUtils.sayiCoz(_toplamCtrl.text) ?? 0)
-                      : '—',
-                    Colors.green),
+                  _HesapKutu('Toplam', _toplamOnizleme, Colors.green),
                 ]),
                 if (_oranCtrl.text.isNotEmpty && ParaUtils.sayiCoz(_oranCtrl.text) != null) ...[
                   const SizedBox(height: 6),
                   Text(
                     '${_minMiktarCtrl.text.isEmpty ? "1" : _minMiktarCtrl.text} adet alımda '
                     '%${_oranCtrl.text} indirim → '
-                    '${_toplamCtrl.text.isNotEmpty ? ParaUtils.formatla(ParaUtils.sayiCoz(_toplamCtrl.text) ?? 0) : "—"} ödenecek',
+                    '$_toplamOnizleme ödenecek',
                     style: TextStyle(fontSize: 11, color: Colors.green.shade700,
                         fontWeight: FontWeight.w600),
                     textAlign: TextAlign.center,

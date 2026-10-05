@@ -20,11 +20,17 @@ extension _CariDetayIslemlerExt on _CariDetayPaneliState {
       // türü seçilerek işlem yapılır" mantığı).
       Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-        child: GridView.count(
-          crossAxisCount: 2,
+        // Sabit yükseklik (oran değil): geniş pencerede oranlı kutular devasa
+        // büyüyordu; geniş ekranda 4 sütun, telefonda 2 sütun (yükseklik ~72).
+        child: GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 2.6,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: MediaQuery.sizeOf(context).width > 900 ? 4 : 2,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            mainAxisExtent: 72,
+          ),
           children: [
             _islemKisayolu('Yeni Satış', Icons.add_shopping_cart, AppRenkler.primary, _yeniSatis),
             _islemKisayolu('Sipariş Al', Icons.playlist_add_check_circle_outlined, Colors.deepPurple, _siparisAl),

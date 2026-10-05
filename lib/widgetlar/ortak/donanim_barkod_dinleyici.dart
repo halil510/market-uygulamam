@@ -9,6 +9,7 @@
 // kutusu odaktaysa dokunmaz (girdi o kutuya gider; o kutunun kendi
 // onSubmitted'ı barkodu işler).
 import 'package:flutter/material.dart';
+import '../masaustu/ekran_ustte.dart';
 import 'package:flutter/services.dart';
 
 /// Tuş vuruşlarından okuyucu kaynaklı barkodu ayırt eden saf mantık
@@ -96,7 +97,7 @@ class _DonanimBarkodDinleyiciState extends State<DonanimBarkodDinleyici> {
   bool _tusGeldi(KeyEvent event) {
     if (!mounted || !widget.aktif) return false;
     // Bu ekranın üstünde başka bir sayfa/dialog varsa karışma.
-    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return false;
+    if (!ekranUstte(context)) return false;
     if (_metinKutusuOdakta()) {
       _tampon.sifirla();
       return false;

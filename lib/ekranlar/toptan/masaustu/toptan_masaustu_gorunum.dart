@@ -3,11 +3,13 @@
 // Toptan Satış paneli (bayi listesi) — masaüstü tablo görünümü: tablo + alt
 // şerit + sağ tık menüsü + F1..F5 kısayolları. Sadece görünüm; bayi paneli,
 // hızlı toptan satış ve alt ekranlara geçiş çağıran ekrandan gelir.
+import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../cekirdek/utils/para_utils.dart';
 import '../../../modeller/cari_model.dart';
 import '../../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../../uygulama/tema/uygulama_temasi.dart';
 import '../../../widgetlar/masaustu/masaustu_alt_serit.dart';
 import '../../../widgetlar/masaustu/masaustu_sag_tik_menu.dart';
 import '../../../widgetlar/masaustu/masaustu_tablo.dart';
@@ -21,6 +23,10 @@ class ToptanMasaustuGorunum extends StatefulWidget {
   final VoidCallback onBekleyenSiparisler;
   final VoidCallback onFiyatGruplari;
 
+  /// Liste boşken tablonun yerinde gösterilir; alt şerit (F1 Toptan Satış,
+  /// Ürünler...) YİNE de görünür.
+  final String bosMesaj;
+
   const ToptanMasaustuGorunum({
     super.key,
     required this.bayiler,
@@ -30,6 +36,7 @@ class ToptanMasaustuGorunum extends StatefulWidget {
     required this.onUrunler,
     required this.onBekleyenSiparisler,
     required this.onFiyatGruplari,
+    this.bosMesaj = 'Bayi yok',
   });
 
   static bool limitAsildi(CariModel c) => c.limitTutari > 0 && c.bakiye > c.limitTutari;
@@ -82,7 +89,7 @@ class _ToptanMasaustuGorunumState extends State<ToptanMasaustuGorunum> {
         renk: (c) => ToptanMasaustuGorunum.limitAsildi(c) ? TsRenk.hata : null),
     TabloKolon(
         baslik: 'Vade (gün)',
-        genislik: 90,
+        genislik: 105,
         sagaYasli: true,
         deger: (c) => c.vadeGun > 0 ? '${c.vadeGun}' : '',
         sirala: (c) => c.vadeGun),
@@ -120,7 +127,7 @@ class _ToptanMasaustuGorunumState extends State<ToptanMasaustuGorunum> {
 
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     final s = _gecerliSecili;
     if (k == LogicalKeyboardKey.f1) {
@@ -149,7 +156,9 @@ class _ToptanMasaustuGorunumState extends State<ToptanMasaustuGorunum> {
     final asan = l.where(ToptanMasaustuGorunum.limitAsildi).length;
     return Column(children: [
       Expanded(
-        child: MasaustuTablo<CariModel>(
+        child: l.isEmpty
+            ? Center(child: Text(widget.bosMesaj, textAlign: TextAlign.center, style: TextStyle(fontSize: 15, color: context.textSecondary)))
+            : MasaustuTablo<CariModel>(
           satirlar: l,
           kolonlar: _kolonlar,
           secili: s,

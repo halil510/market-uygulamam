@@ -8,6 +8,7 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "../../modeller/cari_model.dart";
 import "../../depolar/cari_deposu.dart";
+import '../../saglayicilar/riverpod/cari_provider.dart';
 import "../../depolar/cari_adres_deposu.dart";
 import "../../servisler/bildirim_servisi.dart";
 import '../../tasarim_sistemi/ts_kart.dart';
@@ -183,6 +184,8 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
         await _adresKaydet(yeniId);
         if (mounted) BildirimServisi.basari(context, 'Cari eklendi');
       }
+      // Liste hangi yoldan açılmış olursa olsun (menü dahil) güncel görünsün.
+      if (mounted) ref.read(carilerProvider.notifier).yukle();
       if (mounted) context.pop();
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');

@@ -3,6 +3,7 @@
 // Bankalar ve Banka Hesapları — masaüstü (geniş pencere) tablo görünümleri:
 // tablo + alt şerit + sağ tık menüsü + F1/F2/F3/F4/F6 kısayolları.
 // Sadece görünüm; silme ve yenileme çağıran ekrandan gelir.
+import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -21,7 +22,7 @@ mixin _FTusDinleyici<T extends StatefulWidget> on State<T> {
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
     if (!TickerMode.of(context)) return false;
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     return tusIsle(e.logicalKey);
   }
 

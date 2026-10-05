@@ -3,6 +3,7 @@
 // Borç listesi (Aktif Borçlar / Ödenenler) — masaüstü tablo görünümü:
 // tablo + alt şerit + sağ tık menüsü + F1/F2/F3 kısayolları. Sadece görünüm;
 // ödeme ve yenileme çağıran taraftan gelir.
+import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -157,7 +158,7 @@ class _BorcMasaustuGorunumState extends State<BorcMasaustuGorunum> {
     if (e is! KeyDownEvent || !mounted) return false;
     // Sekme görünür değilse (TabBarView yan sekmesi) tuşu işleme.
     if (!TickerMode.of(context)) return false;
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     final s = _secili;
     if (k == LogicalKeyboardKey.f1) {

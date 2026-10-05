@@ -3,6 +3,7 @@
 // Satış Raporu — masaüstü (geniş pencere) görünümü: dönem seçici, KPI
 // şeridi, fiş tablosu (çift tık = satış detayı), sağda ödeme dağılımı ve
 // saatlik satış grafiği, altta özet şerit (F5 Yenile / F9 Excel).
+import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -83,7 +84,7 @@ class _SatisRaporMasaustuGorunumState
 
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     if (e.logicalKey == LogicalKeyboardKey.f5) {
       ref.invalidate(satisRaporProvider);
     } else if (e.logicalKey == LogicalKeyboardKey.f9) {

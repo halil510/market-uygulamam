@@ -11,6 +11,7 @@
 //
 // Sadece GÖRÜNÜM + klavye kısayolları: iş mantığı (ödeme, sepete ekleme,
 // müşteri seçimi…) çağıran ekrandan geri-çağrı (callback) ile gelir.
+import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -95,7 +96,7 @@ class _MasaustuHizliSatisDuzeniState
   bool _tusGeldi(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
     // Üstte diyalog/başka ekran varsa dokunma.
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     final sepet = ref.read(sepetProvider);
     final odemeAktif = !sepet.bos && !sepet.satisIsleniyor;

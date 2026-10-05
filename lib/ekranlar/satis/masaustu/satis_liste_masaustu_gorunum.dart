@@ -3,6 +3,7 @@
 // Satış Listesi — masaüstü (geniş pencere) görünümü: tablo + alt şerit +
 // sağ tık menüsü + F2/F3/F5 kısayolları. Sadece görünüm; seçim/silme/yenileme
 // çağıran ekrandan (satislarProvider) gelir.
+import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -121,7 +122,7 @@ class _SatisListeMasaustuGorunumState extends State<SatisListeMasaustuGorunum> {
 
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     final s = _secili;
     if (k == LogicalKeyboardKey.f2) {

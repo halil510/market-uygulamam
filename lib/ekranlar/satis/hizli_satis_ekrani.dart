@@ -8,6 +8,7 @@
 //   - Otomatik yazdırma kaldırıldı, manuel yazdırma ikonu appBar'a eklendi.
 
 import '../../uygulama/masaustu/masaustu_yan_menu.dart';
+import '../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/foundation.dart';
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import 'package:intl/intl.dart';
@@ -157,7 +158,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   /// kutusuna (barkod okutma alanı) geri verir.
   void _odakKoru() {
     if (!mounted || _islemAktif || _dialogAcik) return;
-    if (ModalRoute.of(context)?.isCurrent != true) return;
+    if (!ekranUstte(context)) return;
     if (_araFocus.hasFocus) return;
     final odak = FocusManager.instance.primaryFocus;
     final ctx = odak?.context;

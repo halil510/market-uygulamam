@@ -6,6 +6,7 @@
 //
 // Bakiye işareti (uygulamadaki kural): bakiye > 0 → ALACAĞIMIZ var,
 // bakiye < 0 → BORCUMUZ var.
+import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import '../cari_secim_baglami.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import '../../../cekirdek/utils/para_utils.dart';
 import '../../../modeller/cari_model.dart';
 import '../../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../../uygulama/tema/uygulama_temasi.dart';
 import '../../../widgetlar/masaustu/masaustu_alt_serit.dart';
 import '../../../widgetlar/masaustu/masaustu_sag_tik_menu.dart';
 import '../../../widgetlar/masaustu/masaustu_tablo.dart';
@@ -120,7 +122,7 @@ class _CariMasaustuGorunumState extends State<CariMasaustuGorunum> {
 
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     final s = _secili;
     if (k == LogicalKeyboardKey.f1) {
@@ -147,7 +149,11 @@ class _CariMasaustuGorunumState extends State<CariMasaustuGorunum> {
     final s = _secili;
     return Column(children: [
       Expanded(
-        child: MasaustuTablo<CariModel>(
+        child: l.isEmpty
+            ? Center(
+                child: Text('Kayıt bulunamadı — F1 ile cari ekleyin',
+                    style: TextStyle(fontSize: 15, color: context.textSecondary)))
+            : MasaustuTablo<CariModel>(
           satirlar: l,
           kolonlar: _kolonlar,
           secili: s,

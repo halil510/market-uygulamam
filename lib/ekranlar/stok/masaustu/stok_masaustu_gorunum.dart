@@ -3,6 +3,7 @@
 // Stok Listesi — masaüstü (geniş pencere) tablo görünümü: sıralanabilir
 // kolonlar, sağ tık menüsü, alt özet şeridi ve F2/F5 kısayolları. Veri ve
 // yükleme çağıran ekrandan gelir (sadece görünüm).
+import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -108,7 +109,7 @@ class _StokMasaustuGorunumState extends State<StokMasaustuGorunum> {
 
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     if (k == LogicalKeyboardKey.f2) {
       if (_secili != null) _detay(_secili!);

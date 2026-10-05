@@ -4,11 +4,13 @@
 // menüsü + F1/F2/F3/F4 kısayolları. Sadece görünüm; ekleme/düzenleme/silme
 // ve yenileme çağıran ekrandan gelir. Yetki kuralı mobildekiyle AYNI:
 // ekle/düzenle/aktif-pasif/sil yalnız Admin/Müdür'e görünür.
+import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../../modeller/promosyon_model.dart';
 import '../../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../../uygulama/tema/uygulama_temasi.dart';
 import '../../../widgetlar/masaustu/masaustu_alt_serit.dart';
 import '../../../widgetlar/masaustu/masaustu_sag_tik_menu.dart';
 import '../../../widgetlar/masaustu/masaustu_tablo.dart';
@@ -21,6 +23,10 @@ class PromosyonMasaustuGorunum extends StatefulWidget {
   final void Function(PromosyonModel p) onToggle;
   final void Function(PromosyonModel p) onSil;
 
+  /// Liste boşken tablonun yerinde gösterilir; alt şerit (F1 Ekle) YİNE de
+  /// görünür — boş listede ekleme yolu kaybolmasın.
+  final String bosMesaj;
+
   const PromosyonMasaustuGorunum({
     super.key,
     required this.promosyonlar,
@@ -29,6 +35,7 @@ class PromosyonMasaustuGorunum extends StatefulWidget {
     required this.onDuzenle,
     required this.onToggle,
     required this.onSil,
+    this.bosMesaj = 'Promosyon yok — F1 ile ekleyin',
   });
 
   /// Durum etiketi mobil karttakiyle aynı mantık, ama bitiş günü TAM gün
@@ -148,7 +155,7 @@ class _PromosyonMasaustuGorunumState extends State<PromosyonMasaustuGorunum> {
 
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     // Metin kutusunda yazarken kısayol tetiklenmesin (F tuşları zaten yazı değil,
     // ama odak arama kutusundayken de çalışması istenir) — yalnız F tuşları ele alınır.
     final k = e.logicalKey;
@@ -177,7 +184,9 @@ class _PromosyonMasaustuGorunumState extends State<PromosyonMasaustuGorunum> {
     final aktif = l.where((p) => PromosyonMasaustuGorunum.durumEtiketi(p) == 'Aktif').length;
     return Column(children: [
       Expanded(
-        child: MasaustuTablo<PromosyonModel>(
+        child: l.isEmpty
+            ? Center(child: Text(widget.bosMesaj, style: TextStyle(fontSize: 15, color: context.textSecondary)))
+            : MasaustuTablo<PromosyonModel>(
           satirlar: l,
           kolonlar: _kolonlar,
           secili: s,

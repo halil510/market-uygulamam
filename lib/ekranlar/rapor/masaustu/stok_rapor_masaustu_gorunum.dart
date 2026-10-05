@@ -3,6 +3,7 @@
 // Stok Raporu — masaüstü (geniş pencere) görünümü: filtreler (ana grup,
 // marka, durum, arama), KPI şeridi, tüm aktif ürünlerin tablosu
 // (çift tık = ürün detayı) ve alt şerit (F5 Yenile / F9 Excel).
+import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:excel/excel.dart' hide Border;
@@ -152,7 +153,7 @@ class _StokRaporMasaustuGorunumState
 
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
-    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    if (!ekranUstte(context)) return false;
     if (e.logicalKey == LogicalKeyboardKey.f5) {
       _yenile();
     } else if (e.logicalKey == LogicalKeyboardKey.f9) {

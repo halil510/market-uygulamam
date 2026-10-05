@@ -48,8 +48,10 @@ extension _CariDetayGenelOzetExt on _CariDetayPaneliState {
           Icon(ikon, size: 16, color: context.textHint),
           const SizedBox(width: 10),
           Text(etiket, style: TextStyle(fontSize: 12.5, color: context.textSecondary)),
-          const Spacer(),
-          Flexible(child: Text(deger, textAlign: TextAlign.right, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: context.textPrimary))),
+          // Spacer + Flexible boş alanı ikiye bölüp değeri ortaya itiyordu;
+          // değer artık kalan alanı doldurup sağa yaslanır.
+          const SizedBox(width: 12),
+          Expanded(child: Text(deger, textAlign: TextAlign.right, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: context.textPrimary))),
         ]),
       );
 

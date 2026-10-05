@@ -17,13 +17,22 @@ extension _DashboardAnaButonlarExt on _DashboardEkraniState {
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: TsResponsive.izgaraKolonSayisi(context,
-              telefon: 2, tablet: 3, genis: 4),
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 1.2,
-        ),
+        // Geniş pencerede (masaüstü) sabit 4 sütun kutuları 300x250'ye şişiriyordu;
+        // orada kutu boyu sınırlanır (sığdığı kadar sütun). Telefon/tablet aynı.
+        gridDelegate: MediaQuery.sizeOf(context).width > 900
+            ? const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 210,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.2,
+              )
+            : SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: TsResponsive.izgaraKolonSayisi(context,
+                    telefon: 2, tablet: 3, genis: 4),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.2,
+              ),
         itemCount: liste.length,
         itemBuilder: (_, i) => _buyukMenuKarti(liste[i]),
       ),

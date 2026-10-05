@@ -9,9 +9,13 @@ import 'package:flutter/services.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../cekirdek/utils/hata_utils.dart';
 import '../../modeller/urun_model.dart';
 import '../../depolar/urun_deposu.dart';
+import '../../depolar/promosyon_deposu.dart';
+import '../../modeller/promosyon_model.dart';
+import '../../servisler/urun_fiyat_hesaplayici.dart';
 import '../../saglayicilar/riverpod/masa_provider.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
@@ -72,7 +76,27 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
     super.dispose();
   }
 
+  /// Aktif promosyonlar (urunId → liste): kartta, adisyona girecek GERÇEK fiyat
+  /// gösterilsin diye (MasaDeposu.kalemEkle aynı kuralı uygular).
+  Map<int, List<PromosyonModel>> _promolar = {};
+
+  /// Ürünün 1 adet için masada uygulanacak fiyatı.
+  double _fiyat(UrunModel u) =>
+      UrunFiyatHesaplayici.hesapla(u, 1, _promolar[u.id]);
+
+  Future<void> _promolariYukle() async {
+    try {
+      final tum = await PromosyonDeposu().tumunuGetir(sadecaAktif: true);
+      final harita = <int, List<PromosyonModel>>{};
+      for (final p in tum.where((p) => p.aktif && p.gecerli)) {
+        (harita[p.urunId] ??= []).add(p);
+      }
+      if (mounted) setState(() => _promolar = harita);
+    } catch (_) { /* promosyon okunamazsa liste fiyatı gösterilir */ }
+  }
+
   Future<void> _yukle() async {
+    _promolariYukle();
     try {
       final u = await _depo.tumunuGetir(sadecaAktif: true);
       if (mounted) setState(() { _urunler = u; _yukleniyor = false; });
@@ -251,6 +275,7 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
                     final u = liste[i];
                     return _UrunEkleKarti(
                       urun: u,
+                      fiyat: _fiyat(u),
                       onTap: () => _urunEkle(u),
                       yukleniyor: _islemAktif,
                     );
@@ -283,7 +308,7 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
                       leading: _UrunKareGorseli(urun: u, boyut: 36, koseYari: 10, harfBoyut: 13),
                       title: Text(u.urunAdi, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                       subtitle: Text(u.barkod ?? '', style: const TextStyle(fontSize: 11)),
-                      trailing: Text(ParaUtils.formatla(u.satisFiyati),
+                      trailing: Text(ParaUtils.formatla(_fiyat(u)),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       onTap: () => _urunEkle(u),
                     );
@@ -423,7 +448,10 @@ class _UrunEkleKarti extends StatelessWidget {
   final VoidCallback onTap;
   final bool yukleniyor;
 
-  const _UrunEkleKarti({required this.urun, required this.onTap, this.yukleniyor = false});
+  /// Masada uygulanacak (promosyonlu) birim fiyat.
+  final double fiyat;
+
+  const _UrunEkleKarti({required this.urun, required this.fiyat, required this.onTap, this.yukleniyor = false});
 
   @override
   Widget build(BuildContext context) {
@@ -446,8 +474,18 @@ class _UrunEkleKarti extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center),
               const SizedBox(height: 4),
-              Text(ParaUtils.formatla(urun.satisFiyati),
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: TsRenk.masaAcik)),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                if (fiyat < urun.satisFiyati - 0.005) ...[
+                  Text(ParaUtils.formatla(urun.satisFiyati),
+                      style: TextStyle(
+                          fontSize: 11,
+                          decoration: TextDecoration.lineThrough,
+                          color: context.textHint)),
+                  const SizedBox(width: 6),
+                ],
+                Text(ParaUtils.formatla(fiyat),
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: TsRenk.masaAcik)),
+              ]),
               const SizedBox(height: 4),
               if (!yukleniyor)
                 Container(

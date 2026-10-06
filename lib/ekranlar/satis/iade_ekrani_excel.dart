@@ -75,7 +75,7 @@ extension _IadeExcelExt on _IadeEkraniState {
       return;
     }
 
-    final eslesen = <({UrunModel urun, double miktar, double fiyat})>[];
+    final eslesen = <({UrunModel urun, double miktar, double fiyat, double iskonto})>[];
     final bulunamayan = <String>[];
     for (final s in satirlar) {
       final u = _excelUrunuBul(s['kod'] as String, s['barkod'] as String);
@@ -83,17 +83,30 @@ extension _IadeExcelExt on _IadeEkraniState {
         bulunamayan.add('Satır ${s['satir']}: ${s['barkod'] != '' ? s['barkod'] : s['kod']}');
         continue;
       }
-      final fiyat = ((s['birim_fiyat'] as num?)?.toDouble() ?? 0) > 0
-          ? (s['birim_fiyat'] as num).toDouble()
-          : u.satisFiyat;
-      eslesen.add((urun: u, miktar: (s['miktar'] as num).toDouble(), fiyat: fiyat));
+      // 🔴 DÜZELTME (kullanıcı bulgusu: "excelden içe alırken iskonto var ama
+      // alınmamış"): fiyat olarak Excel'deki İNDİRİMSİZ (brüt) birim fiyat ve
+      // indirim oranı ayrı ayrı alınır; kayıt manuel iadedeki gibi
+      // brüt × (1 − indirim) ile yapılır ve listede indirim görünür. Excel'de
+      // fiyat yoksa ürün kartı fiyatına yine Excel'deki indirim uygulanır.
+      final brut = (s['brut_fiyat'] as num?)?.toDouble() ?? 0;
+      final birim = (s['birim_fiyat'] as num?)?.toDouble() ?? 0;
+      final fiyat = brut > 0 ? brut : (birim > 0 ? birim : u.satisFiyat);
+      final iskonto = (s['iskonto_oran'] as num?)?.toDouble() ?? 0;
+      eslesen.add((
+        urun: u,
+        miktar: (s['miktar'] as num).toDouble(),
+        fiyat: fiyat,
+        iskonto: iskonto > 0 && iskonto < 100 ? iskonto : 0.0,
+      ));
     }
     if (eslesen.isEmpty) {
       _msg('Excel\'deki hiçbir ürün sistemde bulunamadı', err: true);
       return;
     }
 
-    final toplam = eslesen.fold<double>(0, (t, e) => t + e.miktar * e.fiyat);
+    final toplam = eslesen.fold<double>(
+        0, (t, e) => t + ParaUtils.yuvarla(e.miktar * e.fiyat * (1 - e.iskonto / 100)));
+    final iskontoluKalem = eslesen.where((e) => e.iskonto > 0).length;
     if (!mounted) return;
 
     // 🔴 DÜZELTME (kullanıcı bulgusu: "excelden iade aldım, cari seçtim, cariye
@@ -115,6 +128,12 @@ extension _IadeExcelExt on _IadeEkraniState {
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${eslesen.length} kalem iade alınacak (toplam ${ParaUtils.formatla(toplam)}).'),
+              if (iskontoluKalem > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('$iskontoluKalem kalemde Excel’deki indirim uygulandı.',
+                      style: const TextStyle(fontSize: 12, color: Colors.green)),
+                ),
               if (bulunamayan.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
@@ -187,7 +206,8 @@ extension _IadeExcelExt on _IadeEkraniState {
       if (_oturumFisNo.isEmpty) _oturumFisNo = await BelgeNoServisi().uret('iade');
       for (final e in eslesen) {
         try {
-          final toplamKalem = e.miktar * e.fiyat;
+          final iskontoTutar = ParaUtils.yuvarla(e.miktar * e.fiyat * (e.iskonto / 100));
+          final toplamKalem = ParaUtils.yuvarla(e.miktar * e.fiyat) - iskontoTutar;
           final iadeId = await IadeIslemServisi().manuelKalemEkle(
             oturumIadeId: _oturumIadeId,
             cariId: _secilenCari?.id,
@@ -211,6 +231,7 @@ extension _IadeExcelExt on _IadeEkraniState {
               ...m,
               'miktar': (m['miktar'] as double) + e.miktar,
               'toplam_tutar': (m['toplam_tutar'] as double) + toplamKalem,
+              'iskonto_tutar': ((m['iskonto_tutar'] as num?)?.toDouble() ?? 0) + iskontoTutar,
             });
           } else {
             _iadeListesi.insert(0, {
@@ -221,8 +242,8 @@ extension _IadeExcelExt on _IadeEkraniState {
               'barkod': e.urun.barkod ?? '',
               'miktar': e.miktar,
               'birim_fiyat': e.fiyat,
-              'iskonto_oran': 0.0,
-              'iskonto_tutar': 0.0,
+              'iskonto_oran': e.iskonto,
+              'iskonto_tutar': iskontoTutar,
               'toplam_tutar': toplamKalem,
               'musteri_adi': _secilenCari?.unvan ?? 'Kayıtsız Müşteri',
               'cari_id': _secilenCari?.id,

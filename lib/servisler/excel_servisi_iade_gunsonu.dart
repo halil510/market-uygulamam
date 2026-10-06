@@ -161,6 +161,8 @@ extension ExcelServisiIadeGunsonu on ExcelServisi {
     final netFiyatI = bul(['Net Fiyat']);
     final fiyatI = bul(['Fiyat']);
     final iskontoI = bul(['Indirim (%)', 'İndirim (%)']);
+    final iskontoTutarI = bul(['İndirim', 'Indirim']);
+    final tutariI = bul(['Tutarı', 'Tutari']);
     final kdvI = bul(['Kdv (%)']);
 
     String metin(List<dynamic> r, int? i) =>
@@ -176,22 +178,80 @@ extension ExcelServisiIadeGunsonu on ExcelServisi {
       final miktar = sayi(r, miktarI) ?? 0;
       if (miktar <= 0) continue;
       final kdv = sayi(r, kdvI) ?? 0;
-      final isk = sayi(r, iskontoI) ?? 0;
-      double? birim = sayi(r, kdvliFiyatI);
-      birim ??= sayi(r, netFiyatI) != null ? sayi(r, netFiyatI)! * (1 + kdv / 100) : null;
-      birim ??= sayi(r, fiyatI) != null
-          ? sayi(r, fiyatI)! * (1 + kdv / 100) * (1 - isk / 100)
-          : null;
+      // İndirim %: sütun boşsa "İndirim" tutarı / "Tutarı"ndan türetilir.
+      var isk = sayi(r, iskontoI) ?? 0;
+      if (isk <= 0) {
+        final it = sayi(r, iskontoTutarI), tt = sayi(r, tutariI);
+        if (it != null && tt != null && tt > 0 && it > 0) isk = it / tt * 100;
+      }
+      final fiyat = iadeFiyatCoz(
+        fiyat: sayi(r, fiyatI),
+        netFiyat: sayi(r, netFiyatI),
+        kdvliFiyat: sayi(r, kdvliFiyatI),
+        kdvOran: kdv,
+        iskontoOran: isk,
+      );
       sonuc.add({
         'kod': kod,
         'barkod': barkod,
         'urun_adi': metin(r, adI),
         'miktar': miktar,
-        'birim_fiyat': birim,
+        // KDV dahil, İNDİRİM SONRASI birim fiyat (eski alan; geriye uyumlu)
+        'birim_fiyat': fiyat?.indirimli,
+        // KDV dahil, İNDİRİMSİZ birim fiyat + indirim oranı: iade ekranı
+        // manuel akıştaki gibi brüt fiyat × (1 − indirim) ile kaydeder.
+        'brut_fiyat': fiyat?.brut,
+        'iskonto_oran': fiyat == null ? 0.0 : (isk > 0 && isk < 100 ? isk : 0.0),
         'kdv_oran': kdv,
         'satir': s + 1,
       });
     }
     return sonuc;
+  }
+
+  /// İade Excel satırındaki fiyat sütunlarını çözer — saf, test edilebilir.
+  ///
+  /// Kaynak programlara göre "Kdv li fiyat" indirimli de indirimsiz de
+  /// gelebilir; bu yüzden sütunlar BİRBİRİYLE karşılaştırılarak hangisinin
+  /// indirim içerdiği anlaşılır. Dönüş: [brut] KDV dahil indirimsiz birim
+  /// fiyat, [indirimli] KDV dahil indirim sonrası birim fiyat. Hiç fiyat
+  /// yoksa null (çağıran ürün kartı fiyatını kullanır).
+  static ({double brut, double indirimli})? iadeFiyatCoz({
+    double? fiyat,
+    double? netFiyat,
+    double? kdvliFiyat,
+    required double kdvOran,
+    required double iskontoOran,
+  }) {
+    final c = 1 + kdvOran / 100;
+    final isk = (iskontoOran > 0 && iskontoOran < 100) ? iskontoOran : 0.0;
+    final k = 1 - isk / 100;
+    bool yakin(double? a, double? b) =>
+        a != null && b != null && (a - b).abs() <= 0.02 + b.abs() * 0.001;
+
+    if (isk == 0) {
+      // İndirim yok: eski davranış (Kdv li fiyat → Net Fiyat → Fiyat).
+      final b = kdvliFiyat ?? (netFiyat != null ? netFiyat * c : null) ??
+          (fiyat != null ? fiyat * c : null);
+      return b == null ? null : (brut: b, indirimli: b);
+    }
+
+    double? brut;
+    if (fiyat != null) {
+      // "Fiyat" indirimsizdir; Net Fiyat'la aynıysa Fiyat zaten indirimli gelmiştir.
+      brut = (netFiyat != null && yakin(netFiyat, fiyat))
+          ? fiyat * c / k
+          : fiyat * c;
+    } else if (kdvliFiyat != null && netFiyat != null) {
+      // Kdv li fiyat, Net Fiyat'ın KDV'lisiyle aynıysa indirimlidir → brüte çevir.
+      brut = yakin(kdvliFiyat, netFiyat * c) ? kdvliFiyat / k : kdvliFiyat;
+    } else if (kdvliFiyat != null) {
+      // Tek ipucu: yazılan fiyat ödenecek fiyat kabul edilir (çifte indirim yok).
+      brut = kdvliFiyat / k;
+    } else if (netFiyat != null) {
+      brut = netFiyat * c / k;
+    }
+    if (brut == null) return null;
+    return (brut: brut, indirimli: brut * k);
   }
 }

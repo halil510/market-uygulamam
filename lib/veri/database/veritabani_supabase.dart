@@ -302,21 +302,14 @@ extension VeritabaniSupabase on Veritabani {
 
   /// SupabaseSyncServisi._filigranAnahtari(tablo, 'gonder') İLE AYNI
   /// anahtar biçimi — bu cihazın o tabloyu buluta EN SON BAŞARIYLA
-  /// gönderdiği (hatasız tamamlanan) zaman. Kasıtlı olarak o dosyayı
-  /// import ETMİYORUZ (döngüsel bağımlılık: o dosya zaten bu dosyayı
-  /// import ediyor) — sadece aynı anahtar sözleşmesini paylaşıyoruz.
+  /// gönderdiği zaman. Kasıtlı olarak o dosyayı import ETMİYORUZ (döngüsel
+  /// bağımlılık) — sadece aynı anahtar sözleşmesini paylaşıyoruz. Manuel
+  /// "Buluta Gönder" ve otomatik kuyruk gönderiminin (BulutManager) en yenisi.
   Future<DateTime?> _sonGonderFiligrani(String tablo) async {
     final prefs = await SharedPreferences.getInstance();
     final s = prefs.getString('mp_sync_gonder_$tablo') ??
         prefs.getString('mp_sync_$tablo'); // eski tek-anahtar sürümü
     final manuel = s != null ? DateTime.tryParse(s) : null;
-    // 🔴 DÜZELTME (2026-09-27): ÖNCEDEN yalnızca MANUEL "Buluta Gönder"
-    // zamanı okunuyordu. Günlük kullanımda kayıtlar OTOMATİK kuyrukla
-    // (BulutManager) gidiyor ve bu zaman hiç ilerlemiyordu — zaten
-    // gönderilmiş her yerel değişiklik "gönderilmemiş" sanılıp çakışma
-    // sayılıyor, işlem verisinde gelen meşru güncelleme (ör. başka
-    // kasadaki iptal) UYGULANMIYORDU. Otomatik gönderim zamanı da
-    // hesaba katılır (bkz. BulutManager.otoGonderAnahtari).
     final o = prefs.getString('mp_sync_otogonder_$tablo');
     final oto = o != null ? DateTime.tryParse(o) : null;
     if (manuel == null) return oto;
@@ -386,6 +379,20 @@ extension VeritabaniSupabase on Veritabani {
       // Kuyrukta bekleyen yerel değişiklik varsa kesin çakışma; yoksa
       // (kuyruğa girmeyen eski/doğrudan yazımlar için) zaman sezgisi.
       if (!await _kuyruktaBekliyorMu(database, tablo, globalId)) {
+        // 🔴 KÖK NEDEN DÜZELTMESİ (2026-10-06, canlı veride görüldü — iade
+        // 970,03 ↔ 2086,59 "çözülmemiş çakışma"): zaman sezgisi ("yerel
+        // last_updated bu cihazın son gönderiminden yeni mi?") yerel satırın
+        // damgasının çoğu zaman BAŞKA cihazdan çekilmiş olduğunu hesaba
+        // katmıyordu. Kalem kalem eklenen iadede başlık art arda güncellenir:
+        // çekilen ilk sürümün damgası bu cihazın son gönderiminden "yeni"
+        // görünür, ikinci güncelleme sahte çakışma olup işlem verisi
+        // tablolarında (iade, cari_hareket…) HİÇ uygulanmazdı.
+        // Ayrım damga biçiminden yapılır: Postgres damgayı '+00:00' ile
+        // döndürür; bu cihazın kendi yazdığı damgalar hep 'Z' / dilimsiz.
+        // Yerel damga '+00:00' ile bitiyorsa satır buluttan gelmiş ve bu
+        // cihazda hiç değişmemiştir → ezilecek yerel değişiklik yok.
+        final yerelDamga = yerelSatir['last_updated']?.toString().trim() ?? '';
+        if (yerelDamga.endsWith('+00:00')) return false;
         final gonderFiligrani = await _sonGonderFiligrani(tablo);
         // Bu tablo bu cihazdan hiç gönderilmediyse ve kuyrukta da bir şey
         // yoksa kaybolacak yerel değişiklik yoktur (gelen zaten daha yeni
@@ -442,6 +449,25 @@ extension VeritabaniSupabase on Veritabani {
       LogServisi().hata('Veritabani._cakismaKaydetGerekirse', hata: e, yigin: st);
       return false;
     }
+  }
+
+  /// Bu kayıt için çözülmemiş çakışma varken gelen değer çakışmasız
+  /// uygulandıysa (ör. eski sürümün bıraktığı sahte çakışma) kaydı kapatır.
+  Future<void> _bekleyenCakismayiKapat(
+      Database database, String tablo, String? globalId) async {
+    if (globalId == null || globalId.isEmpty) return;
+    try {
+      await database.update(
+        DbSabitler.syncCakismalar,
+        {
+          'cozuldu': 1,
+          'cozum_tipi': 'otomatik',
+          'cozum_tarihi': DateTime.now().toIso8601String(),
+        },
+        where: 'tablo = ? AND kayit_global_id = ? AND cozuldu = 0',
+        whereArgs: [tablo, globalId],
+      );
+    } catch (_) {/* best-effort */}
   }
 
   Future<void> supaKayitlariEkle(
@@ -657,6 +683,12 @@ extension VeritabaniSupabase on Veritabani {
             if (gercekCakisma && SyncCakismaTespit.islemVerisiMi(tablo)) {
               atlanan++;
               continue;
+            }
+            // Çakışma yok ve gelen değer uygulanacak: bu kayıt için daha önce
+            // kalmış ÇÖZÜLMEMİŞ çakışma artık geçersiz → otomatik kapat.
+            if (!gercekCakisma) {
+              await _bekleyenCakismayiKapat(
+                  database, tablo, temiz['global_id']?.toString());
             }
           }
           await database.update(

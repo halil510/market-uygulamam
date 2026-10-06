@@ -102,7 +102,7 @@ void main() {
     /// CariDeposu.ekle()/guncelle()/hareketEkleTxn() ile BİREBİR AYNI
     /// davranış: yeni caride açılış bakiyesi hareketi yazılır, var olan
     /// caride bakiyeye HİÇ dokunulmaz.
-    Future<void> _satiriIsle(Database db, {
+    Future<void> satiriIsle(Database db, {
       required String kod,
       required String unvan,
       required double borc,
@@ -141,7 +141,7 @@ void main() {
     test('cari kodu YOKSA yeni kayıt oluşur VE açılış bakiyesi cari_hareket '
         "satırından doğru hesaplanır (önceden bu özellik hiç yoktu)",
         () async {
-      await _satiriIsle(db, kod: 'CARI0-3', unvan: 'Hayrullah Şeran',
+      await satiriIsle(db, kod: 'CARI0-3', unvan: 'Hayrullah Şeran',
           borc: 181462.23, alacak: 157284.0);
 
       final cari = (await db.query('cari', where: 'cari_kodu = ?', whereArgs: ['CARI0-3'])).first;
@@ -167,7 +167,7 @@ void main() {
       });
 
       // Excel'deki (eski/dış sistem) borç/alacak farklı olsa bile...
-      await _satiriIsle(db, kod: 'CARI0-3', unvan: 'Hayrullah Şeran (Güncel)',
+      await satiriIsle(db, kod: 'CARI0-3', unvan: 'Hayrullah Şeran (Güncel)',
           borc: 181462.23, alacak: 157284.0);
 
       final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
@@ -184,12 +184,12 @@ void main() {
     test('sadece Bakiye sütunu verilmişse (Borç/Alacak yok) doğru '
         'borç/alacağa çevrilir', () async {
       // Pozitif bakiye -> borç.
-      await _satiriIsle(db, kod: 'CARI0-9', unvan: 'Pozitif Bakiyeli', borc: 100.0, alacak: 0);
+      await satiriIsle(db, kod: 'CARI0-9', unvan: 'Pozitif Bakiyeli', borc: 100.0, alacak: 0);
       var cari = (await db.query('cari', where: 'cari_kodu = ?', whereArgs: ['CARI0-9'])).first;
       expect((cari['bakiye'] as num).toDouble(), 100.0);
 
       // Negatif bakiye -> alacak (borç negatif olamaz, alacağa çevrilmeli).
-      await _satiriIsle(db, kod: 'CARI0-10', unvan: 'Negatif Bakiyeli', borc: 0, alacak: 50.0);
+      await satiriIsle(db, kod: 'CARI0-10', unvan: 'Negatif Bakiyeli', borc: 0, alacak: 50.0);
       cari = (await db.query('cari', where: 'cari_kodu = ?', whereArgs: ['CARI0-10'])).first;
       expect((cari['bakiye'] as num).toDouble(), -50.0);
     });

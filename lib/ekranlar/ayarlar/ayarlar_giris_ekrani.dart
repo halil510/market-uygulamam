@@ -386,8 +386,9 @@ class _NumPad extends StatelessWidget {
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(12),
                                   onTap: () {
-                                    if (t == '⌫') onSil();
-                                    else if (t == 'C') onTemizle();
+                                    if (t == '⌫') {
+                                      onSil();
+                                    } else if (t == 'C') onTemizle();
                                     else onRakam(t);
                                   },
                                   child: Container(

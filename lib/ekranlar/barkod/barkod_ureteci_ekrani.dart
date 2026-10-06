@@ -65,7 +65,9 @@ class _BarkodUreteciEkraniState extends ConsumerState<BarkodUreteciEkrani> {
       final ts = DateTime.now().millisecondsSinceEpoch.toString();
       final b = ts.substring(ts.length - 12);
       int sum = 0;
-      for (int i = 0; i < 12; i++) sum += int.parse(b[i]) * (i.isEven ? 1 : 3);
+      for (int i = 0; i < 12; i++) {
+        sum += int.parse(b[i]) * (i.isEven ? 1 : 3);
+      }
       yeni = "$b${(10 - (sum % 10)) % 10}";
     } else {
       yeni = "MP${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}";

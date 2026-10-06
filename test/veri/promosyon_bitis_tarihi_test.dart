@@ -19,7 +19,7 @@ void main() {
   setUp(() async => db = await TestVeritabani.olustur());
   tearDown(() => db.close());
 
-  Future<int> _promosyonEkle(int urunId, DateTime? bitis) => db.insert('promosyonlar', {
+  Future<int> promosyonEkle(int urunId, DateTime? bitis) => db.insert('promosyonlar', {
         'urun_id': urunId,
         'promosyon_adi': 'Test Promosyon',
         'iskonto_oran': 10,
@@ -33,7 +33,7 @@ void main() {
     final urunId = await TestVeritabani.ornekUrunEkle(db);
     final bugunGunBasi =
         DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-    await _promosyonEkle(urunId, bugunGunBasi);
+    await promosyonEkle(urunId, bugunGunBasi);
 
     final now = DateTime.now().toIso8601String();
     final rows = await db.rawQuery(
@@ -51,7 +51,7 @@ void main() {
   test('bitiş tarihi DÜNSE artık dönmez', () async {
     final urunId = await TestVeritabani.ornekUrunEkle(db);
     final dun = DateTime.now().subtract(const Duration(days: 1));
-    await _promosyonEkle(urunId, DateTime(dun.year, dun.month, dun.day));
+    await promosyonEkle(urunId, DateTime(dun.year, dun.month, dun.day));
 
     final now = DateTime.now().toIso8601String();
     final rows = await db.rawQuery(

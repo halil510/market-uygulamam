@@ -129,7 +129,7 @@ void main() {
   group('KasaDeposu.nakitDegisimiKirilim (Madde 12 — itemize edilmiş kalemler)', () {
     test('Tahsilat/Gider/Ödeme/Virman ayrı kategoriler olarak döner', () async {
       final acilis = DateTime(2026, 9, 13, 9, 0);
-      final t = (Duration d) => acilis.add(d).toIso8601String();
+      String t(Duration d) => acilis.add(d).toIso8601String();
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Satış', 'tutar': 200, 'tarih': t(const Duration(hours: 1))});
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Tahsilat', 'tutar': 300, 'tarih': t(const Duration(hours: 2))});
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Gider', 'tutar': 50, 'tarih': t(const Duration(hours: 3))});
@@ -148,7 +148,7 @@ void main() {
 
     test('aynı kategorinin giriş+çıkış tipleri NETLEŞTİRİLİR (ör. Gider İptali)', () async {
       final acilis = DateTime(2026, 9, 13, 9, 0);
-      final t = (Duration d) => acilis.add(d).toIso8601String();
+      String t(Duration d) => acilis.add(d).toIso8601String();
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Gider', 'tutar': 100, 'tarih': t(const Duration(hours: 1))});
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Gider İptali', 'tutar': 100, 'tarih': t(const Duration(hours: 2))});
 
@@ -159,7 +159,7 @@ void main() {
 
     test('toplam, nakitDegisimi (Satış hariç) ile TUTARLI olmalı', () async {
       final acilis = DateTime(2026, 9, 13, 9, 0);
-      final t = (Duration d) => acilis.add(d).toIso8601String();
+      String t(Duration d) => acilis.add(d).toIso8601String();
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Satış', 'tutar': 200, 'tarih': t(const Duration(hours: 1))});
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Tahsilat', 'tutar': 300, 'tarih': t(const Duration(hours: 2))});
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Gider', 'tutar': 50, 'tarih': t(const Duration(hours: 3))});

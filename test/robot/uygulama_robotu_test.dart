@@ -90,7 +90,9 @@ String _sinifla(String m) {
   if (m.contains('overflowed')) return 'taşma';
   if (m.contains('ink splashes may be invisible')) return 'görsel';
   if (m.contains('_debugLocked') || m.contains('nothing to pop') ||
-      m.contains('popped the last page')) return 'gezinme';
+      m.contains('popped the last page')) {
+    return 'gezinme';
+  }
   return 'HATA';
 }
 
@@ -415,8 +417,9 @@ void main() {
           if (w is Ink) {
             // Çipler zeminlerini Ink(decoration: ShapeDecoration/BoxDecoration) ile çizer.
             final d = w.decoration;
-            if (d is BoxDecoration && d.gradient == null && d.image == null) c = d.color;
-            else if (d is ShapeDecoration && d.gradient == null && d.image == null) c = d.color;
+            if (d is BoxDecoration && d.gradient == null && d.image == null) {
+              c = d.color;
+            } else if (d is ShapeDecoration && d.gradient == null && d.image == null) c = d.color;
             else { bilinmiyor = true; return false; }
           }
           // Degrade başlık çubukları / üst üste katmanlar: zemin yazının atası
@@ -706,7 +709,7 @@ void main() {
         final sayimOnce = await tabloSayilari();
         var (doldurulan, basildi) = await formuDoldurVeKaydet();
         if (basildi.isNotEmpty) ekranHataMetni('"$basildi" sonrası');
-        var yazilan = artanlar(sayimOnce, await tabloSayilari());
+        final yazilan = artanlar(sayimOnce, await tabloSayilari());
         // Ekleme ekranında Kaydet'e basıldı ama hiçbir tabloya satır
         // eklenmediyse: sessizce kaydetmeyen form ya da robotun
         // dolduramadığı zorunlu alan — nedenini rapora yaz.

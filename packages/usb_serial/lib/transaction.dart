@@ -86,7 +86,7 @@ class Transaction<T> {
   /// the transformer to work on the stream.
   Transaction(Stream<Uint8List> stream,
       DisposableStreamTransformer<Uint8List, T> transformer)
-      : this.stream = stream.transform(transformer),
+      : stream = stream.transform(transformer),
         _transformer = transformer {
     _queue = StreamQueue<T>(this.stream);
   }
@@ -97,9 +97,9 @@ class Transaction<T> {
       // Don't call queue._next directly as it will
       // eat the next available message even if it
       // timed out. Use hasNext instead.
-      var f = _queue.hasNext.timeout(const Duration(microseconds: 1));
+      final f = _queue.hasNext.timeout(const Duration(microseconds: 1));
       try {
-        bool hasNext = await f;
+        final bool hasNext = await f;
         if (!hasNext) {
           // The stream has closed, bail out!
           return;
@@ -121,7 +121,7 @@ class Transaction<T> {
     // it will eat the next incoming packet.
     // instead use hasNext and then use
     try {
-      bool b = await _queue.hasNext.timeout(duration);
+      final bool b = await _queue.hasNext.timeout(duration);
       if (b) {
         return await _queue.next;
       } else {

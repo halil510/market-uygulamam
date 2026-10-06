@@ -102,17 +102,17 @@ void main() {
   setUp(() async => db = await TestVeritabani.olustur());
   tearDown(() => db.close());
 
-  Future<int> _bankaIdAl() async => db.insert('bankalar', {'ad': 'Test Bankası'});
-  Future<int> _bankaHesabiEkle({double bakiye = 0}) async {
-    final bankaId = await _bankaIdAl();
+  Future<int> bankaIdAl() async => db.insert('bankalar', {'ad': 'Test Bankası'});
+  Future<int> bankaHesabiEkle({double bakiye = 0}) async {
+    final bankaId = await bankaIdAl();
     return db.insert('banka_hesaplar', {
       'banka_id': bankaId, 'hesap_adi': 'Test Hesap', 'hesap_no': '123',
       'bakiye': bakiye, 'kullanilabilir_bakiye': bakiye,
     });
   }
 
-  Future<int> _krediKartiEkle({double limit = 10000}) async {
-    final bankaId = await _bankaIdAl();
+  Future<int> krediKartiEkle({double limit = 10000}) async {
+    final bankaId = await bankaIdAl();
     return db.insert('kredi_kartlari', {
       'banka_id': bankaId, 'kart_adi': 'Test Kart', 'kart_no_maskeli': '**** 1234',
       'kartlimit': limit, 'kullanilan_limit': 0, 'kalan_limit': limit,
@@ -121,7 +121,7 @@ void main() {
 
   group('Gider — Banka ödeme yöntemi artık GERÇEK banka hareketi yaratıyor', () {
     test('500₺ Banka gideri girilince hesap bakiyesi GERÇEKTEN 500₺ düşer', () async {
-      final hesapId = await _bankaHesabiEkle(bakiye: 10000);
+      final hesapId = await bankaHesabiEkle(bakiye: 10000);
       const giderId = 1;
 
       await _bankaUzlastir(db, giderId: giderId, hedefHesapId: hesapId, hedefTutar: 500.0);
@@ -131,7 +131,7 @@ void main() {
     });
 
     test('gider silinince (net→0 uzlaştırma) banka bakiyesi GERİ GELİR', () async {
-      final hesapId = await _bankaHesabiEkle(bakiye: 10000);
+      final hesapId = await bankaHesabiEkle(bakiye: 10000);
       const giderId = 2;
       await _bankaUzlastir(db, giderId: giderId, hedefHesapId: hesapId, hedefTutar: 300.0);
 
@@ -144,7 +144,7 @@ void main() {
     });
 
     test('gider Nakit\'ten Banka\'ya güncellenip SONRA tutar artırılırsa hesap doğru düşer', () async {
-      final hesapId = await _bankaHesabiEkle(bakiye: 5000);
+      final hesapId = await bankaHesabiEkle(bakiye: 5000);
       const giderId = 3;
       // İlk düzenleme: 200₺
       await _bankaUzlastir(db, giderId: giderId, hedefHesapId: hesapId, hedefTutar: 200.0);
@@ -159,8 +159,8 @@ void main() {
     });
 
     test('gider Banka A\'dan Banka B\'ye taşınınca A geri gelir, B düşer', () async {
-      final hesapA = await _bankaHesabiEkle(bakiye: 5000);
-      final hesapB = await _bankaHesabiEkle(bakiye: 5000);
+      final hesapA = await bankaHesabiEkle(bakiye: 5000);
+      final hesapB = await bankaHesabiEkle(bakiye: 5000);
       const giderId = 4;
       await _bankaUzlastir(db, giderId: giderId, hedefHesapId: hesapA, hedefTutar: 1000.0);
 
@@ -176,7 +176,7 @@ void main() {
 
   group('Gider — Kredi Kartı ödeme yöntemi artık GERÇEK kart hareketi yaratıyor', () {
     test('400₺ Kredi Kartı gideri girilince kullanılan limit GERÇEKTEN artar', () async {
-      final kartId = await _krediKartiEkle(limit: 5000);
+      final kartId = await krediKartiEkle(limit: 5000);
       const giderId = 5;
 
       await _krediUzlastir(db, giderId: giderId, hedefKartId: kartId, hedefTutar: 400.0);
@@ -187,7 +187,7 @@ void main() {
     });
 
     test('gider silinince kullanılan limit GERİ AZALIR', () async {
-      final kartId = await _krediKartiEkle(limit: 5000);
+      final kartId = await krediKartiEkle(limit: 5000);
       const giderId = 6;
       await _krediUzlastir(db, giderId: giderId, hedefKartId: kartId, hedefTutar: 250.0);
 

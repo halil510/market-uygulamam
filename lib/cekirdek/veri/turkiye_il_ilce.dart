@@ -107,7 +107,7 @@ class TurkiyeIlIlce {
   /// "izmir"→"İzmir") sadeleştirme — kullanıcı Türkçe klavye/karakter
   /// kullanmasa bile eşleşsin diye.
   static String _sadelestir(String s) {
-    var out = s
+    final out = s
         .replaceAll('İ', 'i')
         .replaceAll('I', 'ı')
         .toLowerCase()

@@ -270,8 +270,9 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
     ozetSayfa.appendRow([TextCellValue('Kredi Karti'), DoubleCellValue(_kartToplam)]);
     ozetSayfa.appendRow([TextCellValue('Cari'), DoubleCellValue(_cariToplam)]);
     ozetSayfa.appendRow([TextCellValue('Havale'), DoubleCellValue(_havaleToplam)]);
-    if (_digerToplam > 0)
+    if (_digerToplam > 0) {
       ozetSayfa.appendRow([TextCellValue('Diger (QR/Karma)'), DoubleCellValue(_digerToplam)]);
+    }
     ozetSayfa.appendRow([TextCellValue('Gider'), DoubleCellValue(_giderToplam)]);
     ozetSayfa.appendRow([TextCellValue('Maliyet (Alis)'), DoubleCellValue(_maliyetToplam)]);
     ozetSayfa.appendRow([TextCellValue('Iade'), DoubleCellValue(_iadeToplam)]);
@@ -287,16 +288,16 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
       TextCellValue('Toplam Tutar (KDV Dahil)')
     ]);
     
-    Map<double, double> kdvMatrah = {};
-    Map<double, double> kdvTutari = {};
-    Map<double, double> kdvDahilToplam = {};
+    final Map<double, double> kdvMatrah = {};
+    final Map<double, double> kdvTutari = {};
+    final Map<double, double> kdvDahilToplam = {};
     
     for (final row in sorguSonucu) {
-      double oran = _toDouble(row['kdv_oran']);
-      double net = _toDouble(row['net_fiyat']);
-      double miktar = _toDouble(row['miktar']);
-      double kdv = _toDouble(row['kdv_tutar']);
-      double dahil = _toDouble(row['toplam_tutar']);
+      final double oran = _toDouble(row['kdv_oran']);
+      final double net = _toDouble(row['net_fiyat']);
+      final double miktar = _toDouble(row['miktar']);
+      final double kdv = _toDouble(row['kdv_tutar']);
+      final double dahil = _toDouble(row['toplam_tutar']);
       
       kdvMatrah[oran] = (kdvMatrah[oran] ?? 0) + (net * miktar);
       kdvTutari[oran] = (kdvTutari[oran] ?? 0) + kdv;

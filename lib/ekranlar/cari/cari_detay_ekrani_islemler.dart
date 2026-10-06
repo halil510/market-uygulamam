@@ -154,10 +154,12 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Yazıcı hatası: ${kullaniciyaHataMetni(e)}');
     } finally {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _yazdiriliyor = false;
         _seciliHareket = null;
       });
+      }
     }
   }
 

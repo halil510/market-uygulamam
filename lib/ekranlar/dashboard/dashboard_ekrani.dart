@@ -164,8 +164,9 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
     );
     if (secilen == null || !mounted) return;
     await AktifSubeServisi().subeDegistir(secilen.id, yeniSubeAdi: secilen.ad);
-    if (mounted)
+    if (mounted) {
       setState(() {}); // dashboard verilerini yeni şubeye göre yenile
+    }
   }
 
   Future<void> _cikisYap() async {

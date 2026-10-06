@@ -179,8 +179,9 @@ class SiteIcerikServisi {
       if (r.statusCode == 200 || r.statusCode == 201) {
         return '$url/storage/v1/object/public/$_bucket/$dosyaAdi';
       }
-      if (kDebugMode)
+      if (kDebugMode) {
         debugPrint('Foto yükleme başarısız (${r.statusCode}): ${r.body}');
+      }
       return null;
     } catch (e) {
       if (kDebugMode) debugPrint('Foto yükleme hatası: $e');

@@ -570,11 +570,11 @@ class _RezervasyonKarti extends StatelessWidget {
         Row(children: [
           Icon(Icons.calendar_today, size: 14, color: TsRenk.metinIkincil(context)),
           const SizedBox(width: 4),
-          Text('${_formatTarih(rezervasyon.tarih)}', style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
+          Text(_formatTarih(rezervasyon.tarih), style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
           const SizedBox(width: 16),
           Icon(Icons.access_time, size: 14, color: TsRenk.metinIkincil(context)),
           const SizedBox(width: 4),
-          Text('${_formatSaat(rezervasyon.saat)}', style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
+          Text(_formatSaat(rezervasyon.saat), style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
           const Spacer(),
           if (rezervasyon.telefon.isNotEmpty)
             IconButton(

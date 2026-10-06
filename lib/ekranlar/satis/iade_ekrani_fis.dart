@@ -35,8 +35,9 @@ extension _FisTabExt on _IadeEkraniState {
             .where((s) => s.id?.toString() == no)
             .firstOrNull;
     _bulunanSatis = satis;
-    if (satis != null)
+    if (satis != null) {
       _fisIadeEdilenMiktar = await _fisIadeliMiktarlariGetir(satis.id!);
+    }
     if (mounted) setState(() {});
     if (satis == null && mounted) _msg('Fiş bulunamadı: $no', err: true);
   }

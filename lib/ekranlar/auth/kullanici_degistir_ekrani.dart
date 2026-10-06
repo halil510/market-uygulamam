@@ -103,8 +103,9 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
   }
 
   void _silSon() {
-    if (_pin.value.isNotEmpty)
+    if (_pin.value.isNotEmpty) {
       _pin.value = _pin.value.substring(0, _pin.value.length - 1);
+    }
   }
 
   void _temizle() => _pin.value = '';
@@ -134,7 +135,9 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
       if (sonuc == GirisSonucu.basarili) {
         AuthServisi().ayarlarDogrulamaTemizle();
         // bildir() kaldırıldı — state otomatik güncellenir
-        while (Navigator.canPop(context)) Navigator.pop(context);
+        while (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
         // Madde 17 sertleştirmesi (bkz. giris_ekrani.dart._girisSonrasiYonlendir
         // ile AYNI gerekçe): "Kullanıcı Değiştir" akışı da admin/1234 ile
         // ana uygulamaya doğrudan geçebilen İKİNCİ bir yoldu.
@@ -436,8 +439,9 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: () {
-                      if (t == '⌫') _silSon();
-                      else if (t == 'C') _temizle();
+                      if (t == '⌫') {
+                        _silSon();
+                      } else if (t == 'C') _temizle();
                       else _rakamEkle(t);
                     },
                     child: Container(

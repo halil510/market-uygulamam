@@ -76,7 +76,7 @@ void main() {
     setUp(() async => db = await TestVeritabani.olustur());
     tearDown(() => db.close());
 
-    Future<List<Map<String, Object?>>> _analiz(Database db, int gunSayisi) {
+    Future<List<Map<String, Object?>>> analiz(Database db, int gunSayisi) {
       return db.rawQuery('''
         SELECT u.id AS urun_id, u.urun_adi AS urun_adi, u.stok AS stok,
                COALESCE(sub.satilan, 0) AS satilan
@@ -96,7 +96,7 @@ void main() {
     test('stoğu olan ama hiç satılmayan ürün 0 satış olarak görünür', () async {
       await TestVeritabani.ornekUrunEkle(db, urunAdi: 'Tozlanan Ürün', stok: 12);
 
-      final rows = await _analiz(db, 90);
+      final rows = await analiz(db, 90);
 
       expect(rows.length, 1);
       expect(rows.first['urun_adi'], 'Tozlanan Ürün');
@@ -121,7 +121,7 @@ void main() {
         'miktar': 500, 'birim_fiyat': 1, 'toplam_tutar': 500,
       });
 
-      final rows = await _analiz(db, 90);
+      final rows = await analiz(db, 90);
 
       expect(rows.length, 1);
       expect(rows.first['satilan'], 0,

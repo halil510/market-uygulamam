@@ -35,11 +35,13 @@ class _GibGelenKutusuEkraniState extends State<GibGelenKutusuEkrani> {
     setState(() { _yukleniyor = true; _hata = null; });
     await _gib.ayarlariYukle();
     if (!_gib.ayarliMi) {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _yukleniyor = false;
         _hata = 'GİB entegratör ayarları yapılmamış. Önce Ayarlar > GİB E-Fatura ekranından '
             'API bilgilerinizi girin.';
       });
+      }
       return;
     }
     // 🔴 DÜZELTME (GİB Fatura denetimi, 2026-09-20): gelenFaturalariGetir()

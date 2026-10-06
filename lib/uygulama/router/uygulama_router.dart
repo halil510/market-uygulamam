@@ -500,7 +500,9 @@ class _AnaKabukState extends ConsumerState<AnaKabuk> {
         widget.mevcutRota.startsWith('/tedarik') ||
         widget.mevcutRota.startsWith('/lot') ||
         widget.mevcutRota.startsWith('/birim') ||
-        widget.mevcutRota.startsWith('/personel')) return 2;
+        widget.mevcutRota.startsWith('/personel')) {
+      return 2;
+    }
     if (widget.mevcutRota.startsWith('/cari') ||
         widget.mevcutRota.startsWith('/fatura') ||
         widget.mevcutRota.startsWith('/irsaliye') ||
@@ -509,7 +511,9 @@ class _AnaKabukState extends ConsumerState<AnaKabuk> {
         widget.mevcutRota.startsWith('/mail-baglanti') ||
         widget.mevcutRota.startsWith('/banka-hareket') ||
         widget.mevcutRota.startsWith('/finans') ||
-        widget.mevcutRota.startsWith('/borc')) return 3;
+        widget.mevcutRota.startsWith('/borc')) {
+      return 3;
+    }
     return 4;
   }
 

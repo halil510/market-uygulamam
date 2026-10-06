@@ -400,10 +400,12 @@ class _CariTab extends StatelessWidget {
     if (MediaQuery.sizeOf(context).width > 1100) {
       return CariMasaustuGorunum(cariler: cariler, onSil: onSil, onYenile: onRefresh);
     }
-    if (cariler.isEmpty) return const TsBosDurum(
+    if (cariler.isEmpty) {
+      return const TsBosDurum(
       ikon: Icons.people_outline,
       baslik: 'Kayıt bulunamadı',
     );
+    }
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.builder(

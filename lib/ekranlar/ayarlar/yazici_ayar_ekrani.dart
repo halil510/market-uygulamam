@@ -130,8 +130,9 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
       final bulunanlar = await YazdirmaServisi.wifiYazicilariTara();
       if (!mounted) return;
       setState(() => _wifiCihazlar = bulunanlar);
-      if (bulunanlar.isEmpty && mounted)
+      if (bulunanlar.isEmpty && mounted) {
         BildirimServisi.uyari(context, 'Ağda yazıcı bulunamadı. Port 9100 açık mı?');
+      }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Tarama hatası: $e');
     } finally {
@@ -201,7 +202,8 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
     ].request();
     final kalici = sonuclar.values.any((v) => v.isPermanentlyDenied);
     if (kalici) {
-      if (mounted) showDialog(context: context, builder: (ctx) => AlertDialog(
+      if (mounted) {
+        showDialog(context: context, builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Bluetooth İzni Gerekli'),
         content: const Text('Ayarlar > Uygulama izinlerinden Bluetooth iznini açın.'),
@@ -211,6 +213,7 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
               child: const Text('Ayarlara Git')),
         ],
       ));
+      }
       return false;
     }
     if (sonuclar.values.any((v) => v.isDenied)) {
@@ -219,12 +222,14 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
     }
     final btDurumu = await FlutterBluePlus.adapterState.first;
     if (btDurumu != BluetoothAdapterState.on) {
-      if (mounted) showDialog(context: context, builder: (ctx) => AlertDialog(
+      if (mounted) {
+        showDialog(context: context, builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Bluetooth Kapalı'),
         content: const Text("Yazıcı için Bluetooth'u açın."),
         actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam'))],
       ));
+      }
       return false;
     }
     return true;
@@ -238,9 +243,10 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
       final cihazlar = await _yazdirma.btCihazlariTara();
       if (!mounted) return;
       setState(() => _btCihazlar = cihazlar);
-      if (cihazlar.isEmpty && mounted)
+      if (cihazlar.isEmpty && mounted) {
         BildirimServisi.uyari(context,
             'Eşleştirilmiş BT yazıcı bulunamadı.\nÖnce Bluetooth ayarlarından eşleştirin.');
+      }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Bluetooth hatası: $e');
     } finally {

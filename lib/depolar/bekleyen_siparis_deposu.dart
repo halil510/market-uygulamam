@@ -128,9 +128,10 @@ class BekleyenSiparisDeposu {
 
     final satir = await db.query('bekleyen_siparisler',
         where: 'id = ?', whereArgs: [siparisId], limit: 1);
-    if (satir.isNotEmpty)
+    if (satir.isNotEmpty) {
       BulutManager().upsert(
           'bekleyen_siparisler', Map<String, dynamic>.from(satir.first));
+    }
     final kalemSatirlari = await db.query('bekleyen_siparis_kalem',
         where: 'siparis_id = ?', whereArgs: [siparisId]);
     for (final k in kalemSatirlari) {
@@ -182,9 +183,10 @@ class BekleyenSiparisDeposu {
         where: 'id = ?', whereArgs: [siparisId]);
     final satir = await db.query('bekleyen_siparisler',
         where: 'id = ?', whereArgs: [siparisId], limit: 1);
-    if (satir.isNotEmpty)
+    if (satir.isNotEmpty) {
       BulutManager().upsert(
           'bekleyen_siparisler', Map<String, dynamic>.from(satir.first));
+    }
   }
 
   /// 🔴 Onaylama — ToptanSatisEkrani._satisiTamamla() ile AYNI, kanıtlanmış
@@ -315,15 +317,17 @@ class BekleyenSiparisDeposu {
         if (gidler == null || gidler.isEmpty) continue;
         final urunSatir = await db.query('urunler',
             where: 'id = ?', whereArgs: [urunId], limit: 1);
-        if (urunSatir.isNotEmpty)
+        if (urunSatir.isNotEmpty) {
           BulutManager()
               .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
+        }
         for (final gid in gidler) {
           final stokSatir = await db.query('stok_hareket',
               where: 'global_id = ?', whereArgs: [gid], limit: 1);
-          if (stokSatir.isNotEmpty)
+          if (stokSatir.isNotEmpty) {
             BulutManager().upsert(
                 'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+          }
         }
         // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): satis_tamamlama_servisi
         // ile AYNI desen — bekleyen sipariş onayı da şube bazlı stok
@@ -339,14 +343,16 @@ class BekleyenSiparisDeposu {
       }
       final cariSatir = await db.query('cari',
           where: 'id = ?', whereArgs: [cari.id], limit: 1);
-      if (cariSatir.isNotEmpty)
+      if (cariSatir.isNotEmpty) {
         BulutManager()
             .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
+      }
       final satir = await db.query('bekleyen_siparisler',
           where: 'id = ?', whereArgs: [siparisId], limit: 1);
-      if (satir.isNotEmpty)
+      if (satir.isNotEmpty) {
         BulutManager().upsert(
             'bekleyen_siparisler', Map<String, dynamic>.from(satir.first));
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('Sipariş onayı bulut bildirimi hatası: $e');
     }

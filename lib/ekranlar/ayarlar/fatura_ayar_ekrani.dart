@@ -160,10 +160,16 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
       await prefs.setString('tevkifat_orani',      _tevkifatOrani);
       await prefs.setBool('fatura_logo',           _logoGoster);
       await prefs.setBool('fatura_imza',           _imzaGoster);
-      if (_logoYolu != null) await prefs.setString('fatura_logo_yolu', _logoYolu!);
-      else await prefs.remove('fatura_logo_yolu');
-      if (_imzaYolu != null) await prefs.setString('fatura_imza_yolu', _imzaYolu!);
-      else await prefs.remove('fatura_imza_yolu');
+      if (_logoYolu != null) {
+        await prefs.setString('fatura_logo_yolu', _logoYolu!);
+      } else {
+        await prefs.remove('fatura_logo_yolu');
+      }
+      if (_imzaYolu != null) {
+        await prefs.setString('fatura_imza_yolu', _imzaYolu!);
+      } else {
+        await prefs.remove('fatura_imza_yolu');
+      }
       await prefs.setString('fatura_no_onek', _faturaOnEkCtrl.text.trim().toUpperCase());
       await prefs.setString('fatura_varsayilan_iskonto', _iskontoCtrl.text.trim());
       await prefs.setString('fatura_baslangic_no', _baslangicNoCtrl.text.trim().isEmpty ? '1' : _baslangicNoCtrl.text.trim());
@@ -499,7 +505,9 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
   void _gorselKaldir(bool logoMu) {
     setState(() {
       if (logoMu) { _logoYolu = null; _logoGoster = false; }
-      else        _imzaYolu = null;
+      else {
+        _imzaYolu = null;
+      }
     });
   }
 

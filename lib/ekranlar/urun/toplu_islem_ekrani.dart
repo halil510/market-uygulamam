@@ -605,7 +605,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                   );
                 }).toList()),
               const SizedBox(height: 12),
-            ])).toList(),
+            ])),
 
           if (_alan != null) ...[
             const Divider(),

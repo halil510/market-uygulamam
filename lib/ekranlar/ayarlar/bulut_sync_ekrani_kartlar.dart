@@ -380,7 +380,7 @@ class _LogWidget extends StatelessWidget {
         final isInfo  = log.contains('📤') || log.contains('📥');
         final isDivider = log.contains('─────');
 
-        Color renk = isDivider ? TsRenk.metinIkincil(context)
+        final Color renk = isDivider ? TsRenk.metinIkincil(context)
             : isHata  ? Colors.red.shade700
             : isBasar ? Colors.green.shade700
             : isInfo  ? Colors.blue.shade700

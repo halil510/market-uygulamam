@@ -74,14 +74,21 @@ class Alim extends _$Alim {
     final fiyat  = alisFiyat ?? u.alisFiyat;
     final liste  = List<SepetKalem>.from(state.kalemler);
     final idx    = liste.indexWhere((k) => k.urun.id == u.id);
-    if (idx >= 0) liste[idx] = liste[idx].copyWith(miktar: liste[idx].miktar + 1);
-    else liste.add(SepetKalem(urun: u, birimFiyat: fiyat));
+    if (idx >= 0) {
+      liste[idx] = liste[idx].copyWith(miktar: liste[idx].miktar + 1);
+    } else {
+      liste.add(SepetKalem(urun: u, birimFiyat: fiyat));
+    }
     state = state.copyWith(kalemler: liste, aramaSonuclari: []);
   }
 
   void miktarDegistir(int i, double miktar) {
     final liste = List<SepetKalem>.from(state.kalemler);
-    if (miktar <= 0) liste.removeAt(i); else liste[i] = liste[i].copyWith(miktar: miktar);
+    if (miktar <= 0) {
+      liste.removeAt(i);
+    } else {
+      liste[i] = liste[i].copyWith(miktar: miktar);
+    }
     state = state.copyWith(kalemler: liste);
   }
 

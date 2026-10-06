@@ -253,9 +253,9 @@ class UrunDeposu {
     // yazılmıştı ama replace hiç istisna fırlatmadığı için pratikte
     // ASLA tetiklenmiyordu. abort (SQLite'ın varsayılanı) ile artık
     // gerçek bir UNIQUE ihlali doğru şekilde istisna fırlatıyor.
-    final _id = await db.insert(DbSabitler.urunler, m,
+    final id = await db.insert(DbSabitler.urunler, m,
         conflictAlgorithm: ConflictAlgorithm.abort);
-    BulutManager().upsert('urunler', {...m, 'id': _id});
+    BulutManager().upsert('urunler', {...m, 'id': id});
     // ÖNCEDEN başlangıç stoğu (yeni ürün eklenirken "50 adet ile
     // başla" gibi) hiçbir zaman bir hareket olarak kaydedilmiyordu.
     // Stok mutabakat sistemi (hareketlerin toplamı) bu ürünü hiç
@@ -266,7 +266,7 @@ class UrunDeposu {
       final hareketGid = const Uuid().v4();
       await db.insert('stok_hareket', {
         'global_id': hareketGid,
-        'urun_id': _id,
+        'urun_id': id,
         'hareket_turu': 'İlk Stok',
         'miktar': urun.stok,
         'onceki_stok': 0,
@@ -284,7 +284,7 @@ class UrunDeposu {
         BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
       }
     }
-    return _id;
+    return id;
   }
 
   /// Kullanıcı sorusu "kur değişti o zaman nasıl olacak?" için: döviz

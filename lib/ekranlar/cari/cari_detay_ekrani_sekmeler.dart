@@ -132,12 +132,14 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
 
   Widget _hareketTab() {
     if (_yukl) return const Center(child: AppYukleniyor());
-    if (_hareketler.isEmpty) return Center(
+    if (_hareketler.isEmpty) {
+      return Center(
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.receipt_long_outlined, size: 48, color: context.textSecondary),
         const SizedBox(height: 8),
         Text('Hareket yok', style: TextStyle(color: context.textSecondary)),
       ]));
+    }
     return RefreshIndicator(
       onRefresh: _hareketYukle,
       child: ListView.separated(

@@ -65,11 +65,12 @@ class _SyncMiniButonState extends ConsumerState<SyncMiniButon>
         _dondurmeCtrl.stop();
         // 3 saniye sonra normal ikona dön
         Future.delayed(const Duration(seconds: 3), () {
-          if (mounted)
+          if (mounted) {
             setState(() {
               _basarili = false;
               _hata = false;
             });
+          }
         });
         if (hatalar.isNotEmpty && mounted) {
           hataMesaji(context,

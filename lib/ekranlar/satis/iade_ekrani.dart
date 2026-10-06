@@ -223,9 +223,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
       // ÖNCEDEN kullanıcıya hiçbir şey gösterilmiyordu — ürün/cari
       // listesi yüklenemezse ekran sessizce BOŞ kalır, kullanıcı
       // nedenini asla bilemezdi.
-      if (mounted)
+      if (mounted) {
         BildirimServisi.hata(
             context, 'Veriler yüklenemedi, lütfen tekrar deneyin');
+      }
     }
   }
 
@@ -286,10 +287,11 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   Future<void> _yeniFisNoOlustur() async {
     try {
       final no = await BelgeNoServisi().uret('iade');
-      if (mounted)
+      if (mounted) {
         setState(() {
           _oturumFisNo = no;
         });
+      }
     } catch (_) {
       _oturumFisNo =
           'IAD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
@@ -455,8 +457,9 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
           : _aciklamaCtrl.text.trim();
 
       // Fiş no transaction dışında (sequence güncelleme ayrı transaction gerektirir)
-      if (_oturumFisNo.isEmpty)
+      if (_oturumFisNo.isEmpty) {
         _oturumFisNo = await BelgeNoServisi().uret('iade');
+      }
 
       // Tüm transaction + bulut senkron mantığı artık
       // IadeIslemServisi.manuelKalemEkle'de — bkz. o metodun doc yorumu,
@@ -510,9 +513,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
 
       // Lokal stok
       final si = _tumUrunler.indexWhere((u) => u.id == _secilenUrun!.id);
-      if (si != -1)
+      if (si != -1) {
         _tumUrunler[si] =
             _tumUrunler[si].copyWith(stok: _tumUrunler[si].stok + _miktar);
+      }
 
       _msg('${_secilenUrun!.urunAdi} iade edildi ✓', err: false);
       // Kullanıcı isteği: "iade alımı yaptığımızda o ekran kapanacak"

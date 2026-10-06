@@ -118,11 +118,11 @@ class Veritabani {
     // Admin kullanıcı — şifre '1234' güvenli (tuzlu) hash ile, ilk
     // girişte değiştirilmeli. Yeni kurulumlar en baştan güvenli şemayla
     // başlasın diye SifreHash kullanılıyor (eski, tuzsuz _hashle DEĞİL).
-    final _adminTuz = SifreHash.tuzUret();
+    final adminTuz = SifreHash.tuzUret();
     await db.insert(DbSabitler.kullanicilar, {
       'kullanici_adi': 'admin',
-      'sifre_hash': SifreHash.hashleTuzlu('1234', _adminTuz),
-      'tuz': _adminTuz,
+      'sifre_hash': SifreHash.hashleTuzlu('1234', adminTuz),
+      'tuz': adminTuz,
       'ad_soyad': 'Sistem Yöneticisi',
       'rol': 'admin',
     }, conflictAlgorithm: ConflictAlgorithm.ignore);

@@ -243,8 +243,9 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
                       showTitles: true,
                       getTitlesWidget: (val, _) {
                         final idx = val.toInt();
-                        if (idx < 0 || idx >= gunler.length)
+                        if (idx < 0 || idx >= gunler.length) {
                           return const SizedBox.shrink();
+                        }
                         return Text(gunler[idx],
                             style: TextStyle(
                                 fontSize: 9,

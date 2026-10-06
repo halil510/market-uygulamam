@@ -136,8 +136,10 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
 
     try {
       await _servis.yedekiGeriYukle(y.yol);
-      if (mounted) BildirimServisi.basari(context,
+      if (mounted) {
+        BildirimServisi.basari(context,
           'Geri yükleme tamamlandı. Uygulamayı yeniden başlatın.');
+      }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }

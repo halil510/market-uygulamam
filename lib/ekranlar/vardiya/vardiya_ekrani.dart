@@ -204,9 +204,10 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
         baslangicKasa: bas,
       );
       await _yukle();
-      if (mounted)
+      if (mounted) {
         BildirimServisi.basari(context,
             '✓ Vardiya açıldı (Başlangıç: ${ParaUtils.formatla(bas)})');
+      }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     } finally {
@@ -722,7 +723,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
   }
 
   Widget _gecmisTab() {
-    if (_gecmis.isEmpty)
+    if (_gecmis.isEmpty) {
       return Center(
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.history_outlined, size: 64, color: context.textSecondary),
@@ -730,6 +731,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
         Text('Geçmiş vardiya yok',
             style: TextStyle(color: context.textSecondary)),
       ]));
+    }
     if (MediaQuery.sizeOf(context).width > 1100) {
       return VardiyaGecmisMasaustuGorunum(
         vardiyalar: _gecmis,

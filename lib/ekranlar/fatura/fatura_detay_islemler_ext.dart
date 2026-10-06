@@ -229,8 +229,10 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
         await _yukle();
         if (mounted) BildirimServisi.basari(context, 'GİB\'de iptal edildi');
       } else {
-        if (mounted) BildirimServisi.hata(context,
+        if (mounted) {
+          BildirimServisi.hata(context,
             'İptal başarısız — entegratörünüzün iptal süresini/desteğini kontrol edin');
+        }
       }
     } catch (e) {
       if (navigator.mounted) navigator.pop();
@@ -366,11 +368,14 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
 
       if (sonuc.basarili) {
         await _yukle();
-        if (mounted) BildirimServisi.basari(context,
+        if (mounted) {
+          BildirimServisi.basari(context,
             '${tip == EFaturaTipi.eFatura ? "e-Fatura" : "e-Arşiv"} gönderildi ✓');
+        }
       } else {
         await _yukle();
-        if (mounted) showDialog(context: context,
+        if (mounted) {
+          showDialog(context: context,
           builder: (ctx) => AlertDialog(
             title: const Row(children: [
               Icon(Icons.error_outline, color: Colors.red),
@@ -382,6 +387,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('Tamam'))],
           ));
+        }
       }
     } catch (e) {
       if (navigator.mounted) navigator.pop();

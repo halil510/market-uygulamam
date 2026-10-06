@@ -31,12 +31,14 @@ class SatisDetayEkrani extends ConsumerWidget {
       ),
         body: Center(child: Text(kullaniciyaHataMetni(e)))),
       data: (satis) {
-        if (satis == null) return const Scaffold(
+        if (satis == null) {
+          return const Scaffold(
           appBar: TsAppBar(
         baslik: 'Bulunamadı',
         gradyanli: false,
       ),
           body: Center(child: Text('Satış bulunamadı')));
+        }
         return _SatisDetayIcerik(satis: satis, ref: ref);
       },
     );

@@ -189,8 +189,10 @@ final class _RiverpodLogger extends ProviderObserver {
     StackTrace stackTrace,
   ) {
     final provider = context.provider;
-    if (kDebugMode) debugPrint(
+    if (kDebugMode) {
+      debugPrint(
         '[Riverpod] HATA: ${provider.name ?? provider.runtimeType}: $error');
+    }
   }
 }
 

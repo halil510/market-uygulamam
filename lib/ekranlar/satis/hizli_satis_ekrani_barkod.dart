@@ -36,7 +36,9 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
     }
     if (_sonIslenenBarkod == barkod && _sonIslenenZaman != null &&
         DateTime.now().difference(_sonIslenenZaman!) <
-            _HizliSatisEkraniState._ayniBarkodMinAralik) return;
+            _HizliSatisEkraniState._ayniBarkodMinAralik) {
+      return;
+    }
     if (_scannerKilitli || _barkodIsleniyor) {
       _barkodKuyrugu.add(barkod);
       _kuyruktakiBarkodlariIsle();

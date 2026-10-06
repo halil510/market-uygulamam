@@ -100,8 +100,11 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
       if (d == null) return;
       if (!mounted) return;
       setState(() {
-        if (baslangicMi) _filtreBas = DateTime(d.year, d.month, d.day);
-        else _filtreBit = DateTime(d.year, d.month, d.day, 23, 59, 59);
+        if (baslangicMi) {
+          _filtreBas = DateTime(d.year, d.month, d.day);
+        } else {
+          _filtreBit = DateTime(d.year, d.month, d.day, 23, 59, 59);
+        }
         _filtrele();
       });
         } catch (e) {
@@ -358,7 +361,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
     final odendi = f.odendi;
     final vadesiGecti = f.vadesiGecti;
     final iptalEdilmis = f.durum == 'iptal';
-    Color durum = odendi ? Colors.green : vadesiGecti ? Colors.red : Colors.orange;
+    final Color durum = odendi ? Colors.green : vadesiGecti ? Colors.red : Colors.orange;
 
     final eDurum = f.eFaturaDurum ?? 'hazir';
     // 🔴🔴 DÜZELTME (erp_roadmap madde 38 — e-Belge durum makinesi, 2026-09-14

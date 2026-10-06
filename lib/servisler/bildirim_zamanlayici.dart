@@ -149,7 +149,7 @@ class BildirimZamanlayici {
   void _haftalikYedekZamanla() {
     final simdi = DateTime.now();
     // Her gün 23:30'da kontrol
-    var hedef = DateTime(simdi.year, simdi.month, simdi.day, 23, 30);
+    final hedef = DateTime(simdi.year, simdi.month, simdi.day, 23, 30);
     var bekleme = hedef.difference(simdi);
     if (bekleme.isNegative) bekleme += const Duration(days: 1);
 

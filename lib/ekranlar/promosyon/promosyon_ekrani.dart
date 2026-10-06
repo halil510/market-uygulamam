@@ -630,8 +630,9 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                     _seciliUrun = _aramaSonuclari[i];
                     _aramaSonuclari = [];
                     _araCtrl.text = _aramaSonuclari.isEmpty ? '' : _araCtrl.text;
-                    if (_adCtrl.text.isEmpty)
+                    if (_adCtrl.text.isEmpty) {
                       _adCtrl.text = '${_seciliUrun!.urunAdi} İndirimi';
+                    }
                   }),
                 ),
               ),

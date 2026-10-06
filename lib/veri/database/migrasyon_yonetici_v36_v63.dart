@@ -292,8 +292,9 @@ Future<void> _v45denV46e(Database db) async {
   try {
     final subeler = await db.query('subeler',
         columns: ['id'], where: 'is_deleted = 0 AND aktif = 1');
-    if (subeler.isEmpty)
+    if (subeler.isEmpty) {
       return; // Tek şubeli / şube hiç kurulmamış kurulumlarda gerek yok
+    }
     final ilkSubeId = subeler.first['id'] as int;
     final urunler = await db.query('urunler',
         columns: ['id', 'stok'], where: 'is_deleted = 0');

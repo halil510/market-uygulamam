@@ -213,8 +213,11 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
 
   void _adetDegistir(int idx, int yeni) {
     setState(() {
-      if (yeni <= 0) _sepet.removeAt(idx);
-      else _sepet[idx].adet = yeni.clamp(1, 999);
+      if (yeni <= 0) {
+        _sepet.removeAt(idx);
+      } else {
+        _sepet[idx].adet = yeni.clamp(1, 999);
+      }
     });
   }
 

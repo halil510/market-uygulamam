@@ -195,7 +195,7 @@ class UsbPort extends AsyncDataSinkSource {
 
   /// return string name of databits
   String dataBitToString() {
-    switch (this._dataBits) {
+    switch (_dataBits) {
       case (5):
         return "DATABITS_5";
       case (6):
@@ -338,12 +338,12 @@ class UsbDevice {
     if (!(other is UsbDevice)) {
       return false;
     }
-    return this.deviceName == other.deviceName;
+    return deviceName == other.deviceName;
   }
 
   @override
   int get hashCode {
-    return this.deviceName.hashCode;
+    return deviceName.hashCode;
   }
 }
 
@@ -388,7 +388,7 @@ class UsbSerial {
   static Stream<UsbEvent>? get usbEventStream {
     if (_eventStream == null) {
       _eventStream = _eventChannel.receiveBroadcastStream().map<UsbEvent>((value) {
-        UsbEvent msg = UsbEvent();
+        final UsbEvent msg = UsbEvent();
         msg.device = UsbDevice.fromJSON(value);
         msg.event = value["event"];
         return msg;
@@ -411,13 +411,13 @@ class UsbSerial {
   /// UsbPort port = await UsbSerial.create(0x1000, 0x2000);
   /// ```
   static Future<UsbPort?> create(int vid, int pid, [String type = "", int interface = -1]) async {
-    String? methodChannelName = await _channel.invokeMethod("create", {"type": type, "vid": vid, "pid": pid, "deviceId": -1, "interface": interface});
+    final String? methodChannelName = await _channel.invokeMethod("create", {"type": type, "vid": vid, "pid": pid, "deviceId": -1, "interface": interface});
 
     if (methodChannelName == null) {
       return null;
     }
 
-    return new UsbPort(methodChannelName);
+    return UsbPort(methodChannelName);
   }
 
   /// Creates a UsbPort from deviceId optionally type and interface.
@@ -429,18 +429,18 @@ class UsbSerial {
   /// [type] = One of [UserSerial.CDC], [UsbSerial.CH34x], [UsbSerial.CP210x], [UsbSerial.FTDI], [UsbSerial.PL2303] or empty for auto detect.
   /// [interface] = Interface of the Usb Interface, -1 for auto detect.
   static Future<UsbPort?> createFromDeviceId(int? deviceId, [String type = "", int interface = -1]) async {
-    String? methodChannelName = await _channel.invokeMethod("create", {"type": type, "vid": -1, "pid": -1, "deviceId": deviceId, "interface": interface});
+    final String? methodChannelName = await _channel.invokeMethod("create", {"type": type, "vid": -1, "pid": -1, "deviceId": deviceId, "interface": interface});
 
     if (methodChannelName == null) {
       return null;
     }
 
-    return new UsbPort(methodChannelName);
+    return UsbPort(methodChannelName);
   }
 
   /// Returns a list of UsbDevices currently plugged in.
   static Future<List<UsbDevice>> listDevices() async {
-    List<dynamic> devices = await (_channel.invokeMethod("listDevices"));
+    final List<dynamic> devices = await (_channel.invokeMethod("listDevices"));
     return devices.map<UsbDevice>(UsbDevice.fromJSON).toList();
   }
 }

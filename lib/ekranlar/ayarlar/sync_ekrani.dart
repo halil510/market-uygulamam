@@ -77,11 +77,13 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
       if (mounted) setState(() => _btCihazlar.remove(id));
     };
     _bt.onProgress = (alinan, toplam, durum) {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _btDurum = durum;
         _btProgress = toplam > 0 ? (alinan / toplam * 100).round() : 0;
         _btIslemde = alinan < toplam;
       });
+      }
     };
     _bt.onTamamlandi = (msg) {
       if (mounted) setState(() { _btDurum = msg; _btIslemde = false; });
@@ -98,10 +100,12 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
     } else {
       if (mounted) setState(() { _btDurum = '🔍 BLE tarama başlıyor...'; _btCihazlar.clear(); });
       final ok = await _bt.taramaBaslat();
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _btTarama = ok;
         _btDurum = ok ? '🔍 BarkoPro cihazları aranıyor...' : '❌ BT kapalı veya izin yok';
       });
+      }
     }
   }
 

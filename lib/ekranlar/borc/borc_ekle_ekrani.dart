@@ -145,8 +145,11 @@ void initState() {
     );
     if (d != null) {
       setState(() {
-        if (kesim) _kesimTarihi = d;
-        else _sonOdemeTarihi = d;
+        if (kesim) {
+          _kesimTarihi = d;
+        } else {
+          _sonOdemeTarihi = d;
+        }
       });
     }
   }

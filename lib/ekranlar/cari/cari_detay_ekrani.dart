@@ -200,12 +200,14 @@ class CariDetayEkrani extends ConsumerWidget {
       ),
         body: BosEkran(ikon: Icons.inbox_outlined, baslik: bildirimMetniniSadelestir(e.toString()))),
       data: (cari) {
-        if (cari == null) return const Scaffold(
+        if (cari == null) {
+          return const Scaffold(
           appBar: TsAppBar(
         baslik: 'Bulunamadı',
         gradyanli: false,
       ),
           body: BosEkran(ikon: Icons.inbox_outlined, baslik: 'Cari bulunamadı'));
+        }
         return _CariDetayIcerik(cari: cari);
       },
     );

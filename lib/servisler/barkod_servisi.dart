@@ -179,7 +179,7 @@ class BarkodServisi {
   static Map<String, String> gs1128Coz(String barkod) {
     final sonuc = <String, String>{};
     // Parantezleri kaldır, AI'ları işle
-    var b = barkod.replaceAll('(', '').replaceAll(')', '');
+    final b = barkod.replaceAll('(', '').replaceAll(')', '');
 
     final ailar = <String, int>{
       '01': 14, '02': 14, '10': -1, '11': 6,  '13': 6,  '15': 6,
@@ -335,7 +335,9 @@ class _BarkodTaramaDialogState extends State<_BarkodTaramaDialog> {
     if (_sonBarkod == barkod &&
         _sonZaman != null &&
         DateTime.now().difference(_sonZaman!) <
-            const Duration(milliseconds: 1000)) return;
+            const Duration(milliseconds: 1000)) {
+      return;
+    }
     _sonBarkod  = barkod;
     _sonZaman   = DateTime.now();
     _taramaTamamlandi = true;

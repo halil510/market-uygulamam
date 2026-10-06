@@ -24,9 +24,10 @@ class KasaDeposu {
       // noktası) o zamandan beri buluta hiç senkron olmuyordu.
       final satir = await db.query('kasa_hareketleri',
           where: 'id = ?', whereArgs: [kid], limit: 1);
-      if (satir.isNotEmpty)
+      if (satir.isNotEmpty) {
         BulutManager()
             .upsert('kasa_hareketleri', Map<String, dynamic>.from(satir.first));
+      }
       return kid;
     } catch (e, st) {
       LogServisi().hata('Kasa.hareketEkle', hata: e, yigin: st);
@@ -456,9 +457,10 @@ class KasaDeposu {
       for (final id in duzeltilenIdler) {
         final satir = await db.query('kasa_hareketleri',
             where: 'id = ?', whereArgs: [id], limit: 1);
-        if (satir.isNotEmpty)
+        if (satir.isNotEmpty) {
           BulutManager().upsert(
               'kasa_hareketleri', Map<String, dynamic>.from(satir.first));
+        }
       }
       return duzeltilen;
     } catch (e, st) {

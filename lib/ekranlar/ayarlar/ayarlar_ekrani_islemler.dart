@@ -104,8 +104,9 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
 
       final uzanti = dosya.extension?.toLowerCase();
       if (uzanti != 'db') {
-        if (mounted)
+        if (mounted) {
           BildirimServisi.hata(context, 'Lütfen .db uzantılı dosya seçin');
+        }
         return;
       }
 
@@ -244,8 +245,9 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
     final girisSonucu = await KullaniciDeposu()
         .girisKontrol(aktifKullanici.kullaniciAdi, girilenSifre);
     if (girisSonucu == null) {
-      if (mounted)
+      if (mounted) {
         BildirimServisi.hata(context, 'Şifre yanlış. Temizleme iptal edildi.');
+      }
       return;
     }
 

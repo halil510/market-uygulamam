@@ -172,8 +172,9 @@ class StokDeposu {
       final subeId = AktifSubeServisi().subeId;
       if (subeId != null) await _subeUrunDeposu.stokDus(urunId, subeId, miktar);
     } catch (e) {
-      if (kDebugMode)
+      if (kDebugMode) {
         debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
+      }
     }
   }
 
@@ -381,8 +382,9 @@ class StokDeposu {
       final subeId = AktifSubeServisi().subeId;
       if (subeId != null) await _subeUrunDeposu.stokGir(urunId, subeId, miktar);
     } catch (e) {
-      if (kDebugMode)
+      if (kDebugMode) {
         debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
+      }
     }
   }
 
@@ -461,8 +463,9 @@ class StokDeposu {
         await _subeUrunDeposu.stokGir(urunId, subeId, -fark);
       }
     } catch (e) {
-      if (kDebugMode)
+      if (kDebugMode) {
         debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
+      }
     }
   }
 
@@ -526,11 +529,13 @@ class StokDeposu {
       try {
         final subeId = AktifSubeServisi().subeId;
         final fark = yeniMiktar - onceki;
-        if (subeId != null && fark != 0)
+        if (subeId != null && fark != 0) {
           await _subeUrunDeposu.stokGir(urunId, subeId, fark);
+        }
       } catch (e) {
-        if (kDebugMode)
+        if (kDebugMode) {
           debugPrint('sube_urun güncellenemedi (ana işlem etkilenmedi): $e');
+        }
       }
     } catch (e, st) {
       LogServisi().hata('Stok.stokDuzelt', hata: e, yigin: st);

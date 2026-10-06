@@ -178,9 +178,9 @@ class AuthServisi {
 
     // UID'yi prefs'e yaz; son_giris DB'ye yazılıyor (manipülasyon koruması)
     // Hassas veriyi güvenli depoda sakla
-    final _secure = const FlutterSecureStorage();
-    await _secure.write(key: 'uid', value: kullanici.id!.toString());
-    await _secure.write(key: 'kullanici_adi', value: kullanici.kullaniciAdi);
+    final secure = const FlutterSecureStorage();
+    await secure.write(key: 'uid', value: kullanici.id!.toString());
+    await secure.write(key: 'kullanici_adi', value: kullanici.kullaniciAdi);
     // Tema vb. hassas olmayan veriler SharedPreferences'ta kalabilir
     await _depo.sonGirisGuncelle(kullanici.id!);
   }
@@ -190,16 +190,16 @@ class AuthServisi {
     _aktifKullanici = null;
     _oturumAktif = false;
     _yetkiCache = {};
-    final _secure = const FlutterSecureStorage();
-    await _secure.delete(key: 'uid');
-    await _secure.delete(key: 'kullanici_adi');
+    final secure = const FlutterSecureStorage();
+    await secure.delete(key: 'uid');
+    await secure.delete(key: 'kullanici_adi');
   }
 
   // ── Mevcut kullanıcı ──────────────────────────────────────────────────
   Future<KullaniciModel?> mevcutKullanici() async {
     if (_aktifKullanici != null) return _aktifKullanici;
-    final _secure = const FlutterSecureStorage();
-    final uidStr = await _secure.read(key: 'uid');
+    final secure = const FlutterSecureStorage();
+    final uidStr = await secure.read(key: 'uid');
     final uid = uidStr != null ? int.tryParse(uidStr) : null;
     if (uid == null) return null;
     _aktifKullanici = await _depo.idileGetir(uid);
@@ -213,8 +213,8 @@ class AuthServisi {
   Future<void> oturumuYenile() async {
     try {
       // SecureStorage'dan uid oku
-      final _secure = const FlutterSecureStorage();
-      final uidStr = await _secure.read(key: 'uid');
+      final secure = const FlutterSecureStorage();
+      final uidStr = await secure.read(key: 'uid');
       final uid = uidStr != null ? int.tryParse(uidStr) : null;
       if (uid == null) { _aktifKullanici = null; return; }
 
@@ -232,8 +232,10 @@ class AuthServisi {
           final gecenDk =
               DateTime.now().difference(sonGiris).inMinutes;
           if (gecenDk > _oturumSureDk) {
-            if (kDebugMode) debugPrint(
+            if (kDebugMode) {
+              debugPrint(
                 'Oturum süresi doldu ($gecenDk dk > $_oturumSureDk dk)');
+            }
             await cikisYap();
             return;
           }

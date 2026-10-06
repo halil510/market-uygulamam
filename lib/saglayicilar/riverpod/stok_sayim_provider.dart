@@ -166,7 +166,11 @@ class StokSayim extends _$StokSayim {
 
   void miktarGuncelle(int urunId, double miktar) {
     final yeni = Map<int, double>.from(state.sayimMiktarlari);
-    if (miktar < 0) yeni.remove(urunId); else yeni[urunId] = miktar;
+    if (miktar < 0) {
+      yeni.remove(urunId);
+    } else {
+      yeni[urunId] = miktar;
+    }
     state = state.copyWith(sayimMiktarlari: yeni);
   }
 

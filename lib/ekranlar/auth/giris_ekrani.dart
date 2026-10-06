@@ -162,10 +162,12 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
       }
     } catch (e) {
       if (kDebugMode) debugPrint('Biyometrik kontrol hatası: $e');
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _biyometrikMevcut = false;
         _biyometrikDestekli = false;
       });
+      }
     }
   }
 
@@ -821,8 +823,9 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
             ? null
             : () {
                 HapticFeedback.lightImpact();
-                if (isSil) _silSon();
-                else if (isTemizle) _temizle();
+                if (isSil) {
+                  _silSon();
+                } else if (isTemizle) _temizle();
                 else _rakamEkle(t);
               },
         child: Container(

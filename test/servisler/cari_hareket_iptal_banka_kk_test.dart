@@ -86,18 +86,18 @@ void main() {
   setUp(() async => db = await TestVeritabani.olustur());
   tearDown(() => db.close());
 
-  Future<int> _bankaIdAl() async => db.insert('bankalar', {'ad': 'Test Bankası'});
+  Future<int> bankaIdAl() async => db.insert('bankalar', {'ad': 'Test Bankası'});
 
-  Future<int> _bankaHesabiEkle({double bakiye = 0}) async {
-    final bankaId = await _bankaIdAl();
+  Future<int> bankaHesabiEkle({double bakiye = 0}) async {
+    final bankaId = await bankaIdAl();
     return db.insert('banka_hesaplar', {
       'banka_id': bankaId, 'hesap_adi': 'Test Hesap', 'hesap_no': '123',
       'bakiye': bakiye, 'kullanilabilir_bakiye': bakiye,
     });
   }
 
-  Future<int> _krediKartiEkle({double limit = 10000}) async {
-    final bankaId = await _bankaIdAl();
+  Future<int> krediKartiEkle({double limit = 10000}) async {
+    final bankaId = await bankaIdAl();
     return db.insert('kredi_kartlari', {
       'banka_id': bankaId, 'kart_adi': 'Test Kart', 'kart_no_maskeli': '**** 1234',
       'kartlimit': limit, 'kullanilan_limit': 0, 'kalan_limit': limit,
@@ -108,7 +108,7 @@ void main() {
     test(
         'müşteriden Banka ile 5.000₺ tahsilat iptal edilince banka '
         'bakiyesi de GERİ DÜŞER (önceden hiç düşmüyordu)', () async {
-      final hesapId = await _bankaHesabiEkle(bakiye: 0);
+      final hesapId = await bankaHesabiEkle(bakiye: 0);
       // 1. Orijinal tahsilat: müşteriden banka'ya 5000 giriyor (Gelen).
       final cariHareketId = 1; // sabit — sadece referans için, gerçek satır gerekmiyor.
       await db.transaction((txn) => BankaHareketDeposu().ekleTxn(
@@ -133,7 +133,7 @@ void main() {
 
     test('tedarikçiye Banka ile yapılan 3.000₺ ödeme iptal edilince para GERİ GELİR',
         () async {
-      final hesapId = await _bankaHesabiEkle(bakiye: 10000);
+      final hesapId = await bankaHesabiEkle(bakiye: 10000);
       const cariHareketId = 2;
       await db.transaction((txn) => BankaHareketDeposu().ekleTxn(
           txn,
@@ -157,7 +157,7 @@ void main() {
     test(
         "müşteriden Kredi Kartı ile tahsilat (limit azaltan 'odeme' yönü) "
         'iptal edilince kullanılan limit GERİ ARTAR', () async {
-      final kartId = await _krediKartiEkle(limit: 10000);
+      final kartId = await krediKartiEkle(limit: 10000);
       const cariHareketId = 3;
       // Müşteriden tahsilat = kart kullanımını AZALTIR (negatif delta, 'odeme').
       await db.transaction((txn) => KrediKartiDeposu().limitDegistirTxn(

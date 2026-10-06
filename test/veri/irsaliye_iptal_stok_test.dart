@@ -73,10 +73,10 @@ void main() {
   setUp(() async => db = await TestVeritabani.olustur());
   tearDown(() => db.close());
 
-  Future<int> _urunEkle({double stok = 100}) =>
+  Future<int> urunEkle({double stok = 100}) =>
       TestVeritabani.ornekUrunEkle(db, stok: stok);
 
-  Future<int> _irsaliyeVeStokHareketiOlustur({
+  Future<int> irsaliyeVeStokHareketiOlustur({
     required int urunId,
     required double onceki,
     required double sonraki,
@@ -109,9 +109,9 @@ void main() {
   test(
       "'Çıkış' irsaliyesi İptal edilince düşürülen stok GERİ EKLENİR "
       '(önceden hiç eklenmiyordu)', () async {
-    final urunId = await _urunEkle(stok: 100);
+    final urunId = await urunEkle(stok: 100);
     // 100 stoktan 30 adet sevk edildi (100 -> 70).
-    final irsaliyeId = await _irsaliyeVeStokHareketiOlustur(
+    final irsaliyeId = await irsaliyeVeStokHareketiOlustur(
         urunId: urunId, onceki: 100, sonraki: 70);
 
     var urun = (await db.query('urunler', where: 'id = ?', whereArgs: [urunId])).first;
@@ -130,9 +130,9 @@ void main() {
 
   test("'Giriş' irsaliyesi İptal edilince EKLENEN stok GERİ DÜŞÜLÜR",
       () async {
-    final urunId = await _urunEkle(stok: 50);
+    final urunId = await urunEkle(stok: 50);
     // 50 stoğa 20 adet giriş yapıldı (50 -> 70).
-    final irsaliyeId = await _irsaliyeVeStokHareketiOlustur(
+    final irsaliyeId = await irsaliyeVeStokHareketiOlustur(
         urunId: urunId, onceki: 50, sonraki: 70, tip: 'Giriş');
 
     await _durumGuncelle(db, irsaliyeId, 'İptal');
@@ -144,8 +144,8 @@ void main() {
 
   test('AYNI irsaliye İKİNCİ KEZ İptal edilirse stok TEKRAR tersine '
       'çevrilmez (idempotent)', () async {
-    final urunId = await _urunEkle(stok: 100);
-    final irsaliyeId = await _irsaliyeVeStokHareketiOlustur(
+    final urunId = await urunEkle(stok: 100);
+    final irsaliyeId = await irsaliyeVeStokHareketiOlustur(
         urunId: urunId, onceki: 100, sonraki: 70);
 
     await _durumGuncelle(db, irsaliyeId, 'İptal');
@@ -160,7 +160,7 @@ void main() {
   test('stoğa hiç dokunmayan bir irsaliye (olusturSevkKaydi ile oluşan — '
       'stok_hareket satırı YOK) İptal edilince hiçbir şey değişmez',
       () async {
-    final urunId = await _urunEkle(stok: 100);
+    final urunId = await urunEkle(stok: 100);
     final irsaliyeId = await db.insert('irsaliyeler', {
       'global_id': const Uuid().v4(),
       'irsaliye_no': 'IRS-TEST-2',
@@ -180,8 +180,8 @@ void main() {
 
   test('sevk edilenden fazlası zaten satıldıysa (mevcut stok tersDelta\'dan '
       'az) negatife düşmez, 0da kalır (clamp korunur)', () async {
-    final urunId = await _urunEkle(stok: 5);
-    final irsaliyeId = await _irsaliyeVeStokHareketiOlustur(
+    final urunId = await urunEkle(stok: 5);
+    final irsaliyeId = await irsaliyeVeStokHareketiOlustur(
         urunId: urunId, onceki: 100, sonraki: 70); // orijinalde 30 düşmüştü
     // Ama aradan geçen sürede stok BAŞKA satışlarla 5'e kadar düşmüş
     // olsun (yukarıdaki helper zaten stoğu 70 yaptı, elle 5'e çekiyoruz).

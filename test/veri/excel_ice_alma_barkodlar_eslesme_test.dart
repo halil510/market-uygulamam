@@ -21,7 +21,7 @@ void main() {
   setUp(() async => db = await TestVeritabani.olustur());
   tearDown(() => db.close());
 
-  Future<Map<String, dynamic>?> _eslesenUrunuBul(String kod) async {
+  Future<Map<String, dynamic>?> eslesenUrunuBul(String kod) async {
     final rows = await db.rawQuery(
       "SELECT id, stok FROM urunler"
       " WHERE (barkod=? OR (',' || barkodlar || ',') LIKE ? OR kod=?)"
@@ -41,7 +41,7 @@ void main() {
       'kdv_oran': '20', 'aktif': 1, 'is_deleted': 0,
     });
 
-    final bulunan = await _eslesenUrunuBul('8690000000099');
+    final bulunan = await eslesenUrunuBul('8690000000099');
     expect(bulunan, isNotNull);
     expect(bulunan!['id'], urunId);
   });
@@ -58,7 +58,7 @@ void main() {
     // "123" kodu "5123456789" İÇİNDE geçiyor ama AYRI bir barkod DEĞİL
     // — serbest LIKE ile yanlışlıkla eşleşirdi, virgül-sınırlı desen
     // eşleşmemeli.
-    final bulunan = await _eslesenUrunuBul('123');
+    final bulunan = await eslesenUrunuBul('123');
     expect(bulunan, isNull);
   });
 
@@ -70,7 +70,7 @@ void main() {
       'kdv_oran': '20', 'aktif': 1, 'is_deleted': 0,
     });
 
-    expect((await _eslesenUrunuBul('8690000000002'))!['id'], urunId);
-    expect((await _eslesenUrunuBul('SKU-002'))!['id'], urunId);
+    expect((await eslesenUrunuBul('8690000000002'))!['id'], urunId);
+    expect((await eslesenUrunuBul('SKU-002'))!['id'], urunId);
   });
 }

@@ -133,7 +133,9 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
 
   @override
   void dispose() {
-    for (final k in _kalemler) k.dispose();
+    for (final k in _kalemler) {
+      k.dispose();
+    }
     _faturaNoCtrl.dispose(); _nereyeCtrl.dispose();
     _teslimEdenCtrl.dispose(); _teslimAlanCtrl.dispose();
     super.dispose();
@@ -244,7 +246,11 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
         lastDate: DateTime(2030),
       );
       if (d == null || !mounted) return;
-      setState(() { if (vade) _vadeTarihi = d; else _tarih = d; });
+      setState(() { if (vade) {
+        _vadeTarihi = d;
+      } else {
+        _tarih = d;
+      } });
         } catch (e) {
       if (kDebugMode) if (mounted) debugPrint('Hata: $e');
     }

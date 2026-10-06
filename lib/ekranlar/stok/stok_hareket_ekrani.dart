@@ -68,8 +68,11 @@ class _StokHareketEkraniState extends ConsumerState<StokHareketEkrani> {
     if (d == null) return;
     if (!mounted) return;
     setState(() {
-      if (baslangicMi) _filtreBas = DateTime(d.year, d.month, d.day);
-      else _filtreBit = DateTime(d.year, d.month, d.day, 23, 59, 59);
+      if (baslangicMi) {
+        _filtreBas = DateTime(d.year, d.month, d.day);
+      } else {
+        _filtreBit = DateTime(d.year, d.month, d.day, 23, 59, 59);
+      }
       _filtrele();
     });
   }

@@ -299,16 +299,18 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
 
   @override
   Widget build(BuildContext context) {
-    if (_yukleniyor)
+    if (_yukleniyor) {
       return Scaffold(
           backgroundColor: context.scaffoldBg, body: const AppYukleniyor());
-    if (_cari == null)
+    }
+    if (_cari == null) {
       return const Scaffold(
           appBar: TsAppBar(
             gradyanli: false,
           ),
           body:
               BosEkran(ikon: Icons.inbox_outlined, baslik: 'Bulunamadı'));
+    }
     return Scaffold(
       backgroundColor: context.scaffoldBg,
       appBar: TsAppBar(

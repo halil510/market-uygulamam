@@ -165,9 +165,13 @@ class ExcelServisi {
     if (value == null) return defaultValue;
     final str = value.toString().toLowerCase().trim();
     if (str == 'doğru' || str == 'dogru' || str == 'true' || str == '1' || 
-        str == 'evet' || str == 'aktif') return true;
+        str == 'evet' || str == 'aktif') {
+      return true;
+    }
     if (str == 'yanlış' || str == 'yanlis' || str == 'false' || str == '0' || 
-        str == 'hayır' || str == 'pasif') return false;
+        str == 'hayır' || str == 'pasif') {
+      return false;
+    }
     return defaultValue;
   }
 

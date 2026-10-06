@@ -363,18 +363,20 @@ class SatisTamamlamaServisi {
         if (gidler == null || gidler.isEmpty) continue;
         final urunSatir = await db.query('urunler',
             where: 'id = ?', whereArgs: [k.urun.id], limit: 1);
-        if (urunSatir.isNotEmpty)
+        if (urunSatir.isNotEmpty) {
           BulutManager()
               .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
+        }
         // FAZ 5: lot_takibi açık ürünlerde BİRDEN FAZLA stok_hareket
         // satırı oluşabiliyor (bkz. StokDeposu.stokDusFefoTxn) — her biri
         // tek tek bildirilir.
         for (final gid in gidler) {
           final stokSatir = await db.query('stok_hareket',
               where: 'global_id = ?', whereArgs: [gid], limit: 1);
-          if (stokSatir.isNotEmpty)
+          if (stokSatir.isNotEmpty) {
             BulutManager().upsert(
                 'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+          }
         }
         // 🔴 Derin analizde bulundu: bu, uygulamanın EN SIK çalışan satış
         // akışı olmasına rağmen şube bazlı stok payını (sube_urun) hiç
@@ -392,9 +394,10 @@ class SatisTamamlamaServisi {
       for (final gid in kasaGlobalIdleri) {
         final kasaSatir = await db.query('kasa_hareketleri',
             where: 'global_id = ?', whereArgs: [gid], limit: 1);
-        if (kasaSatir.isNotEmpty)
+        if (kasaSatir.isNotEmpty) {
           BulutManager().upsert(
               'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+        }
       }
       for (final gid in cariGlobalIdleri) {
         final cariHareketSatir = await db.query('cari_hareket',
@@ -409,9 +412,10 @@ class SatisTamamlamaServisi {
           cariGlobalIdleri.isNotEmpty) {
         final cariSatir = await db.query('cari',
             where: 'id = ?', whereArgs: [musteri.id], limit: 1);
-        if (cariSatir.isNotEmpty)
+        if (cariSatir.isNotEmpty) {
           BulutManager()
               .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
+        }
       }
     } catch (_) {
       // Bulut bildirimi best-effort — satış zaten kalıcı olarak kaydedildi,
@@ -533,22 +537,25 @@ class SatisTamamlamaServisi {
       for (final girdi in stokHareketGidleri.entries) {
         final urunSatir = await db.query('urunler',
             where: 'id = ?', whereArgs: [girdi.key], limit: 1);
-        if (urunSatir.isNotEmpty)
+        if (urunSatir.isNotEmpty) {
           BulutManager()
               .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
+        }
         final stokSatir = await db.query('stok_hareket',
             where: 'global_id = ?', whereArgs: [girdi.value], limit: 1);
-        if (stokSatir.isNotEmpty)
+        if (stokSatir.isNotEmpty) {
           BulutManager().upsert(
               'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
+        }
         // Şube bazlı stok payı — best-effort (fark ana stok yönünde).
         await _stokDepo.subeStokPayiUygula(girdi.key, stokFarklari[girdi.key]!);
       }
       final basSatir = await db.query('satislar',
           where: 'id = ?', whereArgs: [satis.id], limit: 1);
-      if (basSatir.isNotEmpty)
+      if (basSatir.isNotEmpty) {
         BulutManager()
             .upsert('satislar', Map<String, dynamic>.from(basSatir.first));
+      }
       final kalemSatirlar = await db
           .query('satis_kalem', where: 'satis_id = ?', whereArgs: [satis.id]);
       for (final ks in kalemSatirlar) {
@@ -557,23 +564,26 @@ class SatisTamamlamaServisi {
       if (cariHareketGlobalId != null) {
         final cariHareketSatir = await db.query('cari_hareket',
             where: 'global_id = ?', whereArgs: [cariHareketGlobalId], limit: 1);
-        if (cariHareketSatir.isNotEmpty)
+        if (cariHareketSatir.isNotEmpty) {
           BulutManager().upsert('cari_hareket',
               Map<String, dynamic>.from(cariHareketSatir.first));
+        }
         if (satis.cariId != null) {
           final cariSatir = await db.query('cari',
               where: 'id = ?', whereArgs: [satis.cariId], limit: 1);
-          if (cariSatir.isNotEmpty)
+          if (cariSatir.isNotEmpty) {
             BulutManager()
                 .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
+          }
         }
       }
       if (kasaHareketId != null) {
         final kasaSatir = await db.query('kasa_hareketleri',
             where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
-        if (kasaSatir.isNotEmpty)
+        if (kasaSatir.isNotEmpty) {
           BulutManager().upsert(
               'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+        }
       }
     } catch (_) {
       // Bulut bildirimi best-effort (mevcut davranışla aynı).

@@ -224,7 +224,9 @@ class SupabaseSyncServisi {
     final m = Map<String, dynamic>.from(row);
 
     // Gönderilmeyecek kolonları temizle
-    for (final k in _damaGonderilmez) m.remove(k);
+    for (final k in _damaGonderilmez) {
+      m.remove(k);
+    }
     m.remove('id');
 
     // 🔥 EVRENSEL DÜZELTME: kullanıcının paylaştığı gerçek hata

@@ -14,7 +14,7 @@ String _ucBasamakYaziya(int n) {
   final birler = kalan % 10;
   var s = '';
   if (yuzler > 0) {
-    s += (yuzler == 1 ? '' : '${_birler[yuzler]}') + 'Yüz';
+    s += (yuzler == 1 ? '' : _birler[yuzler]) + 'Yüz';
   }
   s += _onlar[onlar];
   s += _birler[birler];

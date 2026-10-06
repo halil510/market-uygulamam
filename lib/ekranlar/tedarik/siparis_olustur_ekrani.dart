@@ -80,7 +80,9 @@ class _SiparisOlusturEkraniState extends ConsumerState<SiparisOlusturEkrani> {
 
   @override
   void dispose() {
-    for (final k in _kalemler) k.dispose();
+    for (final k in _kalemler) {
+      k.dispose();
+    }
     _aramaDebounce?.cancel();
     _araCtrl.dispose();
     super.dispose();

@@ -111,7 +111,9 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
 
   @override
   void dispose() {
-    for (final k in _kalemler) k.dispose();
+    for (final k in _kalemler) {
+      k.dispose();
+    }
     _aramaDebounce?.cancel();
     if (_kameraAcik) _scanCtrl.stop();
     _scanCtrl.dispose();
@@ -172,25 +174,29 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
       // sayılıyordu.
       final alisF = (k['alisFiyat'] as num?)?.toDouble() ??
           (urun.alisFiyat > 0 ? urun.alisFiyat : urun.satisFiyati);
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _kalemler.add(_AlimKalem(
           urun: urun,
           miktar: (k['miktar'] as num?)?.toDouble() ?? 1,
           alisFiyat: alisF,
         ));
       });
+      }
     }
   }
 
   Future<void> _tedarikciListesiYukle() async {
     try {  
       final list = await CariDeposu().tumunuGetir();
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _tedarikciListesi = list.where((c) =>
           c.cariTipi.contains('edarik') ||
           c.cariTipi.contains('upplier')
         ).toList();
       });
+      }
         } catch (e) {
       if (kDebugMode) if (mounted) debugPrint('Hata: $e');
     }
@@ -199,10 +205,12 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
   Future<void> _bankaHesaplariYukle() async {
     try {
       final hesaplar = await BankaHesapDeposu().tumunuGetir();
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _bankaHesaplari = hesaplar;
         if (hesaplar.isNotEmpty) _secilenHesap = hesaplar.first;
       });
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('Banka hesapları yüklenemedi: $e');
     }
@@ -418,7 +426,9 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
       if (mounted) {
         BildirimServisi.basari(context,
             '${_kalemler.length} kalem stoka eklendi');
-        for (final k in _kalemler) k.dispose();
+        for (final k in _kalemler) {
+          k.dispose();
+        }
         _kalemler.clear();
         _aramaSonuclari = [];
         if (mounted) setState(() {});

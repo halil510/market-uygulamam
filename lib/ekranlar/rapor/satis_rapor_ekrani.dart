@@ -258,13 +258,15 @@ class _ListeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (satislar.isEmpty) return Center(
+    if (satislar.isEmpty) {
+      return Center(
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.receipt_long_outlined, size: 64, color: context.textSecondary),
         const SizedBox(height: 12),
         Text('Satış bulunamadı', style: TextStyle(color: context.textSecondary)),
       ]),
     );
+    }
     final fmt = DateFormat('dd.MM HH:mm');
     return ListView.separated(
       padding: const EdgeInsets.all(12),

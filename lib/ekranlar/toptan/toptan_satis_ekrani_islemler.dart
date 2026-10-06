@@ -479,8 +479,9 @@ extension _ToptanSatisIslemlerExt on _ToptanSatisEkraniState {
             ],
           ),
         );
-        if (git == true && mounted)
+        if (git == true && mounted) {
           await context.push('/cari/ekle', extra: kontrol.cari);
+        }
         return;
       }
 

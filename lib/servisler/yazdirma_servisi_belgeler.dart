@@ -37,12 +37,15 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
       bytes.addAll(generator.text(YazdirmaServisi._t(fa),
           styles: const PosStyles(bold: true, align: PosAlign.center,
               height: PosTextSize.size2, width: PosTextSize.size1)));
-      if (fadr.isNotEmpty)
+      if (fadr.isNotEmpty) {
         bytes.addAll(generator.text(YazdirmaServisi._t(fadr), styles: const PosStyles(align: PosAlign.center)));
-      if (ft.isNotEmpty)
+      }
+      if (ft.isNotEmpty) {
         bytes.addAll(generator.text(YazdirmaServisi._t('Tel: $ft'), styles: const PosStyles(align: PosAlign.center)));
-      if (_fisVergiNoGoster && _firmaVergiNo.isNotEmpty)
+      }
+      if (_fisVergiNoGoster && _firmaVergiNo.isNotEmpty) {
         bytes.addAll(generator.text(YazdirmaServisi._t('VKN: $_firmaVergiNo'), styles: const PosStyles(align: PosAlign.center)));
+      }
       bytes.addAll(generator.hr(ch: '='));
 
       bytes.addAll(generator.row([
@@ -53,11 +56,12 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
         PosColumn(text:YazdirmaServisi._t('Fiş No:'), width: 4, styles: const PosStyles(bold: true)),
         PosColumn(text:YazdirmaServisi._t(satis.fisNo ?? '-'), width: 8),
       ]));
-      if (_fisKasiyerGoster && kasiyerAdi != null && kasiyerAdi.isNotEmpty)
+      if (_fisKasiyerGoster && kasiyerAdi != null && kasiyerAdi.isNotEmpty) {
         bytes.addAll(generator.row([
           PosColumn(text:YazdirmaServisi._t('Kasiyer:'), width: 4, styles: const PosStyles(bold: true)),
           PosColumn(text:YazdirmaServisi._t(kasiyerAdi), width: 8),
         ]));
+      }
       // ══════════════════════════════════════════════════════════════════
       // 🆕 CARİ (MÜŞTERİ) ADI
       //
@@ -76,11 +80,12 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
           (cariUnvan != null && cariUnvan.isNotEmpty)
               ? cariUnvan
               : (satis.cariAdi ?? '');
-      if (_fisCariGoster && gosterilecekCari.isNotEmpty)
+      if (_fisCariGoster && gosterilecekCari.isNotEmpty) {
         bytes.addAll(generator.row([
           PosColumn(text:YazdirmaServisi._t('Cari:'), width: 4, styles: const PosStyles(bold: true)),
           PosColumn(text:YazdirmaServisi._t(gosterilecekCari), width: 8),
         ]));
+      }
       bytes.addAll(generator.hr());
 
       bytes.addAll(generator.row([
@@ -116,50 +121,57 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
           PosColumn(text:YazdirmaServisi._t(_fmt.format(gosterilecekFiyat)), width: 2, styles: const PosStyles(align: PosAlign.right)),
           PosColumn(text:YazdirmaServisi._t(_fmt.format(k.toplamTutar)), width: 2, styles: const PosStyles(align: PosAlign.right)),
         ]));
-        if (_fisUrunKoduGoster && (k.barkod?.isNotEmpty ?? false))
+        if (_fisUrunKoduGoster && (k.barkod?.isNotEmpty ?? false)) {
           bytes.addAll(generator.text(YazdirmaServisi._t('  Kod: ${k.barkod}'),
               styles: const PosStyles(align: PosAlign.left)));
-        if (k.iskontoTutar > 0)
+        }
+        if (k.iskontoTutar > 0) {
           bytes.addAll(generator.text(YazdirmaServisi._t('  İnd: -${_fmt.format(k.iskontoTutar)}')));
-        if (_fisKdvGosterAna && _fisKdvDetayGoster && k.kdvTutar > 0)
+        }
+        if (_fisKdvGosterAna && _fisKdvDetayGoster && k.kdvTutar > 0) {
           bytes.addAll(generator.text(YazdirmaServisi._t('  KDV(%${k.kdvOran.toStringAsFixed(0)}): ${_fmt.format(k.kdvTutar)}')));
+        }
         topIsk += k.iskontoTutar;
         topKdv += k.kdvTutar;
       }
       bytes.addAll(generator.hr());
 
-      if (topIsk > 0.001)
+      if (topIsk > 0.001) {
         bytes.addAll(generator.row([
           PosColumn(text:YazdirmaServisi._t('ISKONTO'), width: 8),
           PosColumn(text:YazdirmaServisi._t('-${_fmt.format(topIsk)}'), width: 4,
               styles: const PosStyles(align: PosAlign.right)),
         ]));
+      }
       // KDV detay kapalıysa toplu KDV özeti gösterilir; açıksa yukarıda
       // satır satır zaten gösterildiği için burada tekrar edilmez.
-      if (_fisKdvGosterAna && !_fisKdvDetayGoster && topKdv > 0.001)
+      if (_fisKdvGosterAna && !_fisKdvDetayGoster && topKdv > 0.001) {
         bytes.addAll(generator.row([
           PosColumn(text:YazdirmaServisi._t('KDV'), width: 8),
           PosColumn(text:YazdirmaServisi._t(_fmt.format(topKdv)), width: 4,
               styles: const PosStyles(align: PosAlign.right)),
         ]));
+      }
       bytes.addAll(generator.row([
         PosColumn(text:YazdirmaServisi._t('TOPLAM'), width: 8, styles: const PosStyles(bold: true)),
         PosColumn(text:YazdirmaServisi._t(_fmt.format(satis.genelToplam)), width: 4,
             styles: const PosStyles(bold: true, align: PosAlign.right)),
       ]));
-      if (_fisOdemeYontemiGoster)
+      if (_fisOdemeYontemiGoster) {
         bytes.addAll(generator.row([
           PosColumn(text:YazdirmaServisi._t('ODENEN (${satis.odemeYontemi})'), width: 8),
           PosColumn(text:YazdirmaServisi._t(_fmt.format(satis.odenenTutar)), width: 4,
               styles: const PosStyles(align: PosAlign.right)),
         ]));
+      }
       final paraUstu = satis.odenenTutar - satis.genelToplam;
-      if (_fisParaUstuGoster && paraUstu > 0.01)
+      if (_fisParaUstuGoster && paraUstu > 0.01) {
         bytes.addAll(generator.row([
           PosColumn(text:YazdirmaServisi._t('PARA ÜSTÜ'), width: 8, styles: const PosStyles(bold: true)),
           PosColumn(text:YazdirmaServisi._t(_fmt.format(paraUstu)), width: 4,
               styles: const PosStyles(bold: true, align: PosAlign.right)),
         ]));
+      }
 
       bytes.addAll(generator.hr());
 
@@ -204,8 +216,9 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
         bytes.addAll(generator.hr(ch: '='));
       }
 
-      if (ay.isNotEmpty)
+      if (ay.isNotEmpty) {
         bytes.addAll(generator.text(YazdirmaServisi._t(ay), styles: const PosStyles(align: PosAlign.center, bold: true)));
+      }
 
       // ══════════════════════════════════════════════════════════════════
       // 🆕 FİŞ BARKODU — fiş numarasını Code128 olarak basar
@@ -437,10 +450,12 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
     bytes.addAll(generator.text(YazdirmaServisi._t(_firmaAdi),
         styles: const PosStyles(bold: true, align: PosAlign.center,
             height: PosTextSize.size2, width: PosTextSize.size1)));
-    if (_firmaAdres.isNotEmpty)
+    if (_firmaAdres.isNotEmpty) {
       bytes.addAll(generator.text(YazdirmaServisi._t(_firmaAdres), styles: const PosStyles(align: PosAlign.center)));
-    if (_firmaTel.isNotEmpty)
+    }
+    if (_firmaTel.isNotEmpty) {
       bytes.addAll(generator.text(YazdirmaServisi._t('Tel: $_firmaTel'), styles: const PosStyles(align: PosAlign.center)));
+    }
     bytes.addAll(generator.hr(ch: '='));
 
     bytes.addAll(generator.text(YazdirmaServisi._t((f.faturaTipi ?? 'FATURA').toUpperCase()),
@@ -453,14 +468,16 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
       PosColumn(text:YazdirmaServisi._t('Tarih:'), width: 4, styles: const PosStyles(bold: true)),
       PosColumn(text:YazdirmaServisi._t(tarih), width: 8),
     ]));
-    if (f.eFaturaUuid != null)
+    if (f.eFaturaUuid != null) {
       bytes.addAll(generator.text(YazdirmaServisi._t('ETTN: ${f.eFaturaUuid}'), styles: const PosStyles(align: PosAlign.left)));
+    }
     bytes.addAll(generator.hr());
 
     bytes.addAll(generator.text(YazdirmaServisi._t('SAYIN'), styles: const PosStyles(bold: true)));
     bytes.addAll(generator.text(YazdirmaServisi._t(f.cariUnvan ?? '-'), styles: const PosStyles(bold: true)));
-    if (f.cariAdres != null && f.cariAdres!.isNotEmpty)
+    if (f.cariAdres != null && f.cariAdres!.isNotEmpty) {
       bytes.addAll(generator.text(YazdirmaServisi._t(f.cariAdres!)));
+    }
     bytes.addAll(generator.text(YazdirmaServisi._t('VD: ${f.cariVergiDairesi ?? "-"}  VKN/TC: ${f.cariVergiNo ?? "-"}')));
     bytes.addAll(generator.hr());
 
@@ -488,8 +505,9 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
         PosColumn(text:YazdirmaServisi._t(_fmt.format(indirimliMi ? netBirimFiyat : d.birimFiyat)), width: 2, styles: const PosStyles(align: PosAlign.right)),
         PosColumn(text:YazdirmaServisi._t(_fmt.format(d.toplamTutar)), width: 2, styles: const PosStyles(align: PosAlign.right)),
       ]));
-      if (indirimliMi)
+      if (indirimliMi) {
         bytes.addAll(generator.text(YazdirmaServisi._t('  İnd: -${_fmt.format(d.iskontoTutari)}')));
+      }
     }
     bytes.addAll(generator.hr());
 
@@ -502,11 +520,12 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
       PosColumn(text:YazdirmaServisi._t('Ara Toplam'), width: 8),
       PosColumn(text:YazdirmaServisi._t(_fmt.format(f.toplamAraToplam + f.toplamIskonto)), width: 4, styles: const PosStyles(align: PosAlign.right)),
     ]));
-    if (f.toplamIskonto > 0)
+    if (f.toplamIskonto > 0) {
       bytes.addAll(generator.row([
         PosColumn(text:YazdirmaServisi._t('İndirim'), width: 8),
         PosColumn(text:YazdirmaServisi._t('-${_fmt.format(f.toplamIskonto)}'), width: 4, styles: const PosStyles(align: PosAlign.right)),
       ]));
+    }
     bytes.addAll(generator.row([
       PosColumn(text:YazdirmaServisi._t('KDV'), width: 8),
       PosColumn(text:YazdirmaServisi._t(_fmt.format(f.toplamKdv)), width: 4, styles: const PosStyles(align: PosAlign.right)),
@@ -542,8 +561,9 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
     bytes.addAll(generator.text(YazdirmaServisi._t(_firmaAdi),
         styles: const PosStyles(bold: true, align: PosAlign.center,
             height: PosTextSize.size2)));
-    if (_firmaAdres.isNotEmpty)
+    if (_firmaAdres.isNotEmpty) {
       bytes.addAll(generator.text(YazdirmaServisi._t(_firmaAdres), styles: const PosStyles(align: PosAlign.center)));
+    }
     bytes.addAll(generator.hr());
     bytes.addAll(generator.text(YazdirmaServisi._t('*** TEST FİŞİ ***'),
         styles: const PosStyles(bold: true, align: PosAlign.center)));

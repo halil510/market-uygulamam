@@ -74,10 +74,10 @@ void main() {
   setUp(() async => db = await TestVeritabani.olustur());
   tearDown(() => db.close());
 
-  Future<int> _bankaIdAl() async => db.insert('bankalar', {'ad': 'Test Bankası'});
+  Future<int> bankaIdAl() async => db.insert('bankalar', {'ad': 'Test Bankası'});
 
-  Future<int> _bankaEkle({double bakiye = 0}) async {
-    final bankaId = await _bankaIdAl();
+  Future<int> bankaEkle({double bakiye = 0}) async {
+    final bankaId = await bankaIdAl();
     return db.insert('banka_hesaplar', {
       'banka_id': bankaId, 'hesap_adi': 'Test Hesap', 'hesap_no': '123',
       'bakiye': bakiye, 'kullanilabilir_bakiye': bakiye,
@@ -92,8 +92,8 @@ void main() {
   // çağrısı bu sahte başlangıç değerini görmezden gelip sıfırdan
   // hesaplar (bu, testi yazarken bulunan bir ayrıntı — production
   // davranışı DOĞRU, sadece test kurulumunun buna uyması gerekiyordu).
-  Future<int> _krediKartiEkle({double limit = 10000, double kullanilan = 0}) async {
-    final bankaId = await _bankaIdAl();
+  Future<int> krediKartiEkle({double limit = 10000, double kullanilan = 0}) async {
+    final bankaId = await bankaIdAl();
     final kartId = await db.insert('kredi_kartlari', {
       'banka_id': bankaId, 'kart_adi': 'Test Kart', 'kart_no_maskeli': '**** 1234',
       'kartlimit': limit, 'kullanilan_limit': kullanilan,
@@ -110,7 +110,7 @@ void main() {
 
   group('Kasa dahil virmanlar', () {
     test('Kasa → Banka: kasa Çıkış + banka Gelen, banka bakiyesi artar', () async {
-      final bankaId = await _bankaEkle(bakiye: 500);
+      final bankaId = await bankaEkle(bakiye: 500);
 
       await _virmanYap(db, kaynakHesap: 'Kasa', hedefHesap: 'Banka',
           tutar: 200, bankaHesapId: bankaId);
@@ -125,7 +125,7 @@ void main() {
     });
 
     test('Banka → Kasa: kasa Giriş + banka Giden, banka bakiyesi azalır', () async {
-      final bankaId = await _bankaEkle(bakiye: 500);
+      final bankaId = await bankaEkle(bakiye: 500);
 
       await _virmanYap(db, kaynakHesap: 'Banka', hedefHesap: 'Kasa',
           tutar: 150, bankaHesapId: bankaId);
@@ -141,7 +141,7 @@ void main() {
       // Kart burada HEDEF — kasadan karta para gidiyor, yani kart borcu
       // ÖDENİYOR (bkz. VirmanServisi.virmanYap() yorumu: "Kart HEDEF ise
       // kullanılan limit AZALIR").
-      final kartId = await _krediKartiEkle(limit: 5000, kullanilan: 1000);
+      final kartId = await krediKartiEkle(limit: 5000, kullanilan: 1000);
 
       await _virmanYap(db, kaynakHesap: 'Kasa', hedefHesap: 'Kredi Kartı',
           tutar: 300, krediKartiId: kartId);
@@ -154,8 +154,8 @@ void main() {
 
   group('🔴 REGRESYON — Kasa taraf DEĞİLKEN (önceden para sessizce kayboluyordu)', () {
     test('Banka → Kredi Kartı: HER İKİ taraf da güncellenir, kasa hiç etkilenmez', () async {
-      final bankaId = await _bankaEkle(bakiye: 1000);
-      final kartId = await _krediKartiEkle(limit: 5000, kullanilan: 2000);
+      final bankaId = await bankaEkle(bakiye: 1000);
+      final kartId = await krediKartiEkle(limit: 5000, kullanilan: 2000);
 
       await _virmanYap(db, kaynakHesap: 'Banka', hedefHesap: 'Kredi Kartı',
           tutar: 400, bankaHesapId: bankaId, krediKartiId: kartId);
@@ -175,8 +175,8 @@ void main() {
     });
 
     test('Kredi Kartı → Banka: kart AVANS çeker (limit artar), banka bakiyesi artar', () async {
-      final bankaId = await _bankaEkle(bakiye: 0);
-      final kartId = await _krediKartiEkle(limit: 5000, kullanilan: 0);
+      final bankaId = await bankaEkle(bakiye: 0);
+      final kartId = await krediKartiEkle(limit: 5000, kullanilan: 0);
 
       await _virmanYap(db, kaynakHesap: 'Kredi Kartı', hedefHesap: 'Banka',
           tutar: 1000, bankaHesapId: bankaId, krediKartiId: kartId);
@@ -190,7 +190,7 @@ void main() {
   });
 
   test('kredi_karti_hareket satırı doğru yön/tutar ile yazılır', () async {
-    final kartId = await _krediKartiEkle(limit: 2000, kullanilan: 0);
+    final kartId = await krediKartiEkle(limit: 2000, kullanilan: 0);
 
     await _virmanYap(db, kaynakHesap: 'Kasa', hedefHesap: 'Kredi Kartı',
         tutar: 250, krediKartiId: kartId);

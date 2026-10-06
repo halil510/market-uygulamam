@@ -283,10 +283,11 @@ extension _HizliTabExt on _IadeEkraniState {
                               icon: const Icon(Icons.remove_circle_outline,
                                   size: 22),
                               onPressed: () => setState(() {
-                                    if (item.adet <= 1)
+                                    if (item.adet <= 1) {
                                       _hizliMap.remove(item.urun.id);
-                                    else
+                                    } else {
                                       item.adet--;
+                                    }
                                   })),
                           Text('${item.adet}',
                               style: const TextStyle(

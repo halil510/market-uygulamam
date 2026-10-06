@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:market_plus/servisler/auth_servisi.dart';
 import 'package:market_plus/servisler/iade_islem_servisi.dart';
+import 'package:market_plus/servisler/veri_sagligi_servisi.dart';
 import '../robot/robot_ortam.dart';
 
 void main() {
@@ -76,6 +77,58 @@ void main() {
     expect(await sayi('SELECT toplam_tutar FROM iade WHERE id = ?', [id]), 420);
     expect(await cariAlacak(id), 420);
     expect(await sayi('SELECT stok FROM urunler WHERE id = ?', [v.id['urun0']]), 106);
+  });
+
+  group('Veri Sağlığı: İade Kalem Miktarı', () {
+    Future<SaglikKontrolSonucu> kontrol() async =>
+        (await VeriSagligiServisi().tumKontrolleriCalistir())
+            .firstWhere((k) => k.id == 'iade_kalem_stok');
+
+    test('sağlıklı akış (ekle + ek kalem + düzenle) YEŞİL çıkar', () async {
+      final id = await iadeyiKur();
+      await servis.duzenlemeModuKalemEkle(
+        iadeId: id, urunId: v.id['urun0']!, urunAdi: 'Robot Çikolata 80 G', miktar: 4,
+        fiyat: 25, toplam: 100, fisNo: 'IAD-T1', cariId: v.id['cari'], cariTipi: 'Müşteri',
+        kullaniciId: 1, kullaniciAdi: 'Robot', odemeYontemi: 'Cari',
+      );
+      await servis.oturumIadeDuzenle(
+        iadeId: id, urunId: v.id['urun0'], cariId: v.id['cari'], fisNo: 'IAD-T1',
+        urunAdi: 'Robot Çikolata 80 G', eskiMiktar: 6, eskiToplam: 150, yeniMiktar: 5,
+        yeniFiyat: 25, yeniToplam: 125, yeniAciklama: 'test',
+      );
+      final k = await kontrol();
+      expect(k.durum, SaglikDurum.yesil, reason: k.mesaj);
+      expect(k.sayi, 0);
+    });
+
+    test('ESKİ HATANIN bozduğu fiş yakalanır ve miktarlar stok hareketinden onarılır', () async {
+      final id = await iadeyiKur(); // çikolata 2, deterjan 3
+      // Eski hatayı taklit et: tüm kalemler tek düzenlemeyle 5'e ezilmiş.
+      await db.rawUpdate('UPDATE iade_kalem SET miktar = 5 WHERE iade_id = ?', [id]);
+      var k = await kontrol();
+      expect(k.durum, SaglikDurum.sari);
+      expect(k.sayi, 2, reason: 'iki kalem de stok hareketinden (2 ve 3) farklı');
+      expect(k.mesaj, contains('IAD-T1'));
+      expect(k.duzelt, isNotNull);
+
+      expect(await k.duzelt!(), 2);
+      expect(await kalem(id, 'urun0'), 2);
+      expect(await kalem(id, 'urun1'), 3);
+      k = await kontrol();
+      expect(k.durum, SaglikDurum.yesil);
+    });
+
+    test('silinmiş (iptal) iadeye dokunmaz', () async {
+      final id = await iadeyiKur();
+      await db.rawUpdate('UPDATE iade_kalem SET miktar = 9 WHERE iade_id = ?', [id]);
+      await db.insert('stok_hareket', {
+        'urun_id': v.id['urun0'], 'hareket_turu': 'İade İptali', 'miktar': 2,
+        'onceki_stok': 102, 'sonraki_stok': 100, 'referans_id': id,
+        'referans_turu': 'iade_iptal', 'tarih': DateTime.now().toIso8601String(),
+      });
+      final k = await kontrol();
+      expect(k.sayi, 0, reason: 'iptal edilmiş iade karşılaştırılmaz');
+    });
   });
 
   test('TEDARİKÇİ (alım iadesi): aynı kurallar, tutar BORÇ tarafında', () async {

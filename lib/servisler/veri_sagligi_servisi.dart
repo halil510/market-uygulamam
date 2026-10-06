@@ -70,6 +70,7 @@ class VeriSagligiServisi {
       _duplicateBarkod(),
       _yetimKayitlar(),
       _baslikKalemTutarlilik(),
+      _iadeKalemStokTutarliligi(),
       _mukerrerGlobalId(),
       _mukerrerCariUnvan(),
       _negatifStok(),
@@ -469,6 +470,97 @@ class VeriSagligiServisi {
           }
           duzeltilen++;
         }
+      }
+    });
+    return duzeltilen;
+  }
+
+  // ── İade kalem miktarı ↔ stok hareketi ──────────────────────────────
+  // Eski bir hata (iade fişinde bir ürün düzenlenince fişteki TÜM kalemlerin
+  // aynı miktara ezilmesi) kalem miktarlarını bozmuş olabilir. Stok hareketleri
+  // (iade girişi + iade düzeltmesi) her ürünün GERÇEK iade miktarını tutar ve
+  // o hatadan etkilenmemiştir: net = Σ(sonraki_stok − önceki_stok). Kayıtlı
+  // kalem miktarı bundan farklıysa uyarılır; düzeltme YALNIZ miktarı stok
+  // hareketine göre yazar (tutar/cari için fişin elle kontrolü gerekir).
+  static const String _iadeKalemFarkSql = '''
+    SELECT ik.id AS kalem_id, ik.iade_id, ik.urun_id, ik.miktar AS kayitli,
+           i.fis_no AS fis_no, ik.urun_adi AS urun_adi,
+           (SELECT COALESCE(SUM(sh.sonraki_stok - sh.onceki_stok), 0)
+              FROM stok_hareket sh
+             WHERE sh.referans_id = ik.iade_id
+               AND sh.referans_turu IN ('iade', 'iade_duzenle')
+               AND sh.urun_id = ik.urun_id) AS gercek
+      FROM iade_kalem ik
+      JOIN iade i ON i.id = ik.iade_id
+     WHERE i.deleted_at IS NULL
+       AND ik.urun_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM stok_hareket x
+                        WHERE x.referans_id = ik.iade_id AND x.referans_turu = 'iade_iptal')
+       AND EXISTS (SELECT 1 FROM stok_hareket y
+                    WHERE y.referans_id = ik.iade_id
+                      AND y.referans_turu IN ('iade', 'iade_duzenle')
+                      AND y.urun_id = ik.urun_id)
+       AND ABS(ik.miktar - (SELECT COALESCE(SUM(sh2.sonraki_stok - sh2.onceki_stok), 0)
+                              FROM stok_hareket sh2
+                             WHERE sh2.referans_id = ik.iade_id
+                               AND sh2.referans_turu IN ('iade', 'iade_duzenle')
+                               AND sh2.urun_id = ik.urun_id)) > 0.0005
+  ''';
+
+  Future<SaglikKontrolSonucu> _iadeKalemStokTutarliligi() async {
+    const id = 'iade_kalem_stok';
+    const baslik = 'İade Kalem Miktarı';
+    const kategori = 'Mutabakat';
+    try {
+      final db = await _db;
+      final rows = await db.rawQuery(_iadeKalemFarkSql);
+      final sayi = rows.length;
+      String ayrinti() => rows.take(3).map((r) {
+            String g(Object? v) {
+              final d = (v as num?)?.toDouble() ?? 0;
+              return d == d.truncateToDouble() ? d.toStringAsFixed(0) : d.toStringAsFixed(2);
+            }
+            return '${r['fis_no'] ?? '#${r['iade_id']}'} ${r['urun_adi'] ?? ''}: '
+                'kayıtlı ${g(r['kayitli'])} / stok hareketine göre ${g(r['gercek'])}';
+          }).join('; ');
+      return SaglikKontrolSonucu(
+          id: id,
+          baslik: baslik,
+          kategori: kategori,
+          durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.sari,
+          mesaj: sayi == 0
+              ? 'İade kalem miktarları stok hareketleriyle uyumlu.'
+              : '$sayi iade kaleminin miktarı stok hareketinden farklı (${ayrinti()}'
+                  '${sayi > 3 ? ' …' : ''}). Düzelt yalnız MİKTARI onarır; '
+                  'tutar/cari için ilgili fişi açıp kontrol edin.',
+          sayi: sayi,
+          duzelt: sayi > 0 ? _iadeKalemMiktarlariniOnar : null);
+    } catch (e) {
+      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
+          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
+    }
+  }
+
+  Future<int> _iadeKalemMiktarlariniOnar() async {
+    final db = await _db;
+    var duzeltilen = 0;
+    await db.transaction((txn) async {
+      final rows = await txn.rawQuery(_iadeKalemFarkSql);
+      final now = DateTime.now().toUtc().toIso8601String();
+      for (final r in rows) {
+        final gercek = (r['gercek'] as num?)?.toDouble() ?? 0;
+        if (gercek <= 0) continue; // net sıfır/eksi → manuel inceleme
+        await txn.update('iade_kalem', {'miktar': gercek, 'last_updated': now},
+            where: 'id = ?', whereArgs: [r['kalem_id']]);
+        final yeni = await txn.query('iade_kalem',
+            where: 'id = ?', whereArgs: [r['kalem_id']], limit: 1);
+        if (yeni.isNotEmpty) {
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'iade_kalem', veri: Map<String, dynamic>.from(yeni.first));
+        }
+        LogServisi().bilgi('İade kalem miktarı onarıldı: iade ${r['iade_id']} '
+            'ürün ${r['urun_id']} ${r['kayitli']} → $gercek');
+        duzeltilen++;
       }
     });
     return duzeltilen;

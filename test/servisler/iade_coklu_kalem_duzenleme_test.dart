@@ -6,6 +6,7 @@
 //   • aynı ürüne ek iade kalemi TOPLANIR (2+4=6), stok ve cari buna uyar,
 //   • çok ürünlü fişte bir kalemi düzenlemek DİĞER kalemleri ezmez,
 //   • iade toplamı ve cari hareketi TÜM kalemlerin toplamıdır.
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:market_plus/servisler/auth_servisi.dart';
@@ -77,6 +78,32 @@ void main() {
     expect(await sayi('SELECT toplam_tutar FROM iade WHERE id = ?', [id]), 420);
     expect(await cariAlacak(id), 420);
     expect(await sayi('SELECT stok FROM urunler WHERE id = ?', [v.id['urun0']]), 106);
+  });
+
+  test('BULUT: düzenleme kuyruğa doğru değerleri ve eski cari satırının "silindi" bilgisini yazar', () async {
+    final id = await iadeyiKur();
+    await db.delete('sync_queue');
+    await servis.oturumIadeDuzenle(
+      iadeId: id, urunId: v.id['urun0'], cariId: v.id['cari'], fisNo: 'IAD-T1',
+      urunAdi: 'Robot Çikolata 80 G', eskiMiktar: 2, eskiToplam: 50, yeniMiktar: 5,
+      yeniFiyat: 25, yeniToplam: 125, yeniAciklama: 'test',
+    );
+    final q = await db.query('sync_queue');
+    List<Map<String, dynamic>> tablo(String ad) => [
+          for (final r in q)
+            if (r['tablo_adi'] == ad) jsonDecode(r['veri_json'].toString()) as Map<String, dynamic>
+        ];
+    // iade_kalem: iki kalem de doğru miktarla (5 ve 3) kuyrukta
+    final kalemler = tablo('iade_kalem');
+    expect(kalemler.map((m) => (m['miktar'] as num).toDouble()).toList()..sort(), [3.0, 5.0]);
+    // iade başlığı fiş toplamıyla (125 + 270)
+    expect((tablo('iade').last['toplam_tutar'] as num).toDouble(), 395);
+    // cari hareketi: eski (silindi=1) VE yeni (alacak 395) ikisi de kuyrukta
+    final hareketler = tablo('cari_hareket');
+    expect(hareketler.any((m) => m['is_deleted'] == 1), isTrue,
+        reason: 'eski satırın silindi bilgisi buluta gitmeli');
+    expect(hareketler.any((m) => (m['alacak'] as num?)?.toDouble() == 395 && m['is_deleted'] != 1), isTrue);
+    expect((tablo('cari').last['bakiye'] as num).toDouble(), -395);
   });
 
   group('Veri Sağlığı: İade Kalem Miktarı', () {

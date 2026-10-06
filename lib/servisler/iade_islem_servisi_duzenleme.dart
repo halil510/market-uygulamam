@@ -352,6 +352,18 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
         await txn.rawUpdate(
             "UPDATE cari_hareket SET is_deleted = 1, last_updated = ? WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi')",
             [now, iadeId, cariId]);
+        // 🔴 BULUT: soft-delete edilen ESKİ hareket de AYNI transaction'da
+        // senkron kuyruğuna yazılır. Önceden yalnız yeni satır kuyruğa
+        // giriyordu; eski satırın "silindi" bilgisi işlem sonrası, atomik
+        // olmayan bir çağrıyla gidiyordu — uygulama tam o anda kapanırsa
+        // bulutta eski + yeni hareket birlikte kalır, cari bakiye şişerdi.
+        final silinenHareketler = await txn.rawQuery(
+            "SELECT * FROM cari_hareket WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi') AND is_deleted = 1 AND last_updated = ?",
+            [iadeId, cariId, now]);
+        for (final h in silinenHareketler) {
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'cari_hareket', veri: Map<String, dynamic>.from(h));
+        }
         if (fisToplam > 0) {
           final cariHareketSatiri = {
             'global_id': const Uuid().v4(),

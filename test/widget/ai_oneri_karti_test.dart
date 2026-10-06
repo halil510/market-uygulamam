@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:market_plus/ekranlar/ai/ai_panel_ekrani.dart';
 import 'package:market_plus/servisler/ai/ai_anlayici.dart';
 import 'package:market_plus/servisler/ai/ai_modeller.dart';
+import 'package:market_plus/servisler/ai/ai_sohbet_servisi.dart';
 import 'package:market_plus/servisler/ai/eylem/ai_eylem_modeli.dart';
 
 AiEylemOnerisi _oneri({bool kritik = false}) => AiEylemOnerisi(
@@ -98,6 +99,25 @@ void main() {
     ));
     await t.pump();
     expect(find.textContaining('İşlendi'), findsOneWidget);
+  });
+
+  group('Uyandırma kelimesi (Barkopro)', () {
+    String a(String s) => AiSohbetServisi.uyandirmaKelimesiniAt(s);
+    test('baştaki "Barkopro" atılır, komut kalır', () {
+      expect(a('Barkopro, kolanın fiyatını 35 yap'), 'kolanın fiyatını 35 yap');
+      expect(a('hey barkopro bugünkü ciro'), 'bugünkü ciro');
+      expect(a('barko pro kritik stoklar'), 'kritik stoklar');
+      expect(a('Barkoprö: kasa durumu'), 'kasa durumu');
+      expect(a('asistan, z raporu'), 'z raporu');
+    });
+    test('yalnız uyandırma kelimesi → boş', () {
+      expect(a('barkopro'), '');
+      expect(a('Hey Barkopro!'), '');
+    });
+    test('normal cümleye dokunmaz', () {
+      expect(a('kolanın fiyatını 35 yap'), 'kolanın fiyatını 35 yap');
+      expect(a('asistanlık maliyeti ne kadar'), 'asistanlık maliyeti ne kadar');
+    });
   });
 
   group('AiAnlayici takip cümlesi', () {

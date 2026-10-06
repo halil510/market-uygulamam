@@ -11,7 +11,16 @@ import '../../servisler/bildirim_servisi.dart';
 class MikrofonButonu extends StatefulWidget {
   final void Function(String metin) onMetin;
   final String ipucu;
-  const MikrofonButonu({super.key, required this.onMetin, this.ipucu = 'Konuşun...'});
+
+  /// true ise ekran açılır açılmaz dinlemeye başlar (ör. dashboard'daki
+  /// "Barkopro" düğmesinden gelindiğinde).
+  final bool otomatikBaslat;
+  const MikrofonButonu({
+    super.key,
+    required this.onMetin,
+    this.ipucu = 'Konuşun...',
+    this.otomatikBaslat = false,
+  });
 
   @override
   State<MikrofonButonu> createState() => _MikrofonButonuState();
@@ -27,6 +36,11 @@ class _MikrofonButonuState extends State<MikrofonButonu> with SingleTickerProvid
     super.initState();
     _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))
       ..repeat(reverse: true);
+    if (widget.otomatikBaslat) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_dinliyor) _baslatDurdur();
+      });
+    }
   }
 
   @override

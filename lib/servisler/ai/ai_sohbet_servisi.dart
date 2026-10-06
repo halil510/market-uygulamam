@@ -160,7 +160,29 @@ class AiSohbetServisi {
     return null;
   }
 
+  /// "Barkopro, …" / "hey barko pro …" / "asistan …" ile başlayan cümlede
+  /// uyandırma kelimesini atar (konuşma tanıma bunu "barko pro", "barkoprö"
+  /// gibi de yazabilir). Yalnız uyandırma kelimesi söylendiyse boş döner.
+  static String uyandirmaKelimesiniAt(String soru) {
+    final s = soru.trim();
+    final re = RegExp(
+      r'^(hey|hay|ey|merhaba|selam)?[\s,]*(bar\s?ko\s?pro|barkopro|barkoprö|barko\s?pro|asistan)(?![a-zçğıöşü])[\s,.:!-]*',
+      caseSensitive: false,
+      unicode: true,
+    );
+    return s.replaceFirst(re, '').trim();
+  }
+
   Future<AiSohbetSonuc> sor(String soru) async {
+    // Uyandırma kelimesi ("Barkopro, …") komutun parçası değildir.
+    final temiz = uyandirmaKelimesiniAt(soru);
+    if (temiz.isEmpty && soru.trim().isNotEmpty) {
+      return const AiSohbetSonuc(
+          cevap: 'Buradayım 👋 Ne yapmamı istersiniz? Örn: "kolanın fiyatını 35 yap", '
+              '"bugünkü ciro", "kritik stoklar".');
+    }
+    soru = temiz.isEmpty ? soru : temiz;
+
     // 0) Bekleyen işlem için yazılı/sesli "evet/onayla" veya "vazgeç"
     final onay = await AiEylemMotoru().onayKomutu(soru);
     if (onay != null) return AiSohbetSonuc(cevap: onay.mesaj);

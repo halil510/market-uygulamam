@@ -14,7 +14,12 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../widgetlar/ortak/mikrofon_butonu.dart';
 
 class AiPanelEkrani extends ConsumerStatefulWidget {
-  const AiPanelEkrani({super.key});
+  /// true ise "AI Chat" sekmesiyle açılır (özet verilerini beklemeden).
+  final bool sohbetAc;
+
+  /// true ise açılır açılmaz mikrofon dinlemeye başlar ("Barkopro" düğmesi).
+  final bool dinle;
+  const AiPanelEkrani({super.key, this.sohbetAc = false, this.dinle = false});
   @override
   ConsumerState<AiPanelEkrani> createState() => _AiPanelEkraniState();
 }
@@ -35,7 +40,7 @@ class _AiPanelEkraniState extends ConsumerState<AiPanelEkrani>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 5, vsync: this);
+    _tab = TabController(length: 5, vsync: this, initialIndex: widget.sohbetAc ? 4 : 0);
     WidgetsBinding.instance.addPostFrameCallback((_) => _yukle());
   }
 
@@ -91,14 +96,15 @@ class _AiPanelEkraniState extends ConsumerState<AiPanelEkrani>
           Tab(icon: Icon(Icons.chat), text: 'AI Chat'),
         ]),
       ),
-      body: _yukleniyor
+      // Sohbetle açıldıysa özet verileri beklenmez: asistan hemen kullanılabilir.
+      body: (_yukleniyor && !widget.sohbetAc)
           ? const TsYukleniyor()
           : TabBarView(controller: _tab, children: [
               _OzetTab(ozet: _gunlukOzet, tahmin: _tahmin, enCokSatan: _enCokSatan),
               _StokTab(oneriler: _stokOnerisi),
               _PromosyonTab(oneriler: _promosyon),
               _CariRiskTab(riskler: _cariRisk),
-              _AiChatTab(ai: _ai),
+              _AiChatTab(ai: _ai, otomatikDinle: widget.dinle),
             ]),
     );
   }
@@ -360,7 +366,8 @@ class _TahminSatir extends StatelessWidget {
 // ── AI Chat Sekmesi ───────────────────────────────────────────────────────
 class _AiChatTab extends ConsumerStatefulWidget {
   final AiServisi ai;
-  const _AiChatTab({required this.ai});
+  final bool otomatikDinle;
+  const _AiChatTab({required this.ai, this.otomatikDinle = false});
   @override
   ConsumerState<_AiChatTab> createState() => _AiChatTabState();
 }
@@ -613,6 +620,8 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
           Expanded(
             child: TextField(
               controller: _ctrl,
+              // Masaüstünde mikrofon yok: Barkopro düğmesiyle gelince yazmaya hazır.
+              autofocus: widget.otomatikDinle,
               onSubmitted: (_) => _sor(),
               decoration: InputDecoration(
                 hintText: 'Soru sorun veya mikrofona konuşun...',
@@ -626,6 +635,7 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
                 isDense: true,
                 suffixIcon: MikrofonButonu(
                   ipucu: 'Sorunuzu söyleyin',
+                  otomatikBaslat: widget.otomatikDinle,
                   onMetin: (metin) {
                     _ctrl.text = metin;
                     _sor();

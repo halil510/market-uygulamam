@@ -254,7 +254,13 @@ class UygulamaRouter {
             GoRoute(path: '/barkod/uret', name: 'barkod_uret', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const BarkodUreteciEkrani()),
             GoRoute(path: '/sube', name: 'sube', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const SubeEkrani()),
             GoRoute(path: '/irsaliye', name: 'irsaliye', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const IrsaliyeEkrani()),
-            GoRoute(path: '/ai', name: 'ai', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const AiPanelEkrani()),
+            GoRoute(path: '/ai', name: 'ai', parentNavigatorKey: rootNavigatorKey, builder: (_, state) {
+              // Dashboard'daki "Barkopro" düğmesi: {'sohbet': true, 'dinle': true}
+              final e = state.extra;
+              final harita = e is Map ? e : const {};
+              return AiPanelEkrani(
+                  sohbetAc: harita['sohbet'] == true, dinle: harita['dinle'] == true);
+            }),
             GoRoute(path: '/finans', name: 'finans', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const FinansMerkeziEkrani()),
             GoRoute(path: '/personel', name: 'personel', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const PersonelListeEkrani()),
             GoRoute(path: '/bildirimler', name: 'bildirimler', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const BildirimMerkeziEkrani()),

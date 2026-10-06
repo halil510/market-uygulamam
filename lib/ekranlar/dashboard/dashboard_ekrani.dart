@@ -15,6 +15,7 @@ import '../../cekirdek/utils/metin_arama.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:io' show Platform;
 import 'package:intl/intl.dart';
 import '../../depolar/sube_deposu.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
@@ -219,6 +220,17 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
     final dashAsync = ref.watch(dashboardProvider);
     return Scaffold(
       backgroundColor: context.scaffoldBg,
+      // "Barkopro" asistanı: basınca AI sohbeti açılır ve mikrofon dinlemeye
+      // başlar (Windows'ta yazmaya hazır). İşlemler yine onay kartıyla yapılır.
+      floatingActionButton: _tumUygulamalarGoster
+          ? null
+          : FloatingActionButton.extended(
+              heroTag: 'barkopro_asistan',
+              onPressed: () => context.push('/ai', extra: const {'sohbet': true, 'dinle': true}),
+              icon: Icon(Platform.isWindows ? Icons.smart_toy_outlined : Icons.mic),
+              label: const Text('Barkopro'),
+              tooltip: 'Asistana sor / komut ver',
+            ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(dashboardProvider.notifier).yenile(),
         child: CustomScrollView(

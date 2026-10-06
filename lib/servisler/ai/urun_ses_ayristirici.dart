@@ -266,6 +266,23 @@ class UrunSesAyristirici {
     return (deger: null, kalan: seg);
   }
 
+  /// Fiyatta kısa söyleyiş: tam sayının hemen ardından gelen 10-99 arası ikinci
+  /// sayı kuruştur ("kırk dokuz doksan" → 49,90; "35 50" → 35,50). Ardından
+  /// "adet/tane/kg…" geliyorsa o sayı kuruş DEĞİL miktardır, dokunulmaz.
+  static ({double? deger, List<String> kalan}) _kisaFiyat(
+      ({double? deger, List<String> kalan}) r) {
+    final v = r.deger;
+    if (v == null || v != v.truncateToDouble() || v < 1 || v >= 1000 || r.kalan.isEmpty) return r;
+    final ek = TrSayi.bastanOku(r.kalan, 0);
+    if (ek == null || ek.deger != ek.deger.truncateToDouble() || ek.deger < 10 || ek.deger > 99) {
+      return r;
+    }
+    final sonraki = ek.bitis < r.kalan.length ? r.kalan[ek.bitis] : '';
+    const miktarSozleri = {'adet', 'tane', 'parça', 'kg', 'kilo', 'koli', 'paket', 'litre', 'kutu'};
+    if (miktarSozleri.contains(sonraki)) return r;
+    return (deger: v + ek.deger / 100, kalan: r.kalan.sublist(ek.bitis));
+  }
+
   /// "100 adet" / "yüz tane" kalıbını bulur → stok.
   static double? _adetKalibi(List<String> k) {
     for (var i = 0; i < k.length - 1; i++) {
@@ -456,11 +473,13 @@ class UrunSesAyristirici {
         case _Tur.para:
         case _Tur.sayi:
         case _Tur.oran:
-          final r = _sayiOku(seg);
+          var r = _sayiOku(seg);
           if (r.deger == null) {
             anlasilmayan.add('$etiket için sayı anlaşılamadı');
             break;
           }
+          // Fiyatta "kırk dokuz doksan" = 49,90 (lira demeden kuruş söyleme).
+          if (m.alan.tur == _Tur.para) r = _kisaFiyat(r);
           final v = r.deger!;
           if (v < 0) {
             anlasilmayan.add('$etiket negatif olamaz');

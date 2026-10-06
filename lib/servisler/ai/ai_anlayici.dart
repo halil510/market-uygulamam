@@ -224,11 +224,31 @@ class AiAnlayici {
     // kalıplar zaten bu amacı karşılıyor — tek başına "öner" kaldırıldı.
     if (_ic(s, ['sipariş öner','ne sipariş','sipariş ver','al bunları'])) return AiIntent.oneri;
 
-    // Context'ten devam: önceki intent ne ise devam et
-    if (_sonIntent != null && !_ic(s, ['ne','nasıl','ne zaman','kim','hangi','kaç'])) {
+    // Context'ten devam: yalnız GERÇEK takip cümleleri ("peki geçen ay?",
+    // "ya dün?", "bir de bu hafta") önceki niyetle yanıtlanır. ÖNCEDEN
+    // tanınmayan HER cümle ("asdf", "bunu 40 yap") sessizce önceki sorunun
+    // raporunu tekrar döndürüyordu — kullanıcı yanlış cevap alıyor, asıl
+    // soru/komut anlaşılmıyordu. Artık tanınmayan cümle (Gemini yönlendirme
+    // ve genel asistana) düşer.
+    if (_sonIntent != null && devamCumlesiMi(s)) {
       return _sonIntent!;
     }
 
     return AiIntent.bilinmiyor;
+  }
+
+  /// Kısa, bağlama yaslanan takip cümlesi mi? (saf — test edilebilir)
+  /// Koşul: en çok 5 kelime ve (peki/ya/bir de… ile başlar VEYA bir zaman
+  /// ifadesi içerir) ve soru kelimesi taşımaz.
+  static bool devamCumlesiMi(String s) {
+    final k = s.toLowerCase().trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (k.isEmpty || k.length > 5) return false;
+    if (_ic(s, ['ne ', 'nasıl', 'ne zaman', 'kim', 'hangi', 'kaç'])) return false;
+    const baslangic = {'peki', 'ya', 'bir', 'ayrıca', 'sonra', 'şimdi', 'onu', 'bunu', 'aynısı', 'aynısını', 'de'};
+    final zaman = _ic(s, [
+      'dün', 'dun', 'bugün', 'bugun', 'geçen', 'gecen', 'bu ay', 'bu hafta', 'bu yıl',
+      'bu yil', 'haftalık', 'aylık', 'yıllık', 'son ',
+    ]);
+    return baslangic.contains(k.first) || zaman;
   }
 }

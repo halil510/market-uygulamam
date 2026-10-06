@@ -557,7 +557,7 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
                   }
                   final m   = _mesajlar[i];
                   if (m['tip'] == 'oneri') {
-                    return _OneriKarti(
+                    return AiOneriKarti(
                       oneri: m['oneri'] as AiEylemOnerisi,
                       durum: m['durum'] as String,
                       onOnayla: () => _onayla(m),
@@ -653,12 +653,12 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
 /// Asistanın hazırladığı işlemin ÖNİZLEMESİ: ne değişecek, uyarılar,
 /// Onayla / Vazgeç. Kart kullanıldıktan (veya "evet" yazıldıktan) sonra
 /// düğmeler kalkar.
-class _OneriKarti extends StatelessWidget {
+class AiOneriKarti extends StatelessWidget {
   final AiEylemOnerisi oneri;
   final String durum; // bekliyor | uygulaniyor | tamam | iptal
   final VoidCallback onOnayla;
   final VoidCallback onVazgec;
-  const _OneriKarti({
+  const AiOneriKarti({
     required this.oneri,
     required this.durum,
     required this.onOnayla,
@@ -718,15 +718,18 @@ class _OneriKarti extends StatelessWidget {
           if (durum == 'uygulaniyor')
             const SizedBox(height: 22, child: LinearProgressIndicator())
           else if (aktif)
-            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-              TextButton(onPressed: onVazgec, child: const Text('Vazgeç')),
-              const SizedBox(width: 6),
-              FilledButton.icon(
-                onPressed: onOnayla,
-                icon: const Icon(Icons.check, size: 18),
-                label: const Text('Onayla'),
-              ),
-            ])
+            // Wrap: dar ekranda (320 px) düğmeler alt satıra geçer, taşmaz.
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(spacing: 6, runSpacing: 4, alignment: WrapAlignment.end, children: [
+                TextButton(onPressed: onVazgec, child: const Text('Vazgeç')),
+                FilledButton.icon(
+                  onPressed: onOnayla,
+                  icon: const Icon(Icons.check, size: 18),
+                  label: const Text('Onayla'),
+                ),
+              ]),
+            )
           else
             Text(
               durum == 'tamam'

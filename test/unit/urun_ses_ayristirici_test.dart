@@ -237,6 +237,39 @@ void main() {
       expect(r.anlasilmayan, isNotEmpty);
     });
 
+    test('kısa fiyat söyleyişi: "kırk dokuz doksan" = 49,90', () {
+      var r = a('satış fiyatı kırk dokuz doksan');
+      expect(r.alanlar['satisFiyati'], closeTo(49.9, 0.001));
+      r = a('alış 35 50 satış 49 90');
+      expect(r.alanlar['alisFiyat'], closeTo(35.5, 0.001));
+      expect(r.alanlar['satisFiyati'], closeTo(49.9, 0.001));
+      // ardından adet geliyorsa kuruş değil stok
+      r = a('satış 35 50 adet');
+      expect(r.alanlar['satisFiyati'], 35);
+      expect(r.alanlar['stok'], 50);
+    });
+
+    test('lira+kuruş yazıyla ve virgüllü rakam', () {
+      expect(a('alış fiyatı yirmi beş lira yetmiş beş kuruş').alanlar['alisFiyat'], closeTo(25.75, 0.001));
+      expect(a('satış 1.250,75').alanlar['satisFiyati'], closeTo(1250.75, 0.001));
+      expect(a('satış bin iki yüz elli').alanlar['satisFiyati'], 1250);
+    });
+
+    test('ASR virgül/noktalama ve büyük harf toleransı', () {
+      final r = a('Ürün adı: Süt, Alış fiyatı: 25,50. Satış fiyatı: 35! Stok: 100');
+      expect(r.alanlar['urunAdi'], 'Süt');
+      expect(r.alanlar['alisFiyat'], 25.5);
+      expect(r.alanlar['satisFiyati'], 35);
+      expect(r.alanlar['stok'], 100);
+    });
+
+    test('kdv oranı doğal söyleyişler', () {
+      expect(a('yüzde 10 kdv').alanlar['kdvOran'], 10);
+      expect(a('kdv %20').alanlar['kdvOran'], 20);
+      expect(a('kdv oranı yüzde sıfır').alanlar['kdvOran'], 0);
+      expect(a('kdv yüzde bir').alanlar['kdvOran'], 1);
+    });
+
     test('boş / anlamsız metin', () {
       expect(a('').bos, isTrue);
       expect(a('   ').bos, isTrue);

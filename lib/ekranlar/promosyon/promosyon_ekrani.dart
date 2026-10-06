@@ -129,110 +129,22 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
     }
   }
 
+  /// Düzenleme, "Yeni Promosyon" formuyla AYNI formu kullanır (ürün, iskonto %
+  /// ↔ toplam fiyat, min. miktar, başlangıç/bitiş tarihi + tarih yenileme,
+  /// aktif) — önceden ayrı, tarihsiz ve toplam fiyatsız bir form vardı.
   Future<void> _promosyonDuzenle(PromosyonModel promo) async {
-    final iskontoCtrl   = TextEditingController(text: _oranMetni(promo.iskontoOran));
-    final minMiktarCtrl = TextEditingController(text: promo.minMiktar.toStringAsFixed(0));
-    final adCtrl        = TextEditingController(text: promo.promosyonAdi);
-    bool aktif          = promo.aktif;
-
-    final sonuc = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      constraints: _sheetKisiti(context),
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => Container(
-        decoration: BoxDecoration(
-          color: context.cardBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
-        padding: EdgeInsets.fromLTRB(20, 20, 20,
-            MediaQuery.of(ctx).viewInsets.bottom + 30),
-        child: Column(mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Center(child: Container(width: 40, height: 4,
-              decoration: BoxDecoration(color: context.borderColor,
-                  borderRadius: BorderRadius.circular(2)))),
-          const SizedBox(height: 16),
-          Row(children: [
-            Container(padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.bilgi), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20)),
-            const SizedBox(width: 10),
-            const Expanded(child: Text('Promosyon Düzenle',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
-          ]),
-          const SizedBox(height: 16),
-          TextField(controller: adCtrl, decoration: const InputDecoration(
-              labelText: 'Promosyon Adı', border: OutlineInputBorder())),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: TextField(controller: iskontoCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'İskonto %',
-                  border: OutlineInputBorder(), suffixText: '%'))),
-            const SizedBox(width: 12),
-            Expanded(child: TextField(controller: minMiktarCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Min. Miktar',
-                  border: OutlineInputBorder()))),
-          ]),
-          const SizedBox(height: 10),
-          SwitchListTile(
-            title: const Text('Aktif', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            value: aktif, onChanged: (v) => setS(() => aktif = v),
-            dense: true, contentPadding: EdgeInsets.zero,
-            activeColor: Colors.green),
-          const SizedBox(height: 16),
-          Row(children: [
-            Expanded(child: OutlinedButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('İptal'))),
-            const SizedBox(width: 10),
-            Expanded(child: FilledButton(
-                onPressed: () {
-                  // 🔴🔴 Derin analizde bulundu: ekleme formunda İskonto %
-                  // alanı 0-100 aralığıyla sınırlıydı (validator: '0-100
-                  // arası') ama bu düzenleme formunda HİÇ doğrulama yoktu —
-                  // ör. yanlışlıkla '150' girilirse iskontoOran=150 olarak
-                  // kaydedilir; bu ekranın kendi önizleme hesabı bile
-                  // (satisFiyati*(1-oran/100)) negatif fiyat üretir — POS'ta
-                  // satışta müşteriye para iade eder gibi bir sonuç doğar.
-                  final oran = ParaUtils.sayiCoz(iskontoCtrl.text);
-                  if (oran == null || oran <= 0 || oran > 100) {
-                    BildirimServisi.uyari(ctx, 'İskonto oranı 0-100 arasında olmalı');
-                    return;
-                  }
-                  final minMik = ParaUtils.sayiCoz(minMiktarCtrl.text);
-                  if (minMik == null || minMik <= 0) {
-                    BildirimServisi.uyari(ctx, 'Min. miktar 0\'dan büyük olmalı');
-                    return;
-                  }
-                  Navigator.pop(ctx, true);
-                },
-                child: const Text('Güncelle'))),
-          ]),
-        ]),
-      )),
-    );
-
-    if (sonuc != true || !mounted) return;
     try {
-      final guncellenmis = promo.copyWith(
-        promosyonAdi: adCtrl.text.trim().isEmpty ? promo.promosyonAdi : adCtrl.text.trim(),
-        // Kutu değiştirilmediyse kayıtlı tam hassasiyetli oran korunur
-        // (16,667 yazan kutu 16,6666… değerini 16,667'ye çevirmesin).
-        iskontoOran: () {
-          final yazilan = ParaUtils.sayiCoz(iskontoCtrl.text);
-          if (yazilan == null) return promo.iskontoOran;
-          return (yazilan - promo.iskontoOran).abs() < 0.0015
-              ? promo.iskontoOran
-              : yazilan;
-        }(),
-        minMiktar:   ParaUtils.sayiCoz(minMiktarCtrl.text) ?? promo.minMiktar,
-        aktif:       aktif,
+      final sonuc = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        constraints: _sheetKisiti(context),
+        builder: (_) => PromosyonFormSheet(duzenlenecek: promo),
       );
-      await PromosyonDeposu().guncelle(guncellenmis);
-      ref.invalidate(promosyonlarProvider);
-      if (mounted) BildirimServisi.basari(context, 'Promosyon güncellendi ✓');
+      if (sonuc == true) {
+        ref.invalidate(promosyonlarProvider);
+        if (mounted) BildirimServisi.basari(context, 'Promosyon güncellendi ✓');
+      }
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }
@@ -245,7 +157,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         constraints: _sheetKisiti(context),
-        builder: (_) => const _PromosyonEkleSheet(),
+        builder: (_) => const PromosyonFormSheet(),
       );
       if (sonuc == true) ref.invalidate(promosyonlarProvider);
         } catch (e) {
@@ -402,10 +314,12 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
 
 // ── Promosyon Ekle Sheet ──────────────────────────────────────────────────────
 
-class _PromosyonEkleSheet extends ConsumerStatefulWidget {
-  const _PromosyonEkleSheet();
+class PromosyonFormSheet extends ConsumerStatefulWidget {
+  /// Doluysa form DÜZENLEME modunda açılır (alanlar mevcut değerle dolu).
+  final PromosyonModel? duzenlenecek;
+  const PromosyonFormSheet({this.duzenlenecek});
   @override
-  ConsumerState<_PromosyonEkleSheet> createState() => _PromosyonEkleSheetState();
+  ConsumerState<PromosyonFormSheet> createState() => PromosyonFormSheetState();
 }
 
 /// İndirim oranını en çok 3 ondalıkla (gereksiz sıfırsız, virgüllü) gösterir:
@@ -418,7 +332,7 @@ String _oranMetni(double o) {
   return t.replaceAll('.', ',');
 }
 
-class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
+class PromosyonFormSheetState extends ConsumerState<PromosyonFormSheet> {
   final _formKey = GlobalKey<FormState>();
   final _adCtrl  = TextEditingController();
   final _oranCtrl = TextEditingController(text: '10');
@@ -458,6 +372,60 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
   List<UrunModel> _aramaSonuclari = [];
   DateTime? _baslangic, _bitis;
   bool _kayit = false;
+  bool _aktif = true;
+
+  bool get _duzenleme => widget.duzenlenecek != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.duzenlenecek;
+    if (p == null) return;
+    _adCtrl.text = p.promosyonAdi;
+    _oranHam = p.iskontoOran; // kayıtlı tam hassasiyetli oran korunur
+    _oranCtrl.text = _oranMetni(p.iskontoOran);
+    _minMiktarCtrl.text = p.minMiktar == p.minMiktar.truncateToDouble()
+        ? p.minMiktar.toStringAsFixed(0)
+        : p.minMiktar.toString().replaceAll('.', ',');
+    _baslangic = p.baslangicTarihi;
+    _bitis = p.bitisTarihi;
+    _aktif = p.aktif;
+    // Ürün bilgisini yükle → önizleme ve toplam fiyat hesaplanır.
+    UrunDeposu().idileGetir(p.urunId).then((u) {
+      if (u == null || !mounted) return;
+      setState(() {
+        _seciliUrun = u;
+        _araCtrl.text = u.urunAdi;
+        final adet = p.minMiktar <= 0 ? 1 : p.minMiktar;
+        _toplamCtrl.text = (u.satisFiyati * (1 - p.iskontoOran / 100) * adet).toStringAsFixed(2);
+      });
+    });
+  }
+
+  /// Tarih yenileme kısayolları (yeni kayıt gibi): bugünden başlat, süreyi
+  /// uzat, süresiz yap.
+  void _tarihleriYenile() {
+    final bugun = DateTime.now();
+    final gun = DateTime(bugun.year, bugun.month, bugun.day);
+    // Önceki süre kadar (yoksa 30 gün) bugünden itibaren
+    var sure = 30;
+    if (_baslangic != null && _bitis != null && !_bitis!.isBefore(_baslangic!)) {
+      sure = _bitis!.difference(_baslangic!).inDays;
+      if (sure < 1) sure = 1;
+    }
+    setState(() {
+      _baslangic = gun;
+      _bitis = gun.add(Duration(days: sure));
+    });
+  }
+
+  void _sureyiUzat(int gun) {
+    final bugun = DateTime.now();
+    final bas = DateTime(bugun.year, bugun.month, bugun.day);
+    // Süresi dolmuşsa bugünden, değilse mevcut bitişten uzat.
+    final temel = (_bitis == null || _bitis!.isBefore(bas)) ? bas : _bitis!;
+    setState(() => _bitis = temel.add(Duration(days: gun)));
+  }
 
   @override
   void dispose() {
@@ -492,7 +460,8 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
     }
     setState(() => _kayit = true);
     try {
-      await PromosyonDeposu().ekle(PromosyonModel(
+      final yeni = PromosyonModel(
+        id:              widget.duzenlenecek?.id,
         urunId:          _seciliUrun!.id!,
         urunAdi:         _seciliUrun!.urunAdi,
         promosyonAdi:    _adCtrl.text.trim(),
@@ -500,8 +469,13 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
         minMiktar:       ParaUtils.sayiCoz(_minMiktarCtrl.text) ?? 1,
         baslangicTarihi: _baslangic,
         bitisTarihi:     _bitis,
-        aktif:           true,
-      ));
+        aktif:           _duzenleme ? _aktif : true,
+      );
+      if (_duzenleme) {
+        await PromosyonDeposu().guncelle(yeni);
+      } else {
+        await PromosyonDeposu().ekle(yeni);
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
@@ -526,8 +500,8 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
           Container(width: 40, height: 4,
               decoration: BoxDecoration(color: context.borderColor, borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 16),
-          const Text('Yeni Promosyon',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          Text(_duzenleme ? 'Promosyonu Düzenle' : 'Yeni Promosyon',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 20),
 
           // Ürün arama
@@ -564,7 +538,8 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: TsRenk.zemin(TsRenk.bilgi, opaklik: 0.4))),
               child: Column(children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                // FittedBox: dar ekranda (420 px) önizleme satırı taşmasın.
+                FittedBox(fit: BoxFit.scaleDown, child: Row(mainAxisSize: MainAxisSize.min, children: [
                   _HesapKutu('Normal Birim', ParaUtils.formatla(_seciliUrun!.satisFiyati), Colors.blue),
                   Icon(Icons.arrow_forward, size: 14, color: context.textSecondary),
                   _HesapKutu('İndirimli Birim',
@@ -576,7 +551,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                   _HesapKutu('Min Miktar', _minMiktarCtrl.text.isEmpty ? '1' : _minMiktarCtrl.text, Colors.purple),
                   Icon(Icons.drag_handle, size: 14, color: context.textSecondary),
                   _HesapKutu('Toplam', _toplamOnizleme, Colors.green),
-                ]),
+                ])),
                 if (_oranCtrl.text.isNotEmpty && ParaUtils.sayiCoz(_oranCtrl.text) != null) ...[
                   const SizedBox(height: 6),
                   Text(
@@ -737,7 +712,8 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                   style: const TextStyle(fontSize: 12)),
               onPressed: () async {
                 final dt = await showDatePicker(context: context,
-                    initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+                    initialDate: _baslangic ?? DateTime.now(),
+                    firstDate: DateTime(2020), lastDate: DateTime(2035));
                 if (dt != null) setState(() => _baslangic = dt);
               },
             )),
@@ -748,12 +724,54 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
                   style: const TextStyle(fontSize: 12)),
               onPressed: () async {
                 final dt = await showDatePicker(context: context,
-                    initialDate: _baslangic ?? DateTime.now(),
-                    firstDate: _baslangic ?? DateTime.now(), lastDate: DateTime(2030));
+                    initialDate: _bitis ?? _baslangic ?? DateTime.now(),
+                    firstDate: DateTime(2020), lastDate: DateTime(2035));
                 if (dt != null) setState(() => _bitis = dt);
               },
             )),
           ]),
+          const SizedBox(height: 8),
+          // Tarih yenileme kısayolları
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(spacing: 6, runSpacing: 4, children: [
+              ActionChip(
+                avatar: const Icon(Icons.refresh, size: 16),
+                label: const Text('Bugünden yenile', style: TextStyle(fontSize: 11)),
+                onPressed: _tarihleriYenile,
+                visualDensity: VisualDensity.compact,
+              ),
+              ActionChip(
+                label: const Text('+7 gün', style: TextStyle(fontSize: 11)),
+                onPressed: () => _sureyiUzat(7),
+                visualDensity: VisualDensity.compact,
+              ),
+              ActionChip(
+                label: const Text('+30 gün', style: TextStyle(fontSize: 11)),
+                onPressed: () => _sureyiUzat(30),
+                visualDensity: VisualDensity.compact,
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.all_inclusive, size: 16),
+                label: const Text('Süresiz', style: TextStyle(fontSize: 11)),
+                onPressed: () => setState(() { _baslangic = null; _bitis = null; }),
+                visualDensity: VisualDensity.compact,
+              ),
+            ]),
+          ),
+          if (_duzenleme)
+            // Şeffaf Material: renkli kutu içinde dokunma efekti görünsün.
+            Material(
+              type: MaterialType.transparency,
+              child: SwitchListTile(
+                title: const Text('Aktif', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                value: _aktif,
+                onChanged: (v) => setState(() => _aktif = v),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                activeColor: Colors.green,
+              ),
+            ),
           const SizedBox(height: 20),
 
           Row(children: [
@@ -768,7 +786,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
           backgroundColor: AppRenkler.primary),
               child: _kayit
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Kaydet'),
+                  : Text(_duzenleme ? 'Güncelle' : 'Kaydet'),
             )),
           ]),
         ])),

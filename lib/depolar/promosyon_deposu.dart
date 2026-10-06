@@ -34,6 +34,11 @@ class PromosyonDeposu {
       // promosyon değişikliği (fiyat/tarih/koşul) diğer cihazlara hiç
       // gitmiyordu.
       final m = p.toMap()..['last_updated'] = DateTime.now().toIso8601String();
+      // toMap() boş (null) tarihleri hiç yazmaz; güncellemede ise tarih
+      // KALDIRILABİLMELİ ("süresiz yap" / bitiş tarihini temizle) — aksi
+      // halde eski tarih sessizce kalıyordu.
+      m['baslangic_tarihi'] = p.baslangicTarihi?.toIso8601String();
+      m['bitis_tarihi'] = p.bitisTarihi?.toIso8601String();
       await db.update('promosyonlar', m, where: 'id = ?', whereArgs: [p.id]);
       final guncelSatir = await db.query('promosyonlar', where: 'id = ?', whereArgs: [p.id], limit: 1);
       if (guncelSatir.isNotEmpty) {

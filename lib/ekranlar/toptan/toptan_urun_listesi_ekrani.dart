@@ -15,6 +15,7 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import 'masaustu/toptan_urun_masaustu_gorunum.dart';
 
 class ToptanUrunListesiEkrani extends StatefulWidget {
   const ToptanUrunListesiEkrani({super.key});
@@ -247,6 +248,8 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
                         ]),
                       ),
                     )
+                  : MediaQuery.sizeOf(context).width > 1100
+                  ? ToptanUrunMasaustuGorunum(urunler: _liste, onKaldir: _urunKaldir)
                   : ListView.builder(
                       itemCount: _liste.length,
                       itemBuilder: (c, i) {

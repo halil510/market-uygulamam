@@ -19,6 +19,7 @@ import '../../servisler/belge_no_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/auth_servisi.dart';
+import 'masaustu/bekleyen_siparis_masaustu_gorunum.dart';
 
 class BekleyenSiparislerEkrani extends StatefulWidget {
   /// Belirli bir bayi için filtrelenmiş liste (cari detayından
@@ -79,6 +80,12 @@ class _BekleyenSiparislerEkraniState extends State<BekleyenSiparislerEkrani> {
                   ikon: Icons.inventory_2_outlined,
                   baslik: 'Bekleyen sipariş yok',
                   altyazi: 'Bayi Sipariş Al ekranından yeni sipariş oluşturabilirsiniz',
+                )
+              : MediaQuery.sizeOf(context).width > 1100
+              ? BekleyenSiparisMasaustuGorunum(
+                  siparisler: _siparisler,
+                  onDetay: _detayAc,
+                  onYenile: _yukle,
                 )
               : RefreshIndicator(
                   onRefresh: _yukle,

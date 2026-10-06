@@ -6,7 +6,6 @@
 // cari_id'ye ait BİRDEN FAZLA satır varsa (gerçekte hiç olmaması gereken
 // ama savunmacı davranılan bir durum) bunlar tek satıra birleştiriliyor.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:market_plus/veri/database/migrasyon_yonetici.dart';
 

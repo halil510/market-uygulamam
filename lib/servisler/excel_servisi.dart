@@ -456,7 +456,7 @@ class ExcelServisi {
 
         if (satisFiyat == null || satisFiyat <= 0) {
           hatali++;
-          hataListesi.add('Satır ${i + 1} (${urunAdi}): Satış Fiyatı geçersiz');
+          hataListesi.add('Satır ${i + 1} ($urunAdi): Satış Fiyatı geçersiz');
           continue;
         }
 

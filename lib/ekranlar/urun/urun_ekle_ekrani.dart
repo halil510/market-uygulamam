@@ -28,7 +28,6 @@ import '../../servisler/ai/ai_vision_servisi.dart'; // API anahtarını set etme
 // urun_ekle_ekrani_ai_ses.dart (part) kullanıyor
 import '../birim/birim_ekrani.dart';
 import 'widgets/urun_form_alanlari.dart';
-import '../../tasarim_sistemi/ts_responsive.dart';
 import '../../widgetlar/masaustu/masaustu_alt_serit.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/ses_tanima_servisi.dart';

@@ -14,8 +14,6 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../widgetlar/ortak/onay_dialog.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
-import '../../tasarim_sistemi/ts_kart.dart';
-import '../../tasarim_sistemi/ts_yetki.dart';
 
 class TedarikSiparisEkrani extends ConsumerStatefulWidget {
   const TedarikSiparisEkrani({super.key});

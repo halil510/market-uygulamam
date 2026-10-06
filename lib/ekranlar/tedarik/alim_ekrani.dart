@@ -10,7 +10,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:flutter/services.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../depolar/banka_hesap_deposu.dart';

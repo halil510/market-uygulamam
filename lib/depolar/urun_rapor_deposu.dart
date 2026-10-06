@@ -181,7 +181,7 @@ class UrunRaporDeposu {
         'f.sync_cakisma_kopyasi = 0',
       ] else
         "f.durum = 'teslim_alindi'",
-      if (!satis) '${miktarKol} > 0',
+      if (!satis) '$miktarKol > 0',
     ];
     final args = <Object?>[_gun(f.bas), _gun(f.bit)];
 

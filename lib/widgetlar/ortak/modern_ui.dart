@@ -8,7 +8,6 @@
 
 import 'package:flutter/material.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
-import '../../tasarim_sistemi/ts_kart.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
 // ── Modern Stat Kart ──────────────────────────────────────────────────────

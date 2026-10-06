@@ -8,6 +8,8 @@ import '../../modeller/kredi_karti_model.dart';
 import '../../saglayicilar/riverpod/banka_provider.dart';
 import '../../saglayicilar/riverpod/borc_provider.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../saglayicilar/riverpod/auth_provider.dart';
+import 'masaustu/kredi_karti_masaustu_gorunum.dart';
 
 class KrediKartiListeEkrani extends ConsumerWidget {
   final int? bankaId;
@@ -19,6 +21,18 @@ class KrediKartiListeEkrani extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final kartlarAsync = ref.watch(krediKartlariProvider(bankaId));
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
+    final yetkili = ref.watch(authProvider.select((s) => s.isMudur));
+
+    Future<void> ekle() async {
+      final eklendi = await context.push<bool>('/kredi-karti/ekle');
+      if (eklendi == true && context.mounted) {
+        ref.invalidate(krediKartlariProvider(bankaId));
+        // Borç Dashboard kendi ayrı önbelleğini kullanıyor.
+        ref.invalidate(tumKrediKartlariProvider);
+        ref.invalidate(borcDashboardProvider);
+      }
+    }
 
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
@@ -49,7 +63,14 @@ class KrediKartiListeEkrani extends ConsumerWidget {
           aksiyonMetni: 'Tekrar dene',
           aksiyon: () => ref.invalidate(krediKartlariProvider(bankaId)),
         ),
-        data: (kartlar) => TsListe<KrediKartiModel>(
+        data: (kartlar) => masaustu
+            ? KrediKartiMasaustuGorunum(
+                kartlar: kartlar,
+                yetkili: yetkili,
+                onEkle: ekle,
+                onDetay: (k) => context.push('/kredi-karti/detay/${k.id}'),
+              )
+            : TsListe<KrediKartiModel>(
           ogeler: kartlar,
           aramaMetniAl: (k) => k.kartAdi,
           yenile: () async => ref.invalidate(krediKartlariProvider(bankaId)),

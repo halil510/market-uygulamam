@@ -28,12 +28,12 @@ class MasaRaporServisi {
       SELECT 
         m.id,
         m.ad as masa_adi,
-        COALESCE(SUM(${_netTutar}), 0) as ciro,
-        COUNT(DISTINCT CASE WHEN ${_gecerliSiparis} THEN s.id END) as siparis_sayisi,
-        COALESCE(AVG(CASE WHEN ${_gecerliSiparis} THEN ${_netTutar} END), 0) as ortalama_tutar
+        COALESCE(SUM($_netTutar), 0) as ciro,
+        COUNT(DISTINCT CASE WHEN $_gecerliSiparis THEN s.id END) as siparis_sayisi,
+        COALESCE(AVG(CASE WHEN $_gecerliSiparis THEN $_netTutar END), 0) as ortalama_tutar
       FROM masalar m
       LEFT JOIN masa_siparisleri s ON m.id = s.masa_id AND s.durum = 'odendi'
-      ${_satisJoin}
+      $_satisJoin
       WHERE m.is_deleted = 0
       GROUP BY m.id
       ORDER BY ciro DESC
@@ -78,13 +78,13 @@ class MasaRaporServisi {
     return db.rawQuery('''
       SELECT 
         m.ad as masa_adi,
-        COALESCE(SUM(${_netTutar}), 0) as ciro,
-        COUNT(DISTINCT CASE WHEN ${_gecerliSiparis} THEN s.id END) as siparis_sayisi
+        COALESCE(SUM($_netTutar), 0) as ciro,
+        COUNT(DISTINCT CASE WHEN $_gecerliSiparis THEN s.id END) as siparis_sayisi
       FROM masalar m
       LEFT JOIN masa_siparisleri s ON m.id = s.masa_id 
         AND s.durum = 'odendi'
         AND s.kapanis_zamani BETWEEN ? AND ?
-      ${_satisJoin}
+      $_satisJoin
       WHERE m.is_deleted = 0
       GROUP BY m.id
       HAVING ciro > 0
@@ -111,9 +111,9 @@ class MasaRaporServisi {
     final bas = DateTime(tarih.year, tarih.month, tarih.day);
     final bit = DateTime(tarih.year, tarih.month, tarih.day, 23, 59, 59);
     final rows = await db.rawQuery('''
-      SELECT COALESCE(SUM(${_netTutar}), 0) as toplam
+      SELECT COALESCE(SUM($_netTutar), 0) as toplam
       FROM masa_siparisleri s
-      ${_satisJoin}
+      $_satisJoin
       WHERE s.durum = 'odendi' 
         AND s.kapanis_zamani BETWEEN ? AND ?
     ''', [bas.toIso8601String(), bit.toIso8601String()]);

@@ -24,7 +24,6 @@ import '../../servisler/auth_servisi.dart';
 import '../../depolar/irsaliye_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../saglayicilar/riverpod/irsaliye_provider.dart';
-import '../../tasarim_sistemi/ts_yetki.dart';
 import '../../servisler/gib_servisi.dart';
 
 class IrsaliyeEkrani extends ConsumerWidget {

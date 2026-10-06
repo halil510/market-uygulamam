@@ -13,7 +13,6 @@ import '../../servisler/puan_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/hata_utils.dart';
-import '../../tasarim_sistemi/ts_kart.dart';
 
 class MusteriPuanEkrani extends ConsumerStatefulWidget {
   final int cariId;

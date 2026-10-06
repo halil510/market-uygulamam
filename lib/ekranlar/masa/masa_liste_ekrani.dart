@@ -19,7 +19,6 @@ import '../../saglayicilar/riverpod/masa_provider.dart';
 import '../../depolar/masa_deposu.dart';
 import '../../servisler/masa/rezervasyon_servisi.dart';
 import 'masa_detay_ekrani.dart';
-import '../../tasarim_sistemi/ts_yetki.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../widgetlar/ortak/onay_dialog.dart';
 

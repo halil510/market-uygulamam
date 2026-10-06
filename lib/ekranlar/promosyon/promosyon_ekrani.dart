@@ -17,7 +17,6 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
-import '../../tasarim_sistemi/ts_yetki.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../cekirdek/utils/dosya_paylasim.dart';

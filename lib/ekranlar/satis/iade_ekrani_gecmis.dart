@@ -481,7 +481,7 @@ extension _GecmisTabExt on _IadeEkraniState {
       }
       ref.invalidate(kasaRaporProvider);
 
-      _msg('${_secilenUrun!.urunAdi} → ${_duzenlemeModu_fisNo} fişine eklendi ✓', err: false);
+      _msg('${_secilenUrun!.urunAdi} → $_duzenlemeModu_fisNo fişine eklendi ✓', err: false);
       _formSifirla();
     } catch (e) {
       _msg('Hata: $e', err: true);

@@ -726,7 +726,7 @@ class SupabaseSyncServisi {
             veriler.removeWhere(bekle.contains);
           }
           final fkSure = DateTime.now().difference(fkBaslangic).inSeconds;
-          if (fkSure > 3) log?.call('   ↳ FK dönüşümü ${fkSure} sn sürdü');
+          if (fkSure > 3) log?.call('   ↳ FK dönüşümü $fkSure sn sürdü');
         }
 
         final uniqueAlan = _uniqueAlan[tablo];

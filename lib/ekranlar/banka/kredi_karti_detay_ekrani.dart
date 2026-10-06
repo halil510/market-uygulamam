@@ -11,7 +11,6 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../depolar/kredi_karti_deposu.dart';
 import '../../modeller/kredi_karti_model.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../tasarim_sistemi/ts_yetki.dart';
 
 class KrediKartiDetayEkrani extends ConsumerStatefulWidget {
   final int kartId;

@@ -11,6 +11,7 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import 'masaustu/banka_hareket_masaustu_gorunum.dart';
 
 class BankaHareketEkrani extends ConsumerStatefulWidget {
   final int? hesapId;
@@ -175,6 +176,12 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
                           Text('Henüz hareket yok', style: TextStyle(color: context.textSecondary)),
                         ],
                       ),
+                    )
+                  : MediaQuery.sizeOf(context).width > 1100
+                  ? BankaHareketMasaustuGorunum(
+                      hareketler: _hareketler,
+                      onYenile: _yukle,
+                      onEkle: widget.hesapId != null ? _hareketEkleDialog : null,
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),

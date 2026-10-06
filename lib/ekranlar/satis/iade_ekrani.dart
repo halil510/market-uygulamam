@@ -10,7 +10,6 @@ import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import '../../saglayicilar/riverpod/kasa_rapor_provider.dart';
-import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'iade/iade_arama_widget.dart';

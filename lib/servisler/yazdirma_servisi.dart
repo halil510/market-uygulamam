@@ -7,7 +7,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';

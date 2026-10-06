@@ -11,7 +11,6 @@ import "../../depolar/cari_deposu.dart";
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import "../../depolar/cari_adres_deposu.dart";
 import "../../servisler/bildirim_servisi.dart";
-import '../../tasarim_sistemi/ts_kart.dart';
 import '../../cekirdek/utils/vergi_no_dogrulayici.dart';
 import '../../modeller/fiyat_grubu_model.dart';
 import '../../depolar/toptan_fiyat_deposu.dart';

@@ -15,7 +15,6 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
-import '../../uygulama/tema/acik_tema.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 
 /// YetkiKoruma — belirtilen [yetkiKodu] yoksa erişimi engeller

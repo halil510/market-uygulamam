@@ -28,7 +28,6 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/tarih_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import 'fis_detay_ekrani.dart';
-import '../../tasarim_sistemi/ts_kart.dart';
 import 'cari_detay_ekrani.dart' show cariHareketleriniGrupla;
 import '../../widgetlar/ortak/fis_fiyat_guncelle_akisi.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';

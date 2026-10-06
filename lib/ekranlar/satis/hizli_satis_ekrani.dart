@@ -21,7 +21,6 @@ import 'package:flutter/material.dart';
 import '../cari/cari_liste_ekrani.dart';
 import '../cari/cari_secim_baglami.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
-import '../../tasarim_sistemi/ts_token.dart';
 import 'widgets/hizli_satis_arama_paneli.dart';
 import 'widgets/hizli_tus_paneli.dart';
 import 'hizli_tus_yonetim_ekrani.dart';

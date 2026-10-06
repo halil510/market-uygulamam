@@ -4,7 +4,6 @@
 
 import 'package:flutter/foundation.dart';
 import 'dart:async';
-import 'package:flutter/material.dart';
 import '../veri/database/veritabani.dart';
 
 enum LogSeviye { bilgi, uyari, hata, kritik }

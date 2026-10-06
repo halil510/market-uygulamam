@@ -18,6 +18,8 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/bildirim_servisi.dart';
 
+import 'masaustu/vardiya_gecmis_masaustu_gorunum.dart';
+
 class VardiyaEkrani extends ConsumerStatefulWidget {
   final dynamic extra;
   const VardiyaEkrani({super.key, this.extra});
@@ -728,6 +730,16 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
         Text('Geçmiş vardiya yok',
             style: TextStyle(color: context.textSecondary)),
       ]));
+    if (MediaQuery.sizeOf(context).width > 1100) {
+      return VardiyaGecmisMasaustuGorunum(
+        vardiyalar: _gecmis,
+        sureMetni: _sureTxt,
+        onPdf: _pdfRapor,
+        dahaVarMi: _gecmisDahaVarMi,
+        dahaYukleniyor: _gecmisDahaYukleniyor,
+        onDahaFazla: _gecmisDahaFazlaYukle,
+      );
+    }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _gecmis.length + (_gecmisDahaVarMi ? 1 : 0),
@@ -783,7 +795,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
             Text(
                 '${bas != null ? _fmt.format(bas) : '—'}  →  ${bit != null ? _fmt.format(bit) : '—'}',
                 style:
-                    TextStyle(fontSize: 11, color: TsRenk.arkaplan(context))),
+                    TextStyle(fontSize: 11, color: context.textSecondary)),
             // Madde 12 denetimi (2026-09-16) — Müdür Onayı: kapatan kişi
             // Müdür/Admin değilse burada kim onayladığı görünür.
             if (v['onaylayan_adi'] != null) ...[

@@ -14,7 +14,6 @@
 //   late Database db;
 //   setUp(() async => db = await TestVeritabani.olustur());
 //   tearDown(() => db.close());
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:market_plus/veri/database/tablolar/tablo_olusturucu.dart';
 

@@ -5,7 +5,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../tema/uygulama_temasi.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../tasarim_sistemi/ts_responsive.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../saglayicilar/riverpod/auth_provider.dart';

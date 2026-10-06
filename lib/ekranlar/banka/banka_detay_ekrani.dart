@@ -8,7 +8,6 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../modeller/banka_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../depolar/banka_deposu.dart';
-import '../../tasarim_sistemi/ts_yetki.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
 class BankaDetayEkrani extends ConsumerStatefulWidget {

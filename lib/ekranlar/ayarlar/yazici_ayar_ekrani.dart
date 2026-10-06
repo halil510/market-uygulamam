@@ -2,7 +2,6 @@
 // v4.0 - Modern kart bazlı tasarım, WiFi/BT/Fiş tek ekranda
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';

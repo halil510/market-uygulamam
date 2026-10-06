@@ -4,7 +4,6 @@
 import 'dart:io';
 import 'ai_model_secici.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:file_picker/file_picker.dart';

@@ -7,7 +7,6 @@ import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
-import '../../tasarim_sistemi/ts_kart.dart';
 // lib/ekranlar/cari/tahsilat_odeme_ekrani.dart
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";

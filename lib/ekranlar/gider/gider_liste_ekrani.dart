@@ -11,10 +11,40 @@ import '../../depolar/gider_deposu.dart';
 import '../../modeller/gider_model.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
+import 'masaustu/gider_masaustu_gorunum.dart';
 
 final _giderListeProvider = FutureProvider.autoDispose<List<GiderModel>>((ref) {
   return GiderDeposu().tumunuGetir();
 });
+
+/// Onay penceresi + silme. Hem mobil kaydırma hem masaüstü (F4 / sağ tık)
+/// aynı yolu kullanır. Silindiyse true döner.
+Future<bool> _giderSilOnayli(BuildContext ctx, WidgetRef ref, GiderModel g) async {
+  final onay = await showDialog<bool>(
+    context: ctx,
+    builder: (c) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(TsRadius.lg)),
+      title: const Text('Gider Sil'),
+      content: Text('${g.aciklama ?? g.kategoriAdi} (${ParaUtils.formatla(g.tutar)}) silinecek?'),
+      actions: [
+        TsButon(tur: TsButonTuru.metin, metin: 'İptal', onPressed: () => Navigator.pop(c, false)),
+        TsButon.tehlike(metin: 'Sil', onPressed: () => Navigator.pop(c, true)),
+      ],
+    ),
+  );
+  if (onay != true) return false;
+  try {
+    await GiderDeposu().sil(g.id!);
+    ref.invalidate(_giderListeProvider);
+    return true;
+  } catch (e) {
+    // Silinemezse kullanıcı sessizce yanıltılmasın.
+    if (ctx.mounted) {
+      BildirimServisi.hata(ctx, 'Gider silinemedi: $e');
+    }
+    return false;
+  }
+}
 
 class GiderListeEkrani extends ConsumerWidget {
   const GiderListeEkrani({super.key});
@@ -23,6 +53,15 @@ class GiderListeEkrani extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(_giderListeProvider);
     final fmt = DateFormat('dd.MM.yyyy');
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
+    final yetkili = ref.watch(authProvider.select((s) => s.isMudur));
+
+    void ekle() => context
+        .push('/gider/ekle')
+        .then((_) => ref.invalidate(_giderListeProvider));
+    void duzenle(GiderModel g) => context
+        .push('/gider/ekle', extra: g)
+        .then((_) => ref.invalidate(_giderListeProvider));
 
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
@@ -46,6 +85,15 @@ class GiderListeEkrani extends ConsumerWidget {
           aksiyon: () => ref.invalidate(_giderListeProvider),
         ),
         data: (giderler) {
+          if (masaustu) {
+            return GiderMasaustuGorunum(
+              giderler: giderler,
+              yetkili: yetkili,
+              onEkle: ekle,
+              onDuzenle: duzenle,
+              onSil: (g) => _giderSilOnayli(context, ref, g),
+            );
+          }
           final toplam = giderler.fold(0.0, (s, g) => s + g.tutar);
           return Column(children: [
             if (giderler.isNotEmpty)
@@ -78,29 +126,7 @@ class GiderListeEkrani extends ConsumerWidget {
                     child: const Icon(Icons.delete_outline, color: Colors.white),
                   ),
                   confirmDismiss: (_) async {
-                    final onay = await showDialog<bool>(
-                      context: ctx,
-                      builder: (c) => AlertDialog(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(TsRadius.lg)),
-                        title: const Text('Gider Sil'),
-                        content: Text('${g.aciklama ?? g.kategoriAdi} (${ParaUtils.formatla(g.tutar)}) silinecek?'),
-                        actions: [
-                          TsButon(tur: TsButonTuru.metin, metin: 'İptal', onPressed: () => Navigator.pop(c, false)),
-                          TsButon.tehlike(metin: 'Sil', onPressed: () => Navigator.pop(c, true)),
-                        ],
-                      ),
-                    );
-                    if (onay == true) {
-                      try {
-                        await GiderDeposu().sil(g.id!);
-                        ref.invalidate(_giderListeProvider);
-                      } catch (e) {
-                        // Silinemezse kullanıcı sessizce yanıltılmasın.
-                        if (ctx.mounted) {
-                          BildirimServisi.hata(ctx, 'Gider silinemedi: $e');
-                        }
-                      }
-                    }
+                    await _giderSilOnayli(ctx, ref, g);
                     return false;
                   },
                   child: TsKart.liste(
@@ -118,8 +144,7 @@ class GiderListeEkrani extends ConsumerWidget {
                     // 🔴 DÜZELTME (derin analizde bulundu): Bir gideri
                     // düzenlemenin hiçbir yolu yoktu — kullanıcı yanlış
                     // girdiği bir gideri sadece silip yeniden ekleyebiliyordu.
-                    onTap: () => context.push('/gider/ekle', extra: g)
-                        .then((_) => ref.invalidate(_giderListeProvider)),
+                    onTap: () => duzenle(g),
                   ),
                 );
                 },
@@ -128,14 +153,16 @@ class GiderListeEkrani extends ConsumerWidget {
           ]);
         },
       ),
-      floatingActionButton: TsYetkili(child: FloatingActionButton.extended(
-        elevation: 6,
-        backgroundColor: TsRenk.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Gider Ekle'),
-        onPressed: () => context.push('/gider/ekle').then((_) => ref.invalidate(_giderListeProvider)),
-      )),
+      floatingActionButton: masaustu
+          ? null
+          : TsYetkili(child: FloatingActionButton.extended(
+              elevation: 6,
+              backgroundColor: TsRenk.primary,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('Gider Ekle'),
+              onPressed: ekle,
+            )),
     );
   }
 }

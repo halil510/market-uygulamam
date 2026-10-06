@@ -16,6 +16,8 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/hata_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../saglayicilar/riverpod/auth_provider.dart';
+import 'masaustu/personel_masaustu_gorunum.dart';
 
 // ── Personel Provider ─────────────────────────────────────────────────────────
 
@@ -70,6 +72,8 @@ class _PersonelListeEkraniState extends ConsumerState<PersonelListeEkrani>
   @override
   Widget build(BuildContext context) {
     final personellerAsync = ref.watch(personellerProvider);
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
+    final yetkili = ref.watch(authProvider.select((s) => s.isMudur));
 
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
@@ -94,7 +98,7 @@ class _PersonelListeEkraniState extends ConsumerState<PersonelListeEkrani>
       ),
       body: personellerAsync.when(
         loading: () => const Center(child: const AppYukleniyor()),
-        error:   (e, _) => BosEkran(ikon: Icons.inbox_outlined, baslik: 'Hata: $e'),
+        error:   (e, _) => BosEkran(ikon: Icons.inbox_outlined, baslik: 'Hata: ${kullaniciyaHataMetni(e)}'),
         data:    (liste) => TabBarView(
           controller: _tab,
           children: [
@@ -102,12 +106,15 @@ class _PersonelListeEkraniState extends ConsumerState<PersonelListeEkrani>
               personeller:  _filtrele(liste),
               araCtrl:      _araCtrl,
               onDegisti:    () => ref.invalidate(personellerProvider),
+              masaustu:     masaustu,
+              yetkili:      yetkili,
+              onEkle:       () => _personelEkleDialog(context),
             ),
             _MaasOzetiTab(personeller: liste),
           ],
         ),
       ),
-      floatingActionButton: TsYetkili(child: FloatingActionButton.extended(
+      floatingActionButton: masaustu ? null : TsYetkili(child: FloatingActionButton.extended(
         elevation: 6,
         backgroundColor: TsRenk.primary,
         foregroundColor: Colors.white,
@@ -124,6 +131,7 @@ class _PersonelListeEkraniState extends ConsumerState<PersonelListeEkrani>
         context: ctx,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
+        constraints: MediaQuery.sizeOf(ctx).width > 1100 ? const BoxConstraints(maxWidth: 560) : null,
         builder: (_) => const _PersonelFormSheet(),
       );
       if (result == true) ref.invalidate(personellerProvider);
@@ -139,12 +147,28 @@ class _PersonelListeTab extends StatelessWidget {
   final List<PersonelModel> personeller;
   final TextEditingController araCtrl;
   final VoidCallback onDegisti;
+  final bool masaustu;
+  final bool yetkili;
+  final VoidCallback onEkle;
 
   const _PersonelListeTab({
     required this.personeller,
     required this.araCtrl,
     required this.onDegisti,
+    required this.masaustu,
+    required this.yetkili,
+    required this.onEkle,
   });
+
+  void _detay(BuildContext context, PersonelModel p) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      constraints: const BoxConstraints(maxWidth: 560),
+      builder: (_) => _PersonelDetaySheet(personel: p, onDegisti: onDegisti),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +213,14 @@ class _PersonelListeTab extends StatelessWidget {
 
         // Liste
         Expanded(
-          child: personeller.isEmpty
+          child: masaustu
+              ? PersonelMasaustuGorunum(
+                  personeller: personeller,
+                  yetkili: yetkili,
+                  onEkle: onEkle,
+                  onDetay: (p) => _detay(context, p),
+                )
+              : personeller.isEmpty
               ? const BosEkran(ikon: Icons.inbox_outlined, baslik: 'Personel bulunamadı')
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

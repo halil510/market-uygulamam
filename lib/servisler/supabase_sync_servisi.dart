@@ -1219,7 +1219,13 @@ class SupabaseSyncServisi {
     final guncellenenSatisGidleri = <String>{};
 
     for (final tablo in _tabloSirasi) {
-      if (sadeceTablolar != null && !sadeceTablolar.contains(tablo)) continue;
+      // İade başlığı çekilirken kalemleri de kontrol edilir: kalemler başlıktan
+      // ÖNCE/ARAYA çekilip yarım kalabilir (bkz. eksikIadeKalemleriniTamamla).
+      if (sadeceTablolar != null &&
+          !sadeceTablolar.contains(tablo) &&
+          !(tablo == 'iade_kalem' && sadeceTablolar.contains('iade'))) {
+        continue;
+      }
       try {
         log?.call('📥 $tablo...');
 
@@ -1272,6 +1278,18 @@ class SupabaseSyncServisi {
           tumKayitlar.addAll(batch);
           if (batch.length < 500) break;
           offset += 500;
+        }
+
+        // Yarım inmiş iade kalemlerini imleçten BAĞIMSIZ tamamla.
+        if (tablo == 'iade_kalem') {
+          try {
+            final var_ = tumKayitlar.map((k) => k['global_id']?.toString()).toSet();
+            for (final k in await _eksikIadeKalemleriniGetir(ayar, bulutGidHaritasi)) {
+              if (var_.add(k['global_id']?.toString())) tumKayitlar.add(k);
+            }
+          } catch (e) {
+            log?.call('⚠️ eksik iade kalemi kontrolü atlandı: $e');
+          }
         }
 
         if (tumKayitlar.isEmpty) {
@@ -1488,6 +1506,47 @@ class SupabaseSyncServisi {
 
     log?.call('────────────────────────');
     log?.call('📊 ${sonuc.ozet}');
+    return sonuc;
+  }
+
+  /// Yerelde kalem toplamı başlık tutarıyla UYUŞMAYAN (son 30 gün, iptal
+  /// olmayan) iadelerin kalemlerini buluttan imleç gözetmeden getirir.
+  ///
+  /// Neden: kalemler tek tek yüklenirken başka cihaz çekerse yalnız ilk
+  /// kalemleri alır; imleç ilerlediği için kalanlar bazen hiç inmez ve iade
+  /// diğer cihazda eksik tutarla (ör. 2086,59 yerine 970,03) görünür. Bulut
+  /// satırları LWW korumalı upsert'ten geçtiği için tekrar inmesi zararsızdır.
+  static Future<List<Map<String, dynamic>>> _eksikIadeKalemleriniGetir(
+    _Ayar ayar,
+    Map<String, Map<String, int>> bulutGidHaritasi,
+  ) async {
+    final localDb = await Veritabani().db;
+    final eksik = await localDb.rawQuery('''
+      SELECT i.global_id AS gid
+      FROM iade i LEFT JOIN iade_kalem k ON k.iade_id = i.id
+      WHERE i.global_id IS NOT NULL AND i.durum != 'iptal'
+        AND i.deleted_at IS NULL
+        AND i.tarih >= date('now', '-30 day')
+      GROUP BY i.id
+      HAVING ABS(i.toplam_tutar - COALESCE(SUM(k.toplam), 0)) > 0.05
+    ''');
+    if (eksik.isEmpty) return const [];
+    final harita = bulutGidHaritasi['iade'] ??= await _tekTabloGidCloud(ayar, 'iade');
+    final bulutIdler = eksik
+        .map((r) => harita[r['gid']?.toString()])
+        .whereType<int>()
+        .toList();
+    final sonuc = <Map<String, dynamic>>[];
+    for (var i = 0; i < bulutIdler.length; i += 50) {
+      final dilim = bulutIdler.sublist(i, (i + 50).clamp(0, bulutIdler.length));
+      final res = await http.get(
+        Uri.parse('${ayar.rest}/iade_kalem?limit=1000&order=id.asc'
+            '&iade_id=in.(${dilim.join(',')})'),
+        headers: _getH(ayar.key),
+      ).timeout(const Duration(seconds: 30));
+      if (res.statusCode != 200) break;
+      sonuc.addAll((jsonDecode(res.body) as List).cast<Map<String, dynamic>>());
+    }
     return sonuc;
   }
 

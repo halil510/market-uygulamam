@@ -450,6 +450,24 @@ extension _GecmisTabExt on _IadeEkraniState {
       // 6. Lokal listeye ekle
       if (!mounted) return;
       setState(() {
+        // 🔴 DÜZELTME (kullanıcı bulgusu: "önceki 2 idi, 4 ilave ettim, 6
+        // olacak"): veritabanı aynı ürünün kalemini TOPLAYARAK güncelliyor
+        // (2+4=6) ama ekrandaki liste her seferinde YENİ satır ekleyip yalnız
+        // eklenen 4'ü gösteriyordu. Sonradan o satır düzenlenince yanlış
+        // "eski miktar" servise gidip stok/cari farkı bozuluyordu. Artık
+        // aynı ürün satırı birleştirilir (Odoo/ERPNext'teki gibi).
+        final mevcutIdx = _iadeListesi.indexWhere((x) =>
+            x['urun_id'] == _secilenUrun!.id && x['iade_id'] == iadeId);
+        if (mevcutIdx != -1) {
+          final m = _iadeListesi.removeAt(mevcutIdx);
+          _iadeListesi.insert(0, {
+            ...m,
+            'miktar': ((m['miktar'] as num?)?.toDouble() ?? 0) + _miktar,
+            'toplam_tutar': ((m['toplam_tutar'] as num?)?.toDouble() ?? 0) + toplam,
+            'iskonto_tutar': ((m['iskonto_tutar'] as num?)?.toDouble() ?? 0) + iskontoTutar,
+          });
+          return;
+        }
         _iadeListesi.insert(0, {
           'iade_id':      iadeId,
           'urun_id':      _secilenUrun!.id,

@@ -205,6 +205,8 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
     final now = DateTime.now().toIso8601String();
     final fark = yeniMiktar - eskiMiktar;
     String? kasaGid;
+    // Fişin TÜM kalemlerinden hesaplanan toplam (cari hareketi buna göre yazılır).
+    double fisToplam = yeniToplam;
 
     await db.transaction((txn) async {
       if (urunId != null && fark != 0) {
@@ -240,18 +242,46 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
         }
       }
       if (iadeId != null) {
+        // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu: "hep 4 adet olarak
+        // kaydetmiş", "cariye doğru miktar girmemiş"): bu UPDATE ÖNCEDEN
+        // `WHERE iade_id=?` ile ÜRÜN FİLTRESİ OLMADAN çalışıyordu — fişte 2-3
+        // farklı ürün varsa birini düzenlemek TÜM kalemleri aynı miktar/fiyat/
+        // toplama eziyordu. Üstelik iade.toplam_tutar ve cari hareketi de
+        // yalnız DÜZENLENEN kalemin toplamına çekiliyordu. Artık yalnız o
+        // ürünün kalemi güncellenir; fiş toplamı TÜM kalemlerden yeniden
+        // hesaplanır ve cari buna göre yazılır.
+        if (urunId != null) {
+          await txn.rawUpdate(
+              'UPDATE iade_kalem SET miktar=?, birim_fiyat=?, toplam=?, last_updated=? WHERE iade_id=? AND urun_id=?',
+              [yeniMiktar, yeniFiyat, yeniToplam, now, iadeId, urunId]);
+        } else {
+          // Eski kayıtlarda ürün kimliği yoksa YALNIZ tek kalemli fişte
+          // güvenle güncellenebilir.
+          final adet = (await txn.rawQuery(
+                      'SELECT COUNT(*) c FROM iade_kalem WHERE iade_id=?', [iadeId]))
+                  .first['c'] as int? ??
+              0;
+          if (adet == 1) {
+            await txn.rawUpdate(
+                'UPDATE iade_kalem SET miktar=?, birim_fiyat=?, toplam=?, last_updated=? WHERE iade_id=?',
+                [yeniMiktar, yeniFiyat, yeniToplam, now, iadeId]);
+          }
+        }
+        fisToplam = ((await txn.rawQuery(
+                        'SELECT COALESCE(SUM(toplam),0) t FROM iade_kalem WHERE iade_id=?',
+                        [iadeId]))
+                    .first['t'] as num?)
+                ?.toDouble() ??
+            yeniToplam;
         await txn.update(
             'iade',
             {
-              'toplam_tutar': yeniToplam,
+              'toplam_tutar': fisToplam,
               'iade_nedeni': yeniAciklama,
               'last_updated': now
             },
             where: 'id = ?',
             whereArgs: [iadeId]);
-        await txn.rawUpdate(
-            'UPDATE iade_kalem SET miktar=?, birim_fiyat=?, toplam=?, last_updated=? WHERE iade_id=?',
-            [yeniMiktar, yeniFiyat, yeniToplam, now, iadeId]);
         final guncelIadeSatiri = await txn.query('iade',
             where: 'id = ?', whereArgs: [iadeId], limit: 1);
         if (guncelIadeSatiri.isNotEmpty) {
@@ -322,7 +352,7 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
         await txn.rawUpdate(
             "UPDATE cari_hareket SET is_deleted = 1, last_updated = ? WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi')",
             [now, iadeId, cariId]);
-        if (yeniToplam > 0) {
+        if (fisToplam > 0) {
           final cariHareketSatiri = {
             'global_id': const Uuid().v4(),
             'cari_id': cariId,
@@ -331,10 +361,10 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
             'fis_id': iadeId,
             'fis_no': fisNo,
             'aciklama': gercekEtki
-                ? '$urunAdi - $fisNo — cari bakiyesine işlendi'
-                : '$urunAdi - $fisNo — bakiyeyi etkilemez',
-            'borc': gercekEtki ? (isTedarikciDuz ? yeniToplam : 0) : yeniToplam,
-            'alacak': gercekEtki ? (isTedarikciDuz ? 0 : yeniToplam) : yeniToplam,
+                ? '$fisNo — cari bakiyesine işlendi'
+                : '$fisNo — bakiyeyi etkilemez',
+            'borc': gercekEtki ? (isTedarikciDuz ? fisToplam : 0) : fisToplam,
+            'alacak': gercekEtki ? (isTedarikciDuz ? 0 : fisToplam) : fisToplam,
             'odeme_turu': gercekEtki ? 'Cari' : 'Nakit',
           };
           final cariHareketId = await txn.insert('cari_hareket', cariHareketSatiri);

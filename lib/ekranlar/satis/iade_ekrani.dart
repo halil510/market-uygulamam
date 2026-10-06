@@ -281,6 +281,18 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     });
     _aramaCtrl.clear();
     _tab.animateTo(0);
+    // Mevcut stok BAYAT görünmesin (başka kasada/ekranda satış/iade olmuş
+    // olabilir): seçimden sonra güncel kaydı okuyup yerine koy.
+    _guncelStoguYukle(u);
+  }
+
+  Future<void> _guncelStoguYukle(UrunModel u) async {
+    if (u.id == null) return;
+    try {
+      final guncel = await _urunDepo.idileGetir(u.id!);
+      if (guncel == null || !mounted) return;
+      if (_secilenUrun?.id == u.id) setState(() => _secilenUrun = guncel);
+    } catch (_) {/* eldeki değerle devam */}
   }
 
   // Oturum için yeni fiş no oluştur
@@ -781,6 +793,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
           if (mounted) setState(() => _iadeOdemeYontemi = v);
         },
         cariAdi: _secilenCari?.id != null ? _secilenCari!.unvan : null,
+        // Aynı ürün bu iadede zaten varsa önceki miktar (örn. 2) gösterilir.
+        oncekiMiktar: _iadeListesi
+            .where((x) => x['urun_id'] == _secilenUrun!.id)
+            .fold<double>(0, (s, x) => s + ((x['miktar'] as num?)?.toDouble() ?? 0)),
       );
 
   Widget _bosEkran() => const Padding(

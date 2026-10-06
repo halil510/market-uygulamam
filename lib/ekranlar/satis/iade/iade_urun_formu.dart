@@ -18,6 +18,11 @@ class IadeUrunFormu extends StatelessWidget {
   final ValueChanged<String> onOdemeYontemiChanged;
   final String? cariAdi;
 
+  /// Bu iade oturumunda/fişinde AYNI üründen daha önce eklenmiş miktar
+  /// (ör. 2). Profesyonel ERP'lerdeki gibi, aynı ürün tekrar iade edilince
+  /// kullanıcı önceki miktarı ve kaydedince oluşacak TOPLAMI görür.
+  final double oncekiMiktar;
+
   const IadeUrunFormu({
     super.key,
     required this.urun,
@@ -31,7 +36,12 @@ class IadeUrunFormu extends StatelessWidget {
     required this.odemeYontemi,
     required this.onOdemeYontemiChanged,
     this.cariAdi,
+    this.oncekiMiktar = 0,
   });
+
+  static String _adet(double v) => v == v.truncateToDouble()
+      ? v.toStringAsFixed(0)
+      : v.toStringAsFixed(3).replaceFirst(RegExp(r'0+$'), '');
 
   // Ana iade_ekrani.dart'taki _R paletiyle aynı TsRenk semantik sabitleri
   // kullanılıyor — önceden burada farklı, sabit bir turuncu tonu vardı ve
@@ -111,13 +121,42 @@ class IadeUrunFormu extends StatelessWidget {
                   children: [
                 Text('Mevcut Stok',
                     style: TextStyle(fontSize: 11, color: textL)),
-                Text(urun.stok.toStringAsFixed(0),
+                Text(
+                    miktar > 0
+                        ? '${_adet(urun.stok)}  →  ${_adet(urun.stok + miktar)}'
+                        : _adet(urun.stok),
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: urun.stok <= 0 ? _red : _green)),
+                if (miktar > 0)
+                  Text('iade sonrası',
+                      style: TextStyle(fontSize: 10, color: textL)),
               ])),
         ]),
+        if (oncekiMiktar > 0) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: _orange.withAlpha(24),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _orange.withAlpha(90)),
+            ),
+            child: Row(children: [
+              const Icon(Icons.info_outline, size: 18, color: _orange),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Bu iadede bu üründen zaten ${_adet(oncekiMiktar)} adet var'
+                  '${miktar > 0 ? ' → kaydedince toplam ${_adet(oncekiMiktar + miktar)} adet olacak' : ''}.',
+                  style: TextStyle(fontSize: 12, color: textD, height: 1.3),
+                ),
+              ),
+            ]),
+          ),
+        ],
         const SizedBox(height: 16),
         // Miktar + Fiyat
         Row(children: [
@@ -161,7 +200,8 @@ class IadeUrunFormu extends StatelessWidget {
                 // fiyatı gelsin" — cari tipine göre otomatik varsayılan
                 // geliyor, ama artık kullanıcı istediği zaman tek dokunuşla
                 // diğer fiyata geçebiliyor.
-                Row(mainAxisSize: MainAxisSize.min, children: [
+                // Wrap: dar ekranda (360 px) iki çip alt alta geçer, taşmaz.
+                Wrap(spacing: 6, runSpacing: 4, children: [
                   GestureDetector(
                     onTap: () {
                       fiyatCtrl.text = urun.satisFiyat.toStringAsFixed(2);
@@ -181,7 +221,6 @@ class IadeUrunFormu extends StatelessWidget {
                               fontWeight: FontWeight.w600)),
                     ),
                   ),
-                  const SizedBox(width: 6),
                   GestureDetector(
                     onTap: () {
                       fiyatCtrl.text = urun.alisFiyat.toStringAsFixed(2);
@@ -230,6 +269,7 @@ class IadeUrunFormu extends StatelessWidget {
         // Kart/Banka seçilirse kasa_hareketleri'ne hiç yazılmaz (bkz. iade_ekrani.dart _kaydet).
         DropdownButtonFormField<String>(
           initialValue: odemeYontemi,
+          isExpanded: true, // uzun seçenek metinleri dar ekranda taşmasın
           decoration: const InputDecoration(
             labelText: 'İade Ödeme Yöntemi',
             prefixIcon: Icon(Icons.payments_outlined, size: 18),

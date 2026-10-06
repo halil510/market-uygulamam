@@ -231,6 +231,51 @@ kullanım budur).
     }
   }
 
+  /// Kural tabanlı ayrıştırıcının ([UrunSesAyristirici]) anlayamadığı
+  /// serbest cümleleri Gemini ile ÇOKLU alana çevirir: "bunun kilosu on iki
+  /// lira elli, rafta yüz tane var, kdv bire" → {satisFiyati, stok, ...}.
+  /// Çıktı çağıranda [UrunSesJson.jsondan] ile doğrulanır; model sayı
+  /// UYDURMAZ — yalnız söylenenleri anahtarlara yerleştirir.
+  Future<Map<String, dynamic>?> sesliKomutCokluYorumla(String metin) async {
+    if (metin.trim().isEmpty) return null;
+    try {
+      final apiKey = await _vision.apiKeyGetir();
+      if (apiKey == null || apiKey.isEmpty) return null;
+      final model = GenerativeModel(
+        model: await AiModelSecici.ilkAday(),
+        apiKey: apiKey,
+        generationConfig: GenerationConfig(responseMimeType: 'application/json'),
+      );
+      final prompt = '''
+Bir market ürün ekleme formunda kullanıcı şunu söyledi/yazdı: "$metin"
+
+Söylenen HER bilgiyi uygun alana yerleştirip tek bir JSON nesnesi döndür.
+YALNIZCA söylenenleri yaz; söylenmeyen alanı ASLA ekleme, ASLA sayı uydurma.
+Olası anahtarlar (hepsi opsiyonel):
+urunAdi, barkod, kod, alisFiyat (KDV hariç alış), alisFiyatKdvDahil, satisFiyati,
+toptanFiyat, alisKdvOran, kdvOran (genel "kdv" için ikisini de ver; geçerli
+oranlar 0,1,8,10,18,20), stok, minimumStok, maksimumStok, koliIciMiktar,
+birim (adet/kilo/litre/paket/koli/metre), anaGrup, altGrup, marka, uretici,
+model, rafNo, indirimOrani, renk, beden, agirlik, muhasebeKodu, aktif (bool).
+
+Sayılar JSON sayısı olsun (₺/TL/lira kelimesi olmasın, ondalık için nokta).
+"Yirmi beş lira elli" -> 25.5. "Kilosu 12" -> satisFiyati 12 ve birim "kilo".
+Hiçbir alana uymuyorsa {} döndür. Sadece JSON yaz.
+''';
+      final response = await model
+          .generateContent([Content.text(prompt)])
+          .timeout(const Duration(seconds: 10));
+      final cevap = response.text?.trim();
+      if (cevap == null || cevap.isEmpty) return null;
+      final temiz = cevap.replaceAll(RegExp(r'^```json\s*|\s*```$'), '').trim();
+      final json = jsonDecode(temiz);
+      return json is Map<String, dynamic> ? json : null;
+    } catch (e) {
+      if (kDebugMode) debugPrint('Gemini çoklu sesli komut hatası: $e');
+      return null;
+    }
+  }
+
   // ============================================================
   // NORMALİZASYON METOTLARI
   // ============================================================

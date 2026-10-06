@@ -121,7 +121,11 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
   void _tumunuSec() => setState(() => _secili = _filtrelenmis.map((u) => u.id!).toSet());
   void _secimTemizle() => setState(() => _secili.clear());
   void _toggle(int id) => setState(() {
-    if (_secili.contains(id)) _secili.remove(id); else _secili.add(id);
+    if (_secili.contains(id)) {
+      _secili.remove(id);
+    } else {
+      _secili.add(id);
+    }
   });
 
   // Yeni değer hesapla

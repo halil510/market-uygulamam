@@ -224,11 +224,12 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
                     icon: const Icon(Icons.more_vert, size: 22),
                     onSelected: (v) {
                       if (v == 'excel') _excelAktar();
-                      if (v == 'excel_ice')
+                      if (v == 'excel_ice') {
                         ExcelIceAktarYardimcisi.iceAktar(context,
                             onTamamlandi: () => ref
                                 .read(urunlerProvider.notifier)
                                 .yukle(sifirla: true));
+                      }
                       if (v == 'toplu_fiyat') context.push('/urun/toplu-fiyat');
                     },
                     itemBuilder: (_) => const [

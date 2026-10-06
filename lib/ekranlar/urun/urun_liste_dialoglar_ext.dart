@@ -125,7 +125,7 @@ extension _UrunListeDialoglarExt on _UrunListeEkraniState {
   }
 
   Future<void> _gorunumSecimiAc() async {
-    var secim = Set<String>.from(_ekAlanlar);
+    final secim = Set<String>.from(_ekAlanlar);
     final sonuc = await showDialog<Set<String>>(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, ss) {

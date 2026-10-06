@@ -24,6 +24,8 @@ import '../../servisler/masa/urun_resim_yukleme_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../servisler/ai/ai_urun_ekle_servisi.dart';
+import '../../servisler/ai/urun_ses_ayristirici.dart';
+import '../../servisler/ai/tr_sayi_ayristirici.dart';
 import '../../servisler/ai/ai_vision_servisi.dart'; // API anahtarını set etmek için
 // urun_ekle_ekrani_ai_ses.dart (part) kullanıyor
 import '../birim/birim_ekrani.dart';
@@ -138,7 +140,9 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
   @override
   void dispose() {
     if (Platform.isWindows) HardwareKeyboard.instance.removeHandler(_masaustuTus);
-    for (final ctrl in _c.values) ctrl.dispose();
+    for (final ctrl in _c.values) {
+      ctrl.dispose();
+    }
     super.dispose();
   }
 

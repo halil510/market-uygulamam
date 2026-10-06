@@ -300,7 +300,11 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
           Padding(padding: const EdgeInsets.all(12),
             child: Row(children: [
               Checkbox(value: _tumunuSec,
-                onChanged: (v) => setState(() { _tumunuSec = v!; if (v) _seciliIds = _secili.map((u) => u.id!).toSet(); else _seciliIds.clear(); })),
+                onChanged: (v) => setState(() { _tumunuSec = v!; if (v) {
+                  _seciliIds = _secili.map((u) => u.id!).toSet();
+                } else {
+                  _seciliIds.clear();
+                } })),
               Text(_tumunuSec ? 'Tüm Filtreliler (${_secili.length})' : '${_seciliIds.length} Seçildi',
                   style: const TextStyle(fontWeight: FontWeight.w600)),
             ])),
@@ -317,7 +321,11 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
                       value: secili || _tumunuSec,
                       onChanged: (v) {
                         if (_tumunuSec) return;
-                        setState(() { if (v!) _seciliIds.add(u.id!); else _seciliIds.remove(u.id); });
+                        setState(() { if (v!) {
+                          _seciliIds.add(u.id!);
+                        } else {
+                          _seciliIds.remove(u.id);
+                        } });
                       },
                       title: Text(u.urunAdi, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                       subtitle: Row(children: [

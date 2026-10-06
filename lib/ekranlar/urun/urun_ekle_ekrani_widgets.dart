@@ -80,7 +80,11 @@ extension _UrunEkleWidgetExt on _UrunEkleEkraniState {
     gruplar: ana ? _anaGruplar : _altGruplar,
     secilenGrup: ana ? _anaGrup : _altGrup,
     label: ana ? 'Ana Grup' : 'Alt Grup',
-    onDegisti: (v) => setState(() { if (ana) _anaGrup = v; else _altGrup = v; }),
+    onDegisti: (v) => setState(() { if (ana) {
+      _anaGrup = v;
+    } else {
+      _altGrup = v;
+    } }),
   );
 }
 
@@ -136,7 +140,7 @@ class _SesliKomutSheetState extends State<_SesliKomutSheet> {
           const SizedBox(height: 8),
           Text(
             _canliMetin.isEmpty
-                ? 'Örn: "ürün adı çikolata", "alış fiyat 25,50", "satış fiyat 35"'
+                ? 'Örn: "çikolata alış 25,50 satış 35 kdv 10 stok 100" — hepsini tek cümlede söyleyebilirsiniz'
                 : _canliMetin,
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: _canliMetin.isEmpty ? context.textSecondary : context.textPrimary),

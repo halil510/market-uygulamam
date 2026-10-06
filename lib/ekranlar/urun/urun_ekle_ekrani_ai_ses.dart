@@ -10,7 +10,7 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
   // ---- FATURA ÜRÜN SEÇİM DİALOGU ----
   Future<List<Map<String, dynamic>>> _faturaUrunSecDialog(
       List<Map<String, dynamic>> urunler) async {
-    Set<int> seciliIndeksler = {};
+    final Set<int> seciliIndeksler = {};
     return await showDialog<List<Map<String, dynamic>>>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -28,8 +28,11 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
                   value: secili,
                   onChanged: (v) {
                     setState(() {
-                      if (v == true) seciliIndeksler.add(i);
-                      else seciliIndeksler.remove(i);
+                      if (v == true) {
+                        seciliIndeksler.add(i);
+                      } else {
+                        seciliIndeksler.remove(i);
+                      }
                     });
                   },
                   title: Text(u['urun_adi'] ?? ''),
@@ -76,33 +79,16 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
     }
   }
 
-  Future<void> _aiAlan1Oner() async {
-    final ad = _c['urunAdi']?.text.trim();
-    if (ad == null || ad.isEmpty) {
-      BildirimServisi.uyari(context, 'Önce ürün adını girin.');
-      return;
-    }
-    final cevap = await _ai.urunKategoriOner(ad);
-    if (cevap.containsKey('alan1')) {
-      if (!mounted) return;
-      setState(() {
-        _c['alan1']?.text = cevap['alan1'] ?? '';
-        _aiDoldurulanAlanlar.add('alan1');
-      });
-      if (mounted) BildirimServisi.basari(context, 'Alan1 önerisi: ${_c['alan1']?.text}');
-    } else {
-      if (mounted) BildirimServisi.uyari(context, 'Alan1 önerisi alınamadı.');
-    }
-  }
-
   /// Tek mikrofon, doğal cümle: "ürün adı çikolata", "alış fiyat 25,50",
   /// "satış fiyat 35", "stok 100", "kdv oranı 18", "barkod 869...",
   /// "grup öner" gibi komutları dinler, doğru alanı bulup otomatik yazar.
   Future<void> _sesliKomut() async {
     final hazir = await _ses.hazirla();
     if (!hazir) {
-      if (mounted) BildirimServisi.uyari(context,
+      if (mounted) {
+        BildirimServisi.uyari(context,
           'Mikrofon kullanılamıyor. Cihaz ayarlarından mikrofon iznini kontrol edin.');
+      }
       return;
     }
     if (!mounted) return;
@@ -157,69 +143,6 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
             : 'Alış fiyatı: ${sonuc.tlTutari.toStringAsFixed(2)} ₺ olarak hesaplandı');
   }
 
-  /// Alan adlarını gerçek form alanlarına yazan ortak yardımcı — hem
-  /// kural tabanlı hem Gemini yolundan gelen sonuçlar buradan geçer.
-  void _alaniDoldur(String alan, String deger) {
-    double? sayi() {
-      final t = deger.replaceAll('lira', '').replaceAll('tl', '').replaceAll('₺', '').trim();
-      final m = RegExp(r'[\d]+([.,]\d+)?').firstMatch(t);
-      return m == null ? null : double.tryParse(m.group(0)!.replaceAll(',', '.'));
-    }
-
-    switch (alan) {
-      case 'satisFiyati':
-        final v = sayi();
-        if (v != null) {
-          setState(() => _c['satisFiyati']?.text = v.toStringAsFixed(2));
-          BildirimServisi.basari(context, 'Satış fiyatı: ${v.toStringAsFixed(2)} ₺');
-        }
-      case 'alisFiyat':
-        final v = sayi();
-        if (v != null) {
-          setState(() => _c['alisFiyat']?.text = v.toStringAsFixed(2));
-          BildirimServisi.basari(context, 'Alış fiyatı: ${v.toStringAsFixed(2)} ₺');
-        }
-      case 'kdvOrani':
-        final v = sayi();
-        if (v != null) {
-          setState(() => _c['alisKdvOran']?.text = v.toStringAsFixed(0));
-          BildirimServisi.basari(context, 'KDV oranı: %${v.toStringAsFixed(0)}');
-        }
-      case 'stok':
-        final v = sayi();
-        if (v != null) {
-          setState(() => _c['stok']?.text = v.toStringAsFixed(0));
-          BildirimServisi.basari(context, 'Stok: ${v.toStringAsFixed(0)}');
-        }
-      case 'barkod':
-        final rakam = deger.replaceAll(RegExp(r'[^\d]'), '');
-        if (rakam.isNotEmpty) {
-          setState(() => _c['barkod']?.text = rakam);
-          BildirimServisi.basari(context, 'Barkod: $rakam');
-        }
-      case 'anaGrup':
-        if (deger.trim().isNotEmpty) {
-          setState(() => _anaGrup = deger.trim());
-          BildirimServisi.basari(context, 'Grup: ${deger.trim()}');
-        }
-      case 'marka':
-        if (deger.trim().isNotEmpty) {
-          setState(() => _c['alan1']?.text = deger.trim());
-          BildirimServisi.basari(context, 'Marka: ${deger.trim()}');
-        }
-      case 'urunAdi':
-      default:
-        if (deger.trim().isNotEmpty) {
-          setState(() {
-            _c['urunAdi']?.text = deger.trim();
-            _urunAdiGuncelle(deger.trim());
-          });
-          BildirimServisi.basari(context, 'Ürün adı: ${deger.trim()}');
-          _benzerUrunKontrolEt(deger.trim());
-        }
-    }
-  }
-
   /// Sesle söylenen ürün adı zaten kayıtlıysa kullanıcıyı bilgilendirir
   /// (mükerrer kayıt açmadan önce fark etsin diye) — "ülker çubuk dedim,
   /// asistan ürün listesinden bulsun" isteğinin karşılığı budur.
@@ -235,140 +158,192 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
     );
   }
 
-  /// Tüm bilinen tetik kelimelerinin UZUNDAN KISAYA sıralı düz listesi —
-  /// hem tek komut eşleştirmede hem çoklu komut bölmede kullanılıyor.
-  static const List<String> _tumTetikKelimeler = [
-    'satış fiyatı', 'satış fiyat', 'satis fiyat',
-    'alış fiyatı', 'alış fiyat', 'alis fiyat', 'maliyet',
-    'kdv oranı', 'kdv oran',
-    'ana grup', 'grup öner', 'kategori öner', 'kategori',
-    'marka öner', 'alan öner', 'alan1', 'alan 1', 'marka',
-    'ürün adı', 'urun adi', 'ürün ismi', 'ismi',
-    'miktar', 'stok', 'adet', 'barkod', 'grup',
-  ];
+  // ---- SESLİ / YAZILI KOMUT MOTORU ------------------------------------
+  // Tek cümlede istenen kadar alan: "ülker gofret alış yirmi beş buçuk
+  // satış otuz beş kdv on stok yüz raf a üç". Ayrıştırma saf bir sınıfta
+  // (UrunSesAyristirici — test edilebilir); burası yalnız forma yazar.
+  // Sıra: kural tabanlı → (hiçbir şey bulunamazsa) Gemini çoklu alan →
+  // (hâlâ yoksa) tek başına söylenen kelime ürün adıdır.
+  Future<void> _sesliKomutuUygula(String metinHam) async {
+    var sonuc = UrunSesAyristirici.ayristir(metinHam);
 
-  /// Tek bir komut parçasını ("alış fiyat 25" gibi) dener; eşleşen bir
-  /// tetik ifadesi bulunup uygulandıysa true döner. "alan1 ülker" gibi
-  /// kullanıcı örneği de "marka" tetikleyicileri arasında destekleniyor.
-  bool _tekKomutUygula(String parca) {
-    double? sayiBul(String s) {
-      final t = s.replaceAll('lira', '').replaceAll('tl', '').replaceAll('₺', '');
-      final m = RegExp(r'[\d]+([.,]\d+)?').firstMatch(t);
-      if (m == null) return null;
-      return double.tryParse(m.group(0)!.replaceAll(',', '.'));
-    }
-
-    // Tetik ifadeleri UZUNDAN KISAYA doğru kontrol edilmeli (ör. "satış
-    // fiyat" önce, düz "fiyat" sonra) — aksi halde yanlış alana yazabilir.
-    final kurallar = <(List<String>, void Function(String))>[
-      (['satış fiyat', 'satis fiyat', 'satış fiyatı'], (kalan) {
-        final v = sayiBul(kalan);
-        if (v != null) _alaniDoldur('satisFiyati', v.toStringAsFixed(2));
-      }),
-      (['alış fiyat', 'alis fiyat', 'alış fiyatı', 'maliyet'], (kalan) {
-        final v = sayiBul(kalan);
-        if (v != null) _alaniDoldur('alisFiyat', v.toStringAsFixed(2));
-      }),
-      (['kdv oranı', 'kdv oran'], (kalan) {
-        final v = sayiBul(kalan);
-        if (v != null) _alaniDoldur('kdvOrani', v.toStringAsFixed(0));
-      }),
-      (['stok', 'miktar', 'adet'], (kalan) {
-        final v = sayiBul(kalan);
-        if (v != null) _alaniDoldur('stok', v.toStringAsFixed(0));
-      }),
-      (['barkod'], (kalan) => _alaniDoldur('barkod', kalan)),
-      (['grup öner', 'kategori öner'], (_) => _aiGrupOner()),
-      (['marka öner', 'alan öner'], (_) => _aiAlan1Oner()),
-      (['grup', 'kategori', 'ana grup'], (kalan) => _alaniDoldur('anaGrup', kalan)),
-      // "alan1"/"alan 1" kullanıcının kendi örneğiydi — marka
-      // tetikleyicilerine eklendi.
-      (['alan1', 'alan 1', 'marka'], (kalan) => _alaniDoldur('marka', kalan)),
-      (['ürün adı', 'urun adi', 'ürün ismi', 'ismi'], (kalan) => _alaniDoldur('urunAdi', kalan)),
-    ];
-
-    for (final (tetikler, uygula) in kurallar) {
-      for (final tetik in tetikler) {
-        final idx = parca.indexOf(tetik);
-        if (idx != -1) {
-          final kalan = parca.substring(idx + tetik.length).trim();
-          uygula(kalan);
-          return true;
-        }
+    if (sonuc.bos) {
+      final ai = await _ai.sesliKomutCokluYorumla(metinHam);
+      if (!mounted) return;
+      if (ai != null && ai.isNotEmpty) {
+        sonuc = UrunSesJson.jsondan(ai);
       }
     }
-    return false;
+
+    if (sonuc.bos) {
+      final t = metinHam.trim();
+      // Sayı içermeyen tek başına bir ifade büyük olasılıkla ürün adıdır.
+      if (t.isNotEmpty && !RegExp(r'\d').hasMatch(t) && sonuc.anlasilmayan.isEmpty) {
+        await _urunSesSonucunuUygula(UrunSesSonuc(
+            {'urunAdi': UrunSesAyristirici.basHarfBuyut(TrSayi.normalize(t))},
+            const <String>{},
+            const <String>[]));
+        return;
+      }
+      if (mounted) {
+        BildirimServisi.uyari(
+            context,
+            sonuc.anlasilmayan.isNotEmpty
+                ? sonuc.anlasilmayan.join(' • ')
+                : 'Anlayamadım: "$t". Örn: "satış fiyatı 35, stok 100, kdv 10".');
+      }
+      return;
+    }
+    await _urunSesSonucunuUygula(sonuc);
   }
 
-  Future<void> _sesliKomutuUygula(String metinHam) async {
-    final metin = metinHam.toLowerCase().trim();
+  static String _sesSayi(double v, {int hane = 2}) {
+    if (v == v.truncateToDouble()) return v.toStringAsFixed(0);
+    return v.toStringAsFixed(hane).replaceFirst(RegExp(r'0+$'), '');
+  }
 
-    // ÖNCEDEN: sadece TEK bir komut işlenip fonksiyondan çıkılıyordu, VE
-    // virgülle bölme denendiğinde bile "satış fiyat 30 alan1 ülker" gibi
-    // konuşma-tanımanın virgül KOYMADIĞI durumlarda ikinci komut
-    // kayboluyordu (sayı ayıklayıcı ilk sayıyı bulup gerisini atıyordu).
-    // Artık metin, noktalama işaretine değil BİLİNEN TETİK KELİMELERİNİN
-    // KONUMUNA göre bölünüyor — "alış fiyat 25 satış fiyat 30 alan1
-    // ülker" gibi virgülsüz, art arda söylenmiş komutlar da doğru
-    // ayrıştırılıyor.
-    final tetikKonumlari = <int>[];
-    for (final tetik in _tumTetikKelimeler) {
-      var ara = 0;
-      while (true) {
-        final idx = metin.indexOf(tetik, ara);
-        if (idx == -1) break;
-        tetikKonumlari.add(idx);
-        ara = idx + tetik.length;
+  /// Ayrıştırılan alanları forma yazar. Yazma SIRASI önemlidir: formun
+  /// dinleyicileri (KDV/fiyat/indirim) birbirini tetikler — önce KDV, sonra
+  /// alış, sonra satış, en son indirim yazılır ki satış fiyatı yazımı
+  /// indirimi sıfırlamasın.
+  Future<void> _urunSesSonucunuUygula(UrunSesSonuc r) async {
+    final a = r.alanlar;
+    final uyarilar = <String>[...r.anlasilmayan];
+
+    double? d(String k) => a[k] is double ? a[k] as double : null;
+    String? s(String k) => a[k] is String ? a[k] as String : null;
+
+    setState(() {
+      // 1) KDV oranları
+      final alisKdv = d('alisKdvOran');
+      if (alisKdv != null) {
+        final v = alisKdv.toStringAsFixed(0);
+        _c['alisKdvOran']?.text = v;
+        _alisKdvOran = v;
       }
+      final satisKdv = d('kdvOran');
+      if (satisKdv != null) _kdvOran = satisKdv.toStringAsFixed(0);
+
+      // 2) Alış → KDV dahil alış
+      if (d('alisFiyat') != null) _c['alisFiyat']?.text = _sesSayi(d('alisFiyat')!);
+      if (d('alisFiyatKdvDahil') != null) {
+        _c['alisFiyatKdvDahil']?.text = _sesSayi(d('alisFiyatKdvDahil')!, hane: 3);
+      }
+      // 3) Satış, ardından indirim
+      if (d('satisFiyati') != null) _c['satisFiyati']?.text = _sesSayi(d('satisFiyati')!);
+      if (d('indirimOrani') != null) _c['indirimOrani']?.text = _sesSayi(d('indirimOrani')!);
+      if (d('toptanFiyat') != null) _c['toptanFiyat']?.text = _sesSayi(d('toptanFiyat')!);
+
+      // 4) Miktarlar
+      if (d('stok') != null) _c['stok']?.text = _sesSayi(d('stok')!, hane: 3);
+      if (d('minimumStok') != null) _c['minimumStok']?.text = _sesSayi(d('minimumStok')!, hane: 3);
+      if (d('maksimumStok') != null) _c['maksimumStok']?.text = _sesSayi(d('maksimumStok')!, hane: 3);
+      if (d('koliIciMiktar') != null) _c['koliIciMiktar']?.text = _sesSayi(d('koliIciMiktar')!, hane: 3);
+      if (d('agirlik') != null) _c['agirlik']?.text = _sesSayi(d('agirlik')!, hane: 3);
+
+      // 5) Birim ve satış tipi
+      final birim = s('birim');
+      if (birim != null) {
+        if (_birimler.isEmpty || _birimler.contains(birim)) {
+          _birim = birim;
+          _kgModu = birim == 'KG' || birim == 'GR' || birim == 'LİTRE' || birim == 'ML';
+        } else {
+          uyarilar.add('"$birim" birimi tanımlı değil (Ayarlar > Birimler)');
+        }
+      }
+      if (s('satisBirimiTipi') != null) _satisBirimiTipi = s('satisBirimiTipi')!;
+      if (s('koliBirimAdi') != null) _koliBirimAdi = s('koliBirimAdi')!;
+
+      // 6) Metin alanları
+      if (s('urunAdi') != null) _urunAdiGuncelle(s('urunAdi')!);
+      if (s('barkod') != null) {
+        _c['barkod']?.text = s('barkod')!;
+        _aiDoldurulanAlanlar.add('barkod');
+        // Form ürün kodunu zorunlu tutar; boşsa barkodla aynı yap (otomatik
+        // barkod üretiminde de böyle).
+        if ((_c['kod']?.text.trim().isEmpty ?? true) && s('kod') == null) {
+          _c['kod']?.text = s('barkod')!;
+        }
+      }
+      for (final k in const [
+        'kod', 'marka', 'uretici', 'model', 'rafNo', 'renk', 'beden',
+        'muhasebeKodu', 'alan1', 'alan2', 'alan3', 'alan4',
+      ]) {
+        if (s(k) != null) _c[k]?.text = s(k)!;
+      }
+      if (s('anaGrup') != null) {
+        _anaGrup = s('anaGrup');
+        _aiDoldurulanAlanlar.add('ana_grup');
+      }
+      if (s('altGrup') != null) _altGrup = s('altGrup');
+
+      // 7) Anahtarlar
+      if (a['aktif'] is bool) _aktif = a['aktif'] as bool;
+      if (a['lotTakibi'] is bool) _lotTakibi = a['lotTakibi'] as bool;
+      if (a['seriTakibi'] is bool) _seriTakibi = a['seriTakibi'] as bool;
+    });
+
+    // Kullanıcıya NE yazıldığını göster — sessizce değişmesin.
+    if (r.alanlar.isNotEmpty && mounted) {
+      final satirlar = r.ozetSatirlari();
+      final gosterilen = satirlar.take(6).join(' • ');
+      final fazla = satirlar.length > 6 ? ' (+${satirlar.length - 6})' : '';
+      BildirimServisi.basari(context, '✓ $gosterilen$fazla');
     }
-    tetikKonumlari.sort();
-    // Çakışan/iç içe konumları (ör. "satış fiyat" içindeki "fiyat") temizle
-    final benzersizKonumlar = <int>[];
-    for (final k in tetikKonumlari) {
-      if (benzersizKonumlar.isEmpty || k - benzersizKonumlar.last > 2) {
-        benzersizKonumlar.add(k);
-      }
+    if (uyarilar.isNotEmpty && mounted) {
+      BildirimServisi.uyari(context, uyarilar.join(' • '));
     }
 
-    final parcalar = <String>[];
-    if (benzersizKonumlar.length > 1) {
-      for (var i = 0; i < benzersizKonumlar.length; i++) {
-        final bas = benzersizKonumlar[i];
-        final son = (i + 1 < benzersizKonumlar.length) ? benzersizKonumlar[i + 1] : metin.length;
-        final parca = metin.substring(bas, son).replaceAll(',', ' ').trim();
-        if (parca.isNotEmpty) parcalar.add(parca);
-      }
+    // Eylemler
+    if (r.eylemler.contains('barkodUret')) await _otomatikBarkodUret();
+    if (r.eylemler.contains('grupOner')) await _aiGrupOner();
+    if (r.eylemler.contains('markaOner')) await _aiMarkaOner();
+    if (s('urunAdi') != null && widget.duzenlenecekUrun == null) {
+      _benzerUrunKontrolEt(s('urunAdi')!);
     }
+    if (r.eylemler.contains('kaydet') && mounted) await _sesleKaydetOnayi();
+  }
 
-    if (parcalar.length > 1) {
-      var enAzBirTaneUygulandi = false;
-      for (final parca in parcalar) {
-        if (_tekKomutUygula(parca)) enAzBirTaneUygulandi = true;
-      }
-      if (enAzBirTaneUygulandi) return;
-      // Hiçbiri eşleşmediyse tek parça gibi devam et (aşağıdaki akıllı
-      // yola düşsün).
-    } else if (_tekKomutUygula(metin)) {
+  /// Sesle söylenen "kaydet" yanlış tanımaya karşı onay ister.
+  Future<void> _sesleKaydetOnayi() async {
+    final ad = _c['urunAdi']?.text.trim() ?? '';
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Ürün kaydedilsin mi?'),
+        content: Text(
+          ad.isEmpty
+              ? 'Ürün adı boş.'
+              : '$ad\nAlış: ${_c['alisFiyat']?.text ?? ''}  '
+                  'Satış: ${_c['satisFiyati']?.text ?? ''}  '
+                  'Stok: ${_c['stok']?.text ?? ''}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Kaydet')),
+        ],
+      ),
+    );
+    if (onay == true && mounted) await _kaydet();
+  }
+
+  Future<void> _aiMarkaOner() async {
+    final ad = _c['urunAdi']?.text.trim();
+    if (ad == null || ad.isEmpty) {
+      BildirimServisi.uyari(context, 'Önce ürün adını söyleyin/girin.');
       return;
     }
-
-    // 2) AKILLI YOL — hiçbir sabit tetik ifadesi geçmiyorsa, doğrudan
-    // "ürün adı" varsaymak yerine Gemini'ye sorup DAHA İSABETLİ bir alan
-    // tahmini alınıyor (ör. "bunun kilosu on iki lira elli" gibi tetik
-    // kelimesi içermeyen ama fiyat belirten cümleleri de anlayabilir).
-    // API anahtarı yoksa/hata olursa sessizce eski davranışa (ürün adı)
-    // düşülür — kullanıcı hiçbir zaman "hiçbir şey olmadı" durumunda
-    // kalmaz.
-    final aiSonuc = await _ai.sesliKomutYorumla(metinHam);
-    if (aiSonuc != null && aiSonuc['alan'] != null && aiSonuc['deger'] != null) {
-      _alaniDoldur(aiSonuc['alan']!, aiSonuc['deger']!);
-      return;
-    }
-
-    // 3) SON ÇARE — tek başına söylenmiş bir isim/kelime muhtemelen
-    // ürün adıdır (en yaygın kullanım).
-    if (metinHam.trim().isNotEmpty) {
-      _alaniDoldur('urunAdi', metinHam.trim());
+    final cevap = await _ai.urunKategoriOner(ad);
+    if (!mounted) return;
+    if (cevap['alan1'] != null && cevap['alan1']!.isNotEmpty) {
+      setState(() {
+        _c['marka']?.text = cevap['alan1']!;
+        _aiDoldurulanAlanlar.add('alan1');
+      });
+      BildirimServisi.basari(context, 'Marka önerisi: ${cevap['alan1']}');
+    } else {
+      BildirimServisi.uyari(context, 'Marka önerilemedi.');
     }
   }
 

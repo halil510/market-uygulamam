@@ -71,12 +71,14 @@ class _UrunDetayEkraniState extends ConsumerState<UrunDetayEkrani>
       ),
         body: Center(child: Text(kullaniciyaHataMetni(e)))),
       data: (urun) {
-        if (urun == null) return const Scaffold(
+        if (urun == null) {
+          return const Scaffold(
           appBar: TsAppBar(
         baslik: 'Bulunamadı',
         gradyanli: false,
       ),
           body: Center(child: Text('Ürün bulunamadı')));
+        }
         return Scaffold(
           backgroundColor: context.scaffoldBg,
           appBar: TsAppBar(
@@ -415,12 +417,14 @@ class _HareketSekmesiState extends ConsumerState<_HareketSekmesi> {
   @override
   Widget build(BuildContext context) {
     if (_yukleniyor) return const TsYukleniyor();
-    if (_hareketler.isEmpty) return Center(
+    if (_hareketler.isEmpty) {
+      return Center(
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.history_outlined, size: 48, color: context.textSecondary),
         const SizedBox(height: 8),
         Text('Stok hareketi yok', style: TextStyle(color: context.textSecondary)),
       ]));
+    }
     return ListView.separated(
       padding: const EdgeInsets.all(12),
       itemCount: _hareketler.length,

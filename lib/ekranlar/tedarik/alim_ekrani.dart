@@ -51,7 +51,14 @@ class _AlimKalem {
     lotNoCtrl.dispose();
     sktCtrl.dispose();
   }
+  /// KDV hariç tutar (miktar × birim alış fiyatı).
   double get toplamTutar => ParaUtils.yuvarla(miktar * alisFiyat);
+  double get kdvOran => urun.alisKdvOran;
+  double get kdvTutar =>
+      ParaUtils.yuvarla(miktar * alisFiyat * kdvOran / 100);
+
+  /// KDV dahil tutar — tedarikçiye ödenecek/borçlanılacak miktar.
+  double get kdvDahilTutar => ParaUtils.yuvarla(toplamTutar + kdvTutar);
 }
 
 class AlimEkrani extends ConsumerStatefulWidget {
@@ -349,8 +356,13 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
     });
   }
 
-  double get _genelToplam =>
+  double get _araToplam =>
       ParaUtils.yuvarla(_kalemler.fold(0.0, (s, k) => s + k.toplamTutar));
+  double get _kdvToplam =>
+      ParaUtils.yuvarla(_kalemler.fold(0.0, (s, k) => s + k.kdvTutar));
+
+  /// KDV DAHİL genel toplam (cari borç / kasa çıkışı bu tutardır).
+  double get _genelToplam => ParaUtils.yuvarla(_araToplam + _kdvToplam);
 
   Future<void> _alimKaydet() async {
     if (_kalemler.isEmpty) {
@@ -387,6 +399,7 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
                 urunId: k.urun.id!,
                 miktar: k.miktar,
                 alisFiyat: k.alisFiyat,
+                kdvOran: k.kdvOran,
                 lotNo: k.urun.lotTakibi && k.lotNoCtrl.text.trim().isNotEmpty
                     ? k.lotNoCtrl.text.trim()
                     : null,
@@ -619,11 +632,22 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              ParaUtils.formatla(k.toplamTutar),
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  ParaUtils.formatla(k.kdvDahilTutar),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13),
+                                ),
+                                Text(
+                                  'KDV %${k.kdvOran.toStringAsFixed(k.kdvOran % 1 == 0 ? 0 : 1)} dahil',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: context.textSecondary),
+                                ),
+                              ],
                             ),
                           ]),
                           if (k.urun.lotTakibi) ...[
@@ -675,7 +699,26 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                  const Text('Genel Toplam',
+                  Text('Ara Toplam (KDV hariç)',
+                      style: TextStyle(
+                          fontSize: 12, color: context.textSecondary)),
+                  Text(ParaUtils.formatla(_araToplam),
+                      style: TextStyle(
+                          fontSize: 12, color: context.textSecondary)),
+                ]),
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                  Text('KDV',
+                      style: TextStyle(
+                          fontSize: 12, color: context.textSecondary)),
+                  Text(ParaUtils.formatla(_kdvToplam),
+                      style: TextStyle(
+                          fontSize: 12, color: context.textSecondary)),
+                ]),
+                const SizedBox(height: 4),
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                  const Text('Genel Toplam (KDV dahil)',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   Text(ParaUtils.formatla(_genelToplam),
                       style: const TextStyle(

@@ -34,13 +34,23 @@ class AlimKalemGirdi {
   final double alisFiyat;
   final String? lotNo;
   final DateTime? skt;
+
+  /// Alış KDV oranı (%). [alisFiyat] KDV HARİÇ birim fiyattır; kalem tutarı
+  /// ve tedarikçiye borç/ödeme KDV DAHİL yazılır (tedarikçi KDV'yi de tahsil
+  /// eder). 0 verilirse eski davranış (KDV'siz) korunur.
+  final double kdvOran;
   const AlimKalemGirdi({
     required this.urunId,
     required this.miktar,
     required this.alisFiyat,
     this.lotNo,
     this.skt,
+    this.kdvOran = 0,
   });
+
+  /// KDV dahil kalem tutarı.
+  double get kdvDahilToplam =>
+      ParaUtils.yuvarla(miktar * alisFiyat * (1 + kdvOran / 100));
 }
 
 class AlimIslemServisi {
@@ -173,7 +183,7 @@ class AlimIslemServisi {
                   'global_id': kalemGid,
                   'teslim_mik': k.miktar,
                   'birim_fiyat': k.alisFiyat,
-                  'toplam_tutar': ParaUtils.yuvarla(k.miktar * k.alisFiyat),
+                  'toplam_tutar': k.kdvDahilToplam,
                   'last_updated': now,
                 },
                 where: 'id = ?',
@@ -188,8 +198,8 @@ class AlimIslemServisi {
               'siparis_mik': k.miktar,
               'teslim_mik': k.miktar,
               'birim_fiyat': k.alisFiyat,
-              'kdv_oran': 0,
-              'toplam_tutar': ParaUtils.yuvarla(k.miktar * k.alisFiyat),
+              'kdv_oran': k.kdvOran,
+              'toplam_tutar': k.kdvDahilToplam,
               'last_updated': now,
             });
           }
@@ -210,8 +220,8 @@ class AlimIslemServisi {
             'siparis_mik': k.miktar,
             'teslim_mik': k.miktar,
             'birim_fiyat': k.alisFiyat,
-            'kdv_oran': 0,
-            'toplam_tutar': ParaUtils.yuvarla(k.miktar * k.alisFiyat),
+            'kdv_oran': k.kdvOran,
+            'toplam_tutar': k.kdvDahilToplam,
             'last_updated': now,
           });
           await SyncKuyrukYazici.ekleTxn(txn,
@@ -224,8 +234,8 @@ class AlimIslemServisi {
                 'siparis_mik': k.miktar,
                 'teslim_mik': k.miktar,
                 'birim_fiyat': k.alisFiyat,
-                'kdv_oran': 0,
-                'toplam_tutar': ParaUtils.yuvarla(k.miktar * k.alisFiyat),
+                'kdv_oran': k.kdvOran,
+                'toplam_tutar': k.kdvDahilToplam,
                 'last_updated': now,
               });
         }

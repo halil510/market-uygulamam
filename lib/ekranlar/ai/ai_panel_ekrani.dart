@@ -6,6 +6,8 @@ import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../servisler/ai_servisi.dart';
+import '../../servisler/ai/eylem/ai_eylem_modeli.dart';
+import '../../servisler/ai/eylem/ai_eylem_motoru.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -386,6 +388,13 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
       if (!mounted) return;
       setState(() {
         _mesajlar.add({'tip': 'ai', 'metin': sonuc.cevap});
+        // İşlem önerileri: veri ANCAK karttaki "Onayla" ile (veya "evet" yazarak) değişir.
+        if (sonuc.oneri != null) {
+          _mesajlar.add({'tip': 'oneri', 'oneri': sonuc.oneri, 'durum': 'bekliyor'});
+        }
+        for (final o in sonuc.secimler) {
+          _mesajlar.add({'tip': 'oneri', 'oneri': o, 'durum': 'bekliyor', 'grup': sonuc.secimler});
+        }
         _bekliyor = false;
       });
       _scrollaSon();
@@ -421,13 +430,46 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
     }
   }
 
+  Future<void> _onayla(Map<String, dynamic> m) async {
+    final o = m['oneri'] as AiEylemOnerisi;
+    if (m['durum'] != 'bekliyor') return;
+    setState(() => m['durum'] = 'uygulaniyor');
+    final sonuc = await AiEylemMotoru().uygula(o);
+    if (!mounted) return;
+    setState(() {
+      m['durum'] = 'tamam';
+      // Aynı seçenek grubundaki diğer kartlar artık geçersiz.
+      final grup = m['grup'] as List<AiEylemOnerisi>?;
+      if (grup != null) {
+        for (final diger in grup) {
+          if (!identical(diger, o)) diger.iptalEt();
+        }
+      }
+      _mesajlar.add({'tip': 'ai', 'metin': sonuc});
+    });
+    _scrollaSon();
+  }
+
+  void _vazgec(Map<String, dynamic> m) {
+    final o = m['oneri'] as AiEylemOnerisi;
+    if (m['durum'] != 'bekliyor') return;
+    o.iptalEt();
+    setState(() {
+      m['durum'] = 'iptal';
+      _mesajlar.add({'tip': 'ai', 'metin': 'Tamam, iptal ettim. Hiçbir şey değişmedi.'});
+    });
+    _scrollaSon();
+  }
+
   void _scrollaSon() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) _scroll.animateTo(
+      if (_scroll.hasClients) {
+        _scroll.animateTo(
         _scroll.position.maxScrollExtent,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
+      }
     });
   }
 
@@ -484,6 +526,19 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
                 const SizedBox(height: 4),
                 Text('"Z raporu", "Net kâr", "Kritik stok"...',
                     style: TextStyle(color: TsRenk.metinIkincil(context), fontSize: 12)),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'İşlem de yaptırabilirsiniz (önce önizleme gösterir, onayınızla uygular):\n'
+                    '• "Kolanın satış fiyatını 35 yap" • "Ekmeğe yüzde 10 zam yap"\n'
+                    '• "Süte 50 adet stok ekle" • "Ülker gofret ekle alış 6 satış 10"\n'
+                    '• "Ali Yılmaz\'dan 500 lira tahsilat al" • "Kira gideri 15000 ekle"\n'
+                    '• "Yeni müşteri Ayşe Demir 0532…" • "X ürününü pasife al"',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: TsRenk.metinIkincil(context), fontSize: 11.5, height: 1.5),
+                  ),
+                ),
               ]))
             : ListView.builder(
                 controller: _scroll,
@@ -501,6 +556,14 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
                     );
                   }
                   final m   = _mesajlar[i];
+                  if (m['tip'] == 'oneri') {
+                    return _OneriKarti(
+                      oneri: m['oneri'] as AiEylemOnerisi,
+                      durum: m['durum'] as String,
+                      onOnayla: () => _onayla(m),
+                      onVazgec: () => _vazgec(m),
+                    );
+                  }
                   final isAi = m['tip'] == 'ai';
                   return Align(
                     alignment: isAi ? Alignment.centerLeft : Alignment.centerRight,
@@ -583,5 +646,98 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
         ]),
       ),
     ]);
+  }
+}
+
+// ── İşlem Önizleme Kartı ──────────────────────────────────────────────────
+/// Asistanın hazırladığı işlemin ÖNİZLEMESİ: ne değişecek, uyarılar,
+/// Onayla / Vazgeç. Kart kullanıldıktan (veya "evet" yazıldıktan) sonra
+/// düğmeler kalkar.
+class _OneriKarti extends StatelessWidget {
+  final AiEylemOnerisi oneri;
+  final String durum; // bekliyor | uygulaniyor | tamam | iptal
+  final VoidCallback onOnayla;
+  final VoidCallback onVazgec;
+  const _OneriKarti({
+    required this.oneri,
+    required this.durum,
+    required this.onOnayla,
+    required this.onVazgec,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bitti = oneri.kullanildi && durum == 'bekliyor'; // yazıyla onay/iptal edildi
+    final aktif = durum == 'bekliyor' && !oneri.kullanildi && !oneri.suresiDoldu;
+    final renk = oneri.kritik ? Colors.deepOrange : Theme.of(context).colorScheme.primary;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.9),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: context.cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: renk.withAlpha(110), width: 1.2),
+          boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2))],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(oneri.kritik ? Icons.payments_outlined : Icons.edit_note, color: renk, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(oneri.baslik,
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: context.textPrimary)),
+            ),
+            if (oneri.kritik)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: renk.withAlpha(30), borderRadius: BorderRadius.circular(10)),
+                child: Text('Para hareketi', style: TextStyle(fontSize: 10, color: renk, fontWeight: FontWeight.w600)),
+              ),
+          ]),
+          const SizedBox(height: 8),
+          for (final s in oneri.satirlar)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Text(s, style: TextStyle(fontSize: 13, color: context.textPrimary, height: 1.35)),
+            ),
+          for (final u in oneri.uyarilar)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Icon(Icons.warning_amber_rounded, size: 15, color: Colors.amber.shade800),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(u, style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.3)),
+                ),
+              ]),
+            ),
+          const SizedBox(height: 10),
+          if (durum == 'uygulaniyor')
+            const SizedBox(height: 22, child: LinearProgressIndicator())
+          else if (aktif)
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              TextButton(onPressed: onVazgec, child: const Text('Vazgeç')),
+              const SizedBox(width: 6),
+              FilledButton.icon(
+                onPressed: onOnayla,
+                icon: const Icon(Icons.check, size: 18),
+                label: const Text('Onayla'),
+              ),
+            ])
+          else
+            Text(
+              durum == 'tamam'
+                  ? '✓ İşlendi'
+                  : (durum == 'iptal' || bitti || oneri.kullanildi)
+                      ? 'Bu işlem tamamlandı veya iptal edildi'
+                      : 'Bu önizlemenin süresi doldu — isteği yeniden yazın',
+              style: TextStyle(fontSize: 12, color: context.textSecondary, fontStyle: FontStyle.italic),
+            ),
+        ]),
+      ),
+    );
   }
 }

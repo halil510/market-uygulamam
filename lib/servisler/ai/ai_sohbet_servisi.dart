@@ -8,6 +8,9 @@ import 'ai_anlayici.dart';
 import 'ai_rapor_servisi.dart';
 import 'ai_genel_asistan.dart';
 import 'ai_niyet_yonlendirici.dart';
+import 'eylem/ai_eylem_modeli.dart';
+import 'eylem/ai_eylem_motoru.dart';
+import 'tr_sayi_ayristirici.dart';
 
 /// AI Chat'in cevabı — normal metin cevabının yanı sıra, bir gezinme
 /// komutu algılandıysa hedef rota + (varsa) arama terimini de taşır.
@@ -15,7 +18,21 @@ class AiSohbetSonuc {
   final String cevap;
   final String? rota;
   final String? aramaTerimi;
-  const AiSohbetSonuc({required this.cevap, this.rota, this.aramaTerimi});
+
+  /// Asistanın hazırladığı ONAY BEKLEYEN işlem (fiyat/stok/ürün/gider/tahsilat…).
+  /// Kullanıcı "Onayla" demeden veri DEĞİŞMEZ.
+  final AiEylemOnerisi? oneri;
+
+  /// Birden fazla ürün/cari eşleştiğinde kullanıcıya sunulan seçenekler.
+  final List<AiEylemOnerisi> secimler;
+
+  const AiSohbetSonuc({
+    required this.cevap,
+    this.rota,
+    this.aramaTerimi,
+    this.oneri,
+    this.secimler = const [],
+  });
 }
 
 class AiSohbetServisi {
@@ -113,7 +130,13 @@ class AiSohbetServisi {
   ({String rota, String? arama})? _navigasyonAlgila(String soru) {
     final s = soru.toLowerCase().trim();
     final gitKaliplari = ['git', 'aç', 'ac', 'göster', 'goster', 'gider misin'];
-    final gecerliMi = gitKaliplari.any((k) => s.contains(k));
+    // TAM kelime eşleşmesi: "alacak"/"gösterge" gibi sözcüklerin içindeki "ac"/
+    // "göster" gezinme sanılmasın (eskiden alt dize aramasıydı).
+    const gitKelimeleri = {
+      'git', 'gidelim', 'aç', 'ac', 'açar', 'açın', 'açalım', 'göster', 'goster',
+      'gösterir', 'gösterin', 'götür',
+    };
+    final gecerliMi = TrSayi.kelimele(s).any(gitKelimeleri.contains) || s.contains('gider misin');
     if (!gecerliMi) return null;
 
     for (final entry in _rotaKelimeleri.entries) {
@@ -138,6 +161,10 @@ class AiSohbetServisi {
   }
 
   Future<AiSohbetSonuc> sor(String soru) async {
+    // 0) Bekleyen işlem için yazılı/sesli "evet/onayla" veya "vazgeç"
+    final onay = await AiEylemMotoru().onayKomutu(soru);
+    if (onay != null) return AiSohbetSonuc(cevap: onay.mesaj);
+
     final nav = _navigasyonAlgila(soru);
     if (nav != null) {
       return AiSohbetSonuc(
@@ -148,6 +175,14 @@ class AiSohbetServisi {
         aramaTerimi: nav.arama,
       );
     }
+    // 1) İŞLEM isteği mi? (fiyat/stok/ürün/gider/tahsilat/cari) — okuma
+    // raporlarından ÖNCE çözülür; yoksa "süt stok 50 ekle" gibi cümleler
+    // stok sorgusu sanılırdı. Hiçbir şey yazılmaz, önce önizleme döner.
+    final eylem = await AiEylemMotoru().coz(soru);
+    if (eylem != null) {
+      return AiSohbetSonuc(cevap: eylem.mesaj, oneri: eylem.oneri, secimler: eylem.secimler);
+    }
+
     final cevapMetni = await _soruyaCevapVer(soru);
     return AiSohbetSonuc(cevap: cevapMetni);
   }
@@ -761,7 +796,8 @@ class AiSohbetServisi {
     }
     if (s.contains('kimsin') || s.contains('sen kimsin') || s.contains('adın ne')) {
       return 'Ben BarkoPro Akıllı Asistanı — mağazanızın satış, stok, cari ve kâr '
-          'verilerini gerçek zamanlı analiz edip size özetliyorum. Ne öğrenmek istersiniz?';
+          'verilerini gerçek zamanlı analiz edip özetliyorum; ayrıca fiyat/stok/ürün/'
+          'gider/tahsilat gibi işlemleri sizin onayınızla yapabiliyorum. Ne istersiniz?';
     }
     return _yardim();
   }
@@ -795,5 +831,13 @@ class AiSohbetServisi {
       '🔮 TAHMİN & ÖNERİ\n'
       '  "7 günlük satış tahmini"\n'
       '  "Sipariş önerileri"\n'
-      '  "30 günlük tahmin"';
+      '  "30 günlük tahmin"\n\n'
+      '✍️ İŞLEM YAPTIRMA (önce önizleme gösteririm, onayınızla uygularım)\n'
+      '  "Kolanın satış fiyatını 35 yap"  —  "Ekmeğe yüzde 10 zam yap"\n'
+      '  "Süte 50 adet stok ekle"  —  "Ekmeğin stoğunu 100 yap"\n'
+      '  "Ülker gofret ekle alış 6 satış 10 stok 50 kdv 10"\n'
+      '  "Ali Yılmaz\'dan 500 lira tahsilat al"  —  "Kira gideri 15000 ekle"\n'
+      '  "Yeni müşteri Ayşe Demir 05321234567"\n'
+      '  "Eski sabunu pasife al"\n'
+      '  Onay için kartta "Onayla"ya basın ya da "evet" yazın/söyleyin.';
 }

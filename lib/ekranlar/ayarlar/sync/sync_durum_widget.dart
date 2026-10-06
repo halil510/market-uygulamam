@@ -16,7 +16,7 @@ class SyncProgressWidget extends StatelessWidget {
           value: progress / 100,
           minHeight: 12,
           backgroundColor: TsRenk.ayirac(context),
-          valueColor: AlwaysStoppedAnimation<Color>(TsRenk.primary),
+          valueColor: const AlwaysStoppedAnimation<Color>(TsRenk.primary),
         ),
       ),
       const SizedBox(height: 6),

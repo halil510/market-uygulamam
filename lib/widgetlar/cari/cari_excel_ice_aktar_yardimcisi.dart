@@ -89,14 +89,14 @@ class CariExcelIceAktarYardimcisi {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.orange.shade200),
               ),
-              child: Row(children: [
-                const Icon(Icons.info_outline, color: Colors.orange, size: 16),
-                const SizedBox(width: 8),
+              child: const Row(children: [
+                Icon(Icons.info_outline, color: Colors.orange, size: 16),
+                SizedBox(width: 8),
                 Expanded(child: Text(
                   'Yeni eklenen carilerin Excel\'deki Borç/Alacak tutarı '
                   '"Açılış Bakiyesi" hareketi olarak işlendi. Zaten kayıtlı '
                   'carilerin bakiyesine dokunulmadı.',
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(fontSize: 11),
                 )),
               ]),
             ),

@@ -115,7 +115,7 @@ class _BorcTakipEkraniState extends ConsumerState<BorcTakipEkrani> {
               decoration: BoxDecoration(
                 color: TsRenk.kart(context),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
+                boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
               ),
               child: Row(children: [
                 _ozetItem('Toplam Borç', ParaUtils.formatla(ozetToplam), Icons.payment, Colors.blue),
@@ -147,8 +147,8 @@ class _BorcTakipEkraniState extends ConsumerState<BorcTakipEkrani> {
               child: gosterilecek.isEmpty
                   ? Center(
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.check_circle_outline, size: 56, color: Colors.green),
-                        SizedBox(height: 12),
+                        const Icon(Icons.check_circle_outline, size: 56, color: Colors.green),
+                        const SizedBox(height: 12),
                         Text('Tüm borçlar ödenmiş!', style: TextStyle(color: context.textSecondary)),
                       ]),
                     )
@@ -269,7 +269,7 @@ class _BorcKarti extends ConsumerWidget {
                   color: Colors.red,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('GECİKTİ',
+                child: const Text('GECİKTİ',
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)),
               ),
           ]),

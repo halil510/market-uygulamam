@@ -112,21 +112,21 @@ class CrashServisi {
       );
     }
     // RELEASE: gerçek kullanıcıya teknik detay/stack trace gösterilmez.
-    return Material(
+    return const Material(
       color: Colors.white,
       child: SafeArea(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline_rounded, size: 48, color: Colors.red),
-                const SizedBox(height: 12),
-                const Text('Bir şeyler ters gitti',
+                Icon(Icons.error_outline_rounded, size: 48, color: Colors.red),
+                SizedBox(height: 12),
+                Text('Bir şeyler ters gitti',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                const Text(
+                SizedBox(height: 8),
+                Text(
                   'Bu ekran yüklenirken beklenmeyen bir hata oluştu.\n'
                   'Lütfen tekrar deneyin. Sorun devam ederse Ayarlar > '
                   'Sistem Logları üzerinden destek ile paylaşabilirsiniz.',

@@ -85,7 +85,7 @@ class _SatisKameraPaneliState extends State<SatisKameraPaneli>
           ]),
         )),
         // Lazer animasyonu
-        AnimatedBuilder(animation: _lazerAnim, builder: (_, __) {
+        AnimatedBuilder(animation: _lazerAnim, builder: (_, _) {
           final top = panelH * 0.3 + (_lazerAnim.value * panelH * 0.35);
           return Positioned(top: top, left: 40, right: 40,
             child: Container(height: 2,

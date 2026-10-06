@@ -151,12 +151,12 @@ class _MasaustuUrunIzgarasiState extends State<MasaustuUrunIzgarasi> {
     final yol = u.resimYolu;
     if (yol != null && yol.isNotEmpty && File(yol).existsSync()) {
       return Image.file(File(yol),
-          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _bas(u, renk));
+          fit: BoxFit.cover, errorBuilder: (_, _, _) => _bas(u, renk));
     }
     final url = u.resimUrl;
     if (url != null && url.isNotEmpty) {
       return Image.network(url,
-          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _bas(u, renk));
+          fit: BoxFit.cover, errorBuilder: (_, _, _) => _bas(u, renk));
     }
     return _bas(u, renk);
   }

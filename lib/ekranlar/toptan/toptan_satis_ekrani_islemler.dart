@@ -90,7 +90,7 @@ extension _ToptanSatisIslemlerExt on _ToptanSatisEkraniState {
                 controller: scrollCtrl,
                 padding: const EdgeInsets.symmetric(horizontal: TsBosluk.md),
                 itemCount: bayiler.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     const SizedBox(height: TsBosluk.sm),
                 itemBuilder: (c, i) {
                   final b = bayiler[i];
@@ -102,7 +102,7 @@ extension _ToptanSatisIslemlerExt on _ToptanSatisEkraniState {
                       backgroundColor: TsRenk.zemin(TsRenk.primary),
                       child: Text(
                           b.unvan.isNotEmpty ? b.unvan[0].toUpperCase() : '?',
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: TsRenk.primary,
                               fontWeight: FontWeight.w700)),
                     ),
@@ -448,10 +448,10 @@ extension _ToptanSatisIslemlerExt on _ToptanSatisEkraniState {
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(TsRadius.xl)),
-            title: Row(children: [
+            title: const Row(children: [
               Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
-              const SizedBox(width: 8),
-              const Text('Eksik Cari Bilgisi'),
+              SizedBox(width: 8),
+              Text('Eksik Cari Bilgisi'),
             ]),
             content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -463,7 +463,7 @@ extension _ToptanSatisIslemlerExt on _ToptanSatisEkraniState {
                   ...kontrol.eksikAlanlar.map((e) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Row(children: [
-                          Icon(Icons.circle, size: 6, color: TsRenk.uyari),
+                          const Icon(Icons.circle, size: 6, color: TsRenk.uyari),
                           const SizedBox(width: 8),
                           Text(e),
                         ]),

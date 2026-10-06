@@ -131,7 +131,7 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
   );
 
   Widget _hareketTab() {
-    if (_yukl) return const Center(child: const AppYukleniyor());
+    if (_yukl) return const Center(child: AppYukleniyor());
     if (_hareketler.isEmpty) return Center(
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.receipt_long_outlined, size: 48, color: context.textSecondary),
@@ -143,7 +143,7 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
       child: ListView.separated(
         padding: const EdgeInsets.all(12),
         itemCount: _hareketler.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 6),
+        separatorBuilder: (_, _) => const SizedBox(height: 6),
         itemBuilder: (_, i) {
           final h = _hareketler[i];
           final borc = (h.borc);
@@ -171,7 +171,7 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
             decoration: BoxDecoration(
               color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12),
               border: secili ? Border.all(color: AppRenkler.primary, width: 2) : null,
-              boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
+              boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: _secimler.isNotEmpty
@@ -237,7 +237,7 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
                   icon: _yazdiriliyor && secili
                       ? const SizedBox(width: 16, height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2))
-                      : Icon(Icons.print_outlined, size: 18, color: AppRenkler.primary),
+                      : const Icon(Icons.print_outlined, size: 18, color: AppRenkler.primary),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                   tooltip: 'Yazdır',
@@ -421,7 +421,7 @@ class _Kart extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
       color: TsRenk.kart(context), borderRadius: BorderRadius.circular(14),
-      boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
+      boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
     child: Column(children: children),
   );
 }

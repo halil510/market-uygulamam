@@ -525,7 +525,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(children: [
             Icon(Icons.shopping_basket_outlined, color: Colors.teal),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text('Tedarikçi Seç'),
           ]),
           contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 0),

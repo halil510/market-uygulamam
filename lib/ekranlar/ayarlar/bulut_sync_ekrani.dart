@@ -256,10 +256,10 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    const Icon(Icons.cloud_outlined, color: AppRenkler.primary, size: 20),
-                    const SizedBox(width: 8),
-                    const Text('Supabase Bağlantı Ayarları',
+                  const Row(children: [
+                    Icon(Icons.cloud_outlined, color: AppRenkler.primary, size: 20),
+                    SizedBox(width: 8),
+                    Text('Supabase Bağlantı Ayarları',
                         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                   ]),
                   const SizedBox(height: 4),
@@ -300,10 +300,10 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
                   // internetten (mobil veri dahil) QR okutup sipariş
                   // versin." Supabase Storage'a yüklenen menü
                   // sayfasının herkese açık adresi buraya yapıştırılır.
-                  Row(children: [
-                    const Icon(Icons.qr_code_2, size: 18),
-                    const SizedBox(width: 8),
-                    const Text('QR Menü Web Adresi',
+                  const Row(children: [
+                    Icon(Icons.qr_code_2, size: 18),
+                    SizedBox(width: 8),
+                    Text('QR Menü Web Adresi',
                         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                   ]),
                   const SizedBox(height: 4),

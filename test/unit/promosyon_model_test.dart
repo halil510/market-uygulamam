@@ -23,7 +23,7 @@ void main() {
     });
 
     test('geçersiz - pasif', () {
-      final p = PromosyonModel(urunId: 1, promosyonAdi: 'Test', aktif: false);
+      final p = const PromosyonModel(urunId: 1, promosyonAdi: 'Test', aktif: false);
       expect(p.gecerli, isFalse);
     });
 
@@ -51,7 +51,7 @@ void main() {
     });
 
     test('copyWith', () {
-      final p = PromosyonModel(urunId: 1, promosyonAdi: 'Test', iskontoOran: 10);
+      final p = const PromosyonModel(urunId: 1, promosyonAdi: 'Test', iskontoOran: 10);
       final p2 = p.copyWith(iskontoOran: 20, aktif: false);
       expect(p2.iskontoOran, equals(20));
       expect(p2.aktif, isFalse);

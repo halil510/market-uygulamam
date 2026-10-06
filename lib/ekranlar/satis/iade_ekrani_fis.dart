@@ -358,7 +358,7 @@ extension _FisTabExt on _IadeEkraniState {
                                     tamIadeEdildi
                                         ? 'Tamamı iade edildi'
                                         : '${oncekiIade % 1 == 0 ? oncekiIade.toInt() : oncekiIade} adet iade edildi',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                         fontSize: 11,
                                         color: TsRenk.hata,
                                         fontWeight: FontWeight.w600),

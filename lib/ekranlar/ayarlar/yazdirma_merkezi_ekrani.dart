@@ -58,7 +58,7 @@ class _YazdirmaMerkeziEkraniState extends State<YazdirmaMerkeziEkrani>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
-      appBar: TsAppBar(
+      appBar: const TsAppBar(
         baslik: 'Yazdırma Merkezi',
         altBaslik: 'Yazıcı · Fiş · Fatura — tek sayfa',
         gradyanli: true,

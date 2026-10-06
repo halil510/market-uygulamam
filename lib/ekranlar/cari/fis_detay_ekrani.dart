@@ -271,7 +271,7 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
               },
               children: [
                 pw.TableRow(
-                  decoration: pw.BoxDecoration(color: PdfColors.grey700),
+                  decoration: const pw.BoxDecoration(color: PdfColors.grey700),
                   children: ['Ürün', 'Miktar', 'Birim Fiyat', 'İsk.%', 'Toplam']
                       .map((h) => pw.Padding(
                             padding: const pw.EdgeInsets.all(4),
@@ -312,7 +312,7 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
             alignment: pw.Alignment.centerRight,
             child: pw.Container(
               padding: const pw.EdgeInsets.all(12),
-              decoration: pw.BoxDecoration(color: PdfColors.grey100),
+              decoration: const pw.BoxDecoration(color: PdfColors.grey100),
               child: pw.Text(
                 'GENEL TOPLAM: ${ParaUtils.formatla(_genelToplam)}',
                 style: pw.TextStyle(font: boldFont, fontSize: 14)),
@@ -343,7 +343,7 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
                   icon: const Icon(Icons.print_outlined),
                   tooltip: 'Fişi Yazdır',
                   onPressed: _fisYazdir),
-            IconButton(icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, __, ___) => const Icon(Icons.picture_as_pdf)), tooltip: 'PDF', onPressed: _exportPdf),
+            IconButton(icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, _, _) => const Icon(Icons.picture_as_pdf)), tooltip: 'PDF', onPressed: _exportPdf),
             IconButton(icon: const Icon(Icons.download), tooltip: 'Excel', onPressed: _exportExcel),
           ],
           IconButton(icon: const Icon(Icons.refresh), onPressed: _yukle),

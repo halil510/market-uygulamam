@@ -181,7 +181,7 @@ class _StokListeEkraniState extends ConsumerState<StokListeEkrani>
         aksiyonlar: [
           if (_secimModu) ...[
             IconButton(
-                icon: Image.asset("assets/images/excel_icon.png", width: 22, height: 22, errorBuilder: (_, __, ___) => const Icon(Icons.table_chart)),
+                icon: Image.asset("assets/images/excel_icon.png", width: 22, height: 22, errorBuilder: (_, _, _) => const Icon(Icons.table_chart)),
                 tooltip: 'Excel',
                 onPressed: _topluExcel),
             IconButton(
@@ -327,7 +327,7 @@ class _StokListeEkraniState extends ConsumerState<StokListeEkrani>
         if (i == liste.length) {
           return const Padding(
             padding: EdgeInsets.all(16),
-            child: Center(child: const AppYukleniyor()),
+            child: Center(child: AppYukleniyor()),
           );
         }
         final u = liste[i];

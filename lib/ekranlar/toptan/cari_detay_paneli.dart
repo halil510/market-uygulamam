@@ -410,7 +410,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
                 const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 16),
                 const SizedBox(width: 4),
               ],
-              Text('Bakiye: ', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              const Text('Bakiye: ', style: TextStyle(color: Colors.white70, fontSize: 12)),
               Text(ParaUtils.formatla(widget.cari.bakiye),
                   style: TextStyle(color: limitAsimi ? Colors.orangeAccent : Colors.white,
                       fontSize: 15, fontWeight: FontWeight.w800)),

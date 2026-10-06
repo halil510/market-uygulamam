@@ -148,9 +148,9 @@ class _UrunRaporMasaustuGorunumState
     final sonuc = async.value;
 
     return Column(children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
-        child: const UrunRaporFiltreCubugu(masaustu: true),
+      const Padding(
+        padding: EdgeInsets.fromLTRB(14, 10, 14, 6),
+        child: UrunRaporFiltreCubugu(masaustu: true),
       ),
       Expanded(
         child: async.when(

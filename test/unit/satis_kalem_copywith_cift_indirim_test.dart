@@ -5,7 +5,7 @@ import 'package:market_plus/modeller/satis_kalem_model.dart';
 // yeniden hesaplayıp indirimi ikinci kez uyguluyordu (100 TL → 71,43 TL).
 void main() {
   test('copyWith(satisId) tutarları DEĞİŞTİRMEZ (çift indirim yok)', () {
-    final k = SatisKalemModel(
+    final k = const SatisKalemModel(
       satisId: 0, urunId: 1, urunAdi: 'Makarna',
       miktar: 1, birimFiyat: 100,
       iskontoOran: 28.5714285714286, iskontoTutar: 40,
@@ -22,7 +22,7 @@ void main() {
   });
 
   test('miktar/fiyat verilirse yeniden hesaplanır (mevcut davranış)', () {
-    final k = SatisKalemModel(
+    final k = const SatisKalemModel(
       satisId: 1, urunId: 1, urunAdi: 'X', miktar: 1, birimFiyat: 10,
       kdvOran: 10, netFiyat: 10, toplamTutar: 10,
     );

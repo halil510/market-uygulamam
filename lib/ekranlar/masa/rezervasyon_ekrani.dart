@@ -190,7 +190,7 @@ class _RezervasyonEkraniState extends ConsumerState<RezervasyonEkrani>
       return Center(
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(Icons.event_busy, size: 64, color: context.textSecondary),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text('Bekleyen rezervasyon yok', style: TextStyle(color: context.textSecondary)),
         ]),
       );
@@ -214,7 +214,7 @@ class _RezervasyonEkraniState extends ConsumerState<RezervasyonEkrani>
         decoration: BoxDecoration(
           color: TsRenk.kart(context),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
+          boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
         ),
         child: Column(children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -370,7 +370,7 @@ class _RezervasyonFormSheetState extends State<_RezervasyonFormSheet> {
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
         color: TsRenk.kart(context),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Form(
         key: _formKey,
@@ -533,7 +533,7 @@ class _RezervasyonKarti extends StatelessWidget {
         color: TsRenk.kart(context),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: renk.withAlpha(51)),
-        boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
+        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Üst satır

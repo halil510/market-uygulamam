@@ -64,9 +64,9 @@ void main() {
     });
 
     test('kilit süresi dolunca otomatik açılır', () async {
-      final kisaSayac = GirisDenemeSayaci(
+      final kisaSayac = const GirisDenemeSayaci(
         maxDeneme: 1,
-        kilitSuresi: const Duration(milliseconds: 50),
+        kilitSuresi: Duration(milliseconds: 50),
       );
       expect(await kisaSayac.basarisizDenemeKaydet('ali'), isTrue);
       expect(await kisaSayac.kalanKilitSaniyesi('ali'), isNotNull);

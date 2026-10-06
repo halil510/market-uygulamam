@@ -112,7 +112,7 @@ class _SatinAlmaOnerileriEkraniState extends ConsumerState<SatinAlmaOnerileriEkr
           controller: ctrl,
           padding: const EdgeInsets.symmetric(vertical: 16),
           itemCount: cariler.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
+          separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (_, i) {
             final c = cariler[i];
             return ListTile(

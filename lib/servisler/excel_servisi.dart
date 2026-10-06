@@ -316,7 +316,7 @@ class ExcelServisi {
         TextCellValue(urun.barkodYazdiranKullanici ?? ''),
         TextCellValue(urun.maliyetGuncellemeTarih ?? ''),
         TextCellValue(urun.maliyetGuncelleyenKullanici ?? ''),
-        DoubleCellValue(0),  // Maksimum Satır Miktarı
+        const DoubleCellValue(0),  // Maksimum Satır Miktarı
         TextCellValue(urun.guncelleyenKullanici ?? ''),
         TextCellValue(urun.kaydedenKullanici ?? ''),
         TextCellValue(urun.sonKullanmaTarihi ?? ''),

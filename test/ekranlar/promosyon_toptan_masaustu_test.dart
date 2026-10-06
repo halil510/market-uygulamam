@@ -20,8 +20,8 @@ void main() {
   group('PromosyonMasaustuGorunum', () {
     final bugun = DateTime.now();
     final liste = [
-      PromosyonModel(id: 1, urunId: 1, urunAdi: 'Süt', promosyonAdi: 'Süt %10', iskontoOran: 10),
-      PromosyonModel(
+      const PromosyonModel(id: 1, urunId: 1, urunAdi: 'Süt', promosyonAdi: 'Süt %10', iskontoOran: 10),
+      const PromosyonModel(
           id: 2, urunId: 2, urunAdi: 'Ekmek', promosyonAdi: 'Pasif', iskontoOran: 5, aktif: false),
       PromosyonModel(
           id: 3,
@@ -103,14 +103,14 @@ void main() {
 
   group('ToptanMasaustuGorunum', () {
     final bayiler = [
-      CariModel(
+      const CariModel(
           id: 1,
           unvan: 'Bayi A',
           cariTipi: 'Müşteri',
           musteriTipi: 'Bayi',
           bakiye: 1500,
           limitTutari: 1000),
-      CariModel(
+      const CariModel(
           id: 2,
           unvan: 'Toptan B',
           cariTipi: 'Müşteri',

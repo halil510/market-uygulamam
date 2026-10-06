@@ -97,7 +97,7 @@ class _PersonelListeEkraniState extends ConsumerState<PersonelListeEkrani>
         ),
       ),
       body: personellerAsync.when(
-        loading: () => const Center(child: const AppYukleniyor()),
+        loading: () => const Center(child: AppYukleniyor()),
         error:   (e, _) => BosEkran(ikon: Icons.inbox_outlined, baslik: 'Hata: ${kullaniciyaHataMetni(e)}'),
         data:    (liste) => TabBarView(
           controller: _tab,
@@ -225,7 +225,7 @@ class _PersonelListeTab extends StatelessWidget {
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: personeller.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (ctx, i) =>
                       _PersonelKarti(personel: personeller[i], onDegisti: onDegisti),
                 ),
@@ -342,7 +342,7 @@ class _MaasOzetiTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Color(0x26FFFFFF),
+                color: const Color(0x26FFFFFF),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Icon(Icons.payments_outlined,
@@ -371,9 +371,9 @@ class _MaasOzetiTab extends StatelessWidget {
             decoration: BoxDecoration(
               color: TsRenk.kart(context),
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [BoxShadow(
+              boxShadow: const [BoxShadow(
                   color: Color(0x0D000000),
-                  blurRadius: 8, offset: const Offset(0, 2))],
+                  blurRadius: 8, offset: Offset(0, 2))],
             ),
             child: Row(children: [
               Container(
@@ -417,7 +417,7 @@ class _PersonelDetaySheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: TsRenk.kart(context),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -598,7 +598,7 @@ class _PersonelFormSheetState extends ConsumerState<_PersonelFormSheet> {
       child: Container(
         decoration: BoxDecoration(
           color: TsRenk.kart(context),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         // Şeffaf Material: "Aktif Personel" anahtarının dokunma dalgası

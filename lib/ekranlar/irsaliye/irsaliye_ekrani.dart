@@ -72,7 +72,7 @@ class IrsaliyeEkrani extends ConsumerWidget {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.local_shipping_outlined, size: 60, color: context.textSecondary),
                 const SizedBox(height: 12),
-                Text('Henüz irsaliye yok'),
+                const Text('Henüz irsaliye yok'),
               ]),
             );
           }
@@ -756,14 +756,14 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
   @override
   Widget build(BuildContext context) {
     if (_yukleniyor) {
-      return const Scaffold(body: Center(child: const AppYukleniyor()));
+      return const Scaffold(body: Center(child: AppYukleniyor()));
     }
     if (_irsaliye == null) {
-      return Scaffold(
+      return const Scaffold(
         appBar: TsAppBar(
         gradyanli: false,
       ),
-        body: const BosEkran(ikon: Icons.inbox_outlined, baslik: 'Bulunamadı'),
+        body: BosEkran(ikon: Icons.inbox_outlined, baslik: 'Bulunamadı'),
       );
     }
 

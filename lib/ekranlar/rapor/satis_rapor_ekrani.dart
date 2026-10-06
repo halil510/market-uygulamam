@@ -197,7 +197,7 @@ class _OzetTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 8)]),
+              boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 8)]),
           child: Column(children: odemeMap.entries.map((e) {
             final oran = ciro > 0 ? e.value / ciro : 0.0;
             return Padding(
@@ -237,7 +237,7 @@ class _KpiKart extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
+        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         Container(padding: const EdgeInsets.all(6),
@@ -269,7 +269,7 @@ class _ListeTab extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(12),
       itemCount: satislar.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 6),
+      separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (_, i) {
         final s = satislar[i];
         final iptal = s.iptal;
@@ -279,7 +279,7 @@ class _ListeTab extends StatelessWidget {
             color: iptal ? TsRenk.zemin(TsRenk.hata) : TsRenk.kart(context),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: iptal ? Colors.red.shade200 : Colors.transparent),
-            boxShadow: iptal ? [] : [BoxShadow(color: Color(0x0A000000), blurRadius: 4)],
+            boxShadow: iptal ? [] : [const BoxShadow(color: Color(0x0A000000), blurRadius: 4)],
           ),
           child: Row(children: [
             Container(
@@ -333,12 +333,12 @@ class _GrafikTab extends StatelessWidget {
         height: 200,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 8)]),
+            boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 8)]),
         child: saatMap.isEmpty
             ? Center(child: Text('Veri yok', style: TextStyle(color: context.textSecondary)))
             : BarChart(BarChartData(
                 alignment: BarChartAlignment.spaceAround,
-                barTouchData: BarTouchData(enabled: false),
+                barTouchData: const BarTouchData(enabled: false),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -377,7 +377,7 @@ class _GrafikTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 8)]),
+              boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 8)]),
           child: Column(children: [
             SizedBox(
               height: 160,

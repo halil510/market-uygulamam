@@ -189,7 +189,7 @@ class _BarkodUreteciEkraniState extends ConsumerState<BarkodUreteciEkrani> {
                     drawText: true,
                     errorBuilder: (_, e) => Container(
                       height: 80, alignment: Alignment.center,
-                      child: Text("Geçersiz: $e", style: TextStyle(color: TsRenk.hata))),
+                      child: Text("Geçersiz: $e", style: const TextStyle(color: TsRenk.hata))),
                   ),
                 ),
               ),

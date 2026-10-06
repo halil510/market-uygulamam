@@ -201,8 +201,8 @@ class _HataIzlemeEkraniState extends State<HataIzlemeEkrani> {
             const SizedBox(height: TsBosluk.sm),
             TextButton.icon(
               onPressed: _kaldir,
-              icon: Icon(Icons.link_off, size: 16, color: TsRenk.hata),
-              label: Text('Hata İzlemeyi Kapat',
+              icon: const Icon(Icons.link_off, size: 16, color: TsRenk.hata),
+              label: const Text('Hata İzlemeyi Kapat',
                   style: TextStyle(color: TsRenk.hata)),
             ),
           ],

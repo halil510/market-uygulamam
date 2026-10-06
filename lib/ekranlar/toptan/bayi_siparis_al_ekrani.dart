@@ -215,7 +215,7 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
                     border: Border.all(color: TsRenk.ayirac(context)),
                     boxShadow: TsGolge.yumusak),
                 child: IconButton(
-                  icon: Icon(Icons.qr_code_scanner, color: TsRenk.primary),
+                  icon: const Icon(Icons.qr_code_scanner, color: TsRenk.primary),
                   tooltip: 'Barkod Okut',
                   onPressed: _kamerayiAc,
                 ),
@@ -239,14 +239,14 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
                   shrinkWrap: true,
                   padding: const EdgeInsets.all(TsBosluk.sm),
                   itemCount: _aramaSonuclari.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.xs),
+                  separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.xs),
                   itemBuilder: (ctx, i) {
                     final u = _aramaSonuclari[i];
                     return TsKart.liste(
                       baslik: u.urunAdi,
                       altBaslik: 'Satış: ${ParaUtils.formatla(u.satisFiyati)} · Alış: ${ParaUtils.formatla(u.alisFiyat)} · Stok: ${u.stok.toStringAsFixed(0)}',
                       ikon: const Icon(Icons.inventory_2_outlined),
-                      sagAksiyon: Icon(Icons.add_circle_rounded, color: TsRenk.basarili, size: 26),
+                      sagAksiyon: const Icon(Icons.add_circle_rounded, color: TsRenk.basarili, size: 26),
                       onTap: () => _urunEkle(u),
                     );
                   },
@@ -257,7 +257,7 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
         Divider(height: 1, color: TsRenk.ayirac(context)),
         Expanded(
           child: _sepet.isEmpty
-              ? TsBosDurum(
+              ? const TsBosDurum(
                   ikon: Icons.shopping_cart_outlined,
                   baslik: 'Sepet boş',
                   altyazi: 'Yukarıdan ürün arayın veya barkod okutun',
@@ -265,7 +265,7 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
               : ListView.separated(
                   padding: const EdgeInsets.all(TsBosluk.lg),
                   itemCount: _sepet.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
+                  separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.sm),
                   itemBuilder: (ctx, i) {
                     final k = _sepet[i];
                     final karOran = k.alisFiyat > 0 ? ((k.birimFiyatIskontolu - k.alisFiyat) / k.alisFiyat * 100) : 0;
@@ -279,7 +279,7 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
                           IconButton(
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
-                            icon: Icon(Icons.close, size: 18, color: TsRenk.hata),
+                            icon: const Icon(Icons.close, size: 18, color: TsRenk.hata),
                             onPressed: () => _kalemSil(i),
                           ),
                         ]),
@@ -338,7 +338,7 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('GENEL TOPLAM', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                   Text(ParaUtils.formatla(_genelToplam),
-                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: TsRenk.primary)),
+                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: TsRenk.primary)),
                 ]),
                 const SizedBox(height: TsBosluk.md),
                 SizedBox(

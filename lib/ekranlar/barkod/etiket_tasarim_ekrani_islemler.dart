@@ -296,7 +296,7 @@ extension _EtiketTasarimIslemlerExt on _EtiketTasarimEkraniState {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         
         title: const Row(children: [
-          Icon(Icons.print_disabled, color: Colors.red), const SizedBox(width: 8),
+          Icon(Icons.print_disabled, color: Colors.red), SizedBox(width: 8),
           Text('Yazıcı Bağlı Değil'),
         ]),
         content: const Text('Etiket yazdırmak için önce Yazıcı Ayarları ekranından '

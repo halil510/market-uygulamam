@@ -94,7 +94,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
 
     if (_hata != null) {
       return Scaffold(
-        appBar: TsAppBar(
+        appBar: const TsAppBar(
         baslik: 'Hata',
         gradyanli: false,
       ),
@@ -171,7 +171,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.history_outlined, size: 64, color: context.textSecondary),
-                          SizedBox(height: 12),
+                          const SizedBox(height: 12),
                           Text('Henüz hareket yok', style: TextStyle(color: context.textSecondary)),
                         ],
                       ),
@@ -179,7 +179,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                       itemCount: _hareketler.length,
-                      separatorBuilder: (_, __) => const Divider(height: 4),
+                      separatorBuilder: (_, _) => const Divider(height: 4),
                       itemBuilder: (_, i) => _hareketKarti(_hareketler[i]),
                     ),
             ),
@@ -268,7 +268,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: Colors.white54, fontSize: 10)),
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
         Text(
           deger,
           style: TextStyle(

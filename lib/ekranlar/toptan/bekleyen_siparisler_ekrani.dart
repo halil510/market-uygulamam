@@ -75,7 +75,7 @@ class _BekleyenSiparislerEkraniState extends State<BekleyenSiparislerEkrani> {
       body: _yukleniyor
           ? const TsYukleniyor()
           : _siparisler.isEmpty
-              ? TsBosDurum(
+              ? const TsBosDurum(
                   ikon: Icons.inventory_2_outlined,
                   baslik: 'Bekleyen sipariş yok',
                   altyazi: 'Bayi Sipariş Al ekranından yeni sipariş oluşturabilirsiniz',
@@ -85,7 +85,7 @@ class _BekleyenSiparislerEkraniState extends State<BekleyenSiparislerEkrani> {
                   child: ListView.separated(
                     padding: const EdgeInsets.all(TsBosluk.lg),
                     itemCount: _siparisler.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
+                    separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.sm),
                     itemBuilder: (ctx, i) {
                       final s = _siparisler[i];
                       final tarih = DateTime.tryParse(s['tarih']?.toString() ?? '');
@@ -411,7 +411,7 @@ class _SiparisDetayEkraniState extends State<_SiparisDetayEkrani> {
                     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                       const Text('GENEL TOPLAM', style: TextStyle(fontWeight: FontWeight.w800)),
                       Text(ParaUtils.formatla((s['genel_toplam'] as num?)?.toDouble() ?? 0),
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: TsRenk.primary)),
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: TsRenk.primary)),
                     ]),
                   ]),
                 ),

@@ -70,7 +70,7 @@ class _ParaUstuEkraniState extends ConsumerState<ParaUstuEkrani>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
-      appBar: TsAppBar(
+      appBar: const TsAppBar(
         baslik: "Para Üstü",
       ),
       body: Column(children: [
@@ -122,10 +122,10 @@ class _ParaUstuEkraniState extends ConsumerState<ParaUstuEkrani>
             TextField(
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               textAlign: TextAlign.center,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: "Manuel tutar girin...",
-                border: const OutlineInputBorder(),
-                prefixIcon: const Icon(Icons.monetization_on, color: Colors.green),
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.monetization_on, color: Colors.green),
                 suffixText: "₺",
               ),
               onChanged: (v) {

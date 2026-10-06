@@ -127,14 +127,14 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
             color: TsRenk.zemin(TsRenk.uyari),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.orange.shade200)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Row(children: [
+          child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
               Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
               SizedBox(width: 8),
               Text('Önemli Sınırlama', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.orange)),
             ]),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               // ÖNCEDEN BURADA "iki cihaz aynı WiFi ağında olmalı" gibi
               // normal bir kullanım metni vardı, ama derin analiz sırasında
               // ÇOK ÖNEMLİ bir mimari eksiklik bulundu: bu cihazın kendini
@@ -644,9 +644,9 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
           colors: [TsRenk.primaryKoyu, TsRenk.primary],
           begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(
+        boxShadow: const [BoxShadow(
           color: Color.fromARGB(76, 21, 101, 192),
-          blurRadius: 16, offset: const Offset(0, 6))],
+          blurRadius: 16, offset: Offset(0, 6))],
       ),
       child: Column(children: [
         Row(children: [
@@ -712,9 +712,9 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
         border: Border.all(
           color: _uzakCihaz != null
               ? Colors.green.shade300 : TsRenk.ayirac(context)),
-        boxShadow: [BoxShadow(
+        boxShadow: const [BoxShadow(
           color: Color(0x0D000000),
-          blurRadius: 8, offset: const Offset(0, 2))],
+          blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: _uzakCihaz == null
           ? Column(children: [

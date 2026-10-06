@@ -59,10 +59,10 @@ class KasaEkrani extends ConsumerWidget {
         // Bakiye kartı
         bakiyeA.when(
           loading: () => const LinearProgressIndicator(),
-          error: (e, __) => Padding(
+          error: (e, _) => Padding(
             padding: const EdgeInsets.all(16),
             child: Text('Bakiye yüklenemedi: ${kullaniciyaHataMetni(e)}',
-                style: TextStyle(color: TsRenk.hata, fontSize: 12)),
+                style: const TextStyle(color: TsRenk.hata, fontSize: 12)),
           ),
           data: (bakiye) => Container(
             width: double.infinity,
@@ -105,13 +105,13 @@ class KasaEkrani extends ConsumerWidget {
               final cikis = h.where((x) => !KasaHareketModel.girisMi(x.hareketTipi))
                   .fold(0.0, (s, x) => s + x.tutar);
               return Row(children: [
-                Icon(Icons.arrow_upward, size: 12, color: TsRenk.basarili),
+                const Icon(Icons.arrow_upward, size: 12, color: TsRenk.basarili),
                 Text(ParaUtils.formatla(giris),
-                    style: TextStyle(fontSize: 12, color: TsRenk.basarili)),
+                    style: const TextStyle(fontSize: 12, color: TsRenk.basarili)),
                 const SizedBox(width: 8),
-                Icon(Icons.arrow_downward, size: 12, color: TsRenk.hata),
+                const Icon(Icons.arrow_downward, size: 12, color: TsRenk.hata),
                 Text(ParaUtils.formatla(cikis),
-                    style: TextStyle(fontSize: 12, color: TsRenk.hata)),
+                    style: const TextStyle(fontSize: 12, color: TsRenk.hata)),
               ]);
             }) ?? const SizedBox.shrink(),
           ]),
@@ -137,7 +137,7 @@ class KasaEkrani extends ConsumerWidget {
                 child: ListView.separated(
                   padding: const EdgeInsets.all(TsBosluk.lg),
                   itemCount: hareketler.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
+                  separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.sm),
                   itemBuilder: (_, i) {
                     final h = hareketler[i];
                     final giris = KasaHareketModel.girisMi(h.hareketTipi);

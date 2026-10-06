@@ -100,7 +100,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
       if (!mounted) return;
       await Printing.layoutPdf(
         onLayout: (_) async => bytes,
-        format: PdfPageFormat(80 * PdfPageFormat.mm, double.infinity,
+        format: const PdfPageFormat(80 * PdfPageFormat.mm, double.infinity,
             marginAll: 3 * PdfPageFormat.mm),
       );
     } catch (e) {
@@ -435,7 +435,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
             },
             children: [
               pw.TableRow(
-                decoration: pw.BoxDecoration(color: PdfColors.grey200),
+                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                 children: ['Sıra', 'Açıklama', 'Stok Kodu', 'Miktar', 'Birim Fiyat',
                             'Tutar', 'Net Tutar', 'KDV Oranı', 'Tutar']
                     .map((h) => pw.Padding(

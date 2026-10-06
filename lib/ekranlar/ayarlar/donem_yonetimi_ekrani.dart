@@ -406,7 +406,7 @@ class _AktifDonemKarti extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
             colors: [TsRenk.primaryKoyu, TsRenk.primary],
             begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(16),

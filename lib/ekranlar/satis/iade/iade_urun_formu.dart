@@ -175,7 +175,7 @@ class IadeUrunFormu extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6)),
                       child: Text(
                           'Satış: ${urun.satisFiyat.toStringAsFixed(2)}',
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 10,
                               color: _green,
                               fontWeight: FontWeight.w600)),
@@ -194,7 +194,7 @@ class IadeUrunFormu extends StatelessWidget {
                           color: _orange.withAlpha(25),
                           borderRadius: BorderRadius.circular(6)),
                       child: Text('Alış: ${urun.alisFiyat.toStringAsFixed(2)}',
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 10,
                               color: _orange,
                               fontWeight: FontWeight.w600)),
@@ -262,7 +262,7 @@ class IadeUrunFormu extends StatelessWidget {
           ),
         ] else if (odemeYontemi != 'Nakit') ...[
           const SizedBox(height: 6),
-          Text(
+          const Text(
             'Bu tutar kasadan nakit çıkışı olarak kaydedilmeyecek. Müşteriye iadeyi POS cihazından ayrıca yapmanız gerekir.',
             style: TextStyle(
                 fontSize: 11,

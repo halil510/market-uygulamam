@@ -71,7 +71,7 @@ extension _HizliSatisWidgetExt on _HizliSatisEkraniState {
         child: ListView.separated(
         shrinkWrap: true,
         itemCount: _aramaSonuclari.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
+        separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (_, i) {
           final u = _aramaSonuclari[i];
           final indirimVar = u.indirimliFiyatKayitli > 0 &&
@@ -172,7 +172,7 @@ class _OdemeSecimSheet extends StatelessWidget {
       child: Container(
       decoration: BoxDecoration(
         color: context.cardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       child: Column(mainAxisSize: MainAxisSize.min, children: [

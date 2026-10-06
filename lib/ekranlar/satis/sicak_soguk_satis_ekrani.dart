@@ -165,7 +165,7 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
 
         // Ürün listesi
         Expanded(child: _yukleniyor
-          ? const Center(child: const AppYukleniyor())
+          ? const Center(child: AppYukleniyor())
           : ListView.builder(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
               itemCount: _filtrelenmis.length,
@@ -180,7 +180,7 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
                     color: miktar > 0 ? TsRenk.zemin(TsRenk.basarili) : TsRenk.kart(context),
                     borderRadius: BorderRadius.circular(12),
                     border: miktar > 0 ? Border.all(color: Colors.green.shade300) : null,
-                    boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
+                    boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
                   child: Row(children: [
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(u.urunAdi, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
@@ -222,7 +222,7 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         decoration: BoxDecoration(
             color: TsRenk.kart(context),
-            boxShadow: [BoxShadow(color: Color(0x1A000000), blurRadius: 8)]),
+            boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 8)]),
         child: Row(children: [
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${sepet.kalemSayisi} ürün',

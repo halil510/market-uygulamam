@@ -97,7 +97,7 @@ class Transaction<T> {
       // Don't call queue._next directly as it will
       // eat the next available message even if it
       // timed out. Use hasNext instead.
-      var f = _queue.hasNext.timeout(Duration(microseconds: 1));
+      var f = _queue.hasNext.timeout(const Duration(microseconds: 1));
       try {
         bool hasNext = await f;
         if (!hasNext) {

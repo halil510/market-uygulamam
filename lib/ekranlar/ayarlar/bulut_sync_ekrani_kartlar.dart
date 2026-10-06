@@ -114,7 +114,7 @@ extension _BulutSyncKartlarExt on _BulutSyncEkraniState {
           ),
           ValueListenableBuilder<bool>(
             valueListenable: AnlikBulutDinleyici().bagli,
-            builder: (_, bagli, __) => Padding(
+            builder: (_, bagli, _) => Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 bagli
@@ -125,7 +125,7 @@ extension _BulutSyncKartlarExt on _BulutSyncEkraniState {
           ),
           ValueListenableBuilder<DateTime?>(
             valueListenable: OtomatikBulutCekme().sonKontrol,
-            builder: (_, t, __) => t == null
+            builder: (_, t, _) => t == null
                 ? const SizedBox.shrink()
                 : Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -218,10 +218,10 @@ extension _BulutSyncKartlarExt on _BulutSyncEkraniState {
           ),
         ValueListenableBuilder<bool>(
           valueListenable: oturum.oturumDustu,
-          builder: (_, dustu, __) => !dustu
+          builder: (_, dustu, _) => !dustu
               ? const SizedBox.shrink()
-              : Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+              : const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
                   child: Text('⚠️ Oturumun süresi doldu veya şifre değişti — yeniden giriş yapın.',
                       style: TextStyle(fontSize: 12, color: TsRenk.hata)),
                 ),
@@ -393,10 +393,10 @@ class _LogWidget extends StatelessWidget {
               context: context,
               builder: (ctx) => AlertDialog(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                title: Row(children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                  const SizedBox(width: 8),
-                  const Expanded(child: Text('Hata Detayı',
+                title: const Row(children: [
+                  Icon(Icons.error_outline, color: Colors.red, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Hata Detayı',
                       style: TextStyle(fontSize: 15))),
                 ]),
                 content: SelectableText(log,

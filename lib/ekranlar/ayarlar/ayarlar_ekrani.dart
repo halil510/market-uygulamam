@@ -144,7 +144,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         body: _yukleniyor
             ? const AppYukleniyor()
             : ListView(children: [
-                _AyarBaslik('Hesap'),
+                const _AyarBaslik('Hesap'),
                 ListTile(
                   leading: Container(
                       width: 40,
@@ -169,7 +169,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                       child: const Text('Şifre Değiştir')),
                 ),
                 const Divider(),
-                _AyarBaslik('Firma'),
+                const _AyarBaslik('Firma'),
                 ListTile(
                   leading:
                       const Icon(Icons.business, color: AppRenkler.primary),
@@ -179,7 +179,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                   onTap: _firmaBilgisiDuzenle,
                 ),
                 const Divider(),
-                _AyarBaslik('Görünüm'),
+                const _AyarBaslik('Görünüm'),
                 RadioListTile<String>(
                     title: const Text('Açık Tema'),
                     value: 'light',
@@ -194,7 +194,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 // 🆕 Hızlı tuş yönetimi — kasadaki favori ürün panelini
                 // buradan da düzenlenebilir yaptık (birincil giriş yolu
                 // Hızlı Satış ekranındaki şimşek butonu).
-                _AyarBaslik('Satış'),
+                const _AyarBaslik('Satış'),
                 ListTile(
                   leading:
                       const Icon(Icons.bolt_rounded, color: Color(0xFF4361EE)),
@@ -206,7 +206,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                   onTap: () => context.push('/satis/hizli-tuslar'),
                 ),
                 const Divider(),
-                _AyarBaslik('Sistem'),
+                const _AyarBaslik('Sistem'),
                 SwitchListTile(
                   secondary: const Icon(Icons.table_restaurant,
                       color: Color(0xFF6D4C41)),
@@ -285,7 +285,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/rapor/gunluk')),
                 const Divider(),
-                _AyarBaslik('Kategoriler & Diğer'),
+                const _AyarBaslik('Kategoriler & Diğer'),
                 ListTile(
                     leading:
                         const Icon(Icons.category, color: AppRenkler.primary),
@@ -448,7 +448,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/ayarlar/sync')),
                 const Divider(),
-                _AyarBaslik('Veri İşlemleri'),
+                const _AyarBaslik('Veri İşlemleri'),
                 ListTile(
                     leading: const Icon(Icons.bolt_outlined,
                         color: Colors.deepPurple),

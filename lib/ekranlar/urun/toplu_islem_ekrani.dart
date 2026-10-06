@@ -460,7 +460,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
             ]),
           ),
           Expanded(child: _yukleniyor
-            ? const Center(child: const AppYukleniyor())
+            ? const Center(child: AppYukleniyor())
             : ListView.builder(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
                 itemCount: _filtrelenmis.length,
@@ -478,7 +478,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                             color: secili ? AppRenkler.primary : Colors.transparent, width: 1.5),
-                        boxShadow: secili ? [] : [BoxShadow(
+                        boxShadow: secili ? [] : [const BoxShadow(
                             color: Color(0x0A000000), blurRadius: 4)],
                       ),
                       child: Row(children: [
@@ -587,7 +587,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: secili ? a.renk : context.borderColor),
                         boxShadow: secili ? [] :
-                            [BoxShadow(color: Color(0x0A000000), blurRadius: 4)],
+                            [const BoxShadow(color: Color(0x0A000000), blurRadius: 4)],
                       ),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         if (a.ikon != null) Icon(a.ikon, size: 14,

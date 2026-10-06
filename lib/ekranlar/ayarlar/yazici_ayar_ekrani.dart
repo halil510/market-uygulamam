@@ -349,7 +349,7 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
         )),
         const SizedBox(height: 8),
       ],
-      _BilgiKutu(
+      const _BilgiKutu(
         renk: _orange,
         ikon: Icons.print,
         mesaj: 'Yazıcıyı Windows\'a normal şekilde kurun (Ayarlar > Yazıcılar ve '
@@ -446,10 +446,10 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
         labelColor: widget.gomulu ? _blue : Colors.white,
         unselectedLabelColor: widget.gomulu ? context.textSecondary : Colors.white60,
         tabs: [
-          Tab(icon: Icon(Icons.wifi, size: 20), text: 'WiFi/LAN'),
-          Tab(icon: Icon(Icons.bluetooth, size: 20), text: 'Bluetooth'),
+          const Tab(icon: Icon(Icons.wifi, size: 20), text: 'WiFi/LAN'),
+          const Tab(icon: Icon(Icons.bluetooth, size: 20), text: 'Bluetooth'),
           Tab(icon: Icon(Platform.isWindows ? Icons.print : Icons.usb, size: 20), text: Platform.isWindows ? 'Windows Yazıcı' : 'USB'),
-          Tab(icon: Icon(Icons.receipt_long, size: 20), text: 'Fiş Ayarı'),
+          const Tab(icon: Icon(Icons.receipt_long, size: 20), text: 'Fiş Ayarı'),
         ],
       );
 

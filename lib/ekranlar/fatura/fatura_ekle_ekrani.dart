@@ -194,7 +194,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: liste.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (_, j) {
                       final u = liste[j];
                       return ListTile(
@@ -495,10 +495,10 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                   labelText: 'Odeme Durumu',
                   border: OutlineInputBorder(),
                   isDense: true),
-              items: [
-                const DropdownMenuItem(value: 'beklemede', child: Text('Beklemede')),
-                const DropdownMenuItem(value: 'odendi', child: Text('Odendi')),
-                const DropdownMenuItem(value: 'kismi', child: Text('Kismi Odendi')),
+              items: const [
+                DropdownMenuItem(value: 'beklemede', child: Text('Beklemede')),
+                DropdownMenuItem(value: 'odendi', child: Text('Odendi')),
+                DropdownMenuItem(value: 'kismi', child: Text('Kismi Odendi')),
               ],
               onChanged: (v) => setState(() => _odemeDurumu = v!),
             ),

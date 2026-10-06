@@ -126,11 +126,11 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
     if (yerelYol != null && yerelYol.isNotEmpty && File(yerelYol).existsSync()) {
       icerik = Image.file(File(yerelYol), width: boyut, height: boyut, fit: BoxFit.cover,
           cacheWidth: px, cacheHeight: px,
-          errorBuilder: (_, __, ___) => _resimYer(boyut));
+          errorBuilder: (_, _, _) => _resimYer(boyut));
     } else if (u.resimUrl != null && u.resimUrl!.isNotEmpty) {
       icerik = Image.network(u.resimUrl!, width: boyut, height: boyut, fit: BoxFit.cover,
           cacheWidth: px, cacheHeight: px,
-          errorBuilder: (_, __, ___) => _resimYer(boyut));
+          errorBuilder: (_, _, _) => _resimYer(boyut));
     } else {
       icerik = _resimYer(boyut);
     }
@@ -145,7 +145,7 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
   /// Profesyonel fiyat kırılımı satırı: Alış / Alış (KDV Dahil) / Satış / Toptan.
   Widget _fiyatSatiri(UrunModel u) {
     final stil = TextStyle(fontSize: 11, color: context.textSecondary);
-    final vurgu = TextStyle(fontSize: 11, color: AppRenkler.primary, fontWeight: FontWeight.w700);
+    final vurgu = const TextStyle(fontSize: 11, color: AppRenkler.primary, fontWeight: FontWeight.w700);
     return Wrap(spacing: 10, runSpacing: 2, children: [
       Text('Alış: ${ParaUtils.formatla(u.alisFiyat)}', style: stil),
       Text('KDV Dahil: ${ParaUtils.formatla(u.alisFiyatKdvDahil)}', style: stil),
@@ -158,7 +158,7 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.scaffoldBg,
-      appBar: TsAppBar(
+      appBar: const TsAppBar(
         baslik: 'Toptan Satış Ürünleri',
         gradyanli: false,
       ),
@@ -195,7 +195,7 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: _aramaSonuclari.length,
-                    separatorBuilder: (_, __) => Divider(height: 1, color: context.dividerColor),
+                    separatorBuilder: (_, _) => Divider(height: 1, color: context.dividerColor),
                     itemBuilder: (c, i) {
                       final u = _aramaSonuclari[i];
                       return ListTile(

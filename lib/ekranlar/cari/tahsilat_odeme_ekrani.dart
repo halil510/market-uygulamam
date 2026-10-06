@@ -166,7 +166,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
         builder: (ctx) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(children: const [
+          title: const Row(children: [
             Icon(Icons.warning_amber_rounded, color: Colors.orange),
             SizedBox(width: 8),
             Text('Emin misiniz?'),
@@ -304,12 +304,12 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
       return Scaffold(
           backgroundColor: context.scaffoldBg, body: const AppYukleniyor());
     if (_cari == null)
-      return Scaffold(
+      return const Scaffold(
           appBar: TsAppBar(
             gradyanli: false,
           ),
           body:
-              const BosEkran(ikon: Icons.inbox_outlined, baslik: 'Bulunamadı'));
+              BosEkran(ikon: Icons.inbox_outlined, baslik: 'Bulunamadı'));
     return Scaffold(
       backgroundColor: context.scaffoldBg,
       appBar: TsAppBar(

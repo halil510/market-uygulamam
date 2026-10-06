@@ -227,19 +227,19 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                       dense: true,
                       leading: Icon(Icons.mic_none_outlined),
                       title: Text('Sesle Doldur'))),
-              PopupMenuItem(
+              const PopupMenuItem(
                   value: 'fatura',
                   child: ListTile(
                       dense: true,
                       leading: Icon(Icons.receipt_long_outlined),
                       title: Text('Faturadan Ürün Ekle (AI)'))),
-              PopupMenuItem(
+              const PopupMenuItem(
                   value: 'barkod',
                   child: ListTile(
                       dense: true,
                       leading: Icon(Icons.qr_code),
                       title: Text('Otomatik Barkod Üret'))),
-              PopupMenuItem(
+              const PopupMenuItem(
                   value: 'api',
                   child: ListTile(
                       dense: true,
@@ -546,7 +546,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
       // Masaüstü: alt şerit (F2 Kaydet / F3 Sil / F4 Barkod Üret); mobil: FAB.
       bottomNavigationBar: masaustu
           ? MasaustuAltSerit(
-              ozetler: [
+              ozetler: const [
                 AltOzet('Ctrl+S', 'veya F2 ile kaydet'),
               ],
               tuslar: [

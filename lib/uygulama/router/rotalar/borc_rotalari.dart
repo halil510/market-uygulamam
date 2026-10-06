@@ -12,7 +12,7 @@ import '../../../modeller/borc_model.dart';
 
 List<GoRoute> borcRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
         GoRoute(path: '/borc-dashboard', name: 'borc_dashboard', parentNavigatorKey: rootNavigatorKey,
-          builder: (_, __) => const BorcDashboardEkrani()),
+          builder: (_, _) => const BorcDashboardEkrani()),
         GoRoute(path: '/borc-detay/:id', name: 'borc_detay', parentNavigatorKey: rootNavigatorKey,
           builder: (c, s) => BorcDetayEkrani(borcId: int.parse(s.pathParameters['id']!))),
         GoRoute(path: '/borc-odeme/:id', name: 'borc_odeme', parentNavigatorKey: rootNavigatorKey,

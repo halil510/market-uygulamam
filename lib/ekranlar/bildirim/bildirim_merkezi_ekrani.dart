@@ -98,7 +98,7 @@ class _BildirimMerkeziEkraniState extends ConsumerState<BildirimMerkeziEkrani> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             itemCount: _filtreler.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (_, i) {
               final f = _filtreler[i];
               final secili = f == _filtre;
@@ -135,7 +135,7 @@ class _BildirimMerkeziEkraniState extends ConsumerState<BildirimMerkeziEkrani> {
               return ListView.separated(
                 padding: const EdgeInsets.all(TsBosluk.lg),
                 itemCount: filtreli.length,
-                separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
+                separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.sm),
                 itemBuilder: (_, i) => _BildirimKarti(
                   bildirim: filtreli[i],
                   onOku: () => _okunduIsaretle(filtreli[i].id),
@@ -214,8 +214,8 @@ class _BildirimKarti extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: bildirim.okundu ? Colors.transparent : _renk.withAlpha(51)),
-            boxShadow: [BoxShadow(color: const Color(0x0A000000),
-                blurRadius: 6, offset: const Offset(0, 2))],
+            boxShadow: const [BoxShadow(color: Color(0x0A000000),
+                blurRadius: 6, offset: Offset(0, 2))],
           ),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(

@@ -72,7 +72,7 @@ class _ShimmerKartState extends State<ShimmerKart>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) => Container(
+      builder: (_, _) => Container(
         width: widget.genislik, height: widget.yukseklik,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(widget.radius),
@@ -101,8 +101,8 @@ class ShimmerListe extends StatelessWidget {
   Widget build(BuildContext context) => ListView.separated(
     padding: const EdgeInsets.all(16),
     itemCount: adet,
-    separatorBuilder: (_, __) => const SizedBox(height: 10),
-    itemBuilder: (_, __) => ShimmerKart(yukseklik: kartYukseklik),
+    separatorBuilder: (_, _) => const SizedBox(height: 10),
+    itemBuilder: (_, _) => ShimmerKart(yukseklik: kartYukseklik),
   );
 }
 

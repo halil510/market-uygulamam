@@ -251,7 +251,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
 
   // ── Firma Bilgileri ────────────────────────────────────────────────────────
   Widget _firmaTab() => ListView(padding: const EdgeInsets.all(16), children: [
-    _Baslik('Temel Bilgiler'),
+    const _Baslik('Temel Bilgiler'),
     _Alan('Firma Adı *', _firmaAdiCtrl, hint: 'ABC Ticaret A.Ş.'),
     _Alan('Vergi No *', _vergiNoCtrl, hint: '1234567890',
         keyboardType: TextInputType.number,
@@ -261,7 +261,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
         keyboardType: TextInputType.number),
     _Alan('Ticaret Sicil No', _ticaretSicilCtrl, hint: '12345'),
     const SizedBox(height: 8),
-    _Baslik('Adres'),
+    const _Baslik('Adres'),
     _Alan('Adres', _adresCtrl, hint: 'Mevlana Cad. No:1 Daire:5', maxLines: 2),
     Row(children: [
       Expanded(child: Padding(
@@ -275,7 +275,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
       )),
     ]),
     const SizedBox(height: 8),
-    _Baslik('İletişim'),
+    const _Baslik('İletişim'),
     _Alan('Telefon', _telefonCtrl, hint: '0212 555 44 33',
         keyboardType: TextInputType.phone),
     _Alan('Faks', _faxCtrl, hint: '0212 555 44 34',
@@ -306,7 +306,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
     // bir yerde yönetilir — burada AYRICA toplanmaz (bkz. dosya başındaki
     // not: önceden burada aynı bilgiler için gerçek servisin hiç okumadığı,
     // ölü bir kopya vardı).
-    _Baslik('GİB Bağlantı Ayarları'),
+    const _Baslik('GİB Bağlantı Ayarları'),
     _Kart(children: [
       ListTile(
         leading: const Icon(Icons.settings_outlined, color: Colors.red),
@@ -326,14 +326,14 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
       decoration: BoxDecoration(
           color: TsRenk.zemin(TsRenk.bilgi), borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.blue.shade200)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(Icons.info_outline, color: Colors.blue, size: 16),
-          const SizedBox(width: 6),
-          const Text('Türkiye e-Fatura (2026)', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blue)),
+          Icon(Icons.info_outline, color: Colors.blue, size: 16),
+          SizedBox(width: 6),
+          Text('Türkiye e-Fatura (2026)', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blue)),
         ]),
-        const SizedBox(height: 6),
-        const Text(
+        SizedBox(height: 6),
+        Text(
           '• e-Fatura: GIB onaylı Mali Mühür veya e-İmza zorunludur\n'
           '• e-İmza: Kamu SM (kamusm.gov.tr) üzerinden temin edilir\n'
           '• Mali Mühür: TÜBİTAK-BİLGEM CA üzerinden alınır\n'
@@ -349,7 +349,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
 
   // ── KDV Ayarları ──────────────────────────────────────────────────────────
   Widget _kdvTab() => ListView(padding: const EdgeInsets.all(16), children: [
-    _Baslik('Türkiye KDV Oranları (2024)'),
+    const _Baslik('Türkiye KDV Oranları (2024)'),
     _Kart(children: [
       Padding(
         padding: const EdgeInsets.all(14),
@@ -417,10 +417,10 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
       child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.info_outline, color: Colors.amber, size: 16),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Text('Güncel KDV Oranları (2026)', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber)),
         ]),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Text(
           '• %20 — Standart oran (2023\'ten itibaren %18→%20)\n'
           '• %10 — İndirimli oran (gıda, bazı hizmetler)\n'
@@ -462,7 +462,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
                   color: secili ? AppRenkler.primary : context.textSecondary)),
           if (secili) ...[
             const SizedBox(height: 2),
-            Icon(Icons.check_circle, size: 14, color: AppRenkler.primary),
+            const Icon(Icons.check_circle, size: 14, color: AppRenkler.primary),
           ],
         ]),
       ),
@@ -553,12 +553,12 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
 
   // ── Fatura Tasarımı ───────────────────────────────────────────────────────
   Widget _tasarimTab() => ListView(padding: const EdgeInsets.all(16), children: [
-    _Baslik('Logo ve İmza/Kaşe'),
+    const _Baslik('Logo ve İmza/Kaşe'),
     _gorselAlani(logoMu: true),
     const SizedBox(height: 8),
     _gorselAlani(logoMu: false),
     const SizedBox(height: 12),
-    _Baslik('Görünüm'),
+    const _Baslik('Görünüm'),
     _Kart(children: [
       _SwitchSatir('Logo Göster', 'Fatura başlığında firma logosu',
           _logoGoster, (v) => setState(() => _logoGoster = v),
@@ -574,7 +574,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
           Icons.qr_code_outlined, Colors.purple),
     ]),
     const SizedBox(height: 12),
-    _Baslik('Numaralandırma ve İskonto'),
+    const _Baslik('Numaralandırma ve İskonto'),
     Row(children: [
       Expanded(child: _Alan('Fatura No Ön Eki', _faturaOnEkCtrl,
           hint: 'Örn: HLF (e-Fatura), HLA (e-Arşiv)')),
@@ -621,7 +621,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
       ]),
     ),
     const SizedBox(height: 4),
-    _Baslik('Yazdırma Formatı'),
+    const _Baslik('Yazdırma Formatı'),
     _Kart(children: [
       Padding(
         padding: const EdgeInsets.all(12),
@@ -645,7 +645,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
       ),
     ]),
     const SizedBox(height: 4),
-    _Baslik('Yazı Boyutu'),
+    const _Baslik('Yazı Boyutu'),
     _Kart(children: [
       Padding(
         padding: const EdgeInsets.all(12),
@@ -671,7 +671,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
       ),
     ]),
     const SizedBox(height: 4),
-    _Baslik('Fatura Notları'),
+    const _Baslik('Fatura Notları'),
     _Alan('Fatura Notları', _faturaNotCtrl,
         hint: 'Her faturada görünecek notlar...', maxLines: 3),
     _Alan('Dipnot', _dipnotCtrl,
@@ -780,7 +780,7 @@ class _Kart extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 10),
     decoration: BoxDecoration(
         color: context.cardBg, borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 6)]),
+        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)]),
     // Şeffaf Material: içteki ListTile/Switch dokunma dalgası görünsün.
     child: Material(
       type: MaterialType.transparency,

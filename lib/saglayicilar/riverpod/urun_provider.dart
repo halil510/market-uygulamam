@@ -80,7 +80,7 @@ class Urunler extends _$Urunler {
 
   @override
   UrunListeDurum build() {
-    ref.listen(urunFiltresiProvider, (_, __) => yukle(sifirla: true));
+    ref.listen(urunFiltresiProvider, (_, _) => yukle(sifirla: true));
     Future.microtask(() => yukle(sifirla: true));
     return const UrunListeDurum(yukleniyor: true);
   }

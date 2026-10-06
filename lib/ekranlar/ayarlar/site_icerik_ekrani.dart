@@ -163,7 +163,7 @@ class _SiteIcerikEkraniState extends State<SiteIcerikEkrani> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.scaffoldBg,
-      appBar: TsAppBar(baslik: 'Site İçeriği (Web Sitesi)', gradyanli: false),
+      appBar: const TsAppBar(baslik: 'Site İçeriği (Web Sitesi)', gradyanli: false),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _kaydediliyor ? null : _kaydet,
         icon: _kaydediliyor

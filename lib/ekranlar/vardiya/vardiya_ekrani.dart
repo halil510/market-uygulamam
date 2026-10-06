@@ -149,7 +149,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
           Icon(Icons.lock_open_rounded, color: Colors.green),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text('Vardiya Aç'),
         ]),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -329,7 +329,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(children: [
             Icon(Icons.lock_rounded, color: Colors.orange),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text('Vardiya Kapat'),
           ]),
           content: SizedBox(
@@ -676,7 +676,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
             decoration: BoxDecoration(
               color: TsRenk.kart(context),
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 6)],
+              boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 6)],
             ),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -731,7 +731,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _gecmis.length + (_gecmisDahaVarMi ? 1 : 0),
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         if (i >= _gecmis.length) {
           return Center(
@@ -758,7 +758,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
           decoration: BoxDecoration(
             color: TsRenk.kart(context),
             borderRadius: BorderRadius.circular(14),
-            boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
+            boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
           ),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -869,7 +869,7 @@ class _VardiyaKpi extends StatelessWidget {
         decoration: BoxDecoration(
             color: TsRenk.kart(context),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
+            boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Icon(ikon, color: renk, size: 16),
@@ -937,7 +937,7 @@ class _VardiyaDurumKart extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-                color: Color(0x33FFFFFF),
+                color: const Color(0x33FFFFFF),
                 borderRadius: BorderRadius.circular(20)),
             child: Text(acik ? '🟢 Aktif' : '🔴 Kapalı',
                 style: const TextStyle(color: Colors.white, fontSize: 12)),

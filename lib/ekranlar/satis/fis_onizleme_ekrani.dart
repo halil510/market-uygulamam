@@ -271,7 +271,7 @@ class _FisOnizlemeEkraniState extends ConsumerState<FisOnizlemeEkrani> {
                     onPressed: _btYazdir,
                   ),
           IconButton(
-            icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, __, ___) => const Icon(Icons.picture_as_pdf)),
+            icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, _, _) => const Icon(Icons.picture_as_pdf)),
             tooltip: 'PDF / Paylaş',
             onPressed: _pdfYazdir,
           ),
@@ -282,7 +282,7 @@ class _FisOnizlemeEkraniState extends ConsumerState<FisOnizlemeEkrani> {
           padding: const EdgeInsets.symmetric(vertical: 24),
           child: Container(
             width: 280,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               // Gerçek termal kağıt her zaman beyazdır — bu önizleme
               // kutusu bilinçli olarak temadan bağımsız, sabit beyaz
               // tutuluyor (fiş içeriğindeki siyah metinlerle tutarlı
@@ -290,7 +290,7 @@ class _FisOnizlemeEkraniState extends ConsumerState<FisOnizlemeEkrani> {
               // metin okunaksız olurdu).
               color: Colors.white,
               boxShadow: [BoxShadow(color: Color(0x26000000),
-                  blurRadius: 20, offset: const Offset(0, 4))],
+                  blurRadius: 20, offset: Offset(0, 4))],
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Column(
@@ -402,7 +402,7 @@ class _FisOnizlemeEkraniState extends ConsumerState<FisOnizlemeEkrani> {
                       width: 200,
                       height: 50,
                       drawText: false,
-                      errorBuilder: (_, __) => Text(s.fisNo!, style: _fisStyle(10)),
+                      errorBuilder: (_, _) => Text(s.fisNo!, style: _fisStyle(10)),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -440,7 +440,7 @@ class _FisOnizlemeEkraniState extends ConsumerState<FisOnizlemeEkrani> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _pdfYazdir,
-                icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, __, ___) => const Icon(Icons.picture_as_pdf)),
+                icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, _, _) => const Icon(Icons.picture_as_pdf)),
                 label: const Text('PDF / Paylaş'),
               ),
             ),

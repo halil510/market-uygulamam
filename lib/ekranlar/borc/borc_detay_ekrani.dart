@@ -176,12 +176,12 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
       return const Scaffold(body: Center(child: AppYukleniyor()));
     }
     if (_borc == null) {
-      return Scaffold(
+      return const Scaffold(
         appBar: TsAppBar(
         baslik: 'Borç Detay',
         gradyanli: false,
       ),
-        body: const BosEkran(ikon: Icons.inbox_outlined, baslik: 'Bulunamadı'),
+        body: BosEkran(ikon: Icons.inbox_outlined, baslik: 'Bulunamadı'),
       );
     }
 
@@ -235,7 +235,7 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
                 style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
               ),
               if (!b.odendi)
-                Text(
+                const Text(
                   'Kalan Borç',
                   style: TextStyle(color: Colors.white70, fontSize: 12),
                 ),
@@ -309,7 +309,7 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
               ]),
             ),
           if (_yukleniyor)
-            const Padding(padding: EdgeInsets.all(20), child: const TsYukleniyor())
+            const Padding(padding: EdgeInsets.all(20), child: TsYukleniyor())
           else if (_odemeler.isEmpty)
             Container(
               padding: const EdgeInsets.all(20),
@@ -406,7 +406,7 @@ class _Kart extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
       color: TsRenk.kart(context), borderRadius: BorderRadius.circular(14),
-      boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 6)],
+      boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 6)],
     ),
     child: Column(children: children),
   );

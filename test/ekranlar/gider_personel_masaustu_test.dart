@@ -95,7 +95,7 @@ void main() {
           telefon: '05321112233',
           maas: 20000,
           iseBaslama: DateTime(2025, 1, 15)),
-      PersonelModel(id: 2, adSoyad: 'Mehmet Demir', pozisyon: 'Depo', aktif: false),
+      const PersonelModel(id: 2, adSoyad: 'Mehmet Demir', pozisyon: 'Depo', aktif: false),
     ];
 
     Widget sar({required bool yetkili, required List<String> olaylar, List<PersonelModel>? l}) =>

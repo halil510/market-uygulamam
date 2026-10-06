@@ -242,7 +242,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
               child: Container(
                 height: 40,
                 decoration: BoxDecoration(
-                    color: Color(0x26FFFFFF),
+                    color: const Color(0x26FFFFFF),
                     borderRadius: BorderRadius.circular(20)),
                 child: TextField(
                   controller: _araCtrl,
@@ -250,7 +250,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Ad, kod, telefon ara...',
-                    hintStyle: TextStyle(color: Color(0xB2FFFFFF), fontSize: 13),
+                    hintStyle: const TextStyle(color: Color(0xB2FFFFFF), fontSize: 13),
                     prefixIcon: const Icon(Icons.search, color: Colors.white70, size: 18),
                     suffixIcon: _araCtrl.text.isNotEmpty
                         ? IconButton(icon: const Icon(Icons.clear, color: Colors.white70, size: 16),

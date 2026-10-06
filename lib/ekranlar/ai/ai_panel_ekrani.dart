@@ -170,10 +170,10 @@ class _StokTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (oneriler.isEmpty) {
-      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.check_circle_outline, size: 64, color: TsRenk.basarili),
-        const SizedBox(height: 12),
-        const Text('Tüm stoklar yeterli seviyede!', style: TextStyle(fontSize: 16)),
+        SizedBox(height: 12),
+        Text('Tüm stoklar yeterli seviyede!', style: TextStyle(fontSize: 16)),
       ]));
     }
     return ListView(padding: const EdgeInsets.all(16), children: [
@@ -261,10 +261,10 @@ class _CariRiskTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (riskler.isEmpty) {
-      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.shield_outlined, size: 64, color: TsRenk.basarili),
-        const SizedBox(height: 12),
-        const Text('Limit aşımı tespit edilmedi', style: TextStyle(fontSize: 16)),
+        SizedBox(height: 12),
+        Text('Limit aşımı tespit edilmedi', style: TextStyle(fontSize: 16)),
       ]));
     }
     return ListView(padding: const EdgeInsets.all(16), children: [
@@ -519,9 +519,9 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
                           bottomLeft:  Radius.circular(isAi ? 2 : 16),
                           bottomRight: Radius.circular(isAi ? 16 : 2),
                         ),
-                        boxShadow: [BoxShadow(
+                        boxShadow: const [BoxShadow(
                             color: Color(0x0F000000),
-                            blurRadius: 4, offset: const Offset(0, 2))],
+                            blurRadius: 4, offset: Offset(0, 2))],
                       ),
                       child: SelectableText(
                         m['metin'] ?? '',
@@ -542,9 +542,9 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         decoration: BoxDecoration(
           color: TsRenk.kart(context),
-          boxShadow: [BoxShadow(
+          boxShadow: const [BoxShadow(
               color: Color(0x0F000000),
-              blurRadius: 8, offset: const Offset(0, -2))],
+              blurRadius: 8, offset: Offset(0, -2))],
         ),
         child: Row(children: [
           Expanded(

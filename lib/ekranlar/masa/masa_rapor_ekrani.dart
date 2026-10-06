@@ -191,7 +191,7 @@ class _MasaRaporEkraniState extends ConsumerState<MasaRaporEkrani>
           decoration: BoxDecoration(
             color: TsRenk.kart(context),
             borderRadius: BorderRadius.circular(14),
-            boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
+            boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
           ),
           child: Column(children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [

@@ -242,10 +242,10 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
                   ]),
                 ),
                 // Nasıl çalışır bilgisi
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
                   child: TsKart(
-                      child: Row(children: const [
+                      child: Row(children: [
                         Icon(Icons.info_outline,
                             color: Colors.blue, size: 18),
                         SizedBox(width: 8),
@@ -270,7 +270,7 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
                 if (_gecmis.isEmpty)
                   Center(
                     child: Padding(
-                      padding: EdgeInsets.all(32),
+                      padding: const EdgeInsets.all(32),
                       child: Text('Henüz puan hareketi yok',
                           style: TextStyle(color: context.textSecondary)),
                     ),

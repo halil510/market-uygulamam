@@ -386,7 +386,7 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
           TweenAnimationBuilder<int>(
             tween: IntTween(begin: 0, end: deger),
             duration: const Duration(milliseconds: 800),
-            builder: (_, v, __) => Text('$v',
+            builder: (_, v, _) => Text('$v',
                 style: TextStyle(
                     fontSize: 22, fontWeight: FontWeight.w800, color: renk)),
           ),

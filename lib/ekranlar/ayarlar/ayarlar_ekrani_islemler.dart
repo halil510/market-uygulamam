@@ -421,7 +421,7 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
           Icon(Icons.check_circle, color: Colors.green),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text('İçe Aktarma Tamamlandı')
         ]),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -470,7 +470,7 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
           Icon(Icons.error_outline, color: Colors.red),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text('İçe Aktarma Başarısız')
         ]),
         content: ConstrainedBox(

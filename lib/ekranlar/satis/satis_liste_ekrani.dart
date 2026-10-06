@@ -222,7 +222,7 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
         // Liste
         Expanded(
           child: durum.yukleniyor
-              ? const Center(child: const AppYukleniyor())
+              ? const Center(child: AppYukleniyor())
               : durum.satislar.isEmpty
                   ? _BosEkran()
                   : (Platform.isWindows && MediaQuery.sizeOf(context).width > 900)
@@ -245,7 +245,7 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
                         itemCount: durum.satislar.length,
-                        separatorBuilder: (_, __) =>
+                        separatorBuilder: (_, _) =>
                             const SizedBox(height: 8),
                         itemBuilder: (_, i) => _SatisKarti(
                           satis:    durum.satislar[i],

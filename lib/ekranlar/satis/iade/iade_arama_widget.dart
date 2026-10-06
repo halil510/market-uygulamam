@@ -92,7 +92,7 @@ class IadeAramaPanel extends StatelessWidget {
         child: ListView.separated(
           shrinkWrap: true,
           itemCount: aramaListesi.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
+          separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (_, i) {
             final u = aramaListesi[i];
             // ÖNCEDEN BURADA CİDDİ, GERÇEK BİR ÇÖKME HATASI VARDI:

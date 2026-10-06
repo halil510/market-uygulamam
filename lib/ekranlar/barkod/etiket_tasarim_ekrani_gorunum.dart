@@ -173,7 +173,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
           child: ListView.separated(
           shrinkWrap: true,
           itemCount: _aramaSonuclari.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
+          separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (_, i) {
             final u = _aramaSonuclari[i];
             final barkodGecerli = u.barkod != null &&
@@ -189,7 +189,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
                             : bw.Barcode.code128(),
                         data: u.barkod!,
                         style: const TextStyle(fontSize: 6),
-                        errorBuilder: (_, __) =>
+                        errorBuilder: (_, _) =>
                             Icon(Icons.qr_code, size: 32, color: context.textSecondary),
                       ),
                     )
@@ -303,8 +303,8 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
         color: Colors.white,
         border: Border.all(color: context.borderColor),
         borderRadius: BorderRadius.circular(3),
-        boxShadow: [BoxShadow(color: Color(0x0F000000),
-            blurRadius: 4, offset: const Offset(0, 2))],
+        boxShadow: const [BoxShadow(color: Color(0x0F000000),
+            blurRadius: 4, offset: Offset(0, 2))],
       ),
       padding: const EdgeInsets.all(2),
       child: Column(
@@ -332,7 +332,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
                   : bw.Barcode.code128(),
               data: u.barkod!,
               style: TextStyle(fontSize: w * 0.025),
-              errorBuilder: (_, __) => const SizedBox.shrink(),
+              errorBuilder: (_, _) => const SizedBox.shrink(),
             )),
           if (_lotNoGoster && (u.lotNo?.isNotEmpty ?? false))
             Text('Lot: ${u.lotNo}',

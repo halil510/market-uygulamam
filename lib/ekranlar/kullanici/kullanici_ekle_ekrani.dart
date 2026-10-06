@@ -380,15 +380,15 @@ class _KullaniciEkleEkraniState extends ConsumerState<KullaniciEkleEkrani>
           ListView(
             padding: const EdgeInsets.all(12),
             children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
                 child: TsKart(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12),
                   vurguRenk: TsRenk.bilgi,
                   child: Row(
                     children: [
                       Icon(Icons.info_outline, color: TsRenk.bilgi, size: 18),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'İşaretli ekranlar bu kullanıcı için erişilebilir olacak. '

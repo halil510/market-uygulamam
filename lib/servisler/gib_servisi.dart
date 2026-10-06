@@ -184,7 +184,7 @@ class GibServisi {
   }) async {
     await ayarlariYukle();
     if (!ayarliMi) {
-      return GibGonderimSonucu(
+      return const GibGonderimSonucu(
         basarili: false,
         hata: 'GIB API ayarları eksik. Ayarlar → GIB Entegrasyon ekranından yapılandırın.',
       );
@@ -316,14 +316,14 @@ class GibServisi {
   }) async {
     await ayarlariYukle();
     if (!ayarliMi) {
-      return GibGonderimSonucu(
+      return const GibGonderimSonucu(
         basarili: false,
         hata: 'GIB API ayarları eksik. Ayarlar → GİB Entegrasyon ekranından yapılandırın.',
       );
     }
     final prefs = await SharedPreferences.getInstance();
     if (!(prefs.getBool('eirsaliye_aktif') ?? false)) {
-      return GibGonderimSonucu(
+      return const GibGonderimSonucu(
         basarili: false,
         hata: 'e-İrsaliye gönderimi kapalı. Ayarlar → Fatura Ayarları\'ndan '
             '"e-İrsaliye Aktif" anahtarını açmanız gerekiyor.',

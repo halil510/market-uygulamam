@@ -191,7 +191,7 @@ extension _GecmisTabExt on _IadeEkraniState {
         
         title: const Row(children: [
           Icon(Icons.warning_amber_rounded, color: Colors.red),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text('İadeyi Sil'),
         ]),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -516,9 +516,9 @@ extension _GecmisTabExt on _IadeEkraniState {
       builder: (ctx) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         
-        title: Row(children: const [
+        title: const Row(children: [
           Icon(Icons.edit_note, color: Colors.orange),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(child: Text('İadeyi Düzenle', style: TextStyle(fontSize: 16))),
         ]),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -608,7 +608,7 @@ extension _GecmisTabExt on _IadeEkraniState {
         
         title: const Row(children: [
           Icon(Icons.warning_amber_rounded, color: Colors.red),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text('Fişi Sil'),
         ]),
         content: Text('${iade['fis_no'] ?? 'Bu iade'} silinecek.\nStok, kasa ve cari kayıtları geri alınacak.'),

@@ -581,7 +581,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
               icon: Image.asset("assets/images/excel_icon.png",
                   width: 22,
                   height: 22,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.table_chart)),
+                  errorBuilder: (_, _, _) => const Icon(Icons.table_chart)),
               tooltip: 'Excel',
               onSelected: (v) => v == 'ice' ? _excelIceAl() : _excelDisaVer(),
               itemBuilder: (_) => const [

@@ -136,7 +136,7 @@ class _GibGelenKutusuEkraniState extends State<GibGelenKutusuEkrani> {
                       child: ListView.separated(
                         padding: const EdgeInsets.all(TsBosluk.lg),
                         itemCount: _faturalar.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (_, i) => _gelenFaturaKarti(_faturalar[i]),
                       ),
                     ),

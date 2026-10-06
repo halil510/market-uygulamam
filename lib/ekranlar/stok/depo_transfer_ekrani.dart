@@ -194,9 +194,9 @@ class _DepoTransferEkraniState extends ConsumerState<DepoTransferEkrani> {
               color: TsRenk.uyari.withAlpha(20),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(children: [
+            child: const Row(children: [
               Icon(Icons.info_outline, size: 16, color: TsRenk.uyari),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Şubeler arası gerçek stok transferi — kaynak şubenin '
@@ -244,7 +244,7 @@ class _DepoTransferEkraniState extends ConsumerState<DepoTransferEkrani> {
                     color: miktar > 0 ? TsRenk.zemin(TsRenk.primary) : TsRenk.kart(context),
                     borderRadius: BorderRadius.circular(12),
                     border: miktar > 0 ? Border.all(color: TsRenk.primary.withAlpha(100)) : null,
-                    boxShadow: [const BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
+                    boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
                 child: Row(children: [
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(u.urunAdi, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),

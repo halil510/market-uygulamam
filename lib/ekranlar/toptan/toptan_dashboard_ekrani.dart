@@ -235,7 +235,7 @@ class _ToptanDashboardEkraniState extends State<ToptanDashboardEkrani> {
           ),
         ),
         if (_yukleniyor)
-          const SliverFillRemaining(child: const TsYukleniyor())
+          const SliverFillRemaining(child: TsYukleniyor())
         else if (_filtreli.isEmpty)
           SliverFillRemaining(
             child: Center(

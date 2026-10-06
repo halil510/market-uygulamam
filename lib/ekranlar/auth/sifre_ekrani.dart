@@ -151,7 +151,7 @@ class _SifreEkraniState extends ConsumerState<SifreEkrani> {
                       border: Border.all(color: TsRenk.hata.withAlpha(60)),
                     ),
                     child: Row(children: [
-                      Icon(Icons.warning_amber_rounded, color: TsRenk.hata),
+                      const Icon(Icons.warning_amber_rounded, color: TsRenk.hata),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(

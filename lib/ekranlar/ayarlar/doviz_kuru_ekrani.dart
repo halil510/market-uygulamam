@@ -147,11 +147,11 @@ class _DovizKuruEkraniState extends ConsumerState<DovizKuruEkrani> {
         data: (kurlar) => ListView(
           padding: const EdgeInsets.all(TsBosluk.lg),
           children: [
-            TsKart(
-              padding: const EdgeInsets.all(14),
+            const TsKart(
+              padding: EdgeInsets.all(14),
               child: Row(children: [
-                const Icon(Icons.account_balance, color: TsRenk.bilgi),
-                const SizedBox(width: 10),
+                Icon(Icons.account_balance, color: TsRenk.bilgi),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Kurlar Türkiye Cumhuriyet Merkez Bankası\'nın (TCMB) '

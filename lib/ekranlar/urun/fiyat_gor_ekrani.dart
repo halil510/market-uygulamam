@@ -20,7 +20,7 @@ class FiyatGorEkrani extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
-      appBar: TsAppBar(
+      appBar: const TsAppBar(
         baslik: 'Fiyat Gör',
       ),
       body: const SafeArea(child: FiyatGorIcerik(otomatikTara: true)),
@@ -148,10 +148,10 @@ class _FiyatGorIcerikState extends State<FiyatGorIcerik> {
   ]);
 
   Widget _hataGoster(String mesaj) => Column(mainAxisSize: MainAxisSize.min, children: [
-    Icon(Icons.error_outline_rounded, size: 72, color: TsRenk.hata),
+    const Icon(Icons.error_outline_rounded, size: 72, color: TsRenk.hata),
     const SizedBox(height: 16),
     Text(mesaj, textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 15, color: TsRenk.hata)),
+        style: const TextStyle(fontSize: 15, color: TsRenk.hata)),
   ]);
 
   Widget _fiyatGoster(UrunModel u) {

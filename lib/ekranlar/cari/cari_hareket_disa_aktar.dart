@@ -107,7 +107,7 @@ extension _CariHareketDisaAktar on _CariHareketEkraniState {
           headers: ['Tarih', 'Tip', 'Açıklama', 'Borç', 'Alacak', 'Bakiye'],
           headerStyle:
               pw.TextStyle(font: boldFont, color: PdfColors.white, fontSize: 9),
-          headerDecoration: pw.BoxDecoration(color: PdfColors.grey700),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.grey700),
           cellStyle: pw.TextStyle(font: font, fontSize: 8),
           data: () {
             // Yürüyen bakiye devredenden başlar (tarih aralığı seçiliyse);

@@ -35,7 +35,7 @@ class _GenelBakisTab extends StatelessWidget {
           // ─── Gecikmiş Borçlar ──────────────────────────────────────
           dashAsync.when(
             loading: () => const SizedBox(),
-            error: (e, __) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
+            error: (e, _) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
             data: (v) {
               if (v.gecmis.isEmpty) return const SizedBox();
               return Column(
@@ -57,7 +57,7 @@ class _GenelBakisTab extends StatelessWidget {
           // ─── Yaklaşan Borçlar ──────────────────────────────────────
           dashAsync.when(
             loading: () => const SizedBox(),
-            error: (e, __) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
+            error: (e, _) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
             data: (v) {
               if (v.yaklasan.isEmpty) return const SizedBox();
               return Column(
@@ -85,7 +85,7 @@ class _GenelBakisTab extends StatelessWidget {
           // göremiyordu. Artık burada da listeleniyor.
           dashAsync.when(
             loading: () => const SizedBox(),
-            error: (e, __) => const SizedBox(),
+            error: (e, _) => const SizedBox(),
             data: (v) {
               final gecmisIdler = v.gecmis.map((b) => b.id).toSet();
               final yaklasanIdler = v.yaklasan.map((b) => b.id).toSet();
@@ -125,7 +125,7 @@ class _GenelBakisTab extends StatelessWidget {
           // ─── Kredi Kartları (gerçek kart limiti kullanımı) ──────────
           dashAsync.when(
             loading: () => const SizedBox(),
-            error: (e, __) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
+            error: (e, _) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
             data: (v) {
               if (v.krediKartlari.isEmpty) return const SizedBox();
               return Column(
@@ -149,7 +149,7 @@ class _GenelBakisTab extends StatelessWidget {
           const SizedBox(height: 8),
           bankaHesaplariAsync.when(
             loading: () => const TsYukleniyor(),
-            error: (_, __) => const _HataKart(mesaj: 'Banka hesapları yüklenemedi'),
+            error: (_, _) => const _HataKart(mesaj: 'Banka hesapları yüklenemedi'),
             data: (hesaplar) {
               if (hesaplar.isEmpty) {
                 return _BosKart(
@@ -307,7 +307,7 @@ class _OdenenBorcListeTab extends ConsumerWidget {
           children: [
             TsKart(
               child: Row(children: [
-                Icon(Icons.check_circle_rounded, color: TsRenk.basarili),
+                const Icon(Icons.check_circle_rounded, color: TsRenk.basarili),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(

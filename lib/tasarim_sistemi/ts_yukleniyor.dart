@@ -54,8 +54,8 @@ class TsYukleniyor extends StatelessWidget {
       return ListView.separated(
         padding: dolgu,
         itemCount: iskeletSayisi,
-        separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
-        itemBuilder: (_, __) => kart(),
+        separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.sm),
+        itemBuilder: (_, _) => kart(),
       );
     });
   }

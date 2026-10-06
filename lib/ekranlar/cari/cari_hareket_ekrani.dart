@@ -337,7 +337,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
               gradient:
-                  LinearGradient(colors: [TsRenk.primary, TsRenk.primaryKoyu]),
+                  const LinearGradient(colors: [TsRenk.primary, TsRenk.primaryKoyu]),
               borderRadius: BorderRadius.circular(16)),
           child: Row(children: [
             Expanded(child: _bakiyeItem('Borç', _toplamBorc, Colors.redAccent)),

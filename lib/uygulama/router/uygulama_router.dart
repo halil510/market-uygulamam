@@ -140,8 +140,8 @@ class UygulamaRouter {
         ),
       ),
       routes: [
-        GoRoute(path: '/splash', builder: (_, __) => const SplashEkrani()),
-        GoRoute(path: '/giris', builder: (_, __) => const GirisEkrani()),
+        GoRoute(path: '/splash', builder: (_, _) => const SplashEkrani()),
+        GoRoute(path: '/giris', builder: (_, _) => const GirisEkrani()),
         GoRoute(
           path: '/sifre',
           builder: (_, state) => SifreEkrani(
@@ -150,16 +150,16 @@ class UygulamaRouter {
         ),
 
         // ---------- FULL-SCREEN ROUTES ----------
-        GoRoute(path: '/kasa/virman', name: 'virman', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const VirmanEkrani()),
-        GoRoute(path: '/stok/transfer', name: 'depo_transfer', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const DepoTransferEkrani()),
+        GoRoute(path: '/kasa/virman', name: 'virman', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const VirmanEkrani()),
+        GoRoute(path: '/stok/transfer', name: 'depo_transfer', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const DepoTransferEkrani()),
         // ---------- SATIŞ ROUTES (bkz. rotalar/satis_rotalari.dart) ----------
         ...satisRotalari(rootNavigatorKey),
         // ---------- CARİ ROUTES (bkz. rotalar/cari_rotalari.dart) ----------
         ...cariRotalari(rootNavigatorKey),
         // ---------- FATURA ROUTES (bkz. rotalar/fatura_rotalari.dart) ----------
         ...faturaRotalari(rootNavigatorKey),
-        GoRoute(path: '/ayarlar/fatura', name: 'fatura_ayar', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const YazdirmaMerkeziEkrani(baslangicSekmesi: 2)),
-        GoRoute(path: '/ayarlar/fis', name: 'fis_tasarim', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const YazdirmaMerkeziEkrani(baslangicSekmesi: 1)),
+        GoRoute(path: '/ayarlar/fatura', name: 'fatura_ayar', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const YazdirmaMerkeziEkrani(baslangicSekmesi: 2)),
+        GoRoute(path: '/ayarlar/fis', name: 'fis_tasarim', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const YazdirmaMerkeziEkrani(baslangicSekmesi: 1)),
         // ---------- MASA ROUTES (bkz. rotalar/masa_rotalari.dart) ----------
         ...masaRotalari(rootNavigatorKey),
         // ---------- ÜRÜN ROUTES (bkz. rotalar/urun_rotalari.dart) ----------
@@ -204,7 +204,7 @@ class UygulamaRouter {
           builder: (c, s) => YetkiKoruma(yetkiKodu: 'kullanici', ekranAdi: 'Kullanıcı Ekle',
               child: KullaniciEkleEkrani(duzenlenecek: s.extra as KullaniciModel?))),
         GoRoute(path: '/kullanici-degistir', name: 'kullanici_degistir', parentNavigatorKey: rootNavigatorKey,
-          builder: (_, __) => const KullaniciDegistirEkrani()),
+          builder: (_, _) => const KullaniciDegistirEkrani()),
         GoRoute(path: '/gider/ekle', name: 'gider_ekle', parentNavigatorKey: rootNavigatorKey,
           builder: (_, state) => GiderEkleEkrani(duzenlenecek: state.extra as GiderModel?)),
 
@@ -216,49 +216,49 @@ class UygulamaRouter {
 
 
         // ---------- DASHBOARD'DAN AÇILAN EKRANLAR (root navigator, düzgün geri tuşu) ----------
-        GoRoute(path: '/fiyat-gor', name: 'fiyat_gor', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const FiyatGorEkrani()),
+        GoRoute(path: '/fiyat-gor', name: 'fiyat_gor', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const FiyatGorEkrani()),
         // Not: Bu rotalar önceden ShellRoute içindeydi ve parentNavigatorKey
         // eklenmişti ama Shell'in KENDİ routes listesinde kalmışlardı — bu
         // tutarsız yapı navigasyon sorunlarına yol açtı. Artık diğer modüllerle
         // (Satış, Cari, Ürün vb.) AYNI şekilde, Shell'in DIŞINDA tanımlanıyorlar.
-            GoRoute(path: '/satis/liste', name: 'satis_liste', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const YetkiKoruma(yetkiKodu: 'satis_liste', ekranAdi: 'Satış Listesi', child: SatisListeEkrani())),
-            GoRoute(path: '/satis/iade', name: 'satis_iade', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const YetkiKoruma(yetkiKodu: 'satis_iade', ekranAdi: 'İade', child: IadeEkrani())),
-            GoRoute(path: '/stok', name: 'stok', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const YetkiKoruma(yetkiKodu: 'stok', ekranAdi: 'Stok', child: StokListeEkrani())),
-            GoRoute(path: '/stok/sayim', name: 'stok_sayim', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const StokSayimEkrani()),
-            GoRoute(path: '/stok/sayim-onay', name: 'stok_sayim_onay', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const MudurYetkiKorumasi(ekranAdi: 'Sayım Onayı', child: SayimOnayEkrani())),
-            GoRoute(path: '/stok/hareket', name: 'stok_hareket', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const StokHareketEkrani()),
-            GoRoute(path: '/rapor/gunluk', name: 'rapor_gunluk', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const GunlukRaporEkrani()),
-            GoRoute(path: '/rapor/satis', name: 'rapor_satis', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const SatisRaporEkrani()),
-            GoRoute(path: '/rapor/kar', name: 'rapor_kar', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const KarZararEkrani()),
-            GoRoute(path: '/rapor/stok', name: 'rapor_stok', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const StokRaporEkrani()),
-            GoRoute(path: '/rapor/urun', name: 'rapor_urun', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const UrunRaporEkrani()),
-            GoRoute(path: '/rapor/cari', name: 'rapor_cari', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const CariRaporEkrani()),
-            GoRoute(path: '/rapor/abc-analiz', name: 'rapor_abc_analiz', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const AbcStokAnaliziEkrani()),
-            GoRoute(path: '/rapor/stok-devir', name: 'rapor_stok_devir', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const StokDevirAnaliziEkrani()),
-            GoRoute(path: '/rapor/tedarikci-performans', name: 'rapor_tedarikci_performans', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const TedarikciPerformansEkrani()),
-            GoRoute(path: '/onay-merkezi', name: 'onay_merkezi', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const OnayMerkeziEkrani()),
-            GoRoute(path: '/risk-merkezi', name: 'risk_merkezi', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const RiskMerkeziEkrani()),
-            GoRoute(path: '/arama', name: 'global_arama', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const GlobalAramaEkrani()),
-            GoRoute(path: '/gider', name: 'gider_liste', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const GiderListeEkrani()),
-            GoRoute(path: '/kasa', name: 'kasa', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const KasaEkrani()),
-            GoRoute(path: '/kasa/hareket', name: 'kasa_hareket', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const KasaHareketEkrani()),
-            GoRoute(path: '/kasa/rapor', name: 'kasa_rapor', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const KasaRaporEkrani()),
-            GoRoute(path: '/vardiya', name: 'vardiya', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const VardiyaEkrani()),
-            GoRoute(path: '/promosyon', name: 'promosyon', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const YetkiKoruma(yetkiKodu: 'promosyon', ekranAdi: 'Promosyonlar', child: PromosyonEkrani())),
-            GoRoute(path: '/fatura', name: 'fatura_liste', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const FaturaListeEkrani()),
-            GoRoute(path: '/fatura/gelen-kutusu', name: 'gib_gelen_kutusu', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const GibGelenKutusuEkrani()),
-            GoRoute(path: '/urun/doviz-guncelle', name: 'toplu_doviz_guncelle', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const TopluDovizGuncellemeEkrani()),
-            GoRoute(path: '/urun/fiyat-simulasyon', name: 'fiyat_simulasyon', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const FiyatSimulasyonuEkrani()),
-            GoRoute(path: '/bayi', name: 'bayi_ana', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const BayiAnaEkrani()),
-            GoRoute(path: '/tedarik', name: 'tedarik', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const TedarikSiparisEkrani()),
-            GoRoute(path: '/barkod/etiket', name: 'barkod_etiket', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const EtiketTasarimEkrani()),
-            GoRoute(path: '/barkod/uret', name: 'barkod_uret', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const BarkodUreteciEkrani()),
-            GoRoute(path: '/sube', name: 'sube', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const SubeEkrani()),
-            GoRoute(path: '/irsaliye', name: 'irsaliye', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const IrsaliyeEkrani()),
-            GoRoute(path: '/ai', name: 'ai', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const AiPanelEkrani()),
-            GoRoute(path: '/finans', name: 'finans', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const FinansMerkeziEkrani()),
-            GoRoute(path: '/personel', name: 'personel', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const PersonelListeEkrani()),
-            GoRoute(path: '/bildirimler', name: 'bildirimler', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const BildirimMerkeziEkrani()),
+            GoRoute(path: '/satis/liste', name: 'satis_liste', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const YetkiKoruma(yetkiKodu: 'satis_liste', ekranAdi: 'Satış Listesi', child: SatisListeEkrani())),
+            GoRoute(path: '/satis/iade', name: 'satis_iade', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const YetkiKoruma(yetkiKodu: 'satis_iade', ekranAdi: 'İade', child: IadeEkrani())),
+            GoRoute(path: '/stok', name: 'stok', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const YetkiKoruma(yetkiKodu: 'stok', ekranAdi: 'Stok', child: StokListeEkrani())),
+            GoRoute(path: '/stok/sayim', name: 'stok_sayim', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const StokSayimEkrani()),
+            GoRoute(path: '/stok/sayim-onay', name: 'stok_sayim_onay', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const MudurYetkiKorumasi(ekranAdi: 'Sayım Onayı', child: SayimOnayEkrani())),
+            GoRoute(path: '/stok/hareket', name: 'stok_hareket', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const StokHareketEkrani()),
+            GoRoute(path: '/rapor/gunluk', name: 'rapor_gunluk', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const GunlukRaporEkrani()),
+            GoRoute(path: '/rapor/satis', name: 'rapor_satis', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const SatisRaporEkrani()),
+            GoRoute(path: '/rapor/kar', name: 'rapor_kar', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const KarZararEkrani()),
+            GoRoute(path: '/rapor/stok', name: 'rapor_stok', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const StokRaporEkrani()),
+            GoRoute(path: '/rapor/urun', name: 'rapor_urun', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const UrunRaporEkrani()),
+            GoRoute(path: '/rapor/cari', name: 'rapor_cari', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const CariRaporEkrani()),
+            GoRoute(path: '/rapor/abc-analiz', name: 'rapor_abc_analiz', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const AbcStokAnaliziEkrani()),
+            GoRoute(path: '/rapor/stok-devir', name: 'rapor_stok_devir', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const StokDevirAnaliziEkrani()),
+            GoRoute(path: '/rapor/tedarikci-performans', name: 'rapor_tedarikci_performans', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const TedarikciPerformansEkrani()),
+            GoRoute(path: '/onay-merkezi', name: 'onay_merkezi', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const OnayMerkeziEkrani()),
+            GoRoute(path: '/risk-merkezi', name: 'risk_merkezi', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const RiskMerkeziEkrani()),
+            GoRoute(path: '/arama', name: 'global_arama', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const GlobalAramaEkrani()),
+            GoRoute(path: '/gider', name: 'gider_liste', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const GiderListeEkrani()),
+            GoRoute(path: '/kasa', name: 'kasa', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const KasaEkrani()),
+            GoRoute(path: '/kasa/hareket', name: 'kasa_hareket', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const KasaHareketEkrani()),
+            GoRoute(path: '/kasa/rapor', name: 'kasa_rapor', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const KasaRaporEkrani()),
+            GoRoute(path: '/vardiya', name: 'vardiya', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const VardiyaEkrani()),
+            GoRoute(path: '/promosyon', name: 'promosyon', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const YetkiKoruma(yetkiKodu: 'promosyon', ekranAdi: 'Promosyonlar', child: PromosyonEkrani())),
+            GoRoute(path: '/fatura', name: 'fatura_liste', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const FaturaListeEkrani()),
+            GoRoute(path: '/fatura/gelen-kutusu', name: 'gib_gelen_kutusu', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const GibGelenKutusuEkrani()),
+            GoRoute(path: '/urun/doviz-guncelle', name: 'toplu_doviz_guncelle', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const TopluDovizGuncellemeEkrani()),
+            GoRoute(path: '/urun/fiyat-simulasyon', name: 'fiyat_simulasyon', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const FiyatSimulasyonuEkrani()),
+            GoRoute(path: '/bayi', name: 'bayi_ana', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const BayiAnaEkrani()),
+            GoRoute(path: '/tedarik', name: 'tedarik', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const TedarikSiparisEkrani()),
+            GoRoute(path: '/barkod/etiket', name: 'barkod_etiket', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const EtiketTasarimEkrani()),
+            GoRoute(path: '/barkod/uret', name: 'barkod_uret', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const BarkodUreteciEkrani()),
+            GoRoute(path: '/sube', name: 'sube', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const SubeEkrani()),
+            GoRoute(path: '/irsaliye', name: 'irsaliye', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const IrsaliyeEkrani()),
+            GoRoute(path: '/ai', name: 'ai', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const AiPanelEkrani()),
+            GoRoute(path: '/finans', name: 'finans', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const FinansMerkeziEkrani()),
+            GoRoute(path: '/personel', name: 'personel', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const PersonelListeEkrani()),
+            GoRoute(path: '/bildirimler', name: 'bildirimler', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const BildirimMerkeziEkrani()),
             // ---------- AYARLAR ROUTES (bkz. rotalar/ayarlar_rotalari.dart) ----------
             ...ayarlarRotalari(rootNavigatorKey),
             // Windows'ta kabuk yalnız bir Scaffold; Ürün/Cari kök Navigator'da açılır.
@@ -269,19 +269,19 @@ class UygulamaRouter {
               GoRoute(path: '/urun', name: 'urun_liste_win', parentNavigatorKey: rootNavigatorKey, builder: (_, state) => YetkiKoruma(yetkiKodu: 'urun', ekranAdi: 'Ürünler', child: UrunListeEkrani(baslangicArama: state.extra as String?))),
               GoRoute(path: '/cari', name: 'cari_liste_win', parentNavigatorKey: rootNavigatorKey, builder: (_, state) => YetkiKoruma(yetkiKodu: 'cari', ekranAdi: 'Cariler', child: CariListeEkrani(baslangicArama: state.extra as String?))),
             ],
-            GoRoute(path: '/kullanici', name: 'kullanici_liste', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const YetkiKoruma(yetkiKodu: 'kullanici', ekranAdi: 'Kullanıcılar', child: KullaniciListeEkrani())),
-            GoRoute(path: '/rezervasyon', name: 'rezervasyon', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const RezervasyonEkrani()),
-            GoRoute(path: '/masa-rapor', name: 'masa_rapor', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const MasaRaporEkrani()),
-            GoRoute(path: '/borc-takip', name: 'borc_takip', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const BorcTakipEkrani()),
-            GoRoute(path: '/borc-ekle', name: 'borc_ekle', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const BorcEkleEkrani()),
+            GoRoute(path: '/kullanici', name: 'kullanici_liste', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const YetkiKoruma(yetkiKodu: 'kullanici', ekranAdi: 'Kullanıcılar', child: KullaniciListeEkrani())),
+            GoRoute(path: '/rezervasyon', name: 'rezervasyon', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const RezervasyonEkrani()),
+            GoRoute(path: '/masa-rapor', name: 'masa_rapor', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const MasaRaporEkrani()),
+            GoRoute(path: '/borc-takip', name: 'borc_takip', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const BorcTakipEkrani()),
+            GoRoute(path: '/borc-ekle', name: 'borc_ekle', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const BorcEkleEkrani()),
 
         // ---------- SHELL ROUTE ----------
         ShellRoute(
           builder: (context, state, child) => AnaKabuk(child: child, mevcutRota: state.matchedLocation),
           routes: [
-            GoRoute(path: '/', name: 'dashboard', builder: (_, __) => const DashboardEkrani()),
-            GoRoute(path: '/panel', name: 'panel', builder: (_, __) => const DashboardEkrani()),
-            GoRoute(path: '/satis', name: 'satis', builder: (_, __) => const HizliSatisEkrani()),
+            GoRoute(path: '/', name: 'dashboard', builder: (_, _) => const DashboardEkrani()),
+            GoRoute(path: '/panel', name: 'panel', builder: (_, _) => const DashboardEkrani()),
+            GoRoute(path: '/satis', name: 'satis', builder: (_, _) => const HizliSatisEkrani()),
             if (!Platform.isWindows)
             GoRoute(path: '/urun', name: 'urun_liste', builder: (_, state) => YetkiKoruma(yetkiKodu: 'urun', ekranAdi: 'Ürünler', child: UrunListeEkrani(baslangicArama: state.extra as String?))),
             if (!Platform.isWindows)
@@ -475,7 +475,7 @@ class UygulamaRouter {
 
 class _AuthListenable extends ChangeNotifier {
   _AuthListenable(WidgetRef ref) {
-    ref.listenManual(authProvider, (_, __) => notifyListeners());
+    ref.listenManual(authProvider, (_, _) => notifyListeners());
   }
 }
 
@@ -545,7 +545,7 @@ class _AnaKabukState extends ConsumerState<AnaKabuk> {
       final genis = TsResponsive.genisMi(context);
       return PopScope(
         canPop: false,
-        onPopInvokedWithResult: (_, __) {},
+        onPopInvokedWithResult: (_, _) {},
         child: Scaffold(
           body: Row(children: [
             NavigationRail(
@@ -577,13 +577,13 @@ class _AnaKabukState extends ConsumerState<AnaKabuk> {
     // ── TELEFON — orijinal alt navigasyon (değişmedi) ──────────────────────
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (_, __) {},
+      onPopInvokedWithResult: (_, _) {},
       child: Scaffold(
         body: widget.child,
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
-            boxShadow: [BoxShadow(color: Color(0x12000000), blurRadius: 12, offset: const Offset(0, -3))],
+            boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 12, offset: Offset(0, -3))],
           ),
           child: NavigationBar(
             selectedIndex: _seciliIndex,

@@ -350,7 +350,7 @@ class _SaatGrafigi extends StatelessWidget {
                   alignment: BarChartAlignment.spaceAround,
                   barTouchData: BarTouchData(
                     touchTooltipData: BarTouchTooltipData(
-                      getTooltipItem: (g, _, rod, __) => BarTooltipItem(
+                      getTooltipItem: (g, _, rod, _) => BarTooltipItem(
                           '${g.x}:00\n${ParaUtils.formatla(rod.toY)}',
                           const TextStyle(color: Colors.white, fontSize: 11)),
                     ),

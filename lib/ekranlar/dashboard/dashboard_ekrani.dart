@@ -203,8 +203,8 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
           opaque: false,
           barrierColor: Colors.black54,
           transitionDuration: const Duration(milliseconds: 280),
-          pageBuilder: (_, __, ___) => const KullaniciDegistirEkrani(),
-          transitionsBuilder: (_, a, __, c) => SlideTransition(
+          pageBuilder: (_, _, _) => const KullaniciDegistirEkrani(),
+          transitionsBuilder: (_, a, _, c) => SlideTransition(
             position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
                 .animate(
                     CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),

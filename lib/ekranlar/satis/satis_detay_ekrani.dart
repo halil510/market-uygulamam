@@ -23,20 +23,20 @@ class SatisDetayEkrani extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(satisDetayiProvider(satisId));
     return async.when(
-      loading: () => const Scaffold(body: const TsYukleniyor()),
+      loading: () => const Scaffold(body: TsYukleniyor()),
       error: (e, _) => Scaffold(
-        appBar: TsAppBar(
+        appBar: const TsAppBar(
         baslik: 'Hata',
         gradyanli: false,
       ),
         body: Center(child: Text(kullaniciyaHataMetni(e)))),
       data: (satis) {
-        if (satis == null) return Scaffold(
+        if (satis == null) return const Scaffold(
           appBar: TsAppBar(
         baslik: 'Bulunamadı',
         gradyanli: false,
       ),
-          body: const Center(child: Text('Satış bulunamadı')));
+          body: Center(child: Text('Satış bulunamadı')));
         return _SatisDetayIcerik(satis: satis, ref: ref);
       },
     );
@@ -273,7 +273,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
           if (s.odemeYontemi != 'Karma')
             _Satir('Ödeme Yöntemi', s.odemeYontemi)
           else ...[
-            _Satir('Ödeme Yöntemi', 'Karma'),
+            const _Satir('Ödeme Yöntemi', 'Karma'),
             if (_odemeDagilimi == null)
               const Padding(
                 padding: EdgeInsets.only(top: 4, bottom: 2),
@@ -314,7 +314,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
           Container(
             decoration: BoxDecoration(
               color: TsRenk.kart(context), borderRadius: BorderRadius.circular(14),
-              boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
+              boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
             child: Column(children: [
               ...s.kalemler.map((k) => Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -358,7 +358,7 @@ class _Kart extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
       color: TsRenk.kart(context), borderRadius: BorderRadius.circular(14),
-      boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
+      boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
     child: Column(children: children),
   );
 }

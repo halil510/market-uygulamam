@@ -127,10 +127,10 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
     // referans tutuluyor — dialog her koşulda kapatılabiliyor.
     final navigator = Navigator.of(context, rootNavigator: true);
     showDialog(context: context, barrierDismissible: false,
-      builder: (_) => AlertDialog(
+      builder: (_) => const AlertDialog(
         content: Row(children: [
-          const CircularProgressIndicator(color: Color(0xFF4361EE), strokeWidth: 3),
-          const SizedBox(width: 16),
+          CircularProgressIndicator(color: Color(0xFF4361EE), strokeWidth: 3),
+          SizedBox(width: 16),
           Text('GİB sorgulanıyor...'),
         ])));
     try {
@@ -264,7 +264,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(children: [
           Icon(Icons.settings_outlined, color: Colors.orange),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text('GİB Ayarları Eksik'),
         ]),
         content: const Text(
@@ -349,10 +349,10 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
     // notu, aynı düzeltme.
     final navigator = Navigator.of(context, rootNavigator: true);
     showDialog(context: context, barrierDismissible: false,
-      builder: (_) => AlertDialog(
+      builder: (_) => const AlertDialog(
         content: Row(children: [
-          const CircularProgressIndicator(color: Color(0xFF4361EE), strokeWidth: 3),
-          const SizedBox(width: 16),
+          CircularProgressIndicator(color: Color(0xFF4361EE), strokeWidth: 3),
+          SizedBox(width: 16),
           Text('GİB sistemine gönderiliyor...'),
         ])));
 
@@ -374,7 +374,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
           builder: (ctx) => AlertDialog(
             title: const Row(children: [
               Icon(Icons.error_outline, color: Colors.red),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text('Gönderim Hatası'),
             ]),
             content: Text(sonuc.hata ?? 'Bilinmeyen hata'),

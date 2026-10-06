@@ -54,7 +54,7 @@ class EchoPort extends AsyncDataSinkSource {
 
   @override
   Future<void> write(Uint8List data) async {
-    if (writeDelay == Duration(seconds: 0)) {
+    if (writeDelay == const Duration(seconds: 0)) {
       return _write(data);
     } else {
       Future<void>.delayed(writeDelay, () {

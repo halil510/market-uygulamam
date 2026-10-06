@@ -49,11 +49,11 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
     if (yerelYol != null && yerelYol.isNotEmpty && File(yerelYol).existsSync()) {
       icerik = Image.file(File(yerelYol), width: boyut, height: boyut, fit: BoxFit.cover,
           cacheWidth: px, cacheHeight: px,
-          errorBuilder: (_, __, ___) => _resimYer(boyut));
+          errorBuilder: (_, _, _) => _resimYer(boyut));
     } else if (u.resimUrl != null && u.resimUrl!.isNotEmpty) {
       icerik = Image.network(u.resimUrl!, width: boyut, height: boyut, fit: BoxFit.cover,
           cacheWidth: px, cacheHeight: px,
-          errorBuilder: (_, __, ___) => _resimYer(boyut),
+          errorBuilder: (_, _, _) => _resimYer(boyut),
           loadingBuilder: (c, child, prog) => prog == null ? child : _resimYer(boyut));
     } else {
       icerik = _resimYer(boyut);
@@ -263,7 +263,7 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
                     border: Border.all(color: TsRenk.ayirac(context)),
                     boxShadow: TsGolge.yumusak),
                 child: IconButton(
-                  icon: Icon(Icons.qr_code_scanner, color: TsRenk.primary),
+                  icon: const Icon(Icons.qr_code_scanner, color: TsRenk.primary),
                   tooltip: 'Barkod Okut',
                   onPressed: _kamerayiAc,
                 ),
@@ -289,7 +289,7 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
                   shrinkWrap: true,
                   padding: const EdgeInsets.all(TsBosluk.sm),
                   itemCount: _aramaSonuclari.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.xs),
+                  separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.xs),
                   itemBuilder: (ctx, i) {
                     final u = _aramaSonuclari[i];
                     return TsKart.liste(
@@ -299,7 +299,7 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
                         borderRadius: BorderRadius.circular(TsRadius.sm),
                         child: _resimGoster(u, boyut: 40),
                       ),
-                      sagAksiyon: Icon(Icons.add_circle_rounded, color: TsRenk.basarili, size: 26),
+                      sagAksiyon: const Icon(Icons.add_circle_rounded, color: TsRenk.basarili, size: 26),
                       onTap: () => _urunEkle(u),
                     );
                   },
@@ -326,7 +326,7 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
           child: _yukleniyor
               ? const TsYukleniyor(iskelet: true)
               : _qrListesi.isEmpty
-                  ? TsBosDurum(
+                  ? const TsBosDurum(
                       ikon: Icons.qr_code_2,
                       baslik: 'Henüz QR menüde ürün yok',
                       altyazi: 'Yukarıdaki arama kutusundan ürün adı veya barkod ile arayıp ekleyin',
@@ -334,7 +334,7 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
                   : ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: TsBosluk.lg, vertical: TsBosluk.sm),
                       itemCount: _qrListesi.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
+                      separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.sm),
                       itemBuilder: (ctx, i) {
                         final u = _qrListesi[i];
                         return TsKart.liste(
@@ -345,7 +345,7 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
                             child: _resimGoster(u, boyut: 44),
                           ),
                           sagAksiyon: IconButton(
-                            icon: Icon(Icons.delete_outline, color: TsRenk.hata),
+                            icon: const Icon(Icons.delete_outline, color: TsRenk.hata),
                             tooltip: 'Listeden Kaldır',
                             onPressed: () => _urunKaldir(u),
                           ),

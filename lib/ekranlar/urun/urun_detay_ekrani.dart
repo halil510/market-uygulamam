@@ -63,20 +63,20 @@ class _UrunDetayEkraniState extends ConsumerState<UrunDetayEkrani>
   Widget build(BuildContext context) {
     final async = ref.watch(urunDetayProvider(widget.urunId));
     return async.when(
-      loading: () => const Scaffold(body: const TsYukleniyor()),
+      loading: () => const Scaffold(body: TsYukleniyor()),
       error:   (e, _) => Scaffold(
-        appBar: TsAppBar(
+        appBar: const TsAppBar(
         baslik: 'Hata',
         gradyanli: false,
       ),
         body: Center(child: Text(kullaniciyaHataMetni(e)))),
       data: (urun) {
-        if (urun == null) return Scaffold(
+        if (urun == null) return const Scaffold(
           appBar: TsAppBar(
         baslik: 'Bulunamadı',
         gradyanli: false,
       ),
-          body: const Center(child: Text('Ürün bulunamadı')));
+          body: Center(child: Text('Ürün bulunamadı')));
         return Scaffold(
           backgroundColor: context.scaffoldBg,
           appBar: TsAppBar(
@@ -174,7 +174,7 @@ class _FiyatSekmesi extends StatelessWidget {
         final kurAsync = ref.watch(dovizKuruProvider(urun.paraBirimi));
         return kurAsync.when(
           loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
           data: (kur) {
             if (kur == null || kur.kurGirilmemis) {
               return Padding(
@@ -349,7 +349,7 @@ class _ToptanKademeleriBolumuState extends State<_ToptanKademeleriBolumu> {
   Widget build(BuildContext context) {
     return _Kart(baslik: 'Toptan Miktar Kademeleri', children: [
       if (_yukleniyor)
-        const Padding(padding: EdgeInsets.all(16), child: const TsYukleniyor())
+        const Padding(padding: EdgeInsets.all(16), child: TsYukleniyor())
       else if (_kademeler.isEmpty)
         Padding(
           padding: const EdgeInsets.all(4),
@@ -424,7 +424,7 @@ class _HareketSekmesiState extends ConsumerState<_HareketSekmesi> {
     return ListView.separated(
       padding: const EdgeInsets.all(12),
       itemCount: _hareketler.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 6),
+      separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (_, i) {
         final h   = _hareketler[i];
         final mik = h.miktar;
@@ -433,7 +433,7 @@ class _HareketSekmesiState extends ConsumerState<_HareketSekmesi> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: context.cardBg, borderRadius: BorderRadius.circular(10),
-            boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
+            boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
           child: Row(children: [
             Container(
               width: 36, height: 36,
@@ -470,7 +470,7 @@ class _Kart extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 12),
     decoration: BoxDecoration(
       color: context.cardBg, borderRadius: BorderRadius.circular(14),
-      boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
+      boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (baslik != null)
         Padding(
@@ -574,7 +574,7 @@ class _SubeStokSekmesiState extends State<_SubeStokSekmesi> {
         const SizedBox(height: 12),
         if (_satirlar.isEmpty)
           Padding(
-            padding: EdgeInsets.only(top: 40),
+            padding: const EdgeInsets.only(top: 40),
             child: Center(child: Text('Bu ürün için şube bazlı stok kaydı yok',
                 style: TextStyle(color: context.textSecondary))),
           )

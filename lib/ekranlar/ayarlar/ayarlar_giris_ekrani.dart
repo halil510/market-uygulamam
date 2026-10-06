@@ -199,10 +199,10 @@ class _AyarlarGirisEkraniState extends ConsumerState<AyarlarGirisEkrani> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Color(0x1AFF9800),
+                      color: const Color(0x1AFF9800),
                       borderRadius: BorderRadius.circular(12),
                       border:
-                          Border.all(color: Color(0x4CFF9800)),
+                          Border.all(color: const Color(0x4CFF9800)),
                     ),
                     child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -280,12 +280,12 @@ class _AyarlarGirisEkraniState extends ConsumerState<AyarlarGirisEkrani> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(children: [
-                            Icon(Icons.error_outline,
+                            const Icon(Icons.error_outline,
                                 color: AppRenkler.error, size: 16),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(_hata,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                       color: AppRenkler.error,
                                       fontSize: 12)),
                             ),
@@ -380,7 +380,7 @@ class _NumPad extends StatelessWidget {
                                 color: t == 'C'
                                     ? AppRenkler.error.withAlpha(26)
                                     : t == '⌫'
-                                        ? Color(0x1AFF9800)
+                                        ? const Color(0x1AFF9800)
                                         : TsRenk.arkaplan(context),
                                 borderRadius: BorderRadius.circular(12),
                                 child: InkWell(
@@ -399,7 +399,7 @@ class _NumPad extends StatelessWidget {
                                             color: Colors.orange, size: 22)
                                         : t == 'C'
                                             ? Text(t,
-                                                style: TextStyle(
+                                                style: const TextStyle(
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.w700,
                                                     color: AppRenkler.error))

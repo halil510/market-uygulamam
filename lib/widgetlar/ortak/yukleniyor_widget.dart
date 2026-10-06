@@ -45,7 +45,7 @@ class SatirYukleniyorWidget extends StatelessWidget {
     itemCount: satirSayisi,
     padding: const EdgeInsets.all(12),
     physics: const NeverScrollableScrollPhysics(),
-    itemBuilder: (_, __) => Container(
+    itemBuilder: (_, _) => Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -78,7 +78,7 @@ class SatirYukleniyorWidget extends StatelessWidget {
     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10,
       childAspectRatio: 0.85),
-    itemBuilder: (_, __) => Container(
+    itemBuilder: (_, _) => Container(
       decoration: BoxDecoration(color: Colors.white,
           borderRadius: BorderRadius.circular(14)),
       padding: const EdgeInsets.all(12),

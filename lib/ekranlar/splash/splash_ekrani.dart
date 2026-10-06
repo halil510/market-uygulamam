@@ -150,7 +150,7 @@ class _SplashEkraniState extends ConsumerState<SplashEkrani>
                         child: Image.asset(
                           'assets/images/logo.png',
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (_, _, _) => const Icon(
                             Icons.store_mall_directory_rounded,
                             size: 60, color: AppRenkler.primary),
                         ),
@@ -195,7 +195,7 @@ class _SplashEkraniState extends ConsumerState<SplashEkrani>
                         tween: Tween(begin: 0, end: _ilerleme),
                         duration: const Duration(milliseconds: 400),
                         curve: Curves.easeOutCubic,
-                        builder: (_, v, __) => LinearProgressIndicator(
+                        builder: (_, v, _) => LinearProgressIndicator(
                           value: v,
                           minHeight: 6,
                           backgroundColor: Colors.white.withAlpha(51),

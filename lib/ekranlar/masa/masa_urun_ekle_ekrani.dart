@@ -300,7 +300,7 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: _aramaSonuclari.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     final u = _aramaSonuclari[i];
                     return ListTile(
@@ -321,7 +321,7 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
 
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
-      appBar: TsAppBar(
+      appBar: const TsAppBar(
         baslik: 'Ürün Ekle',
         modul: TsModul.masa,
       ),
@@ -381,7 +381,7 @@ class _AdisyonOzetPaneli extends ConsumerWidget {
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   itemCount: kalemler.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     final k = kalemler[i];
                     return ListTile(
@@ -532,7 +532,7 @@ class _UrunKareGorseli extends StatelessWidget {
       ),
       child: dosyaVar
           ? Image.file(File(yol), fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _harfRozeti())
+              errorBuilder: (_, _, _) => _harfRozeti())
           : _harfRozeti(),
     );
   }

@@ -87,9 +87,9 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
     showDialog(context: context, barrierDismissible: false,
       builder: (_) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        content: Row(children: [
-          const CircularProgressIndicator(color: TsRenk.primary, strokeWidth: 3),
-          const SizedBox(width: 16),
+        content: const Row(children: [
+          CircularProgressIndicator(color: TsRenk.primary, strokeWidth: 3),
+          SizedBox(width: 16),
           Text('Excel içe alınıyor...'),
         ]),
       ));
@@ -422,7 +422,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
             color: Color.fromARGB(15, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(children: [
-              Icon(Icons.inventory_2_outlined,
+              const Icon(Icons.inventory_2_outlined,
                   color: AppRenkler.primary, size: 18),
               const SizedBox(width: 8),
               Text('${durum.sayilanUrunSayisi} ürün sayıldı',
@@ -443,7 +443,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
         // Ürün listesi
         Expanded(
           child: durum.yukleniyor && durum.urunler.isEmpty
-              ? const Center(child: const AppYukleniyor())
+              ? const Center(child: AppYukleniyor())
               : durum.gosterilenler.isEmpty
                   ? _BosEkran(sadeceSayilan: durum.sadeceSayilan)
                   : ListView.separated(
@@ -451,7 +451,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
                       itemCount: durum.gosterilenler.length +
                           (durum.yukleniyor ? 1 : 0),
-                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      separatorBuilder: (_, _) => const SizedBox(height: 6),
                       itemBuilder: (_, i) {
                         if (i == durum.gosterilenler.length) {
                           return const Center(
@@ -549,9 +549,9 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
             ? Border.all(color: Colors.green.shade200)
             : Border.all(color: Colors.transparent),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(
+        boxShadow: const [BoxShadow(
             color: Color(0x0A000000),
-            blurRadius: 6, offset: const Offset(0, 2))],
+            blurRadius: 6, offset: Offset(0, 2))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),

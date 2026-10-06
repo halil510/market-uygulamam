@@ -169,7 +169,7 @@ class _TopluDovizGuncellemeEkraniState extends State<TopluDovizGuncellemeEkrani>
                     child: ListView.separated(
                       padding: const EdgeInsets.all(TsBosluk.lg),
                       itemCount: _urunler.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (_, i) => _urunSatiri(_urunler[i]),
                     ),
                   ),
@@ -245,7 +245,7 @@ class _TopluDovizGuncellemeEkraniState extends State<TopluDovizGuncellemeEkrani>
             const SizedBox(width: 6),
             Icon(Icons.edit_outlined, size: 16, color: TsRenk.metinIkincil(context)),
           ] else
-            Text('Kur bulunamadı', style: TextStyle(fontSize: 11, color: TsRenk.hata)),
+            const Text('Kur bulunamadı', style: TextStyle(fontSize: 11, color: TsRenk.hata)),
         ]),
       ),
     );

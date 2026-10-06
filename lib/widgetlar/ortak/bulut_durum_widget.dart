@@ -10,7 +10,7 @@ class BulutDurumIkonu extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<BulutDurum>(
       valueListenable: BulutManager().durum,
-      builder: (_, durum, __) {
+      builder: (_, durum, _) {
         if (durum == BulutDurum.yapilandirilmamis ||
             durum == BulutDurum.bagli_degil) {
           return const SizedBox.shrink();
@@ -62,7 +62,7 @@ class BulutSyncButon extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<BulutDurum>(
       valueListenable: BulutManager().durum,
-      builder: (_, durum, __) {
+      builder: (_, durum, _) {
         if (!durum.aktif) return const SizedBox.shrink();
         return IconButton(
           icon: const Icon(Icons.sync_rounded, size: 20),

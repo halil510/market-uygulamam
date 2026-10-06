@@ -13,7 +13,7 @@ import 'package:market_plus/servisler/excel_urun_birlestirici.dart';
 
 void main() {
   group('ExcelUrunBirlestirici.guncellemeIcinBirlestir', () {
-    final mevcut = UrunModel(
+    final mevcut = const UrunModel(
       id: 7,
       globalId: 'gid-orijinal-123',
       kod: 'K1',

@@ -104,7 +104,7 @@ class StokRaporEkrani extends ConsumerWidget {
             const SizedBox(height: TsBosluk.xl),
             istatistikAsync.when(
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
               data: (ist) => _StokDagilimGrafigi(ist: ist),
             ),
             const SizedBox(height: TsBosluk.xl),

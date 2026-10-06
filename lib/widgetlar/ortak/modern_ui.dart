@@ -139,11 +139,11 @@ class ModernAramaKutusu extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -277,7 +277,7 @@ class _OzetItemWidget extends StatelessWidget {
             overflow: TextOverflow.ellipsis),
         const SizedBox(height: 2),
         Text(item.label,
-            style: TextStyle(
+            style: const TextStyle(
                 fontSize: 10,
                 color: Color(0xB2FFFFFF),
                 fontWeight: FontWeight.w500),

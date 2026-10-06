@@ -119,7 +119,7 @@ class _SiteFotograflariEkraniState extends State<SiteFotograflariEkrani> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.scaffoldBg,
-      appBar: TsAppBar(
+      appBar: const TsAppBar(
         baslik: 'İşyeri Fotoğrafları (Web Sitesi)',
         gradyanli: false,
       ),
@@ -166,7 +166,7 @@ class _SiteFotograflariEkraniState extends State<SiteFotograflariEkrani> {
                           borderRadius: BorderRadius.circular(14),
                           child: Stack(fit: StackFit.expand, children: [
                             Image.network(_adresler[i], fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
+                                errorBuilder: (_, _, _) => Container(
                                     color: context.inputFill,
                                     child: const Icon(Icons.broken_image))),
                             Positioned(

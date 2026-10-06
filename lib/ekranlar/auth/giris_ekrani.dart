@@ -517,9 +517,9 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
                   const SizedBox(height: 12),
                   _buildBiometricButton(),
                   const SizedBox(height: 6),
-                  Text(
+                  const Text(
                     'v${UygSabitler.versiyon}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white54,
                       fontSize: 11,
                       fontWeight: FontWeight.w400,
@@ -576,7 +576,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
           child: Image.asset(
             'assets/images/logo.png',
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const Icon(
+            errorBuilder: (_, _, _) => const Icon(
               Icons.storefront_rounded,
               color: Colors.white,
               size: 36,
@@ -591,11 +591,11 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
   Widget _buildKullaniciSecici() {
     return ValueListenableBuilder<List<String>>(
       valueListenable: _kullanicilar,
-      builder: (_, liste, __) {
+      builder: (_, liste, _) {
         if (liste.isEmpty) return const SizedBox.shrink();
         return ValueListenableBuilder<String>(
           valueListenable: _seciliKullanici,
-          builder: (_, secili, __) => Container(
+          builder: (_, secili, _) => Container(
             decoration: BoxDecoration(
               color: Colors.white.withAlpha(18),
               borderRadius: BorderRadius.circular(14),
@@ -667,7 +667,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
   Widget _buildPinGosterge() {
     return ValueListenableBuilder<String>(
       valueListenable: _sifre,
-      builder: (_, pin, __) => AnimatedBuilder(
+      builder: (_, pin, _) => AnimatedBuilder(
         animation: _shakeAnim,
         builder: (_, child) => Transform.translate(
           offset: Offset(_shakeAnim.value * (pin.isEmpty ? 0 : 1), 0),
@@ -675,7 +675,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
         ),
         child: ValueListenableBuilder<String>(
           valueListenable: _hata,
-          builder: (_, hata, __) => Container(
+          builder: (_, hata, _) => Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
@@ -742,7 +742,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
   Widget _buildHataMesaji() {
     return ValueListenableBuilder<String>(
       valueListenable: _hata,
-      builder: (_, hata, __) {
+      builder: (_, hata, _) {
         if (hata.isEmpty) return const SizedBox.shrink();
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -754,12 +754,12 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
           ),
           child: Row(
             children: [
-              Icon(Icons.error_outline, color: TsRenk.hata, size: 18),
+              const Icon(Icons.error_outline, color: TsRenk.hata, size: 18),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   hata,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: TsRenk.hata,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -784,7 +784,7 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
 
     return ValueListenableBuilder<bool>(
       valueListenable: _kilitli,
-      builder: (_, kilitli, __) => Opacity(
+      builder: (_, kilitli, _) => Opacity(
         opacity: kilitli ? 0.4 : 1.0,
         child: Column(
           children: tuslar.map((satir) {
@@ -855,11 +855,11 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
   Widget _buildGirisButonu() {
     return ValueListenableBuilder<bool>(
       valueListenable: _yukleniyor,
-      builder: (_, yukleniyor, __) => ValueListenableBuilder<bool>(
+      builder: (_, yukleniyor, _) => ValueListenableBuilder<bool>(
         valueListenable: _kilitli,
-        builder: (_, kilitli, __) => ValueListenableBuilder<String>(
+        builder: (_, kilitli, _) => ValueListenableBuilder<String>(
           valueListenable: _sifre,
-          builder: (_, pin, __) {
+          builder: (_, pin, _) {
             final aktif = !(yukleniyor || kilitli || pin.isEmpty);
             return SizedBox(
               width: double.infinity,

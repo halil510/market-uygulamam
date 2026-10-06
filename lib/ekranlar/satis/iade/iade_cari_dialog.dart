@@ -41,7 +41,7 @@ class CariSecDialogState extends ConsumerState<CariSecDialog> {
           InkWell(
             onTap: () {
               // Kayıtsız = null cari id ama özel marker
-              Navigator.pop(context, CariModel(
+              Navigator.pop(context, const CariModel(
                 id: null, unvan: 'Kayıtsız Müşteri',
                 bakiye: 0, cariTipi: 'Müşteri',
               ));

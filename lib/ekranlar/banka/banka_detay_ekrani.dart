@@ -69,7 +69,7 @@ class _BankaDetayEkraniState extends ConsumerState<BankaDetayEkrani> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.business_outlined, size: 64, color: context.textSecondary),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   Text('Banka bulunamadı', style: TextStyle(color: context.textSecondary)),
                 ],
               ),
@@ -107,7 +107,7 @@ class _BankaDetayIcerik extends StatelessWidget {
                 color: context.cardBg,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.business, color: AppRenkler.primary, size: 32),
+              child: const Icon(Icons.business, color: AppRenkler.primary, size: 32),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -140,7 +140,7 @@ class _BankaDetayIcerik extends StatelessWidget {
           decoration: BoxDecoration(
             color: context.cardBg,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
+            boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
           ),
           child: Column(children: [
             _BilgiSatiri(context, 'Banka Adı', banka.ad),

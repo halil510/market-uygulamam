@@ -106,12 +106,12 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
       return const Scaffold(body: TsYukleniyor());
     }
     if (_fatura == null) {
-      return Scaffold(
+      return const Scaffold(
 appBar: TsAppBar(
         baslik: 'Fatura Detay',
         gradyanli: false,
       ),
-        body: const Center(child: Text('Fatura bulunamadi')),
+        body: Center(child: Text('Fatura bulunamadi')),
       );
     }
 
@@ -131,7 +131,7 @@ appBar: TsAppBar(
                     pdfBytes: _pdfBytes, faturaNo: f.faturaNo ?? 'Fatura'),
               ))),
           IconButton(
-              icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, __, ___) => const Icon(Icons.picture_as_pdf)),
+              icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, _, _) => const Icon(Icons.picture_as_pdf)),
               tooltip: 'PDF',
               onPressed: _pdfGoster),
           IconButton(
@@ -356,7 +356,7 @@ class _FaturaOnizlemeEkrani extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: context.borderColor,
-    appBar: TsAppBar(
+    appBar: const TsAppBar(
         baslik: 'e-Fatura Ön İzleme',
       ),
     body: PdfPreview(

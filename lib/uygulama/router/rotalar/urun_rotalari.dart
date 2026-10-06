@@ -18,7 +18,7 @@ import '../../../ekranlar/birim/birim_ekrani.dart';
 import '../../../modeller/urun_model.dart';
 
 List<GoRoute> urunRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
-        GoRoute(path: '/urun/plu', name: 'plu_yonetim', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const PluYonetimEkrani()),
+        GoRoute(path: '/urun/plu', name: 'plu_yonetim', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const PluYonetimEkrani()),
         GoRoute(path: '/urun/detay/:id', name: 'urun_detay', parentNavigatorKey: rootNavigatorKey,
           builder: (c, s) => UrunDetayEkrani(urunId: int.parse(s.pathParameters['id']!))),
         GoRoute(path: '/urun/ekle', name: 'urun_ekle', parentNavigatorKey: rootNavigatorKey,
@@ -30,8 +30,8 @@ List<GoRoute> urunRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
           }),
         GoRoute(path: '/urun/toplu-islem', name: 'urun_toplu_islem', parentNavigatorKey: rootNavigatorKey,
           builder: (c, s) => TopluIslemEkrani(secilenIds: s.extra is List<int> ? s.extra as List<int> : [])),
-        GoRoute(path: '/urun/toplu-fiyat', name: 'urun_toplu_fiyat', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const TopluFiyatEkrani()),
-        GoRoute(path: '/urun/kategori', name: 'urun_kategori', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const KategoriEkrani()),
-        GoRoute(path: '/urun/marka', name: 'urun_marka', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const MarkaEkrani()),
-        GoRoute(path: '/birim', name: 'birim', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const BirimEkrani()),
+        GoRoute(path: '/urun/toplu-fiyat', name: 'urun_toplu_fiyat', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const TopluFiyatEkrani()),
+        GoRoute(path: '/urun/kategori', name: 'urun_kategori', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const KategoriEkrani()),
+        GoRoute(path: '/urun/marka', name: 'urun_marka', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const MarkaEkrani()),
+        GoRoute(path: '/birim', name: 'birim', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const BirimEkrani()),
       ];

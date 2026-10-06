@@ -163,7 +163,7 @@ class _BayiSiparisEkraniState extends State<BayiSiparisEkrani> {
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: _sonuclar.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (_, i) {
                 final u = _sonuclar[i];
                 return ListTile(
@@ -178,7 +178,7 @@ class _BayiSiparisEkraniState extends State<BayiSiparisEkrani> {
         const SizedBox(height: TsBosluk.sm),
         Expanded(
           child: _sepet.isEmpty
-              ? TsBosDurum(
+              ? const TsBosDurum(
                   ikon: Icons.shopping_cart_outlined,
                   baslik: 'Sepetiniz boş',
                   altyazi: 'Yukarıdan ürün arayarak sepete ekleyin.',
@@ -186,7 +186,7 @@ class _BayiSiparisEkraniState extends State<BayiSiparisEkrani> {
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: TsBosluk.lg),
                   itemCount: _sepet.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
+                  separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.sm),
                   itemBuilder: (_, i) {
                     final k = _sepet[i];
                     return TsKart(

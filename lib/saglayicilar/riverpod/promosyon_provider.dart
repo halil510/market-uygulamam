@@ -31,7 +31,7 @@ List<PromosyonModel> filtreliPromosyonlar(Ref ref) {
   final now   = DateTime.now();
   return async.when(
     loading: () => [],
-    error: (_, __) => [],
+    error: (_, _) => [],
     data: (liste) {
       var s = liste;
       if (f.aramaMetni.length >= 2) {

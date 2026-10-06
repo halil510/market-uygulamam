@@ -23,7 +23,7 @@ import '../../../modeller/kredi_karti_model.dart';
 List<GoRoute> bankaRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
         // Banka
         GoRoute(path: '/banka', name: 'banka_liste', parentNavigatorKey: rootNavigatorKey,
-          builder: (_, __) => const BankaListeEkrani()),
+          builder: (_, _) => const BankaListeEkrani()),
         GoRoute(path: '/banka/ekle', name: 'banka_ekle', parentNavigatorKey: rootNavigatorKey,
           builder: (c, s) => BankaEkleEkrani(duzenlenecek: s.extra as BankaModel?)),
         GoRoute(path: '/banka/detay/:id', name: 'banka_detay', parentNavigatorKey: rootNavigatorKey,
@@ -71,7 +71,7 @@ List<GoRoute> bankaRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
 
         // Mail
         GoRoute(path: '/mail-baglanti', name: 'mail_baglanti', parentNavigatorKey: rootNavigatorKey,
-          builder: (_, __) => const MailBaglantiEkrani()),
+          builder: (_, _) => const MailBaglantiEkrani()),
 
         GoRoute(
           path: '/banka/kredi-kartlari/:bankaId',

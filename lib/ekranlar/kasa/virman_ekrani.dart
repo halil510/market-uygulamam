@@ -231,7 +231,7 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
             Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.hata), borderRadius: BorderRadius.circular(12)),
-                child: Icon(Icons.arrow_upward, color: TsRenk.hata, size: 18)),
+                child: const Icon(Icons.arrow_upward, color: TsRenk.hata, size: 18)),
             const SizedBox(width: 10),
             Text('Kaynak Hesap', style: TextStyle(fontWeight: FontWeight.w600, color: TsRenk.metinBirincil(context))),
             const Spacer(),
@@ -251,7 +251,7 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
             Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.basarili), borderRadius: BorderRadius.circular(12)),
-                child: Icon(Icons.arrow_downward, color: TsRenk.basarili, size: 18)),
+                child: const Icon(Icons.arrow_downward, color: TsRenk.basarili, size: 18)),
             const SizedBox(width: 10),
             Text('Hedef Hesap', style: TextStyle(fontWeight: FontWeight.w600, color: TsRenk.metinBirincil(context))),
             const Spacer(),

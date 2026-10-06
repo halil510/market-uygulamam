@@ -144,7 +144,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
       builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => Container(
         decoration: BoxDecoration(
           color: context.cardBg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
         padding: EdgeInsets.fromLTRB(20, 20, 20,
             MediaQuery.of(ctx).viewInsets.bottom + 30),
         child: Column(mainAxisSize: MainAxisSize.min,
@@ -158,8 +158,8 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
               decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.bilgi), borderRadius: BorderRadius.circular(12)),
               child: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20)),
             const SizedBox(width: 10),
-            Expanded(child: Text('Promosyon Düzenle',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
+            const Expanded(child: Text('Promosyon Düzenle',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
           ]),
           const SizedBox(height: 16),
           TextField(controller: adCtrl, decoration: const InputDecoration(
@@ -348,7 +348,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
           ),
         Expanded(
           child: async.when(
-            loading: () => const Center(child: const AppYukleniyor()),
+            loading: () => const Center(child: AppYukleniyor()),
             error: (e, _) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               const Icon(Icons.error_outline, size: 48, color: Colors.red),
               const SizedBox(height: 12),
@@ -378,7 +378,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
                     itemCount: liste.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (_, i) => _PromosyonKarti(
                       promosyon: liste[i],
                       onToggle:   () => _aktiflikToggle(liste[i]),
@@ -517,7 +517,7 @@ class _PromosyonEkleSheetState extends ConsumerState<_PromosyonEkleSheet> {
     return Container(
       decoration: BoxDecoration(
         color: context.cardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(20, 16, 20,
           MediaQuery.of(context).viewInsets.bottom + 24),
@@ -799,7 +799,7 @@ class _PromosyonKarti extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: promosyon.aktif && !suresiDoldu
             ? Colors.green.shade200 : context.borderColor),
-        boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 6, offset: const Offset(0, 2))],
+        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6, offset: Offset(0, 2))],
       ),
       padding: const EdgeInsets.all(14),
       child: GestureDetector(
@@ -829,11 +829,11 @@ class _PromosyonKarti extends StatelessWidget {
             },
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'duzenle',
-                  child: Row(children: [Icon(Icons.edit_outlined, size: 16, color: Colors.blue), const SizedBox(width: 8), Text('Düzenle')])),
+                  child: Row(children: [Icon(Icons.edit_outlined, size: 16, color: Colors.blue), SizedBox(width: 8), Text('Düzenle')])),
               PopupMenuItem(value: 'toggle',
                   child: Text(promosyon.aktif ? 'Pasife Al' : 'Aktife Al')),
               const PopupMenuItem(value: 'sil',
-                  child: Row(children: [Icon(Icons.delete_outline, size: 16, color: Colors.red), const SizedBox(width: 8), Text('Sil', style: TextStyle(color: Colors.red))])),
+                  child: Row(children: [Icon(Icons.delete_outline, size: 16, color: Colors.red), SizedBox(width: 8), Text('Sil', style: TextStyle(color: Colors.red))])),
             ],
           )),
         ]),

@@ -342,7 +342,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
         final px = (boyut * MediaQuery.of(context).devicePixelRatio).round();
         return Image.file(f, width: boyut, height: boyut, fit: BoxFit.cover,
             cacheWidth: px, cacheHeight: px,
-            errorBuilder: (_, __, ___) => _harf(u, boyut));
+            errorBuilder: (_, _, _) => _harf(u, boyut));
       }
     }
     return _harf(u, boyut);

@@ -630,8 +630,8 @@ double _toDouble(dynamic value) {
       appBar: TsAppBar(
         baslik: 'Gün Sonu Raporu',
         aksiyonlar: [
-          IconButton(icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, __, ___) => const Icon(Icons.picture_as_pdf, color: Colors.white)), tooltip: 'PDF', onPressed: _pdfOlustur),
-          IconButton(icon: Image.asset("assets/images/excel_icon.png", width: 22, height: 22, errorBuilder: (_, __, ___) => const Icon(Icons.table_chart, color: Colors.white)), tooltip: "Excel'e Aktar", onPressed: _exceleAktar),
+          IconButton(icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, _, _) => const Icon(Icons.picture_as_pdf, color: Colors.white)), tooltip: 'PDF', onPressed: _pdfOlustur),
+          IconButton(icon: Image.asset("assets/images/excel_icon.png", width: 22, height: 22, errorBuilder: (_, _, _) => const Icon(Icons.table_chart, color: Colors.white)), tooltip: "Excel'e Aktar", onPressed: _exceleAktar),
           IconButton(icon: const Icon(Icons.refresh, color: Colors.white), tooltip: 'Yenile', onPressed: _yukle),
         ],
         geriTusu: false,

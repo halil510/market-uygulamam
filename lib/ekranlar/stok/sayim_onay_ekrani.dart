@@ -123,7 +123,7 @@ class _SayimOnayEkraniState extends ConsumerState<SayimOnayEkrani> {
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                 itemCount: liste.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 6),
+                separatorBuilder: (_, _) => const SizedBox(height: 6),
                 itemBuilder: (_, i) {
                   final r = liste[i];
                   final mevcut = ((r['mevcut_stok'] as num?) ?? 0).toDouble();

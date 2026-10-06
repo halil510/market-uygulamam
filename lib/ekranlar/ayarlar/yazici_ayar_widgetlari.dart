@@ -228,7 +228,7 @@ class _Seksiyon extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppRenkler.primary.withAlpha(31),
         borderRadius: BorderRadius.circular(10)),
-      child: Text('$sayi', style: TextStyle(
+      child: Text('$sayi', style: const TextStyle(
           fontSize: 11, fontWeight: FontWeight.w800, color: AppRenkler.primary)),
     ),
   ]);

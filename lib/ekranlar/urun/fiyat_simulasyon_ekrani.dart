@@ -111,7 +111,7 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
               borderRadius: BorderRadius.circular(TsRadius.md),
             ),
             child: Row(children: [
-              Icon(Icons.info_outline, color: TsRenk.bilgi, size: 18),
+              const Icon(Icons.info_outline, color: TsRenk.bilgi, size: 18),
               const SizedBox(width: TsBosluk.sm),
               Expanded(
                 child: Text(
@@ -221,7 +221,7 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
           Row(children: [
             Icon(karArtti ? Icons.trending_up : Icons.trending_down, color: renk),
             const SizedBox(width: TsBosluk.sm),
-            Text('Simülasyon Sonucu', style: TsMetin.baslikM),
+            const Text('Simülasyon Sonucu', style: TsMetin.baslikM),
           ]),
           const SizedBox(height: TsBosluk.md),
           Row(children: [

@@ -152,7 +152,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
               ),
               child: _secilenBayi == null
                   ? Row(children: [
-                      Icon(Icons.storefront, color: TsRenk.uyari),
+                      const Icon(Icons.storefront, color: TsRenk.uyari),
                       const SizedBox(width: TsBosluk.sm),
                       Expanded(
                           child: Text('Bayi/Toptan Müşteri Seçin',
@@ -259,7 +259,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
                 shrinkWrap: true,
                 padding: const EdgeInsets.all(TsBosluk.sm),
                 itemCount: _aramaSonuclari.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     const SizedBox(height: TsBosluk.xs),
                 itemBuilder: (c, i) {
                   final u = _aramaSonuclari[i];
@@ -269,7 +269,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
                         'Stok: ${u.stok.toStringAsFixed(0)} ${u.birimAdi}'
                         '${u.koliIciMiktar > 0 ? " · 1 ${u.koliBirimAdi} = ${u.koliIciMiktar.toStringAsFixed(0)} ${u.birimAdi}" : ""}',
                     ikon: const Icon(Icons.inventory_2_outlined),
-                    sagAksiyon: Icon(Icons.add_circle_rounded,
+                    sagAksiyon: const Icon(Icons.add_circle_rounded,
                         color: TsRenk.basarili, size: 24),
                     onTap: () => _urunEkle(u),
                   );
@@ -304,7 +304,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
             ),
           Expanded(
             child: _sepet.isEmpty
-                ? TsBosDurum(
+                ? const TsBosDurum(
                     ikon: Icons.shopping_cart_outlined,
                     baslik: 'Sepet boş',
                     altyazi: 'Ürün arayıp ekleyin',
@@ -386,7 +386,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
                                     width: 32,
                                     child: IconButton(
                                       padding: EdgeInsets.zero,
-                                      icon: Icon(Icons.close,
+                                      icon: const Icon(Icons.close,
                                           size: 15, color: TsRenk.hata),
                                       onPressed: () => _kalemSil(i),
                                     ),
@@ -424,7 +424,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
                           style: TextStyle(
                               fontSize: 15, fontWeight: FontWeight.w800)),
                       Text(ParaUtils.formatla(_genelToplam),
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 21,
                               fontWeight: FontWeight.w800,
                               color: TsRenk.primary)),
@@ -457,7 +457,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
             ),
           ),
         ] else
-          Expanded(
+          const Expanded(
               child: TsBosDurum(
             ikon: Icons.storefront_outlined,
             baslik: 'Bayi seçilmedi',

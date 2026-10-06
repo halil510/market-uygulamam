@@ -138,7 +138,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
     return Container(
       decoration: BoxDecoration(
         color: TsRenk.kart(context),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 20),
       child: Column(

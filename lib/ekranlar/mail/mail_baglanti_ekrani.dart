@@ -244,11 +244,11 @@ class _MailBaglantiEkraniState extends ConsumerState<MailBaglantiEkrani> {
             ),
             const SizedBox(height: TsBosluk.sm),
 
-            TsKart(
-              padding: const EdgeInsets.all(12),
+            const TsKart(
+              padding: EdgeInsets.all(12),
               child: Row(children: [
-                const Icon(Icons.info_outline, color: TsRenk.bilgi, size: 16),
-                const SizedBox(width: 8),
+                Icon(Icons.info_outline, color: TsRenk.bilgi, size: 16),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Normal hesap şifreniz değil, hesap ayarlarınızdan '

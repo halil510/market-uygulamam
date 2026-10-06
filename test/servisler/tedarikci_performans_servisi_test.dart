@@ -63,15 +63,15 @@ void main() {
   group('tedarikciPerformansListesiHesapla sıralama', () {
     test('Zayıf → Normal → İyi → Veri Yok sırasıyla listelenir', () {
       final girdiler = [
-        TedarikciPerformansGirdi(
+        const TedarikciPerformansGirdi(
             tedarikciId: 1, tedarikciAdi: 'İyi Tedarikçi', toplamSiparis: 10,
             teslimAlinan: 10, iptalEdilen: 0, bekleyen: 0,
             ortalamaTeslimSuresiGun: 3, ortalamaSiparisTutari: 500),
-        TedarikciPerformansGirdi(
+        const TedarikciPerformansGirdi(
             tedarikciId: 2, tedarikciAdi: 'Veri Yok Tedarikçi', toplamSiparis: 2,
             teslimAlinan: 0, iptalEdilen: 0, bekleyen: 2,
             ortalamaTeslimSuresiGun: null, ortalamaSiparisTutari: 0),
-        TedarikciPerformansGirdi(
+        const TedarikciPerformansGirdi(
             tedarikciId: 3, tedarikciAdi: 'Zayıf Tedarikçi', toplamSiparis: 10,
             teslimAlinan: 2, iptalEdilen: 8, bekleyen: 0,
             ortalamaTeslimSuresiGun: null, ortalamaSiparisTutari: 300),

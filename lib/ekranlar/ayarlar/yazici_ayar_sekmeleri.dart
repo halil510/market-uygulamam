@@ -60,7 +60,7 @@ extension _YaziciAyarSekmeleri on _YaziciAyarEkraniState {
       ],
 
       // ── Bilgi kutusu ──
-      _BilgiKutu(
+      const _BilgiKutu(
         renk: _blue,
         ikon: Icons.info_outline,
         mesaj: 'Epson TM, Bixolon, Star Micronics ve diğer ağ yazıcıları TCP/IP '
@@ -118,7 +118,7 @@ extension _YaziciAyarSekmeleri on _YaziciAyarEkraniState {
         const SizedBox(height: 8),
       ],
 
-      _BilgiKutu(
+      const _BilgiKutu(
         renk: _purple,
         ikon: Icons.bluetooth,
         mesaj: 'Sewoo, Rongta, Bixolon SPP vb. taşınabilir yazıcılar için '
@@ -175,7 +175,7 @@ extension _YaziciAyarSekmeleri on _YaziciAyarEkraniState {
         const SizedBox(height: 8),
       ],
 
-      _BilgiKutu(
+      const _BilgiKutu(
         renk: _orange,
         ikon: Icons.usb,
         mesaj: 'USB kablo ile takılı termal yazıcılar burada listelenir. '

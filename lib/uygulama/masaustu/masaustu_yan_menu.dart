@@ -257,7 +257,7 @@ Future<void> masaustuMenuAc(BuildContext context) {
     barrierLabel: 'Menü',
     barrierColor: Colors.black38,
     transitionDuration: const Duration(milliseconds: 150),
-    pageBuilder: (ctx, _, __) => Align(
+    pageBuilder: (ctx, _, _) => Align(
       alignment: Alignment.centerLeft,
       child: Material(
         elevation: 8,

@@ -187,7 +187,7 @@ class _KullaniciListeEkraniState extends ConsumerState<KullaniciListeEkrani> {
                   : ListView.separated(
                       padding: const EdgeInsets.all(12),
                       itemCount: _kullanicilar.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (_, i) {
                         final k = _kullanicilar[i];
                         final aktifKullanici =

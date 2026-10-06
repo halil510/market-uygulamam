@@ -197,15 +197,15 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
       ),
       body: ValueListenableBuilder<bool>(
         valueListenable: _yukleniyor,
-        builder: (_, yukleniyor, __) {
+        builder: (_, yukleniyor, _) {
           if (yukleniyor) return const TsYukleniyor();
           return ValueListenableBuilder<List<KullaniciModel>>(
             valueListenable: _kullanicilar,
-            builder: (_, liste, __) {
+            builder: (_, liste, _) {
               if (liste.isEmpty) return _bosEkran();
               return ValueListenableBuilder<KullaniciModel?>(
                 valueListenable: _secili,
-                builder: (_, secili, __) {
+                builder: (_, secili, _) {
                   if (secili == null) return _kullaniciListesi(liste);
                   return _pinEkrani(secili);
                 },
@@ -256,7 +256,7 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
               CircleAvatar(
                 backgroundColor: Color.fromARGB(38, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
                 child: Text(mevcut.adSoyad.isNotEmpty ? mevcut.adSoyad[0] : '?',
-                    style: TextStyle(color: AppRenkler.primary, fontWeight: FontWeight.w800)),
+                    style: const TextStyle(color: AppRenkler.primary, fontWeight: FontWeight.w800)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -364,7 +364,7 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
           // PIN dots
           ValueListenableBuilder<String>(
             valueListenable: _pin,
-            builder: (_, pin, __) => AnimatedBuilder(
+            builder: (_, pin, _) => AnimatedBuilder(
               animation: _shakeAnim,
               builder: (_, child) => Transform.translate(
                 offset: Offset(_shakeAnim.value, 0),
@@ -372,7 +372,7 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
               ),
               child: ValueListenableBuilder<String>(
                 valueListenable: _hata,
-                builder: (_, hata, __) => Container(
+                builder: (_, hata, _) => Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   decoration: BoxDecoration(
@@ -400,7 +400,7 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
           // Hata
           ValueListenableBuilder<String>(
             valueListenable: _hata,
-            builder: (_, hata, __) {
+            builder: (_, hata, _) {
               if (hata.isEmpty) return const SizedBox(height: 8);
               return Container(
                 margin: const EdgeInsets.only(top: 8),
@@ -461,9 +461,9 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
           // Giriş Yap
           ValueListenableBuilder<bool>(
             valueListenable: _girisYapiliyor,
-            builder: (_, yukleniyor, __) => ValueListenableBuilder<String>(
+            builder: (_, yukleniyor, _) => ValueListenableBuilder<String>(
               valueListenable: _pin,
-              builder: (_, pin, __) => SizedBox(width: double.infinity, height: 52, child: FilledButton(
+              builder: (_, pin, _) => SizedBox(width: double.infinity, height: 52, child: FilledButton(
                   onPressed: (yukleniyor || pin.isEmpty) ? null : _girisYap,
                   style: FilledButton.styleFrom(
                     foregroundColor: Colors.white,

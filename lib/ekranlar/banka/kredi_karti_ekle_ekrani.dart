@@ -192,7 +192,7 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
             bankalarAsync.when(
               loading: () => const LinearProgressIndicator(),
               error: (err, _) => Text('Bankalar yüklenemedi: ${kullaniciyaHataMetni(err)}',
-                  style: TextStyle(color: TsRenk.hata)),
+                  style: const TextStyle(color: TsRenk.hata)),
               data: (bankalar) {
                 _seciliBankayiAyarla(bankalar);
                 return DropdownButtonFormField<BankaModel>(

@@ -100,7 +100,7 @@ class CariRaporEkrani extends ConsumerWidget {
             const SizedBox(height: TsBosluk.xl),
             istatistikAsync.when(
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
               data: (ist) => _AlacakBorcGrafigi(
                 alacak: ist['toplam_alacak'] ?? 0,
                 borc: ist['toplam_borc'] ?? 0,

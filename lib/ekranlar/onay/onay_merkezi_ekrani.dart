@@ -65,7 +65,7 @@ class OnayMerkeziEkrani extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(TsBosluk.lg),
               itemCount: satirlar.length,
-              separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
+              separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.sm),
               itemBuilder: (_, i) {
                 final s = satirlar[i];
                 final gorulduMu = (s['goruldu'] as int? ?? 0) == 1;

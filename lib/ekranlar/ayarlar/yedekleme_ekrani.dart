@@ -101,7 +101,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: const Row(children: [
-          Icon(Icons.warning_amber, color: Colors.orange), const SizedBox(width: 8),
+          Icon(Icons.warning_amber, color: Colors.orange), SizedBox(width: 8),
           Text('Geri Yükle'),
         ]),
         content: Text('${y.tarihStr} tarihli yedek geri yüklenecek.\n\nMevcut veriler silinecek. Emin misiniz?'),
@@ -194,7 +194,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Color(0x33FFFFFF),
+                        color: const Color(0x33FFFFFF),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.backup, color: Colors.white, size: 26),
@@ -350,12 +350,12 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
         },
         itemBuilder: (_) => [
           const PopupMenuItem(value: 'paylas', child: Row(children: [
-            Icon(Icons.share, size: 18), const SizedBox(width: 8), Text('Paylaş')])),
+            Icon(Icons.share, size: 18), SizedBox(width: 8), Text('Paylaş')])),
           const PopupMenuItem(value: 'geri', child: Row(children: [
-            Icon(Icons.restore, size: 18, color: Colors.orange), const SizedBox(width: 8),
+            Icon(Icons.restore, size: 18, color: Colors.orange), SizedBox(width: 8),
             Text('Geri Yükle', style: TextStyle(color: Colors.orange))])),
           const PopupMenuItem(value: 'sil', child: Row(children: [
-            Icon(Icons.delete_outline, size: 18, color: Colors.red), const SizedBox(width: 8),
+            Icon(Icons.delete_outline, size: 18, color: Colors.red), SizedBox(width: 8),
             Text('Sil', style: TextStyle(color: Colors.red))])),
         ],
       ),

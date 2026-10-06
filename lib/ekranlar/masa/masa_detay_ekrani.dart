@@ -258,7 +258,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(children: const [
+        title: const Row(children: [
           Icon(Icons.warning_amber_rounded, color: Colors.red), SizedBox(width: 8),
           Text('Siparişi İptal Et'),
         ]),
@@ -697,7 +697,7 @@ class _MasaDetayIcerik extends StatelessWidget {
           decoration: BoxDecoration(
             color: TsRenk.kart(context),
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
+            boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
           ),
           child: Row(children: [
             Expanded(
@@ -926,7 +926,7 @@ class _SiparisKalemListesiState extends ConsumerState<_SiparisKalemListesi> {
             color: TsRenk.kart(context),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: TsRenk.ayirac(context)),
-            boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 4)],
+            boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4)],
           ),
           child: Row(children: [
             Container(

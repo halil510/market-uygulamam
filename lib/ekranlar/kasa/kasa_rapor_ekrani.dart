@@ -123,7 +123,7 @@ class _KasaRaporEkraniState extends ConsumerState<KasaRaporEkrani> {
         ],
       ),
       body: raporAsync.when(
-        loading: () => const Center(child: const AppYukleniyor()),
+        loading: () => const Center(child: AppYukleniyor()),
         error:   (e, _) => BosEkran(ikon: Icons.inbox_outlined, baslik: 'Hata: ${bildirimMetniniSadelestir(e.toString())}'),
         data:    (veri) => _Icerik(
           veri: veri, aralik: _aralik,
@@ -245,9 +245,9 @@ class _Icerik extends StatelessWidget {
                 colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
               ),
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(
+              boxShadow: const [BoxShadow(
                   color: Color(0x4C4CAF50),
-                  blurRadius: 16, offset: const Offset(0, 6))],
+                  blurRadius: 16, offset: Offset(0, 6))],
             ),
             child: Row(children: [
               Expanded(child: Column(
@@ -265,7 +265,7 @@ class _Icerik extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Color(0x26FFFFFF),
+                  color: const Color(0x26FFFFFF),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(Icons.account_balance_wallet,
@@ -302,9 +302,9 @@ class _Icerik extends StatelessWidget {
               decoration: BoxDecoration(
                 color: TsRenk.kart(context),
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(
+                boxShadow: const [BoxShadow(
                     color: Color(0x0D000000),
-                    blurRadius: 10, offset: const Offset(0, 3))],
+                    blurRadius: 10, offset: Offset(0, 3))],
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Günlük Kasa Hareketi',
@@ -365,9 +365,9 @@ class _Icerik extends StatelessWidget {
             decoration: BoxDecoration(
               color: TsRenk.kart(context),
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(
+              boxShadow: const [BoxShadow(
                   color: Color(0x0D000000),
-                  blurRadius: 10, offset: const Offset(0, 3))],
+                  blurRadius: 10, offset: Offset(0, 3))],
             ),
             child: Column(children: [
               Padding(
@@ -412,9 +412,9 @@ class _OzetKart extends StatelessWidget {
       decoration: BoxDecoration(
         color: TsRenk.kart(context),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(
+        boxShadow: const [BoxShadow(
             color: Color(0x0D000000),
-            blurRadius: 8, offset: const Offset(0, 2))],
+            blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(ikon, color: renk, size: 18),

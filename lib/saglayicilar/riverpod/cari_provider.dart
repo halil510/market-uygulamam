@@ -42,7 +42,7 @@ class Cariler extends _$Cariler {
 
   @override
   CariListeDurum build() {
-    ref.listen(cariFiltresiProvider, (_, __) => yukle());
+    ref.listen(cariFiltresiProvider, (_, _) => yukle());
     Future.microtask(yukle);
     return const CariListeDurum(yukleniyor: true);
   }

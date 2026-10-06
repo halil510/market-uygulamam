@@ -212,14 +212,14 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(TsBosluk.md),
+          const Padding(
+            padding: EdgeInsets.all(TsBosluk.md),
             child: TsKart(
-              padding: const EdgeInsets.all(TsBosluk.md),
+              padding: EdgeInsets.all(TsBosluk.md),
               child: Row(children: [
                 Icon(Icons.info_outline, size: 18, color: TsRenk.bilgi),
-                const SizedBox(width: TsBosluk.sm),
-                const Expanded(
+                SizedBox(width: TsBosluk.sm),
+                Expanded(
                   child: Text(
                     'Ürünlerde kullanılacak ölçü birimlerini buradan yönetebilirsiniz. '
                     'Silmek için kartı sola sürükleyin.',

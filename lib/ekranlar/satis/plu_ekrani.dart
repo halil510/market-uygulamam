@@ -219,7 +219,7 @@ class _PluEkraniState extends ConsumerState<PluEkrani> {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
               color: secili
-                  ? Color(0x40FFFFFF)
+                  ? const Color(0x40FFFFFF)
                   : context.borderColor,
               borderRadius: BorderRadius.circular(12),
             ),
@@ -246,7 +246,7 @@ class _PluEkraniState extends ConsumerState<PluEkrani> {
         decoration: BoxDecoration(
           color: TsRenk.kart(context),
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [const BoxShadow(
+          boxShadow: const [BoxShadow(
             color: Color(0x12000000),
             blurRadius: 6, offset: Offset(0, 2),
           )],
@@ -295,7 +295,7 @@ class _PluEkraniState extends ConsumerState<PluEkrani> {
       final f = File(yol);
       if (f.existsSync()) {
         return Image.file(f, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _gradient(urun, renk));
+            errorBuilder: (_, _, _) => _gradient(urun, renk));
       }
     }
     return _gradient(urun, renk);

@@ -138,7 +138,7 @@ class MutfakEkrani extends ConsumerWidget {
                           physics: const NeverScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(8),
                           itemCount: aktifKalemler.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          separatorBuilder: (_, _) => const Divider(height: 1),
                           itemBuilder: (_, j) {
                             final k = aktifKalemler[j];
                             final renk = _durumRenk(k.durum);

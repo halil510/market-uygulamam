@@ -4,7 +4,7 @@ import 'package:market_plus/modeller/urun_model.dart';
 void main() {
   group('UrunModel', () {
     test('karOrani hesabı', () {
-      final u = UrunModel(
+      final u = const UrunModel(
         urunAdi: 'Test', alisFiyat: 80, satisFiyati: 100,
         birimAdi: 'Adet', kdvOran: '20',
       );
@@ -12,7 +12,7 @@ void main() {
     });
 
     test('kritikStok false - minimum 0', () {
-      final u = UrunModel(
+      final u = const UrunModel(
         urunAdi: 'Test', stok: 5, minimumStok: 0,
         birimAdi: 'Adet', kdvOran: '20',
       );
@@ -20,7 +20,7 @@ void main() {
     });
 
     test('kritikStok true', () {
-      final u = UrunModel(
+      final u = const UrunModel(
         urunAdi: 'Test', stok: 2, minimumStok: 5,
         birimAdi: 'Adet', kdvOran: '20',
       );
@@ -28,7 +28,7 @@ void main() {
     });
 
     test('indirimliFiyat', () {
-      final u = UrunModel(
+      final u = const UrunModel(
         urunAdi: 'Test', satisFiyati: 100,
         indirimliFiyatKayitli: 80,
         birimAdi: 'Adet', kdvOran: '20',
@@ -50,7 +50,7 @@ void main() {
     });
 
     test('copyWith', () {
-      final u = UrunModel(
+      final u = const UrunModel(
         urunAdi: 'Test', satisFiyati: 100,
         birimAdi: 'Adet', kdvOran: '20',
       );
@@ -66,7 +66,7 @@ void main() {
     // copyWith() çağrısı bu iki alanı sessizce sıfırlıyordu.
     test('copyWith ilgisiz bir alanı değiştirirken plu/pluKartBoyut KORUNUR '
         '(önceden sessizce 0/2\'ye sıfırlanıyordu)', () {
-      final u = UrunModel(
+      final u = const UrunModel(
         urunAdi: 'PLU Ürünü', satisFiyati: 100,
         birimAdi: 'Adet', kdvOran: '20',
         plu: 1, pluKartBoyut: 3,
@@ -77,7 +77,7 @@ void main() {
     });
 
     test('copyWith ile plu/pluKartBoyut doğrudan da güncellenebilir', () {
-      final u = UrunModel(
+      final u = const UrunModel(
         urunAdi: 'Test', satisFiyati: 100,
         birimAdi: 'Adet', kdvOran: '20',
         plu: 0, pluKartBoyut: 2,

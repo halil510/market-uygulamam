@@ -115,7 +115,7 @@ class _FiyatGruplariEkraniState extends State<FiyatGruplariEkrani> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.scaffoldBg,
-      appBar: TsAppBar(
+      appBar: const TsAppBar(
         baslik: 'Fiyat Grupları (Bayi Tipleri)',
       ),
       floatingActionButton: FloatingActionButton.extended(

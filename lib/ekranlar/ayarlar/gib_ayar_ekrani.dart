@@ -246,7 +246,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Row(children: [
                     Icon(Icons.info_outline, color: Colors.blue, size: 18),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text('GİB e-Fatura Entegrasyonu',
                         style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blue)),
                   ]),
@@ -393,7 +393,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
                   ),
                   child: const Row(children: [
                     Icon(Icons.warning_amber, color: Colors.orange),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'CANLI mod aktif! Gönderilen faturalar GİB\'e iletilir ve '

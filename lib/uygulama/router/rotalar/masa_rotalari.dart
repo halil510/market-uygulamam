@@ -17,9 +17,9 @@ import '../../../ekranlar/masa/qr_menu_urun_secim_ekrani.dart';
 import '../../../modeller/masa_model.dart';
 
 List<GoRoute> masaRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
-        GoRoute(path: '/masa/yonet', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const MasaListeEkrani(yonetim: true)),
-        GoRoute(path: '/masa', name: 'masa', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const MasaListeEkrani()),
-        GoRoute(path: '/mutfak', name: 'mutfak', parentNavigatorKey: rootNavigatorKey, builder: (_, __) => const MutfakEkrani()),
+        GoRoute(path: '/masa/yonet', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const MasaListeEkrani(yonetim: true)),
+        GoRoute(path: '/masa', name: 'masa', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const MasaListeEkrani()),
+        GoRoute(path: '/mutfak', name: 'mutfak', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const MutfakEkrani()),
         // Kullanıcı isteği: 400 üründen QR menüde hangilerinin
         // görüneceğini seçebileceği ekran.
         GoRoute(path: '/masa/qr-urun-secim', name: 'qr_urun_secim', parentNavigatorKey: rootNavigatorKey,

@@ -65,7 +65,7 @@ class Satislar extends _$Satislar {
 
   @override
   SatisListeDurum build() {
-    ref.listen(satisFiltresiProvider, (_, __) => yukle());
+    ref.listen(satisFiltresiProvider, (_, _) => yukle());
     Future.microtask(yukle);
     return const SatisListeDurum(yukleniyor: true);
   }

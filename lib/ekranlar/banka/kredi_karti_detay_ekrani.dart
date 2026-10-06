@@ -28,10 +28,10 @@ class _KrediKartiDetayEkraniState extends ConsumerState<KrediKartiDetayEkrani> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(children: [
-          const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-          const SizedBox(width: 8),
-          const Text('Kartı Sil'),
+        title: const Row(children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.orange),
+          SizedBox(width: 8),
+          Text('Kartı Sil'),
         ]),
         content: Text(
           '"${kart.kartAdi}" kartını silmek istediğinize emin misiniz?\n\n'
@@ -75,7 +75,7 @@ class _KrediKartiDetayEkraniState extends ConsumerState<KrediKartiDetayEkrani> {
         baslikWidget: kartAsync.when(
           data: (kart) => Text(kart?.kartAdi ?? 'Kredi Kartı'),
           loading: () => const Text('Yükleniyor...'),
-          error: (_, __) => const Text('Hata'),
+          error: (_, _) => const Text('Hata'),
         ),
         aksiyonlar: [
           kartAsync.when(
@@ -107,7 +107,7 @@ class _KrediKartiDetayEkraniState extends ConsumerState<KrediKartiDetayEkrani> {
               ]);
             },
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
         ],
       ),
@@ -135,7 +135,7 @@ class _KrediKartiDetayEkraniState extends ConsumerState<KrediKartiDetayEkrani> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.credit_card_off_outlined, size: 64, color: context.textSecondary),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   Text('Kart bulunamadı', style: TextStyle(color: context.textSecondary)),
                 ],
               ),
@@ -175,7 +175,7 @@ class _KartDetayIcerik extends ConsumerWidget {
                 color: context.cardBg,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.credit_card, color: AppRenkler.primary, size: 32),
+              child: const Icon(Icons.credit_card, color: AppRenkler.primary, size: 32),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -207,7 +207,7 @@ class _KartDetayIcerik extends ConsumerWidget {
           decoration: BoxDecoration(
             color: context.cardBg,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
+            boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
           ),
           child: Column(children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -248,7 +248,7 @@ class _KartDetayIcerik extends ConsumerWidget {
           decoration: BoxDecoration(
             color: context.cardBg,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
+            boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
           ),
           child: Column(children: [
             _BilgiSatiri(context, 'Kart Tipi', kart.kartTipi),
@@ -321,10 +321,10 @@ class _KartDetayIcerik extends ConsumerWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setStateDialog) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(children: [
+          title: const Row(children: [
             Icon(Icons.payment_outlined, color: AppRenkler.primary),
-            const SizedBox(width: 8),
-            const Text('Karta Ödeme Yap'),
+            SizedBox(width: 8),
+            Text('Karta Ödeme Yap'),
           ]),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             Text('Güncel borç: ${kart.kullanilanLimit.toStringAsFixed(2)} TL',

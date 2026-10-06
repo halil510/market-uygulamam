@@ -301,7 +301,7 @@ class _OzetTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Color(0x26FFFFFF),
+                color: const Color(0x26FFFFFF),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
@@ -356,9 +356,9 @@ class _MetrikKart extends StatelessWidget {
       decoration: BoxDecoration(
         color: TsRenk.kart(context),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(
+        boxShadow: const [BoxShadow(
             color: Color(0x0D000000),
-            blurRadius: 8, offset: const Offset(0, 2))],
+            blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -396,9 +396,9 @@ class _AylikGrafik extends StatelessWidget {
       decoration: BoxDecoration(
         color: TsRenk.kart(context),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(
+        boxShadow: const [BoxShadow(
             color: Color(0x0D000000),
-            blurRadius: 8, offset: const Offset(0, 2))],
+            blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Aylık Trend',
@@ -412,7 +412,7 @@ class _AylikGrafik extends StatelessWidget {
               final v = (x['ciro'] as num?)?.toDouble() ?? 0;
               return v > mx ? v : mx;
             }) * 1.2,
-            barTouchData: BarTouchData(enabled: false),
+            barTouchData: const BarTouchData(enabled: false),
             titlesData: FlTitlesData(
               leftTitles:   const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               rightTitles:  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -474,9 +474,9 @@ class _OdemeTab extends StatelessWidget {
           decoration: BoxDecoration(
             color: TsRenk.kart(context),
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(
+            boxShadow: const [BoxShadow(
                 color: Color(0x0D000000),
-                blurRadius: 8, offset: const Offset(0, 2))],
+                blurRadius: 8, offset: Offset(0, 2))],
           ),
           child: Column(children: [
             const Text('Ödeme Yöntemi Dağılımı',
@@ -544,9 +544,9 @@ class _GiderTab extends StatelessWidget {
           decoration: BoxDecoration(
             color: TsRenk.kart(context),
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(
+            boxShadow: const [BoxShadow(
                 color: Color(0x0D000000),
-                blurRadius: 8, offset: const Offset(0, 2))],
+                blurRadius: 8, offset: Offset(0, 2))],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

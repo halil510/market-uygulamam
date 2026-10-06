@@ -226,8 +226,8 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
   Future<pw.Document> _fisPdfOlustur() async {
     final pdf = pw.Document();
     final genislik = _fisGenislik == 58
-        ? PdfPageFormat(58 * PdfPageFormat.mm, 297 * PdfPageFormat.mm)
-        : PdfPageFormat(80 * PdfPageFormat.mm, 297 * PdfPageFormat.mm);
+        ? const PdfPageFormat(58 * PdfPageFormat.mm, 297 * PdfPageFormat.mm)
+        : const PdfPageFormat(80 * PdfPageFormat.mm, 297 * PdfPageFormat.mm);
     pw.MemoryImage? logoResim;
     if (_logoGoster && _logoYolu != null && await File(_logoYolu!).exists()) {
       try { logoResim = pw.MemoryImage(await File(_logoYolu!).readAsBytes()); } catch (_) {}
@@ -670,7 +670,7 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
   Widget _bolumBaslik(String metin) => Padding(
     padding: const EdgeInsets.only(bottom: 8, top: 4),
     child: Text(metin,
-        style: TextStyle(
+        style: const TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: 11,
           color: AppRenkler.primary,

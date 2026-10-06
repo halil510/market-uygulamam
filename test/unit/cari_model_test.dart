@@ -16,7 +16,7 @@ void main() {
     });
 
     test('toMap round-trip', () {
-      final c = CariModel(
+      final c = const CariModel(
         unvan: 'Test', cariTipi: 'Tedarikçi',
         bakiye: -1000, limitTutari: 5000,
       );
@@ -26,7 +26,7 @@ void main() {
     });
 
     test('copyWith', () {
-      final c = CariModel(unvan: 'A', cariTipi: 'Müşteri');
+      final c = const CariModel(unvan: 'A', cariTipi: 'Müşteri');
       final c2 = c.copyWith(bakiye: 999);
       expect(c2.bakiye, equals(999));
       expect(c2.unvan, equals('A'));

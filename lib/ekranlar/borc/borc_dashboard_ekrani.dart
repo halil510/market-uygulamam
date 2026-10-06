@@ -181,7 +181,7 @@ class _BorcDashboardEkraniState extends ConsumerState<BorcDashboardEkrani>
               Expanded(
                 child: dashAsync.when(
                   loading: () => _heroSkeleton(),
-                  error: (e, __) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
+                  error: (e, _) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
                   data: (v) => _heroKart(
                     'Toplam Borç (Kart Dahil)',
                     ParaUtils.formatla(v.ozet['kalan_borc'] ?? 0),
@@ -196,7 +196,7 @@ class _BorcDashboardEkraniState extends ConsumerState<BorcDashboardEkrani>
               Expanded(
                 child: bankaHesaplariAsync.when(
                   loading: () => _heroSkeleton(),
-                  error: (e, __) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
+                  error: (e, _) => _HataKart(mesaj: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}'),
                   data: (hesaplar) {
                     final toplam = hesaplar.fold<double>(0, (s, h) => s + h.bakiye);
                     final kullanilabilir =

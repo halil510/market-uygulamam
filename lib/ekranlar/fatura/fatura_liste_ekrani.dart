@@ -227,7 +227,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
                   : ListView.separated(
                       padding: const EdgeInsets.all(8),
                       itemCount: _filtreli.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (_, i) => _faturaKart(_filtreli[i]),
                     ),
             ),

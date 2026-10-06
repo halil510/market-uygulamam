@@ -35,7 +35,7 @@ class FinansMerkeziEkrani extends ConsumerWidget {
             Expanded(
               child: borcOzetAsync.when(
                 loading: () => const TsKart.istatistik(baslik: 'Kalan Borç', deger: '…'),
-                error: (_, __) => const TsKart.istatistik(baslik: 'Kalan Borç', deger: '—'),
+                error: (_, _) => const TsKart.istatistik(baslik: 'Kalan Borç', deger: '—'),
                 data: (ozet) => TsKart.istatistik(
                   baslik: 'Kalan Borç',
                   deger: ParaUtils.formatla(ozet['kalan_borc'] ?? 0),
@@ -49,7 +49,7 @@ class FinansMerkeziEkrani extends ConsumerWidget {
             Expanded(
               child: bankaHesaplariAsync.when(
                 loading: () => const TsKart.istatistik(baslik: 'Banka Bakiyesi', deger: '…'),
-                error: (_, __) => const TsKart.istatistik(baslik: 'Banka Bakiyesi', deger: '—'),
+                error: (_, _) => const TsKart.istatistik(baslik: 'Banka Bakiyesi', deger: '—'),
                 data: (hesaplar) {
                   final toplam = hesaplar.fold<double>(0, (t, h) => t + h.bakiye);
                   return TsKart.istatistik(

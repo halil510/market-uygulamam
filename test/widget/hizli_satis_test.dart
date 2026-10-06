@@ -20,14 +20,14 @@ void main() {
     });
 
     test('Ürün ekle - toplam doğru', () {
-      final urun = UrunModel(urunAdi: 'Ekmek', satisFiyati: 10, birimAdi: 'Adet', kdvOran: '1');
+      final urun = const UrunModel(urunAdi: 'Ekmek', satisFiyati: 10, birimAdi: 'Adet', kdvOran: '1');
       notifier().ekle(urun);
       expect(durum().kalemSayisi, 1);
       expect(durum().genelToplam, 10.0);
     });
 
     test('Aynı ürün tekrar - miktar artar', () {
-      final urun = UrunModel(urunAdi: 'Ekmek', satisFiyati: 10, birimAdi: 'Adet', kdvOran: '1');
+      final urun = const UrunModel(urunAdi: 'Ekmek', satisFiyati: 10, birimAdi: 'Adet', kdvOran: '1');
       notifier().ekle(urun);
       notifier().ekle(urun);
       expect(durum().kalemSayisi, 1);
@@ -35,21 +35,21 @@ void main() {
     });
 
     test('İskonto uygulanır', () {
-      final urun = UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
+      final urun = const UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
       notifier().ekle(urun);
       notifier().iskontoGuncelle(10); // %10
       expect(durum().genelToplam, closeTo(90.0, 0.01));
     });
 
     test('Miktar 0 → kalem silinir', () {
-      final urun = UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
+      final urun = const UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
       notifier().ekle(urun);
       notifier().miktarGuncelle(0, 0);
       expect(durum().bos, isTrue);
     });
 
     test('Temizle', () {
-      final urun = UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
+      final urun = const UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
       notifier().ekle(urun);
       notifier().temizle();
       expect(durum().bos, isTrue);
@@ -63,7 +63,7 @@ void main() {
     // _fiyatHesapla() ile yeniden hesaplanıyordu.
     test('Elle indirim uygulanmış kalem, AYNI ürün tekrar eklenince (barkod '
         'tekrar okutulunca) korunur — standart fiyata SIFIRLANMAZ', () {
-      final urun = UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
+      final urun = const UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
       notifier().ekle(urun);
       notifier().fiyatGuncelle(0, 80); // kasiyer elle %20 indirim uyguladı
       expect(durum().kalemler.first.birimFiyat, 80.0);
@@ -79,7 +79,7 @@ void main() {
 
     test('Elle indirim uygulanmış kalemin miktarı elle değiştirilince '
         'indirim korunur', () {
-      final urun = UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
+      final urun = const UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
       notifier().ekle(urun);
       notifier().fiyatGuncelle(0, 75);
       notifier().miktarGuncelle(0, 3); // kasiyer sepet kartından miktarı 3'e çıkardı
@@ -91,7 +91,7 @@ void main() {
 
     test('HİÇ elle dokunulmamış bir kalemde miktar artışı fiyatı normal '
         'şekilde yeniden hesaplar (mevcut davranış bozulmadı)', () {
-      final urun = UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
+      final urun = const UrunModel(urunAdi: 'Test', satisFiyati: 100, birimAdi: 'Adet', kdvOran: '20');
       notifier().ekle(urun);
       notifier().ekle(urun); // elle indirim YOK — normal birleşme
 
@@ -110,7 +110,7 @@ void main() {
 
     testWidgets('AppBar başlık gösterilir', (tester) async {
       await tester.pumpWidget(MaterialApp(
-        home: Scaffold(appBar: AppBar(title: Text('MarketPlus')))));
+        home: Scaffold(appBar: AppBar(title: const Text('MarketPlus')))));
       expect(find.text('MarketPlus'), findsOneWidget);
     });
   });

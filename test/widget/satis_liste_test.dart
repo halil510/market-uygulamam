@@ -5,7 +5,7 @@ void main() {
   group('Satış Liste Widget', () {
     testWidgets('AppBar başlığı doğru', (tester) async {
       await tester.pumpWidget(MaterialApp(
-        home: Scaffold(appBar: AppBar(title: Text('Satışlar')))));
+        home: Scaffold(appBar: AppBar(title: const Text('Satışlar')))));
       expect(find.text('Satışlar'), findsOneWidget);
     });
 

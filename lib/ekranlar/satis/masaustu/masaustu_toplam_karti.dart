@@ -39,7 +39,7 @@ class MasaustuToplamKarti extends StatelessWidget {
                   : (musteri.unvan.isNotEmpty ? musteri.unvan : 'Müşteri'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.white70, fontSize: 12.5),
+              style: const TextStyle(color: Colors.white70, fontSize: 12.5),
             ),
           ),
           Text('${sepet.kalemSayisi} çeşit • ${sepet.toplamAdet} adet',

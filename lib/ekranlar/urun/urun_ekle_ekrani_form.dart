@@ -388,14 +388,14 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
   Future<void> _urunFotografindanDoldur(File resim) async {
     if (!mounted) return;
     final scaffold = ScaffoldMessenger.of(context);
-    final snack = SnackBar(
+    final snack = const SnackBar(
       content: Row(children: [
-        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-        const SizedBox(width: 12),
-        const Expanded(child: Text('Ürün fotoğrafı analiz ediliyor...')),
+        SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+        SizedBox(width: 12),
+        Expanded(child: Text('Ürün fotoğrafı analiz ediliyor...')),
       ]),
       behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 15),
+      duration: Duration(seconds: 15),
     );
     scaffold.showSnackBar(snack);
 
@@ -454,14 +454,14 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     if (resim == null || !mounted) return;
 
     final scaffold = ScaffoldMessenger.of(context);
-    final snack = SnackBar(
+    final snack = const SnackBar(
       content: Row(children: [
-        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-        const SizedBox(width: 12),
-        const Expanded(child: Text('Resim işleniyor (OCR/AI)...')),
+        SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+        SizedBox(width: 12),
+        Expanded(child: Text('Resim işleniyor (OCR/AI)...')),
       ]),
       behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 20),
+      duration: Duration(seconds: 20),
     );
     scaffold.showSnackBar(snack);
 
@@ -560,14 +560,14 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     // 2. Bulunamadı, AI'ya sor
     if (!mounted) return;   // barkod/DB await'leri sonrası
     final scaffold = ScaffoldMessenger.of(context);
-    final snack = SnackBar(
+    final snack = const SnackBar(
       content: Row(children: [
-        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-        const SizedBox(width: 12),
-        const Expanded(child: Text('AI ile ürün bilgisi çıkarılıyor...')),
+        SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+        SizedBox(width: 12),
+        Expanded(child: Text('AI ile ürün bilgisi çıkarılıyor...')),
       ]),
       behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 10),
+      duration: Duration(seconds: 10),
     );
     scaffold.showSnackBar(snack);
 
@@ -621,14 +621,14 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     );
     if (dosya == null || !mounted) return;
     final scaffold = ScaffoldMessenger.of(context);
-    final snack = SnackBar(
+    final snack = const SnackBar(
       content: Row(children: [
-        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-        const SizedBox(width: 12),
-        const Expanded(child: Text('Fatura işleniyor (OCR/AI)...')),
+        SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+        SizedBox(width: 12),
+        Expanded(child: Text('Fatura işleniyor (OCR/AI)...')),
       ]),
       behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 15),
+      duration: Duration(seconds: 15),
     );
     scaffold.showSnackBar(snack);
 

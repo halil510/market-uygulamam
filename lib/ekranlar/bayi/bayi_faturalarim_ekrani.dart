@@ -66,7 +66,7 @@ class BayiFaturalarimEkrani extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(TsBosluk.lg),
               itemCount: faturalar.length,
-              separatorBuilder: (_, __) => const SizedBox(height: TsBosluk.sm),
+              separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.sm),
               itemBuilder: (_, i) {
                 final f = faturalar[i];
                 return TsKart.liste(

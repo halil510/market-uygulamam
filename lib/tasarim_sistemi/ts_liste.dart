@@ -115,7 +115,7 @@ class _TsListeState<T> extends State<TsListe<T>> {
             controller: widget.kaydirmaKontrolcusu,
             padding: widget.padding,
             itemCount: liste.length,
-            separatorBuilder: (_, __) =>
+            separatorBuilder: (_, _) =>
                 SizedBox(height: widget.aralarindaBosluk),
             itemBuilder: (context, i) =>
                 widget.kartOlustur(context, liste[i], i),

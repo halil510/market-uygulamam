@@ -192,20 +192,20 @@ class CariDetayEkrani extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(cariDetayProvider(cariId));
     return async.when(
-      loading: () => const Scaffold(body: Center(child: const AppYukleniyor())),
+      loading: () => const Scaffold(body: Center(child: AppYukleniyor())),
       error: (e, _) => Scaffold(
-        appBar: TsAppBar(
+        appBar: const TsAppBar(
         baslik: 'Hata',
         gradyanli: false,
       ),
         body: BosEkran(ikon: Icons.inbox_outlined, baslik: bildirimMetniniSadelestir(e.toString()))),
       data: (cari) {
-        if (cari == null) return Scaffold(
+        if (cari == null) return const Scaffold(
           appBar: TsAppBar(
         baslik: 'Bulunamadı',
         gradyanli: false,
       ),
-          body: const BosEkran(ikon: Icons.inbox_outlined, baslik: 'Cari bulunamadı'));
+          body: BosEkran(ikon: Icons.inbox_outlined, baslik: 'Cari bulunamadı'));
         return _CariDetayIcerik(cari: cari);
       },
     );

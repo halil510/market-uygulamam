@@ -34,16 +34,16 @@ ThemeData koyuTema() {
       textColor: Color(0xFFE8EAFF),
     ),
 
-    appBarTheme: AppBarTheme(
+    appBarTheme: const AppBarTheme(
       elevation: 0,
       scrolledUnderElevation: 1,
       backgroundColor: darkCard,
       foregroundColor: darkText,
       systemOverlayStyle: SystemUiOverlayStyle.light,
-      titleTextStyle: const TextStyle(
+      titleTextStyle: TextStyle(
         fontFamily: 'Poppins', fontSize: 17,
         fontWeight: FontWeight.w600, color: darkText),
-      iconTheme: const IconThemeData(color: darkText, size: 22),
+      iconTheme: IconThemeData(color: darkText, size: 22),
       actionsIconTheme: IconThemeData(color: primary, size: 22),
     ),
 
@@ -129,15 +129,15 @@ ThemeData koyuTema() {
       contentTextStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 14, color: darkTextS),
     ),
 
-    bottomSheetTheme: BottomSheetThemeData(
+    bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: darkCard,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     ),
 
     dividerTheme: const DividerThemeData(color: darkDiv, thickness: 1, space: 1),
 
-    textTheme: TextTheme(
+    textTheme: const TextTheme(
       displayLarge:   TextStyle(fontFamily:'Poppins', fontSize:57, fontWeight:FontWeight.w700, color:darkText),
       headlineLarge:  TextStyle(fontFamily:'Poppins', fontSize:28, fontWeight:FontWeight.w700, color:darkText),
       headlineMedium: TextStyle(fontFamily:'Poppins', fontSize:22, fontWeight:FontWeight.w600, color:darkText),

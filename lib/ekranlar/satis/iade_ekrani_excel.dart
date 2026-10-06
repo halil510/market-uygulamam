@@ -95,25 +95,91 @@ extension _IadeExcelExt on _IadeEkraniState {
 
     final toplam = eslesen.fold<double>(0, (t, e) => t + e.miktar * e.fiyat);
     if (!mounted) return;
+
+    // 🔴 DÜZELTME (kullanıcı bulgusu: "excelden iade aldım, cari seçtim, cariye
+    // yazmadı"): bu akış manuel akıştaki gibi iade YÖNTEMİNİ sormuyordu —
+    // cari seçili olsa bile yöntem varsayılan "Nakit" kalıyor, cari hareketi
+    // "bakiyeyi etkilemez" (nötr) yazılıyor ve para KASADAN çıkıyordu.
+    // Artık onay penceresinde cari seçilir/değiştirilir ve yöntem seçilir;
+    // kayıtlı cari seçilince varsayılan 'Cari' (borcundan düşülür).
+    var cari = _secilenCari;
+    var yontem = _iadeOdemeYontemi;
+    if (cari?.id != null && yontem == 'Nakit') yontem = 'Cari';
+    if (cari?.id == null && yontem == 'Cari') yontem = 'Nakit';
+
     final onay = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Excel\'den İade Al'),
-        content: Text(
-          '${eslesen.length} kalem iade alınacak (toplam ${ParaUtils.formatla(toplam)}).\n'
-          'Ödeme yöntemi: $_iadeOdemeYontemi'
-          '${_secilenCari != null ? '\nCari: ${_secilenCari!.unvan}' : ''}\n'
-          '${bulunamayan.isNotEmpty ? '\n${bulunamayan.length} satır sistemde bulunamadı, atlanacak.\n' : ''}'
-          '\nStok artar ve kasa/cari hareketi oluşur. Devam edilsin mi?',
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, ss) => AlertDialog(
+          title: const Text('Excel’den İade Al'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${eslesen.length} kalem iade alınacak (toplam ${ParaUtils.formatla(toplam)}).'),
+              if (bulunamayan.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text('${bulunamayan.length} satır sistemde bulunamadı, atlanacak.',
+                      style: const TextStyle(fontSize: 12, color: Colors.orange)),
+                ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.person_outline, size: 18),
+                label: Text(cari?.id != null ? 'Cari: ${cari!.unvan}' : 'Cari seç (isteğe bağlı)'),
+                onPressed: () async {
+                  final sec = await _cariSecimDialog();
+                  if (sec == null) return;
+                  ss(() {
+                    cari = sec;
+                    if (sec.id != null) {
+                      yontem = 'Cari';
+                    } else if (yontem == 'Cari') {
+                      yontem = 'Nakit';
+                    }
+                  });
+                },
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                initialValue: yontem,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                    labelText: 'İade Ödeme Yöntemi', border: OutlineInputBorder(), isDense: true),
+                items: [
+                  const DropdownMenuItem(value: 'Nakit', child: Text('Nakit (kasadan)')),
+                  const DropdownMenuItem(value: 'Kart/Banka', child: Text('Kart/Banka (POS’tan)')),
+                  if (cari?.id != null)
+                    const DropdownMenuItem(value: 'Cari', child: Text('Veresiye / Cari (borca yaz)')),
+                ],
+                onChanged: (v) => ss(() => yontem = v ?? yontem),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                yontem == 'Cari'
+                    ? 'Kasadan nakit çıkışı OLMAZ — tutar ${cari?.unvan ?? ''} cari bakiyesine gerçekten işlenir.'
+                    : yontem == 'Nakit'
+                        ? 'Tutar kasadan nakit çıkışı olarak yazılır${cari?.id != null ? ' (cari bakiyesi DEĞİŞMEZ)' : ''}.'
+                        : 'Kasadan çıkış yazılmaz — tutarı POS’tan ayrıca iade etmeniz gerekir.',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: yontem == 'Cari' ? Colors.blue.shade800 : Colors.orange.shade800,
+                    fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              const Text('Stok artar. Devam edilsin mi?', style: TextStyle(fontSize: 12)),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('İade Al')),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('İade Al')),
-        ],
       ),
     );
     if (onay != true || !mounted) return;
 
+    // Seçilen cari ve yöntem, kalem kaydı sırasında kullanılan alanlara yazılır.
+    _secilenCari = cari;
+    _iadeOdemeYontemi = yontem;
     setState(() => _yukleniyor = true);
     var basarili = 0;
     final hatalar = <String>[];
@@ -176,6 +242,13 @@ extension _IadeExcelExt on _IadeEkraniState {
       if (mounted) setState(() => _yukleniyor = false);
     }
     _gecmisYukle();
+    // Cari/Kasa bakiyeleri değişti — başka ekranlarda eski veri kalmasın
+    // (hızlı iade akışındaki AYNI yenileme; Excel akışında eksikti).
+    if (_secilenCari?.id != null) {
+      ref.invalidate(cariDetayProvider(_secilenCari!.id!));
+      ref.read(carilerProvider.notifier).yukle();
+    }
+    ref.invalidate(kasaRaporProvider);
     final ozet = '$basarili kalem iade alındı'
         '${hatalar.isNotEmpty ? ', ${hatalar.length} hata' : ''}'
         '${bulunamayan.isNotEmpty ? ', ${bulunamayan.length} satır bulunamadı' : ''}';

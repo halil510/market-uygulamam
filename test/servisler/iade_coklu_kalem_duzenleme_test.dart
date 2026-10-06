@@ -80,6 +80,33 @@ void main() {
     expect(await sayi('SELECT stok FROM urunler WHERE id = ?', [v.id['urun0']]), 106);
   });
 
+  group('Excel iade akışı (çok kalem, aynı fiş) — cari etkisi yönteme bağlı', () {
+    Future<void> excelGibiIade(String yontem) async {
+      final cari = v.id['cari']!;
+      int? iadeId;
+      for (final k in [('urun0', 2.0, 25.0), ('urun1', 1.0, 90.0), ('urun2', 4.0, 10.0)]) {
+        iadeId = await servis.manuelKalemEkle(
+          oturumIadeId: iadeId, cariId: cari, cariTipi: 'Müşteri', fisNo: 'IAD-XL',
+          urunId: v.id[k.$1]!, urunAdi: k.$1, miktar: k.$2, fiyat: k.$3,
+          toplam: k.$2 * k.$3, neden: 'Excel iade', odemeYontemi: yontem,
+          kullaniciId: 1, kullaniciAdi: 'Robot',
+        );
+      }
+    }
+
+    test("'Cari' yöntemi: bakiye GERÇEKTEN düşer (50+90+40 = 180)", () async {
+      await excelGibiIade('Cari');
+      expect(await sayi('SELECT bakiye FROM cari WHERE id = ?', [v.id['cari']]), -180);
+    });
+
+    test("'Nakit' yöntemi (eski varsayılan): cari bakiyesi DEĞİŞMEZ, kasadan çıkar — kullanıcının gördüğü 'cariye yazmadı' sebebi", () async {
+      final kasaOnce = await sayi('SELECT COUNT(*) FROM kasa_hareketleri');
+      await excelGibiIade('Nakit');
+      expect(await sayi('SELECT bakiye FROM cari WHERE id = ?', [v.id['cari']]), 0);
+      expect(await sayi('SELECT COUNT(*) FROM kasa_hareketleri'), greaterThan(kasaOnce));
+    });
+  });
+
   test('BULUT: düzenleme kuyruğa doğru değerleri ve eski cari satırının "silindi" bilgisini yazar', () async {
     final id = await iadeyiKur();
     await db.delete('sync_queue');

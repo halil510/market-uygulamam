@@ -551,3 +551,14 @@ Future<void> _v78denV79a(Database db) async {
         AND (f2.degistiren IS NOT NULL OR f2.id < fiyat_gecmis.id))
   ''');
 }
+
+// v79'dan v80'e — iade kalemlerinin İNDİRİMİ ÖNCEDEN hiç saklanmıyordu:
+// iade ekranı indirimi yalnız ekrandaki listede tutuyor, iade_kalem'e yalnız
+// net toplam yazılıyordu. Bu yüzden fiş yeniden açıldığında/başka cihaza
+// senkronlandığında indirim oranı kayboluyordu. İki sütun eklendi; eski
+// kayıtlar 0 (indirimsiz) görünür — toplam zaten NET tutardır, değişmez.
+// Bulut karşılığı: supabase_tam_sema.sql (iade_kalem ALTER satırları).
+Future<void> _v79denV80e(Database db) async {
+  await _calistir(db, 'ALTER TABLE iade_kalem ADD COLUMN iskonto_oran REAL NOT NULL DEFAULT 0');
+  await _calistir(db, 'ALTER TABLE iade_kalem ADD COLUMN iskonto_tutar REAL NOT NULL DEFAULT 0');
+}

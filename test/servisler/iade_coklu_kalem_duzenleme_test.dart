@@ -80,6 +80,111 @@ void main() {
     expect(await sayi('SELECT stok FROM urunler WHERE id = ?', [v.id['urun0']]), 106);
   });
 
+  group('İade indirimi KAYDEDİLİR ve buluta (senkron kuyruğuna) gider', () {
+    Future<List<Map<String, dynamic>>> kuyruk(String tablo) async => [
+          for (final r in await db.query('sync_queue', where: 'tablo_adi = ?', whereArgs: [tablo]))
+            jsonDecode(r['veri_json'].toString()) as Map<String, dynamic>
+        ];
+    Future<Map<String, Object?>> kalemSatiri(int id, String urunKey) async =>
+        (await db.query('iade_kalem',
+                where: 'iade_id = ? AND urun_id = ?', whereArgs: [id, v.id[urunKey]]))
+            .first;
+
+    Future<int> indirimliIade() => servis.manuelKalemEkle(
+          oturumIadeId: null, cariId: v.id['cari'], cariTipi: 'Müşteri', fisNo: 'IAD-ISK',
+          urunId: v.id['urun0']!, urunAdi: 'Robot Çikolata 80 G', miktar: 2, fiyat: 100,
+          toplam: 180, neden: 'test', odemeYontemi: 'Cari', kullaniciId: 1, kullaniciAdi: 'Robot',
+          iskontoOran: 10,
+        );
+
+    test('indirim oranı ve tutarı iade_kalem\'e yazılır; kuyruktaki satırda da vardır', () async {
+      final id = await indirimliIade();
+      final k = await kalemSatiri(id, 'urun0');
+      expect(k['iskonto_oran'], 10);
+      expect(k['iskonto_tutar'], 20); // 2 × 100 × %10
+      expect(k['toplam'], 180);
+      final q = (await kuyruk('iade_kalem')).last;
+      expect(q['iskonto_oran'], 10, reason: 'başka cihaza GİDEN veride indirim olmalı');
+      expect(q['iskonto_tutar'], 20);
+    });
+
+    test('aynı ürüne ikinci ekleme: indirim tutarı toplanır, oran yeniden hesaplanır', () async {
+      final id = await indirimliIade();
+      await servis.manuelKalemEkle(
+        oturumIadeId: id, cariId: v.id['cari'], cariTipi: 'Müşteri', fisNo: 'IAD-ISK',
+        urunId: v.id['urun0']!, urunAdi: 'Robot Çikolata 80 G', miktar: 2, fiyat: 100,
+        toplam: 200, neden: 'test', odemeYontemi: 'Cari', kullaniciId: 1, kullaniciAdi: 'Robot',
+      ); // ikinci ekleme indirimsiz
+      final k = await kalemSatiri(id, 'urun0');
+      expect(k['miktar'], 4);
+      expect(k['toplam'], 380);
+      expect(k['iskonto_tutar'], 20);
+      expect(k['iskonto_oran'] as num, closeTo(5, 0.001), reason: '20 / (4×100) = %5');
+    });
+
+    test('düzenleme: oturumIadeDuzenle indirimi günceller', () async {
+      final id = await indirimliIade();
+      await servis.oturumIadeDuzenle(
+        iadeId: id, urunId: v.id['urun0'], cariId: v.id['cari'], fisNo: 'IAD-ISK',
+        urunAdi: 'Robot Çikolata 80 G', eskiMiktar: 2, eskiToplam: 180, yeniMiktar: 2,
+        yeniFiyat: 100, yeniToplam: 150, yeniAciklama: 'test', yeniIskontoOran: 25,
+      );
+      final k = await kalemSatiri(id, 'urun0');
+      expect(k['iskonto_oran'], 25);
+      expect(k['iskonto_tutar'], 50);
+    });
+
+    test('düzenleme modu ek kalem: indirim kaydedilir', () async {
+      final id = await servis.manuelKalemEkle(
+        oturumIadeId: null, cariId: v.id['cari'], cariTipi: 'Müşteri', fisNo: 'IAD-ISK2',
+        urunId: v.id['urun0']!, urunAdi: 'A', miktar: 1, fiyat: 25, toplam: 25, neden: 't',
+        odemeYontemi: 'Cari', kullaniciId: 1, kullaniciAdi: 'R',
+      );
+      await servis.duzenlemeModuKalemEkle(
+        iadeId: id, urunId: v.id['urun1']!, urunAdi: 'B', miktar: 2, fiyat: 90, toplam: 162,
+        fisNo: 'IAD-ISK2', cariId: v.id['cari'], cariTipi: 'Müşteri', kullaniciId: 1,
+        kullaniciAdi: 'R', odemeYontemi: 'Cari', iskontoOran: 10, iskontoTutar: 18,
+      );
+      final k = await kalemSatiri(id, 'urun1');
+      expect(k['iskonto_oran'], 10);
+      expect(k['iskonto_tutar'], 18);
+    });
+
+    test('indirimsiz iade: sütunlar 0 (eski kayıtlarla uyumlu)', () async {
+      final id = await iadeyiKur();
+      final k = await kalemSatiri(id, 'urun0');
+      expect(k['iskonto_oran'], 0);
+      expect(k['iskonto_tutar'], 0);
+    });
+  });
+
+  group('SENKRON: güncellemeler last_updated\'ı ilerletir (aksi halde diğer cihaz imleci çekmez)', () {
+    DateTime lu(Object? v) => DateTime.parse(v.toString().replaceFirst(' ', 'T'));
+
+    test('aynı fişe ikinci kalem ekleme: iade, iade_kalem, cari_hareket, urunler damgası ilerler', () async {
+      final id = await iadeyiKur();
+      final iade1 = lu((await db.query('iade', where: 'id = ?', whereArgs: [id])).first['last_updated']);
+      final kalem1 = lu((await db.query('iade_kalem', where: 'iade_id = ? AND urun_id = ?',
+              whereArgs: [id, v.id['urun0']])).first['last_updated']);
+      final hareket1 = lu((await db.query('cari_hareket', where: 'fis_id = ?', whereArgs: [id])).first['last_updated']);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await servis.manuelKalemEkle(
+        oturumIadeId: id, cariId: v.id['cari'], cariTipi: 'Müşteri', fisNo: 'IAD-T1',
+        urunId: v.id['urun0']!, urunAdi: 'Robot Çikolata 80 G', miktar: 1, fiyat: 25,
+        toplam: 25, neden: 'test', odemeYontemi: 'Cari', kullaniciId: 1, kullaniciAdi: 'Robot',
+      );
+      final iade2 = lu((await db.query('iade', where: 'id = ?', whereArgs: [id])).first['last_updated']);
+      final kalem2 = lu((await db.query('iade_kalem', where: 'iade_id = ? AND urun_id = ?',
+              whereArgs: [id, v.id['urun0']])).first['last_updated']);
+      final hareket2 = lu((await db.query('cari_hareket', where: 'fis_id = ?', whereArgs: [id])).first['last_updated']);
+      expect(iade2.isAfter(iade1), isTrue, reason: 'iade başlığı');
+      expect(kalem2.isAfter(kalem1), isTrue, reason: 'iade_kalem');
+      expect(hareket2.isAfter(hareket1), isTrue, reason: 'cari_hareket');
+      final urun = (await db.query('urunler', where: 'id = ?', whereArgs: [v.id['urun0']])).first;
+      expect(urun['last_updated'], isNotNull, reason: 'iade stok güncellemesi damgalanmalı');
+    });
+  });
+
   group('Excel iade akışı (çok kalem, aynı fiş) — cari etkisi yönteme bağlı', () {
     Future<void> excelGibiIade(String yontem) async {
       final cari = v.id['cari']!;

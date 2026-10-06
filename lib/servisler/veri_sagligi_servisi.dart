@@ -18,6 +18,7 @@ import '../depolar/kredi_karti_deposu.dart';
 import '../depolar/stok_deposu.dart';
 import '../depolar/sync_cakisma_deposu.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/bulut/supabase_saglayici.dart';
 import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/yedekleme_servisi.dart';
@@ -71,6 +72,7 @@ class VeriSagligiServisi {
       _yetimKayitlar(),
       _baslikKalemTutarlilik(),
       _iadeKalemStokTutarliligi(),
+      _bulutSemaUyumu(),
       _mukerrerGlobalId(),
       _mukerrerCariUnvan(),
       _negatifStok(),
@@ -564,6 +566,29 @@ class VeriSagligiServisi {
       }
     });
     return duzeltilen;
+  }
+
+  // ── Bulut şema uyumu ────────────────────────────────────────────────
+  // Gönderim sırasında bulutta bulunmadığı için ATLANAN sütunlar (yerelde
+  // eklenmiş ama supabase_tam_sema.sql henüz çalıştırılmamış). Bu sütunlardaki
+  // veri diğer cihazlara ULAŞMAZ; SQL çalıştırılınca kendiliğinden düzelir.
+  Future<SaglikKontrolSonucu> _bulutSemaUyumu() async {
+    const id = 'bulut_sema';
+    const baslik = 'Bulut Şema Uyumu';
+    const kategori = 'Senkron';
+    final eksik = SupabaseSaglayici.eksikBulutSutunlari.toList()..sort();
+    return SaglikKontrolSonucu(
+      id: id,
+      baslik: baslik,
+      kategori: kategori,
+      durum: eksik.isEmpty ? SaglikDurum.yesil : SaglikDurum.sari,
+      mesaj: eksik.isEmpty
+          ? 'Bilinen eksik bulut sütunu yok (bulut bağlantısı kurulup gönderim yapıldıkça güncellenir).'
+          : '${eksik.length} yerel sütun bulut şemasında YOK ve gönderilmiyor '
+              '(${eksik.take(4).join(', ')}${eksik.length > 4 ? ' …' : ''}). '
+              'supabase_tam_sema.sql dosyasını Supabase SQL Editor\'de çalıştırın.',
+      sayi: eksik.length,
+    );
   }
 
   // ── Aynı unvanlı cari kopyaları ─────────────────────────────────────

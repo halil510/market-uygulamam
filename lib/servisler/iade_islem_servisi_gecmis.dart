@@ -24,6 +24,10 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
     required String? cariTipi,
     required int? kullaniciId,
     required String kullaniciAdi,
+    /// Satırın indirim oranı/tutarı (iade_kalem'e KAYDEDİLİR → başka
+    /// cihazda ve fiş yeniden açılınca indirim görünür). [toplam] NET tutardır.
+    double iskontoOran = 0,
+    double iskontoTutar = 0,
     // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22 sabah) — bkz.
     // topluIadeKaydet'teki AYNI düzeltmenin gerekçesi. Bu fonksiyon hiç
     // kasa hareketi yazmaz (İade Geçmişi'nde mevcut/kapanmış bir fişe
@@ -76,10 +80,16 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
       if (mevcutKalem2.isNotEmpty) {
         final k = mevcutKalem2.first;
         kalemId = k['id'] as int;
+        final eskiMiktar = (k['miktar'] as num?)?.toDouble() ?? 0;
+        final yeniMiktar = eskiMiktar + miktar;
+        final yeniIskTutar = ((k['iskonto_tutar'] as num?)?.toDouble() ?? 0) + iskontoTutar;
+        final brutToplam = yeniMiktar * ((k['birim_fiyat'] as num?)?.toDouble() ?? fiyat);
         await txn.rawUpdate(
-            'UPDATE iade_kalem SET miktar=?, toplam=?, last_updated=? WHERE id=?', [
-          ((k['miktar'] as num?)?.toDouble() ?? 0) + miktar,
+            'UPDATE iade_kalem SET miktar=?, toplam=?, iskonto_tutar=?, iskonto_oran=?, last_updated=? WHERE id=?', [
+          yeniMiktar,
           ((k['toplam'] as num?)?.toDouble() ?? 0) + toplam,
+          yeniIskTutar,
+          brutToplam > 0 ? (yeniIskTutar / brutToplam * 100).clamp(0, 99.99) : iskontoOran,
           now,
           kalemId
         ]);
@@ -92,6 +102,9 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           'miktar': miktar,
           'birim_fiyat': fiyat,
           'toplam': toplam,
+          'iskonto_oran': iskontoOran,
+          'iskonto_tutar': iskontoTutar,
+          'last_updated': now,
         });
       }
       final guncelKalemSatiri = await txn.query('iade_kalem',
@@ -477,18 +490,26 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
     required String odemeYontemi,
     required int? kullaniciId,
     required String kullaniciAdi,
+    /// İndirim % (0-100). [fiyat] indirimsiz birim fiyat, [toplam] NET tutardır
+    /// (miktar × fiyat × (1 − indirim)). iade_kalem'e KAYDEDİLİR ve senkronlanır.
+    double iskontoOran = 0,
   }) async {
     final db = await Veritabani().db;
     final isTedarikci = cariSafTedarikciMi(cariTipi);
     final now = DateTime.now().toIso8601String();
     int iadeId = oturumIadeId ?? 0;
+    final iskontoTutar = iskontoOran > 0 && iskontoOran < 100
+        ? ((miktar * fiyat * iskontoOran / 100) * 100).round() / 100
+        : 0.0;
 
     await db.transaction((txn) async {
       // 1. İade kaydı
       if (oturumIadeId != null) {
+        // last_updated İLERLETİLİR: aksi halde bulut/diğer cihaz imleci bu
+        // değişikliği hiç çekmez (bkz. senkron denetimi 2026-10-07).
         await txn.rawUpdate(
-            'UPDATE iade SET toplam_tutar = toplam_tutar + ?, iade_nedeni = ? WHERE id = ?',
-            [toplam, neden, iadeId]);
+            'UPDATE iade SET toplam_tutar = toplam_tutar + ?, iade_nedeni = ?, last_updated = ? WHERE id = ?',
+            [toplam, neden, now, iadeId]);
       } else {
         iadeId = await txn.insert('iade', {
           'global_id': const Uuid().v4(),
@@ -499,6 +520,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           'iade_nedeni': neden,
           'durum': 'tamamlandi',
           'kasiyer_id': kullaniciId,
+          'last_updated': now,
         });
       }
       final guncelIadeSatiri = await txn.query('iade',
@@ -510,13 +532,20 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
 
       // 2. İade kalem
       final mevcutKalem = await txn.rawQuery(
-          'SELECT id, miktar, toplam FROM iade_kalem WHERE iade_id=? AND urun_id=?',
+          'SELECT id, miktar, toplam, birim_fiyat, iskonto_tutar FROM iade_kalem WHERE iade_id=? AND urun_id=?',
           [iadeId, urunId]);
       if (mevcutKalem.isNotEmpty) {
         final k = mevcutKalem.first;
-        await txn.rawUpdate('UPDATE iade_kalem SET miktar=?, toplam=? WHERE id=?', [
-          ((k['miktar'] as num?)?.toDouble() ?? 0) + miktar,
+        final yeniMiktar = ((k['miktar'] as num?)?.toDouble() ?? 0) + miktar;
+        final yeniIskTutar = ((k['iskonto_tutar'] as num?)?.toDouble() ?? 0) + iskontoTutar;
+        final brut = yeniMiktar * ((k['birim_fiyat'] as num?)?.toDouble() ?? fiyat);
+        await txn.rawUpdate(
+            'UPDATE iade_kalem SET miktar=?, toplam=?, iskonto_tutar=?, iskonto_oran=?, last_updated=? WHERE id=?', [
+          yeniMiktar,
           ((k['toplam'] as num?)?.toDouble() ?? 0) + toplam,
+          yeniIskTutar,
+          brut > 0 ? (yeniIskTutar / brut * 100).clamp(0, 99.99) : iskontoOran,
+          now,
           k['id']
         ]);
       } else {
@@ -528,6 +557,9 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           'miktar': miktar,
           'birim_fiyat': fiyat,
           'toplam': toplam,
+          'iskonto_oran': iskontoOran,
+          'iskonto_tutar': iskontoTutar,
+          'last_updated': now,
         });
       }
       final guncelKalemSatir = await txn.query('iade_kalem',
@@ -543,7 +575,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
       if (urunRows.isNotEmpty) {
         final onceki = (urunRows.first['stok'] as num).toDouble();
-        await txn.update('urunler', {'stok': onceki + miktar},
+        await txn.update('urunler', {'stok': onceki + miktar, 'last_updated': now},
             where: 'id = ?', whereArgs: [urunId]);
         final stokSatiri = {
           'global_id': const Uuid().v4(),
@@ -557,6 +589,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           'referans_turu': 'iade',
           'kullanici_id': kullaniciId,
           'aciklama': 'Iade: $fisNo',
+          'last_updated': now,
         };
         final stokHareketId = await txn.insert('stok_hareket', stokSatiri);
         await SyncKuyrukYazici.ekleTxn(txn,
@@ -611,8 +644,8 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           final eskiAlacak = (mevcut.first['alacak'] as num?)?.toDouble() ?? 0;
           final eskiBorc = (mevcut.first['borc'] as num?)?.toDouble() ?? 0;
           await txn.rawUpdate(
-              "UPDATE cari_hareket SET alacak=?, borc=? WHERE fis_id=? AND cari_id=? AND fis_tipi IN ('İade','Alım İadesi')",
-              [eskiAlacak + yeniAlacak, eskiBorc + yeniBorc, iadeId, cariId]);
+              "UPDATE cari_hareket SET alacak=?, borc=?, last_updated=? WHERE fis_id=? AND cari_id=? AND fis_tipi IN ('İade','Alım İadesi')",
+              [eskiAlacak + yeniAlacak, eskiBorc + yeniBorc, now, iadeId, cariId]);
         } else {
           await txn.insert('cari_hareket', {
             'global_id': const Uuid().v4(),

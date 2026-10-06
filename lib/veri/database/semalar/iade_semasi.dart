@@ -29,6 +29,7 @@ class IadeSemasi {
         iade_id INTEGER NOT NULL,
         urun_id INTEGER NOT NULL, urun_adi TEXT NOT NULL,
         miktar REAL NOT NULL, birim_fiyat REAL NOT NULL, toplam REAL NOT NULL,
+        iskonto_oran REAL NOT NULL DEFAULT 0, iskonto_tutar REAL NOT NULL DEFAULT 0,
         last_updated DATETIME,
         FOREIGN KEY(iade_id) REFERENCES ${DbSabitler.iade}(id) ON DELETE CASCADE,
         FOREIGN KEY(urun_id) REFERENCES ${DbSabitler.urunler}(id)

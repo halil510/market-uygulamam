@@ -222,6 +222,7 @@ extension _IadeExcelExt on _IadeEkraniState {
             odemeYontemi: _iadeOdemeYontemi,
             kullaniciId: AuthServisi().aktifId,
             kullaniciAdi: AuthServisi().aktifAd,
+            iskontoOran: e.iskonto,
           );
           _oturumIadeId ??= iadeId;
           final idx = _iadeListesi.indexWhere((x) => x['urun_id'] == e.urun.id);

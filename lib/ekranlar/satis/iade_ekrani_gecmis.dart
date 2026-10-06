@@ -398,6 +398,7 @@ extension _GecmisTabExt on _IadeEkraniState {
         yeniFiyat: yeniFiyat,
         yeniToplam: yeniToplam,
         yeniAciklama: yeniAciklama,
+        yeniIskontoOran: yeniIsk,
       );
 
       if (!mounted) return;
@@ -445,6 +446,8 @@ extension _GecmisTabExt on _IadeEkraniState {
         kullaniciId: AuthServisi().aktifId,
         kullaniciAdi: AuthServisi().aktifAd,
         odemeYontemi: _iadeOdemeYontemi,
+        iskontoOran: iskontoOran,
+        iskontoTutar: iskontoTutar,
       );
 
       // 6. Lokal listeye ekle
@@ -600,8 +603,8 @@ extension _GecmisTabExt on _IadeEkraniState {
           'barkod':       '',
           'miktar':       miktar,
           'birim_fiyat':  birimFiyat,
-          'iskonto_oran': 0.0,
-          'iskonto_tutar': 0.0,
+          'iskonto_oran': (k['iskonto_oran'] as num?)?.toDouble() ?? 0.0,
+          'iskonto_tutar': (k['iskonto_tutar'] as num?)?.toDouble() ?? 0.0,
           'toplam_tutar': (k['toplam'] as num?)?.toDouble() ?? miktar * birimFiyat,
           'musteri_adi':  cari?.unvan ?? 'Perakende',
           'cari_id':      cariId,

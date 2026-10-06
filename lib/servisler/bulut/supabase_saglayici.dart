@@ -6,7 +6,9 @@ import 'package:uuid/uuid.dart';
 import 'bulut_saglayici.dart';
 import 'supabase_ayarlari.dart';
 import 'sync_lww_koruma.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../kolon_haritalama.dart';
+import '../log_servisi.dart';
 import '../../veri/database/veritabani.dart';
 
 class SupabaseSaglayici implements IBulutSaglayici {
@@ -14,6 +16,89 @@ class SupabaseSaglayici implements IBulutSaglayici {
   final String key;
 
   const SupabaseSaglayici({required this.url, required this.key});
+
+  // ── BULUT ŞEMA KORUMASI ─────────────────────────────────────────────────
+  // Yerelde bir sütun eklenip bulut şeması (supabase_tam_sema.sql) henüz
+  // güncellenmediyse, PostgREST tablonun TÜM gönderimini reddeder (PGRST204)
+  // ve o tablodaki hiçbir satır buluta gitmez. Bunu önlemek için bulutun
+  // GERÇEK şeması (OpenAPI) okunur ve bulutta OLMAYAN sütunlar gönderimden
+  // ayıklanır; ayıklananlar [eksikBulutSutunlari]'nda tutulur ve Veri Sağlığı
+  // Merkezi'nde "SQL'i çalıştırın" uyarısı olarak görünür. SQL çalıştırılınca
+  // sütun otomatik gönderilmeye başlar (önbellek 30 dk'da bir ve PGRST204'te
+  // yenilenir).
+  static Map<String, Set<String>>? _bulutSutunlari;
+  static DateTime? _bulutSemaZamani;
+
+  /// "tablo.sütun" — yerelde olup bulutta bulunmadığı için GÖNDERİLMEYEN sütunlar.
+  static final Set<String> eksikBulutSutunlari = <String>{};
+
+  /// OpenAPI belgesinden (definitions / components.schemas) tablo → sütun
+  /// kümesi çıkarır. Saf — test edilebilir.
+  @visibleForTesting
+  static Map<String, Set<String>> semaCoz(Map<String, dynamic> openapi) {
+    final defs = (openapi['definitions'] ?? (openapi['components'] as Map?)?['schemas'])
+        as Map<String, dynamic>?;
+    final sonuc = <String, Set<String>>{};
+    if (defs == null) return sonuc;
+    defs.forEach((tablo, d) {
+      final props = (d as Map?)?['properties'] as Map?;
+      if (props != null) sonuc[tablo] = props.keys.map((k) => k.toString()).toSet();
+    });
+    return sonuc;
+  }
+
+  /// [kayitlar]dan [sema]da OLMAYAN sütunları siler; silinen sütun adlarını
+  /// döner. Şema yok ya da tablo şemada yoksa HİÇBİR ŞEY silmez (güvenli taraf).
+  @visibleForTesting
+  static Set<String> sutunlariAyikla(
+      String tablo, Iterable<Map<String, dynamic>> kayitlar, Map<String, Set<String>>? sema) {
+    final izinli = sema?[tablo];
+    if (izinli == null || izinli.isEmpty) return const {};
+    final silinen = <String>{};
+    for (final k in kayitlar) {
+      final fazla = k.keys.where((a) => a != 'id' && !izinli.contains(a)).toList();
+      for (final a in fazla) {
+        k.remove(a);
+        silinen.add(a);
+      }
+    }
+    return silinen;
+  }
+
+  /// Bulutun sütun şeması (önbellekli). Ağ/yetki hatasında null → koruma
+  /// devre dışı kalır, eski davranış sürer.
+  Future<Map<String, Set<String>>?> bulutSutunlari({bool yenile = false}) async {
+    final taze = _bulutSutunlari != null &&
+        _bulutSemaZamani != null &&
+        DateTime.now().difference(_bulutSemaZamani!) < const Duration(minutes: 30);
+    if (!yenile && taze) return _bulutSutunlari;
+    try {
+      final r = await http.get(
+        Uri.parse('$_rest/'),
+        headers: {..._h, 'Accept': 'application/openapi+json'},
+      ).timeout(const Duration(seconds: 15));
+      if (r.statusCode == 200) {
+        final sema = semaCoz(jsonDecode(r.body) as Map<String, dynamic>);
+        if (sema.isNotEmpty) {
+          _bulutSutunlari = sema;
+          _bulutSemaZamani = DateTime.now();
+        }
+      }
+    } catch (_) {/* eski önbellek / koruma yok */}
+    return _bulutSutunlari;
+  }
+
+  /// Ayıklanan sütunları bir kez günlüğe yazar ve listeye ekler.
+  static void _eksikBildir(String tablo, Set<String> sutunlar) {
+    for (final s in sutunlar) {
+      if (eksikBulutSutunlari.add('$tablo.$s')) {
+        LogServisi().uyari(
+            'Bulut şemasında "$tablo.$s" sütunu YOK — bu sütun buluta GÖNDERİLMİYOR '
+            '(diğer cihazlara ulaşmaz). supabase_tam_sema.sql dosyasını Supabase SQL '
+            'Editor\'de çalıştırın; sonra otomatik gönderilmeye başlar.');
+      }
+    }
+  }
 
   // ── FK dönüşüm cache'leri (otomatik senkron yolu) ──
   // Lokal SQLite id'leri ile buluttaki BIGSERIAL id'ler alakasız
@@ -252,6 +337,8 @@ class SupabaseSaglayici implements IBulutSaglayici {
     // Ek güvence: lokal 'id' gönderilen veriden çıkarılıyor (bulutun
     // kendi id'sine asla dokunulmamalı).
     veri.remove('id');
+    // Bulutta olmayan sütunları ayıkla (bkz. BULUT ŞEMA KORUMASI)
+    _eksikBildir(tablo, sutunlariAyikla(tablo, [veri], await bulutSutunlari()));
     // FK kolonlarını lokal id → bulut id'ye dönüştür (üstteki nota bkz.)
     if ((await _fkDonustur(tablo, [veri])).isNotEmpty) {
       // Ebeveyn henüz bulutta yok — geçici (statusKodu yok) hata.
@@ -273,6 +360,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
       body: jsonEncode([veri]),
     ).timeout(const Duration(seconds: 15));
     if (r.statusCode >= 400) {
+      if (r.body.contains('PGRST204')) _bulutSemaZamani = null; // şemayı yeniden oku
       throw BulutIstekHatasi(r.statusCode,
           '$tablo upsert: ${r.body.substring(0, r.body.length.clamp(0, 200))}');
     }
@@ -353,6 +441,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
     final hatalar = <String>[];
     final bekletilenler = <int>{};
     int? sonStatusKodu;
+    final bulutSema = await bulutSutunlari();
 
     // Batch olarak gönder (max 200 kayıt/istek)
     const batchSize = 200;
@@ -360,6 +449,8 @@ class SupabaseSaglayici implements IBulutSaglayici {
       final batch = veriler.sublist(i, (i + batchSize).clamp(0, veriler.length));
       // 🔥 Aynı evrensel bool->int koruması (bkz. upsert() içindeki not)
       // + lokal 'id' temizliği (bkz. upsert() içindeki on_conflict notu)
+      // Bulutta olmayan sütunları ayıkla (bkz. BULUT ŞEMA KORUMASI)
+      _eksikBildir(tablo, sutunlariAyikla(tablo, batch, bulutSema));
       for (final kayit in batch) {
         kayit.remove('id');
         for (final k in kayit.keys.toList()) {
@@ -421,6 +512,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
         if (r.statusCode >= 400) {
           hata += gonderilecek.length;
           sonStatusKodu = r.statusCode;
+          if (r.body.contains('PGRST204')) _bulutSemaZamani = null; // şemayı yeniden oku
           final msg = '$tablo batch ${r.statusCode}: ${r.body.substring(0,r.body.length.clamp(0,150))}';
           if (!hatalar.contains(msg)) hatalar.add(msg);
         } else {

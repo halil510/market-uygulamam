@@ -490,6 +490,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
         odemeYontemi: _iadeOdemeYontemi,
         kullaniciId: AuthServisi().aktifId,
         kullaniciAdi: AuthServisi().aktifAd,
+        iskontoOran: isk,
       );
 
       // Transaction başarılı - state güncelle

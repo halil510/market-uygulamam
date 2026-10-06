@@ -513,8 +513,18 @@ class UrunDeposu {
   /// etkilenen satır sayısı.
   Future<int> tumPasifleriAktifYap() async {
     final db = await _d;
-    return db.rawUpdate(
-        'UPDATE ${DbSabitler.urunler} SET aktif = 1 WHERE aktif = 0 AND is_deleted = 0');
+    final pasifler = await db.query(DbSabitler.urunler,
+        columns: ['id'], where: 'aktif = 0 AND is_deleted = 0');
+    final now = DateTime.now().toIso8601String();
+    final adet = await db.rawUpdate(
+        'UPDATE ${DbSabitler.urunler} SET aktif = 1, last_updated = ? WHERE aktif = 0 AND is_deleted = 0',
+        [now]);
+    // Önceden hiçbir ürün buluta bildirilmiyordu: diğer cihazlarda pasif kalırdı.
+    for (final p in pasifler) {
+      final u = await db.query(DbSabitler.urunler, where: 'id = ?', whereArgs: [p['id']], limit: 1);
+      if (u.isNotEmpty) BulutManager().upsert(DbSabitler.urunler, Map<String, dynamic>.from(u.first));
+    }
+    return adet;
   }
 
   // ── PLU PANELİ (Madde 2 sertleştirmesi — plu_yonetim_ekrani.dart) ──────

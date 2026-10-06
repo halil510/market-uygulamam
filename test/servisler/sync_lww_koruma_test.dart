@@ -85,6 +85,11 @@ void main() {
       final gonderilen = <String>[];
       final istekler = <http.Request>[];
       final client = MockClient((req) async {
+        // Şema koruması (OpenAPI okuma) veri sorgusu değildir: sayıma girmez,
+        // şema alınamamış gibi davranılır (koruma devre dışı → eski akış).
+        if (req.method == 'GET' && req.url.path == '/rest/v1/') {
+          return http.Response('', 404);
+        }
         istekler.add(req);
         if (req.method == 'GET') {
           if (getAtar) throw http.ClientException('ağ yok');

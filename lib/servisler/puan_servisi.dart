@@ -102,9 +102,10 @@ class PuanServisi {
       await txn.rawUpdate('''
         UPDATE ${DbSabitler.musteriPuan}
         SET kullanilan   = kullanilan + ?,
-            son_islem    = ?
+            son_islem    = ?,
+            last_updated = ?
         WHERE cari_id = ?
-      ''', [kullanilanPuan, now, cariId]);
+      ''', [kullanilanPuan, now, now, cariId]);
 
       await txn.insert(DbSabitler.puanHareket, {
         'global_id':   const Uuid().v4(),
@@ -162,9 +163,9 @@ class PuanServisi {
       if (kazanilanToplam > 0.005) {
         await txn.rawUpdate('''
           UPDATE ${DbSabitler.musteriPuan}
-          SET toplam_puan = MAX(0, toplam_puan - ?), son_islem = ?
+          SET toplam_puan = MAX(0, toplam_puan - ?), son_islem = ?, last_updated = ?
           WHERE cari_id = ?
-        ''', [kazanilanToplam, now, cariId]);
+        ''', [kazanilanToplam, now, now, cariId]);
         final gid = const Uuid().v4();
         await txn.insert(DbSabitler.puanHareket, {
           'global_id': gid,
@@ -180,9 +181,9 @@ class PuanServisi {
       if (harcananToplam > 0.005) {
         await txn.rawUpdate('''
           UPDATE ${DbSabitler.musteriPuan}
-          SET kullanilan = MAX(0, kullanilan - ?), son_islem = ?
+          SET kullanilan = MAX(0, kullanilan - ?), son_islem = ?, last_updated = ?
           WHERE cari_id = ?
-        ''', [harcananToplam, now, cariId]);
+        ''', [harcananToplam, now, now, cariId]);
         final gid = const Uuid().v4();
         await txn.insert(DbSabitler.puanHareket, {
           'global_id': gid,
@@ -298,6 +299,7 @@ class PuanServisi {
         await db.update(DbSabitler.musteriPuan, {
           'toplam_puan': dogruKazanilan,
           'kullanilan': dogruHarcanan,
+          'last_updated': DateTime.now().toIso8601String(),
         }, where: 'cari_id = ?', whereArgs: [cariId]);
         final satir = await db.query(DbSabitler.musteriPuan,
             where: 'cari_id = ?', whereArgs: [cariId], limit: 1);

@@ -55,11 +55,19 @@ class MarkaDeposu {
     final now = DateTime.now().toIso8601String();
     await db.update('markalar', {'ad': yeniAd, 'last_updated': now},
         where: 'id = ?', whereArgs: [id]);
-    await db.update('urunler', {'marka': yeniAd},
+    // Etkilenen ürünler: marka adı + last_updated (aksi halde diğer cihazlar
+    // ürünlerde ESKİ marka adını görmeye devam ederdi) ve buluta bildirilir.
+    final etkilenenler = await db.query('urunler',
+        columns: ['id'], where: 'marka = ? AND is_deleted = 0', whereArgs: [eskiAd]);
+    await db.update('urunler', {'marka': yeniAd, 'last_updated': now},
         where: 'marka = ? AND is_deleted = 0', whereArgs: [eskiAd]);
     final satir = await db.query('markalar', where: 'id = ?', whereArgs: [id], limit: 1);
     if (satir.isNotEmpty) {
       BulutManager().upsert('markalar', Map<String, dynamic>.from(satir.first));
+    }
+    for (final e in etkilenenler) {
+      final u = await db.query('urunler', where: 'id = ?', whereArgs: [e['id']], limit: 1);
+      if (u.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(u.first));
     }
   }
 

@@ -200,10 +200,14 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
     required double yeniFiyat,
     required double yeniToplam,
     required String yeniAciklama,
+    /// Düzenlenen satırın indirim % (iade_kalem'e kaydedilir).
+    double yeniIskontoOran = 0,
   }) async {
     final db = await Veritabani().db;
     final now = DateTime.now().toIso8601String();
     final fark = yeniMiktar - eskiMiktar;
+    final yeniIsk = (yeniIskontoOran > 0 && yeniIskontoOran < 100) ? yeniIskontoOran : 0.0;
+    final yeniIskTutar = ((yeniMiktar * yeniFiyat * yeniIsk / 100) * 100).round() / 100;
     String? kasaGid;
     // Fişin TÜM kalemlerinden hesaplanan toplam (cari hareketi buna göre yazılır).
     double fisToplam = yeniToplam;
@@ -252,8 +256,8 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
         // hesaplanır ve cari buna göre yazılır.
         if (urunId != null) {
           await txn.rawUpdate(
-              'UPDATE iade_kalem SET miktar=?, birim_fiyat=?, toplam=?, last_updated=? WHERE iade_id=? AND urun_id=?',
-              [yeniMiktar, yeniFiyat, yeniToplam, now, iadeId, urunId]);
+              'UPDATE iade_kalem SET miktar=?, birim_fiyat=?, toplam=?, iskonto_oran=?, iskonto_tutar=?, last_updated=? WHERE iade_id=? AND urun_id=?',
+              [yeniMiktar, yeniFiyat, yeniToplam, yeniIsk, yeniIskTutar, now, iadeId, urunId]);
         } else {
           // Eski kayıtlarda ürün kimliği yoksa YALNIZ tek kalemli fişte
           // güvenle güncellenebilir.
@@ -263,8 +267,8 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
               0;
           if (adet == 1) {
             await txn.rawUpdate(
-                'UPDATE iade_kalem SET miktar=?, birim_fiyat=?, toplam=?, last_updated=? WHERE iade_id=?',
-                [yeniMiktar, yeniFiyat, yeniToplam, now, iadeId]);
+                'UPDATE iade_kalem SET miktar=?, birim_fiyat=?, toplam=?, iskonto_oran=?, iskonto_tutar=?, last_updated=? WHERE iade_id=?',
+                [yeniMiktar, yeniFiyat, yeniToplam, yeniIsk, yeniIskTutar, now, iadeId]);
           }
         }
         fisToplam = ((await txn.rawQuery(

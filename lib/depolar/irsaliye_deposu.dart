@@ -6,6 +6,7 @@
 // + stok hareketi TEK transaction içinde, commit sonrası bulut senkronu.
 import 'package:uuid/uuid.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../veri/database/veritabani.dart';
 import 'stok_deposu.dart';
 
@@ -30,8 +31,9 @@ class IrsaliyeDeposu {
   /// stok ZATEN düşürülmüş — bkz. BekleyenSiparisDeposu.onaylaVeSatisaCevir)
   /// kayıt amaçlı sevk belgesi oluşturur. [olustur]'un aksine STOĞA HİÇ
   /// DOKUNMAZ (aksi halde stok iki kez düşerdi) ve bulut senkronu
-  /// tetiklemez — davranış, taşındığı
-  /// bekleyen_siparisler_ekrani.dart._irsaliyeOlustur ile birebir aynı.
+  /// tetiklemez (stok yan etkisi yok) — ANCAK irsaliye başlığı/kalemleri
+  /// artık AYNI transaction'da senkron kuyruğuna yazılır: önceden hiç
+  /// buluta gitmediği için diğer cihazlarda irsaliye listesinde görünmüyordu.
   ///
   /// Döner: yeni irsaliyenin id'si.
   Future<int> olusturSevkKaydi({
@@ -69,6 +71,19 @@ class IrsaliyeDeposu {
           'toplam_tutar': k.miktar * k.birimFiyat,
           'last_updated': now,
         });
+      }
+      // Buluta bildirim — iş verisiyle ATOMİK (işlem geri alınırsa kuyruğa da girmez).
+      final baslik = await txn.query('irsaliyeler',
+          where: 'id = ?', whereArgs: [irsaliyeId], limit: 1);
+      if (baslik.isNotEmpty) {
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'irsaliyeler', veri: Map<String, dynamic>.from(baslik.first));
+      }
+      final kalemSatirlari = await txn.query('irsaliye_kalem',
+          where: 'irsaliye_id = ?', whereArgs: [irsaliyeId]);
+      for (final k in kalemSatirlari) {
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'irsaliye_kalem', veri: Map<String, dynamic>.from(k));
       }
     });
 

@@ -90,7 +90,9 @@ class DonemDeposu {
     }
     try {
       final db = await _d;
-      await db.update(DbSabitler.donemler, donem.toMap(),
+      await db.update(
+          DbSabitler.donemler,
+          {...donem.toMap(), 'last_updated': DateTime.now().toIso8601String()},
           where: 'id = ?', whereArgs: [donem.id]);
       final satir = await db.query(DbSabitler.donemler,
           where: 'id = ?', whereArgs: [donem.id], limit: 1);
@@ -151,7 +153,9 @@ class DonemDeposu {
     }
     try {
       final db = await _d;
-      await db.update(DbSabitler.donemSubeDurumlari, durum.toMap(),
+      await db.update(
+          DbSabitler.donemSubeDurumlari,
+          {...durum.toMap(), 'last_updated': DateTime.now().toIso8601String()},
           where: 'id = ?', whereArgs: [durum.id]);
       final satir = await db.query(DbSabitler.donemSubeDurumlari,
           where: 'id = ?', whereArgs: [durum.id], limit: 1);

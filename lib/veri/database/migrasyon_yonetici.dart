@@ -231,5 +231,8 @@ class MigrasyonYonetici {
     // v78'den v79'a — eski sürümlerden kalan trigger'lar temizlendi,
     // fiyat geçmişi trigger'ı yeni kurulumla eşitlendi (bkz. _v78denV79a).
     if (eskiVersiyon < 79) await _v78denV79a(db);
+
+    // v79'dan v80'e — iade kalemlerinde indirim (bkz. _v79denV80e).
+    if (eskiVersiyon < 80) await _v79denV80e(db);
   }
 }

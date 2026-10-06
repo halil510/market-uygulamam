@@ -99,6 +99,7 @@ class DevirCheckpointDeposu {
       final db = await _d;
       final data = checkpoint.toMap();
       data['son_guncelleme'] = DateTime.now().toIso8601String();
+      data['last_updated'] = data['son_guncelleme'];
       await db.update(DbSabitler.devirCheckpoint, data,
           where: 'id = ?', whereArgs: [checkpoint.id]);
       final satir = await db.query(DbSabitler.devirCheckpoint,

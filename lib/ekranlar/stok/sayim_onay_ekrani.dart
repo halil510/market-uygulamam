@@ -16,6 +16,7 @@
 //
 // Route seviyesinde MudurYetkiKorumasi ile korunuyor (uygulama_router.
 // dart) — deep-link ile kasiyer buraya gelse bile "Erişim Kısıtlı" görür.
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../saglayicilar/riverpod/stok_sayim_provider.dart';
@@ -92,7 +93,7 @@ class _SayimOnayEkraniState extends ConsumerState<SayimOnayEkrani> {
       appBar: const TsAppBar(baslik: 'Bekleyen Sayım Onayları'),
       body: async.when(
         loading: () => const Center(child: AppYukleniyor()),
-        error: (e, _) => Center(child: Text('Hata: $e')),
+        error: (e, _) => Center(child: Text('Hata: ${kullaniciyaHataMetni(e)}')),
         data: (liste) {
           if (liste.isEmpty) {
             return Center(

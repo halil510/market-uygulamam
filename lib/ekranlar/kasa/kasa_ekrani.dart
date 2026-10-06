@@ -61,7 +61,7 @@ class KasaEkrani extends ConsumerWidget {
           loading: () => const LinearProgressIndicator(),
           error: (e, __) => Padding(
             padding: const EdgeInsets.all(16),
-            child: Text('Bakiye yüklenemedi: $e',
+            child: Text('Bakiye yüklenemedi: ${kullaniciyaHataMetni(e)}',
                 style: TextStyle(color: TsRenk.hata, fontSize: 12)),
           ),
           data: (bakiye) => Container(

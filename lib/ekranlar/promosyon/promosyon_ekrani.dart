@@ -1,4 +1,5 @@
 // lib/ekranlar/promosyon/promosyon_ekrani.dart
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/foundation.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'dart:async';
@@ -351,7 +352,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
             error: (e, _) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               const Icon(Icons.error_outline, size: 48, color: Colors.red),
               const SizedBox(height: 12),
-              Text('Hata: $e', textAlign: TextAlign.center),
+              Text('Hata: ${kullaniciyaHataMetni(e)}', textAlign: TextAlign.center),
               const SizedBox(height: 8),
               FilledButton(onPressed: () => ref.invalidate(promosyonlarProvider), child: const Text('Tekrar Dene')),
             ])),

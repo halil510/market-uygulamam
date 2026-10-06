@@ -29,7 +29,7 @@ class SatisDetayEkrani extends ConsumerWidget {
         baslik: 'Hata',
         gradyanli: false,
       ),
-        body: Center(child: Text('$e'))),
+        body: Center(child: Text(kullaniciyaHataMetni(e)))),
       data: (satis) {
         if (satis == null) return Scaffold(
           appBar: TsAppBar(

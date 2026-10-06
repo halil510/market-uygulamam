@@ -1,4 +1,5 @@
 // lib/ekranlar/urun/urun_detay_ekrani.dart
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -68,7 +69,7 @@ class _UrunDetayEkraniState extends ConsumerState<UrunDetayEkrani>
         baslik: 'Hata',
         gradyanli: false,
       ),
-        body: Center(child: Text('$e'))),
+        body: Center(child: Text(kullaniciyaHataMetni(e)))),
       data: (urun) {
         if (urun == null) return Scaffold(
           appBar: TsAppBar(

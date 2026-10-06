@@ -6,6 +6,7 @@
 // güvenli (kanıtlanmış mutabakat fonksiyonu olan) kontrollerde bir
 // "Düzelt" butonu sunar — hiçbir kontrol kullanıcı onayı olmadan veri
 // değiştirmez.
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/material.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -77,7 +78,7 @@ class _VeriSagligiEkraniState extends State<VeriSagligiEkrani> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Düzeltme başarısız: $e'),
+          content: Text('Düzeltme başarısız: ${kullaniciyaHataMetni(e)}'),
           backgroundColor: Colors.red.shade700,
         ));
       }

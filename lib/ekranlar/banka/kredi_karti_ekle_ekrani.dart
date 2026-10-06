@@ -1,4 +1,5 @@
 // lib/ekranlar/banka/kredi_karti_ekle_ekrani.dart
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -190,7 +191,7 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
           children: [
             bankalarAsync.when(
               loading: () => const LinearProgressIndicator(),
-              error: (err, _) => Text('Bankalar yüklenemedi: $err',
+              error: (err, _) => Text('Bankalar yüklenemedi: ${kullaniciyaHataMetni(err)}',
                   style: TextStyle(color: TsRenk.hata)),
               data: (bankalar) {
                 _seciliBankayiAyarla(bankalar);

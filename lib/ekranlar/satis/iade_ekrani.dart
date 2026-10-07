@@ -415,10 +415,17 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                     _urunFormu(),
                     const SizedBox(height: 16),
                     IadeKaydetButonu(yukleniyor: _yukleniyor, onTap: _kaydet),
-                  ] else
+                  ] else if (_aramaListesi.isNotEmpty)
+                    const SizedBox.shrink()
+                  // Oturum listesi doluyken büyük "Ürün seçilmedi" kutusu
+                  // listeyi aşağı itiyor, her iadeden sonra kaydırmak
+                  // gerekiyordu — yerine tek satır ipucu, liste yukarıda.
+                  else if (_iadeListesi.isNotEmpty)
+                    _kisaIpucu()
+                  else
                     _bosEkran(),
                   if (_iadeListesi.isNotEmpty) ...[
-                    const SizedBox(height: 24),
+                    SizedBox(height: _secilenUrun != null ? 24 : 12),
                     _iadeGecmisi(),
                   ],
                 ]))),
@@ -468,6 +475,15 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
           renk: _R.orange,
         ),
       );
+
+  Widget _kisaIpucu() => Row(children: [
+        const Icon(Icons.qr_code_scanner, size: 16, color: _R.orange),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text('Yeni iade için yukarıdan ürün arayın veya barkod okutun',
+              style: TextStyle(fontSize: 12.5, color: TsRenk.metinIkincil(context))),
+        ),
+      ]);
 
   Widget _iadeGecmisi() => IadeGecmisWidget(
         iadeListesi: _iadeListesi,

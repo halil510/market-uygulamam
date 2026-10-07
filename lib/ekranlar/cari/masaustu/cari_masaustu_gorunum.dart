@@ -24,11 +24,18 @@ class CariMasaustuGorunum extends StatefulWidget {
   final Future<void> Function(CariModel cari) onSil;
   final Future<void> Function() onYenile;
 
+  /// Çoklu seçim (Ctrl+tık, Shift+tık, sürükleme, Ctrl+A) toplu işlemleri.
+  /// Silme onaylanırsa true döner (seçim temizlenir).
+  final Future<bool> Function(List<CariModel> cariler)? onTopluSil;
+  final Future<void> Function(Set<int> ids)? onTopluExcel;
+
   const CariMasaustuGorunum({
     super.key,
     required this.cariler,
     required this.onSil,
     required this.onYenile,
+    this.onTopluSil,
+    this.onTopluExcel,
   });
 
   @override
@@ -94,7 +101,47 @@ class _CariMasaustuGorunumState extends State<CariMasaustuGorunum> {
   void _duzenle(CariModel c) => _git('/cari/ekle', c);
   void _tahsilat(CariModel c) => _git('/cari/tahsilat/${c.id}');
 
+  // ── Çoklu seçim ──────────────────────────────────────────────────────────
+  Set<int> _coklu = {};
+
+  /// Müşteri seçme modunda (Hızlı Satış) ve toplu işlem verilmemişse kapalı.
+  bool get _cokluAcik =>
+      widget.onTopluSil != null && CariSecimBaglami.maybeOf(context) == null;
+  bool get _cokluVar => _coklu.length >= 2;
+
+  List<CariModel> get _secilenler =>
+      widget.cariler.where((c) => c.id != null && _coklu.contains(c.id)).toList();
+
+  void _cokluSecimDegisti(Set<Object> a) {
+    final ids = a.whereType<int>().toSet();
+    setState(() {
+      _coklu = ids.length >= 2 ? ids : {};
+      if (ids.length == 1) {
+        final k = widget.cariler.where((c) => c.id == ids.first);
+        if (k.isNotEmpty) _secili = k.first;
+      }
+    });
+  }
+
+  Future<void> _topluSil() async {
+    final silindi = await widget.onTopluSil!(_secilenler);
+    if (silindi && mounted) setState(() => _coklu = {});
+  }
+
   void _menu(CariModel c, Offset konum) {
+    if (_cokluVar) {
+      final n = _coklu.length;
+      masaustuMenuAc(context, konum, [
+        if (widget.onTopluExcel != null)
+          MenuOge("Seçilenleri Excel'e Aktar ($n cari)",
+              () => widget.onTopluExcel!(_coklu), ikon: Icons.download_outlined),
+        MenuOge('Seçimi Kaldır', () => setState(() => _coklu = {}),
+            ikon: Icons.deselect),
+        MenuOge('Seçilileri Sil ($n cari)', _topluSil,
+            ikon: Icons.delete_outline, ayiracOnce: true),
+      ]);
+      return;
+    }
     masaustuMenuAc(context, konum, [
       MenuOge('Cari Detayı', () => _git('/cari/detay/${c.id}'),
           ikon: Icons.person_outline),
@@ -125,12 +172,19 @@ class _CariMasaustuGorunumState extends State<CariMasaustuGorunum> {
     if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     final s = _secili;
-    if (k == LogicalKeyboardKey.f1) {
+    if (HardwareKeyboard.instance.isControlPressed && k == LogicalKeyboardKey.keyA) {
+      if (!_cokluAcik || yaziAlaniOdakta()) return false;
+      _cokluSecimDegisti({for (final c in widget.cariler) if (c.id != null) c.id!});
+    } else if (k == LogicalKeyboardKey.f1) {
       _git('/cari/ekle');
     } else if (k == LogicalKeyboardKey.f2) {
-      if (s != null) _duzenle(s);
+      if (s != null && !_cokluVar) _duzenle(s);
     } else if (k == LogicalKeyboardKey.f3) {
-      if (s != null) widget.onSil(s);
+      if (_cokluVar) {
+        _topluSil();
+      } else if (s != null) {
+        widget.onSil(s);
+      }
     } else if (k == LogicalKeyboardKey.f4) {
       if (s != null) _tahsilat(s);
     } else if (k == LogicalKeyboardKey.f6) {
@@ -169,10 +223,14 @@ class _CariMasaustuGorunumState extends State<CariMasaustuGorunum> {
             _git('/cari/detay/${c.id}');
           },
           onSagTik: _menu,
+          anahtar: (c) => c.id ?? c,
+          seciliAnahtarlar: _cokluAcik ? _coklu : null,
+          onCokluSecim: _cokluAcik ? _cokluSecimDegisti : null,
         ),
       ),
       MasaustuAltSerit(
         ozetler: [
+          if (_cokluVar) AltOzet('Seçili', '${_coklu.length} cari'),
           AltOzet('Cari Sayısı', '${l.length}'),
           AltOzet('Toplam Alacak', ParaUtils.formatla(alacak), renk: _alacakRengi),
           AltOzet('Toplam Borç', ParaUtils.formatla(borc), renk: TsRenk.hata),
@@ -182,9 +240,10 @@ class _CariMasaustuGorunumState extends State<CariMasaustuGorunum> {
           AltTus('F1', 'Ekle', Icons.person_add_alt, const Color(0xFF2E7D32),
               () => _git('/cari/ekle')),
           AltTus('F2', 'Düzenle', Icons.edit_outlined, const Color(0xFF1565C0),
-              s == null ? null : () => _duzenle(s)),
-          AltTus('F3', 'Sil', Icons.delete_outline, const Color(0xFFC62828),
-              s == null ? null : () => widget.onSil(s)),
+              s == null || _cokluVar ? null : () => _duzenle(s)),
+          AltTus('F3', _cokluVar ? 'Sil (${_coklu.length})' : 'Sil', Icons.delete_outline,
+              const Color(0xFFC62828),
+              _cokluVar ? _topluSil : (s == null ? null : () => widget.onSil(s))),
           AltTus('F4', 'Al / Ver', Icons.swap_horiz, const Color(0xFF6A1B9A),
               s == null ? null : () => _tahsilat(s)),
           AltTus('F6', 'Menü', Icons.menu, const Color(0xFF546E7A),

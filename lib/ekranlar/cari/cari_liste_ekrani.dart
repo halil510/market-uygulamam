@@ -18,6 +18,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../depolar/bekleyen_siparis_deposu.dart';
 import '../../servisler/excel_servisi.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../widgetlar/cari/cari_excel_ice_aktar_yardimcisi.dart';
 import '../../widgetlar/masaustu/tekrar_gorununce_yenile.dart';
 
@@ -147,15 +148,93 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
     }
   }
 
+  /// Masaüstü çoklu seçimden toplu silme. Tekli silmedeki uyarılar (bakiye,
+  /// bekleyen sipariş) TEK özet onayda toplanır; silme carilerProvider.sil ile
+  /// tek tek yapılır, biri hata verse de diğerleri devam eder.
+  Future<bool> _topluSil(List<CariModel> cariler) async {
+    if (cariler.isEmpty) return false;
+    final bakiyeli = cariler.where((c) => c.bakiye.abs() > 0.005).toList();
+    var siparisli = 0;
+    for (final c in cariler) {
+      if (c.id == null) continue;
+      try {
+        final b = await BekleyenSiparisDeposu()
+            .bekleyenSiparisleriGetir(cariId: c.id, durum: 'bekliyor');
+        if (b.isNotEmpty) siparisli++;
+      } catch (_) {/* sayım başarısızsa uyarısız devam */}
+    }
+    if (!mounted) return false;
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('${cariler.length} Cari Silinsin mi?', style: const TextStyle(fontSize: 16)),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(cariler.take(8).map((c) => '• ${c.unvan}').join('\n') +
+              (cariler.length > 8 ? '\n… ve ${cariler.length - 8} cari daha' : '')),
+          const SizedBox(height: 8),
+          const Text('Bu işlem geri alınamaz.'),
+          if (bakiyeli.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                  '⚠️ ${bakiyeli.length} carinin bakiyesi var (toplam '
+                  '${ParaUtils.formatla(bakiyeli.fold<double>(0, (t, c) => t + c.bakiye.abs()))}) — '
+                  'silindikten sonra raporlarda görünmeyecek.',
+                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+            ),
+          if (siparisli > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                  '⚠️ $siparisli carinin bekleyen siparişi var — silindikten sonra bu '
+                  'siparişleri kapatmak zorlaşacak.',
+                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+            ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          FilledButton(
+            style: FilledButton.styleFrom(foregroundColor: Colors.white, backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('${cariler.length} Cariyi Sil'),
+          ),
+        ],
+      ),
+    );
+    if (onay != true || !mounted) return false;
+    var silinen = 0;
+    final hatalar = <String>[];
+    for (final c in cariler) {
+      try {
+        await ref.read(carilerProvider.notifier).sil(c.id!);
+        silinen++;
+      } catch (e) {
+        hatalar.add('${c.unvan}: ${kullaniciyaHataMetni(e)}');
+      }
+    }
+    if (!mounted) return true;
+    if (hatalar.isEmpty) {
+      BildirimServisi.basari(context, '$silinen cari silindi');
+    } else {
+      BildirimServisi.hata(context,
+          '$silinen cari silindi, ${hatalar.length} silinemedi: ${hatalar.first}');
+    }
+    return true;
+  }
+
   // ── Excel dışa aktar ────────────────────────────────────────────────────
   // Kullanıcı isteği (2026-09-21): "cari listede excel içe alma dışa
   // verme olsun... tüm carileri dışa verme mümkün mü". TÜM cariler
   // (pasif dahil) tek dosyada — CariDeposu.tumunuBorcAlacakAdresIle()
   // her cari için gerçek toplam borç/alacağı (cari_hareket'ten) ve
   // varsayılan adresini de getirir.
-  Future<void> _excelDisaAktar() async {
+  Future<void> _excelDisaAktar({Set<int>? sadece}) async {
     try {
-      final satirlar = await CariDeposu().tumunuBorcAlacakAdresIle();
+      var satirlar = await CariDeposu().tumunuBorcAlacakAdresIle();
+      if (sadece != null) {
+        satirlar = satirlar.where((r) => sadece.contains(r['id'])).toList();
+      }
       if (satirlar.isEmpty) {
         if (mounted) BildirimServisi.uyari(context, 'Dışa aktarılacak cari bulunamadı');
         return;
@@ -351,11 +430,14 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
           child: durum.yukleniyor
               ? const SatirYukleniyorWidget(satirSayisi: 7)
               : TabBarView(controller: _tab, children: [
-                  _CariTab(cariler: tum, onSil: _sil,
+                  _CariTab(cariler: tum, onSil: _sil, onTopluSil: _topluSil,
+                      onTopluExcel: (ids) => _excelDisaAktar(sadece: ids),
                       onRefresh: () => ref.read(carilerProvider.notifier).yukle()),
-                  _CariTab(cariler: musteriler, onSil: _sil,
+                  _CariTab(cariler: musteriler, onSil: _sil, onTopluSil: _topluSil,
+                      onTopluExcel: (ids) => _excelDisaAktar(sadece: ids),
                       onRefresh: () => ref.read(carilerProvider.notifier).yukle()),
-                  _CariTab(cariler: tedarikciler, onSil: _sil,
+                  _CariTab(cariler: tedarikciler, onSil: _sil, onTopluSil: _topluSil,
+                      onTopluExcel: (ids) => _excelDisaAktar(sadece: ids),
                       onRefresh: () => ref.read(carilerProvider.notifier).yukle()),
                 ]),
         ),
@@ -396,14 +478,19 @@ class _CariTab extends StatelessWidget {
   final List<CariModel> cariler;
   final Future<void> Function(CariModel) onSil;
   final Future<void> Function() onRefresh;
-  const _CariTab({required this.cariler, required this.onSil, required this.onRefresh});
+  final Future<bool> Function(List<CariModel>) onTopluSil;
+  final Future<void> Function(Set<int>) onTopluExcel;
+  const _CariTab({required this.cariler, required this.onSil, required this.onRefresh,
+      required this.onTopluSil, required this.onTopluExcel});
 
   @override
   Widget build(BuildContext context) {
     // Geniş pencerede (masaüstü) tablo görünümü — liste BOŞKEN de gösterilir ki
     // alt şerit (F1 Cari Ekle) ve kısayollar kaybolmasın.
     if (MediaQuery.sizeOf(context).width > 1100) {
-      return CariMasaustuGorunum(cariler: cariler, onSil: onSil, onYenile: onRefresh);
+      return CariMasaustuGorunum(
+          cariler: cariler, onSil: onSil, onYenile: onRefresh,
+          onTopluSil: onTopluSil, onTopluExcel: onTopluExcel);
     }
     if (cariler.isEmpty) {
       return const TsBosDurum(

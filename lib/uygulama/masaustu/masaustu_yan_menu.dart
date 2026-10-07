@@ -284,7 +284,16 @@ class _MenuPaneli extends ConsumerWidget {
 
     void git(String rota) {
       Navigator.of(context).pop();
-      GoRouter.of(rootNavigatorKey.currentContext ?? context).push(rota);
+      final router = GoRouter.of(rootNavigatorKey.currentContext ?? context);
+      // Hızlı Satış / Panel kabuğun ANA ekranlarıdır: üstte kök sayfalar
+      // (Cariler…) açıkken push edilince örtülü kabuğa düşüp boş ekran
+      // veriyordu (canlı test: Cariler → Menü → Hızlı Satış). Bunlar üstteki
+      // sayfaları kapatıp ana ekrana döner.
+      if (rota == '/satis' || rota == '/panel') {
+        router.go(rota);
+      } else {
+        router.push(rota);
+      }
     }
 
     return Column(children: [

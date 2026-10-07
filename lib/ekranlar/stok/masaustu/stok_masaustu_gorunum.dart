@@ -86,9 +86,9 @@ class _StokMasaustuGorunumState extends State<StokMasaustuGorunum> {
         sagaYasli: true,
         deger: (u) => u.minimumStok == 0 ? '' : _sayi(u.minimumStok),
         sirala: (u) => u.minimumStok),
-    _tutar('Alış Fiyat', 95, (u) => u.alisFiyatKdvDahil),
+    _tutar('Alış (KDV Dahil)', 120, (u) => u.alisFiyatKdvDahil),
     _tutar('Satış Fiyatı', 100, (u) => u.satisFiyati),
-    _tutar('Stok Değeri', 110, (u) => u.stok * u.alisFiyatKdvDahil),
+    _tutar('Stok Değeri (KDV Dahil)', 165, (u) => u.stok * u.alisFiyatKdvDahil),
   ];
 
   void _detay(UrunModel u) => context.push('/urun/detay/${u.id}');
@@ -172,7 +172,7 @@ class _StokMasaustuGorunumState extends State<StokMasaustuGorunum> {
           if (_coklu) AltOzet('Seçili', '${widget.seciliIds.length} ürün'),
           AltOzet('Çeşit Sayısı', '${u.length}'),
           AltOzet('Stok Miktarı', _sayi(stokToplam)),
-          AltOzet('Maliyet Değeri', ParaUtils.formatla(maliyet)),
+          AltOzet('Maliyet (KDV Dahil)', ParaUtils.formatla(maliyet)),
           AltOzet('Satış Değeri', ParaUtils.formatla(satis)),
         ],
         tuslar: [

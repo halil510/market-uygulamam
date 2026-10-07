@@ -79,14 +79,26 @@ class LogServisi {
   Future<void> _dbYaz(LogKaydi e) async {
     try {
       final db = await Veritabani().db;
-      await db.insert('app_log', {
-        'seviye': e.seviye.name,
-        'mesaj': e.mesaj,
-        'hata': e.hata,
-        'yigin': e.yigin,
-        'ek': e.ek,
-        'zaman': e.zaman.toIso8601String(),
-      });
+      try {
+        await db.insert('app_log', {
+          'seviye': e.seviye.name,
+          'mesaj': e.mesaj,
+          'hata': e.hata,
+          'yigin': e.yigin,
+          'ek': e.ek,
+          'zaman': e.zaman.toIso8601String(),
+        });
+      } catch (_) {
+        // 🔴 (2026-10-08, canlı bulgu): eski kurulumlarda app_log'da
+        // yigin/ek sütunları yok — insert her seferinde düşüyor, hiçbir
+        // hata kaydı kalmıyordu. Temel sütunlarla tekrar yazılır.
+        await db.insert('app_log', {
+          'seviye': e.seviye.name,
+          'mesaj': e.mesaj,
+          'hata': [e.hata, e.ek].whereType<String>().join(' | '),
+          'zaman': e.zaman.toIso8601String(),
+        });
+      }
     } catch (e) { /* ignore */ } // DB yoksa sessizce geç
   }
 

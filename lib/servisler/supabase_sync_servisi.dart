@@ -8,6 +8,7 @@ import 'kolon_haritalama.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart' show DatabaseExecutor;
 import '../veri/database/veritabani.dart';
 import 'bulut/supabase_ayarlari.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
@@ -1127,7 +1128,7 @@ class SupabaseSyncServisi {
   // ══════════════════════════════════════════════════════════════════════
   static final Map<String, Set<String>> _yerelKolonOnbellek = {};
 
-  static Future<Set<String>> _yerelKolonlar(dynamic localDb, String tablo) async {
+  static Future<Set<String>> _yerelKolonlar(DatabaseExecutor localDb, String tablo) async {
     final onbellek = _yerelKolonOnbellek[tablo];
     if (onbellek != null) return onbellek;
     try {
@@ -1150,7 +1151,7 @@ class SupabaseSyncServisi {
   /// 'notnull' alanı). FK çözümlenemediğinde: sütun ZORUNLU değilse sadece
   /// o sütunu at (eski davranış); ZORUNLU ise satırın TAMAMINI atla —
   /// aksi halde NOT NULL ihlali tüm toplu ekleme işlemini (batch) kırar.
-  static Future<Set<String>> _yerelZorunluKolonlar(dynamic localDb, String tablo) async {
+  static Future<Set<String>> _yerelZorunluKolonlar(DatabaseExecutor localDb, String tablo) async {
     final onbellek = _yerelZorunluKolonOnbellek[tablo];
     if (onbellek != null) return onbellek;
     try {
@@ -1188,6 +1189,22 @@ class SupabaseSyncServisi {
   static Future<void> cekimFiligraniKaydetTest(
           String tablo, List<Map<String, dynamic>> kayitlar) =>
       _cekimFiligraniKaydet(tablo, kayitlar);
+
+  /// 🔴 (2026-10-08, canlı bulgu): bu iki yardımcı ÖNCEDEN `dynamic`
+  /// parametreyle yazılmıştı; dinamik çağrıdaki kapanış tipi uyuşmadığından
+  /// HER ZAMAN sessizce boş küme dönüyordu — bulut fazlası sütun filtresi
+  /// hiç çalışmıyordu. Bulutta sunucu_zamani eklenince tüm çekim düştü.
+  @visibleForTesting
+  static Future<Set<String>> yerelKolonlarTest(DatabaseExecutor db, String tablo) {
+    _yerelKolonOnbellek.remove(tablo);
+    return _yerelKolonlar(db, tablo);
+  }
+
+  @visibleForTesting
+  static Future<Set<String>> yerelZorunluKolonlarTest(DatabaseExecutor db, String tablo) {
+    _yerelZorunluKolonOnbellek.remove(tablo);
+    return _yerelZorunluKolonlar(db, tablo);
+  }
 
   /// Tam senkron tablo sırası (test: ebeveynler çocuklardan önce mi).
   @visibleForTesting

@@ -519,6 +519,17 @@ extension VeritabaniSupabase on Veritabani {
 
     await _cakismaKorumasiUygula(database, tablo, kayitlar);
 
+    // 🔴 SİGORTA (2026-10-08, canlı bulgu): bulutta olup yerelde olmayan
+    // sütun (ör. Bölüm H'nin eklediği sunucu_zamani) "no such column" ile
+    // tablonun TÜM çekimini düşürüyordu. Burada da ayıklanır.
+    final kolonlar = <String>{};
+    try {
+      for (final c in await database.rawQuery('PRAGMA table_info($tablo)')) {
+        final ad = c['name']?.toString();
+        if (ad != null) kolonlar.add(ad);
+      }
+    } catch (_) {/* okunamazsa filtreleme yok */}
+
     await database.execute('PRAGMA foreign_keys = OFF');
     // 🔴🔴 KRİTİK DÜZELTME (derin denetimde bulundu): `batch.commit(...,
     // continueOnError: true)` bir satır eklerken hata verirse SESSİZCE
@@ -547,6 +558,7 @@ extension VeritabaniSupabase on Veritabani {
         final temiz = Map<String, dynamic>.from(kayit);
         temiz.remove('id');
         temiz.removeWhere((_, v) => v == null);
+        if (kolonlar.isNotEmpty) temiz.removeWhere((k, _) => !kolonlar.contains(k));
         try {
           // 🔴 Kullanıcı bulgusu (2026-09-29): "şifreyi değiştiriyorum,
           // uygulamayı kapatıp açınca eski şifre (1234) geçerli". Yerel
@@ -645,10 +657,13 @@ extension VeritabaniSupabase on Veritabani {
     // temizlenir (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 4).
     // ÖNCEDEN tüm null'lar atılıyor, temizlenen değer bu cihazda kalıyordu.
     final bosOlabilir = <String>{};
+    final kolonlar = <String>{};
     try {
       for (final c in await database.rawQuery('PRAGMA table_info($tablo)')) {
         final ad = c['name']?.toString();
-        if (ad != null && c['notnull'] == 0 && !KolonHaritalama.nullKorunurMu(tablo, ad)) {
+        if (ad == null) continue;
+        kolonlar.add(ad);
+        if (c['notnull'] == 0 && !KolonHaritalama.nullKorunurMu(tablo, ad)) {
           bosOlabilir.add(ad);
         }
       }
@@ -660,6 +675,8 @@ extension VeritabaniSupabase on Veritabani {
         final temiz = Map<String, dynamic>.from(kayit);
         temiz.remove('id');
         temiz.removeWhere((k, v) => v == null && !bosOlabilir.contains(k));
+        // Bulutta olup yerelde olmayan sütun (ör. sunucu_zamani) yazılmaz.
+        if (kolonlar.isNotEmpty) temiz.removeWhere((k, _) => !kolonlar.contains(k));
         // Cari bakiye bu cihazda hareketlerden türetilir (tetikleyici +
         // SenkronSonrasiMutabakat) — başka kasanın o anki hesabı olan bulut
         // değeri yerel bakiyeyi ezmesin, çakışma kaydına da düşmesin.

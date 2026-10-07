@@ -11,7 +11,8 @@
 // göreli ölçüldüğü için hata zincirleme yayılmaz); sonunda tüm sorunlar
 // build/is_akisi_raporu.md dosyasına yazılır ve test düşer.
 //
-// Çalıştırma:  flutter test test/robot/is_akisi_senaryosu_test.dart --dart-define=ROBOT=true
+// Çalıştırma:  flutter test test/robot/is_akisi_senaryosu_test.dart
+// (~1 sn sürer; normal test paketinde ve CI'da her seferinde koşar.)
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart';
@@ -356,6 +357,110 @@ void main() {
       return faturaVar == null ? 'faturalı satış korumasız (SatisIptalServisi engellemez)' : null;
     });
 
+    // ── 19. Tedarikçiye iade (2026-10-07 kuralı) ─────────────────────────
+    // Fiyat: son alış maliyeti KDV dahil (raf fiyatı DEĞİL); stok AZALIR;
+    // tedarikçiye olan borcumuz DÜŞER (bakiye artı yöne gider). Kasaya
+    // dokunulmaz.
+    await db.update('urunler',
+        {'alis_fiyat': 60, 'alis_kdv_oran': 20, 'alis_fiyat_kdv_dahil': 72},
+        where: 'id = ?', whereArgs: [deterjan]);
+    late CariIadeSonucu tedarikciIadesi;
+    await adim('19. Tedarikçiye iade: 2 deterjan × 72 (KDV dahil maliyet) = 144 ₺', () async {
+      tedarikciIadesi = await IadeIslemServisi().tedarikciyeIadeEt(
+          tedarikci: (await CariDeposu().idileGetir(tedarikci))!,
+          kalemler: [IadeMiktari(urunId: deterjan, miktar: 2)],
+          kullaniciId: v.id['admin'], kullaniciAdi: 'Robot Yönetici');
+    }, stok: {deterjan: -2}, cari: {tedarikci: 144}, ekKontrol: () async {
+      final m = <String>[];
+      if ((tedarikciIadesi.toplamTutar - 144).abs() > 0.01) {
+        m.add('iade tutarı ${_f(tedarikciIadesi.toplamTutar)} (144 bekleniyordu — raf fiyatı 90 kullanılmamalı)');
+      }
+      final r = await db.query('tedarikci_iadeler', where: 'id = ?', whereArgs: [tedarikciIadesi.iadeId]);
+      if (r.length != 1) m.add('tedarikci_iadeler kaydı ${r.length} (1 bekleniyordu)');
+      if (!tedarikciIadesi.fisNo.startsWith('TDI')) m.add('fiş no "${tedarikciIadesi.fisNo}" TDI ile başlamıyor');
+      return m.isEmpty ? null : m.join('; ');
+    });
+
+    // ── 20. Tedarikçi iadesini iptal → her şey geri dönmeli ──────────────
+    await adim('20. Tedarikçi iadesini iptal et (stok +2, tedarikçi borcu geri)', () async {
+      await IadeIslemServisi().tedarikciIadesiniIptalEt(tedarikciIadesi.iadeId, neden: 'Robot iptal');
+    }, stok: {deterjan: 2}, cari: {tedarikci: -144}, ekKontrol: () async {
+      try {
+        await IadeIslemServisi().tedarikciIadesiniIptalEt(tedarikciIadesi.iadeId);
+        return 'aynı iade İKİ KEZ iptal edilebildi (stok/bakiye çift geri alınır)';
+      } on IadeGecersizHatasi {
+        return null;
+      }
+    });
+
+    // ── 21. Bayiden iade (bayiye özel toptan fiyat) ──────────────────────
+    await db.update('urunler', {'toptan_fiyat': 8}, where: 'id = ?', whereArgs: [su]);
+    await db.update('cari', {'musteri_tipi': 'Bayi'}, where: 'id = ?', whereArgs: [bayi]);
+    await adim('21. Bayiden iade: 2 su × 8 (toptan fiyat, raf 10 değil) = 16 ₺', () async {
+      final r = await IadeIslemServisi().bayidenIadeAl(
+          bayi: (await CariDeposu().idileGetir(bayi))!,
+          kalemler: [IadeMiktari(urunId: su, miktar: 2)],
+          kullaniciId: v.id['admin'], kullaniciAdi: 'Robot Yönetici');
+      if ((r.toplamTutar - 16).abs() > 0.01) {
+        throw Exception('bayi iade tutarı ${_f(r.toplamTutar)} (16 bekleniyordu)');
+      }
+    }, stok: {su: 2}, cari: {bayi: -16});
+
+    // ── 22. Negatif stok (B2 kararı: satış engellenmez, stok eksiye düşer) ─
+    late double suStokOnce;
+    await adim('22. Stoktan fazla satış: 200 su nakit (stok eksiye düşer, kırpılmaz)', () async {
+      suStokOnce = (await olc()).stok[su]!;
+      await satisSrv.tamamla(
+          kalemler: [await kalem(su, 200)], musteri: null,
+          genelToplam: 2000, odemeYontemi: 'Nakit', odenenTutar: 2000);
+    }, stok: {su: -200}, kasa: 2000, ekKontrol: () async {
+      final son = (await olc()).stok[su]!;
+      return son >= 0 ? 'stok ${_f(son)} — eksiye düşmesi bekleniyordu (önce ${_f(suStokOnce)})' : null;
+    });
+
+    // ── 23. İade fiyatı = satıştaki orijinal fiyat (B4 kararı) ───────────
+    // Raf fiyatı sonradan 25 → 30 yapılır; hızlı iade yine satıştaki 25'ten
+    // ödenmeli (güncel fiyattan ödemek kasadan fazla para çıkarır).
+    await db.update('urunler', {'satis_fiyati': 30}, where: 'id = ?', whereArgs: [cikolata]);
+    await adim('23. Fiyat 30 olduktan sonra hızlı iade: 1 çikolata satıştaki 25 ₺\'den', () async {
+      await IadeIslemServisi().topluIadeKaydet(
+          kalemler: [IadeKalemGirdi(urun: (await urunDepo.idileGetir(cikolata))!, adet: 1)],
+          odemeYontemi: 'Nakit', kullaniciId: v.id['admin'], kullaniciAdi: 'Robot Yönetici');
+    }, stok: {cikolata: 1}, kasa: -25);
+
+    // ── 24. Çift iade koruması (bayat ekran verisi) ──────────────────────
+    // 3. adımdaki fişte 3 su vardı, 8. adımda 1'i iade edildi → en çok 2.
+    // Ekran "önceki iade 0" diye bayat bilgiyle 3 göndermeye çalışır.
+    await adim('24. Fişten kalandan fazla iade denemesi reddedilmeli (kalan 2, istenen 3)', () async {
+      try {
+        await IadeIslemServisi().fisKalemIadeKaydet(
+            satisId: veresiyeSatisId, cariId: musteri, urunId: su, urunAdi: 'Robot Su 1.5 L',
+            birimFiyat: 10, kalanMiktar: 3, oncekiIadeMiktar: 0, odemeYontemi: 'Cari',
+            kullaniciId: v.id['admin'], kullaniciAdi: 'Robot Yönetici');
+        throw Exception('fazla iade KABUL EDİLDİ — çift iade açığı');
+      } on IadeMiktariAsildiHatasi {
+        // beklenen
+      }
+    });
+
+    // ── 25. Aynı fişten kalan 2 su iade edilebilmeli, sonra hiç kalmamalı ─
+    await adim('25. Kalan 2 su iadesi kabul (20 ₺ cariden), ardından 1 daha reddedilmeli', () async {
+      await IadeIslemServisi().fisKalemIadeKaydet(
+          satisId: veresiyeSatisId, cariId: musteri, urunId: su, urunAdi: 'Robot Su 1.5 L',
+          birimFiyat: 10, kalanMiktar: 2, oncekiIadeMiktar: 1, odemeYontemi: 'Cari',
+          kullaniciId: v.id['admin'], kullaniciAdi: 'Robot Yönetici');
+    }, stok: {su: 2}, cari: {musteri: -20}, ekKontrol: () async {
+      try {
+        await IadeIslemServisi().fisKalemIadeKaydet(
+            satisId: veresiyeSatisId, cariId: musteri, urunId: su, urunAdi: 'Robot Su 1.5 L',
+            birimFiyat: 10, kalanMiktar: 1, oncekiIadeMiktar: 3, odemeYontemi: 'Cari',
+            kullaniciId: v.id['admin'], kullaniciAdi: 'Robot Yönetici');
+        return 'fişte iade edilecek su kalmadığı halde iade kabul edildi';
+      } on IadeMiktariAsildiHatasi {
+        return null;
+      }
+    });
+
     // ── Son: cari bakiye = hareket toplamı ───────────────────────────────
     final uyumsuz = await CariDeposu().bakiyeUyumsuzlukSayisi();
     if (uyumsuz > 0) sorunlar.add('**Son durum** — $uyumsuz caride bakiye ≠ hareket toplamı');
@@ -385,7 +490,6 @@ void main() {
     await db.close();
     expect(sorunlar, isEmpty, reason: 'iş akışı robotu ${sorunlar.length} sorun buldu');
   },
-      skip: !const bool.fromEnvironment('ROBOT'),
       timeout: const Timeout(Duration(minutes: 5)));
 }
 

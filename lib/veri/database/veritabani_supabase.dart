@@ -578,6 +578,18 @@ extension VeritabaniSupabase on Veritabani {
               continue;
             }
           }
+          // 🔴 DÜZELTME (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 13):
+          // REPLACE, aynı global_id'li satır yerelde zaten varsa (eşzamanlı
+          // iki çekim, kesintiden sonra tekrar) onu SİLİP yeni id ile
+          // ekliyordu — o satıra bağlı yerel çocuk kayıtlar (satis_kalem.
+          // satis_id, cari_hareket.cari_id …) eski id'de yetim kalıyordu.
+          // Artık kayıt varsa yerel id korunarak yerinde güncellenir.
+          final gid = temiz['global_id'];
+          if (conflict == ConflictAlgorithm.replace && gid != null &&
+              await database.update(tablo, temiz,
+                      where: 'global_id = ?', whereArgs: [gid]) > 0) {
+            continue;
+          }
           await database.insert(tablo, temiz, conflictAlgorithm: conflict);
         } catch (e) {
           // Zorunlu ilişki sütunu boş kalan satır (ebeveyni bulutta/yerelde

@@ -144,7 +144,12 @@ class BulutManager {
     // değerli.
     AuditLogServisi().kaydet(tablo, ham, eskiVeri: eskiVeri);
 
-    if (_saglayici == null) return;
+    // 🔴 DÜZELTME (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 10):
+    // sağlayıcı henüz kurulmamışken (açılışta ayarlar yüklenmeden, ya da
+    // bulut geçici kapalıyken) yapılan değişiklik ÖNCEDEN kuyruğa hiç
+    // yazılmıyor, buluta asla ulaşmıyordu. Txn-içi yol (SyncKuyrukYazici.
+    // ekleTxn) zaten her zaman yazıyor; bu yol da artık yazar — sağlayıcı
+    // kurulunca gönderilir.
     unawaited(_kimlikliKuyrugaYaz(tablo, Map<String, dynamic>.from(ham)));
   }
 
@@ -219,7 +224,6 @@ class BulutManager {
   }
 
   void sil(String tablo, String globalId) {
-    if (_saglayici == null) return;
     unawaited(_kuyrukaYaz(tablo, 'DELETE', {'global_id': globalId}));
   }
 
@@ -239,6 +243,8 @@ class BulutManager {
             tablo: tablo, veri: veri, islemTipi: islem);
       });
       _bekleyenSayisiCache++;
+      // Sağlayıcı yokken durum "bağlı değil" kalır; satır kuyrukta bekler.
+      if (_saglayici == null) return;
       if (durum.value != BulutDurum.gonderiliyor) {
         durum.value = BulutDurum.bekliyor;
       }

@@ -57,6 +57,20 @@ void main() {
     await db.close();
   });
 
+  test('sağlayıcı kurulmadan yapılan değişiklik kuyruğa yazılır (Bulgu 10)', () async {
+    BulutManager().testIcinSifirla();
+    final onceki = BulutManager().durum.value;
+    BulutManager().upsert('cari', {'id': 7, 'global_id': 'CARI-ERKEN', 'unvan': 'X'});
+    BulutManager().sil('cari', 'CARI-SILINEN');
+    List<Map<String, Object?>> q = [];
+    for (var i = 0; i < 40 && q.length < 2; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+      q = await db.query('sync_queue', where: "tablo_adi = 'cari'");
+    }
+    expect(q.map((r) => r['kayit_global_id']).toSet(), {'CARI-ERKEN', 'CARI-SILINEN'});
+    expect(BulutManager().durum.value, onceki, reason: 'sağlayıcı yokken durum değişmez');
+  });
+
   test('backoff penceresindeki 600 satır yeni satışın gönderimini engellemez', () async {
     final simdi = DateTime.now().toIso8601String();
     final batch = db.batch();

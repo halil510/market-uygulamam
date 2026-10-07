@@ -94,27 +94,29 @@ class CariModel {
     if (cariKodu != null) 'cari_kodu': cariKodu,
     'unvan': unvan,
     'cari_tipi': cariTipi,
-    if (telefon != null) 'telefon': telefon,
+    // Kullanıcının düzenleyebildiği alanlar null da olsa yazılır — boş
+    // bırakılan alan veritabanında da temizlensin (bkz. formdan).
+    'telefon': telefon,
     if (telefon2 != null) 'telefon2': telefon2,
-    if (email != null) 'email': email,
+    'email': email,
     if (email2 != null) 'email2': email2,
-    if (vergiDairesi != null) 'vergi_dairesi': vergiDairesi,
-    if (vergiNo != null) 'vergi_no': vergiNo,
-    if (tcKimlik != null) 'tc_kimlik': tcKimlik,
+    'vergi_dairesi': vergiDairesi,
+    'vergi_no': vergiNo,
+    'tc_kimlik': tcKimlik,
     'bakiye': ParaUtils.yuvarla(bakiye),
     'limit_tutari': limitTutari,
     'vade_gun': vadeGun,
     if (anaGrup != null) 'ana_grup': anaGrup,
     if (altGrup != null) 'alt_grup': altGrup,
     if (temsilci != null) 'temsilci': temsilci,
-    if (notlar != null) 'notlar': notlar,
+    'notlar': notlar,
     if (webSitesi != null) 'web_sitesi': webSitesi,
     'aktif': aktif ? 1 : 0,
     if (guncelleyen != null) 'guncelleyen': guncelleyen,
     if (subeId != null) 'sube_id': subeId,
     if (mukellefDurumu != null) 'mukellef_durumu': mukellefDurumu,
     if (mukellefSorguTarihi != null) 'mukellef_sorgu_tarihi': mukellefSorguTarihi,
-    if (fiyatGrubuId != null) 'fiyat_grubu_id': fiyatGrubuId,
+    'fiyat_grubu_id': fiyatGrubuId,
     'musteri_tipi': musteriTipi,
   };
 
@@ -155,6 +157,30 @@ class CariModel {
     mukellefSorguTarihi: mukellefSorguTarihi,
     fiyatGrubuId: fiyatGrubuId ?? this.fiyatGrubuId,
     musteriTipi: musteriTipi ?? this.musteriTipi,
+  );
+
+  /// Düzenleme formunun değerleriyle yeni model — [copyWith]'ten farkı:
+  /// formdaki alanlar NULL ise de uygulanır (alan TEMİZLENİR).
+  ///
+  /// 🔴 DÜZELTME (2026-10-08, kullanıcı bulgusu "telefonu sildim, silinmedi"):
+  /// form copyWith kullanıyordu; `telefon ?? this.telefon` boş bırakılan
+  /// numarayı geri getiriyordu (e-posta, vergi no, notlar, fiyat grubu da).
+  CariModel formdan({
+    required String? cariKodu, required String unvan, required String cariTipi,
+    required String? telefon, required String? email, required String? vergiDairesi,
+    required String? vergiNo, required String? tcKimlik, required double limitTutari,
+    required int vadeGun, required String? notlar, required bool aktif,
+    required int? fiyatGrubuId, required String musteriTipi,
+  }) => CariModel(
+    id: id, globalId: globalId, cariKodu: cariKodu ?? this.cariKodu,
+    unvan: unvan, cariTipi: cariTipi, telefon: telefon, telefon2: telefon2,
+    email: email, email2: email2, vergiDairesi: vergiDairesi, vergiNo: vergiNo,
+    tcKimlik: tcKimlik, bakiye: bakiye, limitTutari: limitTutari, vadeGun: vadeGun,
+    anaGrup: anaGrup, altGrup: altGrup, temsilci: temsilci, notlar: notlar,
+    webSitesi: webSitesi, aktif: aktif, olusturmaTarihi: olusturmaTarihi,
+    guncelleyen: guncelleyen, subeId: subeId, mukellefDurumu: mukellefDurumu,
+    mukellefSorguTarihi: mukellefSorguTarihi, fiyatGrubuId: fiyatGrubuId,
+    musteriTipi: musteriTipi,
   );
 }
 

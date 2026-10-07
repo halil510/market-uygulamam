@@ -560,8 +560,16 @@ class MasaDeposu {
           final eskiToplam = (s['toplam_tutar'] as num?)?.toDouble() ?? 0;
           final dogruToplam = await _kalemToplamiTxn(txn, siparisId);
           if ((eskiToplam - dogruToplam).abs() > 0.01) {
+            // 🔴 DÜZELTME (2026-10-08, kullanıcı bulgusu "mobilde masada
+            // satış yaptım, ekran sıfırlandı, sonra ürünler geri geldi"):
+            // ÖNCEDEN last_updated ŞİMDİ'ye çekiliyordu. Senkron sonrası
+            // mutabakat başka kasanın AÇIK siparişini düzeltip yeni damgayla
+            // buluta geri yazıyordu; o arada sipariş ödendiyse bu "açık"
+            // sürüm daha yeni sayılıp ödenen siparişi yeniden açıyordu.
+            // Toplam türetilmiş değerdir: damga ilerletilmez, LWW daha yeni
+            // değişikliği korur.
             await txn.update(DbSabitler.masaSiparisleri,
-                {'toplam_tutar': dogruToplam, 'last_updated': DateTime.now().toIso8601String()},
+                {'toplam_tutar': dogruToplam},
                 where: 'id = ?', whereArgs: [siparisId]);
             k.siparis(siparisId);
             duzeltilen++;

@@ -299,7 +299,8 @@ class PuanServisi {
         await db.update(DbSabitler.musteriPuan, {
           'toplam_puan': dogruKazanilan,
           'kullanilan': dogruHarcanan,
-          'last_updated': DateTime.now().toIso8601String(),
+          // Türetilmiş değer: last_updated ilerletilmez (bkz. MasaDeposu.
+          // siparisToplamlariMutabakatYap notu).
         }, where: 'cari_id = ?', whereArgs: [cariId]);
         final satir = await db.query(DbSabitler.musteriPuan,
             where: 'cari_id = ?', whereArgs: [cariId], limit: 1);

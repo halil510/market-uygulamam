@@ -194,7 +194,9 @@ class BorcDeposu {
           await db.update('borclar', {
             'odenen_tutar': dogruOdenen,
             'odendi': dogruOdenen >= tutar ? 1 : 0,
-            'last_updated': DateTime.now().toIso8601String(),
+            // Türetilmiş değer: last_updated ilerletilmez — başka cihazın
+            // daha yeni borç düzenlemesi LWW ile korunur (bkz. MasaDeposu.
+            // siparisToplamlariMutabakatYap notu).
           }, where: 'id = ?', whereArgs: [borcId]);
           final guncelSatir = await db.query('borclar', where: 'id = ?', whereArgs: [borcId], limit: 1);
           if (guncelSatir.isNotEmpty) {

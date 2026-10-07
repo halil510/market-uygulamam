@@ -142,7 +142,7 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
       // müşterinin/tedarikçinin TÜM BAKİYESİNİ SESSİZCE SIFIRLIYORDU.
       // Artık düzenleme modunda mevcut modelin copyWith()'i kullanılıyor.
       final cari = _duzenle
-          ? widget.duzenlenecekCari!.copyWith(
+          ? widget.duzenlenecekCari!.formdan(
         cariKodu: _kodCtrl.text.trim().isEmpty ? null : _kodCtrl.text.trim(),
         unvan: _unvanCtrl.text.trim(),
         cariTipi: _cariTipi,

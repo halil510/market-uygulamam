@@ -278,7 +278,6 @@ class KrediKartiDeposu {
   Future<int> limitMutabakatYap() async {
     try {
       final db = await _d;
-      final now = DateTime.now().toIso8601String();
       final duzeltilenIdler = <int>[];
       await db.transaction((txn) async {
         final uyumsuzlar = await txn.rawQuery(_kartUyumsuzSql);
@@ -290,7 +289,8 @@ class KrediKartiDeposu {
           await txn.update('kredi_kartlari', {
             'kullanilan_limit': dogru,
             'kalan_limit': (kartLimit - dogru).clamp(0, double.infinity),
-            'last_updated': now,
+            // Türetilmiş değer: last_updated ilerletilmez (bkz. MasaDeposu.
+            // siparisToplamlariMutabakatYap notu).
           }, where: 'id = ?', whereArgs: [kartId]);
           duzeltilenIdler.add(kartId);
         }

@@ -1,6 +1,7 @@
 // lib/ekranlar/masa/masa_liste_ekrani.dart
 // Masa / Restoran modülü — ana ekran.
 // Tıklama → MasaDetayEkrani'na yönlendirir
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -506,7 +507,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
           FilledButton(onPressed: () => kaydet(ctx), child: const Text('Kaydet')),
         ],
       ),
-    ));
+    )).whenComplete(() => dialogSonrasiBirak([adCtrl, kapasiteCtrl]));
   }
 
   void _topluMasaEkleDialog() {
@@ -600,6 +601,6 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
           ),
         ],
       ),
-    ));
+    )).whenComplete(() => dialogSonrasiBirak([onekCtrl, adetCtrl, baslangicCtrl, kapasiteCtrl]));
   }
 }

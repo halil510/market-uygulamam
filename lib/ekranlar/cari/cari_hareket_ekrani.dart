@@ -1,4 +1,5 @@
 // lib/ekranlar/cari/cari_hareket_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:market_plus/servisler/pdf_font_servisi.dart';
 import 'package:flutter/foundation.dart';

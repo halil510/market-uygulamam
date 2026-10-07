@@ -1,4 +1,5 @@
 // lib/ekranlar/banka/kredi_karti_detay_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../cekirdek/utils/hata_utils.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
@@ -387,6 +388,6 @@ class _KartDetayIcerik extends ConsumerWidget {
           ],
         ),
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
   }
 }

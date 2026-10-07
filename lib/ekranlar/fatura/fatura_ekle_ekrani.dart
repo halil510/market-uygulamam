@@ -1,4 +1,5 @@
 // lib/ekranlar/fatura/fatura_ekle_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -163,10 +164,10 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
 
   Future<void> _urunSec(int i) async {
     UrunModel? secilen;
+    final araCtrl = TextEditingController();
     await showDialog<void>(
       context: context,
       builder: (ctx) {
-        final araCtrl = TextEditingController();
         var liste = <UrunModel>[];
         return StatefulBuilder(
           builder: (ctx, ss) => AlertDialog(
@@ -225,7 +226,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
           ),
         );
       },
-    );
+    ).whenComplete(() => dialogSonrasiBirak([araCtrl]));
     if (secilen == null || !mounted) return;
     setState(() {
       _kalemler[i].urun = secilen;

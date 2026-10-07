@@ -269,7 +269,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
           ],
         ),
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
     return sonuc;
   }
 
@@ -473,7 +473,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
           ),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
 
     // Pencere Esc/dışarı tıklamayla da kapanabilir (butonlar çalışmaz) —
     // bayraklar burada kesin sıfırlanır, yoksa Ödeme/barkod sessizce kilitlenir.

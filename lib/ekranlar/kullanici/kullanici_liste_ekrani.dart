@@ -1,6 +1,7 @@
 // lib/ekranlar/kullanici/kullanici_liste_ekrani.dart
 // Kullanıcı listesi - düzenleme, silme, yetki görüntüleme
 
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -151,7 +152,7 @@ class _KullaniciListeEkraniState extends ConsumerState<KullaniciListeEkrani> {
           ],
         ),
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
 
     if (ok != true) return;
 

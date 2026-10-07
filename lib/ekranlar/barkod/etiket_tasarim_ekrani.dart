@@ -1,5 +1,6 @@
 // lib/ekranlar/barkod/etiket_tasarim_ekrani.dart
 // v3.0 — Barkod/metin arama + barkod okuyucu ile ürün ekleme, çoklu etiket yazdırma
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';

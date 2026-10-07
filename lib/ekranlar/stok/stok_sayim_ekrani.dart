@@ -4,6 +4,7 @@
 //   - StatefulWidget → ConsumerStatefulWidget
 //   - StokSayimNotifier → stokSayimProvider
 
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'dart:async';
 import '../../cekirdek/utils/para_utils.dart';
@@ -181,7 +182,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
           ),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
 
     if (miktar != null && mounted) {
       ref.read(stokSayimProvider.notifier).miktarGuncelle(urun.id!, miktar);

@@ -1,4 +1,5 @@
 // lib/ekranlar/sube/sube_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -83,7 +84,7 @@ class _SubeEkraniState extends ConsumerState<SubeEkrani> {
           }),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([koduC, adiC, adrC, telC]));
     if (ok != true || !mounted) return;
     try {
       await _depo.ekleVeyaGuncelle(

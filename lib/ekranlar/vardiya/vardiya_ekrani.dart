@@ -1,4 +1,5 @@
 // lib/ekranlar/vardiya/vardiya_ekrani.dart — Geliştirilmiş
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -187,7 +188,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
           ),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([kasaCtrl]));
     if (bas == null || !mounted) return;
     setState(() => _islemAktif = true);
     try {
@@ -300,7 +301,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
             ],
           );
       }),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([kadCtrl, sifreCtrl]));
   }
 
   Future<void> _vardiyaKapat() async {
@@ -441,7 +442,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
           ],
         );
       }),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([sayimCtrl]));
 
     if (sonuc == null || !mounted) return;
 

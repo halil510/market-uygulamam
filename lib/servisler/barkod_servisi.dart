@@ -7,6 +7,7 @@
 //  - ITF-14 lojistik barkod tanıma
 //  - Türkiye'ye özel prefix'ler (868-869)
 //  - PLU kodu tanıma (4-5 haneli, 0xxxx ile başlayan)
+import '../cekirdek/utils/denetleyici_birak.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -264,7 +265,7 @@ Future<String?> _masaustuBarkodSor(BuildContext context) {
         ),
       ],
     ),
-  );
+  ).whenComplete(() => dialogSonrasiBirak([ctrl]));
 }
 
 // ── Veri modelleri ────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@
 // Faturalar / Tahsilatlar sekmeleri. Hiçbir yeni iş mantığı YAZILMADI
 // — MEVCUT, kanıtlanmış servisler (FaturalandirmaServisi, FaturaDeposu,
 // CariDeposu.hareketleriniGetir) çağrılıyor.
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';

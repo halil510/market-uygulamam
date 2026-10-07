@@ -1,4 +1,5 @@
 // lib/ekranlar/masa/qr_menu_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter/services.dart';
@@ -135,7 +136,7 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
           ),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([musteriAdiCtrl, musteriTelCtrl, notCtrl]));
     
     if (onay != true) return;
 

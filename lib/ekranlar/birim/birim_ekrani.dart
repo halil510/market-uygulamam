@@ -10,6 +10,7 @@
 // bir tutarsızlık. Artık SQLite tablosu kullanılıyor; dış API
 // (birimListesiGetir() → List<String>) AYNI kaldığı için Ürün Ekle
 // gibi bu listeyi kullanan diğer ekranlar hiç etkilenmiyor.
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -97,7 +98,7 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
           }),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl, carpanCtrl]));
     if (ok != true) return;
     final yeni = ctrl.text.trim().toUpperCase();
     final carpan = ParaUtils.sayiCoz(carpanCtrl.text) ?? 1;
@@ -145,7 +146,7 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
           TsButon(metin: 'Kaydet', onPressed: () => Navigator.pop(ctx, true)),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
     if (ok != true) return;
     final carpan = ParaUtils.sayiCoz(ctrl.text) ?? 1;
     try {

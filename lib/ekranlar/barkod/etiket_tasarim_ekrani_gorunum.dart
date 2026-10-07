@@ -418,7 +418,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
           ),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
     if (yeni != null) _adetDegistir(i, yeni);
   }
 

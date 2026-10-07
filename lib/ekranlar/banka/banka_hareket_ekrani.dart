@@ -1,5 +1,6 @@
 // lib/ekranlar/banka/banka_hareket_ekrani.dart
 // HESAP DETAYI + HAREKET LİSTESİ (Tek Ekran)
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -438,7 +439,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
           ],
         ),
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl, aciklamaCtrl]));
 
     if (sonuc == null || !mounted) return;
 

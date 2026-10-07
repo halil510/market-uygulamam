@@ -17,6 +17,7 @@ import 'iade/iade_arama_widget.dart';
 import 'iade/iade_urun_formu.dart';
 import 'iade/iade_gecmis_widget.dart';
 import 'iade/iade_cari_dialog.dart';
+import 'iade/cari_iade_kurali.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../modeller/urun_model.dart';
@@ -36,7 +37,6 @@ import '../../servisler/belge_no_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/excel_servisi.dart';
-import '../../servisler/fiyat_hesaplama_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../servisler/iade_islem_servisi.dart';
@@ -50,6 +50,8 @@ part 'iade_ekrani_gecmis.dart';
 part 'iade_ekrani_fis.dart';
 part 'iade_ekrani_hizli.dart';
 part 'iade_ekrani_excel.dart';
+part 'iade_ekrani_arama.dart';
+part 'iade_ekrani_kaydet.dart';
 
 // ─── Renk paleti ─────────────────────────────────────────────────────────────
 // 🔴 DÜZELTME (görsel tutarlılık denetimi — "sırayla" listenin 2.
@@ -75,20 +77,6 @@ class _HizliItem {
   final UrunModel urun;
   int adet;
   _HizliItem({required this.urun}) : adet = 1;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-/// Manuel iadede seçili cariye göre iadenin türü: fiyat kuralını, stok
-/// yönünü ve kaydın hangi servis akışına gideceğini belirler.
-enum _CariIadeTuru {
-  /// Müşteri (veya cari seçilmemiş): satış fiyatı, serbest iskonto, stok artar.
-  musteri,
-
-  /// Saf tedarikçi: son alış maliyeti (KDV dahil), stok AZALIR, borcumuz düşer.
-  tedarikci,
-
-  /// Bayi/Toptan müşterisi: bayi fiyatı, stok artar, bayinin borcu düşer.
-  bayi,
 }
 
 class IadeEkrani extends ConsumerStatefulWidget {
@@ -197,7 +185,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
       if (v == _miktar) return;
       setState(() => _miktar = v);
       // Bayi fiyatı miktar kademesine bağlı olabilir.
-      if (_cariIadeTuru == _CariIadeTuru.bayi) _iadeFiyatiniGuncelle();
+      if (_cariIadeTuru == CariIadeTuru.bayi) _iadeFiyatiniGuncelle();
     });
     _verileriYukle();
     if (widget.baslangicFisNo != null && widget.baslangicFisNo!.isNotEmpty) {
@@ -252,117 +240,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     }
   }
 
-  // ── Arama ─────────────────────────────────────────────────────────────────
-  void _aramaDebounce() {
-    _debounce?.cancel();
-    final q = _aramaCtrl.text.trim();
-    if (q.isEmpty) {
-      _aramaListesi = [];
-      if (mounted) setState(() {});
-      return;
-    }
-    if (q.length < 2) return;
-    _debounce = Timer(const Duration(milliseconds: 280), () => _ara(q));
-  }
-
-  void _ara(String q) {
-    final ql = aramaNormalize(q);
-    final res = _tumUrunler
-        .where((u) =>
-            aramaNormalize(u.ad).contains(ql) ||
-            aramaNormalize(u.barkod ?? '').contains(ql))
-        .toList();
-    if (!mounted) return;
-    _aramaListesi = res;
-    if (mounted) setState(() {});
-    if (res.length == 1) _secilenUrunAyarla(res.first);
-  }
-
-  void _secilenUrunAyarla(UrunModel u) {
-    // Aynı ürün bu oturumda iade edilmişse öne çek
-    final mevcutIdx = _iadeListesi.indexWhere((i) => i['urun_id'] == u.id);
-    if (mevcutIdx > 0) {
-      final mevcut = _iadeListesi.removeAt(mevcutIdx);
-      _iadeListesi.insert(0, mevcut);
-      _msg('${u.urunAdi} daha önce iade edildi — öne çekildi', err: false);
-    }
-    setState(() {
-      _secilenUrun = u;
-      _aramaListesi = [];
-      _miktar = 1;
-      _miktarCtrl.text = '1';
-    });
-    _aramaCtrl.clear();
-    _tab.animateTo(0);
-    // Fiyat cari tipine göre (bkz. _iadeFiyatiniGuncelle).
-    _iadeFiyatiniGuncelle();
-    // Mevcut stok BAYAT görünmesin (başka kasada/ekranda satış/iade olmuş
-    // olabilir): seçimden sonra güncel kaydı okuyup yerine koy.
-    _guncelStoguYukle(u);
-  }
-
-  _CariIadeTuru get _cariIadeTuru {
-    final cari = _secilenCari;
-    if (cari?.id == null) return _CariIadeTuru.musteri;
-    // "Hem Müşteri Hem Tedarikçi" bu ekranda müşteri sayılır (bkz.
-    // cariSafTedarikciMi) — tedarikçiye iade yalnız saf tedarikçide.
-    if (cariSafTedarikciMi(cari!.cariTipi)) return _CariIadeTuru.tedarikci;
-    if (cariBayiMi(cari)) return _CariIadeTuru.bayi;
-    return _CariIadeTuru.musteri;
-  }
-
-  /// Formda gösterilen iade birim fiyatı, cari tipine göre: müşteri → satış
-  /// fiyatı; tedarikçi → son alış maliyeti (KDV dahil); bayi → bayiye özel
-  /// toptan fiyatı. Tedarikçi/bayide asıl tutar kayıtta serviste AYNI
-  /// kuralla yeniden hesaplanır (bu yalnız önizleme).
-  Future<void> _iadeFiyatiniGuncelle() async {
-    final urun = _secilenUrun;
-    if (urun == null) return;
-    final tur = _cariIadeTuru;
-    final double fiyat;
-    try {
-      fiyat = switch (tur) {
-        _CariIadeTuru.musteri => urun.satisFiyat,
-        _CariIadeTuru.tedarikci => tedarikciIadeBirimMaliyeti(
-            alisFiyat: urun.alisFiyat,
-            alisKdvOran: urun.alisKdvOran,
-            alisFiyatKdvDahil: urun.alisFiyatKdvDahil),
-        _CariIadeTuru.bayi => (await FiyatHesaplamaServisi()
-                .hesapla(urun: urun, cari: _secilenCari, miktar: _miktar))
-            .birimFiyat,
-      };
-    } catch (e) {
-      _msg('İade fiyatı hesaplanamadı: ${kullaniciyaHataMetni(e)}', err: true);
-      return;
-    }
-    if (!mounted || _secilenUrun?.id != urun.id) return;
-    setState(() {
-      _orijinalFiyat = fiyat;
-      _fiyatCtrl.text = fiyat.toStringAsFixed(2);
-      if (tur != _CariIadeTuru.musteri) _iskontoCtrl.text = '0';
-    });
-  }
-
-  /// Formda fiyatın neden kilitli olduğunu anlatan metin (müşteride null).
-  String? get _fiyatKuraliAciklamasi => switch (_cariIadeTuru) {
-        _CariIadeTuru.musteri => null,
-        _CariIadeTuru.tedarikci =>
-          'Tedarikçiye iade: fiyat ürünün son alış maliyetidir (KDV dahil). '
-              'Stok azalır, tutar ${_secilenCari!.unvan} carisine olan borcumuzdan düşülür.',
-        _CariIadeTuru.bayi =>
-          'Bayi iadesi: fiyat bu bayiye özel toptan fiyatıdır. Stok artar, '
-              'tutar ${_secilenCari!.unvan} bayisinin borcundan düşülür.',
-      };
-
-  Future<void> _guncelStoguYukle(UrunModel u) async {
-    if (u.id == null) return;
-    try {
-      final guncel = await _urunDepo.idileGetir(u.id!);
-      if (guncel == null || !mounted) return;
-      if (_secilenUrun?.id == u.id) setState(() => _secilenUrun = guncel);
-    } catch (_) {/* eldeki değerle devam */}
-  }
-
   // Oturum için yeni fiş no oluştur
   Future<void> _yeniFisNoOlustur() async {
     try {
@@ -405,298 +282,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     _yeniFisNoOlustur(); // Yeni oturum için yeni fiş no
     _formSifirla();
     _msg('Yeni iade başlatıldı', err: false);
-  }
-
-  // ── Barkod ─────────────────────────────────────────────────────────────────
-  Future<void> _barkodOku() async {
-    final barkod = await _barkodSrv.barkodTara(context);
-    if (barkod == null || barkod.isEmpty) return;
-    await _barkodIsle(barkod);
-  }
-
-  /// Kamera, arama kutusunda Enter ve el terminali / USB okuyucu (bkz.
-  /// DonanimBarkodDinleyici) buradan geçer. Önceden yalnızca kamera
-  /// vardı; okuyucuyla okutulan barkod kutuya yazılıp kalıyordu.
-  Future<void> _barkodIsle(String barkod) async {
-    try {
-      _aramaCtrl.clear();
-      if (mounted) setState(() => _aramaListesi = []);
-
-      // 🔴 DÜZELTME (Madde 34 — Barkod/POS denetimi, 2026-09-20): tartılan
-      // (değişken ağırlıklı) bir ürün satışta terazi barkoduyla (13 hane,
-      // prefix 20-29, gömülü ürün kodu+ağırlık) sorunsuz ekleniyordu, ama
-      // AYNI barkod İade ekranında hiç çözülmüyordu — tam barkod dizesi
-      // urunler.barkod'a karşı LİTERAL aranıyordu, hiçbir zaman eşleşmezdi
-      // ("Ürün bulunamadı"). Aynı fiziksel ürün/etiket, satışta çalışıp
-      // iadede çalışmayan tutarsız bir davranış sergiliyordu.
-      final tartim = BarkodServisi.tartimBarkodCoz(barkod);
-      final aranacakKod = tartim?.urunKodu ?? barkod;
-      final urun = await _urunDepo.barkodlaGetir(aranacakKod);
-      if (!mounted) return;
-      if (urun != null) {
-        _secilenUrunAyarla(urun);
-        // Terazi barkodundaki gömülü ağırlığı ön-doldur (satış akışındaki
-        // AYNI davranış) — kasiyer yine de elle düzeltebilir.
-        if (tartim != null && mounted) {
-          setState(() {
-            _miktar = tartim.miktarKg;
-            _miktarCtrl.text = tartim.miktarKg.toStringAsFixed(3);
-          });
-        }
-      } else {
-        _msg('Ürün bulunamadı: $barkod', err: true);
-      }
-    } catch (e) {
-      if (kDebugMode) if (mounted) debugPrint('Hata: $e');
-    }
-  }
-
-  // 🔥 "Hızlı" sekmesinin _hizliBarkod() kodu
-  // 'iade_ekrani_hizli.dart' dosyasına taşındı (extension olarak).
-
-  // ── Cari seçim - kayıtsız müşteri dahil ─────────────────────────────────
-  /// Kayıtlı müşteriye iade: borcundan mı düşülsün, elden mi ödensin?
-  /// null = vazgeçti.
-  Future<String?> _cariIadeYontemiSor(String unvan) => showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('İade nasıl yapılsın?'),
-          content: Text('$unvan için iade tutarı:'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.pop(ctx, 'Nakit'),
-              icon: const Icon(Icons.payments_outlined),
-              label: const Text('Nakit ver (kasadan)'),
-            ),
-            FilledButton.icon(
-              onPressed: () => Navigator.pop(ctx, 'Cari'),
-              icon: const Icon(Icons.account_balance_wallet_outlined),
-              label: const Text('Borcundan düş (Cari)'),
-            ),
-          ],
-        ),
-      );
-
-  Future<CariModel?> _cariSecimDialog() async {
-    return showDialog<CariModel>(
-      context: context,
-      builder: (ctx) => CariSecDialog(cariler: _cariler),
-    );
-  }
-
-  // ── İade kaydet (TEMİZ) ────────────────────────────────────────────────────
-  Future<void> _kaydet() async {
-    if (_secilenUrun == null) {
-      _msg('Ürün seçin', err: true);
-      return;
-    }
-    if (_miktar <= 0) {
-      _msg('Geçerli miktar girin', err: true);
-      return;
-    }
-
-    // Müşteri seçimi - kayıtsız müşteri veya kayıtlı cari seçimi
-    if (_secilenCari == null) {
-      final sec = await _cariSecimDialog();
-      if (sec == null) return; // Kullanıcı iptal etti
-      if (!mounted) return;
-      setState(() => _secilenCari = sec);
-      // 🔴 DÜZELTME (2026-09-28, kullanıcı bulgusu — "müşteriden iade aldım,
-      // bakiye azalmadı"): kayıtlı cari BURADA (kaydet anında) seçilince
-      // iade yöntemi hiç sorulmadan varsayılan 'Nakit' ile kaydediliyordu —
-      // kasadan para çıkmış sayılıyor, cari borcu düşmüyordu. Artık açıkça
-      // soruluyor. Tedarikçi/bayi iadesi her zaman cariye işlenir — sorulmaz.
-      if (sec.id != null && _cariIadeTuru == _CariIadeTuru.musteri) {
-        final yontem = await _cariIadeYontemiSor(sec.unvan);
-        if (yontem == null || !mounted) return;
-        setState(() => _iadeOdemeYontemi = yontem);
-      }
-    }
-
-    // Düzenleme modunda mevcut fişe kalem ekle
-    if (_duzenlemeModu_iadeId != null) {
-      final fiyat = ParaUtils.sayiCoz(_fiyatCtrl.text) ?? _orijinalFiyat;
-      final isk = ParaUtils.sayiCoz(_iskontoCtrl.text) ?? 0;
-      final toplam = ParaUtils.yuvarla(_miktar * fiyat * (1 - isk / 100));
-      await _duzenlemeModu_kalemEkle(fiyat, isk, ParaUtils.yuvarla(_miktar * fiyat * (isk / 100)),
-          fiyat * (1 - isk / 100), toplam);
-      return;
-    }
-
-    if (!mounted) return;
-
-    // Tedarikçiye / bayiden iade: fiyatı ve yönü kural belirler, ayrı akış.
-    final tur = _cariIadeTuru;
-    if (tur != _CariIadeTuru.musteri) {
-      await _cariIadesiKaydet(tur);
-      return;
-    }
-
-    setState(() => _yukleniyor = true);
-
-    try {
-      final fiyat = ParaUtils.sayiCoz(_fiyatCtrl.text) ?? _orijinalFiyat;
-      final isk = ParaUtils.sayiCoz(_iskontoCtrl.text) ?? 0;
-      final toplam = ParaUtils.yuvarla(_miktar * fiyat * (1 - isk / 100));
-      final neden = _aciklamaCtrl.text.trim().isEmpty
-          ? 'Iade'
-          : _aciklamaCtrl.text.trim();
-
-      // Fiş no transaction dışında (sequence güncelleme ayrı transaction gerektirir)
-      if (_oturumFisNo.isEmpty) {
-        _oturumFisNo = await BelgeNoServisi().uret('iade');
-      }
-
-      // Tüm transaction + bulut senkron mantığı artık
-      // IadeIslemServisi.manuelKalemEkle'de — bkz. o metodun doc yorumu,
-      // davranış birebir korundu.
-      final iadeId = await IadeIslemServisi().manuelKalemEkle(
-        oturumIadeId: _oturumIadeId,
-        cariId: _secilenCari?.id,
-        cariTipi: _secilenCari?.cariTipi,
-        fisNo: _oturumFisNo,
-        urunId: _secilenUrun!.id!,
-        urunAdi: _secilenUrun!.urunAdi,
-        miktar: _miktar,
-        fiyat: fiyat,
-        toplam: toplam,
-        neden: neden,
-        odemeYontemi: _iadeOdemeYontemi,
-        kullaniciId: AuthServisi().aktifId,
-        kullaniciAdi: AuthServisi().aktifAd,
-        iskontoOran: isk,
-      );
-
-      // Transaction başarılı - state güncelle
-      if (_oturumIadeId == null) _oturumIadeId = iadeId;
-
-      // ── Lokal liste güncelle ─────────────────────────────────────────────
-      final mevcutIdx =
-          _iadeListesi.indexWhere((x) => x['urun_id'] == _secilenUrun!.id);
-      if (mevcutIdx != -1) {
-        final m = _iadeListesi[mevcutIdx];
-        final yM = (m['miktar'] as double) + _miktar;
-        final yT = (m['toplam_tutar'] as double) + toplam;
-        final updated = {...m, 'miktar': yM, 'toplam_tutar': yT};
-        _iadeListesi.removeAt(mevcutIdx);
-        _iadeListesi.insert(0, updated); // Öne taşı
-      } else {
-        _iadeListesi.insert(0, {
-          'iade_id': iadeId,
-          'urun_id': _secilenUrun!.id,
-          'tarih': DateTime.now(),
-          'urun_adi': _secilenUrun!.urunAdi,
-          'barkod': _secilenUrun!.barkod ?? '',
-          'miktar': _miktar,
-          'birim_fiyat': fiyat,
-          'iskonto_oran': isk,
-          'iskonto_tutar': ParaUtils.yuvarla(_miktar * fiyat * (isk / 100)),
-          'toplam_tutar': toplam,
-          'musteri_adi': _secilenCari?.unvan ?? 'Kayıtsız Müşteri',
-          'cari_id': _secilenCari?.id,
-          'fis_no': _oturumFisNo,
-        });
-      }
-
-      // Lokal stok
-      final si = _tumUrunler.indexWhere((u) => u.id == _secilenUrun!.id);
-      if (si != -1) {
-        _tumUrunler[si] =
-            _tumUrunler[si].copyWith(stok: _tumUrunler[si].stok + _miktar);
-      }
-
-      _msg('${_secilenUrun!.urunAdi} iade edildi ✓', err: false);
-      // Kullanıcı isteği: "iade alımı yaptığımızda o ekran kapanacak"
-      // — bu, sadece toptan cari panelinden tek-ürünlük hızlı iade
-      // akışında istenir; normal çok-kalemli akışta ekran açık kalıp
-      // form sıfırlanmaya devam eder (mevcut davranış korunuyor).
-      if (widget.otomatikKapat) {
-        if (mounted) Navigator.pop(context, true);
-        return;
-      }
-      _formSifirla();
-      _gecmisYukle(); // Geçmişi güncelle
-    } catch (e) {
-      _msg('Hata: $e', err: true);
-    } finally {
-      if (mounted) setState(() => _yukleniyor = false);
-    }
-  }
-
-  /// Tedarikçiye iade / bayiden iade — her kayıt kendi belgesini açar
-  /// (IadeIslemServisi.tedarikciyeIadeEt / bayidenIadeAl). Fiyat formdaki
-  /// alandan değil, servisteki kuraldan gelir; ekranda gösterilen önizlemedir.
-  Future<void> _cariIadesiKaydet(_CariIadeTuru tur) async {
-    final cari = _secilenCari!;
-    final urun = _secilenUrun!;
-    final miktar = _miktar;
-    setState(() => _yukleniyor = true);
-    try {
-      final kalem = [IadeMiktari(urunId: urun.id!, miktar: miktar)];
-      final aciklama = _aciklamaCtrl.text.trim().isEmpty ? null : _aciklamaCtrl.text.trim();
-      final servis = IadeIslemServisi();
-      final sonuc = tur == _CariIadeTuru.tedarikci
-          ? await servis.tedarikciyeIadeEt(
-              tedarikci: cari,
-              kalemler: kalem,
-              kullaniciId: AuthServisi().aktifId,
-              kullaniciAdi: AuthServisi().aktifAd,
-              aciklama: aciklama)
-          : await servis.bayidenIadeAl(
-              bayi: cari,
-              kalemler: kalem,
-              kullaniciId: AuthServisi().aktifId,
-              kullaniciAdi: AuthServisi().aktifAd,
-              aciklama: aciklama);
-      if (!mounted) return;
-
-      final stokAzalir = tur == _CariIadeTuru.tedarikci;
-      _iadeListesi.insert(0, {
-        'iade_id': sonuc.iadeId,
-        'urun_id': urun.id,
-        'tarih': DateTime.now(),
-        'urun_adi': urun.urunAdi,
-        'barkod': urun.barkod ?? '',
-        'miktar': miktar,
-        'birim_fiyat': sonuc.birimFiyatlar[urun.id] ?? 0,
-        'iskonto_oran': 0.0,
-        'iskonto_tutar': 0.0,
-        'toplam_tutar': sonuc.toplamTutar,
-        'musteri_adi': cari.unvan,
-        'cari_id': cari.id,
-        'fis_no': sonuc.fisNo,
-        // Oturum listesinin müşteri iadesine özel sil/düzenle eylemleri bu
-        // satırlarda kısıtlanır (bkz. iade_ekrani_gecmis.dart _cariIadeKisiti).
-        'cari_iade_turu': tur.name,
-      });
-      final si = _tumUrunler.indexWhere((u) => u.id == urun.id);
-      if (si != -1) {
-        final eski = _tumUrunler[si].stok;
-        _tumUrunler[si] = _tumUrunler[si].copyWith(stok: stokAzalir ? eski - miktar : eski + miktar);
-      }
-      ref.invalidate(cariDetayProvider(cari.id!));
-      ref.read(carilerProvider.notifier).yukle();
-
-      _msg(
-          stokAzalir
-              ? '${urun.urunAdi} tedarikçiye iade edildi — ${ParaUtils.formatla(sonuc.toplamTutar)} borcumuzdan düşüldü (${sonuc.fisNo})'
-              : '${urun.urunAdi} bayiden iade alındı — ${ParaUtils.formatla(sonuc.toplamTutar)} bayi borcundan düşüldü (${sonuc.fisNo})',
-          err: false);
-      if (widget.otomatikKapat) {
-        Navigator.pop(context, true);
-        return;
-      }
-      _formSifirla();
-      _gecmisYukle();
-    } on IadeGecersizHatasi catch (e) {
-      _msg(e.mesaj, err: true);
-    } catch (e) {
-      _msg('İade kaydedilemedi: ${kullaniciyaHataMetni(e)}', err: true);
-    } finally {
-      if (mounted) setState(() => _yukleniyor = false);
-    }
   }
 
   // ── Toplu iade (hızlı mod) ───────────────────────────────────────────────
@@ -769,37 +354,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                 label: Text(_secilenCari!.unvan,
                     style: const TextStyle(fontSize: 11)),
                 deleteIcon: const Icon(Icons.close, size: 14),
-                onDeleted: () {
-                  _secilenCari = null;
-                  // Cari kaldırıldığında 'Cari' ödeme seçeneği artık
-                  // dropdown'da yok — seçili kalırsa DropdownButtonFormField
-                  // geçersiz değerle çöker.
-                  if (_iadeOdemeYontemi == 'Cari') _iadeOdemeYontemi = 'Nakit';
-                  if (mounted) setState(() {});
-                  _iadeFiyatiniGuncelle(); // fiyat kuralı cari tipine bağlı
-                }),
+                onDeleted: _cariyiKaldir),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
-            onSelected: (v) async {
-              if (v == 'musteri') {
-                final secilen = await showDialog<CariModel?>(
-                    context: context,
-                    builder: (ctx) => CariSecDialog(cariler: _cariler));
-                if (secilen != null) {
-                  _secilenCari = secilen;
-                  if (secilen.id == null && _iadeOdemeYontemi == 'Cari') {
-                    _iadeOdemeYontemi = 'Nakit';
-                  } else if (secilen.id != null) {
-                    // Kayıtlı müşteride varsayılan: iade borcundan düşülür
-                    // (profesyonel ERP davranışı). Elden para verilecekse
-                    // ürün formundaki "İade Yöntemi"nden Nakit seçilir.
-                    _iadeOdemeYontemi = 'Cari';
-                  }
-                  if (mounted) setState(() {});
-                  _iadeFiyatiniGuncelle(); // fiyat kuralı cari tipine bağlı
-                }
-              }
-            },
+            onSelected: (v) { if (v == 'musteri') _musteriSec(); },
             itemBuilder: (_) => [
               const PopupMenuItem(
                   value: 'musteri',
@@ -910,20 +468,9 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   Widget _aramaKutusu() => IadeAramaKutusu(
         controller: _aramaCtrl,
         focusNode: _aramaFocus,
-        onTemizle: () {
-          _aramaCtrl.clear();
-          _aramaListesi = [];
-          if (mounted) setState(() {});
-        },
+        onTemizle: _aramayiTemizle,
         onBarkod: _barkodOku,
-        onGonder: (q) {
-          final b = q.trim();
-          if (barkodaBenziyor(b)) {
-            _barkodIsle(b);
-          } else if (_aramaListesi.length == 1) {
-            _secilenUrunAyarla(_aramaListesi.first);
-          }
-        },
+        onGonder: _aramaGonder,
       );
 
   Widget _aramaPanel() => IadeAramaPanel(
@@ -946,12 +493,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
           if (mounted) setState(() => _iadeOdemeYontemi = v);
         },
         cariAdi: _secilenCari?.id != null ? _secilenCari!.unvan : null,
-        fiyatKuraliAciklamasi: _fiyatKuraliAciklamasi,
-        stokAzalir: _cariIadeTuru == _CariIadeTuru.tedarikci,
+        fiyatKuraliAciklamasi: _cariIadeTuru.fiyatAciklamasi(_secilenCari),
+        stokAzalir: _cariIadeTuru.stokAzalir,
         // Aynı ürün bu iadede zaten varsa önceki miktar (örn. 2) gösterilir.
-        oncekiMiktar: _iadeListesi
-            .where((x) => x['urun_id'] == _secilenUrun!.id)
-            .fold<double>(0, (s, x) => s + ((x['miktar'] as num?)?.toDouble() ?? 0)),
+        oncekiMiktar: _oncekiIadeMiktari,
       );
 
   Widget _bosEkran() => const Padding(

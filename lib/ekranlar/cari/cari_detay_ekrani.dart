@@ -1,4 +1,5 @@
 // lib/ekranlar/cari/cari_detay_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/foundation.dart';
 import 'fis_detay_ekrani.dart';
 import 'package:flutter/material.dart';

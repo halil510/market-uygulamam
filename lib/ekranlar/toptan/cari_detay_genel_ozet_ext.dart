@@ -115,7 +115,7 @@ extension _CariDetayGenelOzetExt on _CariDetayPaneliState {
           FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Kaydet')),
         ],
       )),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([adresCtrl, ilceCtrl, ilCtrl]));
     if (kaydet != true || adresCtrl.text.trim().isEmpty) return;
 
     final varsayilan = _adresler.isEmpty; // ilk eklenen adres otomatik varsayılan

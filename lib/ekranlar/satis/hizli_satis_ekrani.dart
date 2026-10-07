@@ -7,6 +7,7 @@
 //   - Tüm "final n = context.read<HizliSatisNotifier>()" → ref.read(sepetProvider.notifier)
 //   - Otomatik yazdırma kaldırıldı, manuel yazdırma ikonu appBar'a eklendi.
 
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../uygulama/masaustu/masaustu_yan_menu.dart';
 import '../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/foundation.dart';

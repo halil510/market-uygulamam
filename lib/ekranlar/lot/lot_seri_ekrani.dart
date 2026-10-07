@@ -1,5 +1,6 @@
 // lib/ekranlar/lot/lot_seri_ekrani.dart
 // Lot ve seri numarası takibi — ürün bazlı lot listesi, stok detayı
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import '../../cekirdek/utils/para_utils.dart';
@@ -150,7 +151,7 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
               }),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([lotCtrl, sktCtrl, miktCtrl, notCtrl]));
     if (ok != true || !mounted) return;
     // 🔴 Derin analizde bulundu: miktar alanı ayrıştırma (parse)
     // başarısız olursa sessizce 0'a düşüyordu — kullanıcı "12,5" yerine

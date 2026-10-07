@@ -1,4 +1,5 @@
 // lib/ekranlar/urun/urun_detay_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -319,7 +320,7 @@ class _ToptanKademeleriBolumuState extends State<_ToptanKademeleriBolumu> {
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Kaydet')),
         ],
       )),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([miktarCtrl, fiyatCtrl]));
     if (kaydet != true) return;
 
     final minMiktar = ParaUtils.sayiCoz(miktarCtrl.text);

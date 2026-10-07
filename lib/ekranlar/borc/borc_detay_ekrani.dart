@@ -1,4 +1,5 @@
 // lib/ekranlar/borc/borc_detay_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -120,7 +121,7 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
           ),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([sebepCtrl]));
     if (ok != true) return;
     final sebep = sebepCtrl.text.trim();
     if (sebep.isEmpty) {

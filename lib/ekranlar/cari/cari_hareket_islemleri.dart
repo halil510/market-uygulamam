@@ -288,7 +288,7 @@ extension _CariHareketIslemleri on _CariHareketEkraniState {
           ],
         ),
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl, acCtrl]));
     if (ok != true) return;
     final tutar = ParaUtils.sayiCoz(ctrl.text) ?? 0;
     if (tutar <= 0) {

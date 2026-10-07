@@ -1,5 +1,6 @@
 // lib/ekranlar/kasa/kasa_hareket_ekrani.dart
 
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -125,7 +126,7 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
                       child: const Text('Kaydet')),
                 ],
               )),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl, acCtrl]));
     if (ok != true) return;
     final tutar = ParaUtils.sayiCoz(ctrl.text) ?? 0;
     if (tutar <= 0) return;

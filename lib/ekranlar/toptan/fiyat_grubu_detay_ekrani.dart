@@ -9,6 +9,7 @@
 // hangi ürünün kaç TL olduğunu belirlemenin HİÇBİR yolu yoktu. Bu,
 // B2BKing/Virto Commerce gibi profesyonel B2B sistemlerindeki "grup
 // bazlı fiyat yönetimi" görünümünün karşılığı.
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'dart:async';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter/material.dart';
@@ -125,7 +126,7 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
           FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: const Text('Kaydet')),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
     if (sonuc == null) return;
 
     if (sonuc == '__sil__') {

@@ -1,4 +1,5 @@
 // lib/ekranlar/urun/marka_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -48,7 +49,7 @@ class _MarkaEkraniState extends ConsumerState<MarkaEkrani> {
           TsButon(metin: 'Ekle', onPressed: () => Navigator.pop(ctx, true)),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
     if (ok != true || ctrl.text.trim().isEmpty) return;
     try {
       await _depo.ekle(ctrl.text.trim());
@@ -72,7 +73,7 @@ class _MarkaEkraniState extends ConsumerState<MarkaEkrani> {
           TsButon(metin: 'Kaydet', onPressed: () => Navigator.pop(ctx, true)),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
     if (ok != true || ctrl.text.trim().isEmpty) return;
     try {
       if (marka['id'] != null) {

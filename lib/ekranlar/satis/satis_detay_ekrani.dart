@@ -1,4 +1,5 @@
 // lib/ekranlar/satis/satis_detay_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -73,9 +74,9 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
   }
 
   Future<void> _iptal() async {
+    final ctrl = TextEditingController();
     final onay = await showDialog<String>(context: context,
       builder: (ctx) {
-        final ctrl = TextEditingController();
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Satış İptal'),
@@ -95,7 +96,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
               child: const Text('İptal Et')),
           ],
         );
-      });
+      }).whenComplete(() => dialogSonrasiBirak([ctrl]));
     if (onay == null || !mounted) return;
 
     // e-Fatura/GİB güvenlik kontrolü + fiili silme artık SatisIptalServisi'nde

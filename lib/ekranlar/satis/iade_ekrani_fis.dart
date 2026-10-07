@@ -241,7 +241,7 @@ extension _FisTabExt on _IadeEkraniState {
                       child: const Text('İade Et')),
                 ],
               )),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([miktarCtrl]));
     if (onay != true) return;
 
     // Tüm transaction + lot-farkındalıklı stok geri ekleme + bulut senkron

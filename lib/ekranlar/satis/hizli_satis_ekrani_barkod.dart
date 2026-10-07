@@ -574,7 +574,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
           ],
         ),
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
 
     if (_kameraAcik && mounted) { try { _scanCtrl.start(); } catch (e) { /* ignore */ } }
     if (!mounted || miktar == null || miktar <= 0) return;

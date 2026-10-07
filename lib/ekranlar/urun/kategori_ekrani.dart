@@ -1,4 +1,5 @@
 // lib/ekranlar/urun/kategori_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,7 +53,7 @@ class _KategoriEkraniState extends ConsumerState<KategoriEkrani> {
           TsButon(metin: 'Ekle', onPressed: () => Navigator.pop(context, ctrl.text.trim())),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
     if (onay != null && onay.isNotEmpty) {
       await _depo.ekle(onay);
       _yukle();

@@ -232,7 +232,7 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Oluştur')),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([kullaniciAdiCtrl, sifreCtrl]));
     if (ok != true) return;
     final kullaniciAdi = kullaniciAdiCtrl.text.trim();
     final sifre = sifreCtrl.text.trim();
@@ -348,7 +348,7 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
           ),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([tutarCtrl, sebepCtrl]));
     if (ok != true) return;
 
     final tutar = ParaUtils.sayiCoz(tutarCtrl.text) ?? 0;

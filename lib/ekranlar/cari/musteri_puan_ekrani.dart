@@ -2,6 +2,7 @@
 //
 // Müşteri puan paneli — bakiye, hareket geçmişi, puan kullanma
 // Cari detay ekranından açılır: context.push('/cari/puan', extra: cariId)
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/foundation.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter/material.dart';
@@ -116,7 +117,7 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
           ),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
 
     if (istenen == null || !mounted) return;
     setState(() => _islemAktif = true);
@@ -180,7 +181,7 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
                 ),
               ],
             ),
-          );
+          ).whenComplete(() => dialogSonrasiBirak([ctrl]));
           if (puan != null && puan > 0 && mounted) {
             setState(() => _islemAktif = true);
             try {

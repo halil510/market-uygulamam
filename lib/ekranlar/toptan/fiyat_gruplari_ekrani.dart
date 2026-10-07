@@ -1,4 +1,5 @@
 // lib/ekranlar/toptan/fiyat_gruplari_ekrani.dart
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
 import '../../cekirdek/utils/hata_utils.dart';
@@ -77,7 +78,7 @@ class _FiyatGruplariEkraniState extends State<FiyatGruplariEkrani> {
           FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Kaydet')),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([adCtrl, aciklamaCtrl, iskontoCtrl]));
     if (kaydedildi != true) return;
     if (adCtrl.text.trim().isEmpty) return;
 

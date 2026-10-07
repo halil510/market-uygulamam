@@ -71,7 +71,7 @@ extension _EtiketTasarimIslemlerExt on _EtiketTasarimEkraniState {
               child: const Text('Kaydet')),
         ],
       ),
-    );
+    ).whenComplete(() => dialogSonrasiBirak([adCtrl]));
     if (ad == null || ad.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
     _ozelSablonlar.removeWhere((s) => s['ad'] == ad);

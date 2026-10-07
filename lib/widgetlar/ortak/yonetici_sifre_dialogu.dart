@@ -15,6 +15,7 @@
 // Bu yüzden çağıran taraf, dialogu göstermeden ÖNCE (buton görünürlüğü)
 // VE eylemi uygulamadan hemen önce AuthServisi().isMudur kontrolü
 // yapmalıdır.
+import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import '../../depolar/kullanici_deposu.dart';
 import '../../servisler/auth_servisi.dart';
@@ -93,6 +94,6 @@ Future<bool> yoneticiSifresiIleOnayIste(
         ],
       ),
     ),
-  );
+  ).whenComplete(() => dialogSonrasiBirak([ctrl]));
   return sonuc == true;
 }

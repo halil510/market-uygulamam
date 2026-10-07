@@ -100,48 +100,67 @@ class SupabaseSaglayici implements IBulutSaglayici {
     }
   }
 
-  // ── FK dönüşüm cache'leri (otomatik senkron yolu) ──
+  // ── FK dönüşümü (otomatik senkron yolu) ──
   // Lokal SQLite id'leri ile buluttaki BIGSERIAL id'ler alakasız
   // olduğundan, FK kolonları (satis_kalem.satis_id vb.) gönderilmeden
   // önce lokal→bulut dönüştürülmek zorunda (manuel senkron yolundaki
-  // düzeltmenin simetriği). Cache'ler static (constructor const
-  // kalabilsin diye); bir lokal id cache'te BULUNAMAZSA o parent'ın
-  // cache'i bir kez tazelenir ("miss-refresh") — böylece az önce
-  // eklenen yeni kayıtlar da yakalanır, bayat cache sorunu olmaz.
-  static final Map<String, Map<int, String>> _fkLokalGidCache = {};
+  // düzeltmenin simetriği). Zincir: lokal id → lokal anahtar (global_id ya
+  // da doğal anahtar) → bulut id.
+  //
+  // 🔴 PERFORMANS DÜZELTMESİ (Bulut Veri Güvenliği Raporu 2026-10-07,
+  // Bulgu 9): ÖNCEDEN ilk kullanımda ebeveyn tablonun TAMAMI buluttan
+  // (1000'lik sayfalarla) ve yerelden okunuyor, her "ıskada" da tamamı
+  // YENİDEN indiriliyordu. Her yeni satış bir ıskaya yol açtığından, büyük
+  // satislar/urunler tablosunda her senkron turu on binlerce satır
+  // indiriyordu. Artık yalnız GEREKEN kimlikler sorgulanır: yerelde
+  // `id IN (…)`, bulutta `anahtar=in.(…)` (50'lik parçalar). Yerel eşleme
+  // her çağrıda tazedir (PK sorgusu, ucuz); bulut eşlemesi önbellekte
+  // tutulur (bir kaydın bulut id'si değişmez) ve yalnız bulunanlar
+  // önbelleğe girer — henüz bulutta olmayan ebeveyn bir sonraki turda
+  // yeniden sorulur.
   static final Map<String, Map<String, int>> _fkGidCloudCache = {};
 
-  Future<void> _fkLokalCacheYukle(String parent) async {
+  /// Bir turda bulutta sorgulanacak anahtar sayısı (URL uzunluğu sınırı).
+  @visibleForTesting
+  static const int fkSorguParcasi = 50;
+
+  /// PostgREST `in.(…)` filtresi için değer listesi — her değer çift
+  /// tırnağa alınır (virgül/parantez içeren doğal anahtarlar için), içteki
+  /// `\` ve `"` kaçışlanır. Saf — test edilebilir.
+  @visibleForTesting
+  static String inFiltresi(Iterable<String> degerler) =>
+      'in.(${degerler.map((d) => '"${d.replaceAll(r'\', r'\\').replaceAll('"', r'\"')}"').join(',')})';
+
+  /// Yerel id → ebeveyn anahtarı. Anahtarı boş olan global_id'li satırlara
+  /// kalıcı kimlik üretilir (aşağıdaki nota bkz.).
+  Future<Map<int, String>> _fkLokalAnahtarlar(String parent, Set<int> idler) async {
     final db = await Veritabani().db;
     // Eşleşme anahtarı: global_id ya da tablonun doğal anahtarı (kategoriler
     // → ad, subeler → sube_kodu…) — bkz. KolonHaritalama.ebeveynAnahtari.
     final anahtar = KolonHaritalama.ebeveynAnahtari(parent);
-    final rows = await db.query(parent, columns: ['id', anahtar]);
     final h = <int, String>{};
     // 🔴🔴🔴 KRİTİK DÜZELTME (kök neden — kullanıcı bulgusu: "kredi
-    // kartlarında sorun var, Supabase'e göndermemiş"): Bu fonksiyon
-    // ÖNCEDEN global_id'si NULL/boş olan satırları sessizce ATLIYORDU.
-    // Bir parent tablo (ör. 'bankalar') senkron sistemine SONRADAN
-    // eklendiğinde, o tablodaki ESKİ kayıtların global_id'si hâlâ NULL
-    // olabiliyordu (hiçbir eski kod bu sütuna yazmıyordu). Sonuç: bu
-    // eski bir kayda bağlı YENİ bir çocuk kayıt (ör. yeni bir kredi
-    // kartı) gönderilmeye çalışıldığında, FK dönüşümü parent'ı HİÇ
-    // BULAMIYOR, çocuk kaydın FK sütunu (banka_id gibi) YEREL id
-    // olarak OLDUĞU GİBİ buluta gidiyordu — bulutta NOT NULL + FOREIGN
-    // KEY kısıtlaması olan sütunlarda bu, kaydın tamamen reddedilmesine
-    // ya da yanlış bir kayda bağlanmasına yol açıyordu. Artık eksik
-    // bulunan HER global_id, burada kalıcı olarak (lokale yazılarak)
-    // dolduruluyor — bu hata sınıfı, ileride sisteme eklenecek başka
-    // bir tabloda da bir daha asla sessizce tekrarlanmayacak.
+    // kartlarında sorun var, Supabase'e göndermemiş"): global_id'si
+    // NULL/boş olan ebeveyn satırları ÖNCEDEN sessizce atlanıyor, çocuğun
+    // FK'sı yerel id olarak buluta gidiyordu. Eksik bulunan HER global_id
+    // burada kalıcı olarak (lokale yazılarak) doldurulur.
     final eksikler = <int>[];
-    for (final r in rows) {
-      final id = r['id'] as int?;
-      if (id == null) continue;
-      final gid = r[anahtar]?.toString();
-      if (gid != null && gid.isNotEmpty) {
-        h[id] = gid;
-      } else {
-        eksikler.add(id);
+    final liste = idler.toList();
+    for (var i = 0; i < liste.length; i += 500) {
+      final parca = liste.sublist(i, (i + 500).clamp(0, liste.length));
+      final rows = await db.query(parent,
+          columns: ['id', anahtar],
+          where: 'id IN (${List.filled(parca.length, '?').join(',')})',
+          whereArgs: parca);
+      for (final r in rows) {
+        final id = r['id'] as int?;
+        if (id == null) continue;
+        final gid = r[anahtar]?.toString();
+        if (gid != null && gid.isNotEmpty) {
+          h[id] = gid;
+        } else {
+          eksikler.add(id);
+        }
       }
     }
     // Eksik kimlik yalnızca global_id eşleşmeli tabloda üretilir (doğal
@@ -151,7 +170,8 @@ class SupabaseSaglayici implements IBulutSaglayici {
       for (final id in eksikler) {
         final yeniGid = const Uuid().v4();
         h[id] = yeniGid;
-        batch.update(parent, {'global_id': yeniGid}, where: 'id = ?', whereArgs: [id]);
+        batch.update(parent, {'global_id': yeniGid},
+            where: "id = ? AND (global_id IS NULL OR global_id = '')", whereArgs: [id]);
       }
       try {
         await batch.commit(noResult: true);
@@ -160,33 +180,34 @@ class SupabaseSaglayici implements IBulutSaglayici {
         // haritada mevcut — bir sonraki senkron kalıcılığı sağlar.
       }
     }
-    _fkLokalGidCache[parent] = h;
+    return h;
   }
 
-  Future<void> _fkBulutCacheYukle(String parent) async {
-    final h = <String, int>{};
-    int offset = 0;
-    int guvenlikSayaci = 0;
-    // Güvenlik sınırı — sonsuz döngü fiziksel olarak engellenir
-    while (guvenlikSayaci++ < 200) {
-      final r = await http.get(
-        Uri.parse('$_rest/$parent?select=id,${KolonHaritalama.ebeveynAnahtari(parent)}&limit=1000&offset=$offset'),
-        headers: _h,
-      ).timeout(const Duration(seconds: 20));
-      if (r.statusCode != 200) break;
-      final batch = (jsonDecode(r.body) as List).cast<Map<String, dynamic>>();
-      if (batch.isEmpty) break;
-      for (final row in batch) {
-        final gid = row[KolonHaritalama.ebeveynAnahtari(parent)]?.toString();
+  /// Önbellekte olmayan anahtarların bulut id'lerini hedefli sorguyla
+  /// getirir. Ağ/HTTP hatasında istisna fırlatır (çağıran bekletir).
+  Future<void> _fkBulutIdleriniGetir(String parent, Set<String> anahtarlar) async {
+    final cache = _fkGidCloudCache.putIfAbsent(parent, () => {});
+    final eksik = anahtarlar.where((a) => !cache.containsKey(a)).toList();
+    if (eksik.isEmpty) return;
+    final anahtar = KolonHaritalama.ebeveynAnahtari(parent);
+    for (var i = 0; i < eksik.length; i += fkSorguParcasi) {
+      final parca = eksik.sublist(i, (i + fkSorguParcasi).clamp(0, eksik.length));
+      final uri = Uri.parse('$_rest/$parent').replace(queryParameters: {
+        'select': 'id,$anahtar',
+        anahtar: inFiltresi(parca),
+      });
+      final r = await http.get(uri, headers: _h).timeout(const Duration(seconds: 20));
+      if (r.statusCode != 200) {
+        throw BulutIstekHatasi(r.statusCode, '$parent FK sorgusu: HTTP ${r.statusCode}');
+      }
+      for (final row in (jsonDecode(r.body) as List).cast<Map<String, dynamic>>()) {
+        final gid = row[anahtar]?.toString();
         final cid = row['id'];
         if (gid != null && gid.isNotEmpty && cid != null) {
-          h[gid] = cid is int ? cid : int.parse(cid.toString());
+          cache[gid] = cid is int ? cid : int.parse(cid.toString());
         }
       }
-      if (batch.length < 1000) break;
-      offset += 1000;
     }
-    _fkGidCloudCache[parent] = h;
   }
 
   /// Kayıtlardaki FK kolonlarını lokal id → bulut id'ye dönüştürür.
@@ -209,47 +230,53 @@ class SupabaseSaglayici implements IBulutSaglayici {
     if (kayitlar.isEmpty || KolonHaritalama.ebeveynler(tablo).isEmpty) {
       return bekletilecek;
     }
-    // Her ebeveyn için cache en fazla bir kez "ıskada tazelenir".
-    final lokalTazelendi = <String>{}, bulutTazelendi = <String>{};
+    // 1) Satır bazlı FK'ları topla. Polimorfik referanslar (kasa_hareketleri.
+    // referans_id, cari_hareket.fis_id …) satırın tür değerine göre farklı
+    // tabloya işaret eder (bkz. KolonHaritalama.polimorfikFkHaritasi).
+    final satirFk = <(Map<String, dynamic>, String, String, int)>[];
+    final gerekenIdler = <String, Set<int>>{};
     for (final m in kayitlar) {
-      // Satır bazlı harita: polimorfik referanslar (kasa_hareketleri.
-      // referans_id, cari_hareket.fis_id …) satırın tür değerine göre
-      // farklı tabloya işaret eder (bkz. KolonHaritalama.polimorfikFkHaritasi).
       final fkMap = KolonHaritalama.satirFkHaritasi(tablo, m);
       if (fkMap == null) continue;
       for (final e in fkMap.entries) {
-        final kolon = e.key, parent = e.value;
-        final v = m[kolon];
+        final v = m[e.key];
         if (v == null) continue;
         final lid = v is int ? v : int.tryParse(v.toString());
         if (lid == null) continue;
-        try {
-          if (_fkLokalGidCache[parent] == null) await _fkLokalCacheYukle(parent);
-          if (_fkGidCloudCache[parent] == null) await _fkBulutCacheYukle(parent);
-          var gid = _fkLokalGidCache[parent]![lid];
-          if (gid == null && lokalTazelendi.add(parent)) {
-            await _fkLokalCacheYukle(parent); // miss-refresh
-            gid = _fkLokalGidCache[parent]![lid];
-          }
-          if (gid == null) {
-            m[kolon] = null; // ebeveyn yerelde yok — yanlış bağ kurma
-            continue;
-          }
-          var cid = _fkGidCloudCache[parent]![gid];
-          if (cid == null && bulutTazelendi.add(parent)) {
-            await _fkBulutCacheYukle(parent); // miss-refresh
-            cid = _fkGidCloudCache[parent]![gid];
-          }
-          if (cid != null) {
-            m[kolon] = cid;
-          } else {
-            bekletilecek.add(m);
-          }
-        } catch (_) {
-          // Dönüşüm yapılamadı (ör. ağ) — yanlış bağla gitmesin,
-          // bu tur bekletilsin.
-          bekletilecek.add(m);
-        }
+        satirFk.add((m, e.key, e.value, lid));
+        gerekenIdler.putIfAbsent(e.value, () => {}).add(lid);
+      }
+    }
+    // 2) Ebeveyn başına yalnız gereken kimlikleri çöz (yerel + bulut).
+    final lokal = <String, Map<int, String>>{};
+    final hatali = <String>{};
+    for (final e in gerekenIdler.entries) {
+      try {
+        final h = await _fkLokalAnahtarlar(e.key, e.value);
+        lokal[e.key] = h;
+        await _fkBulutIdleriniGetir(e.key, h.values.toSet());
+      } catch (_) {
+        // Dönüşüm yapılamadı (ör. ağ) — yanlış bağla gitmesin,
+        // bu tur bekletilsin.
+        hatali.add(e.key);
+      }
+    }
+    // 3) Uygula.
+    for (final (m, kolon, parent, lid) in satirFk) {
+      if (hatali.contains(parent)) {
+        bekletilecek.add(m);
+        continue;
+      }
+      final gid = lokal[parent]![lid];
+      if (gid == null) {
+        m[kolon] = null; // ebeveyn yerelde yok — yanlış bağ kurma
+        continue;
+      }
+      final cid = _fkGidCloudCache[parent]?[gid];
+      if (cid != null) {
+        m[kolon] = cid;
+      } else {
+        bekletilecek.add(m);
       }
     }
     return bekletilecek;

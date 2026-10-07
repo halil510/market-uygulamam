@@ -356,7 +356,16 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                 label: Text(_secilenCari!.unvan,
                     style: const TextStyle(fontSize: 11)),
                 deleteIcon: const Icon(Icons.close, size: 14),
-                onDeleted: _cariyiKaldir),
+                onDeleted: _cariyiKaldir)
+          else
+            // Tedarikçi/bayi iadesi cari seçimiyle başlar — seçim önceden
+            // yalnız ⋮ menüsünde "Müşteri Seç" adıyla saklıydı.
+            TextButton.icon(
+              icon: const Icon(Icons.person_search, color: Colors.white, size: 18),
+              label: const Text('Cari Seç',
+                  style: TextStyle(color: Colors.white, fontSize: 12)),
+              onPressed: _musteriSec,
+            ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (v) { if (v == 'musteri') _musteriSec(); },
@@ -366,7 +375,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                   child: ListTile(
                       dense: true,
                       leading: Icon(Icons.person, color: AppRenkler.primary),
-                      title: Text('Müşteri Seç'))),
+                      title: Text('Cari Seç (Müşteri / Tedarikçi / Bayi)'))),
             ],
           ),
         ],

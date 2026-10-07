@@ -19,6 +19,7 @@ import '../../depolar/cari_deposu.dart';
 import '../../depolar/bekleyen_siparis_deposu.dart';
 import '../../servisler/excel_servisi.dart';
 import '../../widgetlar/cari/cari_excel_ice_aktar_yardimcisi.dart';
+import '../../widgetlar/masaustu/tekrar_gorununce_yenile.dart';
 
 class CariListeEkrani extends ConsumerStatefulWidget {
   /// AI Chat'ten "cari X'e git" gibi bir komutla gelindiğinde, ekran
@@ -30,7 +31,11 @@ class CariListeEkrani extends ConsumerStatefulWidget {
 }
 
 class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, TekrarGorununceYenile {
+  // Başka ekranda yapılan satış/tahsilat/iade bakiyeleri değiştirmiş olabilir.
+  @override
+  void tekrarGorununce() => ref.read(carilerProvider.notifier).yukle();
+
   late TabController _tab;
   final _araCtrl = TextEditingController();
   Timer? _debounce;

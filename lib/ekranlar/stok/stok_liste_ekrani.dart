@@ -17,6 +17,7 @@ import '../../servisler/excel_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'masaustu/stok_masaustu_gorunum.dart';
+import '../../widgetlar/masaustu/tekrar_gorununce_yenile.dart';
 
 class StokListeEkrani extends ConsumerStatefulWidget {
   const StokListeEkrani({super.key});
@@ -25,7 +26,11 @@ class StokListeEkrani extends ConsumerStatefulWidget {
 }
 
 class _StokListeEkraniState extends ConsumerState<StokListeEkrani>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, TekrarGorununceYenile {
+  // Başka ekranda yapılan satış/iade/alım stoğu değiştirmiş olabilir.
+  @override
+  void tekrarGorununce() => _yukle(reset: true);
+
   final _depo      = UrunDeposu();
   final _excelSrv  = ExcelServisi();
 

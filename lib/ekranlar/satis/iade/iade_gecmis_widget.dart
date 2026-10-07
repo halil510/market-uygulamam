@@ -70,6 +70,7 @@ class IadeGecmisWidget extends StatelessWidget {
         ...iadeListesi.asMap().entries.map((entry) {
           final idx  = entry.key;
           final iade = entry.value;
+          final tedarikciye = iade['cari_iade_turu'] == 'tedarikci';
           return Dismissible(
             key: ValueKey('${iade['iade_id'] ?? ''}_${iade['kalem_id'] ?? idx}_$idx'),
             direction: DismissDirection.endToStart,
@@ -112,15 +113,22 @@ class IadeGecmisWidget extends StatelessWidget {
                       style: TextStyle(fontSize: 11, color: textL)),
                   ])),
                   Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Text('+${(iade['miktar'] as double).toStringAsFixed(0)} adet',
-                        style: const TextStyle(fontSize: 12, color: _green, fontWeight: FontWeight.w600)),
+                    // Tedarikçiye iadede stok AZALIR — "+adet" yeşil yanıltıyordu.
+                    Text(
+                        '${tedarikciye ? '−' : '+'}${(iade['miktar'] as double).toStringAsFixed(0)} adet',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: tedarikciye ? Colors.orange.shade800 : _green,
+                            fontWeight: FontWeight.w600)),
                     Text(ParaUtils.formatla(iade['toplam_tutar'] as double? ?? 0),
                         style: TextStyle(fontSize: 11, color: textL)),
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.edit_outlined, size: 12, color: textL),
-                      const SizedBox(width: 2),
-                      Text('Düzenle', style: TextStyle(fontSize: 10, color: textL)),
-                    ]),
+                    // Tedarikçi/bayi iadesi oturumda düzenlenemez (kendi belgesi var).
+                    if (iade['cari_iade_turu'] == null)
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.edit_outlined, size: 12, color: textL),
+                        const SizedBox(width: 2),
+                        Text('Düzenle', style: TextStyle(fontSize: 10, color: textL)),
+                      ]),
                   ]),
                 ]),
               ),

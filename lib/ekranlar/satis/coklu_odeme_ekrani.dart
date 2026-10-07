@@ -225,24 +225,49 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           _buildHeader(),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Column(children: [
-                _buildEkran(),
-                const SizedBox(height: 12),
-                _buildYontemGrid(),
-                const SizedBox(height: 12),
-                _buildTusTakimi(),
-                if (Platform.isWindows)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                        'Klavye: rakam yazın · F1-F4 ödeme yöntemi · Enter satışı tamamla · Del temizle',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
-                  ),
-              ]),
-            ),
+            // Geniş alanda (masaüstü penceresi) iki sütun: solda tutar ekranı
+            // + yöntemler, sağda tuş takımı — tek sütunda tuş takımı 720px
+            // yüksekliğindeki pencereye sığmıyor, kaydırma alanında
+            // kayboluyordu.
+            child: LayoutBuilder(builder: (context, c) {
+              final ipucu = Platform.isWindows
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                          'Klavye: rakam yazın · F1-F4 ödeme yöntemi · Enter satışı tamamla · Del temizle',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
+                    )
+                  : const SizedBox.shrink();
+              if (c.maxWidth >= 680) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Column(children: [
+                    Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Expanded(child: Column(children: [
+                        _buildEkran(),
+                        const SizedBox(height: 12),
+                        _buildYontemGrid(sutun: 1),
+                      ])),
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildTusTakimi()),
+                    ]),
+                    ipucu,
+                  ]),
+                );
+              }
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Column(children: [
+                  _buildEkran(),
+                  const SizedBox(height: 12),
+                  _buildYontemGrid(sutun: 2),
+                  const SizedBox(height: 12),
+                  _buildTusTakimi(),
+                  ipucu,
+                ]),
+              );
+            }),
           ),
           _buildBottomBar(tamamlanabilir),
         ]),
@@ -295,12 +320,16 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
     );
   }
 
-  Widget _buildYontemGrid() => GridView.count(
-    crossAxisCount: 2,
+  // Sabit yükseklik: en/boy oranı geniş pencerede kutuları ~100px'e
+  // şişirip tuş takımını ekran dışına itiyordu.
+  Widget _buildYontemGrid({required int sutun}) => GridView(
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: sutun,
+      mainAxisSpacing: 10, crossAxisSpacing: 10,
+      mainAxisExtent: 60,
+    ),
     shrinkWrap: true,
     physics: const NeverScrollableScrollPhysics(),
-    mainAxisSpacing: 10, crossAxisSpacing: 10,
-    childAspectRatio: 2.6,
     children: _aktifYontemler.asMap().entries.map((en) {
       final y = en.value;
       final fRozet = Platform.isWindows ? 'F${en.key + 1}' : null;
@@ -392,7 +421,7 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
     decoration: BoxDecoration(color: TsRenk.kart(context), border: Border(top: BorderSide(color: TsRenk.ayirac(context)))),
     child: Row(children: [
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Ödenen', style: TextStyle(fontSize: 12, color: TsRenk.arkaplan(context))),
+        Text('Ödenen', style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
         Text(ParaUtils.formatla(_toplamAtanan),
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
                 color: tamamlanabilir ? Colors.green : TsRenk.metinBirincil(context))),
@@ -408,6 +437,9 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
           style: FilledButton.styleFrom(
             backgroundColor: tamamlanabilir ? const Color(0xFF2E7D32) : TsRenk.metinIkincil(context),
             foregroundColor: Colors.white,
+            // Pasifken varsayılan gri-üstüne-gri "Kalan: ₺50,00" okunmuyordu.
+            disabledBackgroundColor: TsRenk.arkaplan(context),
+            disabledForegroundColor: TsRenk.metinBirincil(context),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
         ),

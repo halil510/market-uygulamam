@@ -104,14 +104,16 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
     });
   }
 
+  // Koyu degrade başlıkta yazılır (yanındaki Borç/Alacak gibi) — koyu
+  // tonlar (shade700, ikincil metin) zeminde kayboluyordu.
   Color _bakiyeRenk() {
-    if (_bakiye == 0) return context.textSecondary;
+    if (_bakiye == 0) return Colors.white70;
     final musteri = _cari?.cariTipi == 'Müşteri' ||
         _cari?.cariTipi == 'Hem Müşteri Hem Tedarikçi';
     if (musteri) {
-      return _bakiye > 0 ? Colors.green.shade700 : Colors.blue.shade700;
+      return _bakiye > 0 ? Colors.greenAccent : Colors.lightBlueAccent;
     } else {
-      return _bakiye < 0 ? Colors.red.shade700 : Colors.blue.shade700;
+      return _bakiye < 0 ? Colors.redAccent : Colors.lightBlueAccent;
     }
   }
 

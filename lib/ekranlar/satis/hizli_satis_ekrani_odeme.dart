@@ -137,11 +137,16 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
         final sonuc = Platform.isWindows
             ? await showDialog<Map<String, dynamic>>(
                 context: context,
+                // Saydam çerçeve: kartı CokluOdemeEkrani kendisi çiziyor —
+                // Dialog'un beyaz zemini "ekran içinde ekran" görüntüsü veriyordu.
                 builder: (_) => Dialog(
                   insetPadding: const EdgeInsets.all(24),
-                  clipBehavior: Clip.antiAlias,
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  elevation: 0,
                   child: SizedBox(
-                    width: 600,
+                    width: 820,
                     height: (MediaQuery.of(context).size.height * 0.9)
                         .clamp(420.0, 760.0),
                     child: karmaEkran,

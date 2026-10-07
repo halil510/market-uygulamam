@@ -1,4 +1,6 @@
 // lib/ekranlar/masa/masa_detay_ekrani.dart
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -299,7 +301,8 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       final sonuc = await showModalBottomSheet<Map<String, dynamic>>(
         context: context,
         isScrollControlled: true,
-        constraints: const BoxConstraints(maxWidth: 640),
+        // Windows: geniş pencerede ödeme ekranı iki sütuna geçer (tuş takımı sığar).
+        constraints: BoxConstraints(maxWidth: Platform.isWindows ? 860 : 640),
         backgroundColor: Colors.transparent,
         builder: (_) => SizedBox(
           height: MediaQuery.of(context).size.height * 0.9,

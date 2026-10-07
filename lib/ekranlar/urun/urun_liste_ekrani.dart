@@ -30,6 +30,7 @@ import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'masaustu/urun_masaustu_gorunum.dart';
+import '../../widgetlar/masaustu/tekrar_gorununce_yenile.dart';
 
 // God-class sertleştirmesi (2026-09-22, kullanıcı onayıyla): bu dosya
 // 1225 satırdı. İçerik davranış DEĞİŞTİRİLMEDEN 2 parçaya ayrıldı:
@@ -49,7 +50,12 @@ class UrunListeEkrani extends ConsumerStatefulWidget {
   ConsumerState<UrunListeEkrani> createState() => _UrunListeEkraniState();
 }
 
-class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
+class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani>
+    with TekrarGorununceYenile {
+  // Başka ekranda yapılan satış/iade/alım stoğu değiştirmiş olabilir.
+  @override
+  void tekrarGorununce() => ref.read(urunlerProvider.notifier).yukle(sifirla: true);
+
   final _araCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   final _barkodSrv = BarkodServisi();
@@ -93,6 +99,16 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
     _scrollCtrl.addListener(_scrollChanged);
     _gorunumTercihiYukle();
     _masaustuKolonTercihiYukle();
+    // Sağlayıcı yığında örtülü kalan başka bir Ürünler sayfası yüzünden canlı
+    // kalmış olabilir (Windows menüsü sayfaları üst üste açar) — o zaman
+    // build() yeniden çalışmaz ve liste eski stoğu gösterirdi (canlı test:
+    // satılan Ekmek DB'de 49, yeni açılan listede 50). Yeni sağlayıcı zaten
+    // yüklüyorsa (yukleniyor) ikinci sorgu atılmaz.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !ref.read(urunlerProvider).yukleniyor) {
+        ref.read(urunlerProvider.notifier).yukle(sifirla: true);
+      }
+    });
     if (widget.baslangicArama != null &&
         widget.baslangicArama!.trim().isNotEmpty) {
       // addListener sonrası .text ataması _aramaChanged'i otomatik tetikler.

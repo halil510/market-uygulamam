@@ -17,6 +17,32 @@ class CariSecimBaglami extends InheritedWidget {
   bool updateShouldNotify(CariSecimBaglami old) => false;
 }
 
+/// Seçim modundaki listenin üstündeki bilgi çubuğu.
+class CariSecimCubugu extends StatelessWidget {
+  final String mesaj;
+  final VoidCallback onKapat;
+  const CariSecimCubugu({super.key, required this.mesaj, required this.onKapat});
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: SizedBox(
+          height: 44,
+          child: Row(children: [
+            const SizedBox(width: 12),
+            Text(mesaj, style: const TextStyle(fontWeight: FontWeight.w600)),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: onKapat,
+              icon: const Icon(Icons.close, size: 18),
+              label: const Text('Kapat'),
+            ),
+            const SizedBox(width: 8),
+          ]),
+        ),
+      );
+}
+
 /// Cariler listesini TAM EKRAN bir pencerede açar; seçilen cariyi döndürür.
 Future<CariModel?> cariListesindenSec(BuildContext context, Widget cariListesi) {
   return showDialog<CariModel>(
@@ -25,23 +51,9 @@ Future<CariModel?> cariListesindenSec(BuildContext context, Widget cariListesi) 
       child: CariSecimBaglami(
         onSec: (c) => Navigator.of(ctx).pop(c),
         child: Column(children: [
-          Material(
-            color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
-            child: SizedBox(
-              height: 44,
-              child: Row(children: [
-                const SizedBox(width: 12),
-                const Text('Müşteri seç — listeden bir cariye tıklayın',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  icon: const Icon(Icons.close, size: 18),
-                  label: const Text('Kapat'),
-                ),
-                const SizedBox(width: 8),
-              ]),
-            ),
+          CariSecimCubugu(
+            mesaj: 'Müşteri seç — listeden bir cariye tıklayın',
+            onKapat: () => Navigator.of(ctx).pop(),
           ),
           Expanded(child: cariListesi),
         ]),

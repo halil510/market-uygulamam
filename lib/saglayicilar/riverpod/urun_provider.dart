@@ -151,6 +151,12 @@ class Urunler extends _$Urunler {
     state = state.copyWith(secimModu: s.isNotEmpty, seciliIds: s);
   }
 
+  /// Masaüstü tablosunun çoklu seçimi (Ctrl/Shift/sürükleme) — 2+ ürün
+  /// seçiliyse seçim modu (toplu işlem çubuğu) açılır; tek ürün normal seçimdir.
+  void secimAyarla(Set<int> ids) => state = ids.length >= 2
+      ? state.copyWith(secimModu: true, seciliIds: ids)
+      : state.copyWith(secimModu: false, seciliIds: {});
+
   void tumunuSec() => state = state.copyWith(
       secimModu: true, seciliIds: state.urunler.map((u) => u.id!).toSet());
 

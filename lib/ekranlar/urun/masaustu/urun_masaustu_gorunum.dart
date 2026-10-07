@@ -28,6 +28,13 @@ class UrunMasaustuGorunum extends StatefulWidget {
   /// Görünen kolonların anahtarları (bkz. [katalog]).
   final Set<String> gorunenKolonlar;
 
+  /// Çoklu seçim (Ctrl+tık, Shift+tık, fareyle sürükleme, Ctrl+A) — 2+ ürün
+  /// seçiliyse ekranın toplu işlem çubuğu açılır.
+  final Set<int> seciliIds;
+  final ValueChanged<Set<int>> onCokluSecim;
+  final VoidCallback onTopluSil;
+  final VoidCallback onTopluIslem;
+
   const UrunMasaustuGorunum({
     super.key,
     required this.urunler,
@@ -37,6 +44,10 @@ class UrunMasaustuGorunum extends StatefulWidget {
     required this.onExcel,
     required this.onYenile,
     required this.gorunenKolonlar,
+    required this.seciliIds,
+    required this.onCokluSecim,
+    required this.onTopluSil,
+    required this.onTopluIslem,
   });
 
   /// Kayıtlı kolon tercihini güncel kataloğla birleştirir. Tercih
@@ -282,7 +293,29 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
         widget.onYenile();
       });
 
+  bool get _coklu => widget.seciliIds.length >= 2;
+
+  void _cokluSecimDegisti(Set<Object> anahtarlar) {
+    final ids = anahtarlar.whereType<int>().toSet();
+    widget.onCokluSecim(ids);
+    // Tek satıra inen seçimde F2/F3'ün hedefi o satır olsun.
+    if (ids.length == 1) {
+      final kalan = widget.urunler.where((u) => u.id == ids.first);
+      if (kalan.isNotEmpty) setState(() => _secili = kalan.first);
+    }
+  }
+
   void _menu(UrunModel u, Offset konum) {
+    if (_coklu) {
+      final n = widget.seciliIds.length;
+      masaustuMenuAc(context, konum, [
+        MenuOge('Toplu İşlem ($n ürün)', widget.onTopluIslem, ikon: Icons.build_outlined),
+        MenuOge('Seçimi Kaldır', () => widget.onCokluSecim({}), ikon: Icons.deselect),
+        MenuOge('Seçilileri Sil ($n ürün)', widget.onTopluSil,
+            ikon: Icons.delete_outline, ayiracOnce: true),
+      ]);
+      return;
+    }
     masaustuMenuAc(context, konum, [
       MenuOge('Düzenle', () => _duzenle(u), ikon: Icons.edit_outlined),
       MenuOge('Ürün Detayı', () => context.push('/urun/detay/${u.id}'),
@@ -319,12 +352,27 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
     if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     final s = _secili;
-    if (k == LogicalKeyboardKey.f1) {
+    final ctrl = HardwareKeyboard.instance.isControlPressed;
+    if (ctrl && k == LogicalKeyboardKey.keyA) {
+      // Metin kutusunda Ctrl+A metni seçsin — tablo tümünü yalnız odak
+      // bir yazı alanında değilken seçer.
+      final odak = FocusManager.instance.primaryFocus?.context;
+      if (odak != null &&
+          (odak.widget is EditableText ||
+              odak.findAncestorWidgetOfExactType<EditableText>() != null)) {
+        return false;
+      }
+      widget.onCokluSecim({for (final u in widget.urunler) if (u.id != null) u.id!});
+    } else if (k == LogicalKeyboardKey.f1) {
       widget.onEkle();
     } else if (k == LogicalKeyboardKey.f2) {
-      if (s != null) _duzenle(s);
+      if (s != null && !_coklu) _duzenle(s);
     } else if (k == LogicalKeyboardKey.f3) {
-      if (s != null) widget.onSil(s);
+      if (_coklu) {
+        widget.onTopluSil();
+      } else if (s != null) {
+        widget.onSil(s);
+      }
     } else if (k == LogicalKeyboardKey.f6) {
       if (s != null) {
         final box = context.findRenderObject() as RenderBox;
@@ -352,10 +400,14 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
           onSec: (x) => setState(() => _secili = x),
           onCift: _duzenle,
           onSagTik: _menu,
+          anahtar: (x) => x.id ?? x,
+          seciliAnahtarlar: widget.seciliIds,
+          onCokluSecim: _cokluSecimDegisti,
         ),
       ),
       MasaustuAltSerit(
         ozetler: [
+          if (_coklu) AltOzet('Seçili', '${widget.seciliIds.length} ürün'),
           AltOzet('Çeşit Sayısı', '${u.length}'),
           AltOzet('Stok Miktarı', _sayi(stokToplam)),
           AltOzet('Satış Değeri', ParaUtils.formatla(satisDeger)),
@@ -364,9 +416,12 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
         tuslar: [
           AltTus('F1', 'Ekle', Icons.add, const Color(0xFF2E7D32), widget.onEkle),
           AltTus('F2', 'Düzenle', Icons.edit_outlined, const Color(0xFF1565C0),
-              _secili == null ? null : () => _duzenle(_secili!)),
-          AltTus('F3', 'Sil', Icons.delete_outline, const Color(0xFFC62828),
-              _secili == null ? null : () => widget.onSil(_secili!)),
+              _secili == null || _coklu ? null : () => _duzenle(_secili!)),
+          AltTus('F3', _coklu ? 'Seçilileri Sil' : 'Sil', Icons.delete_outline,
+              const Color(0xFFC62828),
+              _coklu
+                  ? widget.onTopluSil
+                  : (_secili == null ? null : () => widget.onSil(_secili!))),
           AltTus('F6', 'Menü', Icons.menu, const Color(0xFF546E7A),
               _secili == null ? null : () => _menu(_secili!, const Offset(400, 300))),
         ],

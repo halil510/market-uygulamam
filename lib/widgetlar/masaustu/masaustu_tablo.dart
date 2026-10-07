@@ -3,9 +3,13 @@
 // Masaüstü için genel amaçlı VERİ TABLOSU (Stok, Cari, Satış listeleri…).
 //  • Sütun başlığına tıkla = sırala (yüklü satırlar içinde)
 //  • Satır: tek tık seç, çift tık aç, sağ tık menü, fare üstünde vurgu
+//  • İsteğe bağlı ÇOKLU SEÇİM ([seciliAnahtarlar] + [onCokluSecim]):
+//    Ctrl+tık ekle/çıkar, Shift+tık aralık, fareyle sürükleyerek aralık
 //  • Dar pencerede yatay kaydırma; bir sütun kalan genişliği doldurur
 //  • Dikey kaydırma denetleyicisi dışarıdan verilebilir (sayfalı yükleme)
+import 'package:flutter/gestures.dart' show kPrimaryMouseButton;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 
@@ -43,6 +47,13 @@ class MasaustuTablo<T> extends StatefulWidget {
   final ScrollController? scrollController;
   final Color baslikRengi;
 
+  /// Çoklu seçim: satırın kalıcı anahtarı (ör. id) — yeniden yüklemede
+  /// nesne değişse de seçim korunur. [seciliAnahtarlar] ve [onCokluSecim]
+  /// birlikte verilirse çoklu seçim açılır (seçim dışarıda tutulur).
+  final Object Function(T satir)? anahtar;
+  final Set<Object>? seciliAnahtarlar;
+  final ValueChanged<Set<Object>>? onCokluSecim;
+
   const MasaustuTablo({
     super.key,
     required this.satirlar,
@@ -53,6 +64,9 @@ class MasaustuTablo<T> extends StatefulWidget {
     this.onSagTik,
     this.scrollController,
     this.baslikRengi = const Color(0xFF1F2A5C),
+    this.anahtar,
+    this.seciliAnahtarlar,
+    this.onCokluSecim,
   });
 
   @override
@@ -64,11 +78,102 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
   bool _artan = true;
   int? _vurgu;
   final ScrollController _yatayScroll = ScrollController();
+  final ScrollController _icDikey = ScrollController();
+  ScrollController get _dikey => widget.scrollController ?? _icDikey;
+
+  static const _satirYuksekligi = 34.0;
+
+  // Çoklu seçim durumu (görünen sıradaki indeksler).
+  int? _capa; // Shift+tık aralığının başlangıcı
+  int? _surukleBas; // fare basılı tutulan satır
+  bool _suruklendi = false;
+  bool _basiliCtrl = false; // fareye basıldığı andaki tuş durumu
+  bool _basiliShift = false;
+
+  bool get _cokluAcik => widget.onCokluSecim != null && widget.seciliAnahtarlar != null;
+  Object _anahtar(T s) => widget.anahtar?.call(s) ?? s as Object;
 
   @override
   void dispose() {
     _yatayScroll.dispose();
+    _icDikey.dispose();
     super.dispose();
+  }
+
+  // ── Çoklu seçim ───────────────────────────────────────────────────────────
+  void _tikla(List<T> liste, int i) {
+    final s = liste[i];
+    widget.onSec(s);
+    if (!_cokluAcik) return;
+    // Ctrl/Shift fareye BASILDIĞI an okunur: satırda çift tık da tanımlı
+    // olduğundan onTap ~300 ms geç gelir; tuş o arada bırakılırsa seçim
+    // sessizce düz tıka dönüyordu (canlı testte bulundu).
+    final ctrl = _basiliCtrl;
+    final shift = _basiliShift;
+    final capa = _capa;
+    if (shift && capa != null && capa < liste.length) {
+      widget.onCokluSecim!(_aralik(liste, capa, i));
+      return; // çapa yerinde kalır: Shift ile aralık genişletilebilir
+    }
+    if (ctrl) {
+      final yeni = Set<Object>.of(widget.seciliAnahtarlar!);
+      // İlk Ctrl+tıkta tek seçili satır (henüz kümede değil) da kümeye girer.
+      final tekSecili = widget.secili;
+      if (yeni.isEmpty && tekSecili != null && !identical(tekSecili, s)) {
+        yeni.add(_anahtar(tekSecili));
+      }
+      final k = _anahtar(s);
+      yeni.contains(k) ? yeni.remove(k) : yeni.add(k);
+      widget.onCokluSecim!(yeni);
+    } else {
+      widget.onCokluSecim!({_anahtar(s)});
+    }
+    _capa = i;
+  }
+
+  Set<Object> _aralik(List<T> liste, int a, int b) {
+    final bas = a < b ? a : b, son = a < b ? b : a;
+    return {for (var j = bas; j <= son; j++) _anahtar(liste[j])};
+  }
+
+  int _satirIndeksi(Offset yerel, int adet) =>
+      ((yerel.dy + (_dikey.hasClients ? _dikey.offset : 0)) ~/ _satirYuksekligi)
+          .clamp(0, adet - 1);
+
+  void _basildi(PointerDownEvent e, List<T> liste) {
+    final klavye = HardwareKeyboard.instance;
+    _basiliCtrl = klavye.isControlPressed || klavye.isMetaPressed;
+    _basiliShift = klavye.isShiftPressed;
+    if (!_cokluAcik || liste.isEmpty || e.buttons != kPrimaryMouseButton ||
+        _basiliCtrl || _basiliShift) {
+      return;
+    }
+    _surukleBas = _satirIndeksi(e.localPosition, liste.length);
+    _suruklendi = false;
+  }
+
+  void _surukleniyor(PointerMoveEvent e, List<T> liste, double yukseklik) {
+    final bas = _surukleBas;
+    if (bas == null || e.buttons != kPrimaryMouseButton) return;
+    // Kenara yaklaşınca listeyi kaydır (görünmeyen satırlara da uzanabilsin).
+    if (_dikey.hasClients) {
+      final p = _dikey.position;
+      if (e.localPosition.dy > yukseklik - 16 && _dikey.offset < p.maxScrollExtent) {
+        _dikey.jumpTo((_dikey.offset + _satirYuksekligi / 2).clamp(0, p.maxScrollExtent));
+      } else if (e.localPosition.dy < 16 && _dikey.offset > 0) {
+        _dikey.jumpTo((_dikey.offset - _satirYuksekligi / 2).clamp(0, p.maxScrollExtent));
+      }
+    }
+    final i = _satirIndeksi(e.localPosition, liste.length);
+    if (i == bas && !_suruklendi) return;
+    _suruklendi = true;
+    _capa = bas;
+    widget.onCokluSecim!(_aralik(liste, bas, i));
+  }
+
+  void _birakildi() {
+    _surukleBas = null;
+    _suruklendi = false;
   }
 
   List<T> get _gorunen {
@@ -120,11 +225,19 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
           child: Column(children: [
             _baslik(gen),
             Expanded(
-              child: ListView.builder(
-                controller: widget.scrollController,
-                itemExtent: 34,
-                itemCount: liste.length,
-                itemBuilder: (_, i) => _satir(context, liste[i], i, gen),
+              child: LayoutBuilder(
+                builder: (context, govde) => Listener(
+                  onPointerDown: (e) => _basildi(e, liste),
+                  onPointerMove: (e) => _surukleniyor(e, liste, govde.maxHeight),
+                  onPointerUp: (_) => _birakildi(),
+                  onPointerCancel: (_) => _birakildi(),
+                  child: ListView.builder(
+                    controller: _dikey,
+                    itemExtent: _satirYuksekligi,
+                    itemCount: liste.length,
+                    itemBuilder: (_, i) => _satir(context, liste, i, gen),
+                  ),
+                ),
               ),
             ),
           ]),
@@ -172,8 +285,12 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
     );
   }
 
-  Widget _satir(BuildContext context, T s, int i, double Function(TabloKolon<T>) gen) {
-    final secili = identical(s, widget.secili) || s == widget.secili;
+  Widget _satir(BuildContext context, List<T> liste, int i, double Function(TabloKolon<T>) gen) {
+    final s = liste[i];
+    final coklu = widget.seciliAnahtarlar;
+    final secili = (coklu != null && coklu.isNotEmpty)
+        ? coklu.contains(_anahtar(s))
+        : identical(s, widget.secili) || s == widget.secili;
     final vurgu = _vurgu == i;
     final zemin = secili
         ? TsRenk.primary.withValues(alpha: 0.32)
@@ -185,12 +302,19 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
       onExit: (_) => setState(() => _vurgu = null),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => widget.onSec(s),
+        onTap: () => _tikla(liste, i),
         onDoubleTap: widget.onCift == null ? null : () => widget.onCift!(s),
         onSecondaryTapDown: widget.onSagTik == null
             ? null
             : (d) {
-                widget.onSec(s);
+                // Çoklu seçimin İÇİNDEKİ satıra sağ tık seçimi bozmaz (menü
+                // seçilenlere uygulanır); dışındaki satır tek seçim olur.
+                final coklu = widget.seciliAnahtarlar;
+                if (!(coklu != null && coklu.contains(_anahtar(s)))) {
+                  widget.onSec(s);
+                  if (_cokluAcik) widget.onCokluSecim!({_anahtar(s)});
+                  _capa = i;
+                }
                 widget.onSagTik!(s, d.globalPosition);
               },
         child: ColoredBox(

@@ -379,6 +379,17 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani>
                                         .read(urunlerProvider.notifier)
                                         .yukle(sifirla: true),
                                     gorunenKolonlar: _masaustuKolonlar,
+                                    seciliIds: durum.seciliIds,
+                                    onCokluSecim: (ids) => ref
+                                        .read(urunlerProvider.notifier)
+                                        .secimAyarla(ids),
+                                    onTopluSil: () =>
+                                        _seciliUrunleriSil(durum.seciliIds),
+                                    onTopluIslem: () {
+                                      final ids = durum.seciliIds.toList();
+                                      ref.read(urunlerProvider.notifier).secimTemizle();
+                                      context.push('/urun/toplu-islem', extra: ids);
+                                    },
                                   )
                                 : _listeView(durum.urunler, durum)),
                   ),

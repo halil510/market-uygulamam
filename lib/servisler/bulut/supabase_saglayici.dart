@@ -489,6 +489,17 @@ class SupabaseSaglayici implements IBulutSaglayici {
     }
   }
 
+  /// Kayıt indekslerini sütun kümesine göre gruplar (ilk görülme sırasıyla).
+  @visibleForTesting
+  static List<List<int>> sutunKumesineGoreGrupla(List<Map<String, dynamic>> veriler) {
+    final gruplar = <String, List<int>>{};
+    for (var j = 0; j < veriler.length; j++) {
+      final imza = (veriler[j].keys.toList()..sort()).join(',');
+      gruplar.putIfAbsent(imza, () => []).add(j);
+    }
+    return gruplar.values.toList();
+  }
+
   @override
   Future<BulutSonuc> topluUpsert({
     required String tablo,
@@ -502,10 +513,23 @@ class SupabaseSaglayici implements IBulutSaglayici {
     int? sonStatusKodu;
     final bulutSema = await bulutSutunlari();
 
+    // 🔴🔴 KRİTİK DÜZELTME: PostgREST'in bilinen bir davranışı — toplu
+    // (bulk) upsert'te AYNI istekteki kayıtların FARKLI sütun kümelerine
+    // sahip olması, Postgres'in eksik sütunlar için SQL DEFAULT kullanmaya
+    // çalışıp "DEFAULT is not allowed in this context" (42601) hatası
+    // vermesine yol açıyordu. ÖNCEDEN çözüm eksik alanlara null eklemekti —
+    // ama bu, yalnız birkaç alan taşıyan bir kaydın (kısmi güncelleme)
+    // bulutta DİĞER tüm alanlarını sessizce siliyordu (Bulut Veri Güvenliği
+    // Raporu 2026-10-07, Bulgu 4). Artık kayıtlar sütun kümesine göre
+    // gruplanır; her istek tek tip kayıt taşır, eksik alan doldurulmaz.
+    // Sonuçtaki [bekletilenler] indeksleri [veriler]'deki sıraya göredir.
+    for (final k in veriler) { k.remove('id'); }
     // Batch olarak gönder (max 200 kayıt/istek)
     const batchSize = 200;
-    for (int i = 0; i < veriler.length; i += batchSize) {
-      final batch = veriler.sublist(i, (i + batchSize).clamp(0, veriler.length));
+    for (final grup in sutunKumesineGoreGrupla(veriler)) {
+    for (int i = 0; i < grup.length; i += batchSize) {
+      final indeksler = grup.sublist(i, (i + batchSize).clamp(0, grup.length));
+      final batch = [for (final j in indeksler) veriler[j]];
       // 🔥 Aynı evrensel bool->int koruması (bkz. upsert() içindeki not)
       // + lokal 'id' temizliği (bkz. upsert() içindeki on_conflict notu)
       // Bulutta olmayan sütunları ayıkla (bkz. BULUT ŞEMA KORUMASI)
@@ -517,22 +541,10 @@ class SupabaseSaglayici implements IBulutSaglayici {
           if (v is bool) kayit[k] = v ? 1 : 0;
         }
       }
-      // 🔴🔴 KRİTİK DÜZELTME: PostgREST'in bilinen bir davranışı —
-      // toplu (bulk) upsert'te AYNI istekteki kayıtların FARKLI
-      // sütun kümelerine sahip olması (biri 'printer_turu' gönderiyor,
-      // diğeri o alan null olduğu için hiç göndermiyor), Postgres'in
-      // eksik sütunlar için SQL DEFAULT anahtar kelimesini kullanmaya
-      // çalışıp "DEFAULT is not allowed in this context" (42601)
-      // hatası vermesine yol açıyordu. Çözüm: batch içindeki TÜM
-      // kayıtları, o batch'teki anahtarların BİRLEŞİMİNE göre
-      // normalize et — eksik olan alanlara JSON null ata (omit ETME).
+      // Grup tek tip; ayıklama da tüm gruba aynı uygulandı. Yine de
+      // birleşim alınır (columns parametresi için).
       final tumAnahtarlar = <String>{};
       for (final kayit in batch) { tumAnahtarlar.addAll(kayit.keys); }
-      for (final kayit in batch) {
-        for (final anahtar in tumAnahtarlar) {
-          kayit.putIfAbsent(anahtar, () => null);
-        }
-      }
       // Bulutta zaten daha yeni sürümü olan (eski çevrimdışı görüntü) satırlar
       // gönderilmez — aksi hâlde başka cihazın daha yeni kaydı sessizce geri
       // alınırdı. Atlananlar "tamamlandı" sayılır (kuyruktan düşer); doğru
@@ -555,7 +567,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
         final bekle = await _fkDonustur(tablo, aday);
         if (bekle.isNotEmpty) {
           for (var j = 0; j < batch.length; j++) {
-            if (bekle.contains(batch[j])) bekletilenler.add(i + j);
+            if (bekle.contains(batch[j])) bekletilenler.add(indeksler[j]);
           }
           gonderilecek = aday.where((k) => !bekle.contains(k)).toList();
           if (gonderilecek.isEmpty) continue;
@@ -587,6 +599,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
         // BulutSonuc.tur'un bunu GEÇİCİ saymasını sağlar (doğru davranış).
         hatalar.add('$tablo batch hata: $e');
       }
+    }
     }
     return BulutSonuc(
         basarili: basarili,

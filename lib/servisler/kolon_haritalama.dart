@@ -314,6 +314,16 @@ class KolonHaritalama {
     return u;
   }
 
+  /// Buluttan gelen NULL'un yerele UYGULANMAYACAĞI sütunlar: kimlik/zaman
+  /// damgası, türetilmiş alanlar (stok/bakiye), deleted_at (gönderimde de
+  /// null gitmez) ve ilişki sütunları (bulutta null, gönderen cihazda
+  /// ebeveynin çözülemediği anlamına da gelebilir — yerel bağ korunur).
+  static bool nullKorunurMu(String tablo, String kolon) =>
+      const {'id', 'global_id', 'last_updated', 'deleted_at'}.contains(kolon) ||
+      (turetilmisAlanlar[tablo]?.contains(kolon) ?? false) ||
+      (fkHaritasi[tablo]?.containsKey(kolon) ?? false) ||
+      polimorfikFkHaritasi[tablo]?.kolon == kolon;
+
   /// Tablonun (sabit + polimorfik) olası tüm ebeveyn tabloları.
   static Set<String> ebeveynler(String tablo) => {
         ...?fkHaritasi[tablo]?.values,
@@ -347,9 +357,15 @@ class KolonHaritalama {
   // durumları için tablo → {yerel_ad: bulut_ad} yeniden adlandırma
   // haritası.
   static Map<String,dynamic> cevir(String tablo, Map<String,dynamic> ham) {
+    // 🔴 DÜZELTME (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 4):
+    // NULL değerler ÖNCEDEN atılıyordu — yerelde TEMİZLENEN bir alan
+    // (ikinci barkod, açıklama, vade …) buluta hiç gitmiyor, bulutta ve
+    // diğer kasalarda eski değer kalıyordu. Bulut şemasında NOT NULL
+    // kısıtı yok (supabase_tam_sema.sql BÖLÜM 4), null güvenle gönderilir.
+    // Yalnız deleted_at null'ı gitmez (aşağıda).
     final m = <String,dynamic>{};
     for (final e in ham.entries) {
-      if (_filtrele.contains(e.key) || e.value == null) continue;
+      if (_filtrele.contains(e.key)) continue;
       final v = e.value;
       m[e.key] = (v is int && _boollar.contains(e.key)) ? v == 1 : v;
     }

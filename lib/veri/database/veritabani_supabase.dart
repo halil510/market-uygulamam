@@ -628,13 +628,26 @@ extension VeritabaniSupabase on Veritabani {
     if (kayitlar.isEmpty) return;
     final database = await db;
     await _cakismaKorumasiUygula(database, tablo, kayitlar);
+    // Buluttan gelen NULL yalnız yerelde boş bırakılabilen, ilişki/türetilmiş
+    // olmayan sütunlara uygulanır — başka kasada TEMİZLENEN alan burada da
+    // temizlenir (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 4).
+    // ÖNCEDEN tüm null'lar atılıyor, temizlenen değer bu cihazda kalıyordu.
+    final bosOlabilir = <String>{};
+    try {
+      for (final c in await database.rawQuery('PRAGMA table_info($tablo)')) {
+        final ad = c['name']?.toString();
+        if (ad != null && c['notnull'] == 0 && !KolonHaritalama.nullKorunurMu(tablo, ad)) {
+          bosOlabilir.add(ad);
+        }
+      }
+    } catch (_) {/* okunamazsa eski davranış: null uygulanmaz */}
     await database.execute('PRAGMA foreign_keys = OFF');
     int atlanan = 0;
     try {
       for (final kayit in kayitlar) {
         final temiz = Map<String, dynamic>.from(kayit);
         temiz.remove('id');
-        temiz.removeWhere((_, v) => v == null);
+        temiz.removeWhere((k, v) => v == null && !bosOlabilir.contains(k));
         // Cari bakiye bu cihazda hareketlerden türetilir (tetikleyici +
         // SenkronSonrasiMutabakat) — başka kasanın o anki hesabı olan bulut
         // değeri yerel bakiyeyi ezmesin, çakışma kaydına da düşmesin.

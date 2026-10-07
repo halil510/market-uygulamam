@@ -1402,9 +1402,13 @@ class SupabaseSyncServisi {
             m.removeWhere((k, _) => !yerelKolonSeti.contains(k));
           }
 
+          // NULL'lar burada atılmaz: başka kasada TEMİZLENEN bir alanın bu
+          // cihazda da temizlenmesi gerekir (Bulut Veri Güvenliği Raporu
+          // 2026-10-07, Bulgu 4). Hangi null'un uygulanacağına
+          // supaKayitlariGuncelle karar verir (yerelde boş bırakılabilen,
+          // ilişki/türetilmiş olmayan sütunlar); eklemede null'lar atılır.
           for (final k in m.keys.toList()) {
             if (m[k] is bool) m[k] = (m[k] as bool) ? 1 : 0;
-            if (m[k] == null) m.remove(k);
           }
 
           var atlaSatir = false;

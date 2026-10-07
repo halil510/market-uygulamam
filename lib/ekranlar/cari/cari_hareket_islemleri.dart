@@ -103,6 +103,43 @@ extension _CariHareketIslemleri on _CariHareketEkraniState {
         'GERİ ALINMAZ — gerekiyorsa o tarafı elle düzeltin. Emin misiniz?';
   }
 
+  /// Silme onayı — kaydırarak silme (Dismissible) ve sağ tık "Sil" AYNI
+  /// diyaloğu kullanır; onaydan sonra _silHareket tekrar sormaz.
+  Future<bool> _silOnayi(CariHareketModel h) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Hareketi Sil'),
+          content: Text(_silHareketMesaji(h)),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(
+                  foregroundColor: Colors.white, backgroundColor: Colors.red),
+              child: const Text('Sil'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
+  /// Masaüstü sağ tık menüsü: kaydırarak silme fareyle keşfedilmiyordu.
+  void _sagTikMenu(CariHareketModel h, Offset konum) {
+    masaustuMenuAc(context, konum, [
+      if (h.fisId != null && h.fisId! > 0)
+        MenuOge('Fiş Detayı', () => _fisDetayinaGit(h), ikon: Icons.receipt_long_outlined),
+      MenuOge(
+          h.id != null && _secimIdleri.contains(h.id) ? 'Seçimi Kaldır' : 'Seç (yazdırma için)',
+          () => _secimDegistir(h),
+          ikon: Icons.check_box_outlined),
+      MenuOge('Sil', () async {
+        if (await _silOnayi(h)) await _silHareket(h);
+      }, ikon: Icons.delete_outline, ayiracOnce: true),
+    ]);
+  }
+
   // 🔴 DÜZELTME (kullanıcı bulgusu — "cari fiş silme işlemi çalışmıyor"):
   // ÖNCEDEN burada Dismissible.confirmDismiss'in gösterdiği onay
   // diyaloğundan SONRA, _silHareket kendi İKİNCİ bir onay diyaloğu daha

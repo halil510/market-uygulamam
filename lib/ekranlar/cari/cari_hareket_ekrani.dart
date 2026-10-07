@@ -31,6 +31,7 @@ import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import 'fis_detay_ekrani.dart';
 import 'cari_detay_ekrani.dart' show cariHareketleriniGrupla;
 import '../../widgetlar/ortak/fis_fiyat_guncelle_akisi.dart';
+import '../../widgetlar/masaustu/masaustu_sag_tik_menu.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
 
 part 'cari_hareket_islemleri.dart';
@@ -460,35 +461,16 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                                   child: const Icon(Icons.delete,
                                       color: Colors.white),
                                 ),
-                                confirmDismiss: (_) async =>
-                                    await showDialog<bool>(
-                                      context: context,
-                                      builder: (ctx) => AlertDialog(
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(20)),
-                                        title: const Text('Hareketi Sil'),
-                                        content: Text(_silHareketMesaji(h)),
-                                        actions: [
-                                          TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, false),
-                                              child: const Text('İptal')),
-                                          FilledButton(
-                                            onPressed: () =>
-                                                Navigator.pop(ctx, true),
-                                            style: FilledButton.styleFrom(
-                                                foregroundColor: Colors.white,
-                                                backgroundColor: Colors.red),
-                                            child: const Text('Sil'),
-                                          ),
-                                        ],
-                                      ),
-                                    ) ??
-                                    false,
+                                confirmDismiss: (_) => _silOnayi(h),
                                 onDismissed: (_) => _silHareket(h),
                                 child: Padding(
                                   padding: const EdgeInsets.only(bottom: 6),
+                                  // Masaüstü: kaydırarak silme fareyle tahmin
+                                  // edilmiyordu — sağ tık menüsü aynı onaylı
+                                  // silmeyi sunar.
+                                  child: GestureDetector(
+                                  onSecondaryTapUp: (d) =>
+                                      _sagTikMenu(h, d.globalPosition),
                                   child: TsKart(
                                     padding: EdgeInsets.zero,
                                     onTap: _secimIdleri.isNotEmpty
@@ -583,6 +565,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                                         ],
                                       ),
                                     ),
+                                  ),
                                   ),
                                 ),
                               );

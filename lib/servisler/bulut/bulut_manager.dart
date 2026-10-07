@@ -604,11 +604,25 @@ class BulutManager {
       // Bu turda okunacak satırların hepsi bu andan önce kuyruğa girdi —
       // grup başarıyla gidince "otomatik gönderim zamanı" olarak yazılır.
       final turBasi = DateTime.now().toUtc();
-      final bekleyenSatirlar = await db.query(
+      // 🔴 KUYRUK AÇLIĞI DÜZELTMESİ (Bulut Veri Güvenliği Raporu 2026-10-07,
+      // Bulgu 5): ÖNCEDEN ilk 500 bekleyen satır seçilip backoff süzgeci
+      // SONRA uygulanıyordu. Ebeveyni buluta hiç ulaşmayan yüzlerce satır
+      // (backoff penceresinde) baştaki 500 yeri işgal edince arkadaki YENİ
+      // satışlar hiç okunmuyordu. Artık hiç denenmemiş satırlar ile tekrar
+      // denenecekler AYRI seçilir: yeni kayıtlar her turda gider; tekrarlar
+      // en eski denenenden başlayarak backoff'a göre süzülür.
+      final yeniSatirlar = await db.query(
         DbSabitler.syncQueue,
-        where: 'durum = ?',
+        where: 'durum = ? AND deneme_sayisi = 0',
         whereArgs: ['beklemede'],
         orderBy: 'id ASC',
+        limit: 500,
+      );
+      final tekrarSatirlari = await db.query(
+        DbSabitler.syncQueue,
+        where: 'durum = ? AND deneme_sayisi > 0',
+        whereArgs: ['beklemede'],
+        orderBy: 'son_deneme ASC',
         limit: 500,
       );
 
@@ -619,8 +633,10 @@ class BulutManager {
       // yok" durumunda erken return YAPILMAZ — bu, fonksiyonun altındaki
       // paylaşılan durum.value/istatistik güncellemesini atlayıp
       // durum'u kalıcı olarak "Senkronize ediliyor…"da bırakırdı.
-      final denenecekler =
-          bekleyenSatirlar.where(syncSatiriSimdiDenenebilirMi).toList();
+      final denenecekler = [
+        ...yeniSatirlar,
+        ...tekrarSatirlari.where(syncSatiriSimdiDenenebilirMi),
+      ]..sort((a, b) => (a['id'] as int).compareTo(b['id'] as int));
 
       if (denenecekler.isNotEmpty) {
         isYapildiMi = true;

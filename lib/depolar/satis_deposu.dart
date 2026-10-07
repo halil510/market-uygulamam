@@ -850,7 +850,7 @@ class SatisDeposu {
           final onceki = urunRows.isNotEmpty
               ? (urunRows.first['stok'] as num).toDouble() : 0.0;
           final sonraki = onceki + miktar;
-          await txn.update('urunler', {'stok': sonraki, 'last_updated': simdi}, where: 'id = ?', whereArgs: [urunId]);
+          await txn.update('urunler', {'stok': sonraki}, where: 'id = ?', whereArgs: [urunId]);
           await txn.insert('stok_hareket', {
             'urun_id':       urunId,
             'hareket_turu':  'İptal İadesi',

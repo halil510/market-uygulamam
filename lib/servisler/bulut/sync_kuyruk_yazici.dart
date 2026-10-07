@@ -13,6 +13,7 @@
 // KasaDeposu.hareketEkleTxn'deki aynı gerekçe — o ilke burada da geçerli,
 // sadece artık "bildirim" RAM'de değil diskte bekliyor).
 import 'dart:convert';
+import 'package:uuid/uuid.dart';
 import '../../cekirdek/sabitler/db_sabitleri.dart';
 
 class SyncKuyrukYazici {
@@ -28,6 +29,7 @@ class SyncKuyrukYazici {
     required Map<String, dynamic> veri,
     String islemTipi = 'UPSERT',
   }) async {
+    if (islemTipi == 'UPSERT') await _kimlikTamamla(txn, tablo, veri);
     final globalId = veri['global_id']?.toString();
     // Aynı kayıt için bekleyen eski bir kuyruk satırı varsa önce sil —
     // eski RAM tabanlı kuyruğun "aynı global_id'yi güncelle" (replace)
@@ -49,5 +51,33 @@ class SyncKuyrukYazici {
       'durum': 'beklemede',
       'created_at': DateTime.now().toIso8601String(),
     });
+  }
+
+  /// global_id'siz ama yerel id'li satırın kimliğini AYNI transaction'dan
+  /// tamamlar (BulutManager.upsert'teki kuralın txn içi karşılığı). Kimliksiz
+  /// satır buluta gidince on_conflict eşleşmez ve kimliksiz yeni satır açılır
+  /// (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 3). global_id sütunu
+  /// olmayan tabloda okuma hata verir — o tabloya dokunulmaz.
+  static Future<void> _kimlikTamamla(
+      dynamic txn, String tablo, Map<String, dynamic> veri) async {
+    final mevcut = veri['global_id']?.toString();
+    final id = veri['id'];
+    if ((mevcut != null && mevcut.isNotEmpty) || id == null) return;
+    try {
+      final r = await txn.query(tablo,
+          columns: ['global_id'], where: 'id = ?', whereArgs: [id], limit: 1);
+      if ((r as List).isEmpty) return;
+      final yerel = (r.first as Map)['global_id']?.toString();
+      if (yerel != null && yerel.isNotEmpty) {
+        veri['global_id'] = yerel;
+        return;
+      }
+      final yeni = const Uuid().v4();
+      await txn.update(tablo, {'global_id': yeni},
+          where: "id = ? AND (global_id IS NULL OR global_id = '')", whereArgs: [id]);
+      veri['global_id'] = yeni;
+    } catch (_) {
+      // global_id sütunu yok (doğal anahtarlı tablo) — olduğu gibi gider.
+    }
   }
 }

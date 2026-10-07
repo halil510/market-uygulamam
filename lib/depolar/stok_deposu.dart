@@ -32,7 +32,6 @@ class StokDeposu {
   Future<int> stokMutabakatYap({void Function(String)? log}) async {
     try {
       final db = await _d;
-      final now = DateTime.now().toIso8601String();
       final duzeltilenIdler = <int>[];
       // 🔴 YARIŞ DÜZELTMESİ (derin analiz 2026-10-07): "doğru stok"
       // hesabı ÖNCEDEN transaction'ın DIŞINDA yapılıyordu. Hesap ile yazma
@@ -45,8 +44,9 @@ class StokDeposu {
           final urunId = r['urun_id'] as int?;
           if (urunId == null) continue;
           final dogruStok = (r['dogru_stok'] as num?)?.toDouble() ?? 0;
-          // last_updated güncellenir — delta senkron düzeltmeyi yakalasın.
-          await txn.update('urunler', {'stok': dogruStok, 'last_updated': now},
+          // Stok türetilmiş alan: last_updated İLERLETİLMEZ (bkz. stokDusTxn).
+          // Buluttaki stok, gönderimde türetilmiş alan güncellemesiyle düzelir.
+          await txn.update('urunler', {'stok': dogruStok},
               where: 'id = ?', whereArgs: [urunId]);
           duzeltilenIdler.add(urunId);
           log?.call('Ürün #$urunId: ${r['mevcut']} → $dogruStok');
@@ -194,7 +194,13 @@ class StokDeposu {
     // iade gerçek değeri (2) verir; hareket farkı her zaman satılan miktardır.
     final sonraki = onceki - miktar;
 
-    await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
+    // 🔴 Stok TÜRETİLMİŞ alandır (stok_hareket toplamı) — last_updated
+    // İLERLETİLMEZ. İlerletilseydi kuyruğa giden tam ürün satırı (bu kasanın
+    // belki eski fiyatıyla) "en yeni" sayılır, başka kasanın fiyat/ad
+    // değişikliğini LWW ile sessizce geri alırdı (Bulut Veri Güvenliği
+    // Raporu 2026-10-07, Bulgu 2). Buluttaki stok, LWW'nin atladığı satırda
+    // ayrı alan güncellemesiyle gider (SupabaseSaglayici, türetilmiş alanlar).
+    await txn.update('urunler', {'stok': sonraki},
         where: 'id = ?', whereArgs: [urunId]);
     final hareketSatiri = {
       'global_id': hareketGid,
@@ -410,7 +416,7 @@ class StokDeposu {
     final onceki = (rows.first['stok'] as num).toDouble();
     final sonraki = onceki + miktar;
 
-    await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
+    await txn.update('urunler', {'stok': sonraki},
         where: 'id = ?', whereArgs: [urunId]);
     final hareketSatiri = {
       'global_id': hareketGid,
@@ -483,11 +489,18 @@ class StokDeposu {
         if (rows.isEmpty) return;
         onceki = (rows.first['stok'] as num).toDouble();
 
-        final urunGuncelleme = {'stok': yeniMiktar, 'last_updated': now};
-        await txn.update('urunler', urunGuncelleme,
+        // Stok türetilmiş alan: last_updated İLERLETİLMEZ (bkz. stokDusTxn).
+        // Kuyruğa kısmi harita DEĞİL tam satır gider — kısmi harita global_id
+        // taşımıyor, bulutta kimliksiz hayalet ürün açıyordu (Bulut Veri
+        // Güvenliği Raporu 2026-10-07, Bulgu 3).
+        await txn.update('urunler', {'stok': yeniMiktar},
             where: 'id = ?', whereArgs: [urunId]);
-        await SyncKuyrukYazici.ekleTxn(txn,
-            tablo: 'urunler', veri: {...urunGuncelleme, 'id': urunId});
+        final guncelSatir = await txn.query('urunler',
+            where: 'id = ?', whereArgs: [urunId], limit: 1);
+        if (guncelSatir.isNotEmpty) {
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'urunler', veri: Map<String, dynamic>.from(guncelSatir.first));
+        }
 
         final stokSatiri = {
           'global_id': hareketGid,

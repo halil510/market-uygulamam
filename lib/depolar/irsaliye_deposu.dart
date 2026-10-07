@@ -147,7 +147,7 @@ class IrsaliyeDeposu {
           // hareket farkını sevk miktarından koparıyor, iptal/iadede hayalet
           // stok üretiyordu (bkz. StokDeposu.stokDusTxn).
           final sonraki = onceki + hareketMiktar;
-          await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
+          await txn.update('urunler', {'stok': sonraki},
               where: 'id = ?', whereArgs: [k.urunId]);
           etkilenenUrunIdler.add(k.urunId);
           // subeStokPayiUygula "ana stok yönü"nü pozitif=düştü olarak
@@ -306,7 +306,7 @@ class IrsaliyeDeposu {
         if (urunRows.isEmpty) continue;
         final mevcutStok = (urunRows.first['stok'] as num).toDouble();
         final yeniStok = mevcutStok + tersDelta; // B2: negatif stok geçerli
-        await txn.update('urunler', {'stok': yeniStok, 'last_updated': now},
+        await txn.update('urunler', {'stok': yeniStok},
             where: 'id = ?', whereArgs: [urunId]);
         etkilenenUrunIdler.add(urunId);
         // subeStokPayiUygula "ana stok yönü"nü pozitif=düştü bekliyor —

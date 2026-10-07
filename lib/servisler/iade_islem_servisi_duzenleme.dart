@@ -30,7 +30,7 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
         if (urunRows.isNotEmpty) {
           final onceki = (urunRows.first['stok'] as num).toDouble();
           final sonraki = onceki - miktar;
-          await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
+          await txn.update('urunler', {'stok': sonraki},
               where: 'id = ?', whereArgs: [urunId]);
           final stokSatiri = {
             'global_id': const Uuid().v4(),
@@ -219,7 +219,7 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
         if (urunRows.isNotEmpty) {
           final onceki = (urunRows.first['stok'] as num).toDouble();
           final sonraki = onceki + fark;
-          await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
+          await txn.update('urunler', {'stok': sonraki},
               where: 'id = ?', whereArgs: [urunId]);
           final stokSatiri = {
             'global_id': const Uuid().v4(),

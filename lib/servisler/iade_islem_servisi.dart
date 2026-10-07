@@ -145,7 +145,7 @@ class IadeIslemServisi {
         if (urunRows.isNotEmpty) {
           final onceki = (urunRows.first['stok'] as num).toDouble();
           await txn.update(
-              'urunler', {'stok': onceki + item.adet, 'last_updated': now},
+              'urunler', {'stok': onceki + item.adet},
               where: 'id = ?', whereArgs: [item.urun.id]);
           final stokSatiri = {
             'global_id': const Uuid().v4(),
@@ -455,7 +455,7 @@ class IadeIslemServisi {
           }
           su = yeniSu;
         }
-        await txn.update('urunler', {'stok': su, 'last_updated': now},
+        await txn.update('urunler', {'stok': su},
             where: 'id = ?', whereArgs: [urunId]);
         final guncelUrunSatiri = await txn.query('urunler',
             where: 'id = ?', whereArgs: [urunId], limit: 1);

@@ -329,8 +329,15 @@ class UrunDeposu {
     await db.transaction((txn) async {
       await txn.update(DbSabitler.urunler, guncelleme,
           where: 'id = ?', whereArgs: [urunId]);
-      await SyncKuyrukYazici.ekleTxn(txn,
-          tablo: 'urunler', veri: {...guncelleme, 'id': urunId});
+      // Kısmi harita DEĞİL tam satır: kısmi harita global_id taşımıyor,
+      // bulutta kimliksiz hayalet ürün açıyordu (Bulut Veri Güvenliği
+      // Raporu 2026-10-07, Bulgu 3).
+      final satir = await txn.query(DbSabitler.urunler,
+          where: 'id = ?', whereArgs: [urunId], limit: 1);
+      if (satir.isNotEmpty) {
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'urunler', veri: Map<String, dynamic>.from(satir.first));
+      }
     });
     final guncelSatir = await db.query(DbSabitler.urunler, where: 'id = ?', whereArgs: [urunId], limit: 1);
     if (guncelSatir.isNotEmpty) {

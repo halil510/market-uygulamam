@@ -221,6 +221,20 @@ class KolonHaritalama {
     'personel': {'ise_baslama_tarihi'},
   };
 
+  /// TÜRETİLMİŞ alanlar: başka tablodaki hareketlerin toplamıdır (stok ←
+  /// stok_hareket, bakiye ← cari_hareket) ve her cihazda mutabakatla yeniden
+  /// hesaplanır. Bu yüzden:
+  ///  • değişmeleri satırın last_updated'ini İLERLETMEZ (ilerletseydi tam
+  ///    satır LWW'de "en yeni" sayılıp başka kasanın ad/fiyat değişikliğini
+  ///    ezerdi — Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 2);
+  ///  • çekimde mevcut kayda UYGULANMAZ (yerel değer mutabakattan gelir);
+  ///  • gönderimde LWW satırı atlarsa yalnız bu alanlar ayrıca (damgasız)
+  ///    güncellenir — bulut değeri bayat kalmasın.
+  static const Map<String, Set<String>> turetilmisAlanlar = {
+    'urunler': {'stok'},
+    'cari': {'bakiye'},
+  };
+
   static void yereleOzguSutunlariAyikla(String tablo, Map<String, dynamic> satir) {
     final s = yereleOzguSutunlar[tablo];
     if (s != null) satir.removeWhere((k, _) => s.contains(k));

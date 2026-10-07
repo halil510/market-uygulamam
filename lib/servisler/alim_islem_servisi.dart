@@ -561,7 +561,7 @@ class AlimIslemServisi {
         final onceki = urunRows.isNotEmpty
             ? (urunRows.first['stok'] as num).toDouble() : 0.0;
         final sonraki = onceki - miktar;
-        await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
+        await txn.update('urunler', {'stok': sonraki},
             where: 'id = ?', whereArgs: [urunId]);
         await txn.insert('stok_hareket', {
           'urun_id':       urunId,

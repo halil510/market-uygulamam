@@ -313,7 +313,11 @@ class SupabaseSaglayici implements IBulutSaglayici {
     // ediliyor; bulut zaten daha yeniyse gönderilmiyor.
     if (veri.containsKey('last_updated') && veri[uniqueAlan] != null) {
       final atlaMi = await _bulutDahaYeniMi(tablo, uniqueAlan, veri[uniqueAlan], veri['last_updated']);
-      if (atlaMi) return; // bulut zaten daha güncel — üzerine yazma
+      if (atlaMi) {
+        // bulut zaten daha güncel — üzerine yazma; yalnız türetilmiş alanlar
+        await _turetilmisAlanlariGonder(tablo, uniqueAlan, [veri]);
+        return;
+      }
     }
 
     // 🔥 EVRENSEL DÜZELTME: SupabaseSyncServisi'nde (manuel senkronizasyon)
@@ -430,6 +434,34 @@ class SupabaseSaglayici implements IBulutSaglayici {
     );
   }
 
+  /// LWW'nin atladığı satırlarda yalnız TÜRETİLMİŞ alanları (bkz.
+  /// KolonHaritalama.turetilmisAlanlar — urunler.stok, cari.bakiye) damgasız
+  /// PATCH ile günceller. last_updated gönderilmediği için sunucu LWW
+  /// tetikleyicisi devreye girmez ve ad/fiyat gibi alanlara dokunulmaz.
+  /// Best-effort: başarısızlık bir sonraki stok/bakiye değişiminde düzelir.
+  Future<void> _turetilmisAlanlariGonder(
+      String tablo, String uniqueAlan, Iterable<Map<String, dynamic>> satirlar) async {
+    final alanlar = KolonHaritalama.turetilmisAlanlar[tablo];
+    if (alanlar == null) return;
+    for (final s in satirlar) {
+      final deger = s[uniqueAlan]?.toString();
+      if (deger == null || deger.isEmpty) continue;
+      final govde = {for (final a in alanlar) if (s.containsKey(a)) a: s[a]};
+      if (govde.isEmpty) continue;
+      try {
+        final r = await http.patch(
+          Uri.parse('$_rest/$tablo?$uniqueAlan=eq.${Uri.encodeComponent(deger)}'),
+          headers: _h,
+          body: jsonEncode(govde),
+        ).timeout(const Duration(seconds: 10));
+        if (r.statusCode >= 400) {
+          LogServisi().uyari('Türetilmiş alan güncellenemedi ($tablo.${govde.keys.join(',')})',
+              ek: 'HTTP ${r.statusCode}');
+        }
+      } catch (_) {/* best-effort */}
+    }
+  }
+
   @override
   Future<BulutSonuc> topluUpsert({
     required String tablo,
@@ -481,6 +513,9 @@ class SupabaseSaglayici implements IBulutSaglayici {
       var aday = batch;
       final atlanan = await _bulutunDahaYeniOldugu(tablo, uniqueAlan, batch);
       if (atlanan.isNotEmpty) {
+        // Satırın geri kalanı atlansa da türetilmiş alan (stok/bakiye) buluta
+        // gitsin — bulut değeri bayat kalmasın.
+        await _turetilmisAlanlariGonder(tablo, uniqueAlan, atlanan);
         basarili += atlanan.length;
         aday = batch.where((k) => !atlanan.contains(k)).toList();
         if (aday.isEmpty) continue;

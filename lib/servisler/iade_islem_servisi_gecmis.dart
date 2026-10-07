@@ -46,7 +46,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
       if (urunRows.isNotEmpty) {
         final onceki = (urunRows.first['stok'] as num).toDouble();
-        await txn.update('urunler', {'stok': onceki + miktar, 'last_updated': now},
+        await txn.update('urunler', {'stok': onceki + miktar},
             where: 'id = ?', whereArgs: [urunId]);
         final stokSatiri = {
           'global_id': const Uuid().v4(),
@@ -328,7 +328,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
         if (urunRows.isEmpty) continue;
         final onceki = (urunRows.first['stok'] as num).toDouble();
         final sonraki = onceki - miktar;
-        await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
+        await txn.update('urunler', {'stok': sonraki},
             where: 'id = ?', whereArgs: [urunId]);
         final stokSatiri = {
           'global_id': const Uuid().v4(),
@@ -575,7 +575,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
       if (urunRows.isNotEmpty) {
         final onceki = (urunRows.first['stok'] as num).toDouble();
-        await txn.update('urunler', {'stok': onceki + miktar, 'last_updated': now},
+        await txn.update('urunler', {'stok': onceki + miktar},
             where: 'id = ?', whereArgs: [urunId]);
         final stokSatiri = {
           'global_id': const Uuid().v4(),

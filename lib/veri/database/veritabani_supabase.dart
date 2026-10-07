@@ -638,7 +638,9 @@ extension VeritabaniSupabase on Veritabani {
         // Cari bakiye bu cihazda hareketlerden türetilir (tetikleyici +
         // SenkronSonrasiMutabakat) — başka kasanın o anki hesabı olan bulut
         // değeri yerel bakiyeyi ezmesin, çakışma kaydına da düşmesin.
-        if (tablo == DbSabitler.cari) temiz.remove('bakiye');
+        // + ürün stoğu (stok_hareket'ten, StokDeposu.stokMutabakatYap).
+        final turetilmis = KolonHaritalama.turetilmisAlanlar[tablo];
+        if (turetilmis != null) temiz.removeWhere((k, _) => turetilmis.contains(k));
         if (temiz.containsKey('global_id') && temiz['global_id'] != null) {
           // 🔴🔴 GENELLEŞTİRİLMİŞ ÇAKIŞMA KORUMASI (kullanıcı isteği:
           // "tam ERP sistemi — internetsiz gelip bulutsuz çalışıp sonra

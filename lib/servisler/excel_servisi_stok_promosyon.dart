@@ -168,7 +168,7 @@ extension ExcelServisiStokPromosyon on ExcelServisi {
           final urunId = rows.first['id'] as int;
           final onceki = (rows.first['stok'] as num).toDouble();
           final now = DateTime.now().toIso8601String();
-          await db.update('urunler', {'stok': miktar, 'last_updated': now},
+          await db.update('urunler', {'stok': miktar},
               where: 'id=?', whereArgs: [urunId]);
           if (onceki != miktar) {
             final hareketGid = const Uuid().v4();

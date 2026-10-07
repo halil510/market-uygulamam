@@ -1566,11 +1566,18 @@ class SupabaseSyncServisi {
     // Çekim eksik/hatalıysa (ör. stok_hareket yarım indi) bu turda türetilmiş
     // değerler yeniden hesaplanıp buluta itilmez: eksik veriden hesaplanan
     // yanlış stok/bakiye doğru bulut değerini ezerdi.
-    if (sadeceTablolar != null) {
-      // Kısmi (masa) çekimde türetilmiş değer mutabakatı çalıştırılmaz;
-      // tam çekim zaten periyodik yapılıyor.
-    } else if (sonuc.hatalar.isNotEmpty) {
+    // Kısmi (masa/anlık) çekimde yalnız gerçekten değişen tablolardan
+    // beslenen adımlar çalışır (bkz. SenkronSonrasiMutabakat.adimTablolari).
+    if (sonuc.hatalar.isNotEmpty) {
       log?.call('⚠️ çekimde hata var — türetilmiş değer mutabakatı atlandı');
+    } else if (sadeceTablolar != null) {
+      final degisen = {
+        for (final t in sadeceTablolar)
+          if ((sonuc.eklenen[t] ?? 0) + (sonuc.guncellenen[t] ?? 0) + (sonuc.silinen[t] ?? 0) > 0) t,
+      };
+      if (degisen.isNotEmpty) {
+        await SenkronSonrasiMutabakat.calistir(log: log, degisenTablolar: degisen);
+      }
     } else if (sonuc.toplamEklenen +
             sonuc.toplamGuncellenen +
             sonuc.toplamSilinen >

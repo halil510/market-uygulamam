@@ -25,8 +25,34 @@ import 'puan_servisi.dart';
 class SenkronSonrasiMutabakat {
   SenkronSonrasiMutabakat._();
 
-  static Future<void> calistir({void Function(String)? log}) async {
+  /// Her adımın kaynak tabloları — kısmi/anlık çekimde yalnız etkilenen
+  /// adımlar çalışsın diye.
+  @visibleForTesting
+  static const Map<String, Set<String>> adimTablolari = {
+    'Mükerrer cari kodu': {'cari'},
+    'Cari bakiye': {'cari', 'cari_hareket'},
+    'Stok': {'urunler', 'stok_hareket'},
+    'Masa sipariş toplamı': {'masalar', 'masa_siparisleri', 'masa_siparis_kalem'},
+    'Borç ödenen tutar': {'borclar', 'borc_odemeler'},
+    'Kredi kartı limiti': {'kredi_kartlari', 'kredi_karti_hareket'},
+    'Müşteri puanı': {'musteri_puan', 'puan_hareket'},
+  };
+
+  /// [degisenTablolar] verilirse (kısmi/anlık çekim) yalnız o tablolardan
+  /// beslenen adımlar çalışır; null ise hepsi.
+  ///
+  /// 🔴 DÜZELTME (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 11): anlık
+  /// dinleyicinin kısmi çekimlerinde (başka kasadan gelen tahsilat, stok
+  /// hareketi …) mutabakat HİÇ çalışmıyordu — bakiye/stok bir sonraki tam
+  /// çekime kadar yanlış kalıyordu.
+  static Future<void> calistir(
+      {void Function(String)? log, Set<String>? degisenTablolar}) async {
     Future<void> adim(String etiket, Future<int> Function() islem) async {
+      final kaynak = adimTablolari[etiket];
+      if (degisenTablolar != null && kaynak != null &&
+          kaynak.intersection(degisenTablolar).isEmpty) {
+        return;
+      }
       try {
         final n = await islem();
         if (n > 0) log?.call('🔧 $etiket: $n kayıt düzeltildi');

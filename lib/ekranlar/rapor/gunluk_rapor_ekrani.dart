@@ -23,6 +23,9 @@ import '../../depolar/satis_deposu.dart';
 import '../../depolar/gider_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
+import '../../widgetlar/masaustu/ekran_ustte.dart';
+import 'package:flutter/services.dart';
+import 'masaustu/gunluk_rapor_masaustu_gorunum.dart';
 
 class GunlukRaporEkrani extends ConsumerStatefulWidget {
   const GunlukRaporEkrani({super.key});
@@ -63,7 +66,52 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
     final now = DateTime.now();
     _baslangic = DateTime(now.year, now.month, now.day);
     _bitis     = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    HardwareKeyboard.instance.addHandler(_tus);
     WidgetsBinding.instance.addPostFrameCallback((_) => _yukle());
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_tus);
+    super.dispose();
+  }
+
+  bool get _masaustu => MediaQuery.sizeOf(context).width > 1100;
+
+  /// Masaüstü kısayolları: F5 Yenile, F8 PDF, F9 Excel.
+  bool _tus(KeyEvent e) {
+    if (e is! KeyDownEvent || !mounted || !_masaustu) return false;
+    if (!ekranUstte(context)) return false;
+    if (e.logicalKey == LogicalKeyboardKey.f5) {
+      _yukle();
+    } else if (e.logicalKey == LogicalKeyboardKey.f8) {
+      if (!_yukleniyor) _pdfOlustur();
+    } else if (e.logicalKey == LogicalKeyboardKey.f9) {
+      if (!_yukleniyor) _exceleAktar();
+    } else {
+      return false;
+    }
+    return true;
+  }
+
+  /// Masaüstünde tek adımda başlangıç–bitiş seçimi.
+  Future<void> _aralikSec() async {
+    final r = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: DateTimeRange(
+          start: _baslangic,
+          end: _bitis.isAfter(DateTime.now()) ? DateTime.now() : _bitis),
+      locale: const Locale('tr', 'TR'),
+    );
+    if (r == null || !mounted) return;
+    setState(() {
+      _baslangic = DateTime(r.start.year, r.start.month, r.start.day);
+      _bitis = DateTime(r.end.year, r.end.month, r.end.day, 23, 59, 59);
+      _periyot = 'Özel';
+    });
+    _yukle();
   }
 
   Future<void> _yukle() async {
@@ -637,7 +685,28 @@ double _toDouble(dynamic value) {
         ],
         geriTusu: false,
       ),
-      body: Column(children: [
+      body: _masaustu
+          ? GunlukRaporMasaustuGorunum(
+              satislar: _satislar,
+              ozet: GunlukRaporOzet(
+                toplam: _toplamTutar, nakit: _nakitToplam, kart: _kartToplam,
+                cari: _cariToplam, havale: _havaleToplam, diger: _digerToplam,
+                gider: _giderToplam, maliyet: _maliyetToplam, iade: _iadeToplam,
+                brutKar: _brutKar, netKar: _kar,
+              ),
+              yukleniyor: _yukleniyor,
+              baslangic: _baslangic,
+              bitis: _bitis,
+              periyot: _periyot,
+              periyotlar: _periyotSecenekleri,
+              onPeriyot: _periyotDegisti,
+              onOzelAralik: _aralikSec,
+              onYenile: _yukle,
+              onPdf: _pdfOlustur,
+              onExcel: _exceleAktar,
+              onFisDetay: _fisDetay,
+            )
+          : Column(children: [
         // Tarih / periyot seçimi
         Container(
           color: context.borderColor,

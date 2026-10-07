@@ -13,6 +13,7 @@
 --   (2026-09-28) İşletme hesabıyla güvenli giriş        → BÖLÜM G
 --   (2026-10-07) Sunucu zamanı (çekim filigranı)          → BÖLÜM H
 --   (2026-10-07) Son-yazan-kazanır koruması (LWW)       → BÖLÜM I
+--   (2026-10-08) Bulut cari bakiyesi hareketlerden      → BÖLÜM J
 --                (eski ayrı dosya supabase_lww_koruma.sql'in yerine geçer)
 --
 -- KULLANIM: Dosyanın TAMAMINI SQL Editor'e yapıştırıp çalıştırın. Her bölüm
@@ -4920,5 +4921,61 @@ BEGIN
       'EXECUTE FUNCTION public.mp_lww_koruma()', t.table_name);
   END LOOP;
 END $$;
+
+-- ════════════════════════════════════════════════════════════════════════
+-- BÖLÜM J — BULUT CARİ BAKİYESİ HAREKETLERDEN                   [2026-10-08]
+-- ════════════════════════════════════════════════════════════════════════
+-- Canlı kontrol: 2 Ekim Excel aktarımındaki 106 carinin bulut bakiyesi 0
+-- kalmıştı (cihazlardaki bakiye doğru — uygulama bakiyeyi her cihazda
+-- cari_hareket'ten hesaplar ve buluttan gelen bakiyeyi uygulamaz). Bulutu
+-- doğrudan okuyan her şey (rapor/panel) yanlış görüyordu. Bu bölüm bakiyeyi
+-- bir kez düzeltir ve sonra her hareket değişiminde sunucuda günceller.
+-- Formül cihazlarla aynı: SUM(borc - alacak), silinmemiş hareketler.
+-- last_updated'e DOKUNULMAZ (LWW tetikleyicisi etkilenmez).
+
+CREATE OR REPLACE FUNCTION public.mp_cari_bakiye_hesapla(p_cari_id bigint)
+RETURNS void
+LANGUAGE sql
+AS $$
+  UPDATE public.cari c
+     SET bakiye = COALESCE((
+           SELECT SUM(COALESCE(h.borc, 0) - COALESCE(h.alacak, 0))
+             FROM public.cari_hareket h
+            WHERE h.cari_id = p_cari_id
+              AND COALESCE(h.is_deleted, false) = false), 0)
+   WHERE c.id = p_cari_id
+     AND c.bakiye IS DISTINCT FROM COALESCE((
+           SELECT SUM(COALESCE(h.borc, 0) - COALESCE(h.alacak, 0))
+             FROM public.cari_hareket h
+            WHERE h.cari_id = p_cari_id
+              AND COALESCE(h.is_deleted, false) = false), 0);
+$$;
+
+CREATE OR REPLACE FUNCTION public.mp_cari_bakiye_trg()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF TG_OP IN ('UPDATE', 'DELETE') AND OLD.cari_id IS NOT NULL THEN
+    PERFORM public.mp_cari_bakiye_hesapla(OLD.cari_id);
+  END IF;
+  -- UPDATE'te cari değişmediyse OLD ile zaten hesaplandı.
+  IF TG_OP = 'INSERT' AND NEW.cari_id IS NOT NULL THEN
+    PERFORM public.mp_cari_bakiye_hesapla(NEW.cari_id);
+  ELSIF TG_OP = 'UPDATE' AND NEW.cari_id IS NOT NULL
+        AND NEW.cari_id IS DISTINCT FROM OLD.cari_id THEN
+    PERFORM public.mp_cari_bakiye_hesapla(NEW.cari_id);
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS mp_cari_bakiye_trg ON public.cari_hareket;
+CREATE TRIGGER mp_cari_bakiye_trg
+  AFTER INSERT OR UPDATE OR DELETE ON public.cari_hareket
+  FOR EACH ROW EXECUTE FUNCTION public.mp_cari_bakiye_trg();
+
+-- Tek seferlik düzeltme (yalnız farklı olanlar güncellenir).
+SELECT public.mp_cari_bakiye_hesapla(c.id) FROM public.cari c;
 
 -- ═══ DOSYA SONU ═══

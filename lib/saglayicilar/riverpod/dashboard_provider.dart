@@ -188,7 +188,11 @@ class Dashboard extends _$Dashboard {
 
   Future<void> yenile() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(_fetch);
+    final sonuc = await AsyncValue.guard(_fetch);
+    // Bekleme sırasında provider yeniden kurulduysa (satış sonrası yenile +
+    // buluttan gelen değişiklikle invalidate aynı anda) state'e yazmak
+    // "Ref disposed" kritik hatası veriyordu (canlı log, 2026-10-08).
+    if (ref.mounted) state = sonuc;
   }
 }
 

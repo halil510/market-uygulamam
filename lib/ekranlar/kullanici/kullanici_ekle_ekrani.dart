@@ -328,7 +328,7 @@ class _KullaniciEkleEkraniState extends ConsumerState<KullaniciEkleEkrani>
                 _alan(_telCtrl, 'Telefon', Icons.phone),
                 const SizedBox(height: TsBosluk.lg),
                 DropdownButtonFormField<String>(
-                  value: _rol,
+                  initialValue: _rol,
                   decoration: InputDecoration(
                     labelText: 'Rol',
                     prefixIcon: const Icon(Icons.security),

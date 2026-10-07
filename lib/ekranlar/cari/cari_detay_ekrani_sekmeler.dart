@@ -100,11 +100,11 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [_bakiyeRenk, Color.fromARGB(178, _bakiyeRenk.red, _bakiyeRenk.green, _bakiyeRenk.blue)],
+            colors: [_bakiyeRenk, _bakiyeRenk.withAlpha(178)],
             begin: Alignment.topLeft, end: Alignment.bottomRight),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [BoxShadow(
-              color: Color.fromARGB(76, _bakiyeRenk.red, _bakiyeRenk.green, _bakiyeRenk.blue), blurRadius: 12, offset: const Offset(0, 6))],
+              color: _bakiyeRenk.withAlpha(76), blurRadius: 12, offset: const Offset(0, 6))],
         ),
         child: Column(children: [
           Text(_bakiyeEtiket, style: const TextStyle(color: Colors.white70, fontSize: 14)),
@@ -420,7 +420,7 @@ class _Kart extends StatelessWidget {
   final List<Widget> children;
   const _Kart({required this.children});
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
       color: TsRenk.kart(context), borderRadius: BorderRadius.circular(14),
       boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),

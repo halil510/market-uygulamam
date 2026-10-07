@@ -51,7 +51,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
               decoration: BoxDecoration(
                 color: _kameraAcik
                     ? Theme.of(context).colorScheme.primary
-                    : Color.fromARGB(26, Theme.of(context).colorScheme.primary.red, Theme.of(context).colorScheme.primary.green, Theme.of(context).colorScheme.primary.blue),
+                    : Theme.of(context).colorScheme.primary.withAlpha(26),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -121,7 +121,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
         borderRadius: BorderRadius.circular(14),
         child: Stack(children: [
           MobileScanner(
-            controller: _scanCtrl!,
+            controller: _scanCtrl,
             onDetect: (capture) {
               final barkod = capture.barcodes.firstOrNull?.rawValue;
               if (barkod != null && barkod.isNotEmpty) {
@@ -205,7 +205,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
                 Container(
                   width: 32, height: 32,
                   decoration: BoxDecoration(
-                    color: Color.fromARGB(26, Theme.of(context).colorScheme.primary.red, Theme.of(context).colorScheme.primary.green, Theme.of(context).colorScheme.primary.blue),
+                    color: Theme.of(context).colorScheme.primary.withAlpha(26),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(Icons.add, size: 18,
@@ -265,10 +265,10 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Color.fromARGB(20, Theme.of(context).colorScheme.primary.red, Theme.of(context).colorScheme.primary.green, Theme.of(context).colorScheme.primary.blue),
+                  color: Theme.of(context).colorScheme.primary.withAlpha(20),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Color.fromARGB(76, Theme.of(context).colorScheme.primary.red, Theme.of(context).colorScheme.primary.green, Theme.of(context).colorScheme.primary.blue)),
+                    color: Theme.of(context).colorScheme.primary.withAlpha(76)),
                 ),
                 child: Text('${k.adet} adet',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
@@ -380,7 +380,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
         child: Container(
           width: 28, height: 28,
           decoration: BoxDecoration(
-            color: Color.fromARGB(20, (renk ?? Theme.of(context).colorScheme.primary).red, (renk ?? Theme.of(context).colorScheme.primary).green, (renk ?? Theme.of(context).colorScheme.primary).blue),
+            color: (renk ?? Theme.of(context).colorScheme.primary).withAlpha(20),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Icon(icon, size: 16,
@@ -426,7 +426,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
   Widget _ayarTab() => ListView(padding: const EdgeInsets.all(16), children: [
     _baslik('Şablon'),
     DropdownButtonFormField<String>(
-      value: _secilenSablon,
+      initialValue: _secilenSablon,
       decoration: InputDecoration(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         isDense: true,

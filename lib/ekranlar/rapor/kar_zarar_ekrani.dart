@@ -279,7 +279,7 @@ class _OzetTab extends StatelessWidget {
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [BoxShadow(
-              color: Color.fromARGB(76, (veri.netKar >= 0 ? Colors.green : Colors.red).red, (veri.netKar >= 0 ? Colors.green : Colors.red).green, (veri.netKar >= 0 ? Colors.green : Colors.red).blue),
+              color: (veri.netKar >= 0 ? Colors.green : Colors.red).withAlpha(76),
               blurRadius: 16, offset: const Offset(0, 6),
             )],
           ),
@@ -365,7 +365,7 @@ class _MetrikKart extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Color.fromARGB(26, renk.red, renk.green, renk.blue),
+              color: renk.withAlpha(26),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(ikon, color: renk, size: 18),

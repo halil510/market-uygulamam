@@ -140,7 +140,7 @@ class _BankaHareketMasaustuGorunumState
         tuslar: [
           if (widget.onEkle != null)
             AltTus('F1', 'Hareket Ekle', Icons.add_circle_outline,
-                const Color(0xFF2E7D32), widget.onEkle!),
+                const Color(0xFF2E7D32), widget.onEkle),
           AltTus('F5', 'Yenile', Icons.refresh, const Color(0xFF455A64),
               () => widget.onYenile()),
         ],

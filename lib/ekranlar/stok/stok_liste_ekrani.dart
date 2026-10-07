@@ -33,7 +33,7 @@ class _StokListeEkraniState extends ConsumerState<StokListeEkrani>
 
   List<UrunModel> _gosterilenler = [];
   List<UrunModel> _kritikler     = [];
-  Set<int>        _seciliUrunler = {};
+  final Set<int>        _seciliUrunler = {};
   bool            _secimModu     = false;
 
   final _aramaCtrl  = TextEditingController();

@@ -145,7 +145,7 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Color.fromARGB(15, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
+                  color: AppRenkler.primary.withAlpha(15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(children: [
@@ -204,7 +204,7 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
         // Seçim modu özet
         if (durum.secimModu)
           Container(
-            color: Color.fromARGB(20, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
+            color: AppRenkler.primary.withAlpha(20),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(children: [
               Text('Seçili toplam: ${ParaUtils.formatla(durum.seciliToplam)}',
@@ -308,7 +308,7 @@ class _StatBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
     decoration: BoxDecoration(
-      color: Color.fromARGB(26, renk.red, renk.green, renk.blue),
+      color: renk.withAlpha(26),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Text(metin,
@@ -361,7 +361,7 @@ class _SatisKarti extends StatelessWidget {
               decoration: BoxDecoration(
                 color: iptal
                     ? TsRenk.zemin(TsRenk.hata)
-                    : Color.fromARGB(20, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
+                    : AppRenkler.primary.withAlpha(20),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(

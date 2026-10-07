@@ -198,8 +198,8 @@ class TerminalYonetimServisi {
   Future<void> guncelle(int id, {String? ad, bool? aktif}) async {
     final s = await _saglayici();
     await s.idIleGuncelle('terminaller', id, {
-      if (ad != null) 'terminal_adi': ad,
-      if (aktif != null) 'aktif': aktif,
+      'terminal_adi': ?ad,
+      'aktif': ?aktif,
       'last_updated': DateTime.now().toUtc().toIso8601String(),
     });
   }

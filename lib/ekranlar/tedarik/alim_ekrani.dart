@@ -75,7 +75,7 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
   final _urunDepo  = UrunDeposu();
   final _barkodSrv = BarkodServisi();
 
-  List<_AlimKalem> _kalemler       = [];
+  final List<_AlimKalem> _kalemler       = [];
   List<UrunModel>  _aramaSonuclari = [];
   CariModel?       _tedarikci;
   List<CariModel>  _tedarikciListesi = [];

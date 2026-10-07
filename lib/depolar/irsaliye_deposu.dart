@@ -399,7 +399,7 @@ class IrsaliyeDeposu {
     final now = DateTime.now().toIso8601String();
     await db.update('irsaliyeler', {
       'e_irsaliye_durum': durum,
-      if (uuid != null) 'e_irsaliye_uuid': uuid,
+      'e_irsaliye_uuid': ?uuid,
       'last_updated': now,
     }, where: 'id = ?', whereArgs: [irsaliyeId]);
     await _bildir(db, irsaliyeId);

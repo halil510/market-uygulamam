@@ -249,11 +249,11 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: Color.fromARGB(26, _durumRenk(durum).red, _durumRenk(durum).green, _durumRenk(durum).blue),
+                                    color: _durumRenk(durum).withAlpha(26),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                         color:
-                                            Color.fromARGB(76, _durumRenk(durum).red, _durumRenk(durum).green, _durumRenk(durum).blue)),
+                                            _durumRenk(durum).withAlpha(76)),
                                   ),
                                   child: Text(_durumEtiket(durum),
                                       style: TextStyle(
@@ -391,7 +391,7 @@ class _TedarikciSecimPaneliState extends ConsumerState<_TedarikciSecimPaneli> {
                     final c = liste[i];
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Color.fromARGB(26, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
+                        backgroundColor: AppRenkler.primary.withAlpha(26),
                         child: Text(c.unvan[0],
                             style: const TextStyle(color: AppRenkler.primary)),
                       ),

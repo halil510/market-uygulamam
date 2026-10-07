@@ -449,9 +449,9 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
             heroTag: 'hareket',
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
-            child: const Icon(Icons.receipt_long_outlined),
             onPressed: () => context.push('/cari/hareket/${c.id}'),
             tooltip: 'Hareket Ekle',
+            child: const Icon(Icons.receipt_long_outlined),
           ),
           const SizedBox(height: 8),
           FloatingActionButton.extended(

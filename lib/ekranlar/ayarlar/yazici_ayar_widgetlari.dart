@@ -25,14 +25,14 @@ class _BaglantiDurumKarti extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: renk.shade300),
         boxShadow: [BoxShadow(
-          color: Color.fromARGB(20, renk.red, renk.green, renk.blue),
+          color: renk.withAlpha(20),
           blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(children: [
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Color.fromARGB(30, renk.red, renk.green, renk.blue),
+            color: renk.withAlpha(30),
             shape: BoxShape.circle),
           child: Icon(bagliMi ? Icons.print : Icons.print_disabled,
               color: renk.shade700, size: 22),
@@ -96,7 +96,7 @@ class _CihazKarti extends StatelessWidget {
       Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Color.fromARGB(30, renkTon.red, renkTon.green, renkTon.blue),
+          color: renkTon.withAlpha(30),
           borderRadius: BorderRadius.circular(12)),
         child: Icon(ikon, color: renkTon.shade700, size: 20),
       ),
@@ -145,7 +145,7 @@ class _KayitliYaziciKarti extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Color.fromARGB(25, renk.red, renk.green, renk.blue),
+            color: renk.withAlpha(25),
             borderRadius: BorderRadius.circular(12)),
           child: Icon(wifimi ? Icons.wifi : Icons.bluetooth,
               color: renk.shade600, size: 18),
@@ -182,7 +182,7 @@ class _KartBolum extends StatelessWidget {
       required this.renk, required this.children});
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
       color: TsRenk.kart(context),
       borderRadius: BorderRadius.circular(16),
@@ -194,7 +194,7 @@ class _KartBolum extends StatelessWidget {
       Container(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
         decoration: BoxDecoration(
-          color: Color.fromARGB(18, renk.red, renk.green, renk.blue),
+          color: renk.withAlpha(18),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           border: Border(bottom: BorderSide(color: context.borderColor)),
         ),
@@ -245,16 +245,16 @@ class _BilgiKutu extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: Color.fromARGB(18, renk.red, renk.green, renk.blue),
+      color: renk.withAlpha(18),
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Color.fromARGB(50, renk.red, renk.green, renk.blue)),
+      border: Border.all(color: renk.withAlpha(50)),
     ),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Icon(ikon, size: 16, color: renk),
       const SizedBox(width: 8),
       Expanded(child: Text(mesaj,
           style: TextStyle(fontSize: 12,
-              color: Color.fromARGB(200, renk.red, renk.green, renk.blue)))),
+              color: renk.withAlpha(200)))),
     ]),
   );
 }

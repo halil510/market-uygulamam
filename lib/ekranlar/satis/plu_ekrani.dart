@@ -242,7 +242,7 @@ class _PluEkraniState extends ConsumerState<PluEkrani> {
     final renk = _renk(urun.anaGrup ?? 'Diğer');
     return GestureDetector(
       onTap: () => _urunSec(urun),
-      child: Container(
+      child: DecoratedBox(
         decoration: BoxDecoration(
           color: TsRenk.kart(context),
           borderRadius: BorderRadius.circular(14),
@@ -301,7 +301,7 @@ class _PluEkraniState extends ConsumerState<PluEkrani> {
     return _gradient(urun, renk);
   }
 
-  Widget _gradient(UrunModel urun, Color renk) => Container(
+  Widget _gradient(UrunModel urun, Color renk) => DecoratedBox(
     decoration: BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topLeft, end: Alignment.bottomRight,

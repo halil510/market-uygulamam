@@ -199,7 +199,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
         // ── TAB 1: Güncelleme Ayarları ──────────────────────────────
         ListView(padding: const EdgeInsets.all(16), children: [
           // İşlem tipi
-          Container(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          DecoratedBox(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('İşlem Türü', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 10),
             Wrap(spacing: 8, children: [
@@ -213,7 +213,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
           // Değer girişi
           if (_islem != 'sabitFiyat')
             // Şeffaf Material: RadioListTile dokunma dalgası renkli kutunun altında kalmasın.
-            Container(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Material(type: MaterialType.transparency, child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
+            DecoratedBox(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Material(type: MaterialType.transparency, child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
               Row(children: [
                 Expanded(child: RadioListTile<String>(dense: true, title: const Text('Yüzde (%)'),
                     value: 'yuzde', groupValue: _tipi,
@@ -230,7 +230,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
                 onChanged: (_) => setState(() {})),
             ])))),
           if (_islem == 'sabitFiyat')
-            Container(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(14), child:
+            DecoratedBox(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(14), child:
               TextField(controller: _yeniCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Yeni Fiyat (₺)',
@@ -238,19 +238,19 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
                 onChanged: (_) => setState(() {})))),
           // Filtre
           const SizedBox(height: 10),
-          Container(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          DecoratedBox(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Kategori Filtresi', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 10),
             Row(children: [
               Expanded(child: DropdownButtonFormField<String>(
-                value: _filtrGrup, isExpanded: true,
+                initialValue: _filtrGrup, isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Ana Grup', border: OutlineInputBorder(), isDense: true),
                 items: [const DropdownMenuItem(value: null, child: Text('Tümü')),
                   ..._gruplar.map((g) => DropdownMenuItem(value: g, child: Text(g, overflow: TextOverflow.ellipsis)))],
                 onChanged: (v) => setState(() { _filtrGrup = v; _uygula(); }))),
               const SizedBox(width: 10),
               Expanded(child: DropdownButtonFormField<String>(
-                value: _filtrMarka, isExpanded: true,
+                initialValue: _filtrMarka, isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Marka', border: OutlineInputBorder(), isDense: true),
                 items: [const DropdownMenuItem(value: null, child: Text('Tümü')),
                   ..._markalar.map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis)))],
@@ -259,7 +259,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
           ]))),
           // Önizleme
           const SizedBox(height: 10),
-          Container(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
+          DecoratedBox(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               const Text('Etkilenecek Ürünler', style: TextStyle(fontWeight: FontWeight.w700)),
               Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

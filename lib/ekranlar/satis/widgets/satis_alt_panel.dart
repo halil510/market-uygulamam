@@ -18,7 +18,7 @@ class SatisAltPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool bos = sepet.bos;
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: TsRenk.kart(context),
         boxShadow: [

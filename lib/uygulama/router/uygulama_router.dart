@@ -282,7 +282,7 @@ class UygulamaRouter {
 
         // ---------- SHELL ROUTE ----------
         ShellRoute(
-          builder: (context, state, child) => AnaKabuk(child: child, mevcutRota: state.matchedLocation),
+          builder: (context, state, child) => AnaKabuk(mevcutRota: state.matchedLocation, child: child),
           routes: [
             GoRoute(path: '/', name: 'dashboard', builder: (_, _) => const DashboardEkrani()),
             GoRoute(path: '/panel', name: 'panel', builder: (_, _) => const DashboardEkrani()),
@@ -589,7 +589,7 @@ class _AnaKabukState extends ConsumerState<AnaKabuk> {
       onPopInvokedWithResult: (_, _) {},
       child: Scaffold(
         body: widget.child,
-        bottomNavigationBar: Container(
+        bottomNavigationBar: DecoratedBox(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 12, offset: Offset(0, -3))],

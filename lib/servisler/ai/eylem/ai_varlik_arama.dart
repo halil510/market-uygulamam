@@ -25,7 +25,7 @@ class AiVarlikArama {
     return switch (son) {
       'ğ' => ['${govde}k', '${govde}g'],
       'b' => ['${govde}p'],
-      'c' => ['${govde}ç'],
+      'c' => ['$govdeç'],
       'd' => ['${govde}t'],
       _ => const [],
     };

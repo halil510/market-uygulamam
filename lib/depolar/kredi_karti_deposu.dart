@@ -221,8 +221,8 @@ class KrediKartiDeposu {
       'last_updated': DateTime.now().toIso8601String(),
       // DEEP_AUDIT (kendi-keşif turu, 2026-09-21): CariDeposu.
       // hareketIptalEt() bu hareketi bulup tersine çevirebilsin diye.
-      if (referansId != null) 'referans_id': referansId,
-      if (referansTuru != null) 'referans_turu': referansTuru,
+      'referans_id': ?referansId,
+      'referans_turu': ?referansTuru,
     });
 
     final toplamRows = await txn.rawQuery('''

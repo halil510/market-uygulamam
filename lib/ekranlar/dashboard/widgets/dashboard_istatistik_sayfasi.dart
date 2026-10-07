@@ -156,9 +156,9 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
-            color: Color.fromARGB(20, renk.red, renk.green, renk.blue),
+            color: renk.withAlpha(20),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Color.fromARGB(60, renk.red, renk.green, renk.blue)),
+            border: Border.all(color: renk.withAlpha(60)),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(ikon, size: 16, color: renk),

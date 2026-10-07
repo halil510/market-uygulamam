@@ -72,7 +72,7 @@ extension _ToptanSatisIslemlerExt on _ToptanSatisEkraniState {
         initialChildSize: 0.6,
         maxChildSize: 0.9,
         expand: false,
-        builder: (c, scrollCtrl) => Container(
+        builder: (c, scrollCtrl) => DecoratedBox(
           decoration: BoxDecoration(
             color: TsRenk.arkaplan(context),
             borderRadius:

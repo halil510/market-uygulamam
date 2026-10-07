@@ -388,7 +388,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: tip,
+                initialValue: tip,
                 decoration: const InputDecoration(
                   labelText: 'İşlem Tipi',
                   border: OutlineInputBorder(),

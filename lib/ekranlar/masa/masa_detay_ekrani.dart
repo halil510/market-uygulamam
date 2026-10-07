@@ -129,7 +129,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
                 return InkWell(
                   borderRadius: BorderRadius.circular(14),
                   onTap: () => Navigator.pop(ctx, m),
-                  child: Container(
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: dolu ? Colors.red.withAlpha(25) : Colors.green.withAlpha(25),
                       borderRadius: BorderRadius.circular(14),
@@ -523,7 +523,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       },
       child: Focus(
         autofocus: true,
-        child: Container(
+        child: ColoredBox(
           color: TsRenk.arkaplan(context),
           child: Column(children: [
             Container(

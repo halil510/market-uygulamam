@@ -221,7 +221,7 @@ class _BankaDetayIcerik extends StatelessWidget {
     ]),
   );
 
-  void _sil(BuildContext context) async {
+  Future<void> _sil(BuildContext context) async {
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

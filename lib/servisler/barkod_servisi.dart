@@ -29,7 +29,7 @@ class BarkodServisi {
   Future<void> sesCardir() async {
     try {
       await _audio.play(AssetSource('sounds/bip.mp3'));
-    } catch (e) { if (kDebugMode) debugPrint('[HATA] ' + e.toString()); }
+    } catch (e) { if (kDebugMode) debugPrint('[HATA] $e'); }
   }
 
   Future<void> titret() async {
@@ -37,7 +37,7 @@ class BarkodServisi {
       if ((await Vibration.hasVibrator())) {
         Vibration.vibrate(duration: 80);
       }
-    } catch (e) { if (kDebugMode) debugPrint('[HATA] ' + e.toString()); }
+    } catch (e) { if (kDebugMode) debugPrint('[HATA] $e'); }
   }
 
   Future<void> barkodOkundu() async {
@@ -395,7 +395,7 @@ class _BarkodTaramaDialogState extends State<_BarkodTaramaDialog> {
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: MobileScanner(
-                controller: _ctrl!,
+                controller: _ctrl,
                 onDetect: (capture) {
                   final barcode = capture.barcodes.firstOrNull;
                   if (barcode?.rawValue != null) {

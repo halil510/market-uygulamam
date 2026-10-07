@@ -225,7 +225,7 @@ extension _YaziciAyarSekmeleri on _YaziciAyarEkraniState {
 
         // Kağıt boyutu seçici
         DropdownButtonFormField<String>(
-          value: _kagitBoy,
+          initialValue: _kagitBoy,
           decoration: InputDecoration(
             labelText: 'Kağıt Genişliği',
             prefixIcon: const Icon(Icons.straighten),
@@ -245,7 +245,7 @@ extension _YaziciAyarSekmeleri on _YaziciAyarEkraniState {
         const SizedBox(height: 8),
 
         // KDV toggle
-        Container(
+        DecoratedBox(
           decoration: BoxDecoration(
             color: TsRenk.kart(context),
             borderRadius: BorderRadius.circular(12),

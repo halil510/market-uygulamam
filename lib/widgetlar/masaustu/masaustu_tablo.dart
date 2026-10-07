@@ -193,7 +193,7 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
                 widget.onSec(s);
                 widget.onSagTik!(s, d.globalPosition);
               },
-        child: Container(
+        child: ColoredBox(
           color: zemin,
           // Seçili satır belirgin: koyu zemin + sol kenarda 4px vurgu çubuğu.
           // Çubuk satırın üstüne ÇİZİLİR (kenarlık değil): kenarlık içeriği

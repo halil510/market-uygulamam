@@ -224,13 +224,13 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                       if (mounted) ref.read(masaListesiProvider.notifier).yukle();
                     },
                     onLongPress: () => _masaMenusu(m),
-                    child: Container(
+                    child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: context.cardBg,
                         borderRadius: BorderRadius.circular(16),
                         border: secili
                             ? Border.all(color: TsRenk.masaAcik, width: 2.5)
-                            : Border.all(color: Color.fromARGB(80, renk.red, renk.green, renk.blue), width: 1.5),
+                            : Border.all(color: renk.withAlpha(80), width: 1.5),
                         boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)]),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -239,7 +239,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Color.fromARGB(31, renk.red, renk.green, renk.blue),
+                                color: renk.withAlpha(31),
                                 borderRadius: BorderRadius.circular(10)),
                               child: Icon(_durumIkon(m.durum), color: renk, size: 22),
                             ),
@@ -247,7 +247,7 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: Color.fromARGB(31, renk.red, renk.green, renk.blue),
+                                color: renk.withAlpha(31),
                                 borderRadius: BorderRadius.circular(8)),
                               child: Text(_durumEtiket(m.durum),
                                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: renk)),

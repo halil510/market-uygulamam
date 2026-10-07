@@ -465,7 +465,7 @@ class GibServisi {
       if (e.response?.statusCode == 404) throw GibBelgeBulunamadi(uuid);
       rethrow;
     } catch (e) {
-      if (kDebugMode) debugPrint('[HATA] ' + e.toString());
+      if (kDebugMode) debugPrint('[HATA] $e');
       rethrow;
     }
   }

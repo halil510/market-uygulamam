@@ -72,7 +72,7 @@ class ModernListTile extends StatelessWidget {
       duration: const Duration(milliseconds: 150),
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: selected ? Color.fromARGB(15, c.red, c.green, c.blue) : Colors.white,
+        color: selected ? c.withAlpha(15) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: selected ? c : Colors.grey.shade200,
@@ -133,7 +133,7 @@ class ModernAramaKutusu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -199,11 +199,11 @@ class BosEkranWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Color.fromARGB(20, (ikonRenk ?? Colors.grey).red, (ikonRenk ?? Colors.grey).green, (ikonRenk ?? Colors.grey).blue),
+                color: (ikonRenk ?? Colors.grey).withAlpha(20),
                 shape: BoxShape.circle,
               ),
               child: Icon(ikon, size: 48,
-                  color: Color.fromARGB(153, (ikonRenk ?? Colors.grey).red, (ikonRenk ?? Colors.grey).green, (ikonRenk ?? Colors.grey).blue)),
+                  color: (ikonRenk ?? Colors.grey).withAlpha(153)),
             ),
             const SizedBox(height: 20),
             Text(baslik,
@@ -364,9 +364,9 @@ class StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: Color.fromARGB(31, renk.red, renk.green, renk.blue),
+        color: renk.withAlpha(31),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Color.fromARGB(76, renk.red, renk.green, renk.blue)),
+        border: Border.all(color: renk.withAlpha(76)),
       ),
       child: Text(metin,
           style: TextStyle(

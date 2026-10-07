@@ -21,7 +21,7 @@ import 'widgets/promosyon_kart_widgetlari.dart';
 class PromosyonFormSheet extends ConsumerStatefulWidget {
   /// Doluysa form DÜZENLEME modunda açılır (alanlar mevcut değerle dolu).
   final PromosyonModel? duzenlenecek;
-  const PromosyonFormSheet({this.duzenlenecek});
+  const PromosyonFormSheet({super.key, this.duzenlenecek});
   @override
   ConsumerState<PromosyonFormSheet> createState() => PromosyonFormSheetState();
 }
@@ -462,7 +462,7 @@ class PromosyonFormSheetState extends ConsumerState<PromosyonFormSheet> {
                 onChanged: (v) => setState(() => _aktif = v),
                 dense: true,
                 contentPadding: EdgeInsets.zero,
-                activeColor: Colors.green,
+                activeThumbColor: Colors.green,
               ),
             ),
           const SizedBox(height: 20),

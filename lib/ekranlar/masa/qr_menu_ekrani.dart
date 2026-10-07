@@ -302,7 +302,7 @@ class _UrunKartiMusteri extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: context.cardBg,
         borderRadius: BorderRadius.circular(14),
@@ -315,7 +315,7 @@ class _UrunKartiMusteri extends StatelessWidget {
           // Ürün görseli
           Expanded(
             flex: 3,
-            child: Container(
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [TsRenk.masaAcik.withAlpha(26), TsRenk.masaAcik.withAlpha(13)],

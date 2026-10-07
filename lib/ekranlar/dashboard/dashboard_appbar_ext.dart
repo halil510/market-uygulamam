@@ -35,7 +35,7 @@ extension _DashboardAppBarExt on _DashboardEkraniState {
       actionsIconTheme: const IconThemeData(color: Colors.white, size: 22),
       backgroundColor: TsRenk.primary,
       flexibleSpace: FlexibleSpaceBar(
-        background: Container(
+        background: DecoratedBox(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,

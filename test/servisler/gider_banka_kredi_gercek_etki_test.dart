@@ -62,7 +62,7 @@ Future<void> _bankaUzlastir(Database db,
     {required int giderId, required int? hedefHesapId, required double hedefTutar}) async {
   await db.transaction((txn) async {
     final netler = await _bankaNetHesaplaTumHesaplar(txn, giderId);
-    final hedefler = <int, double>{if (hedefHesapId != null) hedefHesapId: hedefTutar};
+    final hedefler = <int, double>{?hedefHesapId: hedefTutar};
     final etkilenen = {...netler.keys, ...hedefler.keys};
     for (final hesapId in etkilenen) {
       final mevcut = netler[hesapId] ?? 0;
@@ -83,7 +83,7 @@ Future<void> _krediUzlastir(Database db,
     {required int giderId, required int? hedefKartId, required double hedefTutar}) async {
   await db.transaction((txn) async {
     final netler = await _krediNetHesaplaTumKartlar(txn, giderId);
-    final hedefler = <int, double>{if (hedefKartId != null) hedefKartId: hedefTutar};
+    final hedefler = <int, double>{?hedefKartId: hedefTutar};
     final etkilenen = {...netler.keys, ...hedefler.keys};
     for (final kartId in etkilenen) {
       final mevcut = netler[kartId] ?? 0;

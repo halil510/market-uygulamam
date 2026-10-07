@@ -97,7 +97,7 @@ class MutfakEkrani extends ConsumerWidget {
                     final fark = DateTime.now().difference(s.acilisZamani);
                     final beklenenUzun = fark.inMinutes > 20;
 
-                    return Container(
+                    return DecoratedBox(
                       decoration: BoxDecoration(
                         color: TsRenk.kart(context),
                         borderRadius: BorderRadius.circular(16),

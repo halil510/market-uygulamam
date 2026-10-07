@@ -269,7 +269,7 @@ class _MasaustuHizliSatisDuzeniState
     return Column(children: [
       widget.aramaPaneli,
       if (widget.aramaSonuclari != null)
-        Expanded(child: SingleChildScrollView(child: widget.aramaSonuclari!))
+        Expanded(child: SingleChildScrollView(child: widget.aramaSonuclari))
       else ...[
         Expanded(
           flex: 11,

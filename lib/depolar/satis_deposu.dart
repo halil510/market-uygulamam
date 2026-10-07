@@ -442,7 +442,7 @@ class SatisDeposu {
       '  AND s.iptal = 0 AND s.is_deleted = 0 '
       '  AND s.sync_cakisma_kopyasi = 0 $subeKosulu '
       'ORDER BY s.tarih DESC',
-      [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId],
+      [bas.toIso8601String(), bit.toIso8601String(), ?subeId],
     );
     return rows.map((r) => SatisModel.fromMap(r)).toList();
   }
@@ -496,7 +496,7 @@ class SatisDeposu {
       'SELECT COUNT(*) as adet FROM satislar '
       'WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) '
       '  AND iptal = 1 AND is_deleted = 0 $subeKosulu',
-      [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId],
+      [bas.toIso8601String(), bit.toIso8601String(), ?subeId],
     );
     return (res.first['adet'] as int?) ?? 0;
   }
@@ -533,7 +533,7 @@ class SatisDeposu {
       WHERE datetime(s.tarih) BETWEEN datetime(?) AND datetime(?)
         AND s.iptal = 0 AND s.is_deleted = 0
         AND s.sync_cakisma_kopyasi = 0 $subeKosulu
-    ''', [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId]);
+    ''', [bas.toIso8601String(), bit.toIso8601String(), ?subeId]);
     return (rows.first['maliyet'] as num?)?.toDouble() ?? 0;
   }
 
@@ -595,7 +595,7 @@ class SatisDeposu {
         AND s.is_deleted = 0
         AND s.sync_cakisma_kopyasi = 0 $subeKosulu
       ORDER BY s.tarih, s.id
-    ''', [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId]);
+    ''', [bas.toIso8601String(), bit.toIso8601String(), ?subeId]);
   }
 
   /// Bir carinin son 6 ayının aylık satış toplamlarını (ay bazında

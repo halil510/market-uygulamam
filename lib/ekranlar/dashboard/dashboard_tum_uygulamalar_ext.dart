@@ -143,8 +143,7 @@ extension _DashboardTumUygulamalarExt on _DashboardEkraniState {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Color.fromARGB(
-                    26, item.renk.red, item.renk.green, item.renk.blue),
+                color: item.renk.withAlpha(26),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(item.ikon, size: 24, color: item.renk),

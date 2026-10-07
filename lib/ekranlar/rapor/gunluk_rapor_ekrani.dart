@@ -456,7 +456,7 @@ double _toDouble(dynamic value) {
         titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text('Fiş: ' + (s.fisNo ?? '-'),
+            Expanded(child: Text('Fiş: ${s.fisNo ?? '-'}',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700))),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -603,7 +603,7 @@ double _toDouble(dynamic value) {
     }
     return Container(
       decoration: BoxDecoration(
-        color: Color.fromARGB(26, gosterim.red, gosterim.green, gosterim.blue),
+        color: gosterim.withAlpha(26),
         borderRadius: BorderRadius.circular(14),
       ),
       margin: const EdgeInsets.only(bottom: 8),
@@ -660,7 +660,7 @@ double _toDouble(dynamic value) {
             ]),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _periyot,
+              initialValue: _periyot,
               isExpanded: true,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),

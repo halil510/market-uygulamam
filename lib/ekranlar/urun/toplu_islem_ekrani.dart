@@ -369,7 +369,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
   Future<void> _excelDisa() async {
     final urunler = _secili.isEmpty
         ? _filtrelenmis
-        : _tum.where((u) => _secili.contains(u.id!)).toList();
+        : _tum.where((u) => _secili.contains(u.id)).toList();
     try {
       await ExcelServisi().urunleriExcelEAktar(urunler);
       if (mounted) BildirimServisi.basari(context, 'Excel hazırlandı');
@@ -470,7 +470,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                 itemCount: _filtrelenmis.length,
                 itemBuilder: (_, i) {
                   final u = _filtrelenmis[i];
-                  final secili = _secili.contains(u.id!);
+                  final secili = _secili.contains(u.id);
                   return GestureDetector(
                     onTap: () => _toggle(u.id!),
                     child: AnimatedContainer(
@@ -478,7 +478,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
                       margin: const EdgeInsets.only(bottom: 6),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
-                        color: secili ? Color.fromARGB(20, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue) : context.cardBg,
+                        color: secili ? AppRenkler.primary.withAlpha(20) : context.cardBg,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                             color: secili ? AppRenkler.primary : Colors.transparent, width: 1.5),

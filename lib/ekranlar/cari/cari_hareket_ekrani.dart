@@ -502,8 +502,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                                         width: 40,
                                         height: 40,
                                         decoration: BoxDecoration(
-                                          color: Color.fromARGB(26, renk.red,
-                                              renk.green, renk.blue),
+                                          color: renk.withAlpha(26),
                                           borderRadius:
                                               BorderRadius.circular(12),
                                         ),

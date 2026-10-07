@@ -348,7 +348,7 @@ class _Icerik extends StatelessWidget {
                           dotData:         const FlDotData(show: false),
                           belowBarData:    BarAreaData(
                             show: true,
-                            color: Color.fromARGB(20, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
+                            color: AppRenkler.primary.withAlpha(20),
                           ),
                         ),
                       ],
@@ -361,7 +361,7 @@ class _Icerik extends StatelessWidget {
           ],
 
           // Hareket Listesi
-          Container(
+          DecoratedBox(
             decoration: BoxDecoration(
               color: TsRenk.kart(context),
               borderRadius: BorderRadius.circular(20),
@@ -450,7 +450,7 @@ class _HareketSatiri extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Color.fromARGB(20, (giris ? Colors.green : Colors.red).red, (giris ? Colors.green : Colors.red).green, (giris ? Colors.green : Colors.red).blue),
+            color: (giris ? Colors.green : Colors.red).withAlpha(20),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(

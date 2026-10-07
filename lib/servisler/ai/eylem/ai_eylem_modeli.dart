@@ -120,12 +120,11 @@ class AiEylemOnerisi {
     required this.tur,
     required this.baslik,
     required this.satirlar,
-    required Future<String> Function() uygula,
+    required this._uygula,
     this.uyarilar = const [],
     this.kritik = false,
     DateTime? olusturma,
-  })  : _uygula = uygula,
-        olusturma = olusturma ?? DateTime.now();
+  })  : olusturma = olusturma ?? DateTime.now();
 
   /// Önizleme bu süreden sonra bayat sayılır (veri değişmiş olabilir).
   static const Duration gecerlilik = Duration(minutes: 15);

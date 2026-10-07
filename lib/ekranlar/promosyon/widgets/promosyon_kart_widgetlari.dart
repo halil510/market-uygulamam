@@ -2,10 +2,8 @@
 //
 // Promosyon listesi kartı ve küçük rozetler — promosyon_ekrani.dart'tan
 // ayrıldı (2026-10-07 refactor).
-import 'package:flutter/foundation.dart';
 import '../../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../../modeller/promosyon_model.dart';
 import '../../../uygulama/tema/uygulama_temasi.dart';

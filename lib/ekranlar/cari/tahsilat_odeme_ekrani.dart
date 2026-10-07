@@ -379,7 +379,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _odemeTuru,
+            initialValue: _odemeTuru,
             decoration: const InputDecoration(
                 labelText: 'Ödeme Şekli', border: OutlineInputBorder()),
             items: ['Nakit', 'Banka', 'Kredi Kartı', 'Çek', 'Havale']
@@ -391,7 +391,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
           if (_bankaSecimiGerekli) ...[
             if (_bankaHesaplari.isNotEmpty)
               DropdownButtonFormField<BankaHesapModel>(
-                value: _secilenHesap,
+                initialValue: _secilenHesap,
                 decoration: const InputDecoration(
                     labelText: 'Hangi Hesaptan?', border: OutlineInputBorder()),
                 items: _bankaHesaplari
@@ -418,7 +418,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
           if (_kartSecimiGerekli) ...[
             if (_krediKartlari.isNotEmpty)
               DropdownButtonFormField<KrediKartiModel>(
-                value: _secilenKart,
+                initialValue: _secilenKart,
                 decoration: const InputDecoration(
                     labelText: 'Hangi Kart?', border: OutlineInputBorder()),
                 items: _krediKartlari

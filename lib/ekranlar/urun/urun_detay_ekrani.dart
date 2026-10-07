@@ -287,7 +287,7 @@ class _ToptanKademeleriBolumuState extends State<_ToptanKademeleriBolumu> {
               )),
               const SizedBox(width: 10),
               Expanded(child: DropdownButtonFormField<String>(
-                value: birim,
+                initialValue: birim,
                 decoration: const InputDecoration(labelText: 'Birim'),
                 items: const [
                   DropdownMenuItem(value: 'adet', child: Text('Adet')),
@@ -305,7 +305,7 @@ class _ToptanKademeleriBolumuState extends State<_ToptanKademeleriBolumu> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<int?>(
-              value: fiyatGrubuId,
+              initialValue: fiyatGrubuId,
               decoration: const InputDecoration(labelText: 'Hangi Bayi Grubu İçin?'),
               items: [
                 const DropdownMenuItem(value: null, child: Text('Tüm Bayiler (Genel)')),
@@ -451,7 +451,7 @@ class _HareketSekmesiState extends ConsumerState<_HareketSekmesi> {
             Container(
               width: 36, height: 36,
               decoration: BoxDecoration(
-                color: Color.fromARGB(26, (pozitif ? Colors.green : Colors.red).red, (pozitif ? Colors.green : Colors.red).green, (pozitif ? Colors.green : Colors.red).blue),
+                color: (pozitif ? Colors.green : Colors.red).withAlpha(26),
                 shape: BoxShape.circle),
               child: Icon(
                 pozitif ? Icons.add : Icons.remove,

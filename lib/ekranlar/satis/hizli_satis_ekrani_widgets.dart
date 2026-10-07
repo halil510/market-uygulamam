@@ -202,10 +202,10 @@ class _OdemeSecimSheet extends StatelessWidget {
                   : () => Navigator.pop(context, y.deger),
               child: Opacity(
                 opacity: kilitli ? 0.35 : 1.0,
-                child: Container(
+                child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Color.fromARGB(36, y.renk.red, y.renk.green, y.renk.blue),
-                    border: Border.all(color: Color.fromARGB(120, y.renk.red, y.renk.green, y.renk.blue), width: 1.2),
+                    color: y.renk.withAlpha(36),
+                    border: Border.all(color: y.renk.withAlpha(120), width: 1.2),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Column(

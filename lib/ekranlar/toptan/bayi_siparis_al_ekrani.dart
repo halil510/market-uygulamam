@@ -214,7 +214,7 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
                 ),
               ),
               const SizedBox(width: TsBosluk.sm),
-              Container(
+              DecoratedBox(
                 decoration: BoxDecoration(
                     color: TsRenk.kart(context),
                     borderRadius: BorderRadius.circular(TsRadius.md),
@@ -432,7 +432,7 @@ class _KalemDialogState extends State<_KalemDialog> {
             Expanded(
               flex: 3,
               child: DropdownButtonFormField<String>(
-                value: widget.birimler.any((b) => b.$1 == _birimAdi) ? _birimAdi : null,
+                initialValue: widget.birimler.any((b) => b.$1 == _birimAdi) ? _birimAdi : null,
                 decoration: const InputDecoration(labelText: 'Birim', border: OutlineInputBorder(), isDense: true),
                 items: widget.birimler
                     .map((b) => DropdownMenuItem(value: b.$1, child: Text(b.$1, overflow: TextOverflow.ellipsis)))

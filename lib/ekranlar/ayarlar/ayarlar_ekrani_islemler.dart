@@ -372,11 +372,7 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
         allowedExtensions: ['xlsx', 'xls'],
       );
       if (dosya == null) return;
-      final Uint8List? fileBytes = await dosya.readAsBytes();
-      if (fileBytes == null) {
-        if (mounted) BildirimServisi.hata(context, 'Dosya okunamadı');
-        return;
-      }
+      final Uint8List fileBytes = await dosya.readAsBytes();
 
       if (!mounted) return;
 
@@ -546,7 +542,7 @@ class _SonucSatiri extends StatelessWidget {
           Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
               decoration: BoxDecoration(
-                  color: Color.fromARGB(26, renk.red, renk.green, renk.blue),
+                  color: renk.withAlpha(26),
                   borderRadius: BorderRadius.circular(12)),
               child: Text('$sayi',
                   style: TextStyle(fontWeight: FontWeight.w700, color: renk))),

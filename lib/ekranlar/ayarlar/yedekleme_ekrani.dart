@@ -243,7 +243,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
               const SizedBox(height: 16),
 
               // Sıklık seçimi
-              Container(
+              DecoratedBox(
                 decoration: BoxDecoration(
                   color: TsRenk.kart(context),
                   borderRadius: BorderRadius.circular(14),

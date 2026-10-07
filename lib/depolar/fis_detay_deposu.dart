@@ -19,7 +19,7 @@ class FisDetayDeposu {
   // edilebilmesi için opsiyonel; verilmezse üretimde tekil Veritabani().db
   // kullanılır (davranış değişmedi).
   final Database? _db;
-  FisDetayDeposu({Database? db}) : _db = db;
+  FisDetayDeposu({this._db});
 
   Future<FisDetaySonucu> getir({
     required int fisId,

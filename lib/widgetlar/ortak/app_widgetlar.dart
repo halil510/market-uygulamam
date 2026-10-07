@@ -323,7 +323,7 @@ class GradientAppBar extends StatelessWidget implements PreferredSizeWidget {
       );
     }
 
-    return Container(
+    return DecoratedBox(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,

@@ -239,8 +239,7 @@ extension _HizliTabExt on _IadeEkraniState {
                 Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                        color: Color.fromARGB(
-                            20, _R.blue.red, _R.blue.green, _R.blue.blue),
+                        color: _R.blue.withAlpha(20),
                         shape: BoxShape.circle),
                     child: const Icon(Icons.add_shopping_cart,
                         size: 52, color: _R.blue)),

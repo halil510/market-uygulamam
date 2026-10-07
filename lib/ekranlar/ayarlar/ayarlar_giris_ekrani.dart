@@ -223,7 +223,7 @@ class _AyarlarGirisEkraniState extends ConsumerState<AyarlarGirisEkrani> {
                 const SizedBox(height: 28),
 
                 // PIN kartı
-                Container(
+                DecoratedBox(
                   decoration: BoxDecoration(
                     color: TsRenk.kart(context),
                     borderRadius: BorderRadius.circular(16),

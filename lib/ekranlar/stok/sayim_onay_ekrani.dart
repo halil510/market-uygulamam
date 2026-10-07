@@ -112,7 +112,7 @@ class _SayimOnayEkraniState extends ConsumerState<SayimOnayEkrani> {
           return Column(children: [
             Container(
               width: double.infinity,
-              color: Color.fromARGB(15, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
+              color: AppRenkler.primary.withAlpha(15),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Text(
                 '${liste.length} ürün onay bekliyor · net fark: ${toplamFark.toStringAsFixed(0)}',

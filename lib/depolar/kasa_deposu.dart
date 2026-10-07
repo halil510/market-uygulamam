@@ -127,7 +127,7 @@ class KasaDeposu {
       // Bak." alanı TÜM şubelerin nakit hareketlerini topluyordu.
       final subeId = AktifSubeServisi().subeId;
       final subeSarti = subeId != null ? ' AND sube_id = ?' : '';
-      final args = [...girisler, if (subeId != null) subeId];
+      final args = [...girisler, ?subeId];
       final rows = await db.rawQuery('''
         SELECT COALESCE(SUM(
           CASE WHEN hareket_tipi IN ($icYer) THEN tutar ELSE -tutar END
@@ -161,7 +161,7 @@ class KasaDeposu {
       // sayıyordu.
       final subeId = AktifSubeServisi().subeId;
       final subeSarti = subeId != null ? ' AND sube_id = ?' : '';
-      final args = [...girisler, baslangic.toIso8601String(), if (subeId != null) subeId];
+      final args = [...girisler, baslangic.toIso8601String(), ?subeId];
       final rows = await db.rawQuery('''
         SELECT COALESCE(SUM(
           CASE WHEN hareket_tipi IN ($icYer) THEN tutar ELSE -tutar END
@@ -190,7 +190,7 @@ class KasaDeposu {
       final icYer = List.filled(girisler.length, '?').join(',');
       final subeId = AktifSubeServisi().subeId;
       final subeSarti = subeId != null ? ' AND sube_id = ?' : '';
-      final args = [...girisler, baslangic.toIso8601String(), if (subeId != null) subeId];
+      final args = [...girisler, baslangic.toIso8601String(), ?subeId];
       final rows = await db.rawQuery('''
         SELECT
           CASE
@@ -338,7 +338,7 @@ class KasaDeposu {
           COALESCE(SUM(CASE WHEN hareket_tipi IN ('Gider','Ödeme','KapanışKasa') THEN tutar ELSE 0 END), 0) as cikis
         FROM kasa_hareketleri
         WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND deleted_at IS NULL$subeKosulu
-      """, [bas.toIso8601String(), bit.toIso8601String(), if (subeId != null) subeId]);
+      """, [bas.toIso8601String(), bit.toIso8601String(), ?subeId]);
       if (res.isEmpty) return {'giris': 0, 'cikis': 0};
       final r = res.first;
       return {

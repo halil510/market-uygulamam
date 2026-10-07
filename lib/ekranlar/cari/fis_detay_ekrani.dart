@@ -394,10 +394,10 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
         margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Color.fromARGB(102, Theme.of(context).colorScheme.primaryContainer.red, Theme.of(context).colorScheme.primaryContainer.green, Theme.of(context).colorScheme.primaryContainer.blue),
+          color: Theme.of(context).colorScheme.primaryContainer.withAlpha(102),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-              color: Color.fromARGB(76, Theme.of(context).colorScheme.primary.red, Theme.of(context).colorScheme.primary.green, Theme.of(context).colorScheme.primary.blue)),
+              color: Theme.of(context).colorScheme.primary.withAlpha(76)),
         ),
         child: Column(children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -511,7 +511,7 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
             Container(
               width: 28, height: 28,
               decoration: BoxDecoration(
-                color: Color.fromARGB(26, Theme.of(context).colorScheme.primary.red, Theme.of(context).colorScheme.primary.green, Theme.of(context).colorScheme.primary.blue),
+                color: Theme.of(context).colorScheme.primary.withAlpha(26),
                 borderRadius: BorderRadius.circular(12)),
               child: Center(
                 child: Text('${idx + 1}',
@@ -575,12 +575,12 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: [
             Theme.of(context).colorScheme.primary,
-            Color.fromARGB(204, Theme.of(context).colorScheme.primary.red, Theme.of(context).colorScheme.primary.green, Theme.of(context).colorScheme.primary.blue),
+            Theme.of(context).colorScheme.primary.withAlpha(204),
           ]),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-                color: Color.fromARGB(76, Theme.of(context).colorScheme.primary.red, Theme.of(context).colorScheme.primary.green, Theme.of(context).colorScheme.primary.blue),
+                color: Theme.of(context).colorScheme.primary.withAlpha(76),
                 blurRadius: 8, offset: const Offset(0, 4)),
           ],
         ),
@@ -614,9 +614,9 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
   Widget _badge(String label, Color color) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: Color.fromARGB(26, color.red, color.green, color.blue),
+          color: color.withAlpha(26),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Color.fromARGB(76, color.red, color.green, color.blue)),
+          border: Border.all(color: color.withAlpha(76)),
         ),
         child: Text(label,
             style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),

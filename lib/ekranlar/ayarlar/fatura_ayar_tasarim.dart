@@ -269,7 +269,7 @@ class _Baslik extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 8, top: 4),
     child: Text(metin, style: TextStyle(
         fontWeight: FontWeight.w700, fontSize: 12,
-        color: Color.fromARGB(204, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
+        color: AppRenkler.primary.withAlpha(204),
         letterSpacing: 0.5)),
   );
 }
@@ -299,12 +299,12 @@ class _SwitchSatir extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SwitchListTile(
     secondary: Container(padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(color: Color.fromARGB(26, renk.red, renk.green, renk.blue), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: renk.withAlpha(26), borderRadius: BorderRadius.circular(12)),
         child: Icon(ikon, color: renk, size: 18)),
     title: Text(baslik, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
     subtitle: Text(aciklama, style: TextStyle(fontSize: 11, color: context.textSecondary)),
     value: deger, onChanged: onChanged,
-    activeColor: renk,
+    activeThumbColor: renk,
     dense: true,
   );
 }

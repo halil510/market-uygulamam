@@ -217,7 +217,7 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
                     Text('Kategori', style: TsMetin.etiket.copyWith(color: TsRenk.metinIkincil(context))),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
-                      value: _seciliKategori,
+                      initialValue: _seciliKategori,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         filled: true,
@@ -264,7 +264,7 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
                       const SizedBox(height: 12),
                       if (_bankaHesaplari.isNotEmpty)
                         DropdownButtonFormField<BankaHesapModel>(
-                          value: _secilenHesap,
+                          initialValue: _secilenHesap,
                           decoration: const InputDecoration(
                               labelText: 'Hangi Hesaptan?', border: OutlineInputBorder()),
                           items: _bankaHesaplari
@@ -289,7 +289,7 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
                       const SizedBox(height: 12),
                       if (_krediKartlari.isNotEmpty)
                         DropdownButtonFormField<KrediKartiModel>(
-                          value: _secilenKart,
+                          initialValue: _secilenKart,
                           decoration: const InputDecoration(
                               labelText: 'Hangi Kart?', border: OutlineInputBorder()),
                           items: _krediKartlari

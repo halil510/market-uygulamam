@@ -413,7 +413,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                   Row(children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _satisBirimiTipi,
+                        initialValue: _satisBirimiTipi,
                         decoration: const InputDecoration(labelText: 'Satış Birimi', border: OutlineInputBorder()),
                         items: const [
                           DropdownMenuItem(value: 'adet', child: Text('Adet')),
@@ -430,7 +430,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _koliBirimAdi,
+                          initialValue: _koliBirimAdi,
                           decoration: const InputDecoration(labelText: 'Koli Adı', border: OutlineInputBorder()),
                           items: const [
                             DropdownMenuItem(value: 'Koli', child: Text('Koli')),
@@ -510,7 +510,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                     Expanded(child: _alan('muhasebeKodu', 'Muhasebe Kodu')),
                     const SizedBox(width: 8),
                     Expanded(child: DropdownButtonFormField<String>(
-                      value: _paraBirimi,
+                      initialValue: _paraBirimi,
                       decoration: const InputDecoration(
                         labelText: 'Para Birimi',
                         border: OutlineInputBorder(),

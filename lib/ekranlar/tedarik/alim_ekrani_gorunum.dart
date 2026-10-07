@@ -15,8 +15,9 @@ extension _AlimGorunum on _AlimEkraniState {
           controller: _scanCtrl,
           onDetect: (capture) {
             final barcode = capture.barcodes.firstOrNull;
-            if (barcode?.rawValue != null)
+            if (barcode?.rawValue != null) {
               _barkodOkutInline(barcode!.rawValue!);
+            }
           },
         ),
         Positioned(
@@ -397,7 +398,7 @@ extension _AlimGorunum on _AlimEkraniState {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _odemeYontemi,
+            initialValue: _odemeYontemi,
             decoration: const InputDecoration(
               labelText: 'Ödeme',
               isDense: true,
@@ -414,7 +415,7 @@ extension _AlimGorunum on _AlimEkraniState {
             const SizedBox(height: 8),
             if (_bankaHesaplari.isNotEmpty)
               DropdownButtonFormField<BankaHesapModel>(
-                value: _secilenHesap,
+                initialValue: _secilenHesap,
                 decoration: const InputDecoration(
                   labelText: 'Hangi Hesaptan?',
                   isDense: true,

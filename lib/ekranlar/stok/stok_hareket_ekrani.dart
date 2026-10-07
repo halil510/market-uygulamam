@@ -195,7 +195,7 @@ class _StokHareketEkraniState extends ConsumerState<StokHareketEkrani> {
                             sagAksiyon: Column(mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.end, children: [
                               Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(color: Color.fromARGB(31, renk.red, renk.green, renk.blue), borderRadius: BorderRadius.circular(12)),
+                                decoration: BoxDecoration(color: renk.withAlpha(31), borderRadius: BorderRadius.circular(12)),
                                 child: Text('${giris ? '+' : h.miktar > 0 ? '-' : ''}${h.miktar.toStringAsFixed(0)}',
                                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: renk))),
                               const SizedBox(height: 2),
@@ -217,7 +217,7 @@ class _StokHareketEkraniState extends ConsumerState<StokHareketEkrani> {
     child: AnimatedContainer(duration: const Duration(milliseconds: 150),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: _filtreTur == tur ? Color.fromARGB(38, (color ?? context.textSecondary).red, (color ?? context.textSecondary).green, (color ?? context.textSecondary).blue) : Colors.white,
+        color: _filtreTur == tur ? (color ?? context.textSecondary).withAlpha(38) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: _filtreTur == tur ? (color ?? context.textSecondary) : context.borderColor,
             width: _filtreTur == tur ? 1.5 : 1)),

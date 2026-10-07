@@ -448,7 +448,7 @@ Future<void> _v76denV77ye(Database db) async {
         {
           'toplam_puan': toplam,
           'kullanilan': kullanilan,
-          if (sonIslem != null) 'son_islem': sonIslem,
+          'son_islem': ?sonIslem,
         },
         where: 'id = ?',
         whereArgs: [korunacakId]);

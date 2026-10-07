@@ -173,7 +173,7 @@ class _SiteFotograflariEkraniState extends State<SiteFotograflariEkrani> {
                           borderRadius: BorderRadius.circular(14),
                           child: Stack(fit: StackFit.expand, children: [
                             Image.network(_adresler[i], fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(
+                                errorBuilder: (_, _, _) => ColoredBox(
                                     color: context.inputFill,
                                     child: const Icon(Icons.broken_image))),
                             Positioned(

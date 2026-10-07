@@ -894,7 +894,7 @@ class SupabaseSyncServisi {
           lokalGidCache.remove(tablo);
         }
         log?.call('✅ $tablo: ${sonuc.eklenen[tablo]} gönderildi'
-            '${atlandi > 0 ? " ($atlandi bulut\'ta daha güncel olduğu için atlandı)" : ""}');
+            '${atlandi > 0 ? " ($atlandi bulut'ta daha güncel olduğu için atlandı)" : ""}');
       } catch (e) {
         final hata = '❌ $tablo: $e';
         sonuc.hatalar.add(hata);

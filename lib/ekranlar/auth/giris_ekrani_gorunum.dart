@@ -138,14 +138,14 @@ extension _GirisGorunum on _GirisEkraniState {
         if (liste.isEmpty) return const SizedBox.shrink();
         return ValueListenableBuilder<String>(
           valueListenable: _seciliKullanici,
-          builder: (_, secili, _) => Container(
+          builder: (_, secili, _) => DecoratedBox(
             decoration: BoxDecoration(
               color: Colors.white.withAlpha(18),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.white.withAlpha(35)),
             ),
             child: DropdownButtonFormField<String>(
-              value: liste.contains(secili) ? secili : liste.first,
+              initialValue: liste.contains(secili) ? secili : liste.first,
               isExpanded: true,
               icon: const Icon(Icons.expand_more, color: Colors.white70),
               dropdownColor: const Color(0xFF1E293B),

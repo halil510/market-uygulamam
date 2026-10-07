@@ -212,7 +212,7 @@ class MasaDeposu {
     final db = await _d;
     final rows = await db.query(DbSabitler.masalar,
         columns: ['ad'], where: 'is_deleted = 0');
-    final desen = RegExp('^${RegExp.escape(onek.trim())}\s+(\d+)\$',
+    final desen = RegExp('^${RegExp.escape(onek.trim())}s+(d+)\$',
         caseSensitive: false);
     var enBuyuk = 0;
     for (final r in rows) {
@@ -454,7 +454,7 @@ class MasaDeposu {
         await txn.update(DbSabitler.masaSiparisKalem,
             {
               'miktar': miktar,
-              if (yeniFiyat != null) 'birim_fiyat': yeniFiyat,
+              'birim_fiyat': ?yeniFiyat,
               'last_updated': DateTime.now().toIso8601String(),
             },
             where: 'id = ?', whereArgs: [kalemId]);

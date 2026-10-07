@@ -722,7 +722,7 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
           value: sw.deger,
           onChanged: sw.onChange,
           dense: true,
-          activeColor: AppRenkler.primary,
+          activeThumbColor: AppRenkler.primary,
         )).toList(),
       ),
     ),

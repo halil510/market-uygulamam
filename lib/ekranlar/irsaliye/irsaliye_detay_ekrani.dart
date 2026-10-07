@@ -251,7 +251,7 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
       body: Column(children: [
         Container(
           padding: const EdgeInsets.all(16),
-          color: Color.fromARGB(76, Theme.of(context).colorScheme.surfaceVariant.red, Theme.of(context).colorScheme.surfaceVariant.green, Theme.of(context).colorScheme.surfaceVariant.blue),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(76),
           child: Column(children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -278,8 +278,8 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
                 ),
                 Chip(
                   label: Text(eEtiket, style: TextStyle(fontSize: 11, color: eRenk)),
-                  backgroundColor: Color.fromARGB(26, eRenk.red, eRenk.green, eRenk.blue),
-                  side: BorderSide(color: Color.fromARGB(102, eRenk.red, eRenk.green, eRenk.blue)),
+                  backgroundColor: eRenk.withAlpha(26),
+                  side: BorderSide(color: eRenk.withAlpha(102)),
                 ),
               ]),
               Text(ParaUtils.formatla(toplam),

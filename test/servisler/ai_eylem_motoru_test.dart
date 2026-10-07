@@ -183,7 +183,7 @@ void main() {
 
   group('Ürün durumu', () {
     test('pasife al / zaten pasif', () async {
-      var r = await ver('çikolatayı pasife al');
+      final r = await ver('çikolatayı pasife al');
       await r.oneri!.calistir();
       expect(await sayi('SELECT aktif FROM urunler WHERE id = ?', [v.id['urun0']]), 0);
       // pasif ürün arama sonucuna gelmez → ikinci kez öneri çıkmaz

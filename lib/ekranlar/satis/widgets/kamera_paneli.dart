@@ -142,7 +142,7 @@ class _KontrolButon extends StatelessWidget {
   const _KontrolButon(this.ikon, this.onTap, this.bg);
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: IconButton(
         icon: Icon(ikon, color: Colors.white, size: 20),

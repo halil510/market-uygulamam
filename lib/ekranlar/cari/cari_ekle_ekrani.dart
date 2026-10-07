@@ -241,7 +241,7 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
                   // SegmentedButton'da mobilde sıkışacağı için Dropdown'a
                   // çevrildi.
                   DropdownButtonFormField<String>(
-                    value: _cariTipi,
+                    initialValue: _cariTipi,
                     decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
                     items: const [
                       DropdownMenuItem(value: 'Müşteri', child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -342,7 +342,7 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
             // musteriTipi otomatik "Perakende"ye sıfırlanıyor.
             if (_cariTipi.contains('Müşteri')) ...[
               DropdownButtonFormField<String>(
-                value: _musteriTipi,
+                initialValue: _musteriTipi,
                 decoration: const InputDecoration(labelText: 'Müşteri Tipi', border: OutlineInputBorder()),
                 items: const [
                   DropdownMenuItem(value: 'Perakende', child: Text('Perakende')),
@@ -355,7 +355,7 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
             if (_musteriTipi != 'Perakende') ...[
               const SizedBox(height: 12),
               DropdownButtonFormField<int?>(
-                value: _fiyatGrubuId,
+                initialValue: _fiyatGrubuId,
                 decoration: const InputDecoration(
                   labelText: 'Fiyat Grubu (opsiyonel)',
                   helperText: 'Seçilmezse bu carinin ürün fiyatları\n'

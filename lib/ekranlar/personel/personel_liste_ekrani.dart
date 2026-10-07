@@ -430,7 +430,7 @@ class _PersonelDetaySheet extends StatelessWidget {
         Row(children: [
           CircleAvatar(
             radius: 30,
-            backgroundColor: Color.fromARGB(26, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
+            backgroundColor: AppRenkler.primary.withAlpha(26),
             child: Text(
               personel.adSoyad.isNotEmpty ? personel.adSoyad[0].toUpperCase() : '?',
               style: const TextStyle(

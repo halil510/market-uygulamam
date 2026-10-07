@@ -256,7 +256,7 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
           child: ListView(padding: const EdgeInsets.all(16), children: [
 
             // BAĞLANTI AYARLARI
-            Container(
+            DecoratedBox(
           decoration: BoxDecoration(
                 color: TsRenk.kart(context),
                 borderRadius: BorderRadius.circular(12),

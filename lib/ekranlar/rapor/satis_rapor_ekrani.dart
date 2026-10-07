@@ -241,7 +241,7 @@ class _KpiKart extends StatelessWidget {
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         Container(padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(color: Color.fromARGB(26, renk.red, renk.green, renk.blue), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: renk.withAlpha(26), borderRadius: BorderRadius.circular(8)),
           child: Icon(ikon, color: renk, size: 16)),
       ]),
       const Spacer(),
@@ -287,7 +287,7 @@ class _ListeTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                  color: Color.fromARGB(20, (iptal ? Colors.red : AppRenkler.primary).red, (iptal ? Colors.red : AppRenkler.primary).green, (iptal ? Colors.red : AppRenkler.primary).blue),
+                  color: (iptal ? Colors.red : AppRenkler.primary).withAlpha(20),
                   borderRadius: BorderRadius.circular(8)),
               child: Icon(iptal ? Icons.cancel_outlined : Icons.receipt_outlined,
                   color: iptal ? Colors.red : AppRenkler.primary, size: 18),

@@ -251,13 +251,13 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Color.fromARGB(20, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
+              color: AppRenkler.primary.withAlpha(20),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Color.fromARGB(51, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue)),
+              border: Border.all(color: AppRenkler.primary.withAlpha(51)),
             ),
             child: Row(children: [
               CircleAvatar(
-                backgroundColor: Color.fromARGB(38, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
+                backgroundColor: AppRenkler.primary.withAlpha(38),
                 child: Text(mevcut.adSoyad.isNotEmpty ? mevcut.adSoyad[0] : '?',
                     style: const TextStyle(color: AppRenkler.primary, fontWeight: FontWeight.w800)),
               ),

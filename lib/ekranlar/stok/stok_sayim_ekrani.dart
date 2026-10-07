@@ -420,7 +420,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
         // Sayım özeti
         if (durum.sayilanUrunSayisi > 0)
           Container(
-            color: Color.fromARGB(15, AppRenkler.primary.red, AppRenkler.primary.green, AppRenkler.primary.blue),
+            color: AppRenkler.primary.withAlpha(15),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(children: [
               const Icon(Icons.inventory_2_outlined,
@@ -541,7 +541,7 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
     final sayildi   = widget.miktar != null;
     final kritik    = widget.urun.kritikStok;
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: sayildi
             ? TsRenk.zemin(TsRenk.basarili, opaklik: 0.5)

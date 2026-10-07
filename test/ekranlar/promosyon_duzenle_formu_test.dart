@@ -47,18 +47,18 @@ void main() {
   late PromosyonModel promo;
   late int promoId;
 
-  Database? _db;
+  Database? db0;
 
   tearDown(() async {
-    await _db?.close();
-    _db = null;
+    await db0?.close();
+    db0 = null;
   });
 
   testWidgets('düzenleme formu dolu açılır; toplam fiyat hesaplanır; tarih yenile + güncelle kaydeder', (t) async {
     await t.runAsync(() async {
       await RobotOrtam.hazirla();
       final db = await RobotOrtam.veritabaniAc();
-      _db = db;
+      db0 = db;
       final v = await RobotOrtam.tohumla(db);
       promoId = await PromosyonDeposu().ekle(PromosyonModel(
         urunId: v.id['urun0']!, // satış fiyatı 25
@@ -114,7 +114,7 @@ void main() {
     await t.runAsync(() async {
       await RobotOrtam.hazirla();
       final db = await RobotOrtam.veritabaniAc();
-      _db = db;
+      db0 = db;
       final v = await RobotOrtam.tohumla(db);
       promoId = await PromosyonDeposu().ekle(PromosyonModel(
         urunId: v.id['urun0']!,
@@ -154,7 +154,7 @@ void main() {
     await t.runAsync(() async {
       await RobotOrtam.hazirla();
       final db = await RobotOrtam.veritabaniAc();
-      _db = db;
+      db0 = db;
       final v = await RobotOrtam.tohumla(db);
       promoId = await PromosyonDeposu().ekle(PromosyonModel(
         urunId: v.id['urun0']!, promosyonAdi: 'Dolmuş', iskontoOran: 10, minMiktar: 1,

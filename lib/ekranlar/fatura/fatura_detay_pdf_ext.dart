@@ -486,7 +486,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
                 decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
                 child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
                   pw.Text('Not:', style: pw.TextStyle(font: boldFont, fontSize: 9 * scale)),
-                  pw.Text('Yalniz, ' + tutariYaziyaCevir(f.genelToplam),
+                  pw.Text('Yalniz, ${tutariYaziyaCevir(f.genelToplam)}',
                       style: pw.TextStyle(font: font, fontSize: 9 * scale)),
                   pw.SizedBox(height: 2),
                   pw.Text(

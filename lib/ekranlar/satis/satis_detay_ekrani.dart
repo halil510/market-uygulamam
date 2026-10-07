@@ -314,7 +314,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
         if (s.kalemler.isNotEmpty) ...[
           const Text('Ürünler', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
           const SizedBox(height: 8),
-          Container(
+          DecoratedBox(
             decoration: BoxDecoration(
               color: TsRenk.kart(context), borderRadius: BorderRadius.circular(14),
               boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),
@@ -358,7 +358,7 @@ class _Kart extends StatelessWidget {
   final List<Widget> children;
   const _Kart({required this.children});
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
       color: TsRenk.kart(context), borderRadius: BorderRadius.circular(14),
       boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 6)]),

@@ -5,7 +5,6 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../saglayicilar/riverpod/promosyon_provider.dart';
 import '../../modeller/promosyon_model.dart';

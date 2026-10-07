@@ -165,7 +165,7 @@ class _BorcDashboardEkraniState extends ConsumerState<BorcDashboardEkrani>
     AsyncValue<BorcDashboardVeri> dashAsync,
     AsyncValue<List<BankaHesapModel>> bankaHesaplariAsync,
   ) {
-    return Container(
+    return DecoratedBox(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [TsRenk.primaryKoyu, TsRenk.primary],

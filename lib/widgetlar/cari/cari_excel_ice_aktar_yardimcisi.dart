@@ -22,11 +22,7 @@ class CariExcelIceAktarYardimcisi {
         allowedExtensions: ['xlsx', 'xls'],
       );
       if (dosya == null) return;
-      final Uint8List? fileBytes = await dosya.readAsBytes();
-      if (fileBytes == null) {
-        if (context.mounted) BildirimServisi.hata(context, 'Dosya okunamadı');
-        return;
-      }
+      final Uint8List fileBytes = await dosya.readAsBytes();
 
       if (!context.mounted) return;
       final progressCtx = context;
@@ -142,7 +138,7 @@ class CariExcelIceAktarYardimcisi {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
             decoration: BoxDecoration(
-                color: Color.fromARGB(26, renk.red, renk.green, renk.blue),
+                color: renk.withAlpha(26),
                 borderRadius: BorderRadius.circular(12)),
             child: Text('$sayi', style: TextStyle(fontWeight: FontWeight.w700, color: renk)),
           ),

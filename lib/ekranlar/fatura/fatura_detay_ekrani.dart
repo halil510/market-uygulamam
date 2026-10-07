@@ -193,7 +193,7 @@ appBar: TsAppBar(
       ),
       body: ListView(padding: const EdgeInsets.all(14), children: [
         // Fatura başlık kartı
-        Container(
+        DecoratedBox(
           decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(14), border: Border.all(color: TsRenk.ayirac(context))),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -240,7 +240,7 @@ appBar: TsAppBar(
         const SizedBox(height: 12),
 
         // Toplam
-        Container(
+        DecoratedBox(
           decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(14), border: Border.all(color: TsRenk.ayirac(context))),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -297,9 +297,9 @@ appBar: TsAppBar(
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-          color: Color.fromARGB(26, renk.red, renk.green, renk.blue),
+          color: renk.withAlpha(26),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Color.fromARGB(102, renk.red, renk.green, renk.blue))),
+          border: Border.all(color: renk.withAlpha(102))),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(_durumIkonu(eDurum), size: 13, color: renk),
         const SizedBox(width: 4),
@@ -320,9 +320,9 @@ appBar: TsAppBar(
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-          color: Color.fromARGB(26, renk.red, renk.green, renk.blue),
+          color: renk.withAlpha(26),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Color.fromARGB(102, renk.red, renk.green, renk.blue))),
+          border: Border.all(color: renk.withAlpha(102))),
       child: Text(etiket,
           style: TextStyle(color: renk, fontSize: 12, fontWeight: FontWeight.w600)),
     );

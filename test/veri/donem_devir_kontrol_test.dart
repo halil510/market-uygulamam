@@ -14,7 +14,7 @@ import '../helper/test_initializer.dart';
 
 Future<int> _acikMasaSiparisiSayisi(Database db, {int? subeId}) async {
   final subeSarti = subeId != null ? ' AND m.sube_id = ?' : '';
-  final args = <Object?>['acik', if (subeId != null) subeId];
+  final args = <Object?>['acik', ?subeId];
   final rows = await db.rawQuery('''
     SELECT COUNT(*) AS n FROM masa_siparisleri ms
     JOIN masalar m ON m.id = ms.masa_id

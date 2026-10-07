@@ -379,7 +379,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
                     ? 'GİB test ortamına gönderir (güvenli)'
                     : '⚠️ CANLI modda — gerçek fatura gönderilir!'),
                 value: _testModu,
-                activeColor: Colors.green,
+                activeThumbColor: Colors.green,
                 onChanged: (v) => setState(() => _testModu = v),
               ),
               if (!_testModu)

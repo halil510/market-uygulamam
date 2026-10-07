@@ -208,7 +208,7 @@ class _DovizleHesaplaDialogState extends State<_DovizleHesaplaDialog> {
       title: const Text('Dövizle Hesapla'),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         DropdownButtonFormField<DovizModel>(
-          value: _secili,
+          initialValue: _secili,
           decoration: const InputDecoration(labelText: 'Para Birimi', border: OutlineInputBorder()),
           items: widget.dovizler.map((d) => DropdownMenuItem(
               value: d, child: Text('${d.kod} (${d.satisKuru.toStringAsFixed(4)} ₺)'))).toList(),

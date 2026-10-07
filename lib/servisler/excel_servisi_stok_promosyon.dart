@@ -380,7 +380,7 @@ extension ExcelServisiStokPromosyon on ExcelServisi {
 
     final bytes = (await compute(_encodeExcelIsolate, excel))!;
     final dir   = await getTemporaryDirectory();
-    final path  = dir.path + '/promosyon_' + DateTime.now().millisecondsSinceEpoch.toString() + '.xlsx';
+    final path  = '${dir.path}/promosyon_${DateTime.now().millisecondsSinceEpoch}.xlsx';
     await File(path).writeAsBytes(bytes);
     return path;
   }

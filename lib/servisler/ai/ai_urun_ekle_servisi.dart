@@ -123,7 +123,7 @@ VEYA (sadece gerçekten eminsen):
     final marka = _markaCikar(urunAdi);
     return {
       'ana_grup': ana,
-      if (marka != null) 'alan1': marka,
+      'alan1': ?marka,
     };
   }
 

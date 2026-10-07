@@ -36,7 +36,7 @@ class PencereKapatma with WindowListener {
   bool _soruAcik = false;
 
   @override
-  void onWindowClose() async {
+  Future<void> onWindowClose() async {
     final ctx = rootNavigatorKey.currentContext;
     if (ctx == null || !ctx.mounted) {
       await windowManager.destroy();

@@ -288,7 +288,7 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
           Container(
             constraints: const BoxConstraints(maxHeight: 220),
             margin: const EdgeInsets.symmetric(horizontal: 12),
-            child: Container(
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 color: TsRenk.kart(context),
                 borderRadius: BorderRadius.circular(12),
@@ -356,7 +356,7 @@ class _AdisyonOzetPaneli extends ConsumerWidget {
     final kalemler = siparis?.kalemler ?? const [];
     final notifier = ref.read(masaSiparisProvider(masaId).notifier);
 
-    return Container(
+    return ColoredBox(
       color: TsRenk.kart(context),
       child: Column(children: [
         Padding(

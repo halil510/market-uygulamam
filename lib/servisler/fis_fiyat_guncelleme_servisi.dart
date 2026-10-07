@@ -44,10 +44,9 @@ class FisFiyatPlani {
     required this.degisenUrunler,
     required this.atlamaNedeni,
     required this.cariId,
-    required Map<int, double> kalemFiyatlari,
-    required double kdvFarki,
-  })  : _kalemFiyatlari = kalemFiyatlari,
-        _kdvFarki = kdvFarki;
+    required this._kalemFiyatlari,
+    required this._kdvFarki,
+  });
 
   double get fark => yeniToplam - eskiToplam;
   bool get degisecekMi => atlamaNedeni == null && degisenUrunler.isNotEmpty;

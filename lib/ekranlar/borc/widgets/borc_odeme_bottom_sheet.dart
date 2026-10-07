@@ -198,7 +198,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _odemeYontemi,
+            initialValue: _odemeYontemi,
             decoration: InputDecoration(
               labelText: 'Ödeme Yöntemi',
               prefixIcon: const Icon(Icons.payment_rounded),
@@ -212,7 +212,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
           const SizedBox(height: 12),
           if (_bankaSecimiGerekli && widget.bankaHesaplari.isNotEmpty) ...[
             DropdownButtonFormField<BankaHesapModel>(
-              value: _secilenHesap,
+              initialValue: _secilenHesap,
               decoration: InputDecoration(
                 labelText: 'Hangi Hesaptan?',
                 prefixIcon: const Icon(Icons.account_balance_rounded),
@@ -253,7 +253,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
           ],
           if (_kartSecimiGerekli && widget.krediKartlari.isNotEmpty) ...[
             DropdownButtonFormField<KrediKartiModel>(
-              value: _secilenKart,
+              initialValue: _secilenKart,
               decoration: InputDecoration(
                 labelText: 'Hangi Kart?',
                 prefixIcon: const Icon(Icons.credit_card_rounded),

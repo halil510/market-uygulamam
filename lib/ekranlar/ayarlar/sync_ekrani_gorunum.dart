@@ -10,7 +10,7 @@ extension _SyncGorunum on _SyncEkraniState {
     _qrCtrl ??= MobileScannerController();
     return Stack(children: [
       MobileScanner(
-        controller: _qrCtrl!,
+        controller: _qrCtrl,
         onDetect: (capture) {
           final val = capture.barcodes.firstOrNull?.rawValue;
           if (val != null && val.startsWith('http')) {
@@ -20,7 +20,7 @@ extension _SyncGorunum on _SyncEkraniState {
         },
       ),
       // Overlay
-      Container(
+      DecoratedBox(
         decoration: BoxDecoration(
           border: Border.all(color: Colors.transparent)),
         child: Column(children: [

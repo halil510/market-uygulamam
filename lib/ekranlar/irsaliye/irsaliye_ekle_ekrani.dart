@@ -32,10 +32,10 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
   Timer? _debounce;
 
   CariModel? _seciliCari;
-  List<_IrsKalem> _kalemler = [];
+  final List<_IrsKalem> _kalemler = [];
   List<UrunModel> _aramaSonuclari = [];
   bool _kayit = false;
-  DateTime _tarih = DateTime.now();
+  final DateTime _tarih = DateTime.now();
   String _tip = 'Çıkış';
 
   @override
@@ -206,11 +206,11 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
         // Üst bilgiler
         Container(
           padding: const EdgeInsets.all(14),
-          color: Color.fromARGB(76, Theme.of(context).colorScheme.surfaceVariant.red, Theme.of(context).colorScheme.surfaceVariant.green, Theme.of(context).colorScheme.surfaceVariant.blue),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(76),
           child: Row(children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _tip,
+                initialValue: _tip,
                 isDense: true,
                 decoration: const InputDecoration(
                     labelText: 'Tip', border: OutlineInputBorder()),

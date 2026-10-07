@@ -146,7 +146,7 @@ class _BarkodUreteciEkraniState extends ConsumerState<BarkodUreteciEkrani> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // Tip
           DropdownButtonFormField<String>(
-            value: _tip,
+            initialValue: _tip,
             decoration: InputDecoration(labelText: "Barkod Tipi",
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.qr_code_2),

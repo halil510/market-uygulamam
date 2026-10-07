@@ -92,7 +92,7 @@ extension _CariDetayGenelOzetExt on _CariDetayPaneliState {
         title: const Text('Yeni Sevkiyat Adresi'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           DropdownButtonFormField<String>(
-            value: tip,
+            initialValue: tip,
             decoration: const InputDecoration(labelText: 'Adres Tipi'),
             items: const [
               DropdownMenuItem(value: 'Sevkiyat', child: Text('Sevkiyat')),

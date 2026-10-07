@@ -95,7 +95,7 @@ extension _FisTabExt on _IadeEkraniState {
     // değiştirir ama onaylı e-Fatura'ya hiç dokunmaz — kullanıcı resmi bir
     // iade faturası/düzeltme gerektiğini bilmeden sessizce devam edebilirdi.
     final faturaId =
-        await FaturalandirmaServisi.mevcutFaturaId(satisId: _bulunanSatis!.id!);
+        await FaturalandirmaServisi.mevcutFaturaId(satisId: _bulunanSatis!.id);
     if (faturaId != null && mounted) {
       final fatura = await FaturaDeposu().idileGetir(faturaId);
       final gibeGonderildi = fatura != null &&

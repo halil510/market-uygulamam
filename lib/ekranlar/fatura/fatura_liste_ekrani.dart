@@ -346,10 +346,10 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
 
   Widget _ozetKart(String label, double? tutar, Color renk) => Expanded(
     child: Container(padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-      decoration: BoxDecoration(color: Color.fromARGB(20, renk.red, renk.green, renk.blue), borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Color.fromARGB(51, renk.red, renk.green, renk.blue))),
+      decoration: BoxDecoration(color: renk.withAlpha(20), borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: renk.withAlpha(51))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: TextStyle(fontSize: 11, color: Color.fromARGB(204, renk.red, renk.green, renk.blue))),
+        Text(label, style: TextStyle(fontSize: 11, color: renk.withAlpha(204))),
         const SizedBox(height: 4),
         Text(tutar != null ? ParaUtils.formatla(tutar) : '',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: renk)),
@@ -520,7 +520,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
 
   Widget _rozet(String etiket, IconData ikon, Color renk) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(color: Color.fromARGB(31, renk.red, renk.green, renk.blue), borderRadius: BorderRadius.circular(12)),
+    decoration: BoxDecoration(color: renk.withAlpha(31), borderRadius: BorderRadius.circular(12)),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(ikon, size: 12, color: renk),
       const SizedBox(width: 3),

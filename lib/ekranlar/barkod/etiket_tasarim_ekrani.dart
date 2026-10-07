@@ -65,7 +65,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
 
   // Ürün listesi ve sepet
   List<UrunModel>   _aramaSonuclari = [];
-  List<_EtiketKalem> _sepet        = [];
+  final List<_EtiketKalem> _sepet        = [];
   Timer?            _araDebounce;
   bool              _kameraAcik    = false;
   // 🔴 Derin analizde bulundu: kamera barkod tarayıcısında hiç debounce

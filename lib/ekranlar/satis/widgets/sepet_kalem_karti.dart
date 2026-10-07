@@ -147,7 +147,7 @@ class SepetKalemKarti extends StatelessWidget {
                 )),
 
                 // ── Sağ: miktar kontrol ────────────────────────────────
-                Container(
+                DecoratedBox(
                   decoration: BoxDecoration(
                     color: context.isDark
                         ? const Color(0xFF1C1F35)

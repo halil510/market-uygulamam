@@ -138,7 +138,7 @@ class _OzetTab extends StatelessWidget {
 
       // Tahmin
       const _SectionTitle('30 Gün Satış Tahmini', Icons.auto_graph),
-      Container(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
+      DecoratedBox(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
         _TahminSatir('Yarın', tahmin['yarin'] ?? 0),
         _TahminSatir('Bu Hafta', tahmin['bu_hafta'] ?? 0),
         _TahminSatir('Bu Ay', tahmin['bu_ay'] ?? 0),
@@ -148,7 +148,7 @@ class _OzetTab extends StatelessWidget {
       // En cok satan
       if (enCokSatan.isNotEmpty) ...[
         const _SectionTitle('En Çok Satan Ürünler (30 Gün)', Icons.star),
-        Container(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Column(children: enCokSatan.asMap().entries.map((e) {
+        DecoratedBox(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Column(children: enCokSatan.asMap().entries.map((e) {
           final i = e.key;
           final r = e.value;
           return Material(type: MaterialType.transparency, child: ListTile(
@@ -668,7 +668,7 @@ class AiOneriKarti extends StatelessWidget {
   final String durum; // bekliyor | uygulaniyor | tamam | iptal
   final VoidCallback onOnayla;
   final VoidCallback onVazgec;
-  const AiOneriKarti({
+  const AiOneriKarti({super.key, 
     required this.oneri,
     required this.durum,
     required this.onOnayla,

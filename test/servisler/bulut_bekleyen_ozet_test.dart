@@ -24,8 +24,8 @@ Future<int> _satir(
       'durum': durum,
       'deneme_sayisi': deneme,
       'hata_mesaji': hata,
-      if (olusturma != null) 'created_at': olusturma,
-      if (sonDeneme != null) 'son_deneme': sonDeneme,
+      'created_at': ?olusturma,
+      'son_deneme': ?sonDeneme,
     });
 
 void main() {

@@ -142,7 +142,7 @@ extension _CariDetayIslemlerExt on _CariDetayPaneliState {
     return Column(children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-        child: Container(
+        child: DecoratedBox(
           decoration: BoxDecoration(
             border: Border.all(color: context.dividerColor),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),

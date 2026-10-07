@@ -60,15 +60,12 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                     height: 64,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(colors: [
-                        Color.fromARGB(
-                            46, stokRenk.red, stokRenk.green, stokRenk.blue),
-                        Color.fromARGB(
-                            15, stokRenk.red, stokRenk.green, stokRenk.blue)
+                        stokRenk.withAlpha(46),
+                        stokRenk.withAlpha(15)
                       ], begin: Alignment.topLeft, end: Alignment.bottomRight),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                          color: Color.fromARGB(
-                              64, stokRenk.red, stokRenk.green, stokRenk.blue)),
+                          color: stokRenk.withAlpha(64)),
                       image: u.resimYolu != null &&
                               u.resimYolu!.isNotEmpty &&
                               File(u.resimYolu!).existsSync()
@@ -119,8 +116,7 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                              color: Color.fromARGB(31, stokRenk.red,
-                                  stokRenk.green, stokRenk.blue),
+                              color: stokRenk.withAlpha(31),
                               borderRadius: BorderRadius.circular(8)),
                           child: Text(
                               '${u.stok.toStringAsFixed(u.stok == u.stok.roundToDouble() ? 0 : 1)} ${u.birimAdi}',
@@ -289,12 +285,12 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(
-                      color: durum.seciliIds.contains(u.id!)
+                      color: durum.seciliIds.contains(u.id)
                           ? AppRenkler.primary
                           : Colors.white,
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: durum.seciliIds.contains(u.id!)
+                          color: durum.seciliIds.contains(u.id)
                               ? AppRenkler.primary
                               : context.textSecondary,
                           width: 1.5),
@@ -302,7 +298,7 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                         BoxShadow(color: Color(0x1F000000), blurRadius: 3)
                       ],
                     ),
-                    child: durum.seciliIds.contains(u.id!)
+                    child: durum.seciliIds.contains(u.id)
                         ? const Icon(Icons.check, color: Colors.white, size: 16)
                         : null,
                   ),
@@ -335,7 +331,7 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                   : Colors.green;
           return RepaintBoundary(
             child: TsKart(
-              secili: durum.seciliIds.contains(u.id!),
+              secili: durum.seciliIds.contains(u.id),
               onLongPress: () =>
                   ref.read(urunlerProvider.notifier).secimToggle(u.id!),
               onTap: () {
@@ -358,8 +354,7 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                               width: 48,
                               height: 48,
                               decoration: BoxDecoration(
-                                  color: Color.fromARGB(26, stokRenk.red,
-                                      stokRenk.green, stokRenk.blue),
+                                  color: stokRenk.withAlpha(26),
                                   borderRadius: BorderRadius.circular(12),
                                   image: u.resimYolu != null &&
                                           u.resimYolu!.isNotEmpty &&
@@ -409,8 +404,7 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                          color: Color.fromARGB(
-                              31, stokRenk.red, stokRenk.green, stokRenk.blue),
+                          color: stokRenk.withAlpha(31),
                           borderRadius: BorderRadius.circular(6)),
                       child: Text('${u.stok.toStringAsFixed(0)} ${u.birimAdi}',
                           style: TsMetin.kucukVurgu.copyWith(color: stokRenk)),

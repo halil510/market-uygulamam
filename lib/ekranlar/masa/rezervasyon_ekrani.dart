@@ -419,7 +419,7 @@ class _RezervasyonFormSheetState extends State<_RezervasyonFormSheet> {
                 const SizedBox(height: 12),
                 // Masa seçimi
                 DropdownButtonFormField<MasaModel>(
-                  value: _seciliMasa,
+                  initialValue: _seciliMasa,
                   decoration: const InputDecoration(
                     labelText: 'Masa Seç *',
                     prefixIcon: Icon(Icons.table_restaurant),
@@ -437,7 +437,7 @@ class _RezervasyonFormSheetState extends State<_RezervasyonFormSheet> {
                 Row(children: [
                   Expanded(
                     child: DropdownButtonFormField<int>(
-                      value: _kisiSayisi,
+                      initialValue: _kisiSayisi,
                       decoration: const InputDecoration(
                         labelText: 'Kişi Sayısı',
                         prefixIcon: Icon(Icons.people),

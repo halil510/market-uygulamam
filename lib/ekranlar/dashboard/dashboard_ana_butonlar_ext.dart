@@ -65,22 +65,20 @@ extension _DashboardAnaButonlarExt on _DashboardEkraniState {
           context.go(item.rota);
         }
       },
-      child: Container(
+      child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
               item.renk,
-              Color.fromARGB(
-                  204, item.renk.red, item.renk.green, item.renk.blue),
+              item.renk.withAlpha(204),
             ],
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Color.fromARGB(
-                  76, item.renk.red, item.renk.green, item.renk.blue),
+              color: item.renk.withAlpha(76),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),

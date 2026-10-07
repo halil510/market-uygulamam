@@ -40,7 +40,7 @@ class SiteIcerikServisi {
   Map<String, String> _h(String key, {String? contentType}) => {
         'apikey': key,
         'Authorization': 'Bearer ${SupabaseOturum.bearer(key)}',
-        if (contentType != null) 'Content-Type': contentType,
+        'Content-Type': ?contentType,
       };
 
   /// Buluttaki mevcut fotoğraf adreslerini getirir.

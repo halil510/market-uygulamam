@@ -205,11 +205,11 @@ class StokDeposu {
       'sonraki_stok': sonraki,
       'tarih': now,
       'last_updated': now,
-      if (referansId != null) 'referans_id': referansId,
-      if (referansTuru != null) 'referans_turu': referansTuru,
-      if (kullaniciId != null) 'kullanici_id': kullaniciId,
-      if (aciklama != null) 'aciklama': aciklama,
-      if (lotId != null) 'lot_id': lotId,
+      'referans_id': ?referansId,
+      'referans_turu': ?referansTuru,
+      'kullanici_id': ?kullaniciId,
+      'aciklama': ?aciklama,
+      'lot_id': ?lotId,
     };
     await txn.insert('stok_hareket', hareketSatiri);
     // Madde 5 sertleştirmesi: senkron kuyruğu kaydı AYNI transaction
@@ -422,11 +422,11 @@ class StokDeposu {
       'birim_maliyet': birimMaliyet,
       'tarih': now,
       'last_updated': now,
-      if (kullaniciId != null) 'kullanici_id': kullaniciId,
-      if (aciklama != null) 'aciklama': aciklama,
-      if (referansId != null) 'referans_id': referansId,
-      if (referansTuru != null) 'referans_turu': referansTuru,
-      if (lotId != null) 'lot_id': lotId,
+      'kullanici_id': ?kullaniciId,
+      'aciklama': ?aciklama,
+      'referans_id': ?referansId,
+      'referans_turu': ?referansTuru,
+      'lot_id': ?lotId,
     };
     await txn.insert('stok_hareket', hareketSatiri);
     // Madde 5 sertleştirmesi (bkz. stokDusTxn'deki aynı gerekçe).

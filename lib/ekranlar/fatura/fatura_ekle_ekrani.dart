@@ -63,7 +63,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
   final _urunDepo   = UrunDeposu();
 
   List<CariModel> _cariler  = [];
-  List<_Kalem>    _kalemler = [_Kalem()];
+  final List<_Kalem>    _kalemler = [_Kalem()];
   String          _varsayilanKdv = '18';
 
   CariModel? _seciliCari;
@@ -434,7 +434,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _faturaTipi,
+                  initialValue: _faturaTipi,
                   decoration: const InputDecoration(
                       labelText: 'Fatura Tipi',
                       border: OutlineInputBorder(),
@@ -448,7 +448,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
             ]),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: _odemeSekli,
+              initialValue: _odemeSekli,
               decoration: const InputDecoration(
                   labelText: 'Ödeme Şekli',
                   prefixIcon: Icon(Icons.payments_outlined),
@@ -497,7 +497,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
             ]),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: _odemeDurumu,
+              initialValue: _odemeDurumu,
               decoration: const InputDecoration(
                   labelText: 'Odeme Durumu',
                   border: OutlineInputBorder(),
@@ -513,7 +513,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
             // Cari
             _bolum('CARİ', Icons.business),
             DropdownButtonFormField<CariModel>(
-              value: _seciliCari,
+              initialValue: _seciliCari,
               isExpanded: true,
               decoration: const InputDecoration(
                   labelText: 'Cari Sec *',
@@ -692,7 +692,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
           const SizedBox(width: 8),
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: k.kdvOran,
+              initialValue: k.kdvOran,
               isDense: true,
               decoration: const InputDecoration(
                   labelText: 'KDV%', border: OutlineInputBorder()),

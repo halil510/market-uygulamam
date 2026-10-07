@@ -173,7 +173,7 @@ void initState() {
           padding: const EdgeInsets.all(16),
           children: [
             DropdownButtonFormField<String>(
-              value: _tur,
+              initialValue: _tur,
               decoration: const InputDecoration(
                 labelText: 'Borç Türü *',
                 border: OutlineInputBorder(),
@@ -267,7 +267,7 @@ void initState() {
             Row(children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: _taksitSayisi,
+                  initialValue: _taksitSayisi,
                   decoration: const InputDecoration(
                     labelText: 'Taksit Sayısı',
                     border: OutlineInputBorder(),
@@ -284,7 +284,7 @@ void initState() {
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: _oncelik,
+                  initialValue: _oncelik,
                   decoration: const InputDecoration(
                     labelText: 'Öncelik',
                     border: OutlineInputBorder(),

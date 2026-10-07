@@ -124,7 +124,7 @@ class FormBirimSecim extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: DropdownButtonFormField<String>(
-        value: gecerliDeger,
+        initialValue: gecerliDeger,
         decoration: const InputDecoration(
           labelText: 'Birim',
           border: OutlineInputBorder(),
@@ -158,7 +158,7 @@ class FormAlisKdvSecim extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: DropdownButtonFormField<String>(
-        value: gecerli,
+        initialValue: gecerli,
         // Dar sütunda "%18" + ok simgesi sığmayıp taşıyordu.
         isExpanded: true,
         decoration: const InputDecoration(

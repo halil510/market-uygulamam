@@ -505,7 +505,7 @@ extension _UrunListeDialoglarExt on _UrunListeEkraniState {
                             color: context.textSecondary))),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String?>(
-                  value: tmpGrup,
+                  initialValue: tmpGrup,
                   dropdownColor: context.cardBg,
                   style: TextStyle(color: context.textPrimary, fontSize: 14),
                   decoration: InputDecoration(

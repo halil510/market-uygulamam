@@ -19,7 +19,7 @@ Future<List<Map<String, dynamic>>> _gecmisVardiyalarGetir(
   int offset = 0,
 }) async {
   final subeSarti = subeId != null ? ' AND v.sube_id = ?' : '';
-  final args = <Object?>[if (subeId != null) subeId, limit, offset];
+  final args = <Object?>[?subeId, limit, offset];
   final rows = await db.rawQuery(
       'SELECT v.*, k.ad_soyad, o.ad_soyad AS onaylayan_adi FROM vardiyalar v '
       'LEFT JOIN kullanicilar k ON v.kullanici_id = k.id '

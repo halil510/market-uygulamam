@@ -51,7 +51,7 @@ extension ExcelServisiIadeGunsonu on ExcelServisi {
 
     final bytes = (await compute(_encodeExcelIsolate, excel))!;
     final dir   = await getTemporaryDirectory();
-    final path  = dir.path + '/gunsonu_' + DateTime.now().millisecondsSinceEpoch.toString() + '.xlsx';
+    final path  = '${dir.path}/gunsonu_${DateTime.now().millisecondsSinceEpoch}.xlsx';
     await File(path).writeAsBytes(bytes);
     return path;
   }
@@ -120,7 +120,7 @@ extension ExcelServisiIadeGunsonu on ExcelServisi {
 
     final bytes = (await compute(_encodeExcelIsolate, excel))!;
     final dir   = await getTemporaryDirectory();
-    final path  = dir.path + '/iade_alma_' + DateTime.now().millisecondsSinceEpoch.toString() + '.xlsx';
+    final path  = '${dir.path}/iade_alma_${DateTime.now().millisecondsSinceEpoch}.xlsx';
     await File(path).writeAsBytes(bytes);
     return path;
   }

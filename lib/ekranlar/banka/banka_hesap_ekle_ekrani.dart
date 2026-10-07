@@ -117,7 +117,7 @@ class _BankaHesapEkleEkraniState extends ConsumerState<BankaHesapEkleEkrani> {
             ]),
             const SizedBox(height: TsBosluk.md),
             DropdownButtonFormField<String>(
-              value: _paraBirimi,
+              initialValue: _paraBirimi,
               decoration: InputDecoration(
                 labelText: 'Para Birimi',
                 prefixIcon: const Icon(Icons.attach_money),
@@ -130,7 +130,7 @@ class _BankaHesapEkleEkraniState extends ConsumerState<BankaHesapEkleEkrani> {
             ),
             const SizedBox(height: TsBosluk.md),
             DropdownButtonFormField<String>(
-              value: _hesapTuru,
+              initialValue: _hesapTuru,
               decoration: InputDecoration(
                 labelText: 'Hesap Türü',
                 prefixIcon: const Icon(Icons.category),

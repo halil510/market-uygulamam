@@ -103,7 +103,7 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
       // modelin copyWith()'i kullanılıyor.
       final kart = widget.duzenlenecek != null
           ? widget.duzenlenecek!.copyWith(
-        bankaId: _seciliBanka!.id!,
+        bankaId: _seciliBanka!.id,
         kartAdi: _adCtrl.text.trim(),
         kartNoMaskeli: KrediKartiModel.maskele(_noCtrl.text.trim()),
         kartTipi: _kartTipi,
@@ -198,7 +198,7 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
                 return DropdownButtonFormField<BankaModel>(
                   // Liste yenilenince (yeni nesneler) seçili banka id ile
                   // eşlenir — yoksa "exactly one item" hatasıyla çöker.
-                  value: bankalar.where((b) => b.id == _seciliBanka?.id).firstOrNull,
+                  initialValue: bankalar.where((b) => b.id == _seciliBanka?.id).firstOrNull,
                   isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Banka *',
@@ -236,7 +236,7 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
                 dogrula: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu' : null),
             const SizedBox(height: TsBosluk.md),
             DropdownButtonFormField<String>(
-              value: _kartTipi,
+              initialValue: _kartTipi,
               decoration: InputDecoration(
                 labelText: 'Kart Tipi',
                 prefixIcon: const Icon(Icons.category),
@@ -252,7 +252,7 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
                 klavyeTuru: const TextInputType.numberWithOptions(decimal: true)),
             const SizedBox(height: TsBosluk.md),
             DropdownButtonFormField<int>(
-              value: _taksitSayisi,
+              initialValue: _taksitSayisi,
               decoration: InputDecoration(
                 labelText: 'Taksit Sayısı',
                 prefixIcon: const Icon(Icons.timeline),

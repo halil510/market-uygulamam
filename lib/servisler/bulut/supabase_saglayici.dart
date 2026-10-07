@@ -398,7 +398,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
   /// Toplu gönderim için: bulutta, satırdan KESİN olarak daha yeni sürümü
   /// olanları döner. Doğrulama yapılamazsa (ağ hatası, tabloda last_updated
   /// yok, yanıt beklenmedik) boş döner — gönderime izin verilir; kesin koruma
-  /// sunucu tarafı tetikleyicidir (supabase_lww_koruma.sql).
+  /// sunucu tarafı tetikleyicidir (supabase_tam_sema.sql Bölüm I).
   Future<Set<Map<String, dynamic>>> _bulutunDahaYeniOldugu(
       String tablo, String uniqueAlan, List<Map<String, dynamic>> batch) async {
     final bos = Set<Map<String, dynamic>>.identity();

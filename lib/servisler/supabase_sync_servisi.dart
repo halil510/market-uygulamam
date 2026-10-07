@@ -3,6 +3,7 @@
 
 import 'bulut/supabase_oturum.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'kolon_haritalama.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
@@ -201,11 +202,42 @@ class SupabaseSyncServisi {
     }
   }
 
-  /// Çekilen partideki en büyük `last_updated` — filigran için.
-  static String? _enSonZaman(List<Map<String, dynamic>> kayitlar) {
+  /// sunucu_zamani filigranı (Bulgu 1). İlk geçişte eski last_updated
+  /// filigranının 48 saat gerisinden başlar (aradaki satırlar LWW korumalı
+  /// tekrar iner, zararsız). Filigran YALNIZ buluttan gelen değerle yazılır,
+  /// cihaz saatiyle asla — cihaz saati ileride olsa kayıt kaçmasın.
+  static Future<DateTime?> _sunucuZamaniFiligrani(String tablo) async {
+    final p = await SharedPreferences.getInstance();
+    final s = p.getString(_filigranAnahtari(tablo, 'al_sz'));
+    final t = s != null ? DateTime.tryParse(s) : null;
+    if (t != null) return t;
+    final eski = await _sonSenkron(tablo, 'al');
+    return eski?.subtract(const Duration(hours: 48));
+  }
+
+  /// Başarılı çekimden sonra iki filigranı da ilerletir: last_updated
+  /// (sunucu_zamani olmayan bulutlar için) ve sunucu_zamani.
+  static Future<void> _cekimFiligraniKaydet(
+      String tablo, List<Map<String, dynamic>> kayitlar) async {
+    await _senkronKaydet(tablo, 'al', _enSonZaman(kayitlar));
+    final sz = _enSonZaman(kayitlar, alan: 'sunucu_zamani');
+    if (sz == null) return;
+    final yeni = DateTime.tryParse(sz);
+    if (yeni == null) return;
+    final p = await SharedPreferences.getInstance();
+    final anahtar = _filigranAnahtari(tablo, 'al_sz');
+    final mevcut = DateTime.tryParse(p.getString(anahtar) ?? '');
+    if (mevcut == null || yeni.isAfter(mevcut)) {
+      await p.setString(anahtar, yeni.toUtc().toIso8601String());
+    }
+  }
+
+  /// Çekilen partideki en büyük [alan] değeri (varsayılan `last_updated`).
+  static String? _enSonZaman(List<Map<String, dynamic>> kayitlar,
+      {String alan = 'last_updated'}) {
     String? enSon;
     for (final r in kayitlar) {
-      final s = r['last_updated']?.toString();
+      final s = r[alan]?.toString();
       if (s == null || s.isEmpty) continue;
       if (enSon == null || s.compareTo(enSon) > 0) enSon = s;
     }
@@ -1148,6 +1180,19 @@ class SupabaseSyncServisi {
   static Future<SyncSonuc>? _aktifBuluttanAl;
   static bool _aktifKismi = false;
 
+  @visibleForTesting
+  static Future<DateTime?> sunucuZamaniFiligraniTest(String tablo) =>
+      _sunucuZamaniFiligrani(tablo);
+
+  @visibleForTesting
+  static Future<void> cekimFiligraniKaydetTest(
+          String tablo, List<Map<String, dynamic>> kayitlar) =>
+      _cekimFiligraniKaydet(tablo, kayitlar);
+
+  /// Tam senkron tablo sırası (test: ebeveynler çocuklardan önce mi).
+  @visibleForTesting
+  static List<String> get tabloSirasiTest => List.unmodifiable(_tabloSirasi);
+
   static Future<SyncSonuc> buluttanAl({
     required Future<void> Function(String, List<Map<String, dynamic>>) kayitEkle,
     required Future<void> Function(String, List<Map<String, dynamic>>) kayitGuncelle,
@@ -1234,8 +1279,18 @@ class SupabaseSyncServisi {
       try {
         log?.call('📥 $tablo...');
 
+        // 🔴 Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 1: filigran
+        // ÖNCEDEN istemci damgası last_updated'e dayanıyordu — çevrimdışı
+        // kasanın kayıtları (eski damgalı) diğer kasaların ileri gitmiş
+        // filigranının gerisinde kalıp HİÇ inmiyordu. Bulutta sunucu_zamani
+        // (sunucunun yazma anı, tetikleyici) varsa çekim ona göre yapılır;
+        // yoksa (SQL henüz çalıştırılmadı) eski davranış sürer.
+        final szKullan = !_sunucuZamaniYok.contains(tablo);
+        final filigranAlani = szKullan ? 'sunucu_zamani' : 'last_updated';
         DateTime? sonSenkron;
-        if (sadeceDegisenler && _lastUpdatedVar.contains(tablo)) {
+        if (sadeceDegisenler && _lastUpdatedVar.contains(tablo) && szKullan) {
+          sonSenkron = await _sunucuZamaniFiligrani(tablo);
+        } else if (sadeceDegisenler && _lastUpdatedVar.contains(tablo)) {
           sonSenkron = await _sonSenkron(tablo, 'al');
           // Çevrimdışı kalıp geç senkronlanan kayıtlar, kendi (eski)
           // last_updated damgalarıyla buluta düşer ve imleçten önce kaldığı
@@ -1257,11 +1312,11 @@ class SupabaseSyncServisi {
         while (guvenlikSayaci4++ < 200) {
           var endpoint = '${ayar.rest}/$tablo?limit=500&offset=$offset';
           if (sonSenkron != null) {
-            endpoint += '&last_updated=gt.'
+            endpoint += '&$filigranAlani=gt.'
                 '${Uri.encodeComponent(sonSenkron.toUtc().toIso8601String())}';
-            // id tie-breaker: eşit last_updated'lı (toplu now) satırlar
-            // offset sayfa sınırında atlanmasın/tekrarlanmasın.
-            endpoint += '&order=last_updated.asc,id.asc';
+            // id tie-breaker: eşit damgalı (toplu now) satırlar offset sayfa
+            // sınırında atlanmasın/tekrarlanmasın.
+            endpoint += '&order=$filigranAlani.asc,id.asc';
           } else {
             endpoint += '&order=id.asc';
           }
@@ -1271,6 +1326,16 @@ class SupabaseSyncServisi {
               .timeout(const Duration(seconds: 30));
 
           if (res.statusCode == 404) break;
+          if (szKullan && sonSenkron != null && res.statusCode == 400 &&
+              res.body.contains('sunucu_zamani')) {
+            // Bulutta sütun yok (supabase_tam_sema.sql Bölüm H çalıştırılmadı) —
+            // bu tablo için eski (last_updated) yönteme düşülür; sonraki
+            // çekimde o yolla alınır.
+            _sunucuZamaniYok.add(tablo);
+            sonuc.hatalar.add('⚠️ $tablo: bulutta sunucu_zamani yok — '
+                'supabase_tam_sema.sql (Bölüm H) çalıştırılmalı (bir sonraki çekimde eski yöntem)');
+            break;
+          }
           if (res.statusCode != 200) {
             if (res.statusCode != 406) {
               sonuc.hatalar.add('❌ $tablo GET ${res.statusCode}: ${res.body.substring(0, res.body.length.clamp(0, 100))}');
@@ -1467,11 +1532,11 @@ class SupabaseSyncServisi {
             await prefs.remove(fkSayacAnahtar);
             sonuc.hatalar.add(
                 '❌ $tablo: $atlananFk satır ebeveyn kaydı olmadığı için ATLANDI (5 deneme)');
-            await _senkronKaydet(tablo, 'al', _enSonZaman(tumKayitlar));
+            await _cekimFiligraniKaydet(tablo, tumKayitlar);
           }
         } else {
           await prefs.remove(fkSayacAnahtar);
-          await _senkronKaydet(tablo, 'al', _enSonZaman(tumKayitlar));
+          await _cekimFiligraniKaydet(tablo, tumKayitlar);
         }
       } catch (e) {
         final hata = '❌ $tablo: $e';

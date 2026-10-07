@@ -43,11 +43,16 @@ const _tabloSirasi = [
   'tedarikci_siparisler','tedarikci_siparis_kalem',
   // Tedarikçiye mal iadesi (v81) — cari ve urunler'e FK bağlı; onlardan sonra.
   'tedarikci_iadeler','tedarikci_iade_kalem',
+  // Banka/kart ana tabloları giderlerden ÖNCE: giderler.banka_hesap_id /
+  // kredi_karti_id bunlara bağlı (Bulut Veri Güvenliği Raporu 2026-10-07,
+  // Bulgu 7 — eskiden aşağıda kaldıkları için bankadan/kartla ödenen
+  // giderin hesap bağı boş iniyordu). Sıra testle korunuyor.
+  'bankalar', 'banka_hesaplar', 'kredi_kartlari',
   'giderler','faturalar','fatura_detaylari',
   // kasa_hareketleri cari_hareket'ten SONRA: referans_id'si satışa,
   // iadeye, gidere ve cari harekete işaret edebilir (polimorfik FK —
   // bkz. KolonHaritalama.polimorfikFkHaritasi); ebeveyn önce inmeli.
-  'stok_hareket','cari_hareket','kasa_hareketleri','puan_hareket','personel',
+  'cari_hareket','stok_hareket','kasa_hareketleri','puan_hareket','personel',
   'masalar','masa_siparisleri','masa_siparis_kalem',
   'masa_rezervasyon',
   'adisyon_log',
@@ -61,8 +66,8 @@ const _tabloSirasi = [
   // 'banka_hareketler.banka_hesap_id' için ZATEN 'banka_hesaplar' tablosunu
   // hedef olarak bekliyordu — ama bu iki tablo (bankalar, banka_hesaplar)
   // senkron sisteminde HİÇ yoktu. FK dönüşümü sessizce başarısız oluyordu.
-  // Parent tablolar olarak banka_hareketler'den ÖNCE eklendi.
-  'bankalar', 'banka_hesaplar', 'kredi_kartlari',
+  // Ana tabloları (bankalar, banka_hesaplar, kredi_kartlari) giderlerin
+  // önüne taşındı (yukarıda).
   'banka_hareketler','kredi_karti_hareket',
 
   // 🔴 Derin analizde bulundu: borç takip modülü SENKRON
@@ -145,6 +150,10 @@ const _globalIdVar = {
 
 /// Bu uygulama oturumunda geniş (48 sa) pencereyle çekilmiş tablolar.
 final Set<String> _genisPencereYapilanlar = <String>{};
+
+/// Bulutta sunucu_zamani sütunu olmadığı anlaşılan tablolar (SQL
+/// çalıştırılmamış) — bu oturumda last_updated filigranıyla çekilir.
+final Set<String> _sunucuZamaniYok = <String>{};
 
 const _lastUpdatedVar = {
   'birimler','cari','cari_adres','cari_hareket','fatura_detaylari',

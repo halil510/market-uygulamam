@@ -11,6 +11,9 @@
 --   6) supabase_rls_sertlestirme.sql                    → BÖLÜM E
 --   7) supabase_arsiv_plani.sql                         → BÖLÜM F
 --   (2026-09-28) İşletme hesabıyla güvenli giriş        → BÖLÜM G
+--   (2026-10-07) Sunucu zamanı (çekim filigranı)          → BÖLÜM H
+--   (2026-10-07) Son-yazan-kazanır koruması (LWW)       → BÖLÜM I
+--                (eski ayrı dosya supabase_lww_koruma.sql'in yerine geçer)
 --
 -- KULLANIM: Dosyanın TAMAMINI SQL Editor'e yapıştırıp çalıştırın. Her bölüm
 -- "IF NOT EXISTS / CREATE OR REPLACE / DROP ... IF EXISTS" ile yazıldığı için
@@ -4800,6 +4803,121 @@ BEGIN
                          AND schemaname = 'public' AND tablename = t) THEN
       EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
     END IF;
+  END LOOP;
+END $$;
+
+-- ###########################################################################
+-- BÖLÜM H — SUNUCU ZAMANI (çekim filigranı)            [YENİ — 2026-10-07]
+-- ###########################################################################
+-- SORUN (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 1): cihazlar buluttan
+-- "last_updated > son filigranım" diye çekiyordu. last_updated, kaydı yazan
+-- CİHAZIN saatidir. İnternetsiz kalan kasa kayıtlarını sonradan eski
+-- damgalarıyla gönderince, diğer kasaların ileri gitmiş filigranının gerisinde
+-- kalıp HİÇ inmiyordu (satış/cari/stok hareketi kasalar arasında eksik).
+-- ÇÖZÜM: her senkron tablosuna sunucunun yazma anını tutan sunucu_zamani;
+-- uygulama (SupabaseSyncServisi) çekimi bu sütuna göre yapar. LWW kararı
+-- last_updated ile aynen sürer. Mevcut satırlar last_updated ile doldurulur
+-- (artımlı çekim bozulmaz). *_arsiv tabloları kapsam dışıdır.
+-- Tekrar çalıştırmak güvenlidir (idempotent). Yeni tablo eklenince bu bölümü
+-- yeniden çalıştırın.
+-- banka_hareketler/borclar'da last_updated TEXT: biçimsiz bir değer tüm
+-- bloğu durdurmasın diye dönüşüm hatada NULL döner (→ now() kullanılır).
+CREATE OR REPLACE FUNCTION public.mp_guvenli_zaman(v text)
+RETURNS timestamptz
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+BEGIN
+  RETURN v::timestamptz;
+EXCEPTION WHEN others THEN
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.mp_sunucu_zamani_damgala()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.sunucu_zamani := now();
+  RETURN NEW;
+END;
+$$;
+
+DO $$
+DECLARE
+  t record;
+BEGIN
+  FOR t IN
+    SELECT c.table_name
+    FROM information_schema.columns c
+    JOIN information_schema.tables tb
+      ON tb.table_schema = c.table_schema
+     AND tb.table_name   = c.table_name
+     AND tb.table_type   = 'BASE TABLE'
+    WHERE c.table_schema = 'public'
+      AND c.column_name  = 'last_updated'
+      AND c.table_name NOT LIKE '%\_arsiv'
+  LOOP
+    EXECUTE format('ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS sunucu_zamani TIMESTAMPTZ', t.table_name);
+    -- Tetikleyici henüz yokken doldurulur: değerler last_updated'i korur.
+    EXECUTE format('UPDATE public.%I SET sunucu_zamani = COALESCE(public.mp_guvenli_zaman(last_updated::text), now()) '
+                   'WHERE sunucu_zamani IS NULL', t.table_name);
+    EXECUTE format('ALTER TABLE public.%I ALTER COLUMN sunucu_zamani SET DEFAULT now()', t.table_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON public.%I (sunucu_zamani)',
+                   'idx_' || t.table_name || '_sunucu_zamani', t.table_name);
+    EXECUTE format('DROP TRIGGER IF EXISTS mp_sunucu_zamani_trg ON public.%I', t.table_name);
+    EXECUTE format('CREATE TRIGGER mp_sunucu_zamani_trg BEFORE INSERT OR UPDATE ON public.%I '
+                   'FOR EACH ROW EXECUTE FUNCTION public.mp_sunucu_zamani_damgala()', t.table_name);
+  END LOOP;
+END $$;
+
+
+-- ###########################################################################
+-- BÖLÜM I — SON-YAZAN-KAZANIR (LWW) KORUMASI           [2026-09-29, tam şemaya alındı 2026-10-07]
+-- ###########################################################################
+-- Uygulama kuyruktaki satırı kuyruğa girdiği andaki görüntüsüyle gönderir.
+-- Gelen last_updated mevcut kayıttakinden KESİN eskiyse UPDATE sessizce
+-- atlanır (RETURN NULL) — eski çevrimdışı görüntü daha yeni kaydı ezemez.
+-- Eşit/yeni/NULL damga → güncelleme uygulanır; INSERT/DELETE etkilenmez.
+-- ÖNCEDEN ayrı dosyaydı ve yalnız çalıştırıldığı andaki tablolara bağlanıyordu
+-- (v81 tedarikci_iadeler/kalem korumasızdı) — artık tam şemanın parçası;
+-- yeni tablo eklenince dosyayı yeniden çalıştırmak yeterli.
+CREATE OR REPLACE FUNCTION public.mp_lww_koruma()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF OLD.last_updated IS NOT NULL
+     AND NEW.last_updated IS NOT NULL
+     AND NEW.last_updated < OLD.last_updated THEN
+    RETURN NULL;  -- eski görüntü: mevcut (daha yeni) kaydı koru
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DO $$
+DECLARE
+  t record;
+BEGIN
+  FOR t IN
+    SELECT c.table_name
+    FROM information_schema.columns c
+    JOIN information_schema.tables tb
+      ON tb.table_schema = c.table_schema
+     AND tb.table_name   = c.table_name
+     AND tb.table_type   = 'BASE TABLE'
+    WHERE c.table_schema = 'public'
+      AND c.column_name  = 'last_updated'
+      AND c.data_type    = 'timestamp with time zone'
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS mp_lww_koruma_trg ON public.%I', t.table_name);
+    -- WHEN: yalnız damga geriye giderken çalışır, normal güncellemeye maliyeti yok.
+    EXECUTE format(
+      'CREATE TRIGGER mp_lww_koruma_trg BEFORE UPDATE ON public.%I '
+      'FOR EACH ROW WHEN (NEW.last_updated < OLD.last_updated) '
+      'EXECUTE FUNCTION public.mp_lww_koruma()', t.table_name);
   END LOOP;
 END $$;
 

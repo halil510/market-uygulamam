@@ -532,7 +532,7 @@ class CariDeposu {
       return (rows.first['n'] as int?) ?? 0;
     } catch (e, st) {
       LogServisi().hata('Cari.bakiyeUyumsuzlukSayisi', hata: e, yigin: st);
-      return 0;
+      rethrow; // 0 dönmek Veri Sağlığı'nda sahte "uyumlu" gösteriyordu
     }
   }
 

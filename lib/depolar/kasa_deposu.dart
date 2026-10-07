@@ -480,14 +480,19 @@ class KasaDeposu {
           'SELECT DISTINCT sube_id FROM kasa_hareketleri WHERE deleted_at IS NULL');
       final girisler = KasaHareketModel.girisTipleri;
       var uyumsuz = 0;
+      // Zincir hesabı için yalnız gereken 3 sütun okunur (önceden tüm
+      // satırlar tüm sütunlarıyla belleğe alınıyordu).
+      const sutunlar = ['hareket_tipi', 'tutar', 'bakiye_sonrasi'];
       for (final sr in subeRows) {
         final subeId = sr['sube_id'] as int?;
         final rows = subeId != null
             ? await db.query('kasa_hareketleri',
+                columns: sutunlar,
                 where: 'deleted_at IS NULL AND sube_id = ?',
                 whereArgs: [subeId],
                 orderBy: 'tarih ASC, id ASC')
             : await db.query('kasa_hareketleri',
+                columns: sutunlar,
                 where: 'deleted_at IS NULL AND sube_id IS NULL',
                 orderBy: 'tarih ASC, id ASC');
         double bakiye = 0;
@@ -502,7 +507,7 @@ class KasaDeposu {
       return uyumsuz;
     } catch (e, st) {
       LogServisi().hata('Kasa.bakiyeUyumsuzlukSayisi', hata: e, yigin: st);
-      return 0;
+      rethrow; // 0 dönmek Veri Sağlığı'nda sahte "uyumlu" gösteriyordu
     }
   }
 }

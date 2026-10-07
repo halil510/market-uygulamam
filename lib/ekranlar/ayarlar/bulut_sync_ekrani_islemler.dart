@@ -81,7 +81,7 @@ extension _BulutSyncIslemlerExt on _BulutSyncEkraniState {
 
   Future<void> _qrMenuUrlKaydet() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('qr_menu_web_url', _qrMenuUrlCtrl.text.trim());
+    await prefs.setString(QrMenuAdresi.bulutUrlAnahtari, _qrMenuUrlCtrl.text.trim());
     if (mounted) _snack('QR Menü adresi kaydedildi ✓', Colors.green);
   }
 

@@ -9,6 +9,7 @@
 // gösteriyor.
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -51,13 +52,20 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
 
   Future<void> _yukle() async {
     setState(() => _yukleniyor = true);
-    final liste = await _depo.toptanSatisUrunleriGetir();
-    if (!mounted) return;
-    setState(() {
-      _liste = liste;
-      _listeIdler..clear()..addAll(liste.map((u) => u.id!));
-      _yukleniyor = false;
-    });
+    try {
+      final liste = await _depo.toptanSatisUrunleriGetir();
+      if (!mounted) return;
+      setState(() {
+        _liste = liste;
+        _listeIdler
+          ..clear()
+          ..addAll([for (final u in liste) if (u.id != null) u.id!]);
+      });
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Toptan ürünler yüklenemedi: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      if (mounted) setState(() => _yukleniyor = false);
+    }
   }
 
   Future<void> _aramaYap() async {
@@ -67,12 +75,16 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
       return;
     }
     setState(() => _araniyor = true);
-    final sonuclar = await _depo.ara(q, limit: 20, sadecaAktif: true);
-    if (!mounted) return;
-    setState(() {
-      _aramaSonuclari = sonuclar.where((u) => !_listeIdler.contains(u.id)).toList();
-      _araniyor = false;
-    });
+    try {
+      final sonuclar = await _depo.ara(q, limit: 20, sadecaAktif: true);
+      if (!mounted) return;
+      setState(() => _aramaSonuclari =
+          sonuclar.where((u) => !_listeIdler.contains(u.id)).toList());
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Arama yapılamadı: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      if (mounted) setState(() => _araniyor = false);
+    }
   }
 
   Future<void> _urunEkle(UrunModel u) async {

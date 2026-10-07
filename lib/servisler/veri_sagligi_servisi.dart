@@ -3,14 +3,26 @@
 // VERİ SAĞLIĞI MERKEZİ (protokol §13) — uygulamanın kritik veri
 // bütünlüğü göstergelerini TEK bir yerde toplar. Her kontrol salt
 // okunur bir SAYIM yapar (durum: yeşil/sarı/kırmızı); bazı kontroller
-// için, bu oturumda zaten var olan/eklenen kanıtlanmış "mutabakat"
-// fonksiyonlarını (StokDeposu, CariDeposu, KasaDeposu, BankaHesapDeposu)
-// çağıran bir DÜZELT aksiyonu da sunulur.
+// için kanıtlanmış "mutabakat" fonksiyonlarını çağıran bir DÜZELT
+// aksiyonu da sunulur.
 //
 // Kasıtlı olarak yapmadığımız şey: hiçbir kontrol otomatik olarak
 // (kullanıcı onayı olmadan) veri değiştirmez — ekran her zaman önce
 // SAYIYI gösterir, düzeltme ayrı bir buton/onaydır.
+//
+// 🔴 YAPI (derin analiz 2026-10-07):
+//  • Her kontrol bir [_Kontrol] tanımıdır; hata TEK yerde ([_Kontrol.calistir])
+//    "Kontrol edilemedi" sonucuna çevrilir. Önceden 6 kontrolde try/catch
+//    yoktu — biri hata atınca Future.wait TÜM sonuçları çöpe atıyor, ekran
+//    boş "0/0/0" gösteriyordu. Depolar ise hatada 0 döndürüp kontrolü
+//    YEŞİL gösteriyordu (artık hatayı iletiyorlar).
+//  • Finansal mutabakatlar çalıştırılamazsa KIRMIZI döner: doğrulanamayan
+//    bakiyelerle Yıl Sonu Devri'nin sessizce geçmesi engellenir.
+//  • [kontrolleriAkisla] sonuçları geldikçe verir — ekran ağır kontrolleri
+//    (PRAGMA integrity_check vb.) beklerken boş "yükleniyor"da kalmaz.
 import 'package:sqflite/sqflite.dart';
+
+import '../cekirdek/utils/hata_utils.dart';
 import '../depolar/banka_hesap_deposu.dart';
 import '../depolar/cari_deposu.dart';
 import '../depolar/kasa_deposu.dart';
@@ -32,9 +44,16 @@ class SaglikKontrolSonucu {
   final String kategori;
   final SaglikDurum durum;
   final String mesaj;
+
+  /// Sorunlu kayıt sayısı; kontrol çalıştırılamadıysa -1.
   final int sayi;
+
   /// null ise otomatik düzeltme yok (ör. manuel inceleme gerekir).
   final Future<int> Function()? duzelt;
+
+  /// Düzelt onayında gösterilecek, bu kontrole özgü açıklama. null ise
+  /// ekran genel "hareket geçmişinden yeniden hesaplar" metnini kullanır.
+  final String? duzeltAciklama;
 
   const SaglikKontrolSonucu({
     required this.id,
@@ -44,64 +63,126 @@ class SaglikKontrolSonucu {
     required this.mesaj,
     required this.sayi,
     this.duzelt,
+    this.duzeltAciklama,
   });
 
-  SaglikKontrolSonucu kopyala({SaglikDurum? durum, String? mesaj, int? sayi}) =>
-      SaglikKontrolSonucu(
-        id: id, baslik: baslik, kategori: kategori,
-        durum: durum ?? this.durum, mesaj: mesaj ?? this.mesaj,
-        sayi: sayi ?? this.sayi, duzelt: duzelt,
-      );
+  bool get calistirilamadi => sayi < 0 && mesaj.startsWith(_Kontrol.hataOneki);
 }
+
+/// Tek bir sağlık kontrolünün kimliği ve gövdesi.
+class _Kontrol {
+  static const hataOneki = 'Kontrol edilemedi';
+
+  final String id;
+  final String baslik;
+  final String kategori;
+
+  /// Gövde hata atarsa sonucun durumu (finansal mutabakat/SQLite: kırmızı).
+  final SaglikDurum hataDurumu;
+  final Future<SaglikKontrolSonucu> Function(_Kontrol k) govde;
+
+  const _Kontrol(this.id, this.baslik, this.kategori, this.govde,
+      {this.hataDurumu = SaglikDurum.sari});
+
+  SaglikKontrolSonucu sonuc(
+    SaglikDurum durum,
+    String mesaj, {
+    int sayi = 0,
+    Future<int> Function()? duzelt,
+    String? duzeltAciklama,
+  }) =>
+      SaglikKontrolSonucu(
+        id: id,
+        baslik: baslik,
+        kategori: kategori,
+        durum: durum,
+        mesaj: mesaj,
+        sayi: sayi,
+        duzelt: duzelt,
+        duzeltAciklama: duzeltAciklama,
+      );
+
+  Future<SaglikKontrolSonucu> calistir() async {
+    try {
+      return await govde(this);
+    } catch (e, st) {
+      LogServisi().hata('VeriSagligi.$id', hata: e, yigin: st);
+      return sonuc(hataDurumu, '$hataOneki: ${kullaniciyaHataMetni(e)}', sayi: -1);
+    }
+  }
+}
+
+/// Sayıya göre durum: 0 → yeşil, ≤ [sariEnFazla] → sarı, aksi → [ust].
+SaglikDurum _kademe(int sayi,
+    {int sariEnFazla = 0, SaglikDurum ust = SaglikDurum.kirmizi}) {
+  if (sayi == 0) return SaglikDurum.yesil;
+  if (sayi <= sariEnFazla) return SaglikDurum.sari;
+  return ust;
+}
+
+int _sayiOku(List<Map<String, Object?>> rows, [String sutun = 'n']) =>
+    rows.isEmpty ? 0 : (rows.first[sutun] as num?)?.toInt() ?? 0;
 
 class VeriSagligiServisi {
   Future<Database> get _db async => Veritabani().db;
 
-  Future<List<SaglikKontrolSonucu>> tumKontrolleriCalistir() async {
-    final sonuclar = await Future.wait([
-      _sqliteButunluk(),
-      _foreignKeyKontrol(),
-      _cariMutabakat(),
-      _stokMutabakat(),
-      _kasaMutabakat(),
-      _bankaMutabakat(),
-      _krediKartiMutabakat(),
-      _satisKasaTutarliligi(),
-      _satisStokTutarliligi(),
-      _duplicateBarkod(),
-      _yetimKayitlar(),
-      _baslikKalemTutarlilik(),
-      _iadeKalemStokTutarliligi(),
-      _bulutSemaUyumu(),
-      _mukerrerGlobalId(),
-      _mukerrerCariUnvan(),
-      _negatifStok(),
-      _syncKuyrugu(),
-      _syncCakismalari(),
-      _yedeklemeDurumu(),
-    ]);
-    return sonuclar;
+  /// Hafiften ağıra sıralı: akışta ilk sonuçlar hemen görünür, en pahalı
+  /// kontrol (PRAGMA integrity_check) en sonda çalışır.
+  late final List<_Kontrol> _kontroller = [
+    _Kontrol('sync_kuyruk', 'Sync Kuyruğu', 'Senkronizasyon', _syncKuyrugu),
+    _Kontrol('bulut_sema', 'Bulut Şema Uyumu', 'Senkron', _bulutSemaUyumu),
+    _Kontrol('yedekleme', 'Yedekleme', 'Sistem', _yedeklemeDurumu),
+    _Kontrol('sync_cakisma', 'Sync Çakışmaları', 'Senkronizasyon', _syncCakismalari),
+    _Kontrol('negatif_stok', 'Negatif Stok', 'Ürün', _negatifStok),
+    _Kontrol('dup_barkod', 'Mükerrer Barkod', 'Ürün', _duplicateBarkod),
+    _Kontrol('mukerrer_cari', 'Aynı Unvanlı Cari', 'Veritabanı', _mukerrerCariUnvan),
+    _Kontrol('cari_mutabakat', 'Cari Mutabakat', 'Mutabakat', _cariMutabakat,
+        hataDurumu: SaglikDurum.kirmizi),
+    _Kontrol('stok_mutabakat', 'Stok Mutabakat', 'Mutabakat', _stokMutabakat,
+        hataDurumu: SaglikDurum.kirmizi),
+    _Kontrol('kasa_mutabakat', 'Kasa Mutabakat', 'Mutabakat', _kasaMutabakat,
+        hataDurumu: SaglikDurum.kirmizi),
+    _Kontrol('banka_mutabakat', 'Banka Mutabakat', 'Mutabakat', _bankaMutabakat,
+        hataDurumu: SaglikDurum.kirmizi),
+    _Kontrol('kredi_karti_mutabakat', 'Kredi Kartı Mutabakat', 'Mutabakat',
+        _krediKartiMutabakat, hataDurumu: SaglikDurum.kirmizi),
+    _Kontrol('satis_kasa', 'Satış-Kasa Tutarlılığı', 'Mutabakat', _satisKasaTutarliligi),
+    _Kontrol('satis_stok', 'Satış-Stok Tutarlılığı', 'Mutabakat', _satisStokTutarliligi),
+    _Kontrol('iade_kalem_stok', 'İade Kalem Miktarı', 'Mutabakat',
+        _iadeKalemStokTutarliligi),
+    _Kontrol('baslik_kalem', 'Satış Başlık/Kalem Toplamı', 'Finans',
+        _baslikKalemTutarlilik),
+    _Kontrol('yetim', 'Yetim Kayıtlar', 'Veritabanı', _yetimKayitlar),
+    _Kontrol('mukerrer_gid', 'Mükerrer Sync Kimliği', 'Senkronizasyon', _mukerrerGlobalId),
+    _Kontrol('fk', 'Foreign Key Bütünlüğü', 'Veritabanı', _foreignKeyKontrol),
+    _Kontrol('sqlite', 'SQLite Bütünlüğü', 'Veritabanı', _sqliteButunluk,
+        hataDurumu: SaglikDurum.kirmizi),
+  ];
+
+  /// Toplam kontrol sayısı (ekrandaki ilerleme göstergesi için).
+  int get kontrolSayisi => _kontroller.length;
+
+  /// Tüm kontroller; hiçbir zaman hata fırlatmaz (her kontrol kendi
+  /// hatasını sonuca çevirir). Yıl Sonu Devri ve testler kullanır.
+  Future<List<SaglikKontrolSonucu>> tumKontrolleriCalistir() =>
+      Future.wait(_kontroller.map((k) => k.calistir()));
+
+  /// Sonuçları tamamlandıkça verir. Tek SQLite bağlantısı sorguları zaten
+  /// sıraya koyduğundan sıralı çalıştırmak toplam süreyi uzatmaz, ama
+  /// ekranın ilk sonuçları beklemeden göstermesini sağlar.
+  Stream<SaglikKontrolSonucu> kontrolleriAkisla() async* {
+    for (final k in _kontroller) {
+      yield await k.calistir();
+    }
   }
 
   // ── SQLite bütünlüğü ────────────────────────────────────────────────
-  Future<SaglikKontrolSonucu> _sqliteButunluk() async {
-    const id = 'sqlite';
-    const baslik = 'SQLite Bütünlüğü';
-    const kategori = 'Veritabanı';
-    try {
-      final db = await _db;
-      final rows = await db.rawQuery('PRAGMA integrity_check');
-      final sonuc = rows.isNotEmpty ? rows.first.values.first.toString() : 'unknown';
-      if (sonuc == 'ok') {
-        return const SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-            durum: SaglikDurum.yesil, mesaj: 'Veritabanı dosyası sağlam.', sayi: 0);
-      }
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.kirmizi, mesaj: 'SQLite bütünlük hatası: $sonuc', sayi: 1);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.kirmizi, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
-    }
+  Future<SaglikKontrolSonucu> _sqliteButunluk(_Kontrol k) async {
+    final db = await _db;
+    final rows = await db.rawQuery('PRAGMA integrity_check');
+    final sonuc = rows.isNotEmpty ? rows.first.values.first.toString() : 'unknown';
+    if (sonuc == 'ok') return k.sonuc(SaglikDurum.yesil, 'Veritabanı dosyası sağlam.');
+    return k.sonuc(SaglikDurum.kirmizi, 'SQLite bütünlük hatası: $sonuc', sayi: 1);
   }
 
   // ── Foreign Key ─────────────────────────────────────────────────────
@@ -109,26 +190,17 @@ class VeriSagligiServisi {
   // düzelt callback'i yoktu. Yıl Sonu Devir'in FAZ 1 kontrolü bu sonucu
   // CRITICAL bulduğunda devri anında durduruyordu (haklı olarak — bu
   // GERÇEK bir bütünlük sorunu), ama kullanıcının bunu DÜZELTECEK hiçbir
-  // aracı yoktu — devir kalıcı olarak tıkanıyordu. Artık diğer
-  // mutabakat kontrolleriyle AYNI desende bir 'duzelt' aksiyonu var.
-  Future<SaglikKontrolSonucu> _foreignKeyKontrol() async {
-    const id = 'fk';
-    const baslik = 'Foreign Key Bütünlüğü';
-    const kategori = 'Veritabanı';
-    try {
-      final db = await _db;
-      final rows = await db.rawQuery('PRAGMA foreign_key_check');
-      if (rows.isEmpty) {
-        return const SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-            durum: SaglikDurum.yesil, mesaj: 'İlişkisel bütünlük ihlali yok.', sayi: 0);
-      }
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.kirmizi, mesaj: '${rows.length} foreign key ihlali bulundu.',
-          sayi: rows.length, duzelt: _yabanciAnahtarTemizle);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
-    }
+  // aracı yoktu — devir kalıcı olarak tıkanıyordu.
+  Future<SaglikKontrolSonucu> _foreignKeyKontrol(_Kontrol k) async {
+    final db = await _db;
+    final rows = await db.rawQuery('PRAGMA foreign_key_check');
+    if (rows.isEmpty) return k.sonuc(SaglikDurum.yesil, 'İlişkisel bütünlük ihlali yok.');
+    return k.sonuc(SaglikDurum.kirmizi, '${rows.length} foreign key ihlali bulundu.',
+        sayi: rows.length,
+        duzelt: _yabanciAnahtarTemizle,
+        duzeltAciklama: 'Geçersiz referans taşıyan kolonlar NULL yapılır; '
+            'zorunlu üst kaydı hiç olmayan yetim satırlar içerikleriyle '
+            'loglanıp silinir.');
   }
 
   /// `PRAGMA foreign_key_check`'in bulduğu her ihlali TEK TEK, kolon
@@ -136,12 +208,8 @@ class VeriSagligiServisi {
   /// - Kolon NULL'a izin veriyorsa: sadece o kolonu NULL yapar (satır
   ///   KORUNUR, sadece geçersiz referans koparılır — veri kaybı yok).
   /// - Kolon NOT NULL ise (satır zorunlu bir üst kayda bağlı ama o kayıt
-  ///   artık yok — ör. bir cari_hareket, var olmayan bir cari_id'ye
-  ///   işaret ediyor): 🔴 ÖNEMLİ — `is_deleted` işaretlemek `PRAGMA
-  ///   foreign_key_check`'i TATMİN ETMEZ (pragma is_deleted'i bilmez,
-  ///   ham kolon değerine bakar) — bu yüzden soft-delete YETERSİZ, kontrol
-  ///   sonsuza dek kırmızı kalır. Satırın zaten atfedilebileceği geçerli
-  ///   bir üst kayıt YOK (kendi içinde anlamsız/yetim) — LogServisi'ne
+  ///   artık yok): `is_deleted` işaretlemek `PRAGMA foreign_key_check`'i
+  ///   TATMİN ETMEZ (pragma ham kolon değerine bakar) — satır LogServisi'ne
   ///   TAM içeriğiyle kaydedilip (denetim izi) ardından silinir. Bu,
   ///   geçerli bir işlemi geri almak DEĞİL — hiçbir zaman doğru
   ///   hesaplanamayacak, bozuk bir satırı temizlemektir.
@@ -170,7 +238,6 @@ class VeriSagligiServisi {
         if (!notNull) {
           await txn.rawUpdate(
               'UPDATE "$tablo" SET "$kolon" = NULL WHERE rowid = ?', [rowid]);
-          duzeltilen++;
         } else {
           final satirlar =
               await txn.rawQuery('SELECT * FROM "$tablo" WHERE rowid = ?', [rowid]);
@@ -180,79 +247,70 @@ class VeriSagligiServisi {
                 hata: satirlar.first);
           }
           await txn.rawDelete('DELETE FROM "$tablo" WHERE rowid = ?', [rowid]);
-          duzeltilen++;
         }
+        duzeltilen++;
       }
     });
     return duzeltilen;
   }
 
-  // ── Cari Mutabakat ──────────────────────────────────────────────────
-  Future<SaglikKontrolSonucu> _cariMutabakat() async {
+  // ── Mutabakatlar (hareket geçmişi ↔ özet alan) ──────────────────────
+  Future<SaglikKontrolSonucu> _cariMutabakat(_Kontrol k) async {
     final sayi = await CariDeposu().bakiyeUyumsuzlukSayisi();
-    return SaglikKontrolSonucu(
-      id: 'cari_mutabakat', baslik: 'Cari Mutabakat', kategori: 'Mutabakat',
-      durum: sayi == 0 ? SaglikDurum.yesil : (sayi <= 3 ? SaglikDurum.sari : SaglikDurum.kirmizi),
-      mesaj: sayi == 0 ? 'Tüm cari bakiyeleri hareket geçmişiyle uyumlu.'
+    return k.sonuc(
+      _kademe(sayi, sariEnFazla: 3),
+      sayi == 0
+          ? 'Tüm cari bakiyeleri hareket geçmişiyle uyumlu.'
           : '$sayi carinin bakiyesi hareket geçmişiyle uyuşmuyor.',
       sayi: sayi,
       duzelt: sayi > 0 ? () => CariDeposu().bakiyeMutabakatYap() : null,
     );
   }
 
-  // ── Stok Mutabakat ──────────────────────────────────────────────────
-  Future<SaglikKontrolSonucu> _stokMutabakat() async {
+  Future<SaglikKontrolSonucu> _stokMutabakat(_Kontrol k) async {
     final sayi = await StokDeposu().mutabakatUyumsuzlukSayisi();
-    return SaglikKontrolSonucu(
-      id: 'stok_mutabakat', baslik: 'Stok Mutabakat', kategori: 'Mutabakat',
-      durum: sayi == 0 ? SaglikDurum.yesil : (sayi <= 3 ? SaglikDurum.sari : SaglikDurum.kirmizi),
-      mesaj: sayi == 0 ? 'Tüm ürün stokları hareket geçmişiyle uyumlu.'
+    return k.sonuc(
+      _kademe(sayi, sariEnFazla: 3),
+      sayi == 0
+          ? 'Tüm ürün stokları hareket geçmişiyle uyumlu.'
           : '$sayi ürünün stoğu hareket geçmişiyle uyuşmuyor.',
       sayi: sayi,
       duzelt: sayi > 0 ? () => StokDeposu().stokMutabakatYap() : null,
     );
   }
 
-  // ── Kasa Mutabakat ──────────────────────────────────────────────────
-  Future<SaglikKontrolSonucu> _kasaMutabakat() async {
+  Future<SaglikKontrolSonucu> _kasaMutabakat(_Kontrol k) async {
     final sayi = await KasaDeposu().bakiyeUyumsuzlukSayisi();
-    return SaglikKontrolSonucu(
-      id: 'kasa_mutabakat', baslik: 'Kasa Mutabakat', kategori: 'Mutabakat',
-      durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.kirmizi,
-      mesaj: sayi == 0 ? 'Kasa hareketleri sırayla tutarlı.'
+    return k.sonuc(
+      _kademe(sayi),
+      sayi == 0
+          ? 'Kasa hareketleri sırayla tutarlı.'
           : '$sayi kasa hareketinin bakiyesi hatalı hesaplanmış.',
       sayi: sayi,
       duzelt: sayi > 0 ? () => KasaDeposu().bakiyeMutabakatYap() : null,
     );
   }
 
-  // ── Banka Mutabakat ─────────────────────────────────────────────────
-  Future<SaglikKontrolSonucu> _bankaMutabakat() async {
+  Future<SaglikKontrolSonucu> _bankaMutabakat(_Kontrol k) async {
     final sayi = await BankaHesapDeposu().bakiyeUyumsuzlukSayisi();
-    return SaglikKontrolSonucu(
-      id: 'banka_mutabakat', baslik: 'Banka Mutabakat', kategori: 'Mutabakat',
-      durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.kirmizi,
-      mesaj: sayi == 0 ? 'Banka hesap bakiyeleri hareket geçmişiyle uyumlu.'
+    return k.sonuc(
+      _kademe(sayi),
+      sayi == 0
+          ? 'Banka hesap bakiyeleri hareket geçmişiyle uyumlu.'
           : '$sayi banka hesabının bakiyesi kendi hareket geçmişiyle uyuşmuyor.',
       sayi: sayi,
       duzelt: sayi > 0 ? () => BankaHesapDeposu().bakiyeMutabakatYap() : null,
     );
   }
 
-  // ── Kredi Kartı Mutabakat ────────────────────────────────────────────
-  // 🔴 DÜZELTME (Madde 11 — Kredi Kartı/Banka Mutabakatı denetimi,
-  // 2026-09-16): KrediKartiDeposu.limitMutabakatYap() (stok/cari/kasa/
-  // banka ile AYNI olgun desende, hareket-bazlı yeniden hesaplama)
-  // ÖNCEDEN sadece senkron sonrası akışlardan (sync_ekrani.dart,
-  // bulut_sync_ekrani.dart) elle çağrılıyordu — Veri Sağlığı
-  // Merkezi'nde HİÇ görünmüyordu, kullanıcı tek tıkla sapmayı
-  // göremiyor/düzeltemiyordu.
-  Future<SaglikKontrolSonucu> _krediKartiMutabakat() async {
+  // Madde 11 (2026-09-16): limitMutabakatYap() önceden sadece senkron
+  // sonrası akışlardan çağrılıyordu, Veri Sağlığı Merkezi'nde görünmüyordu.
+  Future<SaglikKontrolSonucu> _krediKartiMutabakat(_Kontrol k) async {
     final sayi = await KrediKartiDeposu().uyumsuzlukSayisi();
-    return SaglikKontrolSonucu(
-      id: 'kredi_karti_mutabakat', baslik: 'Kredi Kartı Mutabakat', kategori: 'Mutabakat',
-      durum: sayi == 0 ? SaglikDurum.yesil : (sayi <= 3 ? SaglikDurum.sari : SaglikDurum.kirmizi),
-      mesaj: sayi == 0 ? 'Tüm kredi kartı limit kullanımları hareket geçmişiyle uyumlu.'
+    return k.sonuc(
+      _kademe(sayi, sariEnFazla: 3),
+      sayi == 0
+          ? 'Tüm kredi kartı limit kullanımları hareket geçmişiyle uyumlu.'
           : '$sayi kredi kartının kullanılan limiti hareket geçmişiyle uyuşmuyor.',
       sayi: sayi,
       duzelt: sayi > 0 ? () => KrediKartiDeposu().limitMutabakatYap() : null,
@@ -260,154 +318,116 @@ class VeriSagligiServisi {
   }
 
   // ── Satış-Kasa tutarlılığı ──────────────────────────────────────────
-  Future<SaglikKontrolSonucu> _satisKasaTutarliligi() async {
-    const id = 'satis_kasa';
-    const baslik = 'Satış-Kasa Tutarlılığı';
-    const kategori = 'Mutabakat';
-    try {
-      final db = await _db;
-      // Not: önceden sadece odeme_yontemi='Nakit' kontrol ediliyordu — bu,
-      // Kredi Kartı ve Karma ödemeli satışları (satis_tamamlama_servisi.dart
-      // her Karma ödeme yöntemi için ayrı kasa hareketi açıyor) bu kontrolün
-      // tamamen dışında bırakıyordu. 'Cari' hariç TÜM ödeme yöntemleri en az
-      // bir kasa hareketine sahip olmalı (Cari'de nakit/kart hareketi hiç
-      // beklenmez, bkz. FAZ 1 madde 2).
-      final rows = await db.rawQuery('''
-        SELECT COUNT(*) as n FROM satislar s
-        WHERE s.is_deleted = 0 AND s.odeme_yontemi != 'Cari' AND s.odenen_tutar > 0.005
-          AND NOT EXISTS (
-            SELECT 1 FROM kasa_hareketleri k
-            WHERE k.referans_id = s.id AND k.referans_turu = 'satis' AND k.deleted_at IS NULL
-          )
-      ''');
-      final sayi = (rows.first['n'] as int?) ?? 0;
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.kirmizi,
-          mesaj: sayi == 0 ? 'Her nakit/kart/karma satışın kasa karşılığı var.'
-              : '$sayi satışın (nakit/kart/karma) kasa hareketi eksik.',
-          sayi: sayi);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
-    }
+  // 'Cari' hariç TÜM ödeme yöntemleri (Nakit/Kart/Karma — karma her yöntem
+  // için ayrı kasa hareketi açar) en az bir kasa hareketine sahip olmalı.
+  Future<SaglikKontrolSonucu> _satisKasaTutarliligi(_Kontrol k) async {
+    final db = await _db;
+    final sayi = _sayiOku(await db.rawQuery('''
+      SELECT COUNT(*) as n FROM satislar s
+      WHERE s.is_deleted = 0 AND s.odeme_yontemi != 'Cari' AND s.odenen_tutar > 0.005
+        AND NOT EXISTS (
+          SELECT 1 FROM kasa_hareketleri k
+          WHERE k.referans_id = s.id AND k.referans_turu = 'satis' AND k.deleted_at IS NULL
+        )
+    '''));
+    return k.sonuc(
+        _kademe(sayi),
+        sayi == 0
+            ? 'Her nakit/kart/karma satışın kasa karşılığı var.'
+            : '$sayi satışın (nakit/kart/karma) kasa hareketi eksik.',
+        sayi: sayi);
   }
 
   // ── Satış-Stok tutarlılığı ──────────────────────────────────────────
-  Future<SaglikKontrolSonucu> _satisStokTutarliligi() async {
-    const id = 'satis_stok';
-    const baslik = 'Satış-Stok Tutarlılığı';
-    const kategori = 'Mutabakat';
-    try {
-      final db = await _db;
-      final rows = await db.rawQuery('''
-        SELECT COUNT(*) as n FROM satis_kalem sk
-        JOIN satislar s ON s.id = sk.satis_id AND s.is_deleted = 0
-        WHERE NOT EXISTS (
-          SELECT 1 FROM stok_hareket sh
-          WHERE sh.referans_id = sk.satis_id AND sh.referans_turu = 'satis' AND sh.urun_id = sk.urun_id
-        )
-      ''');
-      final sayi = (rows.first['n'] as int?) ?? 0;
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: sayi == 0 ? SaglikDurum.yesil : (sayi <= 5 ? SaglikDurum.sari : SaglikDurum.kirmizi),
-          mesaj: sayi == 0 ? 'Her satış kalemi bir stok hareketiyle eşleşiyor.'
-              : '$sayi satış kaleminin stok hareketi bulunamadı.',
-          sayi: sayi);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
-    }
+  Future<SaglikKontrolSonucu> _satisStokTutarliligi(_Kontrol k) async {
+    final db = await _db;
+    final sayi = _sayiOku(await db.rawQuery('''
+      SELECT COUNT(*) as n FROM satis_kalem sk
+      JOIN satislar s ON s.id = sk.satis_id AND s.is_deleted = 0
+      WHERE NOT EXISTS (
+        SELECT 1 FROM stok_hareket sh
+        WHERE sh.referans_id = sk.satis_id AND sh.referans_turu = 'satis' AND sh.urun_id = sk.urun_id
+      )
+    '''));
+    return k.sonuc(
+        _kademe(sayi, sariEnFazla: 5),
+        sayi == 0
+            ? 'Her satış kalemi bir stok hareketiyle eşleşiyor.'
+            : '$sayi satış kaleminin stok hareketi bulunamadı.',
+        sayi: sayi);
   }
 
   // ── Duplicate barkod ────────────────────────────────────────────────
-  Future<SaglikKontrolSonucu> _duplicateBarkod() async {
-    const id = 'dup_barkod';
-    const baslik = 'Mükerrer Barkod';
-    const kategori = 'Ürün';
-    try {
-      final db = await _db;
-      final rows = await db.rawQuery('''
-        SELECT barkod, COUNT(*) as c FROM urunler
-        WHERE barkod IS NOT NULL AND barkod != '' AND is_deleted = 0
-        GROUP BY barkod HAVING c > 1
-      ''');
-      final sayi = rows.length;
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.sari,
-          mesaj: sayi == 0 ? 'Aynı barkodu paylaşan ürün yok.'
-              : '$sayi barkod birden fazla üründe kullanılıyor.',
-          sayi: sayi);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
-    }
+  Future<SaglikKontrolSonucu> _duplicateBarkod(_Kontrol k) async {
+    final db = await _db;
+    final rows = await db.rawQuery('''
+      SELECT barkod, COUNT(*) as c FROM urunler
+      WHERE barkod IS NOT NULL AND barkod != '' AND is_deleted = 0
+      GROUP BY barkod HAVING c > 1
+    ''');
+    final sayi = rows.length;
+    return k.sonuc(
+        _kademe(sayi, ust: SaglikDurum.sari),
+        sayi == 0
+            ? 'Aynı barkodu paylaşan ürün yok.'
+            : '$sayi barkod birden fazla üründe kullanılıyor.',
+        sayi: sayi);
   }
 
   // ── Yetim kayıtlar ──────────────────────────────────────────────────
-  Future<SaglikKontrolSonucu> _yetimKayitlar() async {
-    const id = 'yetim';
-    const baslik = 'Yetim Kayıtlar';
-    const kategori = 'Veritabanı';
-    try {
-      final db = await _db;
-      final sonuclar = await Future.wait([
-        db.rawQuery("SELECT COUNT(*) as n FROM satis_kalem sk WHERE NOT EXISTS (SELECT 1 FROM satislar s WHERE s.id = sk.satis_id)"),
-        db.rawQuery("SELECT COUNT(*) as n FROM cari_hareket ch WHERE NOT EXISTS (SELECT 1 FROM cari c WHERE c.id = ch.cari_id)"),
-        db.rawQuery("SELECT COUNT(*) as n FROM stok_hareket sh WHERE NOT EXISTS (SELECT 1 FROM urunler u WHERE u.id = sh.urun_id)"),
-        db.rawQuery("SELECT COUNT(*) as n FROM iade_kalem ik WHERE NOT EXISTS (SELECT 1 FROM iade i WHERE i.id = ik.iade_id)"),
-        db.rawQuery("SELECT COUNT(*) as n FROM fatura_detaylari fd WHERE NOT EXISTS (SELECT 1 FROM faturalar f WHERE f.id = fd.fatura_id)"),
-        db.rawQuery("SELECT COUNT(*) as n FROM tedarikci_siparis_kalem k WHERE NOT EXISTS (SELECT 1 FROM tedarikci_siparisler t WHERE t.id = k.siparis_id)"),
-        db.rawQuery("SELECT COUNT(*) as n FROM satis_kalem sk WHERE NOT EXISTS (SELECT 1 FROM urunler u WHERE u.id = sk.urun_id)"),
-        db.rawQuery("SELECT COUNT(*) as n FROM sube_urun su WHERE NOT EXISTS (SELECT 1 FROM urunler u WHERE u.id = su.urun_id)"),
-      ]);
-      final sayi = sonuclar.fold<int>(0, (t, r) => t + ((r.first['n'] as int?) ?? 0));
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.sari,
-          mesaj: sayi == 0 ? 'Sahipsiz (referansı silinmiş) kayıt yok.'
-              : '$sayi kayıt, artık var olmayan bir ana kayda bağlı (satış/cari/ürün silinmiş olabilir).',
-          sayi: sayi);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
-    }
+  static const _yetimSorgulari = [
+    'SELECT COUNT(*) as n FROM satis_kalem sk WHERE NOT EXISTS (SELECT 1 FROM satislar s WHERE s.id = sk.satis_id)',
+    'SELECT COUNT(*) as n FROM cari_hareket ch WHERE NOT EXISTS (SELECT 1 FROM cari c WHERE c.id = ch.cari_id)',
+    'SELECT COUNT(*) as n FROM stok_hareket sh WHERE NOT EXISTS (SELECT 1 FROM urunler u WHERE u.id = sh.urun_id)',
+    'SELECT COUNT(*) as n FROM iade_kalem ik WHERE NOT EXISTS (SELECT 1 FROM iade i WHERE i.id = ik.iade_id)',
+    'SELECT COUNT(*) as n FROM fatura_detaylari fd WHERE NOT EXISTS (SELECT 1 FROM faturalar f WHERE f.id = fd.fatura_id)',
+    'SELECT COUNT(*) as n FROM tedarikci_siparis_kalem k WHERE NOT EXISTS (SELECT 1 FROM tedarikci_siparisler t WHERE t.id = k.siparis_id)',
+    'SELECT COUNT(*) as n FROM satis_kalem sk WHERE NOT EXISTS (SELECT 1 FROM urunler u WHERE u.id = sk.urun_id)',
+    'SELECT COUNT(*) as n FROM sube_urun su WHERE NOT EXISTS (SELECT 1 FROM urunler u WHERE u.id = su.urun_id)',
+  ];
+
+  Future<SaglikKontrolSonucu> _yetimKayitlar(_Kontrol k) async {
+    final db = await _db;
+    final sonuclar = await Future.wait(_yetimSorgulari.map(db.rawQuery));
+    final sayi = sonuclar.fold<int>(0, (t, r) => t + _sayiOku(r));
+    return k.sonuc(
+        _kademe(sayi, ust: SaglikDurum.sari),
+        sayi == 0
+            ? 'Sahipsiz (referansı silinmiş) kayıt yok.'
+            : '$sayi kayıt, artık var olmayan bir ana kayda bağlı (satış/cari/ürün silinmiş olabilir).',
+        sayi: sayi);
   }
 
   // ── Satış başlık toplamı ↔ kalem toplamı ────────────────────────────
   // İki cihazda aynı satışın başlığı/kalemleri ayrı ayrı senkronlanınca
   // (fiş güncelleme + çakışma) başlıkla kalemler ayrışabilir. Salt okunur
   // uyarı (sarı — devri engellemez); düzeltme kararı kullanıcıda.
-  Future<SaglikKontrolSonucu> _baslikKalemTutarlilik() async {
-    const id = 'baslik_kalem';
-    const baslik = 'Satış Başlık/Kalem Toplamı';
-    const kategori = 'Finans';
-    try {
-      final db = await _db;
-      final rows = await db.rawQuery('''
-        SELECT COUNT(*) AS n FROM (
-          SELECT s.id
-          FROM satislar s
-          JOIN satis_kalem k ON k.satis_id = s.id
-          WHERE s.is_deleted = 0 AND s.iptal = 0 AND s.sync_cakisma_kopyasi = 0
-          GROUP BY s.id
-          HAVING ABS(MAX(s.genel_toplam)
-                     - COALESCE(MAX(s.kargo_ucreti), 0)
-                     - COALESCE(MAX(s.servis_ucreti), 0)
-                     - SUM(k.toplam_tutar)) > 0.10
-        )
-      ''');
-      final sayi = (rows.first['n'] as int?) ?? 0;
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.sari,
-          mesaj: sayi == 0
-              ? 'Satış toplamları kalemlerle uyumlu.'
-              : '$sayi satışın genel toplamı kalem toplamından farklı '
-                  '(fiş güncelleme / senkron çakışması olabilir).',
-          sayi: sayi,
-          duzelt: sayi > 0 ? _kalemToplamlariniOnar : null);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
-    }
+  Future<SaglikKontrolSonucu> _baslikKalemTutarlilik(_Kontrol k) async {
+    final db = await _db;
+    final sayi = _sayiOku(await db.rawQuery('''
+      SELECT COUNT(*) AS n FROM (
+        SELECT s.id
+        FROM satislar s
+        JOIN satis_kalem k ON k.satis_id = s.id
+        WHERE s.is_deleted = 0 AND s.iptal = 0 AND s.sync_cakisma_kopyasi = 0
+        GROUP BY s.id
+        HAVING ABS(MAX(s.genel_toplam)
+                   - COALESCE(MAX(s.kargo_ucreti), 0)
+                   - COALESCE(MAX(s.servis_ucreti), 0)
+                   - SUM(k.toplam_tutar)) > 0.10
+      )
+    '''));
+    return k.sonuc(
+        _kademe(sayi, ust: SaglikDurum.sari),
+        sayi == 0
+            ? 'Satış toplamları kalemlerle uyumlu.'
+            : '$sayi satışın genel toplamı kalem toplamından farklı '
+                '(fiş güncelleme / senkron çakışması olabilir).',
+        sayi: sayi,
+        duzelt: sayi > 0 ? _kalemToplamlariniOnar : null,
+        duzeltAciklama: 'Yalnız başlık toplamı "birim fiyat × miktar" ile '
+            'uyuşan satışlarda kalem tutarları birim fiyattan yeniden '
+            'yazılır; başka sebeple uyuşmayan satışlara dokunulmaz.');
   }
 
   /// Çift-indirim hatasıyla (kalem toplamı birimFiyat × (1 − iskontoOran)
@@ -509,38 +529,30 @@ class VeriSagligiServisi {
                                AND sh2.urun_id = ik.urun_id)) > 0.0005
   ''';
 
-  Future<SaglikKontrolSonucu> _iadeKalemStokTutarliligi() async {
-    const id = 'iade_kalem_stok';
-    const baslik = 'İade Kalem Miktarı';
-    const kategori = 'Mutabakat';
-    try {
-      final db = await _db;
-      final rows = await db.rawQuery(_iadeKalemFarkSql);
-      final sayi = rows.length;
-      String ayrinti() => rows.take(3).map((r) {
-            String g(Object? v) {
-              final d = (v as num?)?.toDouble() ?? 0;
-              return d == d.truncateToDouble() ? d.toStringAsFixed(0) : d.toStringAsFixed(2);
-            }
-            return '${r['fis_no'] ?? '#${r['iade_id']}'} ${r['urun_adi'] ?? ''}: '
-                'kayıtlı ${g(r['kayitli'])} / stok hareketine göre ${g(r['gercek'])}';
-          }).join('; ');
-      return SaglikKontrolSonucu(
-          id: id,
-          baslik: baslik,
-          kategori: kategori,
-          durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.sari,
-          mesaj: sayi == 0
-              ? 'İade kalem miktarları stok hareketleriyle uyumlu.'
-              : '$sayi iade kaleminin miktarı stok hareketinden farklı (${ayrinti()}'
-                  '${sayi > 3 ? ' …' : ''}). Düzelt yalnız MİKTARI onarır; '
-                  'tutar/cari için ilgili fişi açıp kontrol edin.',
-          sayi: sayi,
-          duzelt: sayi > 0 ? _iadeKalemMiktarlariniOnar : null);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
+  static String _miktarYaz(Object? v) {
+    final d = (v as num?)?.toDouble() ?? 0;
+    return d == d.truncateToDouble() ? d.toStringAsFixed(0) : d.toStringAsFixed(2);
+  }
+
+  Future<SaglikKontrolSonucu> _iadeKalemStokTutarliligi(_Kontrol k) async {
+    final db = await _db;
+    final rows = await db.rawQuery(_iadeKalemFarkSql);
+    final sayi = rows.length;
+    if (sayi == 0) {
+      return k.sonuc(SaglikDurum.yesil, 'İade kalem miktarları stok hareketleriyle uyumlu.');
     }
+    final ayrinti = rows.take(3).map((r) =>
+        '${r['fis_no'] ?? '#${r['iade_id']}'} ${r['urun_adi'] ?? ''}: '
+        'kayıtlı ${_miktarYaz(r['kayitli'])} / stok hareketine göre ${_miktarYaz(r['gercek'])}');
+    return k.sonuc(
+        SaglikDurum.sari,
+        '$sayi iade kaleminin miktarı stok hareketinden farklı (${ayrinti.join('; ')}'
+        '${sayi > 3 ? ' …' : ''}). Düzelt yalnız MİKTARI onarır; '
+        'tutar/cari için ilgili fişi açıp kontrol edin.',
+        sayi: sayi,
+        duzelt: _iadeKalemMiktarlariniOnar,
+        duzeltAciklama: 'İade kalem MİKTARI stok hareketlerindeki gerçek '
+            'iade miktarına göre yazılır. Tutar ve cari etkisi değişmez.');
   }
 
   Future<int> _iadeKalemMiktarlariniOnar() async {
@@ -572,17 +584,11 @@ class VeriSagligiServisi {
   // Gönderim sırasında bulutta bulunmadığı için ATLANAN sütunlar (yerelde
   // eklenmiş ama supabase_tam_sema.sql henüz çalıştırılmamış). Bu sütunlardaki
   // veri diğer cihazlara ULAŞMAZ; SQL çalıştırılınca kendiliğinden düzelir.
-  Future<SaglikKontrolSonucu> _bulutSemaUyumu() async {
-    const id = 'bulut_sema';
-    const baslik = 'Bulut Şema Uyumu';
-    const kategori = 'Senkron';
+  Future<SaglikKontrolSonucu> _bulutSemaUyumu(_Kontrol k) async {
     final eksik = SupabaseSaglayici.eksikBulutSutunlari.toList()..sort();
-    return SaglikKontrolSonucu(
-      id: id,
-      baslik: baslik,
-      kategori: kategori,
-      durum: eksik.isEmpty ? SaglikDurum.yesil : SaglikDurum.sari,
-      mesaj: eksik.isEmpty
+    return k.sonuc(
+      _kademe(eksik.length, ust: SaglikDurum.sari),
+      eksik.isEmpty
           ? 'Bilinen eksik bulut sütunu yok (bulut bağlantısı kurulup gönderim yapıldıkça güncellenir).'
           : '${eksik.length} yerel sütun bulut şemasında YOK ve gönderilmiyor '
               '(${eksik.take(4).join(', ')}${eksik.length > 4 ? ' …' : ''}). '
@@ -594,146 +600,117 @@ class VeriSagligiServisi {
   // ── Aynı unvanlı cari kopyaları ─────────────────────────────────────
   // Senkron/içe aktarma hatasıyla tüm cari listesi ikinci kez oluşabiliyor
   // (yeni global_id + yeni kod). Bakiye toplamları iki katına çıkar.
-  // Salt okunur uyarı (sarı).
-  Future<SaglikKontrolSonucu> _mukerrerCariUnvan() async {
-    const id = 'mukerrer_cari';
-    const baslik = 'Aynı Unvanlı Cari';
-    const kategori = 'Veritabanı';
-    try {
-      final db = await _db;
-      final r = await db.rawQuery('''
-        SELECT COUNT(*) AS n FROM (
-          SELECT UPPER(TRIM(unvan)) AS u FROM cari
-          WHERE is_deleted = 0 AND unvan IS NOT NULL AND TRIM(unvan) != ''
-          GROUP BY u HAVING COUNT(*) > 1
-        )
-      ''');
-      final sayi = (r.first['n'] as int?) ?? 0;
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.sari,
-          mesaj: sayi == 0
-              ? 'Aynı unvanı taşıyan birden fazla cari yok.'
-              : '$sayi unvan birden fazla cari kartında var — mükerrer '
-                  'aktarım olabilir (bakiye toplamları şişer).',
-          sayi: sayi);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
-    }
+  Future<SaglikKontrolSonucu> _mukerrerCariUnvan(_Kontrol k) async {
+    final db = await _db;
+    final sayi = _sayiOku(await db.rawQuery('''
+      SELECT COUNT(*) AS n FROM (
+        SELECT UPPER(TRIM(unvan)) AS u FROM cari
+        WHERE is_deleted = 0 AND unvan IS NOT NULL AND TRIM(unvan) != ''
+        GROUP BY u HAVING COUNT(*) > 1
+      )
+    '''));
+    return k.sonuc(
+        _kademe(sayi, ust: SaglikDurum.sari),
+        sayi == 0
+            ? 'Aynı unvanı taşıyan birden fazla cari yok.'
+            : '$sayi unvan birden fazla cari kartında var — mükerrer '
+                'aktarım olabilir (bakiye toplamları şişer).',
+        sayi: sayi);
   }
 
   // ── Mükerrer global_id ──────────────────────────────────────────────
   // Sync kimliği tekil olmalı: yükseltilmiş cihazlarda UNIQUE indeks yoksa
   // aynı kayıt iki satır olarak toplamlara girebilir.
-  Future<SaglikKontrolSonucu> _mukerrerGlobalId() async {
-    const id = 'mukerrer_gid';
-    const baslik = 'Mükerrer Sync Kimliği';
-    const kategori = 'Senkronizasyon';
-    const tablolar = [
-      'satislar', 'satis_kalem', 'cari', 'cari_hareket', 'stok_hareket',
-      'kasa_hareketleri', 'urunler', 'iade', 'iade_kalem', 'faturalar',
-      'fatura_detaylari', 'giderler',
-    ];
-    try {
-      final db = await _db;
-      var toplam = 0;
-      final ayrinti = <String>[];
-      for (final t in tablolar) {
-        try {
-          final r = await db.rawQuery(
-              'SELECT COUNT(*) AS n FROM (SELECT global_id FROM $t '
-              "WHERE global_id IS NOT NULL AND global_id != '' "
-              'GROUP BY global_id HAVING COUNT(*) > 1)');
-          final n = (r.first['n'] as int?) ?? 0;
-          if (n > 0) {
-            toplam += n;
-            ayrinti.add('$t: $n');
-          }
-        } catch (_) {/* tablo/sütun yok — atla */}
+  static const _gidTablolari = [
+    'satislar', 'satis_kalem', 'cari', 'cari_hareket', 'stok_hareket',
+    'kasa_hareketleri', 'urunler', 'iade', 'iade_kalem', 'faturalar',
+    'fatura_detaylari', 'giderler',
+  ];
+
+  Future<SaglikKontrolSonucu> _mukerrerGlobalId(_Kontrol k) async {
+    final db = await _db;
+    var toplam = 0;
+    final ayrinti = <String>[];
+    for (final t in _gidTablolari) {
+      final int n;
+      try {
+        n = _sayiOku(await db.rawQuery(
+            'SELECT COUNT(*) AS n FROM (SELECT global_id FROM $t '
+            "WHERE global_id IS NOT NULL AND global_id != '' "
+            'GROUP BY global_id HAVING COUNT(*) > 1)'));
+      } on DatabaseException {
+        continue; // eski şemada tablo/sütun yok — bu tablo atlanır
       }
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: toplam == 0 ? SaglikDurum.yesil : SaglikDurum.sari,
-          mesaj: toplam == 0
-              ? 'Mükerrer sync kimliği yok.'
-              : '$toplam mükerrer kimlik (${ayrinti.join(', ')}).',
-          sayi: toplam);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
+      if (n > 0) {
+        toplam += n;
+        ayrinti.add('$t: $n');
+      }
     }
+    return k.sonuc(
+        _kademe(toplam, ust: SaglikDurum.sari),
+        toplam == 0
+            ? 'Mükerrer sync kimliği yok.'
+            : '$toplam mükerrer kimlik (${ayrinti.join(', ')}).',
+        sayi: toplam);
   }
 
   // ── Negatif stok ────────────────────────────────────────────────────
-  Future<SaglikKontrolSonucu> _negatifStok() async {
-    const id = 'negatif_stok';
-    const baslik = 'Negatif Stok';
-    const kategori = 'Ürün';
-    try {
-      final db = await _db;
-      final rows = await db.rawQuery(
-          "SELECT COUNT(*) as n FROM urunler WHERE stok < 0 AND is_deleted = 0");
-      final sayi = (rows.first['n'] as int?) ?? 0;
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.kirmizi,
-          mesaj: sayi == 0 ? 'Negatif stoklu ürün yok.' : '$sayi ürünün stoğu negatif.',
-          sayi: sayi);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
-    }
+  Future<SaglikKontrolSonucu> _negatifStok(_Kontrol k) async {
+    final db = await _db;
+    final sayi = _sayiOku(await db.rawQuery(
+        'SELECT COUNT(*) as n FROM urunler WHERE stok < 0 AND is_deleted = 0'));
+    // B2 kararı (2026-10-07): negatif stok GEÇERLİ bir durum (mal girişi
+    // yapılmadan satılmış) — hata değil, takip edilmesi gereken bir UYARI;
+    // Yıl Sonu Devri'ni engellemez.
+    return k.sonuc(
+        _kademe(sayi, ust: SaglikDurum.sari),
+        sayi == 0
+            ? 'Negatif stoklu ürün yok.'
+            : '$sayi ürünün stoğu negatif (mal girişi yapılmadan satılmış olabilir).',
+        sayi: sayi);
   }
 
   // ── Sync kuyruğu (BulutManager'ın CANLI bekleyen listesi) ───────────
-  Future<SaglikKontrolSonucu> _syncKuyrugu() async {
-    const id = 'sync_kuyruk';
-    const baslik = 'Sync Kuyruğu';
-    const kategori = 'Senkronizasyon';
-    try {
-      final sayi = BulutManager().bekleyenSayisi;
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: sayi == 0 ? SaglikDurum.yesil : (sayi <= 20 ? SaglikDurum.sari : SaglikDurum.kirmizi),
-          mesaj: sayi == 0 ? 'Gönderilmeyi bekleyen değişiklik yok.'
-              : '$sayi değişiklik henüz buluta gönderilmedi.',
-          sayi: sayi);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
-    }
+  Future<SaglikKontrolSonucu> _syncKuyrugu(_Kontrol k) async {
+    final sayi = BulutManager().bekleyenSayisi;
+    return k.sonuc(
+        _kademe(sayi, sariEnFazla: 20),
+        sayi == 0
+            ? 'Gönderilmeyi bekleyen değişiklik yok.'
+            : '$sayi değişiklik henüz buluta gönderilmedi.',
+        sayi: sayi);
   }
 
   // ── Sync çakışmaları (protokol §12) ─────────────────────────────────
-  Future<SaglikKontrolSonucu> _syncCakismalari() async {
-    final sayi = await SyncCakismaDeposu().cozulmemisSayisi();
-    return SaglikKontrolSonucu(
-      id: 'sync_cakisma', baslik: 'Sync Çakışmaları', kategori: 'Senkronizasyon',
-      durum: sayi == 0 ? SaglikDurum.yesil : SaglikDurum.sari,
-      mesaj: sayi == 0 ? 'Çözülmemiş senkron çakışması yok.'
+  // Salt okunur sayım; "sahte" çakışmaları (biçim farkı, cihaz kimliği,
+  // yalnız boş alan dolması) kapatmak artık AÇIK bir Düzelt aksiyonu.
+  Future<SaglikKontrolSonucu> _syncCakismalari(_Kontrol k) async {
+    final depo = SyncCakismaDeposu();
+    final sayi = await depo.cozulmemisSayisi();
+    return k.sonuc(
+      _kademe(sayi, ust: SaglikDurum.sari),
+      sayi == 0
+          ? 'Çözülmemiş senkron çakışması yok.'
           : '$sayi çözülmemiş senkron çakışması var.',
       sayi: sayi,
+      duzelt: sayi > 0 ? depo.sahteleriTemizle : null,
+      duzeltAciklama: 'Gerçek çakışma olmayan kayıtlar (ondalık/tarih biçimi '
+          'farkı, cihaz kimliği, yalnız boş alan dolması) otomatik kapatılır. '
+          'Gerçek çakışmalar Sync Çakışmaları ekranında incelenmeye devam eder.',
     );
   }
 
   // ── Yedekleme durumu ────────────────────────────────────────────────
-  Future<SaglikKontrolSonucu> _yedeklemeDurumu() async {
-    const id = 'yedekleme';
-    const baslik = 'Yedekleme';
-    const kategori = 'Sistem';
-    try {
-      final liste = await YedeklemeServisi().yedekListesi();
-      if (liste.isEmpty) {
-        return const SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-            durum: SaglikDurum.kirmizi, mesaj: 'Hiç yedek alınmamış.', sayi: -1);
-      }
-      final sonYedek = liste.first.tarih; // yedekListesi tarihe göre azalan sıralı
-      final gecenGun = DateTime.now().difference(sonYedek).inDays;
-      final durum = gecenGun <= 3
-          ? SaglikDurum.yesil
-          : (gecenGun <= 14 ? SaglikDurum.sari : SaglikDurum.kirmizi);
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: durum, mesaj: 'Son yedek $gecenGun gün önce alındı.', sayi: gecenGun);
-    } catch (e) {
-      return SaglikKontrolSonucu(id: id, baslik: baslik, kategori: kategori,
-          durum: SaglikDurum.sari, mesaj: 'Kontrol edilemedi: $e', sayi: -1);
+  Future<SaglikKontrolSonucu> _yedeklemeDurumu(_Kontrol k) async {
+    final liste = await YedeklemeServisi().yedekListesi();
+    if (liste.isEmpty) {
+      return k.sonuc(SaglikDurum.kirmizi, 'Hiç yedek alınmamış.', sayi: -1);
     }
+    final sonYedek = liste.first.tarih; // yedekListesi tarihe göre azalan sıralı
+    final gecenGun = DateTime.now().difference(sonYedek).inDays;
+    return k.sonuc(
+        _kademe(gecenGun <= 3 ? 0 : gecenGun, sariEnFazla: 14),
+        'Son yedek $gecenGun gün önce alındı.',
+        sayi: gecenGun);
   }
 }

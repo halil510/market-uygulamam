@@ -10,8 +10,7 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/bildirim_servisi.dart';
-import '../../saglayicilar/riverpod/banka_provider.dart';
-import 'widgets/borc_odeme_bottom_sheet.dart';
+import 'widgets/borc_odeme_baslatici.dart';
 
 class BorcTakipEkrani extends ConsumerStatefulWidget {
   const BorcTakipEkrani({super.key});
@@ -345,24 +344,10 @@ class _BorcKarti extends ConsumerWidget {
   }
 
   Future<void> _odemeYap(BuildContext context, WidgetRef ref) async {
-    final bankaHesaplari = await ref.read(bankaHesaplarProvider(null).future);
-    final krediKartlari = await ref.read(krediKartlariProvider(null).future);
-    if (!context.mounted) return;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => BorcOdemeBottomSheet(
-        borc: borc,
-        bankaHesaplari: bankaHesaplari,
-        krediKartlari: krediKartlari,
-        onOdemeYapildi: () {
-          ref.invalidate(tumBorclarProvider);
-          BildirimServisi.basari(context, '${borc.baslik} için ödeme kaydedildi');
-        },
-      ),
-    );
+    final odendi = await borcOdemePenceresiAc(context, borc);
+    if (!odendi || !context.mounted) return;
+    ref.invalidate(tumBorclarProvider);
+    BildirimServisi.basari(context, '${borc.baslik} için ödeme kaydedildi');
   }
 
   // context parametresi eklendi — _BorcKarti bir StatelessWidget;

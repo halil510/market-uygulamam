@@ -511,7 +511,9 @@ class BulutManager {
         );
       }
       if (sonuc.tur == BulutHataTuru.kalici && satirlar.length > 1) {
-        return bol();
+        // await: bol() hatası bu fonksiyonun catch'ine düşsün (await'siz
+        // return try bloğunu atlatıp hatayı çağırana sızdırıyordu).
+        return await bol();
       }
       for (final s in satirlar) {
         await _kuyrukSatiriBasarisizIsaretle(db, s['id'] as int,

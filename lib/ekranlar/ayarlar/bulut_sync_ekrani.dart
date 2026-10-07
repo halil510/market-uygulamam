@@ -16,6 +16,7 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/sync_cakisma_deposu.dart';
 import '../../servisler/bulut/supabase_ayarlari.dart';
+import '../../servisler/masa/qr_menu_adresi.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 part 'bulut_sync_ekrani_islemler.dart';
@@ -80,8 +81,16 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
   }
 
   Future<void> _cakismaSayisiniYukle() async {
-    final sayi = await SyncCakismaDeposu().cozulmemisSayisi();
-    if (mounted) setState(() => _cozulmemisCakisma = sayi);
+    final depo = SyncCakismaDeposu();
+    try {
+      // Rozet yalnızca gerçek çakışmaları saysın diye önce sahteler kapatılır
+      // (bu davranış eskiden sayım metodunun içinde gizliydi).
+      await depo.sahteleriTemizle();
+      final sayi = await depo.cozulmemisSayisi();
+      if (mounted) setState(() => _cozulmemisCakisma = sayi);
+    } catch (_) {
+      // Rozet bilgi amaçlı; hata LogServisi'ne zaten düştü, ekran çalışmaya devam eder.
+    }
   }
 
   // Kalıcı (4xx) hataya düşmüş, otomatik gönderimden çıkmış kuyruk satırları.
@@ -118,7 +127,7 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
     setState(() {
       _urlCtrl.text = url ?? '';
       _keyCtrl.text = key ?? '';
-      _qrMenuUrlCtrl.text = prefs.getString('qr_menu_web_url') ?? '';
+      _qrMenuUrlCtrl.text = prefs.getString(QrMenuAdresi.bulutUrlAnahtari) ?? '';
       _cihazId = cId;
     });
     if (url != null && key != null) _baglantiKontrol();

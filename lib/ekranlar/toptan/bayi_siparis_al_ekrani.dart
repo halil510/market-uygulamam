@@ -17,6 +17,7 @@
 // satışa değil, BekleyenSiparisDeposu üzerinden "Bekleyen Sipariş"e
 // kaydedilir.
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -74,9 +75,14 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
       return;
     }
     setState(() => _araniyor = true);
-    final sonuc = await _urunDepo.ara(q.trim());
-    if (!mounted) return;
-    setState(() { _aramaSonuclari = sonuc; _araniyor = false; });
+    try {
+      final sonuc = await _urunDepo.ara(q.trim());
+      if (mounted) setState(() => _aramaSonuclari = sonuc);
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Arama yapılamadı: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      if (mounted) setState(() => _araniyor = false);
+    }
   }
 
   void _kamerayiAc() {

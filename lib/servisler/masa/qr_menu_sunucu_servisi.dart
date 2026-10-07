@@ -25,6 +25,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../../depolar/urun_deposu.dart';
+import '../log_servisi.dart';
 import 'qr_menu_servisi.dart';
 
 class QrMenuSunucuServisi {
@@ -45,59 +46,138 @@ class QrMenuSunucuServisi {
   // tekrar deneme) durduramaz. Aynı masa+gövde içerikli istek birkaç
   // saniye içinde tekrar gelirse veritabanına ikinci kez yazılmadan
   // önceki 'başarılı' yanıt aynen döndürülür.
+  //
+  // Pencere 60 sn: müşteri sayfası 15 sn'de zaman aşımına uğrayıp "tekrar
+  // dene" dediğinde (yanıt yolda kaybolmuş ama sipariş yazılmış olabilir)
+  // aynı sepet ikinci kez yazılmasın.
   final _sonIstekler = <String, DateTime>{};
-  static const _tekrarPenceresi = Duration(seconds: 8);
+  static const _tekrarPenceresi = Duration(seconds: 60);
 
-  /// Sunucuyu başlatır (zaten çalışıyorsa hiçbir şey yapmaz).
-  /// Dönen değer: yerel IP adresi (QR kod URL'i oluşturmak için), veya
-  /// null (WiFi bağlantısı bulunamadıysa).
-  Future<String?> baslatVeIpAl() async {
-    if (_server != null && _yerelIp != null) return _yerelIp;
+  /// Eşzamanlı çağrılar (ekran + yazdırma) aynı başlatmayı bekler; aksi
+  /// halde iki ayrı bind denemesi yarışıyordu.
+  Future<String?>? _baslatma;
+
+  /// Sunucuyu (gerekirse) başlatır ve GÜNCEL yerel IP'yi döndürür; WiFi /
+  /// kablolu yerel ağ yoksa null.
+  ///
+  /// 🔴 DÜZELTME (derin analiz 2026-10-07): IP ilk çağrıda bulunup sonsuza
+  /// dek önbellekten dönüyordu. WiFi kopup başka bir IP ile geri gelince QR
+  /// ölü adresi gösteriyor, hata da çıkmadığı için "Tekrar Dene" bile
+  /// görünmüyordu. Artık IP her çağrıda yeniden okunur; sunucu kapanırsa
+  /// (onDone) kendini sıfırlar ve bir sonraki çağrıda yeniden açılır.
+  Future<String?> baslatVeIpAl() =>
+      _baslatma ??= _baslat().whenComplete(() => _baslatma = null);
+
+  Future<String?> _baslat() async {
+    _yerelIp = await _lokalIpAl();
+    if (_yerelIp == null) return null;
+    if (_server != null) return _yerelIp;
     try {
-      _yerelIp = await _lokalIpAl();
-      if (_yerelIp == null) return null;
-      _server = await HttpServer.bind(InternetAddress.anyIPv4, port, shared: true);
+      final sunucu =
+          await HttpServer.bind(InternetAddress.anyIPv4, port, shared: true);
+      sunucu.listen(
+        _istekIsle,
+        // Tek bir bağlantının hatası sunucuyu kapatmaz; yalnız loglanır.
+        onError: (Object e, StackTrace st) =>
+            LogServisi().uyari('QrMenuSunucu bağlantı hatası', hata: e, yigin: st),
+        onDone: () => _sunucuKapandi(sunucu),
+      );
+      _server = sunucu;
       if (kDebugMode) debugPrint('QrMenuSunucu: http://$_yerelIp:$port');
-      _server!.listen(_istekIsle, onError: (_) {});
       return _yerelIp;
-    } catch (e) {
-      if (kDebugMode) debugPrint('QrMenuSunucu başlatma hatası: $e');
-      _server = null;
+    } catch (e, st) {
+      LogServisi().hata('QrMenuSunucu başlatılamadı', hata: e, yigin: st);
       return null;
     }
   }
 
-  Future<void> durdur() async {
-    await _server?.close(force: true);
-    _server = null;
+  void _sunucuKapandi(HttpServer sunucu) {
+    if (identical(_server, sunucu)) _server = null;
   }
 
-  /// Bir masa için tam QR URL'i döndürür (sunucu zaten çalışıyor olmalı).
-  String? masaUrlOlustur(int masaId) {
-    if (_yerelIp == null) return null;
-    return 'http://$_yerelIp:$port/menu/$masaId';
+  Future<void> durdur() async {
+    final sunucu = _server;
+    _server = null;
+    await sunucu?.close(force: true);
   }
+
+  /// Bir masa için tam QR URL'i ([baslatVeIpAl] başarıyla çağrılmış olmalı).
+  String? masaUrlOlustur(int masaId) {
+    final ip = _yerelIp;
+    return ip == null ? null : yerelMasaUrl(ip, masaId);
+  }
+
+  static String yerelMasaUrl(String ip, int masaId) =>
+      'http://$ip:$port/menu/$masaId';
 
   Future<String?> _lokalIpAl() async {
     try {
       final arayuzler = await NetworkInterface.list(type: InternetAddressType.IPv4);
-      const oncelikli = ['192.168', '10.', '172.'];
-      for (final on in oncelikli) {
-        for (final a in arayuzler) {
-          for (final adr in a.addresses) {
-            if (!adr.isLoopback && adr.address.startsWith(on)) return adr.address;
-          }
-        }
-      }
-      for (final a in arayuzler) {
-        for (final adr in a.addresses) {
-          if (!adr.isLoopback) return adr.address;
-        }
-      }
-      return null;
-    } catch (_) {
+      return enIyiYerelIp([
+        for (final a in arayuzler)
+          (ad: a.name, adresler: [for (final adr in a.addresses) adr.address]),
+      ]);
+    } catch (e, st) {
+      LogServisi().uyari('QrMenuSunucu ağ arayüzleri okunamadı', hata: e, yigin: st);
       return null;
     }
+  }
+
+  /// Mobil veri / VPN / sanal makine arayüzleri: müşteri telefonu bunlara
+  /// erişemez. (Önceden '10.' öneki öncelikli olduğu için WiFi kapalıyken
+  /// operatörün 10.x mobil veri IP'si QR'a basılıyordu.)
+  static const _haricOnekler = [
+    'rmnet', 'ccmni', 'pdp', 'wwan', 'radio', 'clat', 'tun', 'ppp', 'ipsec',
+    'dummy', 'teredo', 'isatap', 'utun', 'awdl', 'llw',
+  ];
+  static const _haricIcerenler = [
+    'virtual', 'vethernet', 'hyper-v', 'vmware', 'vbox', 'docker', 'wsl',
+    'bluetooth', 'vpn',
+  ];
+
+  /// Müşterinin aynı ağdan erişebileceği arayüz adları (Android/Windows/
+  /// macOS/Linux; Türkçe Windows adları dahil).
+  static const _yerelAgArayuzleri = [
+    'wlan', 'wi-fi', 'wifi', 'swlan', 'ap', 'eth', 'en', 'ethernet', 'kablosuz',
+    'yerel ağ', 'local area',
+  ];
+
+  /// Arayüz listesinden QR için en uygun yerel IPv4'ü seçer; yoksa null.
+  /// Öncelik: bilinen WiFi/kablolu arayüz adı, sonra özel adres aralığı
+  /// (192.168 > 10. > 172.16-31). Link-local (169.254) ve loopback elenir.
+  @visibleForTesting
+  static String? enIyiYerelIp(List<({String ad, List<String> adresler})> arayuzler) {
+    String? enIyi;
+    var enIyiPuan = 0;
+    for (final a in arayuzler) {
+      final ad = a.ad.toLowerCase();
+      if (_haricOnekler.any(ad.startsWith) || _haricIcerenler.any(ad.contains)) {
+        continue;
+      }
+      final adBonusu = _yerelAgArayuzleri.any(ad.startsWith) ? 10 : 0;
+      for (final adres in a.adresler) {
+        final aralik = _ozelAralikPuani(adres);
+        if (aralik == 0) continue;
+        final puan = adBonusu + aralik;
+        if (puan > enIyiPuan) {
+          enIyi = adres;
+          enIyiPuan = puan;
+        }
+      }
+    }
+    return enIyi;
+  }
+
+  /// Özel (RFC 1918) adres aralığı puanı; erişilemeyecek adreslerde 0.
+  static int _ozelAralikPuani(String adres) {
+    if (adres.startsWith('192.168.')) return 3;
+    if (adres.startsWith('10.')) return 2;
+    final parca = adres.split('.');
+    if (parca.length == 4 && parca[0] == '172') {
+      final ikinci = int.tryParse(parca[1]) ?? 0;
+      if (ikinci >= 16 && ikinci <= 31) return 1;
+    }
+    return 0; // loopback, 169.254 link-local, genel IP
   }
 
   Future<void> _istekIsle(HttpRequest req) async {
@@ -246,6 +326,8 @@ class QrMenuSunucuServisi {
                border-radius: 12px; padding: 12px; font-size: 14px; margin-top: 8px; }
   .basarili { text-align: center; padding: 60px 20px; }
   .basarili h2 { color: #2E7D32; font-size: 20px; margin-top: 12px; }
+  .bilgi { text-align: center; padding: 48px 20px; color: #6B7280; font-size: 14px; line-height: 1.6; }
+  .bilgi .sepet-buton { margin-top: 16px; background: #4E342E; color: white; }
 </style>
 </head>
 <body>
@@ -275,11 +357,37 @@ function esc(s) {
   ));
 }
 
+// Ağ yavaş/kopuksa istek sonsuza dek beklemesin.
+async function zamanAsimliFetch(url, secenekler, ms) {
+  const iptal = new AbortController();
+  const zamanlayici = setTimeout(() => iptal.abort(), ms);
+  try {
+    return await fetch(url, Object.assign({}, secenekler, { signal: iptal.signal }));
+  } finally {
+    clearTimeout(zamanlayici);
+  }
+}
+
+function bilgiGoster(metin, tekrarDene) {
+  document.getElementById('menuAlani').innerHTML =
+    '<div class="bilgi">' + esc(metin) +
+    (tekrarDene ? '<br><button class="sepet-buton" onclick="yukle()">Tekrar Dene</button>' : '') +
+    '</div>';
+}
+
+// Önceden hata yakalanmıyordu: ağ yavaş/kopuksa müşteri boş beyaz sayfa görüyordu.
 async function yukle() {
-  const r = await fetch('/api/menu/urunler');
-  const d = await r.json();
-  urunler = d.urunler;
-  render();
+  bilgiGoster('Menü yükleniyor…', false);
+  try {
+    const r = await zamanAsimliFetch('/api/menu/urunler', {}, 15000);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    urunler = Array.isArray(d.urunler) ? d.urunler : [];
+    if (urunler.length === 0) { bilgiGoster('Menüde henüz ürün yok. Lütfen personelden yardım isteyin.', true); return; }
+    render();
+  } catch (e) {
+    bilgiGoster('Menü yüklenemedi. İşletmenin WiFi ağına bağlı olduğunuzdan emin olun.', true);
+  }
 }
 
 function render() {
@@ -366,10 +474,12 @@ async function gonder() {
     musteri_tel: '', not: document.getElementById('not').value
   };
   try {
-    const r = await fetch('/api/menu/siparis', {
+    // Sunucu aynı sepeti 60 sn içinde ikinci kez yazmaz — zaman aşımından
+    // sonra "tekrar dene" çift sipariş üretmez.
+    const r = await zamanAsimliFetch('/api/menu/siparis', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(gövde)
-    });
+    }, 15000);
     if (r.ok) {
       document.getElementById('modalIcerik').innerHTML =
         '<div class="basarili"><div style="font-size:48px;">✅</div>' +

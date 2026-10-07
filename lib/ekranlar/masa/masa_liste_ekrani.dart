@@ -428,9 +428,13 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
       BildirimServisi.hata(context, 'Yazdırılacak masa yok');
       return;
     }
-    final ok = await MasaQrYazdirServisi.yazdir(liste);
-    if (!ok && mounted) {
-      BildirimServisi.hata(context, 'QR adresi üretilemedi (WiFi yok)');
+    try {
+      final ok = await MasaQrYazdirServisi.yazdir(liste);
+      if (!ok && mounted) {
+        BildirimServisi.hata(context, 'QR adresi üretilemedi (WiFi yok)');
+      }
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Yazdırılamadı: ${kullaniciyaHataMetni(e)}');
     }
   }
 

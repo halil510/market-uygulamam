@@ -243,10 +243,18 @@ class _ToptanKademeleriBolumuState extends State<_ToptanKademeleriBolumu> {
 
   Future<void> _yukle() async {
     setState(() => _yukleniyor = true);
-    final k = await _depo.kademeleriGetir(widget.urun.id!);
-    final g = await _depo.gruplariGetir(sadeceAktif: true);
-    if (!mounted) return;
-    setState(() { _kademeler = k; _gruplar = g; _yukleniyor = false; });
+    try {
+      final (k, g) = await (
+        _depo.kademeleriGetir(widget.urun.id!),
+        _depo.gruplariGetir(sadeceAktif: true),
+      ).wait;
+      if (mounted) setState(() { _kademeler = k; _gruplar = g; });
+    } catch (e) {
+      // Aynı dosyadaki diğer iki sekmeyle aynı: hata olsa da "yükleniyor"da kalmaz.
+      if (mounted) BildirimServisi.hata(context, 'Fiyat kademeleri yüklenemedi: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      if (mounted) setState(() => _yukleniyor = false);
+    }
   }
 
   String _grupAdi(int? id) {

@@ -9,15 +9,15 @@ import '../../depolar/borc_deposu.dart';
 import '../../depolar/borc_odeme_deposu.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
-import '../../saglayicilar/riverpod/banka_provider.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../saglayicilar/riverpod/borc_provider.dart';
-import 'widgets/borc_odeme_bottom_sheet.dart';
+import 'widgets/borc_odeme_baslatici.dart';
 
 class BorcDetayEkrani extends ConsumerStatefulWidget {
   final int borcId;
@@ -45,17 +45,19 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
   }
 
   Future<void> _yukle() async {
-  setState(() => _yukleniyor = true);
-  try {
-    final borc = await _depo.idileGetir(widget.borcId);
-    final odemeler = await _odemeDepo.odemeleriGetir(borcId: widget.borcId, limit: 100);
-    if (!mounted) return;
-    setState(() { _borc = borc; _odemeler = odemeler; _yukleniyor = false; });
-  } catch (e) {
-    setState(() => _yukleniyor = false);
-    if (mounted) BildirimServisi.hata(context, 'Yüklenemedi: $e');
+    setState(() => _yukleniyor = true);
+    try {
+      final borc = await _depo.idileGetir(widget.borcId);
+      final odemeler =
+          await _odemeDepo.odemeleriGetir(borcId: widget.borcId, limit: 100);
+      if (!mounted) return;
+      setState(() { _borc = borc; _odemeler = odemeler; _yukleniyor = false; });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _yukleniyor = false);
+      BildirimServisi.hata(context, 'Borç yüklenemedi: ${kullaniciyaHataMetni(e)}');
+    }
   }
-}
 
   Future<void> _odemeYap() async {
     if (_borc == null) return;
@@ -63,24 +65,10 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
     // kartı seçimi + otomatik Gider kaydı) — bkz. borc_odeme_islem_servisi.dart
     // ve widgets/borc_odeme_bottom_sheet.dart. Önceden burada sadece tutar
     // giren basit bir dialog vardı; ödeme yöntemi hiçbir yere kaydedilmiyordu.
-    final bankaHesaplari = await ref.read(bankaHesaplarProvider(null).future);
-    final krediKartlari = await ref.read(krediKartlariProvider(null).future);
-    if (!mounted) return;
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => BorcOdemeBottomSheet(
-        borc: _borc!,
-        bankaHesaplari: bankaHesaplari,
-        krediKartlari: krediKartlari,
-        onOdemeYapildi: () async {
-          await _yukle();
-          if (mounted) BildirimServisi.basari(context, 'Ödeme kaydedildi ✓');
-        },
-      ),
-    );
+    final odendi = await borcOdemePenceresiAc(context, _borc!);
+    if (!odendi || !mounted) return;
+    await _yukle();
+    if (mounted) BildirimServisi.basari(context, 'Ödeme kaydedildi ✓');
   }
 
   // Kullanıcı isteği (2026-09-13): "Borç Silme" — BorcDeposu.sil() zaten

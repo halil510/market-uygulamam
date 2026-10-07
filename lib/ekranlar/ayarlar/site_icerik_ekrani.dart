@@ -7,6 +7,7 @@
 // AYNI kanıtlanmış desen: site_icerik key-value tablosu, web sitesi açılışta
 // bu değerleri çekip kendi hardcoded yedeğinin üzerine yazıyor.
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/masa/site_icerik_servisi.dart';
@@ -121,9 +122,9 @@ class _SiteIcerikEkraniState extends State<SiteIcerikEkrani> {
               {'sayi': i.sayi.text.trim(), 'etiket': i.etiket.text.trim()})
           .toList(),
     };
-    final ok = await _servis.isletmeBilgileriKaydet(veri);
-    if (mounted) {
-      setState(() => _kaydediliyor = false);
+    try {
+      final ok = await _servis.isletmeBilgileriKaydet(veri);
+      if (!mounted) return;
       if (ok) {
         BildirimServisi.basari(context,
             'Kaydedildi — web sitesinde bir sonraki açılışta görünecek ✓');
@@ -131,6 +132,11 @@ class _SiteIcerikEkraniState extends State<SiteIcerikEkrani> {
         BildirimServisi.hata(context,
             'Kaydedilemedi — internet ve bulut ayarlarını kontrol edin');
       }
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Kaydedilemedi: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      // Çevrimdışıyken servis hata atarsa "Kaydet" önceden kalıcı kilitleniyordu.
+      if (mounted) setState(() => _kaydediliyor = false);
     }
   }
 

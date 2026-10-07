@@ -14,16 +14,28 @@ List<GoRoute> borcRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
         GoRoute(path: '/borc-dashboard', name: 'borc_dashboard', parentNavigatorKey: rootNavigatorKey,
           builder: (_, _) => const BorcDashboardEkrani()),
         GoRoute(path: '/borc-detay/:id', name: 'borc_detay', parentNavigatorKey: rootNavigatorKey,
-          builder: (c, s) => BorcDetayEkrani(borcId: int.parse(s.pathParameters['id']!))),
-        GoRoute(path: '/borc-odeme/:id', name: 'borc_odeme', parentNavigatorKey: rootNavigatorKey,
-          builder: (c, s) {
-            final borc = s.extra as BorcModel?;
-            if (borc != null) return BorcOdemeEkrani(borc: borc);
-            // 'extra' olarak BorcModel gönderilmeden bu rotaya girilirse
-            // artık sessizce boş ekran yerine geri dönülüyor + uyarı basılıyor.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (c.mounted) c.pop();
-            });
-            return const Scaffold(body: Center(child: Text('Borç bilgisi eksik')));
+          builder: (_, s) {
+            final id = int.tryParse(s.pathParameters['id'] ?? '');
+            // Geçersiz id'de int.parse çökmesi yerine ödenecek borç seçimi.
+            return id == null ? const BorcOdemeEkrani() : BorcDetayEkrani(borcId: id);
           }),
+        // Borç bilgisi olmadan: ödenecek borç seçilir.
+        GoRoute(path: '/borc-odeme', name: 'borc_odeme_secim', parentNavigatorKey: rootNavigatorKey,
+          builder: (_, s) => BorcOdemeEkrani(borc: _extraBorc(s))),
+        // 🔴 DÜZELTME (2026-10-07): :id artık gerçekten kullanılıyor; extra
+        // yoksa borç id ile yüklenir. Eskiden builder içinden post-frame
+        // pop yapılıyordu — her yeniden çizimde tekrar tetiklenip alttaki
+        // ekranları da kapatabiliyor, geri dönülecek sayfa yoksa çöküyordu.
+        GoRoute(path: '/borc-odeme/:id', name: 'borc_odeme', parentNavigatorKey: rootNavigatorKey,
+          builder: (_, s) => BorcOdemeEkrani(
+                borc: _extraBorc(s),
+                borcId: int.tryParse(s.pathParameters['id'] ?? ''),
+              )),
       ];
+
+/// `extra` yalnızca gerçekten BorcModel ise kullanılır (`as` dönüşümü,
+/// durum geri yüklemesinde farklı tipte gelen extra ile TypeError veriyordu).
+BorcModel? _extraBorc(GoRouterState s) {
+  final extra = s.extra;
+  return extra is BorcModel ? extra : null;
+}

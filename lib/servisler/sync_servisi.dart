@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:sqflite/sqflite.dart';
 import '../veri/database/veritabani.dart';
@@ -481,19 +482,76 @@ class SyncServisi {
     return null;
   }
 
+  // ── İstemci: ortak HTTP katmanı ───────────────────────────────────────
+  //
+  // 🔴 DÜZELTME (derin analiz 2026-10-07): beş istemci fonksiyonu yalnız
+  // `connectionTimeout` (TCP bağlantısı kurulana kadar) kullanıyordu.
+  // Bağlantı kurulduktan sonra karşı taraf cevap vermezse `req.close()`,
+  // indirme ortasında WiFi koparsa `await for (chunk in res)` SONSUZA KADAR
+  // bekliyor, ekran "Veri indiriliyor..." mesajında takılı kalıyordu. Hata
+  // olduğunda `client.close()` da hiç çağrılmıyordu (HttpClient sızıntısı).
+  // Artık her aşamanın zaman aşımı var ve istemci her durumda kapatılır.
+
+  /// Gövde okunurken iki veri parçası arasında beklenecek en uzun süre.
+  static const _parcaArasiZamanAsimi = Duration(seconds: 30);
+
+  Future<R> _httpIstek<R>(
+    String adres,
+    String yol, {
+    String metot = 'GET',
+    Duration baglantiSuresi = const Duration(seconds: 10),
+    Duration yanitSuresi = const Duration(seconds: 30),
+    void Function(HttpClientRequest istek)? hazirla,
+    required Future<R> Function(HttpClientResponse yanit) isle,
+  }) async {
+    final client = HttpClient()..connectionTimeout = baglantiSuresi;
+    try {
+      final istek = await client
+          .openUrl(metot, Uri.parse('${adres.trimRight()}$yol'))
+          .timeout(baglantiSuresi);
+      hazirla?.call(istek);
+      final yanit = await istek.close().timeout(yanitSuresi);
+      return await isle(yanit);
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  /// Yanıt gövdesi; parçalar arasında [_parcaArasiZamanAsimi]'ndan uzun
+  /// beklenirse TimeoutException ile kesilir.
+  static Stream<List<int>> _govdeAkisi(HttpClientResponse yanit) =>
+      yanit.timeout(_parcaArasiZamanAsimi, onTimeout: (sink) {
+        sink.addError(TimeoutException(
+            'Veri akışı durdu (ağ bağlantısı kopmuş olabilir)', _parcaArasiZamanAsimi));
+        sink.close();
+      });
+
+  static Future<String> _metinOku(HttpClientResponse yanit) =>
+      utf8.decoder.bind(_govdeAkisi(yanit)).join();
+
+  /// Büyük gövdeler için: `List<int>.addAll` yerine kopyasız BytesBuilder.
+  static Future<Uint8List> _baytOku(HttpClientResponse yanit,
+      {void Function(int alinan)? ilerleme}) async {
+    final tampon = BytesBuilder(copy: false);
+    await for (final parca in _govdeAkisi(yanit)) {
+      tampon.add(parca);
+      ilerleme?.call(tampon.length);
+    }
+    return tampon.takeBytes();
+  }
+
   // ── İstemci: Ping ─────────────────────────────────────────────────────
   Future<SyncPingResult> sunucuyaPingAt(String adres) async {
     final sw = Stopwatch()..start();
     try {
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 5);
-      final req =
-          await client.getUrl(Uri.parse('${adres.trimRight()}/api/ping'));
-      final res = await req.close();
-      final body = await utf8.decoder.bind(res).join();
-      client.close();
-      sw.stop();
-      if (res.statusCode == 200) {
+      return await _httpIstek(adres, '/api/ping',
+          baglantiSuresi: const Duration(seconds: 5),
+          yanitSuresi: const Duration(seconds: 5), isle: (res) async {
+        final body = await _metinOku(res);
+        sw.stop();
+        if (res.statusCode != 200) {
+          return SyncPingResult(basarili: false, gecikmeMs: sw.elapsedMilliseconds);
+        }
         final data = jsonDecode(body) as Map<String, dynamic>;
         return SyncPingResult(
           basarili: true,
@@ -501,8 +559,7 @@ class SyncServisi {
           cihaz: data['cihaz']?.toString(),
           versiyon: data['version']?.toString(),
         );
-      }
-      return SyncPingResult(basarili: false, gecikmeMs: sw.elapsedMilliseconds);
+      });
     } catch (e) {
       sw.stop();
       return SyncPingResult(basarili: false, hata: e.toString());
@@ -512,19 +569,13 @@ class SyncServisi {
   // ── İstemci: Durum Al ─────────────────────────────────────────────────
   Future<Map<String, dynamic>?> uzaktanDurumAl(String adres) async {
     try {
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 8);
-      final req =
-          await client.getUrl(Uri.parse('${adres.trimRight()}/api/durum'));
-      final res = await req.close();
-      if (res.statusCode == 200) {
-        final body = await utf8.decoder.bind(res).join();
-        client.close();
-        return jsonDecode(body) as Map<String, dynamic>;
-      }
-      client.close();
-      return null;
-    } catch (_) {
+      return await _httpIstek(adres, '/api/durum',
+          baglantiSuresi: const Duration(seconds: 8), isle: (res) async {
+        if (res.statusCode != 200) return null;
+        return jsonDecode(await _metinOku(res)) as Map<String, dynamic>;
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('Uzak durum alma hatası: $e');
       return null;
     }
   }
@@ -536,25 +587,18 @@ class SyncServisi {
   }) async {
     try {
       onDurum?.call('Sunucuya bağlanılıyor...');
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 10);
-      final req =
-          await client.getUrl(Uri.parse('${adres.trimRight()}/api/export'));
-      req.headers.set('Accept', 'application/json');
-      onDurum?.call('Veri indiriliyor...');
-      final res = await req.close().timeout(const Duration(minutes: 5));
-      if (res.statusCode == 200) {
-        final chunks = <int>[];
-        await for (final chunk in res) {
-          chunks.addAll(chunk);
-        }
-        client.close();
+      return await _httpIstek(adres, '/api/export',
+          // Sunucu büyük veritabanında JSON'u hazırlarken bekleyebilir.
+          yanitSuresi: const Duration(minutes: 5),
+          hazirla: (req) {
+            req.headers.set('Accept', 'application/json');
+            onDurum?.call('Veri indiriliyor...');
+          }, isle: (res) async {
+        if (res.statusCode != 200) return null;
+        final baytlar = await _baytOku(res);
         onDurum?.call('Veri ayrıştırılıyor...');
-        final body = utf8.decode(chunks);
-        return jsonDecode(body) as Map<String, dynamic>;
-      }
-      client.close();
-      return null;
+        return jsonDecode(utf8.decode(baytlar)) as Map<String, dynamic>;
+      });
     } catch (e) {
       if (kDebugMode) debugPrint('Uzak veri alma hatası: $e');
       return null;
@@ -567,31 +611,16 @@ class SyncServisi {
     void Function(int alinan, int toplam)? onProgress,
   }) async {
     try {
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 10);
-      final req =
-          await client.getUrl(Uri.parse('${adres.trimRight()}/api/db'));
-      final res = await req.close();
-      if (res.statusCode == 200) {
-        final toplam = int.tryParse(
-                res.headers.value('content-length') ?? '') ??
-            0;
-        int alinan = 0;
-        final chunks = <int>[];
-        await for (final chunk in res) {
-          chunks.addAll(chunk);
-          alinan += chunk.length;
-          if (toplam > 0) onProgress?.call(alinan, toplam);
-        }
-        client.close();
-        // Geçici dosyaya yaz
+      return await _httpIstek(adres, '/api/db', isle: (res) async {
+        if (res.statusCode != 200) return null;
+        final toplam = int.tryParse(res.headers.value('content-length') ?? '') ?? 0;
+        final baytlar = await _baytOku(res,
+            ilerleme: toplam > 0 ? (alinan) => onProgress?.call(alinan, toplam) : null);
         final dir = await Directory.systemTemp.createTemp('marketplus_sync');
         final dosya = File('${dir.path}/market_indir.db');
-        await dosya.writeAsBytes(chunks);
+        await dosya.writeAsBytes(baytlar);
         return dosya.path;
-      }
-      client.close();
-      return null;
+      });
     } catch (e) {
       if (kDebugMode) debugPrint('DB indirme hatası: $e');
       return null;
@@ -604,17 +633,15 @@ class SyncServisi {
     Map<String, dynamic> data,
   ) async {
     try {
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 10);
-      final req = await client
-          .postUrl(Uri.parse('${adres.trimRight()}/api/import'));
-      req.headers.set('Content-Type', 'application/json; charset=utf-8');
-      final jsonBody = jsonEncode(data);
-      req.write(jsonBody);
-      final res = await req.close().timeout(const Duration(minutes: 5));
-      final body = await utf8.decoder.bind(res).join();
-      client.close();
-      return jsonDecode(body) as Map<String, dynamic>;
+      return await _httpIstek(adres, '/api/import',
+          metot: 'POST',
+          // Karşı cihaz içe aktarmayı bitirip yanıt verene kadar.
+          yanitSuresi: const Duration(minutes: 5),
+          hazirla: (req) {
+            req.headers.set('Content-Type', 'application/json; charset=utf-8');
+            req.write(jsonEncode(data));
+          },
+          isle: (res) async => jsonDecode(await _metinOku(res)) as Map<String, dynamic>);
     } catch (e) {
       return {'hata': e.toString()};
     }

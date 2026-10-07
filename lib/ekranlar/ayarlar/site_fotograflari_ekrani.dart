@@ -5,6 +5,7 @@
 // zahmeti olmasın. Bu ekrandan eklenen/silinen fotoğraflar ANINDA
 // buluta yazılır; web sitesi bir sonraki açılışta yeni listeyi çeker.
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
@@ -52,19 +53,25 @@ class _SiteFotograflariEkraniState extends State<SiteFotograflariEkrani> {
     if (secilen == null) return;
     if (!mounted) return;
     setState(() => _islemde = true);
-    final adres = await _servis.fotoYukle(secilen.path);
-    if (adres != null) {
-      _adresler.add(adres);
-      final ok = await _servis.gorselleriKaydet(_adresler);
-      _snack(ok
-          ? 'Fotoğraf eklendi — web sitesinde görünecek ✓'
-          : 'Fotoğraf yüklendi ama liste kaydedilemedi, tekrar deneyin',
-          ok ? Colors.green : Colors.orange);
-    } else {
-      _snack('Yükleme başarısız — internet ve bulut ayarlarını kontrol edin '
-          '(SQL kurulumunun yapılmış olması gerekir)', Colors.red);
+    try {
+      final adres = await _servis.fotoYukle(secilen.path);
+      if (adres != null) {
+        _adresler.add(adres);
+        final ok = await _servis.gorselleriKaydet(_adresler);
+        _snack(ok
+            ? 'Fotoğraf eklendi — web sitesinde görünecek ✓'
+            : 'Fotoğraf yüklendi ama liste kaydedilemedi, tekrar deneyin',
+            ok ? Colors.green : Colors.orange);
+      } else {
+        _snack('Yükleme başarısız — internet ve bulut ayarlarını kontrol edin '
+            '(SQL kurulumunun yapılmış olması gerekir)', Colors.red);
+      }
+    } catch (e) {
+      _snack('Yükleme başarısız: ${kullaniciyaHataMetni(e)}', Colors.red);
+    } finally {
+      // Çevrimdışıyken servis hata atarsa ekle butonu önceden kalıcı kilitleniyordu.
+      if (mounted) setState(() => _islemde = false);
     }
-    if (mounted) setState(() => _islemde = false);
   }
 
   Future<void> _sil(int i) async {

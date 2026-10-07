@@ -20,6 +20,9 @@ import "../../servisler/auth_servisi.dart";
 import "../../servisler/bildirim_servisi.dart";
 import "../../servisler/cari_tahsilat_odeme_servisi.dart";
 import "../../cekirdek/utils/para_utils.dart";
+import "../../cekirdek/utils/hata_utils.dart";
+import "../../servisler/aktif_sube_servisi.dart";
+import "../../servisler/log_servisi.dart";
 
 class TahsilatOdemeEkrani extends ConsumerStatefulWidget {
   final int cariId;
@@ -197,13 +200,16 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
     setState(() => _islem = true);
     try {
       final kasiyer = AuthServisi().aktifAd;
+      // Arka plandaki makbuz yazdırma ekran kapandıktan sonra çalışır —
+      // dispose edilmiş controller'lara dokunmamak için değerler şimdi alınır.
+      final cariUnvan = _cari?.unvan ?? 'Cari';
+      final aciklama = _aciklamaCtrl.text.trim();
 
-      // ══════════════════════════════════════════════════════════════════
-      // 🆕 MAKBUZ İÇİN: bakiyeyi işlemden ÖNCE yakala.
-      // hareketEkle() bakiyeyi yeniden hesaplayıp güncelliyor; sonradan
-      // okursak "eski bakiye"yi kaybederiz.
-      // ══════════════════════════════════════════════════════════════════
-      final oncekiBakiye = _cari?.bakiye ?? 0;
+      // MAKBUZ İÇİN: bakiye işlemden ÖNCE yakalanır (kayıt bakiyeyi yeniden
+      // hesaplar). Ekran açılırken okunan değer yerine veritabanının güncel
+      // hâli: arada başka kasada işlem olduysa makbuz yanlış bakiye basıyordu.
+      final oncekiBakiye =
+          (await _depo.idileGetir(widget.cariId))?.bakiye ?? _cari?.bakiye ?? 0;
 
       // 🆕 Makbuz no artık YAZDIRMADAN ÖNCE değil, KAYITTAN ÖNCE üretilip
       // cari_hareket.fis_no'ya yazılıyor — Cari Detay'dan sonradan
@@ -211,8 +217,10 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
       // diye (kullanıcı isteği 2026-09-22). "Borç Ekle" (paraHareketEdiyor
       // false) için makbuz üretilmiyor — zaten hiç basılmıyor.
       final makbuzNo = _paraHareketEdiyor
-          ? await BelgeNoServisi()
-              .uret(_islemTipi == 'Tahsilat' ? 'tahsilat' : 'tediye', subeId: 1)
+          ? await BelgeNoServisi().uret(
+              _islemTipi == 'Tahsilat' ? 'tahsilat' : 'tediye',
+              // Önceden sabit 1: çok şubeli kurulumda makbuz no'ları çakışıyordu.
+              subeId: AktifSubeServisi().subeId ?? 1)
           : null;
 
       // Cari hareket + (varsa) gerçek para hareketi (kasa/banka/kredi
@@ -221,7 +229,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
       // davranış birebir korundu.
       await CariTahsilatOdemeServisi().kaydet(
         cariId: widget.cariId,
-        cariUnvan: _cari?.unvan ?? 'Cari',
+        cariUnvan: cariUnvan,
         islemTipi: _islemTipi,
         tutar: tutar,
         odemeTuru: _odemeTuru,
@@ -244,30 +252,18 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
       // yazdırma ARKA PLANDA (beklemeden) tetikleniyor — hata olursa
       // (madde 2'de eklenen) Cari Detay'daki yazdır ikonuyla tekrar
       // basılabilir, kullanıcıyı burada bekletmenin bir faydası yok.
-      if (_paraHareketEdiyor) {
-        unawaited(() async {
-          try {
-            final guncelCari = await _depo.idileGetir(widget.cariId);
-            await YazdirmaServisi().makbuzYazdir(
-              makbuzNo: makbuzNo!,
-              tarih: DateTime.now(),
-              cariUnvan: _cari?.unvan ?? 'Cari',
-              tutar: tutar,
-              odemeTuru: _odemeTuru,
-              islemTipi: _islemTipi,
-              aciklama: _aciklamaCtrl.text.trim().isEmpty
-                  ? null
-                  : _aciklamaCtrl.text.trim(),
-              kesenKisi: kasiyer,
-              oncekiBakiye: oncekiBakiye,
-              sonBakiye: guncelCari?.bakiye,
-            );
-          } catch (e) {
-            if (kDebugMode) {
-              debugPrint('Makbuz arka plan yazdırma hatası: $e');
-            }
-          }
-        }());
+      if (makbuzNo != null) {
+        unawaited(_makbuzuArkaPlandaYazdir(
+          cariId: widget.cariId,
+          makbuzNo: makbuzNo,
+          cariUnvan: cariUnvan,
+          tutar: tutar,
+          odemeTuru: _odemeTuru,
+          islemTipi: _islemTipi,
+          aciklama: aciklama.isEmpty ? null : aciklama,
+          kesenKisi: kasiyer,
+          oncekiBakiye: oncekiBakiye,
+        ));
       }
 
       if (mounted) {
@@ -284,9 +280,44 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
         context.pop();
       }
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+      if (mounted) {
+        BildirimServisi.hata(context, '$_islemTipi kaydedilemedi: ${kullaniciyaHataMetni(e)}');
+      }
     } finally {
       if (mounted) setState(() => _islem = false);
+    }
+  }
+
+  /// Kayıt bittikten sonra, ekranı bekletmeden makbuz basar. Yalnız
+  /// parametre olarak verilen değerleri kullanır (ekran kapanmış olabilir);
+  /// hata olursa Cari Detay'daki yazdır ikonuyla tekrar basılabilir.
+  static Future<void> _makbuzuArkaPlandaYazdir({
+    required int cariId,
+    required String makbuzNo,
+    required String cariUnvan,
+    required double tutar,
+    required String odemeTuru,
+    required String islemTipi,
+    required String? aciklama,
+    required String kesenKisi,
+    required double oncekiBakiye,
+  }) async {
+    try {
+      final guncelCari = await CariDeposu().idileGetir(cariId);
+      await YazdirmaServisi().makbuzYazdir(
+        makbuzNo: makbuzNo,
+        tarih: DateTime.now(),
+        cariUnvan: cariUnvan,
+        tutar: tutar,
+        odemeTuru: odemeTuru,
+        islemTipi: islemTipi,
+        aciklama: aciklama,
+        kesenKisi: kesenKisi,
+        oncekiBakiye: oncekiBakiye,
+        sonBakiye: guncelCari?.bakiye,
+      );
+    } catch (e, st) {
+      LogServisi().uyari('Makbuz arka plan yazdırma hatası', hata: e, yigin: st);
     }
   }
 

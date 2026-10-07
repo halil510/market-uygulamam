@@ -143,12 +143,10 @@ class IrsaliyeDeposu {
             columns: ['stok'], where: 'id = ?', whereArgs: [k.urunId]);
         if (urunRows.isNotEmpty) {
           final onceki = (urunRows.first['stok'] as num).toDouble();
-          // 🔴 Derin analizde bulundu: 'Çıkış' irsaliyesinde negatif stok
-          // engeli (clamp) yoktu — StokDeposu.stokDusTxn'in her zaman
-          // uyguladığı `.clamp(0, double.infinity)` burada eksikti, mevcut
-          // stoktan fazlası sevk edilirse urunler.stok negatife düşebiliyordu.
-          final sonraki =
-              (onceki + hareketMiktar).clamp(0, double.infinity);
+          // B2 kararı (2026-10-07): stok eksiye düşebilir — 0'a kırpmak
+          // hareket farkını sevk miktarından koparıyor, iptal/iadede hayalet
+          // stok üretiyordu (bkz. StokDeposu.stokDusTxn).
+          final sonraki = onceki + hareketMiktar;
           await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
               where: 'id = ?', whereArgs: [k.urunId]);
           etkilenenUrunIdler.add(k.urunId);
@@ -307,7 +305,7 @@ class IrsaliyeDeposu {
             columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
         if (urunRows.isEmpty) continue;
         final mevcutStok = (urunRows.first['stok'] as num).toDouble();
-        final yeniStok = (mevcutStok + tersDelta).clamp(0, double.infinity);
+        final yeniStok = mevcutStok + tersDelta; // B2: negatif stok geçerli
         await txn.update('urunler', {'stok': yeniStok, 'last_updated': now},
             where: 'id = ?', whereArgs: [urunId]);
         etkilenenUrunIdler.add(urunId);

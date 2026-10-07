@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:market_plus/cekirdek/utils/hata_utils.dart';
 import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'package:go_router/go_router.dart';
 // lib/ekranlar/satis/iade_ekrani.dart
@@ -153,6 +154,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   // (dolayısıyla kasadan mükerrer para çıkışını ve stok şişmesini)
   // önlemek için kullanılır.
   Map<int, double> _fisIadeEdilenMiktar = {};
+
+  /// Bir fiş kalemi iadesi (onay penceresi + kayıt) sürerken ikinci bir
+  /// iadenin başlatılmasını engeller.
+  bool _fisIadeIsleniyor = false;
 
   // Controllers
   final _aramaCtrl = TextEditingController();

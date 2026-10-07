@@ -71,8 +71,12 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
 
   void _kuyruktakiBarkodlariIsle() {
     _barkodIslemeTimer?.cancel();
-    if (_barkodKuyrugu.isEmpty || _islemAktif || _dialogAcik) return;
+    // Ekran kapandıktan sonra (ör. satış kaydı sürerken çıkıldı, finally →
+    // _islemBitti) yeni zamanlayıcı kurulmaz: dispose() onu iptal edemez ve
+    // kapanmış ekranın ref'i kullanılırdı.
+    if (!mounted || _barkodKuyrugu.isEmpty || _islemAktif || _dialogAcik) return;
     _barkodIslemeTimer = Timer(const Duration(milliseconds: 150), () async {
+      if (!mounted) return;
       if (_barkodKuyrugu.isNotEmpty && !_islemAktif && !_dialogAcik && !_barkodIsleniyor) {
         final barkod = _barkodKuyrugu.removeFirst();
         await _barkodIsle(barkod);

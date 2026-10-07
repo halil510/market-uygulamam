@@ -274,11 +274,36 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
   }
 
   // ── Satış Tamamla ────────────────────────────────────────────────────────────
+  //
+  // 🔴 DÜZELTME (derin analiz 2026-10-07, B5): sepet keepAlive bir sağlayıcı.
+  // Kayıt sürerken ekran kapanırsa (Windows'ta F-tuşu/menüyle ekran değişimi)
+  // yalnız `mounted` iken çağrılan satisGitti()/temizle() atlanıyor; sepet
+  // "satış işleniyor" durumunda ve SATILMIŞ ürünlerle kalıyordu. Ödeme butonu
+  // uygulama yeniden başlatılana kadar kilitli kalıyor, fiş güncellemede ise
+  // aynı ürünler yeni bir satış gibi tekrar satılabiliyordu. Sepet notifier'ı
+  // ve provider container'ı artık beklemelerden ÖNCE yakalanıyor; kayıt
+  // kalıcı olunca sepet, ekranın durumundan bağımsız olarak boşaltılıyor.
+
+  /// Kayıt sonrası panoyu ve (varsa) carinin detayını tazeler. Ekran kapanmış
+  /// olsa da çalışır (container, ekrandan bağımsızdır).
+  void _satisSonrasiYenile(ProviderContainer container, {int? cariId}) {
+    container.read(dashboardProvider.notifier).yenile();
+    if (cariId != null) container.invalidate(cariDetayProvider(cariId));
+  }
+
+  static String _tutarFarkiOzeti(double fark) {
+    if (fark > 0) return '+${ParaUtils.formatla(fark)}';
+    if (fark < 0) return '-${ParaUtils.formatla(-fark)}';
+    return 'tutar değişmedi';
+  }
+
   Future<void> _fisiGuncelle() async {
     final satis = _guncellenenSatis;
     if (satis == null || satis.id == null) return;
 
-    final sepet    = ref.read(sepetProvider);
+    final sepetNotifier = ref.read(sepetProvider.notifier);
+    final container = ProviderScope.containerOf(context, listen: false);
+    final sepet = ref.read(sepetProvider);
     final kalemler = List<SepetKalem>.from(sepet.kalemler);
     if (kalemler.isEmpty) {
       BildirimServisi.uyari(context,
@@ -289,45 +314,26 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
     _islemBasladi();
     try {
       final kullanici = await AuthServisi().mevcutKullanici();
-      if (!mounted) return;
+      if (!mounted) return; // kayıttan önce çıkıldı: hiçbir şey yazılmadı
 
       // Kalemler + stok farkı + cari/kasa hareketi — hepsi
-      // SatisTamamlamaServisi.fisiGuncelle()'de TEK transaction'da atomik
-      // (protokol §6/§35 — önceden bu ekranda 4 ayrı, transaction'sız
-      // çağrıydı; davranış birebir korunarak servise taşındı).
+      // SatisTamamlamaServisi.fisiGuncelle()'de TEK transaction'da atomik.
       final sonuc = await _satisTamamlamaServisi.fisiGuncelle(
         satis: satis,
         yeniKalemler: kalemler,
         yeniGenelToplam: sepet.genelToplam,
         kullanici: kullanici,
       );
-      final tutarFarki = sonuc.tutarFarki;
-
-      if (satis.cariId != null && mounted) {
-        ProviderScope.containerOf(context, listen: false)
-            .invalidate(cariDetayProvider(satis.cariId!));
-      }
-
+      sepetNotifier.temizle();
+      _satisSonrasiYenile(container, cariId: satis.cariId);
       if (!mounted) return;
-      ref.read(sepetProvider.notifier).temizle();
-      ref.read(dashboardProvider.notifier).yenile();
 
-      // Güncellenmiş fiş bilgisini _sonSatis'e ata (manuel yazdırma için)
       setState(() {
-        _sonSatis = sonuc.guncelSatis;
+        _sonSatis = sonuc.guncelSatis; // manuel yazdırma için
+        _guncellenenSatis = null;
       });
-
-      setState(() => _guncellenenSatis = null);
-
-      final ozet = tutarFarki > 0
-          ? '+${ParaUtils.formatla(tutarFarki)}'
-          : tutarFarki < 0
-              ? '-${ParaUtils.formatla(-tutarFarki)}'
-              : 'tutar değişmedi';
-      BildirimServisi.basari(context, 'Fiş ${satis.fisNo} güncellendi ($ozet)');
-
-      // YAZDIRMA DİALOGU KALDIRILDI — manuel yazdırma butonu ile yapılacak.
-
+      BildirimServisi.basari(context,
+          'Fiş ${satis.fisNo} güncellendi (${_tutarFarkiOzeti(sonuc.tutarFarki)})');
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Fiş güncellenemedi: ${kullaniciyaHataMetni(e)}');
     } finally {
@@ -345,22 +351,21 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       return;
     }
 
+    final sepetNotifier = ref.read(sepetProvider.notifier);
+    final container = ProviderScope.containerOf(context, listen: false);
+    final sepet = ref.read(sepetProvider);
+    final musteri = sepet.musteri;
+    final kalemler = List<SepetKalem>.from(sepet.kalemler);
+    final genelTop = sepet.genelToplam;
+
     _islemBasladi();
-    ref.read(sepetProvider.notifier).satisBasladi();
-
-    final sepet     = ref.read(sepetProvider);
-    final musteri   = sepet.musteri;
-    final kalemler  = List<SepetKalem>.from(sepet.kalemler);
-    final genelTop  = sepet.genelToplam;
-
+    sepetNotifier.satisBasladi();
     try {
       final kullanici = await AuthServisi().mevcutKullanici();
-      if (!mounted) return;
+      if (!mounted) return; // kayıttan önce çıkıldı: hiçbir şey yazılmadı
 
       // Satış kaydı + stok düşümü + kasa/cari hareketi + bulut senkronu +
       // puan — hepsi SatisTamamlamaServisi'nde (tek transaction, atomik).
-      // Önceden bu mantık doğrudan bu ekranda yaşıyordu (protokol §6/§35
-      // — mimari borç); davranış BİREBİR korunarak servise taşındı.
       final sonuc = await _satisTamamlamaServisi.tamamla(
         kalemler:      kalemler,
         musteri:       musteri,
@@ -371,68 +376,62 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
         kullanici:     kullanici,
         subeId:        AktifSubeServisi().subeId,
       );
-      final satisId = sonuc.satisId;
-      final fisNo = sonuc.fisNo;
-      final tarih = sonuc.tarih;
-      final satisKalemler = sonuc.kalemler;
-
-      // FAZ 9 — Onay Merkezi (bildirim tipi): satış ENGELLENMEDİ, zaten
-      // tamamlandı — sadece genel iskonto oranı eşiği aşıyorsa sonradan
-      // incelenebilsin diye kayda düşülüyor.
-      OnayMerkeziServisi().kaydet(
-        tur: OnayTuru.yuksekIskonto,
-        tutar: sepet.genelIskontoYuzde,
-        esikTutar: OnayEsikleri.yuksekIskontoOrani,
-        referansTuru: 'satis',
-        referansId: satisId,
-        aciklama: 'Fiş $fisNo: %${sepet.genelIskontoYuzde.toStringAsFixed(0)} iskonto',
-      );
-
+      // Satış kalıcı: ekran kapanmış olsa bile sepet boşaltılır.
+      sepetNotifier.temizle();
+      _satisSonrasiYenile(container, cariId: musteri?.id);
+      _yuksekIskontoBildir(sepet, satisId: sonuc.satisId, fisNo: sonuc.fisNo);
+      if (_nakitAlindi(odemeYontemi, karmaKalemler)) _kasaCekmecesiniAc();
       if (!mounted) return;
 
-      // ── Son satış bilgisini sakla (manuel yazdırma için) ──
       setState(() {
+        // Son satış — appBar'daki yazıcı ikonuyla manuel yazdırma için.
+        // (Kullanıcı isteği: satış sonrası "Fişi Gör" bildirimi ve otomatik
+        // yazdırma kaldırıldı; sepetin anında boşalması görsel onaydır.)
         _sonSatis = SatisModel(
-          id: satisId,
-          fisNo: fisNo,
-          tarih: tarih,
+          id: sonuc.satisId,
+          fisNo: sonuc.fisNo,
+          tarih: sonuc.tarih,
           odemeYontemi: odemeYontemi,
           genelToplam: genelTop,
           odenenTutar: odenenTutar,
-          kalemler: satisKalemler,
+          kalemler: sonuc.kalemler,
           cariId: musteri?.id,
           cariAdi: musteri?.unvan,
         );
-      });
-
-      // Windows kasa: nakit alınan satışta çekmeceyi otomatik aç (yazıcı
-      // bağlı değilse veya çekmece yoksa sessizce yok sayılır).
-      final nakitVar = odemeYontemi == 'Nakit' ||
-          (karmaKalemler?.any((k) => k['yontem'] == 'Nakit') ?? false);
-      if (Platform.isWindows && nakitVar) {
-        YazdirmaServisi().kasaCekmecesiAc().catchError((_) {});
-      }
-
-      ref.read(sepetProvider.notifier).temizle();
-      ref.read(dashboardProvider.notifier).yenile();
-      setState(() {
         _bekleyenSayiFuture = BekleyenFislerEkrani.bekleyenSayi();
       });
-
-      // Kullanıcı isteği: "satış başarıyla tamamlandı fiş gör dialoğu
-      // kaldır" — her satıştan sonra çıkan "Satış tamamlandı ✓ / Fişi
-      // Gör" SnackBar'ı kaldırıldı. Sepetin anında temizlenip yeni bir
-      // satışa hazır hale gelmesi zaten görsel bir onay; fişi görmek/
-      // yazdırmak isteyen kullanıcı appBar'daki yazıcı ikonunu kullanır.
-
-      // Yazdırma işlemi tamamen kaldırıldı. Kullanıcı appBar'daki yazıcı ikonu ile manuel olarak yazdıracak.
-
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Satış hatası: ${kullaniciyaHataMetni(e)}');
     } finally {
-      if (mounted) ref.read(sepetProvider.notifier).satisGitti();
+      // Ekran durumundan bağımsız: kilit her koşulda açılır.
+      sepetNotifier.satisGitti();
       _islemBitti();
     }
+  }
+
+  /// FAZ 9 — Onay Merkezi (bildirim tipi): satış ENGELLENMEDİ, zaten
+  /// tamamlandı — genel iskonto eşiği aşıyorsa sonradan incelenebilsin diye
+  /// kayda düşülür.
+  void _yuksekIskontoBildir(SepetDurum sepet, {required int satisId, required String fisNo}) {
+    OnayMerkeziServisi().kaydet(
+      tur: OnayTuru.yuksekIskonto,
+      tutar: sepet.genelIskontoYuzde,
+      esikTutar: OnayEsikleri.yuksekIskontoOrani,
+      referansTuru: 'satis',
+      referansId: satisId,
+      aciklama: 'Fiş $fisNo: %${sepet.genelIskontoYuzde.toStringAsFixed(0)} iskonto',
+    );
+  }
+
+  static bool _nakitAlindi(String odemeYontemi, List<Map<String, dynamic>>? karmaKalemler) =>
+      odemeYontemi == 'Nakit' ||
+      (karmaKalemler?.any((k) => k['yontem'] == 'Nakit') ?? false);
+
+  /// Windows kasa: nakit alınan satışta çekmeceyi açar (yazıcı/çekmece
+  /// yoksa sessizce yok sayılır).
+  static void _kasaCekmecesiniAc() {
+    if (!Platform.isWindows) return;
+    YazdirmaServisi().kasaCekmecesiAc().catchError((_) {});
   }
 
   // ── Sepet Kalem Düzenleme ────────────────────────────────────────────────────

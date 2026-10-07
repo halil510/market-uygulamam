@@ -152,14 +152,17 @@ class SatisTamamlamaServisi {
       satisId = await _satisDepo.satisEkleTxn(txn, satis, satisKalemler);
 
       for (final k in kalemler) {
-        stokHareketGidleri[k.urun.id!] = await _stokDepo.stokDusFefoTxn(
+        // Aynı ürün sepette birden fazla satırda olabilir (tartılı ürün,
+        // farklı fiyat): kimlikler EKLENİR — önceden üzerine yazılıyordu ve
+        // ilk satırın stok hareketi buluta anında bildirilmiyordu.
+        (stokHareketGidleri[k.urun.id!] ??= []).addAll(await _stokDepo.stokDusFefoTxn(
           txn,
           urunId: k.urun.id!,
           miktar: k.miktar,
           kullaniciId: kullanici?.id,
           referansId: satisId,
           referansTuru: 'satis',
-        );
+        ));
       }
 
       if (karmaKalemler != null) {
@@ -358,11 +361,11 @@ class SatisTamamlamaServisi {
       // DB'den geri okuyarak (bkz. SatisDeposu.bulutaBildir — bellekteki
       // model buluta ikinci bir satış ve satis_id=0 kalemler yolluyordu).
       await _satisDepo.bulutaBildir(satisId);
-      for (final k in kalemler) {
-        final gidler = stokHareketGidleri[k.urun.id!];
-        if (gidler == null || gidler.isEmpty) continue;
+      // Ürün başına BİR kez (aynı ürün birden fazla satırdaysa tekrar etmez).
+      for (final MapEntry(key: urunId, value: gidler) in stokHareketGidleri.entries) {
+        if (gidler.isEmpty) continue;
         final urunSatir = await db.query('urunler',
-            where: 'id = ?', whereArgs: [k.urun.id], limit: 1);
+            where: 'id = ?', whereArgs: [urunId], limit: 1);
         if (urunSatir.isNotEmpty) {
           BulutManager()
               .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
@@ -378,13 +381,6 @@ class SatisTamamlamaServisi {
                 'stok_hareket', Map<String, dynamic>.from(stokSatir.first));
           }
         }
-        // 🔴 Derin analizde bulundu: bu, uygulamanın EN SIK çalışan satış
-        // akışı olmasına rağmen şube bazlı stok payını (sube_urun) hiç
-        // güncellemiyordu — sadece "fişi güncelle" (mevcut satışı
-        // düzenleme, çok daha nadir kullanılan) akışı bunu yapıyordu.
-        // Fark POZİTİF (stok DÜŞTÜ) veriliyor — subeStokPayiUygula'nın
-        // beklediği "ana stok yönü" bu (bkz. o metodun kendi yorumu).
-        await _stokDepo.subeStokPayiUygula(k.urun.id!, k.miktar);
       }
       // 🔴🔴 FAZ 1 madde 2: karma ödemede artık BİRDEN FAZLA kasa hareketi
       // oluşabiliyor (her ödeme yöntemi için ayrı satır) — bu yüzden
@@ -417,9 +413,19 @@ class SatisTamamlamaServisi {
               .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
         }
       }
-    } catch (_) {
+    } catch (e, st) {
       // Bulut bildirimi best-effort — satış zaten kalıcı olarak kaydedildi,
-      // sync hatası satışı geçersiz kılmamalı (mevcut davranışla aynı).
+      // sync hatası satışı geçersiz kılmamalı. Kuyruk kayıtları zaten
+      // transaction içinde yazıldı; anlık bildirim bir sonraki turda gider.
+      LogServisi().uyari('SatisTamamlamaServisi bulut bildirimi', hata: e, yigin: st);
+    }
+
+    // Şube bazlı stok payı (sube_urun). 🔴 Önceden yukarıdaki bulut
+    // bildirimiyle AYNI try içindeydi: bulutaBildir() hata atınca satıştaki
+    // HİÇBİR ürünün şube stoğu düşülmüyordu. Fark POZİTİF (stok DÜŞTÜ)
+    // verilir — subeStokPayiUygula'nın beklediği yön; kendi hatasını yutar.
+    for (final k in kalemler) {
+      await _stokDepo.subeStokPayiUygula(k.urun.id!, k.miktar);
     }
   }
 

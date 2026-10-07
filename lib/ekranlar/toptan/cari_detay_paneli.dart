@@ -82,6 +82,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
   List<Map<String, dynamic>> _enCokAlinanlar = [];
   FiyatGrubuModel? _fiyatGrubu;
   bool _yukleniyor = true;
+  String? _yuklemeHatasi;
   final Set<int> _islemYapiliyorSatisId = {};
   // Kullanıcı isteği: "ekran görünümü yapısı Logo gibi olacak."
   // Logo Mobile Sales'in gerçek yapısı: cari seçilince açılan ekranda
@@ -111,39 +112,59 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
     super.dispose();
   }
 
+  /// 🔴 DÜZELTME (derin analiz 2026-10-07): 8 sorgu art arda, try/catch
+  /// olmadan bekleniyordu — biri hata atınca (ör. eski şemada eksik sütun)
+  /// panel SONSUZA KADAR "yükleniyor"da kalıyordu. Artık bağımsız sorgular
+  /// paralel çalışır, hata kullanıcıya "Tekrar Dene" ile gösterilir.
   Future<void> _yukle() async {
-    setState(() => _yukleniyor = true);
-    final satislar = await _satisDepo.cariSatislari(widget.cari.id!, limit: 50);
-    final faturalar = await _faturaDepo.listele(cariId: widget.cari.id, limit: 50);
-    final tumHareketler = await _cariDepo.hareketleriniGetir(widget.cari.id!, limit: 100);
-    final tahsilatlar = tumHareketler.where((h) => _tahsilatTipleri.contains(h.fisTipi)).toList();
-    // Kullanıcı isteği: "İrsaliye sekmesi" — Logo/Netsis cari kartında
-    // standart bir menü seçeneği.
-    final irsaliyeler = await IrsaliyeDeposu().cariIrsaliyeleriGetir(widget.cari.id!);
-    // Kullanıcı isteği: "Sevkiyat Adresleri" — bir cariye birden fazla
-    // teslimat adresi tanımlanabilmesi.
-    final adresler = await _adresDepo.hepsiGetir(widget.cari.id!);
-    // Kullanıcı isteği: "carinin raporları grafikleri" — son 6 ayın
-    // aylık satış toplamı (Logo'daki cari analiz grafikleri gibi).
-    final aylikSatis = await _satisDepo.cariAylikSatisGetir(widget.cari.id!);
-    // En çok alınan ürünler (miktar bazlı, ilk 6).
-    final enCokAlinanlar = await _satisDepo.cariEnCokAlinanlarGetir(widget.cari.id!);
-    FiyatGrubuModel? grup;
-    if (widget.cari.fiyatGrubuId != null) {
-      grup = await ToptanFiyatDeposu().grupGetir(widget.cari.fiyatGrubuId!);
-    }
-    if (!mounted) return;
+    final cariId = widget.cari.id!;
+    final grupId = widget.cari.fiyatGrubuId;
     setState(() {
-      _satislar = satislar;
-      _faturalar = faturalar;
-      _tahsilatlar = tahsilatlar;
-      _irsaliyeler = irsaliyeler;
-      _adresler = adresler;
-      _aylikSatis = aylikSatis;
-      _enCokAlinanlar = enCokAlinanlar;
-      _fiyatGrubu = grup;
-      _yukleniyor = false;
+      _yukleniyor = true;
+      _yuklemeHatasi = null;
     });
+    try {
+      final (
+        satislar,
+        faturalar,
+        tumHareketler,
+        irsaliyeler, // "İrsaliye sekmesi" (Logo/Netsis cari kartı standardı)
+        adresler, // birden fazla sevkiyat adresi
+        aylikSatis, // son 6 ayın aylık satış grafiği
+        enCokAlinanlar, // miktar bazlı ilk 6 ürün
+        grup,
+      ) = await (
+        _satisDepo.cariSatislari(cariId, limit: 50),
+        _faturaDepo.listele(cariId: cariId, limit: 50),
+        _cariDepo.hareketleriniGetir(cariId, limit: 100),
+        IrsaliyeDeposu().cariIrsaliyeleriGetir(cariId),
+        _adresDepo.hepsiGetir(cariId),
+        _satisDepo.cariAylikSatisGetir(cariId),
+        _satisDepo.cariEnCokAlinanlarGetir(cariId),
+        grupId == null
+            ? Future<FiyatGrubuModel?>.value()
+            : ToptanFiyatDeposu().grupGetir(grupId),
+      ).wait;
+      if (!mounted) return;
+      setState(() {
+        _satislar = satislar;
+        _faturalar = faturalar;
+        _tahsilatlar =
+            tumHareketler.where((h) => _tahsilatTipleri.contains(h.fisTipi)).toList();
+        _irsaliyeler = irsaliyeler;
+        _adresler = adresler;
+        _aylikSatis = aylikSatis;
+        _enCokAlinanlar = enCokAlinanlar;
+        _fiyatGrubu = grup;
+        _yukleniyor = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _yukleniyor = false;
+        _yuklemeHatasi = kullaniciyaHataMetni(e);
+      });
+    }
   }
 
   Future<void> _yeniSatis() async {
@@ -422,6 +443,15 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
         Expanded(
           child: _yukleniyor
               ? const TsYukleniyor()
+              : _yuklemeHatasi != null
+                  ? TsBosDurum(
+                      ikon: Icons.error_outline,
+                      renk: TsRenk.hata,
+                      baslik: 'Cari bilgileri yüklenemedi',
+                      altyazi: _yuklemeHatasi,
+                      aksiyonMetni: 'Tekrar Dene',
+                      aksiyon: _yukle,
+                    )
               : TabBarView(controller: _tabCtrl, children: [
                   _islemlerSekmesi(),
                   _genelSekmesi(),

@@ -8,6 +8,7 @@
 // sadece KENDİ ödeyeceği fiyatı görür. Sipariş doğrudan satışa dönüşmez;
 // staff "Bekleyen Siparişler" ekranından onaylar (mevcut akış, değişmedi).
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 
 import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
@@ -62,8 +63,17 @@ class _BayiSiparisEkraniState extends State<BayiSiparisEkrani> {
     }
     final sira = ++_aramaSira;
     setState(() => _araniyor = true);
-    final r = await _urunDepo.ara(sorgu.trim(), limit: 20, sadeceToptan: true);
-    if (mounted && sira == _aramaSira) setState(() { _sonuclar = r; _araniyor = false; });
+    try {
+      final r = await _urunDepo.ara(sorgu.trim(), limit: 20, sadeceToptan: true);
+      if (mounted && sira == _aramaSira) setState(() => _sonuclar = r);
+    } catch (e) {
+      if (mounted && sira == _aramaSira) {
+        BildirimServisi.hata(context, 'Arama yapılamadı: ${kullaniciyaHataMetni(e)}');
+      }
+    } finally {
+      // Hata olsa da arama göstergesi kapanır (önceden sonsuza dek dönüyordu).
+      if (mounted && sira == _aramaSira) setState(() => _araniyor = false);
+    }
   }
 
   Future<void> _urunEkle(UrunModel urun) async {

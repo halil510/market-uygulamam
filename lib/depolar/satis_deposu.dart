@@ -461,6 +461,15 @@ class SatisDeposu {
     return rows.map((r) => SatisModel.fromMap(r)).toList();
   }
 
+  /// [syncKopyalariGetir]'in yalnız ADEDİ — uyarı şeritleri için (tüm
+  /// satırları cari join'iyle çekip modele çevirmeye gerek yok).
+  Future<int> syncKopyaSayisi() async {
+    final db = await _d;
+    final rows = await db.rawQuery('SELECT COUNT(*) AS n FROM satislar '
+        'WHERE sync_cakisma_kopyasi = 1 AND is_deleted = 0');
+    return (rows.first['n'] as num?)?.toInt() ?? 0;
+  }
+
   /// Kullanıcı bir sync-kopyası şüpheli satışı inceleyip "bu gerçek bir
   /// satış" derse, damgayı kaldırıp satışı normal listelere/toplamlara
   /// geri döndürür. Kopyaysa zaten mevcut [sil] kullanılmalı.

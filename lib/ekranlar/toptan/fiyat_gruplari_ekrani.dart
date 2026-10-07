@@ -1,6 +1,8 @@
 // lib/ekranlar/toptan/fiyat_gruplari_ekrani.dart
 import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/hata_utils.dart';
+import '../../servisler/bildirim_servisi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/toptan_fiyat_deposu.dart';
@@ -27,9 +29,14 @@ class _FiyatGruplariEkraniState extends State<FiyatGruplariEkrani> {
 
   Future<void> _yukle() async {
     setState(() => _yukleniyor = true);
-    final liste = await _depo.gruplariGetir();
-    if (!mounted) return;
-    setState(() { _gruplar = liste; _yukleniyor = false; });
+    try {
+      final liste = await _depo.gruplariGetir();
+      if (mounted) setState(() => _gruplar = liste);
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Fiyat grupları yüklenemedi: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      if (mounted) setState(() => _yukleniyor = false);
+    }
   }
 
   Future<void> _duzenle([FiyatGrubuModel? mevcut]) async {

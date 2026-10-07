@@ -6,6 +6,7 @@
 // korur — sadece sorumluluk UI katmanından buraya kaydırılmıştır.
 import '../cekirdek/utils/para_utils.dart';
 import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart' show DatabaseExecutor;
 import 'package:uuid/uuid.dart';
 import '../depolar/kasa_deposu.dart';
 import '../depolar/stok_deposu.dart';
@@ -18,6 +19,40 @@ import '../veri/database/veritabani.dart';
 
 part 'iade_islem_servisi_duzenleme.dart';
 part 'iade_islem_servisi_gecmis.dart';
+
+/// Fiş iadesinde istenen miktar, o fişten hâlâ iade edilebilecek miktarı
+/// aşıyor (ör. aynı kalem başka bir kasada / aynı anda iade edildi).
+class IadeMiktariAsildiHatasi implements Exception {
+  final String urunAdi;
+  final double iadeEdilebilir;
+
+  const IadeMiktariAsildiHatasi({required this.urunAdi, required this.iadeEdilebilir});
+
+  @override
+  String toString() {
+    if (iadeEdilebilir <= 0.0005) return '$urunAdi bu fişten zaten tamamen iade edilmiş';
+    final miktar = iadeEdilebilir % 1 == 0
+        ? iadeEdilebilir.toStringAsFixed(0)
+        : iadeEdilebilir.toStringAsFixed(3);
+    return '$urunAdi için bu fişten en fazla $miktar iade edilebilir '
+        '(bir kısmı başka bir işlemde iade edilmiş)';
+  }
+}
+
+/// Hızlı iadede bir veya daha fazla ürünün iade fiyatına dayanak olacak
+/// satış kaydı yok (bugünkü fiyatla iade yapılmaz — B4 kararı).
+class IadeSatisFiyatiBulunamadiHatasi implements Exception {
+  final List<String> urunAdlari;
+  final bool cariyeGore;
+
+  const IadeSatisFiyatiBulunamadiHatasi(this.urunAdlari, {required this.cariyeGore});
+
+  @override
+  String toString() =>
+      '${urunAdlari.join(', ')} için ${cariyeGore ? 'bu müşteriye ait ' : ''}satış kaydı '
+      'bulunamadı. İade, müşterinin ödediği fiyattan yapılabilmesi için satış '
+      'kaydı gerektirir — fişi biliyorsanız "Fiş No ile İade" kullanın.';
+}
 
 /// Hızlı (barkod) iade sekmesinde biriken tek bir kalem.
 class IadeKalemGirdi {
@@ -34,9 +69,15 @@ class IadeIslemServisi {
   /// iade_ekrani_hizli.dart._hizliOnaylaVeKaydet (taşındığı yer).
   /// iade + tüm kalemler + stok + (varsa) kasa + (varsa) cari TEK
   /// transaction içinde: ya hep birden yazılır ya hiç.
-  /// Döner: (iadeId, fisNo) — çağıran taraf ekran içi görüntüleme listesi
-  /// için fişNo'ya ihtiyaç duyuyor.
-  Future<(int, String)> topluIadeKaydet({
+  ///
+  /// 🔴 B4 KARARI (kullanıcı, 2026-10-07): iade tutarı ürünün BUGÜNKÜ
+  /// satış fiyatından DEĞİL, müşterinin satışta gerçekten ödediği net
+  /// fiyattan hesaplanır (bkz. [_satisFiyatlariTxn]). Önceden zam gelmiş bir
+  /// ürünün iadesinde müşteriye ödediğinden fazla para veriliyordu. Dayanak
+  /// satış bulunamazsa [IadeSatisFiyatiBulunamadiHatasi] — iade yapılmaz.
+  ///
+  /// Döner: (iadeId, fisNo, ürün id → iade birim fiyatı).
+  Future<(int, String, Map<int, double>)> topluIadeKaydet({
     required List<IadeKalemGirdi> kalemler,
     required String odemeYontemi,
     required int? kullaniciId,
@@ -44,15 +85,21 @@ class IadeIslemServisi {
     CariModel? cari,
   }) async {
     final db = await Veritabani().db;
+    // Fiyat dayanağı fiş no tüketilmeden doğrulanır (boşa fiş no harcanmasın);
+    // asıl hesap aşağıda yazmayla aynı transaction'da tekrarlanır.
+    await _satisFiyatlariTxn(db, kalemler, cariId: cari?.id);
     final fisNo = await Veritabani()
         .fisNoUret('iade', subeId: AktifSubeServisi().subeId ?? 1);
     final iadeGlobalId = const Uuid().v4();
     final now = DateTime.now().toIso8601String();
-    final toplamIade =
-        kalemler.fold<double>(0.0, (s, i) => s + i.adet * i.urun.satisFiyati);
     late final int iadeId;
+    late final Map<int, double> fiyatlar;
+    late final double toplamIade;
 
     await db.transaction((txn) async {
+      fiyatlar = await _satisFiyatlariTxn(txn, kalemler, cariId: cari?.id);
+      toplamIade = ParaUtils.yuvarla(kalemler.fold<double>(
+          0.0, (s, i) => s + i.adet * fiyatlar[i.urun.id]!));
       final iadeSatiri = {
         'global_id': iadeGlobalId,
         'cari_id': cari?.id,
@@ -71,7 +118,7 @@ class IadeIslemServisi {
           tablo: 'iade', veri: {...iadeSatiri, 'id': iadeId});
 
       for (final item in kalemler) {
-        final fiyat = item.urun.satisFiyati;
+        final fiyat = fiyatlar[item.urun.id]!;
         final toplam = ParaUtils.yuvarla(item.adet * fiyat);
 
         final kalemSatiri = {
@@ -251,7 +298,7 @@ class IadeIslemServisi {
       if (kDebugMode) debugPrint('Toplu iade bulut bildirimi hatası: $e');
     }
 
-    return (iadeId, fisNo);
+    return (iadeId, fisNo, fiyatlar);
   }
 
   /// "Fiş No ile İade" sekmesindeki tek kalemlik iade akışı — bkz.
@@ -285,6 +332,18 @@ class IadeIslemServisi {
     final stokHareketGidleri = <String>[];
 
     await db.transaction((txn) async {
+      // 🔴 ÇİFT İADE KORUMASI (derin analiz 2026-10-07): "daha önce iade
+      // edilen" miktar ekranda fiş arandığı an bir kez okunup bellekte
+      // tutuluyordu; başka kasadan senkronla gelen ya da kayıt sürerken
+      // ikinci kez başlatılan bir iade aynı kalemi İKİ KEZ iade edebiliyordu
+      // (çift para + çift stok girişi). Sınır artık yazmayla aynı
+      // transaction'da, veritabanının güncel hâlinden yeniden hesaplanır.
+      final iadeEdilebilir =
+          await _iadeEdilebilirMiktarTxn(txn, satisId: satisId, urunId: urunId);
+      if (kalanMiktar > iadeEdilebilir + 0.0005) {
+        throw IadeMiktariAsildiHatasi(urunAdi: urunAdi, iadeEdilebilir: iadeEdilebilir);
+      }
+
       final iadeSatiri = {
         'global_id': const Uuid().v4(),
         'satis_id': satisId,
@@ -506,10 +565,6 @@ class IadeIslemServisi {
           BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(s.first));
         }
       }
-      // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): şube bazlı stok payı hiç
-      // güncellenmiyordu. Lotlara dağılmış olsa da toplam ürün bazında
-      // TEK kalemMiktar artışı (sube_urun lot izlemez).
-      await _stokDepo.subeStokPayiUygula(urunId, -kalanMiktar);
       for (final lotId in guncellenenLotIdleri) {
         final l = await db.query('lot_seri', where: 'id = ?', whereArgs: [lotId], limit: 1);
         if (l.isNotEmpty) {
@@ -543,8 +598,72 @@ class IadeIslemServisi {
     } catch (e) {
       if (kDebugMode) debugPrint('Fiş iadesi bulut bildirimi hatası: $e');
     }
+    // Şube bazlı stok payı (FAZ 1 madde 1) bulut bildiriminden BAĞIMSIZ:
+    // önceden aynı try içindeydi, bulut hatası şube stoğunu atlatıyordu.
+    // Lotlara dağılmış olsa da ürün bazında tek artış (sube_urun lot izlemez).
+    await _stokDepo.subeStokPayiUygula(urunId, -kalanMiktar);
 
     return (iadeId, fisNo, toplam);
   }
 
+  /// Hızlı (fişsiz) iade için her ürünün iade birim fiyatı: o ürünün EN SON
+  /// geçerli satış satırında müşterinin ödediği net birim fiyat (fiş
+  /// iadesindeki kural: net_fiyat, yoksa birim_fiyat). [cariId] verilirse
+  /// yalnız o müşterinin satışlarına bakılır. İptal edilmiş, silinmiş ve
+  /// senkron-kopyası satışlar sayılmaz. Bulunamayan ürün varsa hata.
+  static Future<Map<int, double>> _satisFiyatlariTxn(
+      DatabaseExecutor ex, List<IadeKalemGirdi> kalemler, {int? cariId}) async {
+    final fiyatlar = <int, double>{};
+    final bulunamayan = <String>[];
+    for (final k in kalemler) {
+      final urunId = k.urun.id;
+      if (urunId == null || fiyatlar.containsKey(urunId)) continue;
+      final rows = await ex.rawQuery('''
+        SELECT sk.net_fiyat, sk.birim_fiyat
+          FROM satis_kalem sk
+          JOIN satislar s ON s.id = sk.satis_id
+         WHERE sk.urun_id = ?
+           AND s.is_deleted = 0
+           AND COALESCE(s.iptal, 0) = 0
+           AND COALESCE(s.sync_cakisma_kopyasi, 0) = 0
+           ${cariId != null ? 'AND s.cari_id = ?' : ''}
+         ORDER BY s.tarih DESC, sk.id DESC
+         LIMIT 1
+      ''', [urunId, ?cariId]);
+      if (rows.isEmpty) {
+        bulunamayan.add(k.urun.urunAdi);
+        continue;
+      }
+      final net = (rows.first['net_fiyat'] as num?)?.toDouble() ?? 0;
+      final birim = (rows.first['birim_fiyat'] as num?)?.toDouble() ?? 0;
+      fiyatlar[urunId] = net > 0 ? net : birim;
+    }
+    if (bulunamayan.isNotEmpty) {
+      throw IadeSatisFiyatiBulunamadiHatasi(bulunamayan, cariyeGore: cariId != null);
+    }
+    return fiyatlar;
+  }
+
+  /// Hızlı iade onay penceresinde gösterilecek fiyatlar (kayıtla aynı kural).
+  Future<Map<int, double>> hizliIadeFiyatlari(List<IadeKalemGirdi> kalemler,
+          {int? cariId}) async =>
+      _satisFiyatlariTxn(await Veritabani().db, kalemler, cariId: cariId);
+
+  /// Satışta bu üründen satılan toplam miktar − iptal/silinmemiş iadelerde
+  /// iade edilen toplam (ürün fişte birden fazla satırdaysa hepsi toplanır).
+  /// [IadeDeposu.fisIadeliMiktarlariGetir] ile aynı iade tanımı.
+  static Future<double> _iadeEdilebilirMiktarTxn(DatabaseExecutor txn,
+      {required int satisId, required int urunId}) async {
+    final rows = await txn.rawQuery('''
+      SELECT
+        (SELECT COALESCE(SUM(miktar), 0) FROM satis_kalem
+          WHERE satis_id = ? AND urun_id = ?)
+        -
+        (SELECT COALESCE(SUM(ik.miktar), 0)
+           FROM iade_kalem ik JOIN iade i ON ik.iade_id = i.id
+          WHERE i.satis_id = ? AND ik.urun_id = ?
+            AND COALESCE(i.durum, '') != 'iptal' AND i.deleted_at IS NULL) AS kalan
+    ''', [satisId, urunId, satisId, urunId]);
+    return (rows.first['kalan'] as num?)?.toDouble() ?? 0;
+  }
 }

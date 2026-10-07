@@ -29,7 +29,7 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/log_servisi.dart';
-import 'widgets/borc_odeme_bottom_sheet.dart';
+import 'widgets/borc_odeme_baslatici.dart';
 import 'masaustu/borc_masaustu_gorunum.dart';
 
 // God-class sertleştirmesi (2026-09-22, kullanıcı onayıyla): bu dosya
@@ -273,23 +273,9 @@ class _BorcDashboardEkraniState extends ConsumerState<BorcDashboardEkrani>
   }
 
   Future<void> _odemeDialogGoster(BuildContext context, BorcModel borc) async {
-    final bankaHesaplari = await ref.read(bankaHesaplarProvider(null).future);
-    final krediKartlari = await ref.read(krediKartlariProvider(null).future);
-    if (!mounted) return;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => BorcOdemeBottomSheet(
-        borc: borc,
-        bankaHesaplari: bankaHesaplari,
-        krediKartlari: krediKartlari,
-        onOdemeYapildi: () {
-          _yenile();
-          BildirimServisi.basari(context, '${borc.baslik} için ödeme kaydedildi ✓');
-        },
-      ),
-    );
+    final odendi = await borcOdemePenceresiAc(context, borc);
+    if (!odendi || !context.mounted) return;
+    _yenile();
+    BildirimServisi.basari(context, '${borc.baslik} için ödeme kaydedildi ✓');
   }
 }

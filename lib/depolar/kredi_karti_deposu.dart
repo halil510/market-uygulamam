@@ -240,74 +240,76 @@ class KrediKartiDeposu {
     return hareketId;
   }
 
-  Future<double> _kullanilanLimitHesapla(int kartId) async {
-    final db = await _d;
-    final rows = await db.rawQuery('''
-      SELECT COALESCE(SUM(CASE WHEN yon = 'harcama' THEN tutar ELSE -tutar END), 0) as toplam
-      FROM kredi_karti_hareket WHERE kredi_karti_id = ? AND is_deleted = 0
-    ''', [kartId]);
-    return (rows.first['toplam'] as num?)?.toDouble() ?? 0;
-  }
+  /// Aktif kartlardan kullanılan limiti, kendi hareketlerinin net toplamından
+  /// (harcama − ödeme) farklı olanlar. Sayım ve düzeltme AYNI tanımı
+  /// kullanır; kart başına ayrı SUM sorgusu (N+1) yerine tek sorgu.
+  static const String _kartUyumsuzSql = '''
+    SELECT * FROM (
+      SELECT k.id AS id,
+             COALESCE(k.kartlimit, 0) AS kart_limit,
+             COALESCE(k.kullanilan_limit, 0) AS mevcut,
+             (SELECT COALESCE(SUM(CASE WHEN h.yon = 'harcama' THEN h.tutar ELSE -h.tutar END), 0)
+                FROM kredi_karti_hareket h
+               WHERE h.kredi_karti_id = k.id AND h.is_deleted = 0) AS dogru
+      FROM kredi_kartlari k
+      WHERE k.aktif = 1
+    ) WHERE ABS(mevcut - dogru) > 0.01
+  ''';
 
-  /// [limitMutabakatYap]'ın SALT OKUNUR ön kontrolü — Veri Sağlığı
-  /// Merkezi'nde "düzelt" onayından önce kaç kartın kullanılan limiti
-  /// hareket geçmişiyle uyuşmadığını göstermek için (Madde 11
-  /// denetimi, 2026-09-16 — CariDeposu.bakiyeUyumsuzlukSayisi,
-  /// StokDeposu.mutabakatUyumsuzlukSayisi ile AYNI desen; önceden bu
-  /// mutabakat aracının böyle bir sayım metodu olmadığından Veri
-  /// Sağlığı Merkezi'ne hiç eklenememişti).
+  /// [limitMutabakatYap]'ın SALT OKUNUR ön kontrolü (Veri Sağlığı Merkezi).
+  /// Hata yutulmaz: 0 döndürmek "uyumlu" ile "kontrol edilemedi"yi ayırt
+  /// edilemez kılıyordu.
   Future<int> uyumsuzlukSayisi() async {
     try {
       final db = await _d;
-      final kartlar = await db.query('kredi_kartlari', where: 'aktif = 1');
-      var uyumsuz = 0;
-      for (final k in kartlar) {
-        final kartId = k['id'] as int;
-        final eskiKullanilan = (k['kullanilan_limit'] as num?)?.toDouble() ?? 0;
-        final dogruKullanilan = await _kullanilanLimitHesapla(kartId);
-        if ((eskiKullanilan - dogruKullanilan).abs() > 0.01) uyumsuz++;
-      }
-      return uyumsuz;
+      final rows =
+          await db.rawQuery('SELECT COUNT(*) AS n FROM ($_kartUyumsuzSql)');
+      return (rows.first['n'] as num?)?.toInt() ?? 0;
     } catch (e, st) {
       LogServisi().hata('KrediKartiDeposu.uyumsuzlukSayisi', hata: e, yigin: st);
-      return 0;
+      rethrow;
     }
   }
 
   /// Senkronizasyon sonrası çağrılması önerilir — her kartın
   /// "kullanilan_limit"ini kendi hareketlerinin gerçek toplamından
-  /// yeniden hesaplar (stok/borç mutabakatıyla aynı mimari).
+  /// yeniden hesaplar (stok/borç mutabakatıyla aynı mimari). Okuma ve
+  /// yazma aynı transaction'da: araya giren bir harcama ezilemez.
   Future<int> limitMutabakatYap() async {
     try {
       final db = await _d;
-      final kartlar = await db.query('kredi_kartlari', where: 'aktif = 1');
-      var duzeltilen = 0;
-      for (final k in kartlar) {
-        final kartId = k['id'] as int;
-        final eskiKullanilan = (k['kullanilan_limit'] as num?)?.toDouble() ?? 0;
-        final dogruKullanilan = await _kullanilanLimitHesapla(kartId);
-        if ((eskiKullanilan - dogruKullanilan).abs() > 0.01) {
-          final kartLimit = (k['kartlimit'] as num?)?.toDouble() ?? 0;
-          final kalan = (kartLimit - dogruKullanilan).clamp(0, double.infinity);
-          await db.update('kredi_kartlari', {
-            'kullanilan_limit': dogruKullanilan,
-            'kalan_limit': kalan,
-            'last_updated': DateTime.now().toIso8601String(),
+      final now = DateTime.now().toIso8601String();
+      final duzeltilenIdler = <int>[];
+      await db.transaction((txn) async {
+        final uyumsuzlar = await txn.rawQuery(_kartUyumsuzSql);
+        for (final r in uyumsuzlar) {
+          final kartId = r['id'] as int?;
+          if (kartId == null) continue;
+          final dogru = (r['dogru'] as num?)?.toDouble() ?? 0;
+          final kartLimit = (r['kart_limit'] as num?)?.toDouble() ?? 0;
+          await txn.update('kredi_kartlari', {
+            'kullanilan_limit': dogru,
+            'kalan_limit': (kartLimit - dogru).clamp(0, double.infinity),
+            'last_updated': now,
           }, where: 'id = ?', whereArgs: [kartId]);
-          final satir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [kartId], limit: 1);
-          if (satir.isNotEmpty) {
-            BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(satir.first));
-          }
-          duzeltilen++;
+          duzeltilenIdler.add(kartId);
+        }
+      });
+      for (final kartId in duzeltilenIdler) {
+        final satir = await db.query('kredi_kartlari',
+            where: 'id = ?', whereArgs: [kartId], limit: 1);
+        if (satir.isNotEmpty) {
+          BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(satir.first));
         }
       }
-      if (duzeltilen > 0) {
-        LogServisi().bilgi('Kredi kartı limit mutabakatı: $duzeltilen kart düzeltildi');
+      if (duzeltilenIdler.isNotEmpty) {
+        LogServisi().bilgi(
+            'Kredi kartı limit mutabakatı: ${duzeltilenIdler.length} kart düzeltildi');
       }
-      return duzeltilen;
+      return duzeltilenIdler.length;
     } catch (e, st) {
       LogServisi().hata('KrediKartiDeposu.limitMutabakatYap', hata: e, yigin: st);
-      return 0;
+      rethrow;
     }
   }
 

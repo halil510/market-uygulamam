@@ -5,6 +5,8 @@
 // önizlemedir — "Kaydet" butonu YOKTUR, gerçek satış fiyatına hiçbir
 // şekilde yazmaz.
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/hata_utils.dart';
+import '../../servisler/bildirim_servisi.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../depolar/urun_deposu.dart';
@@ -53,8 +55,16 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
     }
     final sira = ++_aramaSira;
     setState(() => _araniyor = true);
-    final r = await UrunDeposu().ara(sorgu.trim(), limit: 15);
-    if (mounted && sira == _aramaSira) setState(() { _sonuclar = r; _araniyor = false; });
+    try {
+      final r = await UrunDeposu().ara(sorgu.trim(), limit: 15);
+      if (mounted && sira == _aramaSira) setState(() => _sonuclar = r);
+    } catch (e) {
+      if (mounted && sira == _aramaSira) {
+        BildirimServisi.hata(context, 'Arama yapılamadı: ${kullaniciyaHataMetni(e)}');
+      }
+    } finally {
+      if (mounted && sira == _aramaSira) setState(() => _araniyor = false);
+    }
   }
 
   void _urunSec(UrunModel u) {
@@ -84,15 +94,21 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
     if (u == null || yeniFiyat == null || u.id == null) return;
     final sira = ++_simulasyonSira;
     setState(() => _hesaplaniyor = true);
-    final sonuc = await FiyatSimulasyonuServisi().hesapla(
-      urunId: u.id!,
-      alisFiyat: u.alisFiyat,
-      alisFiyatKdvDahil: u.alisFiyatKdvDahil,
-      eskiFiyat: u.satisFiyati,
-      yeniFiyat: yeniFiyat,
-    );
-    if (mounted && sira == _simulasyonSira) {
-      setState(() { _sonuc = sonuc; _hesaplaniyor = false; });
+    try {
+      final sonuc = await FiyatSimulasyonuServisi().hesapla(
+        urunId: u.id!,
+        alisFiyat: u.alisFiyat,
+        alisFiyatKdvDahil: u.alisFiyatKdvDahil,
+        eskiFiyat: u.satisFiyati,
+        yeniFiyat: yeniFiyat,
+      );
+      if (mounted && sira == _simulasyonSira) setState(() => _sonuc = sonuc);
+    } catch (e) {
+      if (mounted && sira == _simulasyonSira) {
+        BildirimServisi.hata(context, 'Simülasyon hesaplanamadı: ${kullaniciyaHataMetni(e)}');
+      }
+    } finally {
+      if (mounted && sira == _simulasyonSira) setState(() => _hesaplaniyor = false);
     }
   }
 

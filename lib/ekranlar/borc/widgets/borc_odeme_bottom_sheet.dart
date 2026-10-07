@@ -14,6 +14,7 @@ import '../../../saglayicilar/riverpod/borc_provider.dart';
 import '../../../modeller/borc_model.dart';
 import '../../../modeller/banka_hesap_model.dart';
 import '../../../modeller/kredi_karti_model.dart';
+import '../../../cekirdek/utils/hata_utils.dart';
 import '../../../cekirdek/utils/para_utils.dart';
 import '../../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../../servisler/bildirim_servisi.dart';
@@ -73,6 +74,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
   bool get _kartSecimiGerekli => _odemeYontemi == 'Kredi Kartı';
 
   Future<void> _odemeYap() async {
+    if (_yukleniyor) return; // klavye/kısayol ile çift tetiklenmeye karşı
     final tutar = ParaUtils.sayiCoz(_tutarCtrl.text);
     if (tutar == null || tutar <= 0) {
       BildirimServisi.uyari(context, 'Geçerli tutar girin');
@@ -127,7 +129,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
       }
     } catch (e) {
       if (mounted) {
-        BildirimServisi.hata(context, 'Ödeme kaydedilemedi: $e');
+        BildirimServisi.hata(context, 'Ödeme kaydedilemedi: ${kullaniciyaHataMetni(e)}');
         setState(() => _yukleniyor = false);
       }
     }

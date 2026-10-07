@@ -49,12 +49,39 @@ extension _FisTabExt on _IadeEkraniState {
   Future<Map<int, double>> _fisIadeliMiktarlariGetir(int satisId) =>
       IadeDeposu().fisIadeliMiktarlariGetir(satisId);
 
-  Future<void> _fisKalemIade(SatisKalemModel kalem) async {
-    if (_bulunanSatis == null) return;
+  /// Bu fişte üründen satılan TOPLAM (ürün birden fazla satırda olabilir —
+  /// iade edilen miktar da ürün bazında tutulduğundan karşılaştırma aynı
+  /// düzeyde yapılmalı) eksi daha önce iade edilen.
+  double _fisKalanIadeMiktari(int urunId) {
+    final satilan = _bulunanSatis?.kalemler
+            .where((k) => k.urunId == urunId)
+            .fold<double>(0, (t, k) => t + k.miktar) ??
+        0;
+    return satilan - (_fisIadeEdilenMiktar[urunId] ?? 0);
+  }
 
-    // Çift iade koruması: bu kalemden daha önce ne kadar iade edilmiş?
+  Future<void> _fisKalemIade(SatisKalemModel kalem) async {
+    if (_bulunanSatis == null || _fisIadeIsleniyor) return;
+    _fisIadeIsleniyor = true;
+    try {
+      await _fisKalemIadeAkisi(kalem);
+    } finally {
+      _fisIadeIsleniyor = false;
+    }
+  }
+
+  /// Fişteki değerler başka bir işlemle değişmiş olabilir: veritabanından tazele.
+  Future<void> _fisIadeliMiktarlariTazele() async {
+    final satisId = _bulunanSatis?.id;
+    if (satisId == null) return;
+    _fisIadeEdilenMiktar = await _fisIadeliMiktarlariGetir(satisId);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _fisKalemIadeAkisi(SatisKalemModel kalem) async {
+    // Çift iade koruması (ekran tarafı; asıl sınır servis transaction'ında).
     final oncekiIadeMiktar = _fisIadeEdilenMiktar[kalem.urunId] ?? 0;
-    final kalanMiktar = kalem.miktar - oncekiIadeMiktar;
+    final kalanMiktar = _fisKalanIadeMiktari(kalem.urunId);
     if (kalanMiktar <= 0) {
       _msg('${kalem.urunAdi} bu fişten zaten tamamen iade edilmiş', err: true);
       return;
@@ -120,6 +147,7 @@ extension _FisTabExt on _IadeEkraniState {
             ? kalanMiktar.toInt().toString()
             : kalanMiktar.toString());
     double iadeMiktari = kalanMiktar;
+    if (!mounted) return; // e-Fatura kontrolü sırasında ekrandan çıkıldıysa
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -219,18 +247,30 @@ extension _FisTabExt on _IadeEkraniState {
     // Tüm transaction + lot-farkındalıklı stok geri ekleme + bulut senkron
     // mantığı artık IadeIslemServisi.fisKalemIadeKaydet'te — bkz. o
     // metodun doc yorumu, davranış birebir korundu.
-    final (iadeId, _, toplam) = await IadeIslemServisi().fisKalemIadeKaydet(
-      satisId: _bulunanSatis!.id!,
-      cariId: _bulunanSatis!.cariId,
-      urunId: kalem.urunId,
-      urunAdi: kalem.urunAdi,
-      birimFiyat: iadeFiyati,
-      kalanMiktar: iadeMiktari, // servis bunu 'iade edilecek miktar' olarak kullanır
-      oncekiIadeMiktar: oncekiIadeMiktar,
-      odemeYontemi: secilenYontem,
-      kullaniciId: AuthServisi().aktifId,
-      kullaniciAdi: AuthServisi().aktifAd,
-    );
+    final int iadeId;
+    final double toplam;
+    try {
+      (iadeId, _, toplam) = await IadeIslemServisi().fisKalemIadeKaydet(
+        satisId: _bulunanSatis!.id!,
+        cariId: _bulunanSatis!.cariId,
+        urunId: kalem.urunId,
+        urunAdi: kalem.urunAdi,
+        birimFiyat: iadeFiyati,
+        kalanMiktar: iadeMiktari, // servis bunu 'iade edilecek miktar' olarak kullanır
+        oncekiIadeMiktar: oncekiIadeMiktar,
+        odemeYontemi: secilenYontem,
+        kullaniciId: AuthServisi().aktifId,
+        kullaniciAdi: AuthServisi().aktifAd,
+      );
+    } on IadeMiktariAsildiHatasi catch (e) {
+      _msg(e.toString(), err: true);
+      await _fisIadeliMiktarlariTazele();
+      return;
+    } catch (e) {
+      _msg('İade kaydedilemedi: ${kullaniciyaHataMetni(e)}', err: true);
+      return;
+    }
+    if (!mounted) return;
 
     if (_bulunanSatis!.cariId != null) {
       ref.invalidate(cariDetayProvider(_bulunanSatis!.cariId!));
@@ -332,7 +372,7 @@ extension _FisTabExt on _IadeEkraniState {
                     const SizedBox(height: 8),
                     ...(_bulunanSatis!.kalemler.map((k) {
                       final oncekiIade = _fisIadeEdilenMiktar[k.urunId] ?? 0;
-                      final kalanMiktar = k.miktar - oncekiIade;
+                      final kalanMiktar = _fisKalanIadeMiktari(k.urunId);
                       final tamIadeEdildi = kalanMiktar <= 0;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),

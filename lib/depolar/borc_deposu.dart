@@ -74,7 +74,9 @@ class BorcDeposu {
       return rows.map(BorcModel.fromMap).toList();
     } catch (e, st) {
       LogServisi().hata('BorcDeposu.tumunuGetir', hata: e, yigin: st);
-      return [];
+      // Boş liste döndürmek "hiç borç yok" ile "okunamadı"yı ayırt
+      // edilemez kılıyordu; idileGetir() ile aynı şekilde hata iletilir.
+      rethrow;
     }
   }
 

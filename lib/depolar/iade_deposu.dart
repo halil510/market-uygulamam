@@ -128,6 +128,7 @@ class IadeDeposu {
       FROM iade_kalem ik
       JOIN iade i ON ik.iade_id = i.id
       WHERE i.satis_id = ? AND COALESCE(i.durum, '') != 'iptal'
+        AND i.deleted_at IS NULL -- silinmiş iade "iade edilmiş" sayılmaz
       GROUP BY ik.urun_id
     ''', [satisId]);
     return {

@@ -5,9 +5,9 @@ import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:market_plus/servisler/pdf_font_servisi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../widgetlar/ortak/sync_kopyasi_uyarisi.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -682,7 +682,7 @@ double _toDouble(dynamic value) {
                 // (bkz. SatisDeposu.tariheGoreGetir/maliyetToplami'ndeki
                 // not) — "neden eksik" sorusunu önlemek için, varsa
                 // Sync Çakışmaları ekranına götüren bir uyarı gösteriliyor.
-                const _SyncKopyasiUyarisi(),
+                const SyncKopyasiUyarisi(kart: true, mesaj: 'senkron kopyası şüpheli satış bu toplamlara dahil EDİLMEDİ — incelemek için dokunun'),
                 _bilgiKart('Toplam Satış',   _toplamTutar,  Colors.blue,   bold: true),
                 _bilgiKart('Nakit Satış',     _nakitToplam,  Colors.green),
                 _bilgiKart('Kredi Kartı',     _kartToplam,   Colors.orange),
@@ -772,48 +772,6 @@ double _toDouble(dynamic value) {
             ),
         ),
       ]),
-    );
-  }
-}
-
-// Satış Listesi'ndeki _SyncKopyasiSeridi ile AYNI amaç, bu ekranın kendi
-// ListView'ine gömülebilecek şekilde ayrı bir widget (private class'lar
-// dosyalar arası paylaşılamıyor).
-class _SyncKopyasiUyarisi extends StatelessWidget {
-  const _SyncKopyasiUyarisi();
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<SatisModel>>(
-      future: SatisDeposu().syncKopyalariGetir(),
-      builder: (context, snapshot) {
-        final adet = snapshot.data?.length ?? 0;
-        if (adet == 0) return const SizedBox.shrink();
-        return InkWell(
-          onTap: () => context.push('/ayarlar/sync-cakismalari'),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.orange.shade50,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.orange.shade200),
-            ),
-            child: Row(children: [
-              Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange.shade800),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '$adet senkron kopyası şüpheli satış bu toplamlara dahil '
-                  'EDİLMEDİ — incelemek için dokunun',
-                  style: TextStyle(fontSize: 12, color: Colors.orange.shade900, fontWeight: FontWeight.w600),
-                ),
-              ),
-              Icon(Icons.chevron_right, size: 18, color: Colors.orange.shade800),
-            ]),
-          ),
-        );
-      },
     );
   }
 }

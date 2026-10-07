@@ -19,6 +19,7 @@
 //      ANINDA listeden ve veritabanından kaldırılır
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../modeller/urun_model.dart';
@@ -99,13 +100,20 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
 
   Future<void> _yukle() async {
     setState(() => _yukleniyor = true);
-    final liste = await _depo.qrMenuUrunleriGetir();
-    if (!mounted) return;
-    setState(() {
-      _qrListesi = liste;
-      _qrListesiIdler..clear()..addAll(liste.map((u) => u.id!));
-      _yukleniyor = false;
-    });
+    try {
+      final liste = await _depo.qrMenuUrunleriGetir();
+      if (!mounted) return;
+      setState(() {
+        _qrListesi = liste;
+        _qrListesiIdler
+          ..clear()
+          ..addAll([for (final u in liste) if (u.id != null) u.id!]);
+      });
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'QR menü ürünleri yüklenemedi: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      if (mounted) setState(() => _yukleniyor = false);
+    }
   }
 
   Future<void> _aramaYap() async {
@@ -118,13 +126,17 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
     // "ara()" fonksiyonu zaten ürün adı VE barkod alanında birlikte
     // arıyor — kullanıcı ister isim ister barkod numarası yazsın,
     // aynı arama kutusu ikisini de buluyor.
-    final sonuclar = await _depo.ara(q, limit: 20, sadecaAktif: true);
-    if (!mounted) return;
-    setState(() {
+    try {
+      final sonuclar = await _depo.ara(q, limit: 20, sadecaAktif: true);
+      if (!mounted) return;
       // Zaten listede olanları öneri sonuçlarında tekrar gösterme
-      _aramaSonuclari = sonuclar.where((u) => !_qrListesiIdler.contains(u.id)).toList();
-      _araniyor = false;
-    });
+      setState(() => _aramaSonuclari =
+          sonuclar.where((u) => !_qrListesiIdler.contains(u.id)).toList());
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Arama yapılamadı: ${kullaniciyaHataMetni(e)}');
+    } finally {
+      if (mounted) setState(() => _araniyor = false);
+    }
   }
 
   Future<void> _urunEkle(UrunModel u) async {

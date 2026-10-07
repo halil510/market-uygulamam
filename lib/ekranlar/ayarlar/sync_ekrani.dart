@@ -6,12 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'sync/sync_durum_widget.dart';
-import '../../depolar/cari_deposu.dart';
-import '../../depolar/stok_deposu.dart';
-import '../../depolar/masa_deposu.dart';
-import '../../depolar/borc_deposu.dart';
-import '../../depolar/kredi_karti_deposu.dart';
-import '../../servisler/puan_servisi.dart';
+import '../../servisler/senkron_sonrasi_mutabakat.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -420,25 +415,16 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
       setState(() { _progress = 60; _durum = 'Kaydediliyor...'; });
       final sonuc = await _sync.veriIcerAktarPublic(data);
       if (!mounted) return;
-      // Kullanıcı sorusu: "2 cihaz aynı cari kodunu atarsa ne olur?" —
-      // bu senkronizasyon yolunda da (WiFi) aynı otomatik düzeltme
-      // uygulanıyor, tutarlılık için.
-      final duzeltilenCari = await CariDeposu().mukerrerKodlariDuzelt();
-      final duzeltilenStok = await StokDeposu().stokMutabakatYap();
-      final duzeltilenSiparis = await MasaDeposu().siparisToplamlariMutabakatYap();
-      final duzeltilenBorc = await BorcDeposu().odemeMutabakatYap();
-      final duzeltilenKart = await KrediKartiDeposu().limitMutabakatYap();
-      final duzeltilenPuan = await PuanServisi().puanMutabakatYap();
+      // Bulut senkronuyla AYNI merkezî mutabakat adımları (mükerrer cari
+      // kodu, cari bakiye, stok, masa, borç, kart, puan). Her adım ayrı
+      // korunur: biri başarısız olsa diğerleri yine çalışır ve hata loglanır.
+      final duzeltmeler = <String>[];
+      await SenkronSonrasiMutabakat.calistir(log: duzeltmeler.add);
       if (!mounted) return;
       setState(() {
         _progress = 100;
         _durum = '✅ ${sonuc['basarili']} kayıt aktarıldı'
-            '${duzeltilenCari > 0 ? " ($duzeltilenCari mükerrer cari kodu düzeltildi)" : ""}'
-            '${duzeltilenStok > 0 ? " ($duzeltilenStok ürün stoğu mutabakatla düzeltildi)" : ""}'
-            '${duzeltilenSiparis > 0 ? " ($duzeltilenSiparis masa siparişi düzeltildi)" : ""}'
-            '${duzeltilenBorc > 0 ? " ($duzeltilenBorc borç ödemesi düzeltildi)" : ""}'
-            '${duzeltilenKart > 0 ? " ($duzeltilenKart kredi kartı limiti düzeltildi)" : ""}'
-            '${duzeltilenPuan > 0 ? " ($duzeltilenPuan müşteri puanı düzeltildi)" : ""}';
+            '${duzeltmeler.isEmpty ? '' : '\n${duzeltmeler.join('\n')}'}';
         _islemde = false;
       });
       BildirimServisi.basari(context, '${sonuc['basarili']} kayıt alındı');

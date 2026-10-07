@@ -62,8 +62,25 @@ extension _HizliTabExt on _IadeEkraniState {
     // ödeme yöntemini burada seçiyor. Kayıtlı müşteri seçiliyse varsayılan
     // 'Cari' (borcundan düşülür — 2026-09-28), değilse Nakit.
     String secilenYontem = _secilenCari?.id != null ? 'Cari' : 'Nakit';
+    final kalemler = _hizliMap.values
+        .map((i) => IadeKalemGirdi(urun: i.urun, adet: i.adet))
+        .toList();
+    // B4 kararı: önizleme, kayıtla AYNI kuralla (satışta ödenen net fiyat)
+    // hesaplanır — bugünkü satış fiyatı DEĞİL. Dayanak satış yoksa iade yapılmaz.
+    final Map<int, double> fiyatlar;
+    try {
+      fiyatlar = await IadeIslemServisi()
+          .hizliIadeFiyatlari(kalemler, cariId: _secilenCari?.id);
+    } on IadeSatisFiyatiBulunamadiHatasi catch (e) {
+      _msg(e.toString(), err: true);
+      return;
+    } catch (e) {
+      _msg('İade fiyatları okunamadı: ${kullaniciyaHataMetni(e)}', err: true);
+      return;
+    }
+    if (!mounted) return;
     final toplamOnizleme = _hizliMap.values
-        .fold<double>(0.0, (s, i) => s + i.adet * i.urun.satisFiyati);
+        .fold<double>(0.0, (s, i) => s + i.adet * (fiyatlar[i.urun.id] ?? 0));
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -77,6 +94,11 @@ extension _HizliTabExt on _IadeEkraniState {
                     children: [
                       Text(
                           '${_hizliMap.length} kalem, toplam ${ParaUtils.formatla(toplamOnizleme)} iade edilecek.'),
+                      const SizedBox(height: 4),
+                      Text(
+                          'Tutar, ürünlerin ${_secilenCari != null ? 'bu müşteriye yapılan ' : ''}'
+                          'son satışında ödenen fiyattan hesaplandı.',
+                          style: TextStyle(fontSize: 12, color: _R.textL(ctx))),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: secilenYontem,
@@ -137,10 +159,7 @@ extension _HizliTabExt on _IadeEkraniState {
       // IadeIslemServisi.topluIadeKaydet'te — bkz. o metodun doc yorumu,
       // davranış birebir korundu (iade + kalemler + stok + kasa + cari
       // TEK transaction içinde; ya hep birden yazılır ya hiç).
-      final kalemler = _hizliMap.values
-          .map((i) => IadeKalemGirdi(urun: i.urun, adet: i.adet))
-          .toList();
-      final (_, fisNo) = await IadeIslemServisi().topluIadeKaydet(
+      final (_, fisNo, iadeFiyatlari) = await IadeIslemServisi().topluIadeKaydet(
         kalemler: kalemler,
         odemeYontemi: secilenYontem,
         kullaniciId: AuthServisi().aktifId,
@@ -149,13 +168,14 @@ extension _HizliTabExt on _IadeEkraniState {
       );
 
       for (final item in _hizliMap.values) {
+        final fiyat = iadeFiyatlari[item.urun.id] ?? 0;
         _iadeListesi.add({
           'tarih': DateTime.now(),
           'urun_adi': item.urun.urunAdi,
           'barkod': item.urun.barkod ?? '',
           'miktar': item.adet.toDouble(),
-          'birim_fiyat': item.urun.satisFiyati,
-          'toplam_tutar': item.adet * item.urun.satisFiyati,
+          'birim_fiyat': fiyat,
+          'toplam_tutar': item.adet * fiyat,
           'musteri_adi': _secilenCari?.unvan ?? 'Perakende',
           'aciklama': 'Toplu iade - $fisNo',
         });
@@ -178,8 +198,10 @@ extension _HizliTabExt on _IadeEkraniState {
         'Cari' => '$n ürün iade edildi (${_secilenCari!.unvan} bakiyesine işlendi)',
         _ => '$n ürün iade edildi — tutarı POS cihazından ayrıca müşteriye iade edin',
       });
+    } on IadeSatisFiyatiBulunamadiHatasi catch (e) {
+      _msg(e.toString(), err: true); // onaydan sonra başka cihazda satış silinmiş olabilir
     } catch (e) {
-      _msg('Hata: $e', err: true);
+      _msg('İade kaydedilemedi: ${kullaniciyaHataMetni(e)}', err: true);
     } finally {
       if (mounted) setState(() => _yukleniyor = false);
     }

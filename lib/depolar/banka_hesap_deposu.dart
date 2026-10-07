@@ -109,7 +109,7 @@ class BankaHesapDeposu {
       return rows.length;
     } catch (e, st) {
       LogServisi().hata('BankaHesapDeposu.bakiyeUyumsuzlukSayisi', hata: e, yigin: st);
-      return 0;
+      rethrow; // 0 dönmek Veri Sağlığı'nda sahte "uyumlu" gösteriyordu
     }
   }
 

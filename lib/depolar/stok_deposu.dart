@@ -32,50 +32,27 @@ class StokDeposu {
   Future<int> stokMutabakatYap({void Function(String)? log}) async {
     try {
       final db = await _d;
-      // Her ürün için, hareketlerinin net etkisini (sonraki-onceki farkı)
-      // topla — bu, "miktar" alanının hareket_turu'na göre değişen
-      // işaretinden BAĞIMSIZ, her zaman güvenilir bir yöntemdir.
-      final sonuclar = await db.rawQuery('''
-        SELECT urun_id, SUM(sonraki_stok - onceki_stok) as net_degisim
-        FROM stok_hareket
-        GROUP BY urun_id
-      ''');
-
-      var duzeltilen = 0;
       final now = DateTime.now().toIso8601String();
       final duzeltilenIdler = <int>[];
+      // 🔴 YARIŞ DÜZELTMESİ (derin analiz 2026-10-07): "doğru stok"
+      // hesabı ÖNCEDEN transaction'ın DIŞINDA yapılıyordu. Hesap ile yazma
+      // arasında kaydedilen bir satış (stok 10→8) eski değerle (10)
+      // ezilebiliyordu. Artık okuma ve yazma aynı transaction'da —
+      // sqflite transaction'ları sıraya koyduğu için araya yazma giremez.
       await db.transaction((txn) async {
-        for (final r in sonuclar) {
+        final uyumsuzlar = await txn.rawQuery(_stokUyumsuzSql);
+        for (final r in uyumsuzlar) {
           final urunId = r['urun_id'] as int?;
           if (urunId == null) continue;
-          final netDegisim = (r['net_degisim'] as num?)?.toDouble() ?? 0;
-          // Doğru stok = 0 (başlangıç varsayımı) + TÜM hareketlerin net
-          // etkisi. "İlk Stok" hareketi zaten 0'dan başladığı için bu
-          // tutarlı.
-          final dogruStok =
-              netDegisim < 0 ? 0.0 : netDegisim; // negatif stok olmaz
-
-          final mevcut = await txn.query('urunler',
-              columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
-          if (mevcut.isEmpty) continue;
-          final suankiStok = (mevcut.first['stok'] as num?)?.toDouble() ?? 0;
-
-          // Kayda değer bir fark varsa (yuvarlama hatalarını es geçmek
-          // için 0.001 tolerans) düzelt.
-          if ((suankiStok - dogruStok).abs() > 0.001) {
-            // 🔴 Derin analizde bulundu: last_updated hiç bump
-            // edilmiyordu — bu, manuel "Buluta Gönder" senkronunun bile
-            // bu düzeltmeleri hiç yakalayamamasına yol açıyordu (delta
-            // senkron last_updated'a bakıyor).
-            await txn.update(
-                'urunler', {'stok': dogruStok, 'last_updated': now},
-                where: 'id = ?', whereArgs: [urunId]);
-            duzeltilen++;
-            duzeltilenIdler.add(urunId);
-            log?.call('Ürün #$urunId: $suankiStok → $dogruStok');
-          }
+          final dogruStok = (r['dogru_stok'] as num?)?.toDouble() ?? 0;
+          // last_updated güncellenir — delta senkron düzeltmeyi yakalasın.
+          await txn.update('urunler', {'stok': dogruStok, 'last_updated': now},
+              where: 'id = ?', whereArgs: [urunId]);
+          duzeltilenIdler.add(urunId);
+          log?.call('Ürün #$urunId: ${r['mevcut']} → $dogruStok');
         }
       });
+      final duzeltilen = duzeltilenIdler.length;
       for (final urunId in duzeltilenIdler) {
         final satir = await db.query('urunler',
             where: 'id = ?', whereArgs: [urunId], limit: 1);
@@ -90,7 +67,8 @@ class StokDeposu {
       return duzeltilen;
     } catch (e, st) {
       LogServisi().hata('Stok.stokMutabakatYap', hata: e, yigin: st);
-      return 0;
+      // 0 dönmek başarısız düzeltmeyi "0 kayıt düzeltildi ✓" gösteriyordu.
+      rethrow;
     }
   }
 
@@ -100,29 +78,35 @@ class StokDeposu {
   Future<int> mutabakatUyumsuzlukSayisi() async {
     try {
       final db = await _d;
-      final sonuclar = await db.rawQuery('''
-        SELECT urun_id, SUM(sonraki_stok - onceki_stok) as net_degisim
-        FROM stok_hareket
-        GROUP BY urun_id
-      ''');
-      var uyumsuz = 0;
-      for (final r in sonuclar) {
-        final urunId = r['urun_id'] as int?;
-        if (urunId == null) continue;
-        final netDegisim = (r['net_degisim'] as num?)?.toDouble() ?? 0;
-        final dogruStok = netDegisim < 0 ? 0.0 : netDegisim;
-        final mevcut = await db.query('urunler',
-            columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
-        if (mevcut.isEmpty) continue;
-        final suankiStok = (mevcut.first['stok'] as num?)?.toDouble() ?? 0;
-        if ((suankiStok - dogruStok).abs() > 0.001) uyumsuz++;
-      }
-      return uyumsuz;
+      // Ürün başına ayrı SELECT (N+1) yerine tek sorgu.
+      final rows =
+          await db.rawQuery('SELECT COUNT(*) AS n FROM ($_stokUyumsuzSql)');
+      return (rows.first['n'] as num?)?.toInt() ?? 0;
     } catch (e, st) {
       LogServisi().hata('Stok.mutabakatUyumsuzlukSayisi', hata: e, yigin: st);
-      return 0;
+      // 0 döndürmek "uyumlu" ile "kontrol edilemedi"yi ayırt edilemez
+      // kılıyordu (Veri Sağlığı yeşil gösteriyordu) — hata iletilir.
+      rethrow;
     }
   }
+
+  /// Stoğu, hareketlerinin net etkisinden (Σ sonraki − önceki; "miktar"
+  /// alanının türe göre değişen işaretinden bağımsız) farklı olan ürünler.
+  /// Doğru stok = net (başlangıç 0 varsayımı, "İlk Stok" hareketi 0'dan
+  /// başlar). Negatif stok GEÇERLİ (B2 kararı) — önceden max(net, 0) ile
+  /// kırpılıyor, negatif stoklu ürün her senkronda yanlışça "düzeltiliyordu".
+  /// Sayım ve düzeltme aynı tanımı kullanır.
+  static const String _stokUyumsuzSql = '''
+    SELECT u.id AS urun_id, u.stok AS mevcut, t.net_degisim AS dogru_stok
+    FROM (
+      SELECT urun_id, COALESCE(SUM(sonraki_stok - onceki_stok), 0) AS net_degisim
+      FROM stok_hareket
+      WHERE urun_id IS NOT NULL
+      GROUP BY urun_id
+    ) t
+    JOIN urunler u ON u.id = t.urun_id
+    WHERE ABS(COALESCE(u.stok, 0) - t.net_degisim) > 0.001
+  ''';
 
   Future<void> stokDus({
     required int urunId,
@@ -204,7 +188,11 @@ class StokDeposu {
         await txn.query('urunler', where: 'id = ?', whereArgs: [urunId]);
     if (rows.isEmpty) return;
     final onceki = (rows.first['stok'] as num).toDouble();
-    final sonraki = (onceki - miktar).clamp(0, double.infinity);
+    // KARAR (kullanıcı, 2026-10-07 — B2): stok EKSİYE DÜŞEBİLİR. Önceden 0'a
+    // kırpılıyordu: stok 2 iken 5 satılınca stok 0, hareket farkı −2 oluyor;
+    // 5'in iadesi stoğu 5'e çıkarıyordu (+3 hayalet stok). Artık −3'e düşer,
+    // iade gerçek değeri (2) verir; hareket farkı her zaman satılan miktardır.
+    final sonraki = onceki - miktar;
 
     await txn.update('urunler', {'stok': sonraki, 'last_updated': now},
         where: 'id = ?', whereArgs: [urunId]);

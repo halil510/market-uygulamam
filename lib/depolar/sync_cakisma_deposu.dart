@@ -81,16 +81,19 @@ class SyncCakismaDeposu {
     return kapatilan;
   }
 
+  /// Salt okunur sayım. 🔴 ÖNCEDEN burada önce [sahteleriTemizle]
+  /// çağrılıyordu: "sayım" adı altında tüm çakışmalar JSON'dan çözülüp iş
+  /// tablolarına UPDATE yazılıyor, Veri Sağlığı'nın diğer sorgularını da
+  /// bekletiyordu. Temizlik isteyen ekran onu ayrıca, açıkça çağırır.
   Future<int> cozulmemisSayisi() async {
     try {
-      await sahteleriTemizle();
       final db = await _d;
       final rows = await db.rawQuery(
           'SELECT COUNT(*) as n FROM ${DbSabitler.syncCakismalar} WHERE cozuldu = 0');
-      return (rows.first['n'] as int?) ?? 0;
+      return (rows.first['n'] as num?)?.toInt() ?? 0;
     } catch (e, st) {
       LogServisi().hata('SyncCakismaDeposu.cozulmemisSayisi', hata: e, yigin: st);
-      return 0;
+      rethrow;
     }
   }
 

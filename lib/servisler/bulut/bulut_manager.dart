@@ -673,14 +673,28 @@ class BulutManager {
               .toList();
           for (final s in silinenler) {
             final veri = _veriCoz(tablo, s);
-            final deger = veri['global_id']?.toString() ?? '';
+            // 🔴 DÜZELTME (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 14):
+            // ÖNCEDEN değer HEP global_id iken filtre sütunu tablonun eşleşme
+            // anahtarıydı — doğal anahtarlı tablolarda (kategoriler → ad,
+            // kullanicilar → kullanici_adi) "ad = <uuid>" hiçbir satırı
+            // bulmuyor, silme buluta hiç ulaşmıyordu. Değer ile sütun artık
+            // aynı alandan gelir; boş değerle istek gönderilmez.
+            final dogalDeger = uniqueAlan.contains(',') ? null : veri[uniqueAlan]?.toString();
+            final (silAlan, deger) = (dogalDeger != null && dogalDeger.isNotEmpty)
+                ? (uniqueAlan, dogalDeger)
+                : ('global_id', veri['global_id']?.toString() ?? '');
+            if (deger.isEmpty) {
+              LogServisi().uyari('BulutManager: kimliksiz silme isteği atlandı ($tablo)');
+              await db.delete(DbSabitler.syncQueue, where: 'id = ?', whereArgs: [s['id']]);
+              continue;
+            }
             try {
               if (s['islem_tipi'] == 'HARD_DELETE') {
                 await _saglayici!.kaliciSil(
-                    tablo: tablo, uniqueAlan: uniqueAlan, deger: deger);
+                    tablo: tablo, uniqueAlan: silAlan, deger: deger);
               } else {
                 await _saglayici!.sil(
-                    tablo: tablo, uniqueAlan: uniqueAlan, deger: deger);
+                    tablo: tablo, uniqueAlan: silAlan, deger: deger);
               }
               await db.delete(DbSabitler.syncQueue,
                   where: 'id = ?', whereArgs: [s['id']]);

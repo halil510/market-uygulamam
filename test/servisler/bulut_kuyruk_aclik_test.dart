@@ -14,6 +14,7 @@ import '../helper/test_initializer.dart';
 
 class _SahteSaglayici implements IBulutSaglayici {
   final gidenGidler = <String>[];
+  final silmeler = <String>[];
 
   @override String get ad => 'Sahte';
   @override String get ikon => '🧪';
@@ -33,7 +34,7 @@ class _SahteSaglayici implements IBulutSaglayici {
       DateTime? sonGuncelleme, int limit = 1000}) async => [];
   @override
   Future<void> sil({required String tablo, required String uniqueAlan,
-      required String deger}) async {}
+      required String deger}) async => silmeler.add('$tablo.$uniqueAlan=$deger');
   @override
   Future<void> kaliciSil({required String tablo, required String uniqueAlan,
       required String deger}) async {}
@@ -69,6 +70,32 @@ void main() {
     }
     expect(q.map((r) => r['kayit_global_id']).toSet(), {'CARI-ERKEN', 'CARI-SILINEN'});
     expect(BulutManager().durum.value, onceki, reason: 'sağlayıcı yokken durum değişmez');
+  });
+
+  test('silme filtresi değerle aynı alandan gelir (Bulgu 14)', () async {
+    Future<void> kuyruk(String tablo, Map<String, dynamic> veri) =>
+        db.insert('sync_queue', {
+          'tablo_adi': tablo, 'kayit_global_id': veri['global_id'] ?? '',
+          'islem_tipi': 'DELETE', 'veri_json': jsonEncode(veri),
+          'deneme_sayisi': 0, 'durum': 'beklemede',
+        });
+    await kuyruk('kategoriler', {'global_id': 'KAT-G', 'ad': 'Süt'});
+    await kuyruk('birimler', {'global_id': 'BIR-G'});
+    await kuyruk('satislar', {'global_id': 'SAT-G'});
+    await kuyruk('satislar', {'fis_no': 'X'}); // kimliksiz — gönderilmez
+
+    final sahte = _SahteSaglayici();
+    await BulutManager().saglayiciAyarla(sahte);
+    for (var i = 0; i < 40 && sahte.silmeler.length < 3; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await BulutManager().zorlaGonder();
+    }
+    expect(sahte.silmeler.toSet(), {
+      'kategoriler.ad=Süt',
+      'birimler.global_id=BIR-G', // doğal anahtar yok → global_id ile
+      'satislar.global_id=SAT-G',
+    });
+    expect(await db.query('sync_queue', where: "islem_tipi = 'DELETE'"), isEmpty);
   });
 
   test('backoff penceresindeki 600 satır yeni satışın gönderimini engellemez', () async {

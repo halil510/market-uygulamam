@@ -41,6 +41,8 @@ const _tabloSirasi = [
   'irsaliyeler','irsaliye_kalem',
   'promosyonlar','promosyon_tanim','promosyon_kosul','promosyon_aksiyon',
   'tedarikci_siparisler','tedarikci_siparis_kalem',
+  // Tedarikçiye mal iadesi (v81) — cari ve urunler'e FK bağlı; onlardan sonra.
+  'tedarikci_iadeler','tedarikci_iade_kalem',
   'giderler','faturalar','fatura_detaylari',
   // kasa_hareketleri cari_hareket'ten SONRA: referans_id'si satışa,
   // iadeye, gidere ve cari harekete işaret edebilir (polimorfik FK —
@@ -126,6 +128,7 @@ const _globalIdVar = {
   'stok_kapanis_snapshot', 'cari_kapanis_snapshot',
   'kasa_kapanis_snapshot', 'banka_kapanis_snapshot',
   'donem_kilit', // çoklu cihaz kilidi (2026-09-21, FAZ 4)
+  'tedarikci_iadeler', 'tedarikci_iade_kalem', // tedarikçiye iade (v81)
 };
 
 // NOT (2026-09-27): burada ÖNCEDEN id haritası kurulacak ebeveyn
@@ -185,6 +188,7 @@ const _lastUpdatedVar = {
   'stok_kapanis_snapshot', 'cari_kapanis_snapshot',
   'kasa_kapanis_snapshot', 'banka_kapanis_snapshot',
   'donem_kilit', // çoklu cihaz kilidi (2026-09-21, FAZ 4)
+  'tedarikci_iadeler', 'tedarikci_iade_kalem', // tedarikçiye iade (v81)
 };
 
 const Map<String, String> _uniqueAlan = {
@@ -268,6 +272,9 @@ const Map<String, String> _uniqueAlan = {
   'cari_kapanis_snapshot': 'global_id',
   'kasa_kapanis_snapshot': 'global_id',
   'banka_kapanis_snapshot': 'global_id',
+  // Tedarikçiye mal iadesi (v81):
+  'tedarikci_iadeler': 'global_id',
+  'tedarikci_iade_kalem': 'global_id',
 };
 
 // 🔴🔴 Derin analizde bulundu: Bu oturumda soft-delete (is_deleted)
@@ -315,6 +322,7 @@ const _softDeleteKolonu = {
   'banka_hareketler': 'is_deleted', 'kredi_karti_hareket': 'is_deleted',
   'borclar': 'is_deleted',
   'onay_talepleri': 'is_deleted',
+  'tedarikci_iadeler': 'is_deleted', // v81
   // Not: gider_kategoriler, rol_yetkileri, roller_yetki, ayarlar,
   // fiyat_gecmis, cari_adres, musteri_puan, vardiyalar, satis_kalem,
   // iade_kalem, irsaliye_kalem, promosyon_kosul, promosyon_aksiyon,

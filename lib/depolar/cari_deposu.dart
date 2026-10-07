@@ -650,6 +650,13 @@ class CariDeposu {
           throw Exception(
               'Bu kayıt zaten bir iptal/ters kaydıdır, tekrar iptal edilemez.');
         }
+        // Belge kökenli hareket bu genel iptalle silinirse yalnız cari geri
+        // döner, stok/belge bozuk kalır — kendi iptal akışı kullanılmalı
+        // (IadeIslemServisi.tedarikciIadesiniIptalEt).
+        if (mevcutFisTipi == 'Tedarikçi İadesi') {
+          throw Exception('Bu hareket bir tedarikçi iadesinden geliyor — '
+              'iadenin kendisi iptal edilmeli (stok da geri yüklenir).');
+        }
         final now = DateTime.now().toIso8601String();
 
         await txn.update('cari_hareket',

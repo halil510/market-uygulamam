@@ -44,6 +44,7 @@
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- MARKETPLUS — SUPABASE ŞEMASI  (KENDİ KENDİNİ ONARAN SÜRÜM)
+-- 2026-10-07 GÜNCELLEMESİ — yerel DB v81: tedarikci_iadeler + tedarikci_iade_kalem (tedarikçiye mal iadesi) eklendi → 70 senkron tablosu.
 -- 68 senkron tablosu  ·  29.07.2026, son güncelleme 2026-09-21 (banka_hareketler/kredi_karti_hareket referans_id/referans_turu — cari hareket iptali artık bu tarafları da tersine çevirebiliyor)
 --
 -- 2026-09-20 GÜNCELLEMESİ — ERP Denetim Madde 21 & 22 (Supabase Arşiv
@@ -1081,6 +1082,37 @@ CREATE TABLE IF NOT EXISTS subeler (
   is_deleted BOOLEAN
 );
 
+-- [53a] tedarikci_iade_kalem  [YENİ — 2026-10-07, yerel DB v81] tedarikçiye mal iadesi kalemleri.
+-- birim_fiyat = KDV HARİÇ son alış fiyatı, toplam_tutar = KDV DAHİL (tedarikçi borcu KDV dahil).
+CREATE TABLE IF NOT EXISTS tedarikci_iade_kalem (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id TEXT,
+  iade_id BIGINT,
+  urun_id BIGINT,
+  urun_adi TEXT,
+  miktar DOUBLE PRECISION,
+  birim_fiyat DOUBLE PRECISION,
+  kdv_oran DOUBLE PRECISION,
+  toplam_tutar DOUBLE PRECISION,
+  last_updated TIMESTAMPTZ
+);
+
+-- [53b] tedarikci_iadeler  [YENİ — 2026-10-07, yerel DB v81] tedarikçiye mal iadesi (ALIŞ iadesi —
+-- müşteri/bayi iadelerinin 'iade' tablosundan bilinçli olarak ayrı: stok azalır, tedarikçi borcu düşer).
+CREATE TABLE IF NOT EXISTS tedarikci_iadeler (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  global_id TEXT,
+  cari_id BIGINT,
+  iade_no TEXT,
+  tarih TIMESTAMPTZ,
+  toplam_tutar DOUBLE PRECISION,
+  aciklama TEXT,
+  olusturan_id BIGINT,
+  sube_id BIGINT,
+  last_updated TIMESTAMPTZ,
+  is_deleted BOOLEAN
+);
+
 -- [53/58] tedarikci_siparis_kalem
 CREATE TABLE IF NOT EXISTS tedarikci_siparis_kalem (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -2107,6 +2139,25 @@ ALTER TABLE subeler ADD COLUMN IF NOT EXISTS updated_at TEXT;
 ALTER TABLE subeler ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
 ALTER TABLE subeler ADD COLUMN IF NOT EXISTS deleted BIGINT;
 ALTER TABLE subeler ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN;
+ALTER TABLE tedarikci_iade_kalem ADD COLUMN IF NOT EXISTS global_id TEXT;
+ALTER TABLE tedarikci_iade_kalem ADD COLUMN IF NOT EXISTS iade_id BIGINT;
+ALTER TABLE tedarikci_iade_kalem ADD COLUMN IF NOT EXISTS urun_id BIGINT;
+ALTER TABLE tedarikci_iade_kalem ADD COLUMN IF NOT EXISTS urun_adi TEXT;
+ALTER TABLE tedarikci_iade_kalem ADD COLUMN IF NOT EXISTS miktar DOUBLE PRECISION;
+ALTER TABLE tedarikci_iade_kalem ADD COLUMN IF NOT EXISTS birim_fiyat DOUBLE PRECISION;
+ALTER TABLE tedarikci_iade_kalem ADD COLUMN IF NOT EXISTS kdv_oran DOUBLE PRECISION;
+ALTER TABLE tedarikci_iade_kalem ADD COLUMN IF NOT EXISTS toplam_tutar DOUBLE PRECISION;
+ALTER TABLE tedarikci_iade_kalem ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE tedarikci_iadeler ADD COLUMN IF NOT EXISTS global_id TEXT;
+ALTER TABLE tedarikci_iadeler ADD COLUMN IF NOT EXISTS cari_id BIGINT;
+ALTER TABLE tedarikci_iadeler ADD COLUMN IF NOT EXISTS iade_no TEXT;
+ALTER TABLE tedarikci_iadeler ADD COLUMN IF NOT EXISTS tarih TIMESTAMPTZ;
+ALTER TABLE tedarikci_iadeler ADD COLUMN IF NOT EXISTS toplam_tutar DOUBLE PRECISION;
+ALTER TABLE tedarikci_iadeler ADD COLUMN IF NOT EXISTS aciklama TEXT;
+ALTER TABLE tedarikci_iadeler ADD COLUMN IF NOT EXISTS olusturan_id BIGINT;
+ALTER TABLE tedarikci_iadeler ADD COLUMN IF NOT EXISTS sube_id BIGINT;
+ALTER TABLE tedarikci_iadeler ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE tedarikci_iadeler ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN;
 ALTER TABLE tedarikci_siparis_kalem ADD COLUMN IF NOT EXISTS global_id TEXT;
 ALTER TABLE tedarikci_siparis_kalem ADD COLUMN IF NOT EXISTS siparis_id BIGINT;
 ALTER TABLE tedarikci_siparis_kalem ADD COLUMN IF NOT EXISTS urun_id BIGINT;
@@ -2417,6 +2468,8 @@ BEGIN
          'stok_kapanis_snapshot',
          'sube_urun',
          'subeler',
+         'tedarikci_iade_kalem',
+         'tedarikci_iadeler',
          'tedarikci_siparis_kalem',
          'tedarikci_siparisler',
          'urun_fiyat_gruplari',
@@ -2507,6 +2560,8 @@ BEGIN
          'stok_kapanis_snapshot',
          'sube_urun',
          'subeler',
+         'tedarikci_iade_kalem',
+         'tedarikci_iadeler',
          'tedarikci_siparis_kalem',
          'tedarikci_siparisler',
          'urun_fiyat_gruplari',
@@ -2597,6 +2652,8 @@ BEGIN
          'stok_kapanis_snapshot',
          'sube_urun',
          'subeler',
+         'tedarikci_iade_kalem',
+         'tedarikci_iadeler',
          'tedarikci_siparis_kalem',
          'tedarikci_siparisler',
          'urun_fiyat_gruplari',
@@ -2930,6 +2987,16 @@ DO $$ BEGIN
   END IF;
 END $$;
 DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_tedarikci_iade_kalem_global_id') THEN
+    ALTER TABLE tedarikci_iade_kalem ADD CONSTRAINT uq_tedarikci_iade_kalem_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_tedarikci_iadeler_global_id') THEN
+    ALTER TABLE tedarikci_iadeler ADD CONSTRAINT uq_tedarikci_iadeler_global_id UNIQUE (global_id);
+  END IF;
+END $$;
+DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_tedarikci_siparis_kalem_global_id') THEN
     ALTER TABLE tedarikci_siparis_kalem ADD CONSTRAINT uq_tedarikci_siparis_kalem_global_id UNIQUE (global_id);
   END IF;
@@ -3114,6 +3181,11 @@ CREATE INDEX IF NOT EXISTS idx_sube_urun_last_updated ON sube_urun(last_updated)
 CREATE INDEX IF NOT EXISTS idx_sube_urun_urun_id ON sube_urun(urun_id);
 CREATE INDEX IF NOT EXISTS idx_sube_urun_sube_id ON sube_urun(sube_id);
 CREATE INDEX IF NOT EXISTS idx_subeler_last_updated ON subeler(last_updated);
+CREATE INDEX IF NOT EXISTS idx_tedarikci_iade_kalem_last_updated ON tedarikci_iade_kalem(last_updated);
+CREATE INDEX IF NOT EXISTS idx_tedarikci_iade_kalem_iade_id ON tedarikci_iade_kalem(iade_id);
+CREATE INDEX IF NOT EXISTS idx_tedarikci_iade_kalem_urun_id ON tedarikci_iade_kalem(urun_id);
+CREATE INDEX IF NOT EXISTS idx_tedarikci_iadeler_last_updated ON tedarikci_iadeler(last_updated);
+CREATE INDEX IF NOT EXISTS idx_tedarikci_iadeler_cari_id ON tedarikci_iadeler(cari_id);
 CREATE INDEX IF NOT EXISTS idx_tedarikci_siparis_kalem_last_updated ON tedarikci_siparis_kalem(last_updated);
 CREATE INDEX IF NOT EXISTS idx_tedarikci_siparis_kalem_siparis_id ON tedarikci_siparis_kalem(siparis_id);
 CREATE INDEX IF NOT EXISTS idx_tedarikci_siparis_kalem_urun_id ON tedarikci_siparis_kalem(urun_id);
@@ -3290,7 +3362,13 @@ ALTER TABLE sube_urun ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS sube_urun_all ON sube_urun;
 ALTER TABLE subeler ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS subeler_all ON subeler;
+ALTER TABLE tedarikci_iade_kalem ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tedarikci_iade_kalem_all ON tedarikci_iade_kalem;
+ALTER TABLE tedarikci_iadeler ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tedarikci_iadeler_all ON tedarikci_iadeler;
 ALTER TABLE tedarikci_siparis_kalem ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tedarikci_iade_kalem_all ON tedarikci_iade_kalem;
+DROP POLICY IF EXISTS tedarikci_iadeler_all ON tedarikci_iadeler;
 DROP POLICY IF EXISTS tedarikci_siparis_kalem_all ON tedarikci_siparis_kalem;
 ALTER TABLE tedarikci_siparisler ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tedarikci_siparisler_all ON tedarikci_siparisler;
@@ -3377,6 +3455,8 @@ WITH beklenen(tablo) AS (VALUES
     ('stok_kapanis_snapshot'),
     ('sube_urun'),
     ('subeler'),
+    ('tedarikci_iade_kalem'),
+    ('tedarikci_iadeler'),
     ('tedarikci_siparis_kalem'),
     ('tedarikci_siparisler'),
     ('urun_fiyat_gruplari'),
@@ -3879,6 +3959,8 @@ DROP POLICY IF EXISTS stok_hareket_all ON stok_hareket;
 DROP POLICY IF EXISTS stok_kapanis_snapshot_all ON stok_kapanis_snapshot;
 DROP POLICY IF EXISTS sube_urun_all ON sube_urun;
 DROP POLICY IF EXISTS subeler_all ON subeler;
+DROP POLICY IF EXISTS tedarikci_iade_kalem_all ON tedarikci_iade_kalem;
+DROP POLICY IF EXISTS tedarikci_iadeler_all ON tedarikci_iadeler;
 DROP POLICY IF EXISTS tedarikci_siparis_kalem_all ON tedarikci_siparis_kalem;
 DROP POLICY IF EXISTS tedarikci_siparisler_all ON tedarikci_siparisler;
 DROP POLICY IF EXISTS urun_fiyat_gruplari_all ON urun_fiyat_gruplari;
@@ -4695,6 +4777,7 @@ DECLARE
   'vardiyalar', 'satislar', 'satis_kalem', 'iade', 'iade_kalem',
   'irsaliyeler', 'irsaliye_kalem', 'promosyonlar', 'promosyon_tanim',
   'promosyon_kosul', 'promosyon_aksiyon', 'tedarikci_siparisler',
+  'tedarikci_iadeler', 'tedarikci_iade_kalem',
   'tedarikci_siparis_kalem', 'giderler', 'faturalar', 'fatura_detaylari',
   'stok_hareket', 'cari_hareket', 'kasa_hareketleri', 'puan_hareket',
   'personel', 'masalar', 'masa_siparisleri', 'masa_siparis_kalem',

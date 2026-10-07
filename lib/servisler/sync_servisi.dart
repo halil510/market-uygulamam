@@ -299,6 +299,7 @@ class SyncServisi {
         'promosyonlar', 'vardiyalar', 'faturalar', 'fatura_detaylari',
         'iade', 'iade_kalem', 'markalar', 'birimler',
         'tedarikci_siparisler', 'tedarikci_siparis_kalem',
+        'tedarikci_iadeler', 'tedarikci_iade_kalem',
       ];
 
   Future<List<Map<String, dynamic>>> _tabloVeriAl(String tablo) async {
@@ -347,6 +348,7 @@ class SyncServisi {
       'faturalar', 'fatura_detaylari', 'iade', 'iade_kalem',
       'promosyonlar', 'vardiyalar',
       'tedarikci_siparisler', 'tedarikci_siparis_kalem',
+      'tedarikci_iadeler', 'tedarikci_iade_kalem',
     ];
 
     final islemSirasi = sira.where((t) => islenecek.contains(t)).toList()

@@ -6,19 +6,25 @@
 // korur — sadece sorumluluk UI katmanından buraya kaydırılmıştır.
 import '../cekirdek/utils/para_utils.dart';
 import 'package:flutter/foundation.dart';
-import 'package:sqflite/sqflite.dart' show DatabaseExecutor;
+import 'package:sqflite/sqflite.dart' show Database, DatabaseExecutor;
 import 'package:uuid/uuid.dart';
+import '../cekirdek/sabitler/db_sabitleri.dart';
+import '../depolar/cari_deposu.dart';
 import '../depolar/kasa_deposu.dart';
 import '../depolar/stok_deposu.dart';
+import '../depolar/urun_deposu.dart';
+import '../modeller/cari_hareket_model.dart';
 import '../modeller/urun_model.dart';
 import '../modeller/cari_model.dart';
 import '../servisler/aktif_sube_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../servisler/bulut/sync_kuyruk_yazici.dart';
+import '../servisler/fiyat_hesaplama_servisi.dart';
 import '../veri/database/veritabani.dart';
 
 part 'iade_islem_servisi_duzenleme.dart';
 part 'iade_islem_servisi_gecmis.dart';
+part 'iade_islem_servisi_tedarikci_bayi.dart';
 
 /// Fiş iadesinde istenen miktar, o fişten hâlâ iade edilebilecek miktarı
 /// aşıyor (ör. aynı kalem başka bir kasada / aynı anda iade edildi).

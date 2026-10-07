@@ -27,6 +27,9 @@ class DbSabitler {
   static const String promosyonAksiyon      = 'promosyon_aksiyon';
   static const String tedarikciSiparisler   = 'tedarikci_siparisler';
   static const String tedarikciSiparisKalem = 'tedarikci_siparis_kalem';
+  // Tedarikçiye (toptancıya) mal iadesi — alış iadesi (DB v81).
+  static const String tedarikciIadeler      = 'tedarikci_iadeler';
+  static const String tedarikciIadeKalem    = 'tedarikci_iade_kalem';
   static const String bekleyenSiparisler    = 'bekleyen_siparisler';
   static const String bekleyenSiparisKalem  = 'bekleyen_siparis_kalem';
   static const String giderKategoriler      = 'gider_kategoriler';

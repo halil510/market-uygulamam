@@ -182,8 +182,32 @@ extension _GecmisTabExt on _IadeEkraniState {
     ]);
   }
 
+  /// Tedarikçi/bayi iadesi satırında bu ekranın müşteri iadesi eylemleri
+  /// kullanılamıyorsa sebebi, kullanılabiliyorsa null.
+  /// - Tedarikçi iadesi `tedarikci_iadeler` tablosundadır: buradaki silme
+  ///   `iade` tablosunda aynı id'li İLGİSİZ bir müşteri iadesini tersine
+  ///   çevirirdi → silme ve düzenleme kapalı.
+  /// - Bayi iadesi `iade` tablosundadır, silme doğru çalışır; düzenleme
+  ///   fiyatı serbest bıraktığı için bayi fiyat kuralını delerdi → kapalı.
+  String? _cariIadeKisiti(Map<String, dynamic> iade, {required bool silme}) {
+    switch (iade['cari_iade_turu']) {
+      case 'tedarikci':
+        return 'Tedarikçi iadesi bu listeden ${silme ? 'silinemez' : 'düzenlenemez'}.';
+      case 'bayi' when !silme:
+        return 'Bayi iadesinin fiyatı bayi fiyat kuralından gelir — düzenlenemez; '
+            'gerekirse silip yeniden iade alın.';
+      default:
+        return null;
+    }
+  }
+
   // ── Oturum iade silme onayı ─────────────────────────────────────────────
   Future<bool> _oturumIadeSilOnay(Map<String, dynamic> iade) async {
+    final kisit = _cariIadeKisiti(iade, silme: true);
+    if (kisit != null) {
+      _msg(kisit, err: true);
+      return false;
+    }
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -254,6 +278,11 @@ extension _GecmisTabExt on _IadeEkraniState {
 
   // ── Oturum iade düzenleme ────────────────────────────────────────────────
   Future<void> _oturumIadeDuzenle(int idx, Map<String, dynamic> iade) async {
+    final kisit = _cariIadeKisiti(iade, silme: false);
+    if (kisit != null) {
+      _msg(kisit, err: true);
+      return;
+    }
     final miktarCtrl  = TextEditingController(text: (iade['miktar'] as double).toStringAsFixed(0));
     final fiyatCtrl   = TextEditingController(text: (iade['birim_fiyat'] as double).toStringAsFixed(2));
     final iskCtrl     = TextEditingController(text: (iade['iskonto_oran'] as double? ?? 0).toStringAsFixed(0));

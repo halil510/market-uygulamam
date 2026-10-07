@@ -53,7 +53,18 @@ extension _CariHareketIslemleri on _CariHareketEkraniState {
       h.fisId != null &&
       h.fisId! > 0;
 
+  // 🆕 (kullanıcı bulgusu, 2026-10-07): tedarikçiye iade de AYNI sınıf —
+  // genel iptal yalnız borcu geri getiriyor, stok düşük ve belge aktif
+  // kalıyordu. Belge tedarikci_iadeler'de (fis_id onun id'si).
+  bool _tedarikciIadeKokenliMi(CariHareketModel h) =>
+      h.fisTipi == 'Tedarikçi İadesi' && h.fisId != null && h.fisId! > 0;
+
   String _silHareketMesaji(CariHareketModel h) {
+    if (_tedarikciIadeKokenliMi(h)) {
+      return 'Bu hareket "${h.fisNo ?? h.fisId}" numaralı tedarikçi iadesinden geliyor. '
+          'Silersen İADE de iptal edilecek: iade edilen mal stoğa geri girecek '
+          've tedarikçiye olan borcumuz eski hâline dönecek. Emin misiniz?';
+    }
     // 🔴 DÜZELTME (kullanıcı isteği, 2026-09-21): bir satıştan otomatik
     // türeyen hareket önceden SADECE cari kaydını iptal ediyordu — asıl
     // satış Satış Listesi'nde aktif kalıyor, stok/kasa/ciro hiç
@@ -134,6 +145,18 @@ extension _CariHareketIslemleri on _CariHareketEkraniState {
         ref.read(carilerProvider.notifier).yukle();
         await _yukle();
         if (mounted) BildirimServisi.basari(context, 'Alım iptal edildi');
+        return;
+      }
+
+      if (_tedarikciIadeKokenliMi(h)) {
+        // Tedarikçi iadesi: belge + stok + cari tek transaction'da geri alınır.
+        await IadeIslemServisi().tedarikciIadesiniIptalEt(h.fisId!,
+            neden: 'Cari hareketinden silindi');
+        if (!mounted) return;
+        ref.invalidate(cariDetayProvider(widget.cariId));
+        ref.read(carilerProvider.notifier).yukle();
+        await _yukle();
+        if (mounted) BildirimServisi.basari(context, 'Tedarikçi iadesi iptal edildi — stok geri yüklendi');
         return;
       }
 

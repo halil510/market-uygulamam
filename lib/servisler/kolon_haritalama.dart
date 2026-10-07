@@ -81,6 +81,8 @@ class KolonHaritalama {
     'donem_kilit':'global_id','stok_kapanis_snapshot':'global_id',
     'cari_kapanis_snapshot':'global_id','kasa_kapanis_snapshot':'global_id',
     'banka_kapanis_snapshot':'global_id',
+    // Tedarikçiye mal iadesi (v81):
+    'tedarikci_iadeler':'global_id','tedarikci_iade_kalem':'global_id',
   };
 
   static String? uniqueAlan(String tablo) => _unique[tablo];
@@ -105,6 +107,9 @@ class KolonHaritalama {
     'satislar':               {'cari_id': 'cari', 'kasiyer_id': 'kullanicilar', 'kullanici_id': 'kullanicilar', 'sube_id': 'subeler', 'vardiya_id': 'vardiyalar'},
     'tedarikci_siparisler':   {'cari_id': 'cari', 'olusturan_id': 'kullanicilar'},
     'tedarikci_siparis_kalem':{'urun_id': 'urunler', 'siparis_id': 'tedarikci_siparisler'},
+    // Tedarikçiye mal iadesi (v81):
+    'tedarikci_iadeler':      {'cari_id': 'cari', 'olusturan_id': 'kullanicilar', 'sube_id': 'subeler'},
+    'tedarikci_iade_kalem':   {'urun_id': 'urunler', 'iade_id': 'tedarikci_iadeler'},
     // "Bayilerden Sipariş Alma" (bekleyen sipariş) tabloları:
     'bekleyen_siparisler':    {'cari_id': 'cari', 'kullanici_id': 'kullanicilar', 'sube_id': 'subeler'},
     'bekleyen_siparis_kalem': {'urun_id': 'urunler', 'siparis_id': 'bekleyen_siparisler'},
@@ -230,6 +235,7 @@ class KolonHaritalama {
     'fatura': 'faturalar',
     'gider': 'giderler',
     'alim': 'tedarikci_siparisler', 'alim_iptal': 'tedarikci_siparisler',
+    'tedarikci_iade': 'tedarikci_iadeler', 'tedarikci_iade_iptal': 'tedarikci_iadeler',
     'toptan_siparis': 'bekleyen_siparisler',
     'cari_hareket': 'cari_hareket', 'cari_hareket_iptal': 'cari_hareket',
   };
@@ -258,6 +264,7 @@ class KolonHaritalama {
       'Toptan Satış (Sipariş)': 'satislar', 'Satış İptali': 'satislar',
       'İade': 'iade', 'Alım İadesi': 'iade',
       'Alım': 'tedarikci_siparisler', 'Alım İptali': 'tedarikci_siparisler',
+      'Tedarikçi İadesi': 'tedarikci_iadeler', 'Tedarikçi İadesi İptali': 'tedarikci_iadeler',
       // CariDeposu.hareketIptalEt: ters kaydın fis_id'si İPTAL EDİLEN
       // cari_hareket'tir (bulutta 'Tahsilat İptali' fis_id=122 yerel id
       // olarak görüldü — asıl kayıt bulutta 1124).

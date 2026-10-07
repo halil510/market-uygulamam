@@ -562,3 +562,10 @@ Future<void> _v79denV80e(Database db) async {
   await _calistir(db, 'ALTER TABLE iade_kalem ADD COLUMN iskonto_oran REAL NOT NULL DEFAULT 0');
   await _calistir(db, 'ALTER TABLE iade_kalem ADD COLUMN iskonto_tutar REAL NOT NULL DEFAULT 0');
 }
+
+// v80'den v81'e — tedarikçiye (toptancıya) mal iadesi: tedarikci_iadeler +
+// tedarikci_iade_kalem (2026-10-07). Sıfırdan kurulumla AYNI tanım
+// (TedarikSemasi.iadeTablolariniOlustur). Bulut karşılığı: supabase_tam_sema.sql.
+Future<void> _v80denV81e(Database db) async {
+  await TedarikSemasi.iadeTablolariniOlustur(db);
+}

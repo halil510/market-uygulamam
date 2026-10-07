@@ -36,6 +36,7 @@ import '../../servisler/belge_no_servisi.dart';
 import '../../servisler/barkod_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/excel_servisi.dart';
+import '../../servisler/fiyat_hesaplama_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../servisler/iade_islem_servisi.dart';
@@ -77,6 +78,19 @@ class _HizliItem {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+/// Manuel iadede seçili cariye göre iadenin türü: fiyat kuralını, stok
+/// yönünü ve kaydın hangi servis akışına gideceğini belirler.
+enum _CariIadeTuru {
+  /// Müşteri (veya cari seçilmemiş): satış fiyatı, serbest iskonto, stok artar.
+  musteri,
+
+  /// Saf tedarikçi: son alış maliyeti (KDV dahil), stok AZALIR, borcumuz düşer.
+  tedarikci,
+
+  /// Bayi/Toptan müşterisi: bayi fiyatı, stok artar, bayinin borcu düşer.
+  bayi,
+}
+
 class IadeEkrani extends ConsumerStatefulWidget {
   final List<UrunModel>? baslangicUrunleri;
   // Kullanıcı isteği: "iade alımı yaptığımızda o ekran kapanacak" —
@@ -180,7 +194,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     _aramaCtrl.addListener(_aramaDebounce);
     _miktarCtrl.addListener(() {
       final v = ParaUtils.sayiCoz(_miktarCtrl.text) ?? 1;
-      if (v != _miktar) setState(() => _miktar = v);
+      if (v == _miktar) return;
+      setState(() => _miktar = v);
+      // Bayi fiyatı miktar kademesine bağlı olabilir.
+      if (_cariIadeTuru == _CariIadeTuru.bayi) _iadeFiyatiniGuncelle();
     });
     _verileriYukle();
     if (widget.baslangicFisNo != null && widget.baslangicFisNo!.isNotEmpty) {
@@ -272,24 +289,70 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     setState(() {
       _secilenUrun = u;
       _aramaListesi = [];
-      // ÖNCEDEN BURADA HER ZAMAN alış fiyatı gösteriliyordu, cari
-      // tipine (Müşteri/Tedarikçi) hiç bakılmıyordu. Kullanıcı isteği:
-      // cari bir MÜŞTERİ ise satış fiyatı, bir TEDARİKÇİ ise alış
-      // fiyatı üzerinden iade edilsin — bu artık cari tipine göre
-      // koşullu olarak doğru fiyatı gösteriyor.
-      final cariTipi = _secilenCari?.cariTipi ?? '';
-      final isTedarikci = cariSafTedarikciMi(cariTipi);
-      _orijinalFiyat = isTedarikci ? u.alisFiyat : u.satisFiyat;
-      _fiyatCtrl.text = _orijinalFiyat.toStringAsFixed(2);
       _miktar = 1;
       _miktarCtrl.text = '1';
     });
     _aramaCtrl.clear();
     _tab.animateTo(0);
+    // Fiyat cari tipine göre (bkz. _iadeFiyatiniGuncelle).
+    _iadeFiyatiniGuncelle();
     // Mevcut stok BAYAT görünmesin (başka kasada/ekranda satış/iade olmuş
     // olabilir): seçimden sonra güncel kaydı okuyup yerine koy.
     _guncelStoguYukle(u);
   }
+
+  _CariIadeTuru get _cariIadeTuru {
+    final cari = _secilenCari;
+    if (cari?.id == null) return _CariIadeTuru.musteri;
+    // "Hem Müşteri Hem Tedarikçi" bu ekranda müşteri sayılır (bkz.
+    // cariSafTedarikciMi) — tedarikçiye iade yalnız saf tedarikçide.
+    if (cariSafTedarikciMi(cari!.cariTipi)) return _CariIadeTuru.tedarikci;
+    if (cariBayiMi(cari)) return _CariIadeTuru.bayi;
+    return _CariIadeTuru.musteri;
+  }
+
+  /// Formda gösterilen iade birim fiyatı, cari tipine göre: müşteri → satış
+  /// fiyatı; tedarikçi → son alış maliyeti (KDV dahil); bayi → bayiye özel
+  /// toptan fiyatı. Tedarikçi/bayide asıl tutar kayıtta serviste AYNI
+  /// kuralla yeniden hesaplanır (bu yalnız önizleme).
+  Future<void> _iadeFiyatiniGuncelle() async {
+    final urun = _secilenUrun;
+    if (urun == null) return;
+    final tur = _cariIadeTuru;
+    final double fiyat;
+    try {
+      fiyat = switch (tur) {
+        _CariIadeTuru.musteri => urun.satisFiyat,
+        _CariIadeTuru.tedarikci => tedarikciIadeBirimMaliyeti(
+            alisFiyat: urun.alisFiyat,
+            alisKdvOran: urun.alisKdvOran,
+            alisFiyatKdvDahil: urun.alisFiyatKdvDahil),
+        _CariIadeTuru.bayi => (await FiyatHesaplamaServisi()
+                .hesapla(urun: urun, cari: _secilenCari, miktar: _miktar))
+            .birimFiyat,
+      };
+    } catch (e) {
+      _msg('İade fiyatı hesaplanamadı: ${kullaniciyaHataMetni(e)}', err: true);
+      return;
+    }
+    if (!mounted || _secilenUrun?.id != urun.id) return;
+    setState(() {
+      _orijinalFiyat = fiyat;
+      _fiyatCtrl.text = fiyat.toStringAsFixed(2);
+      if (tur != _CariIadeTuru.musteri) _iskontoCtrl.text = '0';
+    });
+  }
+
+  /// Formda fiyatın neden kilitli olduğunu anlatan metin (müşteride null).
+  String? get _fiyatKuraliAciklamasi => switch (_cariIadeTuru) {
+        _CariIadeTuru.musteri => null,
+        _CariIadeTuru.tedarikci =>
+          'Tedarikçiye iade: fiyat ürünün son alış maliyetidir (KDV dahil). '
+              'Stok azalır, tutar ${_secilenCari!.unvan} carisine olan borcumuzdan düşülür.',
+        _CariIadeTuru.bayi =>
+          'Bayi iadesi: fiyat bu bayiye özel toptan fiyatıdır. Stok artar, '
+              'tutar ${_secilenCari!.unvan} bayisinin borcundan düşülür.',
+      };
 
   Future<void> _guncelStoguYukle(UrunModel u) async {
     if (u.id == null) return;
@@ -444,8 +507,8 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
       // bakiye azalmadı"): kayıtlı cari BURADA (kaydet anında) seçilince
       // iade yöntemi hiç sorulmadan varsayılan 'Nakit' ile kaydediliyordu —
       // kasadan para çıkmış sayılıyor, cari borcu düşmüyordu. Artık açıkça
-      // soruluyor.
-      if (sec.id != null) {
+      // soruluyor. Tedarikçi/bayi iadesi her zaman cariye işlenir — sorulmaz.
+      if (sec.id != null && _cariIadeTuru == _CariIadeTuru.musteri) {
         final yontem = await _cariIadeYontemiSor(sec.unvan);
         if (yontem == null || !mounted) return;
         setState(() => _iadeOdemeYontemi = yontem);
@@ -463,6 +526,14 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     }
 
     if (!mounted) return;
+
+    // Tedarikçiye / bayiden iade: fiyatı ve yönü kural belirler, ayrı akış.
+    final tur = _cariIadeTuru;
+    if (tur != _CariIadeTuru.musteri) {
+      await _cariIadesiKaydet(tur);
+      return;
+    }
+
     setState(() => _yukleniyor = true);
 
     try {
@@ -554,6 +625,80 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     }
   }
 
+  /// Tedarikçiye iade / bayiden iade — her kayıt kendi belgesini açar
+  /// (IadeIslemServisi.tedarikciyeIadeEt / bayidenIadeAl). Fiyat formdaki
+  /// alandan değil, servisteki kuraldan gelir; ekranda gösterilen önizlemedir.
+  Future<void> _cariIadesiKaydet(_CariIadeTuru tur) async {
+    final cari = _secilenCari!;
+    final urun = _secilenUrun!;
+    final miktar = _miktar;
+    setState(() => _yukleniyor = true);
+    try {
+      final kalem = [IadeMiktari(urunId: urun.id!, miktar: miktar)];
+      final aciklama = _aciklamaCtrl.text.trim().isEmpty ? null : _aciklamaCtrl.text.trim();
+      final servis = IadeIslemServisi();
+      final sonuc = tur == _CariIadeTuru.tedarikci
+          ? await servis.tedarikciyeIadeEt(
+              tedarikci: cari,
+              kalemler: kalem,
+              kullaniciId: AuthServisi().aktifId,
+              kullaniciAdi: AuthServisi().aktifAd,
+              aciklama: aciklama)
+          : await servis.bayidenIadeAl(
+              bayi: cari,
+              kalemler: kalem,
+              kullaniciId: AuthServisi().aktifId,
+              kullaniciAdi: AuthServisi().aktifAd,
+              aciklama: aciklama);
+      if (!mounted) return;
+
+      final stokAzalir = tur == _CariIadeTuru.tedarikci;
+      _iadeListesi.insert(0, {
+        'iade_id': sonuc.iadeId,
+        'urun_id': urun.id,
+        'tarih': DateTime.now(),
+        'urun_adi': urun.urunAdi,
+        'barkod': urun.barkod ?? '',
+        'miktar': miktar,
+        'birim_fiyat': sonuc.birimFiyatlar[urun.id] ?? 0,
+        'iskonto_oran': 0.0,
+        'iskonto_tutar': 0.0,
+        'toplam_tutar': sonuc.toplamTutar,
+        'musteri_adi': cari.unvan,
+        'cari_id': cari.id,
+        'fis_no': sonuc.fisNo,
+        // Oturum listesinin müşteri iadesine özel sil/düzenle eylemleri bu
+        // satırlarda kısıtlanır (bkz. iade_ekrani_gecmis.dart _cariIadeKisiti).
+        'cari_iade_turu': tur.name,
+      });
+      final si = _tumUrunler.indexWhere((u) => u.id == urun.id);
+      if (si != -1) {
+        final eski = _tumUrunler[si].stok;
+        _tumUrunler[si] = _tumUrunler[si].copyWith(stok: stokAzalir ? eski - miktar : eski + miktar);
+      }
+      ref.invalidate(cariDetayProvider(cari.id!));
+      ref.read(carilerProvider.notifier).yukle();
+
+      _msg(
+          stokAzalir
+              ? '${urun.urunAdi} tedarikçiye iade edildi — ${ParaUtils.formatla(sonuc.toplamTutar)} borcumuzdan düşüldü (${sonuc.fisNo})'
+              : '${urun.urunAdi} bayiden iade alındı — ${ParaUtils.formatla(sonuc.toplamTutar)} bayi borcundan düşüldü (${sonuc.fisNo})',
+          err: false);
+      if (widget.otomatikKapat) {
+        Navigator.pop(context, true);
+        return;
+      }
+      _formSifirla();
+      _gecmisYukle();
+    } on IadeGecersizHatasi catch (e) {
+      _msg(e.mesaj, err: true);
+    } catch (e) {
+      _msg('İade kaydedilemedi: ${kullaniciyaHataMetni(e)}', err: true);
+    } finally {
+      if (mounted) setState(() => _yukleniyor = false);
+    }
+  }
+
   // ── Toplu iade (hızlı mod) ───────────────────────────────────────────────
   // 🔥 "Hızlı" sekmesinin _hizliKaydet() kodu taşındı.
 
@@ -631,6 +776,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                   // geçersiz değerle çöker.
                   if (_iadeOdemeYontemi == 'Cari') _iadeOdemeYontemi = 'Nakit';
                   if (mounted) setState(() {});
+                  _iadeFiyatiniGuncelle(); // fiyat kuralı cari tipine bağlı
                 }),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -650,6 +796,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                     _iadeOdemeYontemi = 'Cari';
                   }
                   if (mounted) setState(() {});
+                  _iadeFiyatiniGuncelle(); // fiyat kuralı cari tipine bağlı
                 }
               }
             },
@@ -799,6 +946,8 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
           if (mounted) setState(() => _iadeOdemeYontemi = v);
         },
         cariAdi: _secilenCari?.id != null ? _secilenCari!.unvan : null,
+        fiyatKuraliAciklamasi: _fiyatKuraliAciklamasi,
+        stokAzalir: _cariIadeTuru == _CariIadeTuru.tedarikci,
         // Aynı ürün bu iadede zaten varsa önceki miktar (örn. 2) gösterilir.
         oncekiMiktar: _iadeListesi
             .where((x) => x['urun_id'] == _secilenUrun!.id)

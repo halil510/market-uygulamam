@@ -147,6 +147,7 @@ class SyncCakismaTespit {
     'faturalar', 'fatura_detaylari', 'giderler',
     'irsaliyeler', 'irsaliye_kalem',
     'tedarikci_siparisler', 'tedarikci_siparis_kalem',
+    'tedarikci_iadeler', 'tedarikci_iade_kalem',
   };
 
   static bool islemVerisiMi(String tablo) => islemTablolari.contains(tablo);

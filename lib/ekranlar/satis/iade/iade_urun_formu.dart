@@ -23,6 +23,17 @@ class IadeUrunFormu extends StatelessWidget {
   /// kullanıcı önceki miktarı ve kaydedince oluşacak TOPLAMI görür.
   final double oncekiMiktar;
 
+  /// Doluysa iade fiyatı bir İŞ KURALIYLA belirlenir (tedarikçi iadesi: son
+  /// alış maliyeti; bayi iadesi: bayi fiyatı) — fiyat alanı kilitlenir,
+  /// satış/alış çipleri, iskonto ve ödeme yöntemi gizlenir (tutar doğrudan
+  /// cari hesaba işlenir), bu metin açıklama olarak gösterilir.
+  final String? fiyatKuraliAciklamasi;
+
+  /// true: iade stoğu AZALTIR (tedarikçiye iade); false: artırır.
+  final bool stokAzalir;
+
+  bool get _fiyatKilitli => fiyatKuraliAciklamasi != null;
+
   const IadeUrunFormu({
     super.key,
     required this.urun,
@@ -37,6 +48,8 @@ class IadeUrunFormu extends StatelessWidget {
     required this.onOdemeYontemiChanged,
     this.cariAdi,
     this.oncekiMiktar = 0,
+    this.fiyatKuraliAciklamasi,
+    this.stokAzalir = false,
   });
 
   static String _adet(double v) => v == v.truncateToDouble()
@@ -123,7 +136,7 @@ class IadeUrunFormu extends StatelessWidget {
                     style: TextStyle(fontSize: 11, color: textL)),
                 Text(
                     miktar > 0
-                        ? '${_adet(urun.stok)}  →  ${_adet(urun.stok + miktar)}'
+                        ? '${_adet(urun.stok)}  →  ${_adet(stokAzalir ? urun.stok - miktar : urun.stok + miktar)}'
                         : _adet(urun.stok),
                     style: TextStyle(
                         fontSize: 14,
@@ -182,6 +195,7 @@ class IadeUrunFormu extends StatelessWidget {
                   children: [
                 TextField(
                   controller: fiyatCtrl,
+                  readOnly: _fiyatKilitli,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
@@ -201,7 +215,7 @@ class IadeUrunFormu extends StatelessWidget {
                 // geliyor, ama artık kullanıcı istediği zaman tek dokunuşla
                 // diğer fiyata geçebiliyor.
                 // Wrap: dar ekranda (360 px) iki çip alt alta geçer, taşmaz.
-                Wrap(spacing: 6, runSpacing: 4, children: [
+                if (!_fiyatKilitli) Wrap(spacing: 6, runSpacing: 4, children: [
                   GestureDetector(
                     onTap: () {
                       fiyatCtrl.text = urun.satisFiyat.toStringAsFixed(2);
@@ -242,6 +256,50 @@ class IadeUrunFormu extends StatelessWidget {
                 ]),
               ])),
         ]),
+        if (_fiyatKilitli) ...[
+          const SizedBox(height: 10),
+          _KuralNotu(metin: fiyatKuraliAciklamasi!),
+        ] else ..._serbestFiyatAlanlari(),
+        const SizedBox(height: 12),
+        // Özet
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+              color: _orange.withAlpha(15),
+              borderRadius: BorderRadius.circular(12)),
+          child: Column(children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('Ara Toplam:', style: TextStyle(fontSize: 12, color: textL)),
+              Text(ParaUtils.formatla(_araToplam),
+                  style: TextStyle(fontSize: 13, color: textL)),
+            ]),
+            if (_iskonto > 0) ...[
+              const SizedBox(height: 4),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('İskonto (${iskontoCtrl.text}%):',
+                    style: const TextStyle(fontSize: 12, color: _orange)),
+                Text('- ${ParaUtils.formatla(_araToplam * _iskonto / 100)}',
+                    style: const TextStyle(fontSize: 12, color: _orange)),
+              ]),
+            ],
+            const Divider(height: 8),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('İade Toplam:',
+                  style: TextStyle(fontSize: 13, color: textL)),
+              Text(ParaUtils.formatla(_net),
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: _orange)),
+            ]),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  /// Müşteri iadesinde serbest girilen iskonto ve iade ödeme yöntemi.
+  List<Widget> _serbestFiyatAlanlari() => [
         const SizedBox(height: 8),
         TextField(
           controller: iskontoCtrl,
@@ -310,41 +368,35 @@ class IadeUrunFormu extends StatelessWidget {
                 fontWeight: FontWeight.w600),
           ),
         ],
-        const SizedBox(height: 12),
-        // Özet
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-              color: _orange.withAlpha(15),
-              borderRadius: BorderRadius.circular(12)),
-          child: Column(children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Ara Toplam:', style: TextStyle(fontSize: 12, color: textL)),
-              Text(ParaUtils.formatla(_araToplam),
-                  style: TextStyle(fontSize: 13, color: textL)),
-            ]),
-            if (_iskonto > 0) ...[
-              const SizedBox(height: 4),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('İskonto (${iskontoCtrl.text}%):',
-                    style: const TextStyle(fontSize: 12, color: _orange)),
-                Text('- ${ParaUtils.formatla(_araToplam * _iskonto / 100)}',
-                    style: const TextStyle(fontSize: 12, color: _orange)),
-              ]),
-            ],
-            const Divider(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('İade Toplam:',
-                  style: TextStyle(fontSize: 13, color: textL)),
-              Text(ParaUtils.formatla(_net),
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: _orange)),
-            ]),
-          ]),
-        ),
-      ]),
+      ];
+}
+
+/// İade fiyatının iş kuralıyla belirlendiği (tedarikçi/bayi) durumda
+/// fiyat alanının altında gösterilen açıklama.
+class _KuralNotu extends StatelessWidget {
+  final String metin;
+  const _KuralNotu({required this.metin});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: TsRenk.bilgi.withAlpha(20),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: TsRenk.bilgi.withAlpha(80)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Icon(Icons.lock_outline, size: 16, color: TsRenk.bilgi),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(metin,
+                style: TextStyle(
+                    fontSize: 12, height: 1.3, color: TsRenk.metinBirincil(context))),
+          ),
+        ]),
+      ),
     );
   }
 }

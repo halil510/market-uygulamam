@@ -255,6 +255,8 @@ class StokDeposu {
     int? referansId,
     String? referansTuru,
     String? aciklama,
+    // Varsayılan 'Çıkış' (satış). Tedarikçiye iade 'Tedarikçi İadesi' verir.
+    String? hareketTuru,
   }) async {
     final urunRows = await txn.query('urunler',
         columns: ['lot_takibi'], where: 'id = ?', whereArgs: [urunId]);
@@ -269,7 +271,8 @@ class StokDeposu {
           kullaniciId: kullaniciId,
           referansId: referansId,
           referansTuru: referansTuru,
-          aciklama: aciklama);
+          aciklama: aciklama,
+          hareketTuru: hareketTuru);
       return [gid];
     }
 
@@ -303,6 +306,7 @@ class StokDeposu {
           referansId: referansId,
           referansTuru: referansTuru,
           aciklama: aciklama,
+          hareketTuru: hareketTuru,
           lotId: lotId);
       gidler.add(gid);
       kalan -= tuketilen;
@@ -320,7 +324,8 @@ class StokDeposu {
           referansTuru: referansTuru,
           aciklama: aciklama == null
               ? 'Lot stoğu yetersiz kaldı'
-              : '$aciklama (lot stoğu yetersiz kaldı)');
+              : '$aciklama (lot stoğu yetersiz kaldı)',
+          hareketTuru: hareketTuru);
       gidler.add(gid);
     }
 

@@ -93,6 +93,7 @@ extension VeritabaniFisSeri on Veritabani {
         'irsaliye'  => 'IRS',
         'alim'      => 'ALM',
         'iade'      => 'IAD',
+        'tedarikci_iade' => 'TDI', // tedarikçiye mal iadesi (alış iadesi)
         'siparis'   => 'SIP',
         _ => tip.toUpperCase().substring(0, min(3, tip.length)).padRight(3, 'X'),
       };

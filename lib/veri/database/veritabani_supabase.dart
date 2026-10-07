@@ -495,6 +495,7 @@ extension VeritabaniSupabase on Veritabani {
       'fiyat_gruplari', 'cari_adres', 'satis_kalem', 'iade_kalem',
       'irsaliyeler', 'irsaliye_kalem', 'promosyon_kosul',
       'promosyon_aksiyon', 'tedarikci_siparis_kalem', 'stok_hareket',
+      'tedarikci_iadeler', 'tedarikci_iade_kalem',
       'cari_hareket', 'puan_hareket', 'masa_rezervasyon',
       'adisyon_log', 'garson_cagri_log', 'masa_hareket_log',
       'banka_hesaplar', 'bankalar', 'kredi_kartlari',

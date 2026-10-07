@@ -5,7 +5,7 @@ class UygSabitler {
   static const String uygulamaAdi = 'BarkoPro';
   static const String versiyon = '2.3.0';
   static const int dbVersiyon =
-      80; // v80: iade_kalem.iskonto_oran/iskonto_tutar (iade indirimi artık kaydedilir ve senkronlanır — 2026-10-07). v79: eski sürümden kalan 4 trigger temizlendi + trg_fiyat_gecmis eşitlendi (2026-09-29). v78: merkezi fatura seri/blok yönetimi için yerel önbellek tabloları (yerel_terminal, yerel_fatura_blok) — bkz. CENTRAL_DOCUMENT_NUMBERING_DEEP_AUDIT.md (2026-09-23)
+      81; // v81: tedarikci_iadeler + tedarikci_iade_kalem (tedarikçiye mal iadesi — 2026-10-07). v80: iade_kalem.iskonto_oran/iskonto_tutar (iade indirimi artık kaydedilir ve senkronlanır — 2026-10-07). v79: eski sürümden kalan 4 trigger temizlendi + trg_fiyat_gecmis eşitlendi (2026-09-29). v78: merkezi fatura seri/blok yönetimi için yerel önbellek tabloları (yerel_terminal, yerel_fatura_blok) — bkz. CENTRAL_DOCUMENT_NUMBERING_DEEP_AUDIT.md (2026-09-23)
   static const int maxHataliGiris = 5;
   static const int kilitSureSaniye = 30;
   static const int cacheEnUzunSure = 5;

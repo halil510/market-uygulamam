@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 import 'semalar/masa_semasi.dart';
 import 'semalar/doviz_semasi.dart';
+import 'semalar/tedarik_semasi.dart';
 
 part 'migrasyon_yonetici_v1_v12.dart';
 part 'migrasyon_yonetici_v12_v36.dart';
@@ -234,5 +235,8 @@ class MigrasyonYonetici {
 
     // v79'dan v80'e — iade kalemlerinde indirim (bkz. _v79denV80e).
     if (eskiVersiyon < 80) await _v79denV80e(db);
+
+    // v80'den v81'e — tedarikçiye mal iadesi tabloları (bkz. _v80denV81e).
+    if (eskiVersiyon < 81) await _v80denV81e(db);
   }
 }

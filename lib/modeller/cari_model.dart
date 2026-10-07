@@ -173,3 +173,17 @@ bool cariSafTedarikciMi(String? cariTipi) {
   final musteriDe = t.contains('müşteri') || t.contains('musteri') || t.contains('hem ');
   return tedarikci && !musteriDe;
 }
+
+/// Cari bir TEDARİKÇİ olarak işlem görebilir mi (saf tedarikçi VEYA "Hem
+/// Müşteri Hem Tedarikçi")? Tedarikçiye mal iadesinde kullanılır.
+bool cariTedarikciOlabilirMi(String? cariTipi) {
+  final t = (cariTipi ?? '').toLowerCase();
+  return t.contains('edarik') || t.contains('upplier');
+}
+
+/// Cari bir BAYİ/TOPTAN müşterisi mi? Toptan satış ekranının bayi listesiyle
+/// AYNI kural: müşteri tipli cari + müşteri tipi Bayi/Toptan (saf tedarikçinin
+/// yanlışlıkla Bayi işaretlenmesi bayi saymaz).
+bool cariBayiMi(CariModel cari) =>
+    cari.cariTipi.contains('Müşteri') &&
+    (cari.musteriTipi == 'Bayi' || cari.musteriTipi == 'Toptan');

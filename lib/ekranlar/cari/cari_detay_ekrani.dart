@@ -67,11 +67,18 @@ const _alimAileTipleri = {
   'Alım', 'Alım İptali',
 };
 
-/// [h] hangi aileye ait (varsa) — 's' (Satış) / 'a' (Alım) / null
-/// (aile-dışı, ör. Tahsilat/Ödeme).
+/// Tedarikçiye iade ailesi (2026-10-07) — fis_id tedarikci_iadeler.id'dir,
+/// satış/alım id uzaylarından ayrı aile olarak gruplanır.
+const _tedarikciIadeAileTipleri = {
+  'Tedarikçi İadesi', 'Tedarikçi İadesi İptali',
+};
+
+/// [h] hangi aileye ait (varsa) — 's' (Satış) / 'a' (Alım) / 't' (Tedarikçi
+/// iadesi) / null (aile-dışı, ör. Tahsilat/Ödeme).
 String? _fisAilesi(CariHareketModel h) {
   if (_satisAileTipleri.contains(h.fisTipi)) return 's';
   if (_alimAileTipleri.contains(h.fisTipi)) return 'a';
+  if (_tedarikciIadeAileTipleri.contains(h.fisTipi)) return 't';
   return null;
 }
 
@@ -98,7 +105,10 @@ List<CariHareketModel> _iptalEdilmisSatislariGizle(
   final gizlenecekAnahtarlar = <String>{};
   gruplar.forEach((anahtar, grup) {
     final asliVarMi = grup.any((g) =>
-        g.fisTipi == 'Satış' || g.fisTipi == 'Toptan Satış' || g.fisTipi == 'Alım');
+        g.fisTipi == 'Satış' ||
+        g.fisTipi == 'Toptan Satış' ||
+        g.fisTipi == 'Alım' ||
+        g.fisTipi == 'Tedarikçi İadesi');
     final iptalVarMi = grup.any((g) => g.fisTipi.endsWith('İptali'));
     if (!asliVarMi || !iptalVarMi) return;
     final net = grup.fold(0.0, (s, g) => s + g.borc - g.alacak);

@@ -332,6 +332,11 @@ class SupabaseSyncServisi {
         m['urun_adi'] = 'Bilinmeyen Ürün';
       }
     }
+    if (tablo == 'tedarikci_iade_kalem') {
+      m['miktar'] ??= 1.0;
+      m['birim_fiyat'] ??= 0.0;
+      m['toplam_tutar'] ??= 0.0;
+    }
     if (tablo == 'tedarikci_siparis_kalem') {
       m['siparis_mik'] ??= 1.0;
       m['birim_fiyat'] ??= 0.0;

@@ -1,13 +1,13 @@
 // lib/ekranlar/vardiya/vardiya_ekrani.dart — Geliştirilmiş
 import '../../cekirdek/utils/denetleyici_birak.dart';
-import '../../cekirdek/utils/dosya_paylasim.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
+
+import '../../servisler/vardiya/vardiya_rapor_servisi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../depolar/kasa_deposu.dart';
@@ -20,6 +20,8 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/bildirim_servisi.dart';
 
 import 'masaustu/vardiya_gecmis_masaustu_gorunum.dart';
+import 'widgets/vardiya_gecmis_mobil_liste.dart';
+import 'widgets/vardiya_kartlari.dart';
 
 class VardiyaEkrani extends ConsumerStatefulWidget {
   final dynamic extra;
@@ -346,18 +348,18 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
                     color: TsRenk.arkaplan(context),
                     borderRadius: BorderRadius.circular(12)),
                 child: Column(children: [
-                  _OzetSatir('Başlangıç Kasası', ParaUtils.formatla(basBakiye)),
-                  _OzetSatir('Nakit Satışlar', ParaUtils.formatla(nakit)),
+                  VardiyaOzetSatir('Başlangıç Kasası', ParaUtils.formatla(basBakiye)),
+                  VardiyaOzetSatir('Nakit Satışlar', ParaUtils.formatla(nakit)),
                   // Madde 12 denetimi (2026-09-16): ÖNCEDEN tek bir "Diğer
                   // Nakit Hareketler" satırında toplanıyordu — artık
                   // Tahsilat/Gider/Ödeme/Virman AYRI kalemler olarak
                   // gösteriliyor (sıfır olan kategori gizlenir).
                   for (final kategori in ['Tahsilat', 'Gider', 'Ödeme', 'Virman', 'Diğer'])
                     if ((kirilim[kategori] ?? 0).abs() > 0.005)
-                      _OzetSatir(kategori, ParaUtils.formatla(kirilim[kategori]!)),
-                  _OzetSatir('Beklenen Kasa', ParaUtils.formatla(beklenenNakit),
+                      VardiyaOzetSatir(kategori, ParaUtils.formatla(kirilim[kategori]!)),
+                  VardiyaOzetSatir('Beklenen Kasa', ParaUtils.formatla(beklenenNakit),
                       bold: true),
-                  _OzetSatir('Anlık Kasa Bak.', ParaUtils.formatla(kasaBak)),
+                  VardiyaOzetSatir('Anlık Kasa Bak.', ParaUtils.formatla(kasaBak)),
                 ]),
               ),
               const SizedBox(height: 12),
@@ -477,119 +479,14 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
   }
 
   Future<void> _pdfRapor(Map<String, dynamic> v) async {
-    final pdf = pw.Document();
-    final fmt = DateFormat('dd.MM.yyyy HH:mm');
-    final basTxt = v['acilis_tarihi'] != null
-        ? fmt.format(DateTime.parse(v['acilis_tarihi']))
-        : '—';
-    final bitTxt = v['kapanis_tarihi'] != null
-        ? fmt.format(DateTime.parse(v['kapanis_tarihi']))
-        : '—';
-    final sure = _sureTxt(
-        v['acilis_tarihi']?.toString(), v['kapanis_tarihi']?.toString());
-
-    // Satış verisi
-    final ozet = await _depo.pdfSatisOzetiGetir(v['acilis_tarihi'].toString());
-
-    pdf.addPage(pw.Page(
-      pageFormat: PdfPageFormat.a5,
-      margin: const pw.EdgeInsets.all(24),
-      build: (ctx) =>
-          pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Center(
-            child: pw.Text('VARDİYA RAPORU',
-                style: pw.TextStyle(
-                    fontSize: 18, fontWeight: pw.FontWeight.bold))),
-        pw.SizedBox(height: 4),
-        pw.Divider(),
-        pw.SizedBox(height: 8),
-        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Text('Personel:',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.Text(v['ad_soyad']?.toString() ?? '—'),
-        ]),
-        pw.SizedBox(height: 4),
-        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Text('Açılış:',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.Text(basTxt),
-        ]),
-        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Text('Kapanış:',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.Text(bitTxt),
-        ]),
-        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Text('Süre:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.Text(sure),
-        ]),
-        pw.SizedBox(height: 12),
-        pw.Divider(),
-        pw.SizedBox(height: 8),
-        pw.Text('SATIŞ ÖZETİ',
-            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
-        pw.SizedBox(height: 6),
-        _pdfSatir('Toplam Satış', '${ozet['sayi']} adet'),
-        _pdfSatir('Toplam Ciro',
-            ParaUtils.formatla((ozet['ciro'] as num?)?.toDouble() ?? 0)),
-        _pdfSatir('Nakit',
-            ParaUtils.formatla((ozet['nakit'] as num?)?.toDouble() ?? 0)),
-        _pdfSatir('Kredi Kartı',
-            ParaUtils.formatla((ozet['kart'] as num?)?.toDouble() ?? 0)),
-        _pdfSatir('Cari',
-            ParaUtils.formatla((ozet['cari_toplam'] as num?)?.toDouble() ?? 0)),
-        _pdfSatir('İskonto',
-            ParaUtils.formatla((ozet['iskonto'] as num?)?.toDouble() ?? 0)),
-        pw.SizedBox(height: 12),
-        pw.Divider(),
-        pw.SizedBox(height: 8),
-        pw.Text('KASA',
-            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
-        pw.SizedBox(height: 6),
-        _pdfSatir(
-            'Başlangıç',
-            ParaUtils.formatla(
-                (v['baslangic_bakiye'] as num?)?.toDouble() ?? 0)),
-        _pdfSatir('Nakit Satış',
-            ParaUtils.formatla((ozet['nakit'] as num?)?.toDouble() ?? 0)),
-        _pdfSatir('Sayım',
-            ParaUtils.formatla((v['nakit_sayim'] as num?)?.toDouble() ?? 0)),
-        _pdfSatir(
-            'Fark', ParaUtils.formatla((v['fark'] as num?)?.toDouble() ?? 0),
-            bold: true),
-        pw.SizedBox(height: 20),
-        pw.Center(
-            child: pw.Text('BarkoPro © ${DateTime.now().year}',
-                style: const pw.TextStyle(fontSize: 9))),
-      ]),
-    ));
-
-    await DosyaPaylasim.pdfPaylas(
-        await pdf.save(),
-        'vardiya_raporu_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    try {
+      await VardiyaRaporServisi.pdfPaylas(v);
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, kullaniciyaHataMetni(e));
+    }
   }
 
-  pw.Widget _pdfSatir(String etiket, String deger, {bool bold = false}) =>
-      pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 2),
-        child: pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text(etiket),
-              pw.Text(deger,
-                  style: bold
-                      ? pw.TextStyle(fontWeight: pw.FontWeight.bold)
-                      : null),
-            ]),
-      );
-
-  String _sureTxt(String? bas, String? bit) {
-    final b = DateTime.tryParse(bas ?? '');
-    final e = DateTime.tryParse(bit ?? '');
-    if (b == null) return '—';
-    final sure = (e ?? DateTime.now()).difference(b);
-    return '${sure.inHours}s ${sure.inMinutes.remainder(60)}dk';
-  }
+  String _sureTxt(String? bas, String? bit) => VardiyaRaporServisi.sureMetni(bas, bit);
 
   @override
   Widget build(BuildContext context) {
@@ -626,7 +523,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
       onRefresh: _yukle,
       child: ListView(padding: const EdgeInsets.all(16), children: [
         // Durum kartı
-        _VardiyaDurumKart(
+        VardiyaDurumKart(
           aktif: _aktif,
           fmt: _fmt,
           sure: _sureTxt(_aktif?['acilis_tarihi']?.toString(), null),
@@ -651,21 +548,21 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
             mainAxisSpacing: 10,
             childAspectRatio: 1.7,
             children: [
-              _VardiyaKpi('Satış', '${_satisOzet['satis_sayisi'] ?? 0} adet',
+              VardiyaKpi('Satış', '${_satisOzet['satis_sayisi'] ?? 0} adet',
                   Icons.receipt_outlined, Colors.blue.shade700),
-              _VardiyaKpi(
+              VardiyaKpi(
                   'Ciro',
                   ParaUtils.formatla(
                       (_satisOzet['toplam_ciro'] as num?)?.toDouble() ?? 0),
                   Icons.trending_up,
                   Colors.green.shade700),
-              _VardiyaKpi(
+              VardiyaKpi(
                   'Nakit',
                   ParaUtils.formatla(
                       (_satisOzet['nakit'] as num?)?.toDouble() ?? 0),
                   Icons.payments_outlined,
                   Colors.purple.shade700),
-              _VardiyaKpi(
+              VardiyaKpi(
                   'Kredi K.',
                   ParaUtils.formatla(
                       (_satisOzet['kart'] as num?)?.toDouble() ?? 0),
@@ -687,16 +584,16 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
               const Text('Kasa Durumu',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
               const SizedBox(height: 10),
-              _OzetSatir(
+              VardiyaOzetSatir(
                   'Başlangıç Kasası',
                   ParaUtils.formatla(
                       (_aktif!['baslangic_bakiye'] as num?)?.toDouble() ?? 0)),
-              _OzetSatir(
+              VardiyaOzetSatir(
                   'Nakit Satışlar',
                   ParaUtils.formatla(
                       (_satisOzet['nakit'] as num?)?.toDouble() ?? 0)),
               const Divider(),
-              _OzetSatir(
+              VardiyaOzetSatir(
                   'Anlık Kasa Bak.',
                   ParaUtils.formatla(
                       (_satisOzet['kasa_bakiye'] as num?)?.toDouble() ?? 0),
@@ -743,251 +640,13 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
         onDahaFazla: _gecmisDahaFazlaYukle,
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _gecmis.length + (_gecmisDahaVarMi ? 1 : 0),
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        if (i >= _gecmis.length) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: _gecmisDahaYukleniyor
-                  ? const SizedBox(
-                      width: 22, height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : TextButton.icon(
-                      onPressed: _gecmisDahaFazlaYukle,
-                      icon: const Icon(Icons.expand_more),
-                      label: const Text('Daha Fazla Yükle'),
-                    ),
-            ),
-          );
-        }
-        final v = _gecmis[i];
-        final bas = DateTime.tryParse(v['acilis_tarihi']?.toString() ?? '');
-        final bit = DateTime.tryParse(v['kapanis_tarihi']?.toString() ?? '');
-        final fark = (v['fark'] as num?)?.toDouble() ?? 0;
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: TsRenk.kart(context),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
-          ),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Icon(Icons.person_outline,
-                  size: 16, color: context.textSecondary),
-              const SizedBox(width: 4),
-              Text(v['ad_soyad']?.toString() ?? '—',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 13)),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.picture_as_pdf_outlined,
-                    size: 20, color: Colors.red),
-                tooltip: 'PDF Rapor',
-                onPressed: () => _pdfRapor(v),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ]),
-            const SizedBox(height: 4),
-            Text(
-                '${bas != null ? _fmt.format(bas) : '—'}  →  ${bit != null ? _fmt.format(bit) : '—'}',
-                style:
-                    TextStyle(fontSize: 11, color: context.textSecondary)),
-            // Madde 12 denetimi (2026-09-16) — Müdür Onayı: kapatan kişi
-            // Müdür/Admin değilse burada kim onayladığı görünür.
-            if (v['onaylayan_adi'] != null) ...[
-              const SizedBox(height: 2),
-              Row(children: [
-                Icon(Icons.verified_user_outlined, size: 12, color: Colors.deepPurple.shade300),
-                const SizedBox(width: 4),
-                Text('Onaylayan: ${v['onaylayan_adi']}',
-                    style: TextStyle(fontSize: 10, color: Colors.deepPurple.shade300)),
-              ]),
-            ],
-            const SizedBox(height: 8),
-            Row(children: [
-              _gecmisChip(
-                  _sureTxt(v['acilis_tarihi']?.toString(),
-                      v['kapanis_tarihi']?.toString()),
-                  Icons.timer_outlined,
-                  Colors.blue.shade700),
-              const SizedBox(width: 6),
-              _gecmisChip(
-                  ParaUtils.formatla(
-                      (v['bitis_bakiye'] as num?)?.toDouble() ?? 0),
-                  Icons.account_balance_wallet_outlined,
-                  Colors.green.shade700),
-              const SizedBox(width: 6),
-              if (fark.abs() > 0.01)
-                _gecmisChip(
-                    '${fark > 0 ? '+' : ''}${ParaUtils.formatla(fark)}',
-                    fark > 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                    fark > 0 ? Colors.blue.shade700 : Colors.red.shade700),
-            ]),
-          ]),
-        );
-      },
-    );
-  }
-
-  Widget _gecmisChip(String metin, IconData ikon, Color renk) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-            color: Color.fromARGB(20, renk.red, renk.green, renk.blue),
-            borderRadius: BorderRadius.circular(12)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(ikon, size: 12, color: renk),
-          const SizedBox(width: 3),
-          Text(metin,
-              style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: renk)),
-        ]),
-      );
-}
-
-// ── Yardımcı Widgetlar ────────────────────────────────────────────────────────
-
-class _OzetSatir extends StatelessWidget {
-  final String etiket, deger;
-  final bool bold;
-  const _OzetSatir(this.etiket, this.deger, {this.bold = false});
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(children: [
-          Text(etiket,
-              style:
-                  TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
-          const Spacer(),
-          Text(deger,
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
-        ]),
-      );
-}
-
-class _VardiyaKpi extends StatelessWidget {
-  final String baslik, deger;
-  final IconData ikon;
-  final Color renk;
-  const _VardiyaKpi(this.baslik, this.deger, this.ikon, this.renk);
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-            color: TsRenk.kart(context),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(ikon, color: renk, size: 16),
-            const SizedBox(width: 4),
-            Text(baslik,
-                style: TextStyle(
-                    fontSize: 11, color: TsRenk.metinIkincil(context))),
-          ]),
-          const Spacer(),
-          Text(deger,
-              style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w800, color: renk)),
-        ]),
-      );
-}
-
-class _VardiyaDurumKart extends StatelessWidget {
-  final Map<String, dynamic>? aktif;
-  final DateFormat fmt;
-  final String sure;
-  final VoidCallback onAc, onKapat;
-  const _VardiyaDurumKart(
-      {required this.aktif,
-      required this.fmt,
-      required this.sure,
-      required this.onAc,
-      required this.onKapat});
-
-  @override
-  Widget build(BuildContext context) {
-    final acik = aktif != null;
-    final bas = DateTime.tryParse(aktif?['acilis_tarihi']?.toString() ?? '');
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-            colors: acik
-                ? [Colors.green.shade700, Colors.green.shade500]
-                : [context.textSecondary, TsRenk.arkaplan(context)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-              color: Color.fromARGB(
-                  76,
-                  (acik ? Colors.green : context.textSecondary).red,
-                  (acik ? Colors.green : context.textSecondary).green,
-                  (acik ? Colors.green : context.textSecondary).blue),
-              blurRadius: 12,
-              offset: const Offset(0, 6))
-        ],
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(acik ? Icons.lock_open_rounded : Icons.lock_rounded,
-              color: Colors.white, size: 28),
-          const SizedBox(width: 10),
-          Text(acik ? 'Vardiya Açık' : 'Vardiya Kapalı',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800)),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-                color: const Color(0x33FFFFFF),
-                borderRadius: BorderRadius.circular(20)),
-            child: Text(acik ? '🟢 Aktif' : '🔴 Kapalı',
-                style: const TextStyle(color: Colors.white, fontSize: 12)),
-          ),
-        ]),
-        if (acik && bas != null) ...[
-          const SizedBox(height: 12),
-          Text('Başlangıç: ${fmt.format(bas)}',
-              style: const TextStyle(color: Colors.white70, fontSize: 12)),
-          Text('Süre: $sure',
-              style: const TextStyle(color: Colors.white70, fontSize: 12)),
-          if (aktif?['ad_soyad'] != null)
-            Text('Personel: ${aktif!['ad_soyad']}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        ],
-        const SizedBox(height: 18),
-        SizedBox(
-          width: double.infinity,
-          height: 46,
-          child: FilledButton.icon(
-            onPressed: acik ? onKapat : onAc,
-            icon: Icon(acik ? Icons.lock_rounded : Icons.lock_open_rounded),
-            label: Text(acik ? 'Vardiyayı Kapat' : 'Vardiya Aç',
-                style:
-                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: acik ? Colors.orange : Colors.green,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-        ),
-      ]),
+    return VardiyaGecmisMobilListe(
+      vardiyalar: _gecmis,
+      sureMetni: _sureTxt,
+      onPdf: _pdfRapor,
+      dahaVarMi: _gecmisDahaVarMi,
+      dahaYukleniyor: _gecmisDahaYukleniyor,
+      onDahaFazla: _gecmisDahaFazlaYukle,
     );
   }
 }

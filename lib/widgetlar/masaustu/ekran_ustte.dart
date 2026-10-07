@@ -17,3 +17,12 @@ bool ekranUstte(BuildContext context) {
   if (!TickerMode.valuesOf(context).enabled) return false;
   return ModalRoute.of(context)?.isCurrent != false;
 }
+
+/// Klavye odağı bir yazı alanında mı? (Ör. Ctrl+A orada metni seçmeli,
+/// tablodaki tüm satırları değil.)
+bool yaziAlaniOdakta() {
+  final odak = FocusManager.instance.primaryFocus?.context;
+  return odak != null &&
+      (odak.widget is EditableText ||
+          odak.findAncestorWidgetOfExactType<EditableText>() != null);
+}

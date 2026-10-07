@@ -356,12 +356,7 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
     if (ctrl && k == LogicalKeyboardKey.keyA) {
       // Metin kutusunda Ctrl+A metni seçsin — tablo tümünü yalnız odak
       // bir yazı alanında değilken seçer.
-      final odak = FocusManager.instance.primaryFocus?.context;
-      if (odak != null &&
-          (odak.widget is EditableText ||
-              odak.findAncestorWidgetOfExactType<EditableText>() != null)) {
-        return false;
-      }
+      if (yaziAlaniOdakta()) return false;
       widget.onCokluSecim({for (final u in widget.urunler) if (u.id != null) u.id!});
     } else if (k == LogicalKeyboardKey.f1) {
       widget.onEkle();

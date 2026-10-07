@@ -323,6 +323,14 @@ class _StokListeEkraniState extends ConsumerState<StokListeEkrani>
         scrollController: _scrollCtrl,
         onYenile: () => _yukle(reset: true),
         onExcel: _topluExcel,
+        seciliIds: _seciliUrunler,
+        // 2+ ürün seçim modunu (üst çubukta "N seçili" + Excel) açar.
+        onCokluSecim: (ids) => setState(() {
+          _seciliUrunler
+            ..clear()
+            ..addAll(ids.length >= 2 ? ids : const <int>{});
+          _secimModu = _seciliUrunler.isNotEmpty;
+        }),
       );
     }
     return ListView.builder(

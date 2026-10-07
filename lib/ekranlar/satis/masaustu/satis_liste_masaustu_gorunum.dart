@@ -22,6 +22,9 @@ class SatisListeMasaustuGorunum extends StatefulWidget {
   final void Function(SatisModel satis) onSecToggle;
   final Future<void> Function() onYenile;
 
+  /// Çoklu seçim (Ctrl+tık, Shift+tık, sürükleme, Ctrl+A).
+  final ValueChanged<Set<int>> onCokluSecim;
+
   const SatisListeMasaustuGorunum({
     super.key,
     required this.satislar,
@@ -30,6 +33,7 @@ class SatisListeMasaustuGorunum extends StatefulWidget {
     required this.onDetay,
     required this.onSecToggle,
     required this.onYenile,
+    required this.onCokluSecim,
   });
 
   @override
@@ -98,6 +102,18 @@ class _SatisListeMasaustuGorunumState extends State<SatisListeMasaustuGorunum> {
 
   void _menu(SatisModel s, Offset konum) {
     final secili = s.id != null && widget.seciliIds.contains(s.id);
+    if (secili && widget.seciliIds.length >= 2) {
+      // Çoklu seçimin içine sağ tık: silme/iptal üst çubuktaki çöp kutusu
+      // (onaylı akış) ile yapılır.
+      masaustuMenuAc(context, konum, [
+        MenuOge('Satış Detayı', () => widget.onDetay(s),
+            ikon: Icons.receipt_long_outlined),
+        MenuOge('Seçimi Kaldır (${widget.seciliIds.length} satış)',
+            () => widget.onCokluSecim({}),
+            ikon: Icons.deselect, ayiracOnce: true),
+      ]);
+      return;
+    }
     masaustuMenuAc(context, konum, [
       MenuOge('Satış Detayı', () => widget.onDetay(s),
           ikon: Icons.receipt_long_outlined),
@@ -125,7 +141,10 @@ class _SatisListeMasaustuGorunumState extends State<SatisListeMasaustuGorunum> {
     if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     final s = _secili;
-    if (k == LogicalKeyboardKey.f2) {
+    if (HardwareKeyboard.instance.isControlPressed && k == LogicalKeyboardKey.keyA) {
+      if (yaziAlaniOdakta()) return false;
+      widget.onCokluSecim({for (final x in widget.satislar) if (x.id != null) x.id!});
+    } else if (k == LogicalKeyboardKey.f2) {
       if (s != null) widget.onDetay(s);
     } else if (k == LogicalKeyboardKey.f3) {
       if (s != null) widget.onSecToggle(s);
@@ -154,6 +173,9 @@ class _SatisListeMasaustuGorunumState extends State<SatisListeMasaustuGorunum> {
           onSec: (x) => setState(() => _secili = x),
           onCift: widget.onDetay,
           onSagTik: _menu,
+          anahtar: (x) => x.id ?? x,
+          seciliAnahtarlar: widget.seciliIds,
+          onCokluSecim: (a) => widget.onCokluSecim(a.whereType<int>().toSet()),
         ),
       ),
       MasaustuAltSerit(

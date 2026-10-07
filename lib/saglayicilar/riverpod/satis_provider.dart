@@ -91,6 +91,12 @@ class Satislar extends _$Satislar {
     state = state.copyWith(secimModu: s.isNotEmpty, seciliIds: s);
   }
 
+  /// Masaüstü tablosunun çoklu seçimi (Ctrl/Shift/sürükleme) — 2+ satış
+  /// seçim modunu açar; tek satır düz seçimdir (F3 ile tekli seçim ayrıca var).
+  void secimAyarla(Set<int> ids) => state = ids.length >= 2
+      ? state.copyWith(secimModu: true, seciliIds: ids)
+      : state.copyWith(secimModu: false, seciliIds: {});
+
   void tumunuSec() => state = state.copyWith(
     secimModu: true,
     seciliIds: state.satislar.map((s) => s.id!).toSet(),

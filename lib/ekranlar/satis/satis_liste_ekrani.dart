@@ -201,8 +201,11 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
         if (!durum.yukleniyor && durum.satislar.isNotEmpty)
           _IstatistikSeridi(satislar: durum.satislar),
 
-        // Seçim modu özet
-        if (durum.secimModu)
+        // Seçim modu özet — masaüstü tabloda YOK: seçili toplam alt şeritte,
+        // tümünü seç Ctrl+A ile; bu şerit belirince tablo fareyle sürükleme
+        // seçimi sırasında imlecin altından kayıyordu.
+        if (durum.secimModu &&
+            !(Platform.isWindows && MediaQuery.sizeOf(context).width > 900))
           Container(
             color: AppRenkler.primary.withAlpha(20),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -237,6 +240,9 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
                           .secimToggle(x.id!),
                       onYenile: () =>
                           ref.read(satislarProvider.notifier).yukle(),
+                      onCokluSecim: (ids) => ref
+                          .read(satislarProvider.notifier)
+                          .secimAyarla(ids),
                     )
                   : RefreshIndicator(
                       onRefresh: () =>

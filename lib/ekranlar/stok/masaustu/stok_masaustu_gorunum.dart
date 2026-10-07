@@ -18,7 +18,13 @@ class StokMasaustuGorunum extends StatefulWidget {
   final List<UrunModel> urunler;
   final ScrollController scrollController;
   final VoidCallback onYenile;
+
+  /// Seçim varsa yalnız seçilenleri, yoksa listenin tamamını Excel'e aktarır.
   final VoidCallback onExcel;
+
+  /// Çoklu seçim (Ctrl+tık, Shift+tık, sürükleme, Ctrl+A).
+  final Set<int> seciliIds;
+  final ValueChanged<Set<int>> onCokluSecim;
 
   const StokMasaustuGorunum({
     super.key,
@@ -26,6 +32,8 @@ class StokMasaustuGorunum extends StatefulWidget {
     required this.scrollController,
     required this.onYenile,
     required this.onExcel,
+    required this.seciliIds,
+    required this.onCokluSecim,
   });
 
   @override
@@ -85,7 +93,19 @@ class _StokMasaustuGorunumState extends State<StokMasaustuGorunum> {
 
   void _detay(UrunModel u) => context.push('/urun/detay/${u.id}');
 
+  bool get _coklu => widget.seciliIds.length >= 2;
+
   void _menu(UrunModel u, Offset konum) {
+    if (_coklu) {
+      final n = widget.seciliIds.length;
+      masaustuMenuAc(context, konum, [
+        MenuOge("Seçilenleri Excel'e Aktar ($n ürün)", widget.onExcel,
+            ikon: Icons.download_outlined),
+        MenuOge('Seçimi Kaldır', () => widget.onCokluSecim({}),
+            ikon: Icons.deselect, ayiracOnce: true),
+      ]);
+      return;
+    }
     masaustuMenuAc(context, konum, [
       MenuOge('Ürün Detayı', () => _detay(u), ikon: Icons.info_outline),
       MenuOge('Stok Hareketleri', () => context.push('/stok/hareket'),
@@ -111,7 +131,10 @@ class _StokMasaustuGorunumState extends State<StokMasaustuGorunum> {
     if (e is! KeyDownEvent || !mounted) return false;
     if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
-    if (k == LogicalKeyboardKey.f2) {
+    if (HardwareKeyboard.instance.isControlPressed && k == LogicalKeyboardKey.keyA) {
+      if (yaziAlaniOdakta()) return false;
+      widget.onCokluSecim({for (final u in widget.urunler) if (u.id != null) u.id!});
+    } else if (k == LogicalKeyboardKey.f2) {
       if (_secili != null) _detay(_secili!);
     } else if (k == LogicalKeyboardKey.f5) {
       widget.onYenile();
@@ -139,10 +162,14 @@ class _StokMasaustuGorunumState extends State<StokMasaustuGorunum> {
           onSec: (x) => setState(() => _secili = x),
           onCift: _detay,
           onSagTik: _menu,
+          anahtar: (x) => x.id ?? x,
+          seciliAnahtarlar: widget.seciliIds,
+          onCokluSecim: (a) => widget.onCokluSecim(a.whereType<int>().toSet()),
         ),
       ),
       MasaustuAltSerit(
         ozetler: [
+          if (_coklu) AltOzet('Seçili', '${widget.seciliIds.length} ürün'),
           AltOzet('Çeşit Sayısı', '${u.length}'),
           AltOzet('Stok Miktarı', _sayi(stokToplam)),
           AltOzet('Maliyet Değeri', ParaUtils.formatla(maliyet)),
@@ -151,7 +178,8 @@ class _StokMasaustuGorunumState extends State<StokMasaustuGorunum> {
         tuslar: [
           AltTus('F2', 'Detay', Icons.info_outline, const Color(0xFF1565C0),
               _secili == null ? null : () => _detay(_secili!)),
-          AltTus('F6', 'Excel', Icons.download_outlined, const Color(0xFF2E7D32),
+          AltTus('F6', _coklu ? 'Excel (${widget.seciliIds.length})' : 'Excel',
+              Icons.download_outlined, const Color(0xFF2E7D32),
               widget.onExcel),
           AltTus('F5', 'Yenile', Icons.refresh, const Color(0xFF546E7A),
               widget.onYenile),

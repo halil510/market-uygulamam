@@ -18,6 +18,8 @@ import 'iade/iade_urun_formu.dart';
 import 'iade/iade_gecmis_widget.dart';
 import 'iade/iade_cari_dialog.dart';
 import 'iade/cari_iade_kurali.dart';
+import 'iade/iade_kaydet_butonu.dart';
+import 'iade/iade_gecmis_sekmesi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../modeller/urun_model.dart';
@@ -52,6 +54,7 @@ part 'iade_ekrani_hizli.dart';
 part 'iade_ekrani_excel.dart';
 part 'iade_ekrani_arama.dart';
 part 'iade_ekrani_kaydet.dart';
+part 'iade_ekrani_oturum.dart';
 
 // ─── Renk paleti ─────────────────────────────────────────────────────────────
 // 🔴 DÜZELTME (görsel tutarlılık denetimi — "sırayla" listenin 2.
@@ -68,7 +71,6 @@ class _R {
   static const orange = TsRenk.uyari;
   static const blue = TsRenk.bilgi;
 
-  static Color bg(BuildContext c) => TsRenk.arkaplan(c);
   static Color textL(BuildContext c) => TsRenk.metinIkincil(c);
 }
 
@@ -403,59 +405,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                   if (_secilenUrun != null) ...[
                     _urunFormu(),
                     const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: _yukleniyor
-                            ? null
-                            : LinearGradient(
-                                colors: [_R.orange, _R.orange.withAlpha(200)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                        color: _yukleniyor ? _R.orange.withAlpha(150) : null,
-                        boxShadow: _yukleniyor
-                            ? []
-                            : [
-                                BoxShadow(
-                                    color: _R.orange.withAlpha(90),
-                                    blurRadius: 14,
-                                    offset: const Offset(0, 5)),
-                              ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: _yukleniyor ? null : _kaydet,
-                          child: Center(
-                            child: _yukleniyor
-                                ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2.5, color: Colors.white))
-                                : const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.assignment_return,
-                                          color: Colors.white, size: 20),
-                                      SizedBox(width: 8),
-                                      Text('İade Et',
-                                          style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w800,
-                                              letterSpacing: 0.2)),
-                                    ],
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    IadeKaydetButonu(yukleniyor: _yukleniyor, onTap: _kaydet),
                   ] else
                     _bosEkran(),
                   if (_iadeListesi.isNotEmpty) ...[

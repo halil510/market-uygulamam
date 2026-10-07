@@ -6,6 +6,7 @@
 import 'package:sqflite/sqflite.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
 import '../modeller/sync_cakisma_model.dart';
+import '../servisler/kolon_haritalama.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
@@ -114,13 +115,36 @@ class SyncCakismaDeposu {
     final rows = await db.query(DbSabitler.syncCakismalar, where: 'id = ?', whereArgs: [id], limit: 1);
     if (rows.isEmpty) return;
     final c = SyncCakismaModel.fromMap(rows.first);
-    if (c.gelenKayit != null && c.kayitGlobalId != null) {
-      final uygulanacak = Map<String, dynamic>.from(c.gelenKayit!);
-      uygulanacak.remove('id');
+    // 🔴 DÜZELTME (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 12):
+    // gelen kayıt okunamıyorsa (bozuk JSON / boş) ÖNCEDEN hiçbir şey
+    // uygulanmadan "çözüldü" işaretleniyordu — kullanıcı gelen değerin
+    // yazıldığını sanıyordu. Artık hata verir; kayıt açık kalır.
+    if (c.gelenKayit == null || c.kayitGlobalId == null) {
+      throw StateError('Gelen kayıt okunamadı — çakışma "gelen" ile çözülemez');
+    }
+    final uygulanacak = await _yerelKolonlaraSinirla(db, c.tablo, c.gelenKayit!);
+    if (uygulanacak.isNotEmpty) {
       await db.update(c.tablo, uygulanacak,
           where: 'global_id = ?', whereArgs: [c.kayitGlobalId]);
     }
     await _cozumIsaretle(id, tip: 'gelen', kullanici: kullanici);
+  }
+
+  /// Kaydedilmiş satırı yerel tablonun GERÇEK sütunlarıyla sınırlar; id ve
+  /// türetilmiş alanlar (stok/bakiye — hareketlerden hesaplanır) atılır.
+  /// ÖNCEDEN bulutta olup yerelde olmayan tek bir sütun (ör. sunucu_zamani)
+  /// tüm UPDATE'i "no such column" ile düşürüyor, çakışma hiç çözülemiyordu.
+  Future<Map<String, dynamic>> _yerelKolonlaraSinirla(
+      Database db, String tablo, Map<String, dynamic> satir) async {
+    final kolonlar = {
+      for (final r in await db.rawQuery('PRAGMA table_info($tablo)')) r['name'].toString(),
+    };
+    final turetilmis = KolonHaritalama.turetilmisAlanlar[tablo] ?? const <String>{};
+    return {
+      for (final e in satir.entries)
+        if (e.key != 'id' && kolonlar.contains(e.key) && !turetilmis.contains(e.key))
+          e.key: e.value is bool ? ((e.value as bool) ? 1 : 0) : e.value,
+    };
   }
 
   /// Çakışmayı "yerel" (üzerine yazılmadan önceki) değerle çözer —
@@ -131,8 +155,7 @@ class SyncCakismaDeposu {
     if (rows.isEmpty) return;
     final c = SyncCakismaModel.fromMap(rows.first);
     if (c.yerelKayit != null && c.kayitGlobalId != null) {
-      final geriYazilacak = Map<String, dynamic>.from(c.yerelKayit!);
-      geriYazilacak.remove('id');
+      final geriYazilacak = await _yerelKolonlaraSinirla(db, c.tablo, c.yerelKayit!);
       // Geri yazılan kayıt "şimdi" değiştirilmiş sayılsın ki bir sonraki
       // pull'da tekrar eski (gelen) değerle ezilmesin.
       geriYazilacak['last_updated'] = DateTime.now().toIso8601String();

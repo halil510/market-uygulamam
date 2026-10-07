@@ -149,7 +149,12 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
             'olarak işaretlenir.',
         onayYazi: 'Evet, buluttaki değeri uygula', ikon: Icons.cloud_done_outlined);
     if (!onay || c.id == null) return;
-    await _depo.gelenIleCoz(c.id!, kullanici: AuthServisi().aktifAd);
+    try {
+      await _depo.gelenIleCoz(c.id!, kullanici: AuthServisi().aktifAd);
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Çözülemedi: $e');
+      return;
+    }
     await _cozumSonrasi();
   }
 

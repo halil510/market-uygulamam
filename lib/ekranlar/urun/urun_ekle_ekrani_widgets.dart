@@ -149,7 +149,7 @@ class _SesliKomutSheetState extends State<_SesliKomutSheet> {
           TextButton(
             onPressed: () async {
               await widget.ses.iptal();
-              if (mounted) Navigator.of(context).pop();
+              if (context.mounted) Navigator.of(context).pop();
               widget.onIptal();
             },
             child: const Text('İptal'),

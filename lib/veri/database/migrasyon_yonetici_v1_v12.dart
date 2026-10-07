@@ -207,7 +207,9 @@ Future<void> _v4denV5e(Database db) async {
   for (final idx in indexler) {
     try {
       await _calistir(db, idx);
-    } catch (e) {}
+    } catch (_) {
+      // Eski şemada tablo/sütun yoksa indeks atlanır; migrasyon devam eder.
+    }
   }
 
   await _calistir(

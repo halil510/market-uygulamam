@@ -230,7 +230,7 @@ class _StokListeEkraniState extends ConsumerState<StokListeEkrani>
 
                       // Direkt DB'den ara
                       final urun = await UrunDeposu().barkodlaGetir(b);
-                      if (!mounted) return;
+                      if (!context.mounted) return;
 
                       if (urun != null) {
                         // Bulundu — listede göster

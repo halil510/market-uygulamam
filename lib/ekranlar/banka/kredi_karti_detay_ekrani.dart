@@ -229,13 +229,13 @@ class _KartDetayIcerik extends ConsumerWidget {
             const SizedBox(height: 12),
             Row(children: [
               Expanded(
-                child: _LimitItem(context, 'Limit', ParaUtils.formatla(kart.kartLimit)),
+                child: _limitItem(context, 'Limit', ParaUtils.formatla(kart.kartLimit)),
               ),
               Expanded(
-                child: _LimitItem(context, 'Kullanılan', ParaUtils.formatla(kart.kullanilanLimit)),
+                child: _limitItem(context, 'Kullanılan', ParaUtils.formatla(kart.kullanilanLimit)),
               ),
               Expanded(
-                child: _LimitItem(context, 'Kalan', ParaUtils.formatla(kart.kalanLimit)),
+                child: _limitItem(context, 'Kalan', ParaUtils.formatla(kart.kalanLimit)),
               ),
             ]),
           ]),
@@ -251,14 +251,14 @@ class _KartDetayIcerik extends ConsumerWidget {
             boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
           ),
           child: Column(children: [
-            _BilgiSatiri(context, 'Kart Tipi', kart.kartTipi),
-            _BilgiSatiri(context, 'Faiz Oranı', '%${kart.faizOrani.toStringAsFixed(2)}'),
-            _BilgiSatiri(context, 'Taksit Sayısı', '${kart.taksitSayisi}'),
-            if (kart.sonKullanma != null) _BilgiSatiri(context, 'Son Kullanma', kart.sonKullanma!),
+            _bilgiSatiri(context, 'Kart Tipi', kart.kartTipi),
+            _bilgiSatiri(context, 'Faiz Oranı', '%${kart.faizOrani.toStringAsFixed(2)}'),
+            _bilgiSatiri(context, 'Taksit Sayısı', '${kart.taksitSayisi}'),
+            if (kart.sonKullanma != null) _bilgiSatiri(context, 'Son Kullanma', kart.sonKullanma!),
             if (kart.kesimTarihi != null)
-              _BilgiSatiri(context, 'Kesim Tarihi', _formatTarih(kart.kesimTarihi!)),
+              _bilgiSatiri(context, 'Kesim Tarihi', _formatTarih(kart.kesimTarihi!)),
             if (kart.sonOdemeTarihi != null)
-              _BilgiSatiri(context, 'Son Ödeme', _formatTarih(kart.sonOdemeTarihi!)),
+              _bilgiSatiri(context, 'Son Ödeme', _formatTarih(kart.sonOdemeTarihi!)),
           ]),
         ),
 
@@ -291,14 +291,14 @@ class _KartDetayIcerik extends ConsumerWidget {
       '${t.day.toString().padLeft(2, '0')}.${t.month.toString().padLeft(2, '0')}.${t.year}';
 
   // context parametresi eklendi — _KartDetayIcerik bir ConsumerWidget.
-  Widget _LimitItem(BuildContext context, String label, String deger) => Column(children: [
+  Widget _limitItem(BuildContext context, String label, String deger) => Column(children: [
     Text(deger,
         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppRenkler.primary)),
     Text(label,
         style: TextStyle(fontSize: 11, color: context.textSecondary)),
   ]);
 
-  Widget _BilgiSatiri(BuildContext context, String label, String deger) => Container(
+  Widget _bilgiSatiri(BuildContext context, String label, String deger) => Container(
     padding: const EdgeInsets.symmetric(vertical: 8),
     decoration: BoxDecoration(
       border: Border(bottom: BorderSide(color: context.borderColor))),

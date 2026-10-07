@@ -7,7 +7,7 @@ part of 'iade_islem_servisi.dart';
 
 extension IadeIslemServisiGecmis on IadeIslemServisi {
   /// "İade Geçmişi" düzenleme modunda mevcut bir iadeye YENİ kalem ekleme
-  /// — bkz. iade_ekrani_gecmis.dart._duzenlemeModu_kalemEkle (taşındığı
+  /// — bkz. iade_ekrani_gecmis.dart._duzenlemeModuKalemEkle (taşındığı
   /// yer). Stok geri eklenir, iade_kalem (aynı ürün varsa güncellenir,
   /// yoksa eklenir), iade.toplam_tutar kalemlerden yeniden hesaplanır,
   /// cari hareketi (fis_id bazlı tek kayıt — varsa güncellenir, yoksa

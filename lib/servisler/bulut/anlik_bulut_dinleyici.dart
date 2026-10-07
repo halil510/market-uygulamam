@@ -114,6 +114,8 @@ class AnlikBulutDinleyici with WidgetsBindingObserver {
         path: '/realtime/v1/websocket',
         queryParameters: {'apikey': key, 'vsn': '1.0.0'},
       );
+      // Soket _ws alanında tutulur ve _kapat() içinde kapatılır.
+      // ignore: close_sinks
       final ws = await WebSocket.connect(wsUri.toString())
           .timeout(const Duration(seconds: 15));
       _ws = ws;

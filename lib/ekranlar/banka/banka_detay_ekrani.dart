@@ -142,13 +142,13 @@ class _BankaDetayIcerik extends StatelessWidget {
             boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
           ),
           child: Column(children: [
-            _BilgiSatiri(context, 'Banka Adı', banka.ad),
-            if (banka.kod != null) _BilgiSatiri(context, 'Banka Kodu', banka.kod!),
-            if (banka.tel != null) _BilgiSatiri(context, 'Telefon', banka.tel!),
-            if (banka.email != null) _BilgiSatiri(context, 'E-posta', banka.email!),
-            if (banka.web != null) _BilgiSatiri(context, 'Web Sitesi', banka.web!),
-            if (banka.adres != null) _BilgiSatiri(context, 'Adres', banka.adres!, maxLines: 3),
-            if (banka.yetkili != null) _BilgiSatiri(context, 'Yetkili Kişi', banka.yetkili!),
+            _bilgiSatiri(context, 'Banka Adı', banka.ad),
+            if (banka.kod != null) _bilgiSatiri(context, 'Banka Kodu', banka.kod!),
+            if (banka.tel != null) _bilgiSatiri(context, 'Telefon', banka.tel!),
+            if (banka.email != null) _bilgiSatiri(context, 'E-posta', banka.email!),
+            if (banka.web != null) _bilgiSatiri(context, 'Web Sitesi', banka.web!),
+            if (banka.adres != null) _bilgiSatiri(context, 'Adres', banka.adres!, maxLines: 3),
+            if (banka.yetkili != null) _bilgiSatiri(context, 'Yetkili Kişi', banka.yetkili!),
           ]),
         ),
         const SizedBox(height: 16),
@@ -204,7 +204,7 @@ class _BankaDetayIcerik extends StatelessWidget {
   }
 
   // context parametresi eklendi — _BankaDetayIcerik bir StatelessWidget.
-  Widget _BilgiSatiri(BuildContext context, String label, String deger, {int maxLines = 1}) => Padding(
+  Widget _bilgiSatiri(BuildContext context, String label, String deger, {int maxLines = 1}) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       SizedBox(

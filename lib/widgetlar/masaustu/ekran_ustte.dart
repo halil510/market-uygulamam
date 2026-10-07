@@ -14,6 +14,6 @@
 import 'package:flutter/widgets.dart';
 
 bool ekranUstte(BuildContext context) {
-  if (!TickerMode.of(context)) return false;
+  if (!TickerMode.valuesOf(context).enabled) return false;
   return ModalRoute.of(context)?.isCurrent != false;
 }

@@ -149,7 +149,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
     return ReorderableListView.builder(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
       itemCount: _pluUrunler.length,
-      onReorder: _siralamaKaydet,
+      onReorderItem: _siralamaKaydet,
       itemBuilder: (_, i) => _pluKarti(_pluUrunler[i]),
     );
   }
@@ -159,8 +159,8 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
   // ekran yeniden açıldığında sıralama tamamen kayboluyordu. Artık yeni
   // sıra, `plu_sira` sütununa kalıcı olarak yazılıyor.
   Future<void> _siralamaKaydet(int eski, int yeni) async {
+    // onReorderItem hedef indeksi, eleman çıkarılmış listeye göre verir.
     setState(() {
-      if (yeni > eski) yeni--;
       final u = _pluUrunler.removeAt(eski);
       _pluUrunler.insert(yeni, u);
     });

@@ -144,8 +144,8 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
 
   // Düzenleme modu — geçmişten açılan iade
   int?
-      _duzenlemeModu_iadeId; // null = yeni iade, int = mevcut iade üzerinde çalışıyoruz
-  String? _duzenlemeModu_fisNo;
+      _duzenlemeModuIadeId; // null = yeni iade, int = mevcut iade üzerinde çalışıyoruz
+  String? _duzenlemeModuFisNo;
 
   // Arama
   List<UrunModel> _aramaListesi = [];
@@ -273,8 +273,8 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   /// Yeni iade başlat — düzenleme modunu kapat, listeyi temizle
   void _yeniIadeBaslat() {
     setState(() {
-      _duzenlemeModu_iadeId = null;
-      _duzenlemeModu_fisNo = null;
+      _duzenlemeModuIadeId = null;
+      _duzenlemeModuFisNo = null;
       _oturumIadeId = null;
       _oturumFisNo = '';
       _iadeListesi.clear();
@@ -317,12 +317,12 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
       child: Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
       appBar: TsAppBar(
-        baslikWidget: _duzenlemeModu_iadeId != null
-            ? Text('İade: ${_duzenlemeModu_fisNo ?? ''}',
+        baslikWidget: _duzenlemeModuIadeId != null
+            ? Text('İade: ${_duzenlemeModuFisNo ?? ''}',
                 style: const TextStyle(fontSize: 15))
             : const Text('İade İşlemleri'),
         aksiyonlar: [
-          if (_duzenlemeModu_iadeId != null)
+          if (_duzenlemeModuIadeId != null)
             TextButton.icon(
               icon: const Icon(Icons.add_circle_outline,
                   color: Colors.white, size: 16),
@@ -462,8 +462,8 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
 
   Widget _iadeGecmisi() => IadeGecmisWidget(
         iadeListesi: _iadeListesi,
-        duzenlemeModu_iadeId: _duzenlemeModu_iadeId,
-        duzenlemeModu_fisNo: _duzenlemeModu_fisNo,
+        duzenlemeModuIadeId: _duzenlemeModuIadeId,
+        duzenlemeModuFisNo: _duzenlemeModuFisNo,
         onSilOnay: _oturumIadeSilOnay,
         onSil: _oturumIadeSil,
         onDuzenle: _oturumIadeDuzenle,

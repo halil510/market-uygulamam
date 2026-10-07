@@ -179,16 +179,14 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 ),
                 const Divider(),
                 const _AyarBaslik('Görünüm'),
-                RadioListTile<String>(
-                    title: const Text('Açık Tema'),
-                    value: 'light',
-                    groupValue: _ayarlar['tema'] ?? 'light',
-                    onChanged: (v) => _temaDegistir(v!)),
-                RadioListTile<String>(
-                    title: const Text('Koyu Tema'),
-                    value: 'dark',
-                    groupValue: _ayarlar['tema'] ?? 'light',
-                    onChanged: (v) => _temaDegistir(v!)),
+                RadioGroup<String>(
+                  groupValue: _ayarlar['tema'] ?? 'light',
+                  onChanged: (v) => _temaDegistir(v!),
+                  child: const Column(mainAxisSize: MainAxisSize.min, children: [
+                    RadioListTile<String>(title: Text('Açık Tema'), value: 'light'),
+                    RadioListTile<String>(title: Text('Koyu Tema'), value: 'dark'),
+                  ]),
+                ),
                 const Divider(),
                 // 🆕 Hızlı tuş yönetimi — kasadaki favori ürün panelini
                 // buradan da düzenlenebilir yaptık (birincil giriş yolu

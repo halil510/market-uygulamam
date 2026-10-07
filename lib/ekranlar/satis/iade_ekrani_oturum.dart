@@ -277,7 +277,7 @@ extension _IadeOturumExt on _IadeEkraniState {
 
   // ── Geçmiş iadeyi düzenleme moduna al ───────────────────────────────────
   // ── Düzenleme modunda mevcut iadeye kalem ekle ───────────────────────────
-  Future<void> _duzenlemeModu_kalemEkle(
+  Future<void> _duzenlemeModuKalemEkle(
     double fiyat, double iskontoOran, double iskontoTutar,
     double netFiyat, double toplam) async {
 
@@ -285,7 +285,7 @@ extension _IadeOturumExt on _IadeEkraniState {
     setState(() => _yukleniyor = true);
 
     try {
-      final iadeId = _duzenlemeModu_iadeId!;
+      final iadeId = _duzenlemeModuIadeId!;
 
       // Tüm transaction + bulut senkron mantığı artık
       // IadeIslemServisi.duzenlemeModuKalemEkle'de — bkz. o metodun doc
@@ -297,7 +297,7 @@ extension _IadeOturumExt on _IadeEkraniState {
         miktar: _miktar,
         fiyat: fiyat,
         toplam: toplam,
-        fisNo: _duzenlemeModu_fisNo,
+        fisNo: _duzenlemeModuFisNo,
         cariId: _secilenCari?.id,
         cariTipi: _secilenCari?.cariTipi,
         kullaniciId: AuthServisi().aktifId,
@@ -342,7 +342,7 @@ extension _IadeOturumExt on _IadeEkraniState {
           'musteri_adi':  _secilenCari?.unvan ?? 'Perakende',
           'cari_id':      _secilenCari?.id,
           'aciklama':     _aciklamaCtrl.text.trim(),
-          'fis_no':       _duzenlemeModu_fisNo ?? '',
+          'fis_no':       _duzenlemeModuFisNo ?? '',
         });
       });
 
@@ -359,7 +359,7 @@ extension _IadeOturumExt on _IadeEkraniState {
       }
       ref.invalidate(kasaRaporProvider);
 
-      _msg('${_secilenUrun!.urunAdi} → $_duzenlemeModu_fisNo fişine eklendi ✓', err: false);
+      _msg('${_secilenUrun!.urunAdi} → $_duzenlemeModuFisNo fişine eklendi ✓', err: false);
       _formSifirla();
     } catch (e) {
       _msg('Hata: $e', err: true);

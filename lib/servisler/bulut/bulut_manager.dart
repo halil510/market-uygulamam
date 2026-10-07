@@ -42,7 +42,7 @@ import '../fatura_seri/terminal_servisi.dart';
 
 // ── Bulut durum ───────────────────────────────────────────────────────────────
 enum BulutDurum {
-  bagli_degil,
+  bagliDegil,
   yapilandirilmamis,
   baglaniyor,
   bagli,
@@ -51,7 +51,7 @@ enum BulutDurum {
   hata;
 
   String get metin => switch (this) {
-    bagli_degil           => 'Bulut bağlı değil',
+    bagliDegil           => 'Bulut bağlı değil',
     yapilandirilmamis     => 'Bulut yapılandırılmamış',
     baglaniyor            => 'Bağlanıyor…',
     bagli                 => 'Bulut bağlı ✓',
@@ -60,7 +60,7 @@ enum BulutDurum {
     hata                  => 'Bağlantı hatası',
   };
   bool get aktif => this == bagli || this == bekliyor || this == gonderiliyor;
-  bool get sorun => this == hata || this == bagli_degil;
+  bool get sorun => this == hata || this == bagliDegil;
 }
 
 // ── BulutManager ──────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ class BulutManager {
   bool _gonderiliyor = false;
   int _bekleyenSayisiCache = 0;
 
-  final durum    = ValueNotifier<BulutDurum>(BulutDurum.bagli_degil);
+  final durum    = ValueNotifier<BulutDurum>(BulutDurum.bagliDegil);
   final istatistik = ValueNotifier<_Istatistik>(const _Istatistik());
 
   IBulutSaglayici? get mevcutSaglayici => _saglayici;

@@ -320,7 +320,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                       tooltip: 'Barkod okut — virgülle ekler',
                       onPressed: () async {
                         final b = await _barkodSrv.barkodTara(context);
-                        if (b == null || !mounted) return;
+                        if (b == null || !context.mounted) return;
                         final mevcut = _c['barkodlar']?.text.trim() ?? '';
                         final liste = mevcut.isEmpty
                             ? <String>[]
@@ -339,7 +339,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                         // iki üründe birden görünüp POS'ta karışıklık
                         // yaratıyordu).
                         final dbUrun = await UrunDeposu().barkodlaGetirPasifDahil(b);
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         if (dbUrun != null && dbUrun.id != widget.duzenlenecekUrun?.id) {
                           BildirimServisi.hata(context,
                             'Bu barkod "${dbUrun.urunAdi}" ürününe kayıtlı');

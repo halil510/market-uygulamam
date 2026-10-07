@@ -127,7 +127,7 @@ class _VardiyaGecmisMasaustuGorunumState
 
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
-    if (!TickerMode.of(context) || !ekranUstte(context)) return false;
+    if (!TickerMode.valuesOf(context).enabled || !ekranUstte(context)) return false;
     final k = e.logicalKey;
     if (k == LogicalKeyboardKey.f2) {
       final s = _secili;

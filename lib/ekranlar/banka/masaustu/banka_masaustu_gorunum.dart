@@ -21,7 +21,7 @@ mixin _FTusDinleyici<T extends StatefulWidget> on State<T> {
 
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
-    if (!TickerMode.of(context)) return false;
+    if (!TickerMode.valuesOf(context).enabled) return false;
     if (!ekranUstte(context)) return false;
     return tusIsle(e.logicalKey);
   }

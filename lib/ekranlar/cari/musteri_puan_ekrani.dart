@@ -182,16 +182,16 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
               ],
             ),
           ).whenComplete(() => dialogSonrasiBirak([ctrl]));
-          if (puan != null && puan > 0 && mounted) {
+          if (puan != null && puan > 0 && context.mounted) {
             setState(() => _islemAktif = true);
             try {
               await _puan.puanEkle(
                 cariId: widget.cariId, tutar: puan, satisId: 0, puanOrani: 1.0,
                 aciklama: 'Manuel puan ekleme');
               await _yukle();
-              if (mounted) basariMesaji(context, '${puan.toStringAsFixed(0)} puan eklendi ✓');
+              if (context.mounted) basariMesaji(context, '${puan.toStringAsFixed(0)} puan eklendi ✓');
             } catch (e) {
-              if (mounted) hataMesaji(context, 'Puan eklenemedi: ${kullaniciyaHataMetni(e)}');
+              if (context.mounted) hataMesaji(context, 'Puan eklenemedi: ${kullaniciyaHataMetni(e)}');
             } finally {
               if (mounted) setState(() => _islemAktif = false);
             }

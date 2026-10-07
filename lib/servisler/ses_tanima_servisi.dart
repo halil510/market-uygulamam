@@ -41,13 +41,15 @@ class SesTanimaServisi {
     final ok = await hazirla();
     if (!ok) return false;
     await _stt.listen(
-      localeId: localeId,
       onResult: (r) {
         onSonuc(r.recognizedWords);
         if (r.finalResult) onBitti?.call(r.recognizedWords);
       },
-      listenFor: const Duration(seconds: 20),
-      pauseFor: const Duration(seconds: 3),
+      listenOptions: stt.SpeechListenOptions(
+        localeId: localeId,
+        listenFor: const Duration(seconds: 20),
+        pauseFor: const Duration(seconds: 3),
+      ),
     );
     return true;
   }

@@ -40,6 +40,7 @@ class SatisIptalServisi {
     if (faturaId != null) {
       if (!context.mounted) return false;
       final fatura = await FaturaDeposu().idileGetir(faturaId);
+      if (!context.mounted) return false;
       await OnayDialog.goster(
         context,
         baslik: 'Bu Satış Faturalandırılmış',

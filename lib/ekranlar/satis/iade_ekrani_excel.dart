@@ -55,7 +55,7 @@ extension _IadeExcelExt on _IadeEkraniState {
 
   // ── İçeri al ──────────────────────────────────────────────────────────────
   Future<void> _excelIceAl() async {
-    if (_duzenlemeModu_iadeId != null) {
+    if (_duzenlemeModuIadeId != null) {
       _msg('Mevcut bir iade düzenleniyor — önce "Yeni" ile yeni iade başlatın',
           err: true);
       return;

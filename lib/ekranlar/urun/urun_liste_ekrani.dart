@@ -322,7 +322,7 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani> {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
               child: Row(children: [
                 if (filtre.sadecKritikler == true)
-                  _FilterChip(
+                  _filterChip(
                       'Kritik Stok',
                       () => ref
                           .read(urunFiltresiProvider.notifier)

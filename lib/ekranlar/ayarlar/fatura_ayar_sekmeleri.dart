@@ -8,17 +8,17 @@ extension _FaturaAyarSekmeleri on _FaturaAyarEkraniState {
   // ── Firma Bilgileri ────────────────────────────────────────────────────────
   Widget _firmaTab() => ListView(padding: const EdgeInsets.all(16), children: [
     const _Baslik('Temel Bilgiler'),
-    _Alan('Firma Adı *', _firmaAdiCtrl, hint: 'ABC Ticaret A.Ş.'),
-    _Alan('Vergi No *', _vergiNoCtrl, hint: '1234567890',
+    _alan('Firma Adı *', _firmaAdiCtrl, hint: 'ABC Ticaret A.Ş.'),
+    _alan('Vergi No *', _vergiNoCtrl, hint: '1234567890',
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)]),
-    _Alan('Vergi Dairesi *', _vergiDairesiCtrl, hint: 'Kadıköy Vergi Dairesi'),
-    _Alan('MERSİS No', _mersisCtrl, hint: '0123456789012345',
+    _alan('Vergi Dairesi *', _vergiDairesiCtrl, hint: 'Kadıköy Vergi Dairesi'),
+    _alan('MERSİS No', _mersisCtrl, hint: '0123456789012345',
         keyboardType: TextInputType.number),
-    _Alan('Ticaret Sicil No', _ticaretSicilCtrl, hint: '12345'),
+    _alan('Ticaret Sicil No', _ticaretSicilCtrl, hint: '12345'),
     const SizedBox(height: 8),
     const _Baslik('Adres'),
-    _Alan('Adres', _adresCtrl, hint: 'Mevlana Cad. No:1 Daire:5', maxLines: 2),
+    _alan('Adres', _adresCtrl, hint: 'Mevlana Cad. No:1 Daire:5', maxLines: 2),
     Row(children: [
       Expanded(child: Padding(
         padding: const EdgeInsets.only(bottom: 10),
@@ -32,13 +32,13 @@ extension _FaturaAyarSekmeleri on _FaturaAyarEkraniState {
     ]),
     const SizedBox(height: 8),
     const _Baslik('İletişim'),
-    _Alan('Telefon', _telefonCtrl, hint: '0212 555 44 33',
+    _alan('Telefon', _telefonCtrl, hint: '0212 555 44 33',
         keyboardType: TextInputType.phone),
-    _Alan('Faks', _faxCtrl, hint: '0212 555 44 34',
+    _alan('Faks', _faxCtrl, hint: '0212 555 44 34',
         keyboardType: TextInputType.phone),
-    _Alan('E-Posta', _emailCtrl, hint: 'info@firma.com',
+    _alan('E-Posta', _emailCtrl, hint: 'info@firma.com',
         keyboardType: TextInputType.emailAddress),
-    _Alan('Web Sitesi', _webCtrl, hint: 'www.firma.com'),
+    _alan('Web Sitesi', _webCtrl, hint: 'www.firma.com'),
     const SizedBox(height: 80),
   ]);
 

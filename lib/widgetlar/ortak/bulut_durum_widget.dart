@@ -12,7 +12,7 @@ class BulutDurumIkonu extends StatelessWidget {
       valueListenable: BulutManager().durum,
       builder: (_, durum, _) {
         if (durum == BulutDurum.yapilandirilmamis ||
-            durum == BulutDurum.bagli_degil) {
+            durum == BulutDurum.bagliDegil) {
           return const SizedBox.shrink();
         }
 

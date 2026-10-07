@@ -56,7 +56,7 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
                 await _ayarGuncelle('firma_adres', adrCtrl.text.trim());
                 await _ayarGuncelle('firma_telefon', telCtrl.text.trim());
                 await _ayarGuncelle('firma_vergi_no', verCtrl.text.trim());
-                if (!mounted) return;
+                if (!mounted || !dCtx1.mounted) return;
                 Navigator.pop(dCtx1);
                 BildirimServisi.basari(context, 'Firma bilgileri kaydedildi ✓');
               } catch (e) {
@@ -378,6 +378,7 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
 
       if (!mounted) return;
       final progressCtx = context;
+      if (!progressCtx.mounted) return;
       showDialog(
         context: progressCtx,
         barrierDismissible: false,
@@ -390,12 +391,12 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
       try {
         sonuc = await ExcelServisi().exceldenurunleriBytesIceriAl(fileBytes);
       } catch (e) {
-        if (mounted) Navigator.of(progressCtx, rootNavigator: true).pop();
+        if (progressCtx.mounted) Navigator.of(progressCtx, rootNavigator: true).pop();
         if (mounted) BildirimServisi.hata(context, 'Excel işleme hatası: $e');
         return;
       }
 
-      if (mounted) Navigator.of(progressCtx, rootNavigator: true).pop();
+      if (progressCtx.mounted) Navigator.of(progressCtx, rootNavigator: true).pop();
       if (!mounted) return;
 
       if ((sonuc.eklenen + sonuc.guncellenen) > 0) {

@@ -193,7 +193,7 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
                   final b = q.trim();
                   if (b.isEmpty) return;
                   final urun = await _depo.barkodlaGetir(b);
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   if (urun != null) {
                     setState(() => _araCtrl.clear());
                     _aramaChanged();

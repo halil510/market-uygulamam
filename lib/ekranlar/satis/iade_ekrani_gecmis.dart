@@ -163,8 +163,8 @@ extension _GecmisTabExt on _IadeEkraniState {
 
     // İade sekmesine geç ve düzenleme modunu aç
     setState(() {
-      _duzenlemeModu_iadeId  = iadeId;
-      _duzenlemeModu_fisNo   = iade['fis_no']?.toString();
+      _duzenlemeModuIadeId  = iadeId;
+      _duzenlemeModuFisNo   = iade['fis_no']?.toString();
       _secilenCari           = cari;
       _oturumIadeId          = iadeId;        // Devam modunda oturum ID set et
       _oturumFisNo           = iade['fis_no']?.toString() ?? '';

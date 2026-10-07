@@ -86,7 +86,7 @@ class VeritabaniDosyaServisi {
   /// [hedef] veritabanı dosyasını [yeniIcerik] ile güvenli şekilde
   /// değiştirir:
   ///  1) SQLite imzası doğrulanır (değilse hiçbir şeye dokunulmaz),
-  ///  2) mevcut dosyanın '[hedef].[yedekOneki]_<ms>.bak' kopyası alınır,
+  ///  2) mevcut dosyanın `[hedef].[yedekOneki]_<ms>.bak` kopyası alınır,
   ///  3) bağlantı kapatılır, .db + -wal + -shm silinir, yeni içerik yazılır,
   ///  4) PRAGMA integrity_check — bozuksa güvenlik kopyası geri konur,
   ///  5) aynı önekli eski güvenlik kopyalarının son [_maxGuvenlikYedegi]

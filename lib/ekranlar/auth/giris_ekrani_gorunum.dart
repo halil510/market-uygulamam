@@ -366,8 +366,11 @@ extension _GirisGorunum on _GirisEkraniState {
                 HapticFeedback.lightImpact();
                 if (isSil) {
                   _silSon();
-                } else if (isTemizle) _temizle();
-                else _rakamEkle(t);
+                } else if (isTemizle) {
+                  _temizle();
+                } else {
+                  _rakamEkle(t);
+                }
               },
         child: Container(
           // 58 → 50: PIN göstergesi panele taşınınca panel yükselip üstteki

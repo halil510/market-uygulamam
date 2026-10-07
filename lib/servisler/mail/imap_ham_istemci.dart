@@ -146,7 +146,7 @@ class ImapHamIstemci {
     return _fetchYanitiniAyristir(yanit);
   }
 
-  /// IMAP FETCH yanıtındaki literal ({n}\r\n<n bayt>) bloklarını ayrıştırır.
+  /// IMAP FETCH yanıtındaki literal (`{n}\r\n<n bayt>`) bloklarını ayrıştırır.
   /// Tam RFC-uyumlu bir ayrıştırıcı değildir — Gmail/Outlook'un tipik
   /// yanıt formatı için yeterlidir.
   List<ImapHamMesaj> _fetchYanitiniAyristir(List<String> satirlar) {

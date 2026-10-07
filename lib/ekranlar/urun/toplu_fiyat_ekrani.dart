@@ -214,14 +214,14 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
           if (_islem != 'sabitFiyat')
             // Şeffaf Material: RadioListTile dokunma dalgası renkli kutunun altında kalmasın.
             DecoratedBox(decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))), child: Material(type: MaterialType.transparency, child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
-              Row(children: [
-                Expanded(child: RadioListTile<String>(dense: true, title: const Text('Yüzde (%)'),
-                    value: 'yuzde', groupValue: _tipi,
-                    onChanged: (v) => setState(() => _tipi = v!))),
-                Expanded(child: RadioListTile<String>(dense: true, title: const Text('Tutar (₺)'),
-                    value: 'tutar', groupValue: _tipi,
-                    onChanged: (v) => setState(() => _tipi = v!))),
-              ]),
+              RadioGroup<String>(
+                groupValue: _tipi,
+                onChanged: (v) => setState(() => _tipi = v!),
+                child: const Row(children: [
+                  Expanded(child: RadioListTile<String>(dense: true, title: Text('Yüzde (%)'), value: 'yuzde')),
+                  Expanded(child: RadioListTile<String>(dense: true, title: Text('Tutar (₺)'), value: 'tutar')),
+                ]),
+              ),
               TextField(controller: _degerCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(

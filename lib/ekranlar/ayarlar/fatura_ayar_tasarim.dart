@@ -78,13 +78,13 @@ extension _FaturaAyarTasarim on _FaturaAyarEkraniState {
     const SizedBox(height: 12),
     const _Baslik('Numaralandırma ve İskonto'),
     Row(children: [
-      Expanded(child: _Alan('Fatura No Ön Eki', _faturaOnEkCtrl,
+      Expanded(child: _alan('Fatura No Ön Eki', _faturaOnEkCtrl,
           hint: 'Örn: HLF (e-Fatura), HLA (e-Arşiv)')),
       const SizedBox(width: 12),
-      Expanded(child: _Alan('Başlangıç Sıra No', _baslangicNoCtrl,
+      Expanded(child: _alan('Başlangıç Sıra No', _baslangicNoCtrl,
           hint: '1', keyboardType: TextInputType.number)),
     ]),
-    _Alan('Varsayılan İskonto %', _iskontoCtrl,
+    _alan('Varsayılan İskonto %', _iskontoCtrl,
         hint: '0', keyboardType: const TextInputType.numberWithOptions(decimal: true)),
     Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -174,9 +174,9 @@ extension _FaturaAyarTasarim on _FaturaAyarEkraniState {
     ]),
     const SizedBox(height: 4),
     const _Baslik('Fatura Notları'),
-    _Alan('Fatura Notları', _faturaNotCtrl,
+    _alan('Fatura Notları', _faturaNotCtrl,
         hint: 'Her faturada görünecek notlar...', maxLines: 3),
-    _Alan('Dipnot', _dipnotCtrl,
+    _alan('Dipnot', _dipnotCtrl,
         hint: 'Fatura alt bilgisi...', maxLines: 2),
     const SizedBox(height: 12),
     // Önizleme kartı
@@ -238,7 +238,7 @@ extension _FaturaAyarTasarim on _FaturaAyarEkraniState {
     const SizedBox(height: 80),
   ]);
 
-  Widget _Alan(String label, TextEditingController ctrl, {
+  Widget _alan(String label, TextEditingController ctrl, {
     String? hint, int maxLines = 1, TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters, bool obscure = false}) =>
     Padding(

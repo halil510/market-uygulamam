@@ -493,12 +493,12 @@ class YazdirmaServisi {
 
     try {
       if (kDebugMode) debugPrint('WiFi yazıcıya bağlanılıyor: $ip:$port');
-      // ignore: close_sinks
       // YANLIŞ POZİTİF: soketin sahipliği hemen aşağıda YaziciBaglanti'ya
       // devrediliyor (`baglanti._tcpSocket = socket`) ve bağlantı
       // `YaziciBaglanti.kapat()` içinde `_tcpSocket?.close()` ile
       // kapatılıyor. Lint sahiplik devrini takip edemediği için burada
       // "kapatılmamış Sink" sanıyor.
+      // ignore: close_sinks
       final socket = await Socket.connect(ip, port,
           timeout: const Duration(seconds: 6));
       socket.setOption(SocketOption.tcpNoDelay, true);
@@ -554,10 +554,10 @@ class YazdirmaServisi {
   /// aktarımı ASLA yanlışlıkla kesmeyecek kadar geniş. Teşhis
   /// kolaylığı için debug loglaması da eklendi.
   Future<void> _wifiYaz(List<int> bytes) async {
-    // ignore: close_sinks
     // YANLIŞ POZİTİF: burada yeni soket AÇILMIYOR — zaten açık olan
     // bağlantının soketi okunuyor. Kapatma sorumluluğu
     // YaziciBaglanti.kapat()'ta.
+    // ignore: close_sinks
     final s = _aktif?._tcpSocket;
     if (s == null) throw Exception('WiFi yazıcı bağlı değil');
     final baslangic = DateTime.now();

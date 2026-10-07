@@ -14,7 +14,7 @@ class LogServisi {
   LogServisi._();
 
   bool _initialized = false;
-  final List<_LogEntry> _buffer = [];
+  final List<LogKaydi> _buffer = [];
   static const int _maxBuffer = 200;
 
   // ── Başlat ────────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ class LogServisi {
 
   void _yaz(LogSeviye seviye, String mesaj,
       {Object? hata, StackTrace? yigin, String? ek}) {
-    final entry = _LogEntry(
+    final entry = LogKaydi(
       seviye: seviye,
       mesaj: mesaj,
       hata: hata?.toString(),
@@ -76,7 +76,7 @@ class LogServisi {
     _dbYaz(entry);
   }
 
-  Future<void> _dbYaz(_LogEntry e) async {
+  Future<void> _dbYaz(LogKaydi e) async {
     try {
       final db = await Veritabani().db;
       await db.insert('app_log', {
@@ -100,7 +100,7 @@ class LogServisi {
   }
 
   // ── Son logları getir ─────────────────────────────────────────────────────
-  List<_LogEntry> get sonLoglar => List.unmodifiable(_buffer.reversed.take(50).toList());
+  List<LogKaydi> get sonLoglar => List.unmodifiable(_buffer.reversed.take(50).toList());
 
   Future<List<Map<String, dynamic>>> dbdenGetir({
     LogSeviye? seviye,
@@ -128,14 +128,14 @@ class LogServisi {
   }
 }
 
-class _LogEntry {
+class LogKaydi {
   final LogSeviye seviye;
   final String mesaj;
   final String? hata;
   final String? yigin;
   final String? ek;
   final DateTime zaman;
-  const _LogEntry({
+  const LogKaydi({
     required this.seviye,
     required this.mesaj,
     this.hata,

@@ -126,9 +126,7 @@ class _HizliTusYonetimEkraniState extends ConsumerState<HizliTusYonetimEkrani>
   }
 
   Future<void> _siraDegisti(int eski, int yeni) async {
-    // ReorderableListView semantiği: hedef index, eleman çıkarılmadan
-    // ÖNCEKİ listeye göre gelir — aşağı taşımada 1 düşülmeli.
-    if (yeni > eski) yeni -= 1;
+    // onReorderItem hedef indeksi, eleman çıkarılmış listeye göre verir.
     setState(() {
       final tasinan = _favoriler.removeAt(eski);
       _favoriler.insert(yeni, tasinan);
@@ -283,7 +281,7 @@ class _HizliTusYonetimEkraniState extends ConsumerState<HizliTusYonetimEkrani>
           padding: const EdgeInsets.fromLTRB(
               TsBosluk.md, TsBosluk.md, TsBosluk.md, TsBosluk.xxxl),
           itemCount: _favoriler.length,
-          onReorder: _siraDegisti,
+          onReorderItem: _siraDegisti,
           itemBuilder: (_, i) {
             final u = _favoriler[i];
             final renk = tusRengi(u.urunAdi);

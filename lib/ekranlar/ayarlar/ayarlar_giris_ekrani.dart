@@ -388,8 +388,11 @@ class _NumPad extends StatelessWidget {
                                   onTap: () {
                                     if (t == '⌫') {
                                       onSil();
-                                    } else if (t == 'C') onTemizle();
-                                    else onRakam(t);
+                                    } else if (t == 'C') {
+                                      onTemizle();
+                                    } else {
+                                      onRakam(t);
+                                    }
                                   },
                                   child: Container(
                                     height: 52,

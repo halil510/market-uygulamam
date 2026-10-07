@@ -47,6 +47,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
   Future<void> _excelDisaVer() async {
     try {
       final liste = await PromosyonDeposu().detayliGetir();
+      if (!mounted) return;
       if (liste.isEmpty) {
         BildirimServisi.uyari(context, 'Dışarı verilecek promosyon yok');
         return;

@@ -7,7 +7,7 @@
 // İade sekmesinin KAYIT akışı (2026-10-07 refactor — iade_ekrani.dart'tan
 // davranış birebir korunarak taşındı). Asıl iş mantığı servislerde
 // (IadeIslemServisi); burası kaydı başlatıp ekran durumunu günceller:
-//   _kaydet ─┬─ düzenleme modu   → _duzenlemeModu_kalemEkle (geçmiş parçası)
+//   _kaydet ─┬─ düzenleme modu   → _duzenlemeModuKalemEkle (geçmiş parçası)
 //            ├─ tedarikçi / bayi → _cariIadesiKaydet (kural fiyatı, ayrı belge)
 //            └─ müşteri          → _musteriIadesiKaydet (oturum fişine kalem)
 part of 'iade_ekrani.dart';
@@ -25,9 +25,9 @@ extension _IadeKaydetExt on _IadeEkraniState {
     if (!await _cariSecimiTamamla() || !mounted) return;
 
     // Düzenleme modunda mevcut fişe kalem ekle
-    if (_duzenlemeModu_iadeId != null) {
+    if (_duzenlemeModuIadeId != null) {
       final (:fiyat, :isk, :toplam) = _formTutarlari();
-      await _duzenlemeModu_kalemEkle(fiyat, isk,
+      await _duzenlemeModuKalemEkle(fiyat, isk,
           ParaUtils.yuvarla(_miktar * fiyat * (isk / 100)), fiyat * (1 - isk / 100), toplam);
       return;
     }

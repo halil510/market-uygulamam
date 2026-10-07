@@ -225,6 +225,7 @@ extension _CariHareketIslemleri on _CariHareketEkraniState {
     String tipi = 'İskonto';
     final ctrl = TextEditingController();
     final acCtrl = TextEditingController();
+    final ekranCtx = context;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -289,10 +290,10 @@ extension _CariHareketIslemleri on _CariHareketEkraniState {
         ),
       ),
     ).whenComplete(() => dialogSonrasiBirak([ctrl, acCtrl]));
-    if (ok != true) return;
+    if (ok != true || !ekranCtx.mounted) return;
     final tutar = ParaUtils.sayiCoz(ctrl.text) ?? 0;
     if (tutar <= 0) {
-      BildirimServisi.uyari(context, 'Geçerli tutar girin');
+      BildirimServisi.uyari(ekranCtx, 'Geçerli tutar girin');
       return;
     }
 

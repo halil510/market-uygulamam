@@ -89,7 +89,7 @@ class ExcelServisi {
   factory ExcelServisi() => _instance;
   ExcelServisi._internal();
 
-  static final Map<String, List<String>> BASLIK_ESLEME = {
+  static final Map<String, List<String>> baslikEsleme = {
     'barkod': ['Barkod', 'barkod', 'BARKOD', 'Barkod No', 'Barcode'],
     'kod': ['Kod', 'KOD', 'Ürün Kodu', 'Urun Kodu', 'Product Code'],
     'urunAdi': ['Ürün Adı', 'Urun Adi', 'ÜRÜN ADI', 'Product Name', 'Ürün'],
@@ -142,7 +142,7 @@ class ExcelServisi {
   }
 
   int _findColumn(Map<String, int> kolonlar, String alanAdi) {
-    final alternatifler = BASLIK_ESLEME[alanAdi] ?? [alanAdi];
+    final alternatifler = baslikEsleme[alanAdi] ?? [alanAdi];
     
     for (final alt in alternatifler) {
       if (kolonlar.containsKey(alt)) return kolonlar[alt]!;
@@ -207,7 +207,7 @@ class ExcelServisi {
       // saklandığı (projenin genel kuralı) başlıkta hiç belirtilmiyordu
       // — dışa aktarılan dosyayı düzenleyip geri içe aktaran kullanıcı
       // net fiyat sandığı bir değeri yanlışlıkla KDV dahil kaydedebilirdi.
-      // BASLIK_ESLEME['satisFiyati'] zaten bu yeni metni de eşleştirir
+      // baslikEsleme['satisFiyati'] zaten bu yeni metni de eşleştirir
       // (normalize edilmiş alt-string karşılaştırması), geri içe
       // aktarma BOZULMAZ.
       'Satış fiyatı (KDV Dahil)', 'Stok', 'Stok değeri', 'Toplam Maliyet', 'Toplam Stok',

@@ -6,8 +6,8 @@ import '../../../tasarim_sistemi/tasarim_sistemi.dart';
 
 class IadeGecmisWidget extends StatelessWidget {
   final List<Map<String, dynamic>> iadeListesi;
-  final int? duzenlemeModu_iadeId;
-  final String? duzenlemeModu_fisNo;
+  final int? duzenlemeModuIadeId;
+  final String? duzenlemeModuFisNo;
   final Future<bool?> Function(Map<String, dynamic>) onSilOnay;
   final void Function(int, Map<String, dynamic>) onSil;
   final void Function(int, Map<String, dynamic>) onDuzenle;
@@ -16,8 +16,8 @@ class IadeGecmisWidget extends StatelessWidget {
   const IadeGecmisWidget({
     super.key,
     required this.iadeListesi,
-    required this.duzenlemeModu_iadeId,
-    required this.duzenlemeModu_fisNo,
+    required this.duzenlemeModuIadeId,
+    required this.duzenlemeModuFisNo,
     required this.onSilOnay,
     required this.onSil,
     required this.onDuzenle,
@@ -40,8 +40,8 @@ class IadeGecmisWidget extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(
-          duzenlemeModu_iadeId != null
-              ? 'Fiş: $duzenlemeModu_fisNo Kalemleri (${iadeListesi.length})'
+          duzenlemeModuIadeId != null
+              ? 'Fiş: $duzenlemeModuFisNo Kalemleri (${iadeListesi.length})'
               : 'Bu Oturumdaki İadeler (${iadeListesi.length})',
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textD)),
         TextButton.icon(
@@ -58,7 +58,7 @@ class IadeGecmisWidget extends StatelessWidget {
             Icon(Icons.inbox_outlined, size: 28, color: textL.withAlpha(150)),
             const SizedBox(height: 8),
             Text(
-              duzenlemeModu_iadeId != null
+              duzenlemeModuIadeId != null
                   ? 'Fişe kalem eklemek için yukarıdan ürün seçin'
                   : 'Bu oturumda henüz iade yapılmadı',
               style: TextStyle(fontSize: 12, color: textL),

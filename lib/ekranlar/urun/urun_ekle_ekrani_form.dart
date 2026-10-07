@@ -114,7 +114,7 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
                 return;
               }
               await AiVisionServisi().setApiKey(key);
-              if (!mounted) return;
+              if (!mounted || !ctx.mounted) return;
               Navigator.pop(ctx);
               BildirimServisi.basari(context, 'API anahtarı başarıyla kaydedildi!');
             },

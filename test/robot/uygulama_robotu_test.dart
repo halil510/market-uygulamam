@@ -419,8 +419,12 @@ void main() {
             final d = w.decoration;
             if (d is BoxDecoration && d.gradient == null && d.image == null) {
               c = d.color;
-            } else if (d is ShapeDecoration && d.gradient == null && d.image == null) c = d.color;
-            else { bilinmiyor = true; return false; }
+            } else if (d is ShapeDecoration && d.gradient == null && d.image == null) {
+              c = d.color;
+            } else {
+              bilinmiyor = true;
+              return false;
+            }
           }
           // Degrade başlık çubukları / üst üste katmanlar: zemin yazının atası
           // değil yanındaki katman — güvenle bilinemez, kontrol edilmez.

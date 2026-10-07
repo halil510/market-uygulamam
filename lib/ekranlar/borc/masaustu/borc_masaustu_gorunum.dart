@@ -157,7 +157,7 @@ class _BorcMasaustuGorunumState extends State<BorcMasaustuGorunum> {
   bool _tus(KeyEvent e) {
     if (e is! KeyDownEvent || !mounted) return false;
     // Sekme görünür değilse (TabBarView yan sekmesi) tuşu işleme.
-    if (!TickerMode.of(context)) return false;
+    if (!TickerMode.valuesOf(context).enabled) return false;
     if (!ekranUstte(context)) return false;
     final k = e.logicalKey;
     final s = _secili;

@@ -106,9 +106,9 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
                       FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Onayla')),
                     ],
                   ));
-                if (onay == true && mounted) {
+                if (onay == true && context.mounted) {
                   final atlanan = await ref.read(satislarProvider.notifier).seciliSil();
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   if (atlanan > 0) {
                     BildirimServisi.uyari(context,
                         'Silindi, ancak $atlanan satış faturalandırılmış olduğu '

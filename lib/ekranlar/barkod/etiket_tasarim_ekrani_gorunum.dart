@@ -438,13 +438,19 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
     ),
     const Divider(height: 24),
     _baslik('Etiket Boyutu'),
-    ...EtiketBoyut.values.map((b) => RadioListTile<EtiketBoyut>(
-      title: Text(b.etiket),
-      subtitle: Text('${b.w.toInt()}×${b.h.toInt()} mm · '
-          '${b.kagit == PaperSize.mm58 ? "58mm kağıt" : "80mm kağıt"}'),
-      value: b, groupValue: _ozelBoyutAktif ? null : _boyut,
+    RadioGroup<EtiketBoyut>(
+      groupValue: _ozelBoyutAktif ? null : _boyut,
       onChanged: (v) { if (v != null) setState(() { _boyut = v; _ozelBoyutAktif = false; }); },
-    )),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        for (final b in EtiketBoyut.values)
+          RadioListTile<EtiketBoyut>(
+            title: Text(b.etiket),
+            subtitle: Text('${b.w.toInt()}×${b.h.toInt()} mm · '
+                '${b.kagit == PaperSize.mm58 ? "58mm kağıt" : "80mm kağıt"}'),
+            value: b,
+          ),
+      ]),
+    ),
     SwitchListTile(
       title: const Text('Özel Boyut'),
       subtitle: const Text('Kendi mm ölçünüzü girin (ZPL/etiket önizlemesi için)'),

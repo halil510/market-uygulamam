@@ -103,7 +103,7 @@ extension _CariHareketDisaAktar on _CariHareketEkraniState {
             style:
                 pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey)),
         pw.SizedBox(height: 8),
-        pw.Table.fromTextArray(
+        pw.TableHelper.fromTextArray(
           headers: ['Tarih', 'Tip', 'Açıklama', 'Borç', 'Alacak', 'Bakiye'],
           headerStyle:
               pw.TextStyle(font: boldFont, color: PdfColors.white, fontSize: 9),

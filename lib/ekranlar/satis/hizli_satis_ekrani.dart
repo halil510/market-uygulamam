@@ -259,7 +259,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                                 top: Radius.circular(20))),
                         builder: (_) => const BekleyenFislerEkrani(),
                       );
-                      if (!mounted || secilen == null) return;
+                      if (!context.mounted || secilen == null) return;
                       if (sepet.kalemler.isNotEmpty) {
                         final onay = await showDialog<bool>(
                           context: context,
@@ -346,10 +346,10 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                 ? () async {
                     try {
                       await YazdirmaServisi().fisYazdir(_sonSatis!);
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       BildirimServisi.basari(context, 'Fiş yazdırılıyor…');
                     } catch (e) {
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       BildirimServisi.hata(context, 'Yazdırılamadı: $e');
                     }
                   }

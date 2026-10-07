@@ -268,13 +268,13 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
                 ]),
             ),
             const SizedBox(height: 16),
-            _Alan(_unvanCtrl, 'Ünvan / Ad Soyad *', validator: (v) => v!.isEmpty ? 'Zorunlu alan' : null),
-            _Alan(_kodCtrl, 'Cari Kodu'),
-            _Alan(_telefonCtrl, 'Telefon', klavye: TextInputType.phone),
-            _Alan(_emailCtrl, 'E-posta', klavye: TextInputType.emailAddress),
+            _alan(_unvanCtrl, 'Ünvan / Ad Soyad *', validator: (v) => v!.isEmpty ? 'Zorunlu alan' : null),
+            _alan(_kodCtrl, 'Cari Kodu'),
+            _alan(_telefonCtrl, 'Telefon', klavye: TextInputType.phone),
+            _alan(_emailCtrl, 'E-posta', klavye: TextInputType.emailAddress),
             const Divider(height: 24),
-            _Alan(_vergiDairesiCtrl, 'Vergi Dairesi'),
-            _Alan(_vergiNoCtrl, 'Vergi No (VKN — 10 hane)',
+            _alan(_vergiDairesiCtrl, 'Vergi Dairesi'),
+            _alan(_vergiNoCtrl, 'Vergi No (VKN — 10 hane)',
                 klavye: TextInputType.number,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return null;
@@ -282,7 +282,7 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
                   return VergiNoDogrulayici.vknGecerliMi(v.trim())
                       ? null : 'Geçersiz VKN — rakamları kontrol edin';
                 }),
-            _Alan(_tcCtrl, 'TC Kimlik No',
+            _alan(_tcCtrl, 'TC Kimlik No',
                 klavye: TextInputType.number,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return null;
@@ -299,7 +299,7 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
                   fontSize: 12, fontWeight: FontWeight.w600, color: context.textSecondary)),
             ]),
             const SizedBox(height: 8),
-            _Alan(_adresCtrl, 'Adres (Mahalle, Cadde/Sokak, No)', satirSayisi: 2),
+            _alan(_adresCtrl, 'Adres (Mahalle, Cadde/Sokak, No)', satirSayisi: 2),
             Row(children: [
               Expanded(
                   child: Padding(
@@ -319,10 +319,10 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
                 ),
               )),
             ]),
-            _Alan(_postaKoduCtrl, 'Posta Kodu', klavye: TextInputType.number),
+            _alan(_postaKoduCtrl, 'Posta Kodu', klavye: TextInputType.number),
             const Divider(height: 24),
-            _Alan(_limitCtrl, 'Kredi Limiti', klavye: const TextInputType.numberWithOptions(decimal: true)),
-            _Alan(_vadeCtrl, 'Vade (gün)', klavye: TextInputType.number),
+            _alan(_limitCtrl, 'Kredi Limiti', klavye: const TextInputType.numberWithOptions(decimal: true)),
+            _alan(_vadeCtrl, 'Vade (gün)', klavye: TextInputType.number),
             const SizedBox(height: 12),
             // Kullanıcı isteği: "toptan satış — Ülker gibi firmaların
             // kullandığı profesyonel sistem." Bu carinin Perakende mi
@@ -370,7 +370,7 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
               ),
             ],
             const SizedBox(height: 12),
-            _Alan(_notlarCtrl, 'Notlar', satirSayisi: 3),
+            _alan(_notlarCtrl, 'Notlar', satirSayisi: 3),
             Row(children: [
               const Text('Aktif'),
               const Spacer(),
@@ -390,7 +390,7 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
     );
   }
 
-  Widget _Alan(TextEditingController ctrl, String label,
+  Widget _alan(TextEditingController ctrl, String label,
       {String? Function(String?)? validator,
        TextInputType? klavye, int satirSayisi = 1,
        IconData? ikon}) =>

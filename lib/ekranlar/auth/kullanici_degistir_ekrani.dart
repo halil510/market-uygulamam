@@ -441,8 +441,11 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
                     onTap: () {
                       if (t == '⌫') {
                         _silSon();
-                      } else if (t == 'C') _temizle();
-                      else _rakamEkle(t);
+                      } else if (t == 'C') {
+                        _temizle();
+                      } else {
+                        _rakamEkle(t);
+                      }
                     },
                     child: Container(
                       height: 52, alignment: Alignment.center,

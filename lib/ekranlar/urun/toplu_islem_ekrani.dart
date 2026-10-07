@@ -28,7 +28,7 @@ class _AlanTanim {
     this.ikon, this.renk = AppRenkler.primary});
 }
 
-const _ALANLAR = [
+const _alanlar = [
   // Fiyat grubu
   _AlanTanim('alisFiyat',        'Alış Fiyatı (KDV Hariç)',  grup: 'Fiyat', sayisal: true,  ikon: Icons.south_east, renk: Color(0xFF1565C0)),
   _AlanTanim('alisFiyatKdvDahil','Alış Fiyatı (KDV Dahil)', grup: 'Fiyat', sayisal: true,  ikon: Icons.south_east, renk: Color(0xFF1565C0)),
@@ -382,7 +382,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
   Widget build(BuildContext context) {
     // Gruplara ayır
     final gruplar = <String, List<_AlanTanim>>{};
-    for (final a in _ALANLAR) {
+    for (final a in _alanlar) {
       gruplar.putIfAbsent(a.grup, () => []).add(a);
     }
 

@@ -4,7 +4,7 @@
 part of 'urun_liste_ekrani.dart';
 
 extension _UrunListeKartlarExt on _UrunListeEkraniState {
-  Widget _FilterChip(String label, VoidCallback onRemove) => Container(
+  Widget _filterChip(String label, VoidCallback onRemove) => Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(

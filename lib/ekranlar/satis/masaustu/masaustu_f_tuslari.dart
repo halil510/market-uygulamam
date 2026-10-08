@@ -49,15 +49,21 @@ class MasaustuFTuslari extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(6),
           onTap: t.onTap,
-          child: Center(
-            child: Text(
-              '${t.tus} : ${t.etiket}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: yazi,
-                  fontWeight: FontWeight.w800),
+          // Uzun etiket ("F10 : Yeni Alışveriş") kesilmesin: sığmazsa küçülür.
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '${t.tus} : ${t.etiket}',
+                  maxLines: 1,
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: yazi,
+                      fontWeight: FontWeight.w800),
+                ),
+              ),
             ),
           ),
         ),

@@ -152,53 +152,17 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
       final maliyet  = results[2] as double;
       final iade     = results[3] as ({double tutar, double maliyet});
 
-      // Karma satışlar gerçek kasa/cari satırlarından yöntemlere bölünür.
-      final karmaIdler = [
-        for (final s in satislar)
-          if (s.odemeYontemi == 'Karma' && s.id != null) s.id!
-      ];
-      final karmaDagilim =
-          await _satisDepo.odemeDagilimlariGetir(karmaIdler);
-
-      double toplam = 0, nakit = 0, kart = 0, cari = 0, havale = 0, diger = 0;
-      for (final s in satislar) {
-        toplam += s.genelToplam;
-        final dagilim = s.odemeYontemi == 'Karma' ? karmaDagilim[s.id] : null;
-        if (dagilim != null && dagilim.isNotEmpty) {
-          var kalan = s.genelToplam;
-          // Nakit en sona: para üstü varsa nakitten düşülür.
-          final sirali = dagilim.entries.toList()
-            ..sort((a, b) => (a.key == 'Nakit' ? 1 : 0) - (b.key == 'Nakit' ? 1 : 0));
-          for (final e in sirali) {
-            final yontem = e.key, tutar = e.value;
-            final pay = tutar > kalan ? kalan : tutar; // para üstü ciroya girmez
-            kalan -= pay;
-            switch (yontem) {
-              case 'Nakit':       nakit  += pay; break;
-              case 'Kredi Kartı': kart   += pay; break;
-              case 'Cari':        cari   += pay; break;
-              case 'Havale':
-              case 'Havale/EFT':
-              case 'EFT':         havale += pay; break;
-              default:            diger  += pay; break;
-            }
-          }
-          if (kalan > 0.005) diger += kalan;
-          continue;
-        }
-        // Alınan tutar satış tutarını aşıyorsa (nakit para üstü) fazlası
-        // ciroya/nakit satışa girmez.
-        final tahsil = s.odenenTutar > s.genelToplam ? s.genelToplam : s.odenenTutar;
-        switch (s.odemeYontemi) {
-          case 'Nakit':       nakit  += tahsil; break;
-          case 'Kredi Kartı': kart   += tahsil; break;
-          case 'Cari':        cari   += s.genelToplam; break;
-          case 'Havale':      havale += tahsil; break;
-          // QR, Karma ve ileride eklenebilecek başka ödeme yöntemleri —
-          // kırılım toplamının genel toplamdan eksik görünmemesi için.
-          default:            diger  += tahsil; break;
-        }
-      }
+      // Ödeme kırılımı Satış Raporu ile ortak hesap (Karma gerçek kasa/cari
+      // satırlarından bölünür) — bkz. SatisDeposu.odemeKirilimiHesapla.
+      final kirilim = await _satisDepo.odemeKirilimiHesapla(satislar);
+      final toplam = satislar.fold<double>(0, (t, s) => t + s.genelToplam);
+      final nakit = kirilim['Nakit'] ?? 0;
+      final kart = kirilim['Kredi Kartı'] ?? 0;
+      final cari = kirilim['Cari'] ?? 0;
+      final havale = kirilim['Havale'] ?? 0;
+      final diger = kirilim.entries
+          .where((e) => !['Nakit', 'Kredi Kartı', 'Cari', 'Havale'].contains(e.key))
+          .fold<double>(0, (t, e) => t + e.value);
       if (!mounted) return;
       setState(() {
         _satislar     = satislar;

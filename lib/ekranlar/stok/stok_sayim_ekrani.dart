@@ -587,7 +587,8 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
                       fontWeight: FontWeight.w600, fontSize: 13),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
               Row(children: [
-                Text('Mevcut: ${ref.watch(stokSayimProvider).mevcutStok(widget.urun)} ${widget.urun.birim}',
+                // "498.0" yerine "498" (kesirli miktarda en fazla 3 hane).
+                Text('Mevcut: ${_miktarYazi(ref.watch(stokSayimProvider).mevcutStok(widget.urun))} ${widget.urun.birim}',
                     style: TextStyle(
                         fontSize: 11,
                         color: kritik
@@ -692,3 +693,7 @@ class _BosEkran extends StatelessWidget {
     ]),
   );
 }
+
+String _miktarYazi(double m) => m == m.roundToDouble()
+    ? m.toStringAsFixed(0)
+    : m.toStringAsFixed(3).replaceFirst(RegExp(r'0+$'), '');

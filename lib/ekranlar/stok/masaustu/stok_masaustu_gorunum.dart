@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../cekirdek/utils/para_utils.dart';
+import '../../../depolar/urun_deposu.dart';
 import '../../../modeller/urun_model.dart';
 import '../../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../../widgetlar/masaustu/masaustu_alt_serit.dart';
@@ -88,7 +89,8 @@ class _StokMasaustuGorunumState extends State<StokMasaustuGorunum> {
         sirala: (u) => u.minimumStok),
     _tutar('Alış (KDV Dahil)', 120, (u) => u.alisFiyatKdvDahil),
     _tutar('Satış Fiyatı', 100, (u) => u.satisFiyati),
-    _tutar('Stok Değeri (KDV Dahil)', 165, (u) => u.stok * u.alisFiyatKdvDahil),
+    _tutar('Stok Değeri (KDV Dahil)', 165, // Eksi stok değere katılmaz (Stok Raporu ile aynı).
+        (u) => (u.stok > 0 ? u.stok : 0) * u.alisFiyatKdvDahil),
   ];
 
   void _detay(UrunModel u) => context.push('/urun/detay/${u.id}');
@@ -119,6 +121,23 @@ class _StokMasaustuGorunumState extends State<StokMasaustuGorunum> {
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_tus);
+    _ozetYenile();
+  }
+
+  // Mağaza geneli toplam (liste 50'şer yüklendiği için alt şerit yüklü
+  // sayfayı değil tüm aktif ürünleri gösterir).
+  ({int adet, double stok, double satis, double maliyet, double maliyetKdv})? _ozet;
+  void _ozetYenile() {
+    UrunDeposu().magazaOzeti().then((o) {
+      if (mounted) setState(() => _ozet = o);
+    }).catchError((_) {});
+  }
+
+  @override
+  void didUpdateWidget(covariant StokMasaustuGorunum eski) {
+    super.didUpdateWidget(eski);
+    // Liste yenilendi (kayıt/silme/senkron) → toplamı da tazele.
+    if (!identical(eski.urunler, widget.urunler)) _ozetYenile();
   }
 
   @override
@@ -170,10 +189,10 @@ class _StokMasaustuGorunumState extends State<StokMasaustuGorunum> {
       MasaustuAltSerit(
         ozetler: [
           if (_coklu) AltOzet('Seçili', '${widget.seciliIds.length} ürün'),
-          AltOzet('Çeşit Sayısı', '${u.length}'),
-          AltOzet('Stok Miktarı', _sayi(stokToplam)),
-          AltOzet('Maliyet (KDV Dahil)', ParaUtils.formatla(maliyet)),
-          AltOzet('Satış Değeri', ParaUtils.formatla(satis)),
+          AltOzet('Listelenen', _ozet == null ? '${u.length}' : '${u.length} / ${_ozet!.adet}'),
+          AltOzet('Stok Miktarı', _sayi(_ozet?.stok ?? stokToplam)),
+          AltOzet('Maliyet (KDV Dahil)', ParaUtils.formatla(_ozet?.maliyetKdv ?? maliyet)),
+          AltOzet('Satış Değeri', ParaUtils.formatla(_ozet?.satis ?? satis)),
         ],
         tuslar: [
           AltTus('F2', 'Detay', Icons.info_outline, const Color(0xFF1565C0),

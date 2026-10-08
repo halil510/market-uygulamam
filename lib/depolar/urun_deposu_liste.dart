@@ -6,6 +6,32 @@
 part of 'urun_deposu.dart';
 
 extension UrunDeposuListe on UrunDeposu {
+  /// Mağaza geneli (aktif ürünler) özet — masaüstü liste alt şeritleri için.
+  /// Liste 50'şer yüklendiğinden şerit önceden yalnız yüklü sayfayı
+  /// topluyordu ("Çeşit Sayısı 50", canlı test 2026-10-08). Eksi stok
+  /// değere katılmaz (Stok Raporu ile aynı).
+  Future<({int adet, double stok, double satis, double maliyet, double maliyetKdv})>
+      magazaOzeti() async {
+    final db = await _d;
+    final r = (await db.rawQuery('''
+      SELECT COUNT(*) AS adet,
+             COALESCE(SUM(MAX(stok, 0)), 0) AS stok,
+             COALESCE(SUM(MAX(stok, 0) * satis_fiyati), 0) AS satis,
+             COALESCE(SUM(MAX(stok, 0) * alis_fiyat), 0) AS maliyet,
+             COALESCE(SUM(MAX(stok, 0) * COALESCE(NULLIF(alis_fiyat_kdv_dahil, 0), alis_fiyat)), 0) AS maliyet_kdv
+      FROM ${DbSabitler.urunler}
+      WHERE is_deleted = 0 AND aktif = 1
+    ''')).first;
+    double d(String k) => (r[k] as num?)?.toDouble() ?? 0;
+    return (
+      adet: (r['adet'] as num?)?.toInt() ?? 0,
+      stok: d('stok'),
+      satis: d('satis'),
+      maliyet: d('maliyet'),
+      maliyetKdv: d('maliyet_kdv'),
+    );
+  }
+
   Future<List<UrunModel>> tumunuGetir({bool sadecaAktif = true, int limit = 2000}) async {
     final db = await _d;
     final where = sadecaAktif

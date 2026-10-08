@@ -203,6 +203,49 @@ class SatisDeposu {
     }
   }
 
+  /// Satış listesinin ödeme yöntemi kırılımı (yöntem → tutar). Karma satışlar
+  /// gerçek kasa/cari satırlarından yöntemlere bölünür; para üstü nakitten
+  /// düşülür. Gün Sonu ve Satış Raporu AYNI hesabı kullanır (2026-10-08:
+  /// ikisi de Karma'yı tek kalem gösteriyordu, kart payı görünmüyordu).
+  /// Havale/EFT adları 'Havale' altında toplanır.
+  Future<Map<String, double>> odemeKirilimiHesapla(List<SatisModel> satislar) async {
+    final karmaIdler = [
+      for (final s in satislar)
+        if (s.odemeYontemi == 'Karma' && s.id != null) s.id!
+    ];
+    final karma = await odemeDagilimlariGetir(karmaIdler);
+    final sonuc = <String, double>{};
+    void ekle(String y, double t) {
+      final ad = (y == 'Havale/EFT' || y == 'EFT') ? 'Havale' : y;
+      sonuc[ad] = (sonuc[ad] ?? 0) + t;
+    }
+    for (final s in satislar) {
+      final dagilim = s.odemeYontemi == 'Karma' ? karma[s.id] : null;
+      if (dagilim != null && dagilim.isNotEmpty) {
+        var kalan = s.genelToplam;
+        final sirali = dagilim.entries.toList()
+          ..sort((a, b) => (a.key == 'Nakit' ? 1 : 0) - (b.key == 'Nakit' ? 1 : 0));
+        for (final e in sirali) {
+          final pay = e.value > kalan ? kalan : e.value;
+          kalan -= pay;
+          if (pay > 0.005) ekle(e.key, pay);
+        }
+        if (kalan > 0.005) ekle('Diğer', kalan);
+        continue;
+      }
+      if (s.odemeYontemi == 'Cari') {
+        ekle('Cari', s.genelToplam);
+      } else {
+        // Para üstü ciroya girmez.
+        final tahsil = s.odenenTutar > s.genelToplam || s.odenenTutar <= 0
+            ? s.genelToplam
+            : s.odenenTutar;
+        ekle(s.odemeYontemi, tahsil);
+      }
+    }
+    return sonuc;
+  }
+
   /// [odemeDagilimiGetir]'in çok satışlı hali: {satisId: {yöntem: tutar}}.
   /// Raporlarda Karma satışları yöntemlere bölmek için (canlı test
   /// 2026-10-08: Gün Sonu Raporu Karma'yı "Diğer"e atıyordu — kart payı

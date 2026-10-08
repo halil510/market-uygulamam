@@ -38,7 +38,10 @@ class _SatisRaporMasaustuGorunumState
     TabloKolon(
         baslik: 'Fiş No',
         genislik: 150,
-        deger: (s) => s.fisNo ?? '—',
+        // Gün Sonu ile aynı kısa biçim (MKP-13-000014) — uzun numara kırpılıyordu.
+        deger: (s) => ParaUtils.kisaFisNo(s.fisNo) != 'FİŞ'
+            ? ParaUtils.kisaFisNo(s.fisNo)
+            : (s.fisNo ?? '—'),
         sirala: (s) => s.fisNo ?? ''),
     TabloKolon(
         baslik: 'Tarih',

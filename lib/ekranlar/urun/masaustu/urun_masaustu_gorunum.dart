@@ -339,6 +339,23 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_tus);
+    _ozetYenile();
+  }
+
+  // Mağaza geneli toplam (liste 50'şer yüklendiği için alt şerit yüklü
+  // sayfayı değil tüm aktif ürünleri gösterir).
+  ({int adet, double stok, double satis, double maliyet, double maliyetKdv})? _ozet;
+  void _ozetYenile() {
+    UrunDeposu().magazaOzeti().then((o) {
+      if (mounted) setState(() => _ozet = o);
+    }).catchError((_) {});
+  }
+
+  @override
+  void didUpdateWidget(covariant UrunMasaustuGorunum eski) {
+    super.didUpdateWidget(eski);
+    // Liste yenilendi (kayıt/silme/senkron) → toplamı da tazele.
+    if (!identical(eski.urunler, widget.urunler)) _ozetYenile();
   }
 
   @override
@@ -403,10 +420,10 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
       MasaustuAltSerit(
         ozetler: [
           if (_coklu) AltOzet('Seçili', '${widget.seciliIds.length} ürün'),
-          AltOzet('Çeşit Sayısı', '${u.length}'),
-          AltOzet('Stok Miktarı', _sayi(stokToplam)),
-          AltOzet('Satış Değeri', ParaUtils.formatla(satisDeger)),
-          AltOzet('Maliyet Değeri', ParaUtils.formatla(maliyet)),
+          AltOzet('Listelenen', _ozet == null ? '${u.length}' : '${u.length} / ${_ozet!.adet}'),
+          AltOzet('Stok Miktarı', _sayi(_ozet?.stok ?? stokToplam)),
+          AltOzet('Satış Değeri', ParaUtils.formatla(_ozet?.satis ?? satisDeger)),
+          AltOzet('Maliyet Değeri', ParaUtils.formatla(_ozet?.maliyet ?? maliyet)),
         ],
         tuslar: [
           AltTus('F1', 'Ekle', Icons.add, const Color(0xFF2E7D32), widget.onEkle),

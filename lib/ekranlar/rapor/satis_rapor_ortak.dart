@@ -69,9 +69,11 @@ final satisRaporProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref
   for (final s in aktif) {
     ciro += s.genelToplam;
     iskonto += s.iskonto;
-    odemeMap[s.odemeYontemi] = (odemeMap[s.odemeYontemi] ?? 0) + s.genelToplam;
     saatMap[s.tarih.hour] = (saatMap[s.tarih.hour] ?? 0) + s.genelToplam;
   }
+
+  // Karma satışlar yöntemlere bölünür (Gün Sonu ile aynı hesap).
+  odemeMap.addAll(await depo.odemeKirilimiHesapla(aktif));
 
   final netCiro = ciro - iade.tutar;
   final brutKar = (ciro - maliyet) - (iade.tutar - iade.maliyet);

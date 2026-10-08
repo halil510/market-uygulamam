@@ -50,6 +50,17 @@ void main() {
     expect(tersKasa.length, 1);
     final stokSonra = (await db.query('urunler', where: 'id = ?', whereArgs: [urunId])).first['stok'] as num;
     expect(stokSonra - stokOnce, 1); // yalnızca bir kez geri yüklendi
+
+    // 2026-10-08 bulut kontrolü: iptal stok hareketi kimliksiz yazılıyor,
+    // senkron kuyruğuna girmiyordu → buluta hiç gitmiyordu.
+    final iptalStok = await db.query('stok_hareket',
+        where: 'referans_id = ? AND referans_turu = ?', whereArgs: [satisId, 'satis_iptal']);
+    expect(iptalStok.length, 1);
+    final gid = iptalStok.first['global_id'] as String?;
+    expect(gid, isNotNull);
+    final kuyruk = await db.query('sync_queue',
+        where: "tablo_adi = 'stok_hareket' AND kayit_global_id = ?", whereArgs: [gid]);
+    expect(kuyruk, isNotEmpty);
   });
 
   test('iade yönü: yalnızca saf tedarikçi alım iadesi sayılır', () {

@@ -892,7 +892,12 @@ class SatisDeposu {
               ? (urunRows.first['stok'] as num).toDouble() : 0.0;
           final sonraki = onceki + miktar;
           await txn.update('urunler', {'stok': sonraki}, where: 'id = ?', whereArgs: [urunId]);
-          await txn.insert('stok_hareket', {
+          // 🔴 (canlı bulut kontrolü 2026-10-08): iptal stok hareketi
+          // kimliksiz yazılıyor ve kuyruğa hiç girmiyordu — buluta ve
+          // diğer cihazlara ulaşmıyor, oradaki stok mutabakatı satışı
+          // iptal edilmemiş sayıyordu. StokDeposu.stokDusTxn ile aynı desen.
+          final hareketSatiri = <String, dynamic>{
+            'global_id':     const Uuid().v4(),
             'urun_id':       urunId,
             'hareket_turu':  'İptal İadesi',
             'miktar':        miktar,
@@ -903,7 +908,16 @@ class SatisDeposu {
             'tarih':         simdi,
             'last_updated':  simdi,
             'aciklama':      'Satış iptali — Fiş $fisNo',
-          });
+          };
+          await txn.insert('stok_hareket', hareketSatiri);
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'stok_hareket', veri: hareketSatiri);
+          final guncelUrun = await txn.query('urunler',
+              where: 'id = ?', whereArgs: [urunId], limit: 1);
+          if (guncelUrun.isNotEmpty) {
+            await SyncKuyrukYazici.ekleTxn(txn,
+                tablo: 'urunler', veri: Map<String, dynamic>.from(guncelUrun.first));
+          }
         }
       }
 

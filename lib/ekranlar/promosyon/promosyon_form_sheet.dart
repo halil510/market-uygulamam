@@ -137,6 +137,7 @@ class PromosyonFormSheetState extends ConsumerState<PromosyonFormSheet> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (!_formKey.currentState!.validate()) return;
     if (_seciliUrun == null) {
       BildirimServisi.uyari(context, 'Ürün seçin');

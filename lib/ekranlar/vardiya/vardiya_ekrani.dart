@@ -126,6 +126,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
   }
 
   Future<void> _gecmisDahaFazlaYukle() async {
+    if (!mounted) return;
     if (_gecmisDahaYukleniyor || !_gecmisDahaVarMi) return;
     setState(() => _gecmisDahaYukleniyor = true);
     try {

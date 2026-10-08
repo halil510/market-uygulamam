@@ -56,6 +56,7 @@ class _BankaEkleEkraniState extends ConsumerState<BankaEkleEkrani> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (!_formKey.currentState!.validate()) return;
     setState(() => _kayit = true);
     try {

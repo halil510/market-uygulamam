@@ -137,6 +137,7 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (_kayitYapiliyor) return; // 🔴 DÜZELTME: çift tıklama koruması yoktu
     setState(() => _kayitYapiliyor = true);
     try {

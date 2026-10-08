@@ -62,6 +62,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
   }
 
   Future<void> _aramaYap(String q) async {
+    if (!mounted) return;
     try {  
       setState(() => _aramaQ = q);
       if (q.trim().isEmpty) {
@@ -159,6 +160,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
   // ekran yeniden açıldığında sıralama tamamen kayboluyordu. Artık yeni
   // sıra, `plu_sira` sütununa kalıcı olarak yazılıyor.
   Future<void> _siralamaKaydet(int eski, int yeni) async {
+    if (!mounted) return;
     // onReorderItem hedef indeksi, eleman çıkarılmış listeye göre verir.
     setState(() {
       final u = _pluUrunler.removeAt(eski);

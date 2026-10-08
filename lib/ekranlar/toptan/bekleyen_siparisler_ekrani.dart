@@ -45,6 +45,7 @@ class _BekleyenSiparislerEkraniState extends State<BekleyenSiparislerEkrani> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final liste = await _depo.bekleyenSiparisleriGetir(cariId: widget.bayi?.id);
@@ -178,6 +179,7 @@ class _SiparisDetayEkraniState extends State<_SiparisDetayEkrani> {
   }
 
   Future<void> _onayla() async {
+    if (!mounted) return;
     setState(() => _islemde = true);
     try {
       final cariId = widget.siparis['cari_id'] as int;

@@ -32,6 +32,7 @@ class _GibGelenKutusuEkraniState extends State<GibGelenKutusuEkrani> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() { _yukleniyor = true; _hata = null; });
     await _gib.ayarlariYukle();
     if (!_gib.ayarliMi) {

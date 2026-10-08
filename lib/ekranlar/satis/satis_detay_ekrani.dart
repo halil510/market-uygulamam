@@ -118,6 +118,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
   }
 
   Future<void> _faturalandir() async {
+    if (!mounted) return;
     final s = widget.satis;
     if (s.cariId == null) {
       BildirimServisi.uyari(context,

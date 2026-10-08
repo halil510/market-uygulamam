@@ -81,6 +81,7 @@ class _MasaQrGosterEkraniState extends State<MasaQrGosterEkrani> {
   /// [sessiz]: arka plan yenilemesinde mevcut QR, yeni sonuç gelene kadar
   /// ekranda kalır (yükleniyor göstergesiyle titremez).
   Future<void> _adresiCoz({bool sessiz = false}) async {
+    if (!mounted) return;
     final no = ++_cozumNo;
     if (!sessiz) setState(() { _yukleniyor = true; _hata = null; });
     final oncekiUrl = _url;
@@ -108,6 +109,7 @@ class _MasaQrGosterEkraniState extends State<MasaQrGosterEkrani> {
   }
 
   Future<void> _yazdir() async {
+    if (!mounted) return;
     if (_yazdiriliyor) return;
     setState(() => _yazdiriliyor = true);
     try {

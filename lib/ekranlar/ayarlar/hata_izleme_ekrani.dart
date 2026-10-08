@@ -55,6 +55,7 @@ class _HataIzlemeEkraniState extends State<HataIzlemeEkrani> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     final dsn = _ctrl.text.trim();
     if (dsn.isEmpty) {
       BildirimServisi.uyari(context, 'DSN girin');

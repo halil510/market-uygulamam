@@ -126,6 +126,7 @@ class _HizliTusYonetimEkraniState extends ConsumerState<HizliTusYonetimEkrani>
   }
 
   Future<void> _siraDegisti(int eski, int yeni) async {
+    if (!mounted) return;
     // onReorderItem hedef indeksi, eleman çıkarılmış listeye göre verir.
     setState(() {
       final tasinan = _favoriler.removeAt(eski);

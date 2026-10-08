@@ -14,6 +14,7 @@ class LogServisi {
   LogServisi._();
 
   bool _initialized = false;
+  bool _sutunOnarimDenendi = false;
   final List<LogKaydi> _buffer = [];
   static const int _maxBuffer = 200;
 
@@ -89,13 +90,39 @@ class LogServisi {
           'zaman': e.zaman.toIso8601String(),
         });
       } catch (_) {
+        // Eksik yigin/ek sütunlarını bir kez ekleyip yeniden dene (taze
+        // kurulum şeması bu sütunları hiç oluşturmuyordu).
+        if (!_sutunOnarimDenendi) {
+          _sutunOnarimDenendi = true;
+          for (final s in const ['yigin', 'ek']) {
+            try {
+              await db.execute('ALTER TABLE app_log ADD COLUMN $s TEXT');
+            } catch (_) {/* zaten var */}
+          }
+          try {
+            await db.insert('app_log', {
+              'seviye': e.seviye.name,
+              'mesaj': e.mesaj,
+              'hata': e.hata,
+              'yigin': e.yigin,
+              'ek': e.ek,
+              'zaman': e.zaman.toIso8601String(),
+            });
+            return;
+          } catch (_) {/* temel sütunlarla devam */}
+        }
         // 🔴 (2026-10-08, canlı bulgu): eski kurulumlarda app_log'da
         // yigin/ek sütunları yok — insert her seferinde düşüyor, hiçbir
         // hata kaydı kalmıyordu. Temel sütunlarla tekrar yazılır.
         await db.insert('app_log', {
           'seviye': e.seviye.name,
           'mesaj': e.mesaj,
-          'hata': [e.hata, e.ek].whereType<String>().join(' | '),
+          // Yığın da hata metnine eklenir; yoksa "Null check..." gibi
+          // kayıtların nereden geldiği hiç bulunamıyordu.
+          'hata': [e.hata, e.ek, e.yigin]
+              .whereType<String>()
+              .where((s) => s.isNotEmpty)
+              .join(' | '),
           'zaman': e.zaman.toIso8601String(),
         });
       }

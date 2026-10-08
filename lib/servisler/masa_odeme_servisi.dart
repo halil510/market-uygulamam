@@ -84,6 +84,21 @@ class MasaOdemeServisi {
         .fisNoUret('masa', subeId: AktifSubeServisi().subeId ?? 1);
     final genelTop = siparis.hesaplananToplam;
 
+    // Alış maliyeti satış anında kaleme yazılır (raporların tarihsel
+    // maliyeti). Önceden 0 yazılıyordu (canlı test 2026-10-08).
+    final urunIdler = siparis.kalemler.map((k) => k.urunId).toSet().toList();
+    final maliyetDb = await Veritabani().db;
+    final alisMap = <int, ({double alis, double alisKdv})>{
+      for (final r in await maliyetDb.query('urunler',
+          columns: ['id', 'alis_fiyat', 'alis_fiyat_kdv_dahil'],
+          where: 'id IN (${List.filled(urunIdler.length, '?').join(',')})',
+          whereArgs: urunIdler))
+        r['id'] as int: (
+          alis: (r['alis_fiyat'] as num?)?.toDouble() ?? 0,
+          alisKdv: (r['alis_fiyat_kdv_dahil'] as num?)?.toDouble() ?? 0,
+        ),
+    };
+
     final satisKalemler = siparis.kalemler
         .map((k) => SatisKalemModel(
               satisId: 0,
@@ -104,8 +119,8 @@ class MasaOdemeServisi {
               // anlam; iade ekranı bunu iade birim fiyatı olarak okur). Önceden
               // KDV HARİÇ satır TOPLAMI yazılıyordu → masa satışı iadesi yanlış tutar.
               netFiyat: k.birimFiyat,
-              alisFiyat: 0,
-              alisFiyatKdv: 0,
+              alisFiyat: alisMap[k.urunId]?.alis ?? 0,
+              alisFiyatKdv: alisMap[k.urunId]?.alisKdv ?? 0,
             ))
         .toList();
 

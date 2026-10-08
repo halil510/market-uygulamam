@@ -340,6 +340,7 @@ class _RezervasyonFormSheetState extends State<_RezervasyonFormSheet> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (!_formKey.currentState!.validate()) return;
     if (_seciliMasa == null) {
       BildirimServisi.uyari(context, 'Lütfen masa seçin');

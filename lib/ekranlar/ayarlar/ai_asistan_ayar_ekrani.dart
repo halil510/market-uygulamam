@@ -56,6 +56,7 @@ class _AiAsistanAyarEkraniState extends State<AiAsistanAyarEkrani> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     final key = _ctrl.text.trim();
     if (key.isEmpty) {
       BildirimServisi.uyari(context, 'API anahtarı girin');

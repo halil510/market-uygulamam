@@ -99,6 +99,7 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final liste = await _depo.qrMenuUrunleriGetir();
@@ -117,6 +118,7 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
   }
 
   Future<void> _aramaYap() async {
+    if (!mounted) return;
     final q = _aramaCtrl.text.trim();
     if (q.isEmpty) {
       setState(() => _aramaSonuclari = []);
@@ -190,6 +192,7 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
   }
 
   Future<void> _barkodOkundu(String barkod) async {
+    if (!mounted) return;
     setState(() => _kameraAcik = false);
     _kameraCtrl?.dispose();
     _kameraCtrl = null;

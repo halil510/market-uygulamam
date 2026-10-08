@@ -76,6 +76,7 @@ class _BarkodUreteciEkraniState extends ConsumerState<BarkodUreteciEkrani> {
   }
 
   Future<void> _ara(String q) async {
+    if (!mounted) return;
     try {  
       if (q.trim().length < 2) { setState(() => _aramaSonuclari = []); return; }
       final s = await _depo.ara(q.trim(), limit: 8);
@@ -87,6 +88,7 @@ class _BarkodUreteciEkraniState extends ConsumerState<BarkodUreteciEkrani> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (_seciliUrun == null || _gosterilen.isEmpty) {
       BildirimServisi.uyari(context, "Ürün seçin ve barkod girin");
       return;

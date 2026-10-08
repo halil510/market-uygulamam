@@ -93,10 +93,14 @@ class SistemSemasi {
       )
     ''');
 
+    // yigin/ek: taze kurulumda yoktu → hata yığını (nerede oluştuğu) hiç
+    // kaydedilmiyordu (canlı test 2026-10-08). Eski kurulumlara LogServisi
+    // ilk hata yazımında ekler.
     await db.execute('''
       CREATE TABLE IF NOT EXISTS ${DbSabitler.appLog} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         seviye TEXT NOT NULL, mesaj TEXT NOT NULL, hata TEXT,
+        yigin TEXT, ek TEXT,
         zaman TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     ''');

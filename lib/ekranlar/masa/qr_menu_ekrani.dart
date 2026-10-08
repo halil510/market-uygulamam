@@ -42,6 +42,7 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
   }
   
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final urunler = await _urunDepo.tumunuGetir();

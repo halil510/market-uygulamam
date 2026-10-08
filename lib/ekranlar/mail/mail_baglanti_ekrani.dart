@@ -52,6 +52,7 @@ class _MailBaglantiEkraniState extends ConsumerState<MailBaglantiEkrani> {
   }
 
   Future<void> _baglan({bool sessiz = false}) async {
+    if (!mounted) return;
     final email = _emailCtrl.text.trim();
     final sifre = _sifreCtrl.text.trim();
     if (email.isEmpty || sifre.isEmpty) {

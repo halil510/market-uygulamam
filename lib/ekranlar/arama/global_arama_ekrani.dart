@@ -78,6 +78,7 @@ class _GlobalAramaEkraniState extends State<GlobalAramaEkrani> {
   }
 
   Future<void> _aiyaSor() async {
+    if (!mounted) return;
     final soru = _ctrl.text.trim();
     if (soru.isEmpty || _aiSoruluyor) return;
     setState(() { _aiSoruluyor = true; _aiSonuc = null; });

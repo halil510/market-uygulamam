@@ -83,6 +83,7 @@ class _KrediKartiEkleEkraniState extends ConsumerState<KrediKartiEkleEkrani> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (!_formKey.currentState!.validate()) {
       BildirimServisi.uyari(context, 'Zorunlu alanları doldurun');
       return;

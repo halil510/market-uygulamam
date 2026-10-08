@@ -68,6 +68,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
   }
 
   Future<void> _adisyonYazdir(MasaSiparisModel siparis) async {
+    if (!mounted) return;
     if (siparis.kalemler.isEmpty) {
       BildirimServisi.uyari(context, 'Sepet boş, adisyon yazdırılamaz');
       return;
@@ -240,6 +241,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
   // açabiliyordu, bir hata da (ör. DB kilidi) kullanıcıya hiç
   // bildirilmiyordu.
   Future<void> _hesapIstendi(MasaSiparisModel siparis) async {
+    if (!mounted) return;
     if (_islemAktif) return;
     setState(() => _islemAktif = true);
     try {
@@ -294,6 +296,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
   }
 
   Future<void> _odemeAl(MasaSiparisModel siparis) async {
+    if (!mounted) return;
     if (_islemAktif) return;
     setState(() => _islemAktif = true);
 

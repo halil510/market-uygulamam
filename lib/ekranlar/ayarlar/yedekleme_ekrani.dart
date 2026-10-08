@@ -54,6 +54,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
   }
 
   Future<void> _yedekAl() async {
+    if (!mounted) return;
     if (_isleniyor) return;
     setState(() => _isleniyor = true);
     try {

@@ -37,6 +37,7 @@ class _TopluDovizGuncellemeEkraniState extends State<TopluDovizGuncellemeEkrani>
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final urunler = await UrunDeposu().dovizBazliUrunleriGetir();

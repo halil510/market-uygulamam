@@ -130,6 +130,7 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (_kayit) return; // 🔴 DÜZELTME: çift tıklama koruması hiç yoktu —
     // hızlı çift tıklamada aynı irsaliye iki kez oluşturulabiliyordu.
     if (_kalemler.isEmpty) {

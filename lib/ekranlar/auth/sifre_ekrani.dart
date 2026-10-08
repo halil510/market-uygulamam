@@ -40,6 +40,7 @@ class _SifreEkraniState extends ConsumerState<SifreEkrani> {
   }
 
   Future<void> _degistir() async {
+    if (!mounted) return;
     if (!_form.currentState!.validate()) return;
     setState(() => _yukleniyor = true);
     try {

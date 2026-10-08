@@ -40,6 +40,7 @@ class _DovizKuruEkraniState extends ConsumerState<DovizKuruEkrani> {
   bool _guncelleniyor = false;
 
   Future<void> _tcmbdenGuncelle() async {
+    if (!mounted) return;
     setState(() => _guncelleniyor = true);
     try {
       final tcmbKurlari = await TcmbServisi().guncelKurlariGetir();
@@ -288,6 +289,7 @@ class _KurKartiState extends State<_KurKarti> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     final alis = ParaUtils.sayiCoz(_alisCtrl.text);
     final satis = ParaUtils.sayiCoz(_satisCtrl.text);
     if (satis == null || satis <= 0) {

@@ -94,7 +94,9 @@ class _BorcDashboardEkraniState extends ConsumerState<BorcDashboardEkrani>
       body: NestedScrollView(
         headerSliverBuilder: (ctx, innerBoxScrolled) => [
           SliverAppBar(
-            expandedHeight: 168,
+            // Toolbar (56) + özet kartları + ikonlu TabBar (72): kartlar
+            // geri/yenile ikonlarının altına binmesin (canlı test 2026-10-08).
+            expandedHeight: 240,
             pinned: true,
             backgroundColor: TsModulRenk.koyu(TsModul.ana),
             foregroundColor: Colors.white,
@@ -175,7 +177,7 @@ class _BorcDashboardEkraniState extends ConsumerState<BorcDashboardEkrani>
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 56),
+          padding: const EdgeInsets.fromLTRB(16, kToolbarHeight, 16, 80),
           child: Row(
             children: [
               Expanded(

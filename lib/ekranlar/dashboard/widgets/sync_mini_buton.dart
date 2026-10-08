@@ -44,6 +44,7 @@ class _SyncMiniButonState extends ConsumerState<SyncMiniButon>
   }
 
   Future<void> _hizliSync() async {
+    if (!mounted) return;
     if (_calisiyor) return;
     setState(() {
       _calisiyor = true;

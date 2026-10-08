@@ -29,8 +29,13 @@ class CariListeDurum {
   const CariListeDurum({this.musteriler=const[], this.tedarikciler=const[], this.yukleniyor=false});
   int    get musteriSayisi    => musteriler.length;
   int    get tedarikciSayisi  => tedarikciler.length;
-  double get toplamAlacak     => musteriler.where((c) => c.bakiye > 0).fold(0.0, (s, c) => s + c.bakiye);
-  double get toplamBorc       => tedarikciler.where((c) => c.bakiye < 0).fold(0.0, (s, c) => s + c.bakiye.abs());
+  // Tüm cariler, bakiye işaretine göre (Dashboard ve masaüstü alt şeritle
+  // aynı tanım). Önceden yalnız müşteri(+)/tedarikçi(−) toplanıyordu;
+  // Cariler ekranında çipler alt şeritten farklı rakam gösteriyordu.
+  // "Hem müşteri hem tedarikçi" cariler iki listede de olabilir → id ile tekilleştirilir.
+  Iterable<CariModel> get _hepsi => {for (final c in [...musteriler, ...tedarikciler]) c.id ?? c: c}.values;
+  double get toplamAlacak     => _hepsi.where((c) => c.bakiye > 0).fold(0.0, (s, c) => s + c.bakiye);
+  double get toplamBorc       => _hepsi.where((c) => c.bakiye < 0).fold(0.0, (s, c) => s + c.bakiye.abs());
   CariListeDurum copyWith({List<CariModel>? musteriler, List<CariModel>? tedarikciler, bool? yukleniyor}) =>
       CariListeDurum(musteriler: musteriler ?? this.musteriler,
           tedarikciler: tedarikciler ?? this.tedarikciler, yukleniyor: yukleniyor ?? this.yukleniyor);

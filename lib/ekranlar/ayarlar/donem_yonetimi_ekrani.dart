@@ -58,6 +58,7 @@ class _DonemYonetimiEkraniState extends State<DonemYonetimiEkrani> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final aktif = await _donemDepo.aktifDonemGetir();
@@ -191,6 +192,7 @@ class _DonemYonetimiEkraniState extends State<DonemYonetimiEkrani> {
   }
 
   Future<void> _yedekAl() async {
+    if (!mounted) return;
     setState(() => _isleniyor = true);
     try {
       await YedeklemeServisi().yedekAl();
@@ -630,6 +632,7 @@ class _GecmisDonemDetaySayfasiState extends State<_GecmisDonemDetaySayfasi> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     if (widget.donem.id == null) {
       setState(() => _yukleniyor = false);
       return;

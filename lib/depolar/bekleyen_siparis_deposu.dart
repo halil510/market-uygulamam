@@ -210,6 +210,17 @@ class BekleyenSiparisDeposu {
     final genelToplam = kalemSatirlari.fold(
         0.0, (s, k) => s + (k['toplam_tutar'] as num).toDouble());
 
+    // KDV dahil alış maliyeti satış anında kaleme yazılır (raporların
+    // tarihsel maliyeti). Önceden 0 kalıyordu (canlı test 2026-10-08).
+    final urunIdler = kalemSatirlari.map((k) => k['urun_id'] as int).toSet().toList();
+    final alisKdvDahil = <int, double>{
+      for (final r in await db.query('urunler',
+          columns: ['id', 'alis_fiyat_kdv_dahil'],
+          where: 'id IN (${List.filled(urunIdler.length, '?').join(',')})',
+          whereArgs: urunIdler))
+        r['id'] as int: (r['alis_fiyat_kdv_dahil'] as num?)?.toDouble() ?? 0,
+    };
+
     final satisKalemler = kalemSatirlari.map((k) {
       final toplamMiktar = (k['toplam_miktar'] as num).toDouble();
       final toplamTutar = (k['toplam_tutar'] as num).toDouble();
@@ -231,6 +242,7 @@ class BekleyenSiparisDeposu {
         netFiyat: toplamMiktar > 0 ? toplamTutar / toplamMiktar : 0,
         toplamTutar: toplamTutar,
         alisFiyat: (k['alis_fiyat'] as num).toDouble(),
+        alisFiyatKdv: alisKdvDahil[k['urun_id'] as int] ?? 0,
       );
     }).toList();
 

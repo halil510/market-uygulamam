@@ -95,6 +95,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final urunler = await _depo.tumunuGetir(sadecaAktif: false);

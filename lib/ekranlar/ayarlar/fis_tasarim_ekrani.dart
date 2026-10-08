@@ -154,6 +154,7 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
       _ayarlarDepo.kaydet(anahtar, deger);
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (_kayit) return;
     setState(() => _kayit = true);
     try {

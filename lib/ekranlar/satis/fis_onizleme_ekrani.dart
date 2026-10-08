@@ -103,6 +103,7 @@ class _FisOnizlemeEkraniState extends ConsumerState<FisOnizlemeEkrani> {
   }
 
   Future<void> _btYazdir() async {
+    if (!mounted) return;
     if (_yaziliyor) return;
     setState(() => _yaziliyor = true);
     try {

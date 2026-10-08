@@ -119,7 +119,8 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
     if (h == null || _yazdiriliyor) return;
     setState(() => _yazdiriliyor = true);
     try {
-      if (h.fisTipi == 'Satış' || h.fisTipi == 'Toptan Satış') {
+      if (h.fisTipi == 'Satış' || h.fisTipi == 'Toptan Satış' ||
+          h.fisTipi == 'Toptan Satış (Sipariş)') {
         if (h.fisId == null) throw Exception('Bu satışın fiş bilgisi bulunamadı');
         final satis = await SatisDeposu().idileGetir(h.fisId!);
         if (satis == null) throw Exception('Satış bulunamadı (silinmiş olabilir)');

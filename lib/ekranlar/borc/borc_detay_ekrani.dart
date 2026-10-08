@@ -46,6 +46,7 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final borc = await _depo.idileGetir(widget.borcId);

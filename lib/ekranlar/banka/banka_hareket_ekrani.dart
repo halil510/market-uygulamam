@@ -34,6 +34,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
   final _hareketDepo = BankaHareketDeposu();
 
   BankaHesapModel? _hesap;
+  late int? _hesapId = widget.hesapId;
   List<BankaHareketModel> _hareketler = [];
   bool _yukleniyor = true;
   String? _hata;
@@ -45,25 +46,27 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
   }
 
   Future<void> _yukle() async {
-    if (widget.hesapId == null && widget.krediKartiId == null) {
-      setState(() {
-        _hata = 'Hesap veya Kredi Kartı ID gerekli';
-        _yukleniyor = false;
-      });
-      return;
+    // Menüden parametresiz açılınca "Hesap veya Kredi Kartı ID gerekli"
+    // hata ekranı çıkıyordu (canlı test 2026-10-08). Tek hesap varsa o
+    // açılır, birden çoksa tüm banka hareketleri listelenir.
+    if (_hesapId == null && widget.krediKartiId == null) {
+      try {
+        final hesaplar = await _hesapDepo.tumunuGetir();
+        if (hesaplar.length == 1) _hesapId = hesaplar.first.id;
+      } catch (_) {/* tüm hareketler listelenir */}
     }
 
     setState(() => _yukleniyor = true);
     try {
       // 1. Hesap bilgilerini al (sadece hesapId varsa)
       BankaHesapModel? hesap;
-      if (widget.hesapId != null) {
-        hesap = await _hesapDepo.idileGetir(widget.hesapId!);
+      if (_hesapId != null) {
+        hesap = await _hesapDepo.idileGetir(_hesapId!);
       }
 
       // 2. Hareketleri al
       final hareketler = await _hareketDepo.hareketleriGetir(
-        hesapId: widget.hesapId,
+        hesapId: _hesapId,
         krediKartiId: widget.krediKartiId,
         limit: 100,
       );
@@ -132,7 +135,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
             tooltip: 'Yenile',
           ),
           // Kredi kartı ise hareket ekleme butonu gösterilmez (manuel)
-          if (widget.hesapId != null)
+          if (_hesapId != null)
             IconButton(
               icon: const Icon(Icons.add, color: Colors.white),
               onPressed: _hareketEkleDialog,
@@ -182,7 +185,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
                   ? BankaHareketMasaustuGorunum(
                       hareketler: _hareketler,
                       onYenile: _yukle,
-                      onEkle: widget.hesapId != null ? _hareketEkleDialog : null,
+                      onEkle: _hesapId != null ? _hareketEkleDialog : null,
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -372,7 +375,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
 
   // ---- MANUEL HAREKET EKLE (Sadece hesap varsa) ----
   Future<void> _hareketEkleDialog() async {
-    if (widget.hesapId == null) return;
+    if (_hesapId == null) return;
 
     String tip = 'Gelen';
     final ctrl = TextEditingController();
@@ -446,7 +449,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
     try {
       await _hareketDepo.ekle(
         BankaHareketModel(
-          bankaHesapId: widget.hesapId!,
+          bankaHesapId: _hesapId!,
           islemTipi: sonuc['tip'] as String,
           tutar: sonuc['tutar'] as double,
           aciklama: (sonuc['aciklama'] as String).isEmpty

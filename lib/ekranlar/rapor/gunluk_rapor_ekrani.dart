@@ -152,9 +152,40 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
       final maliyet  = results[2] as double;
       final iade     = results[3] as ({double tutar, double maliyet});
 
+      // Karma satışlar gerçek kasa/cari satırlarından yöntemlere bölünür.
+      final karmaIdler = [
+        for (final s in satislar)
+          if (s.odemeYontemi == 'Karma' && s.id != null) s.id!
+      ];
+      final karmaDagilim =
+          await _satisDepo.odemeDagilimlariGetir(karmaIdler);
+
       double toplam = 0, nakit = 0, kart = 0, cari = 0, havale = 0, diger = 0;
       for (final s in satislar) {
         toplam += s.genelToplam;
+        final dagilim = s.odemeYontemi == 'Karma' ? karmaDagilim[s.id] : null;
+        if (dagilim != null && dagilim.isNotEmpty) {
+          var kalan = s.genelToplam;
+          // Nakit en sona: para üstü varsa nakitten düşülür.
+          final sirali = dagilim.entries.toList()
+            ..sort((a, b) => (a.key == 'Nakit' ? 1 : 0) - (b.key == 'Nakit' ? 1 : 0));
+          for (final e in sirali) {
+            final yontem = e.key, tutar = e.value;
+            final pay = tutar > kalan ? kalan : tutar; // para üstü ciroya girmez
+            kalan -= pay;
+            switch (yontem) {
+              case 'Nakit':       nakit  += pay; break;
+              case 'Kredi Kartı': kart   += pay; break;
+              case 'Cari':        cari   += pay; break;
+              case 'Havale':
+              case 'Havale/EFT':
+              case 'EFT':         havale += pay; break;
+              default:            diger  += pay; break;
+            }
+          }
+          if (kalan > 0.005) diger += kalan;
+          continue;
+        }
         // Alınan tutar satış tutarını aşıyorsa (nakit para üstü) fazlası
         // ciroya/nakit satışa girmez.
         final tahsil = s.odenenTutar > s.genelToplam ? s.genelToplam : s.odenenTutar;

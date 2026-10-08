@@ -176,6 +176,11 @@ class SatisTamamlamaServisi {
         // Para üstü kasaya gelir yazılmasın: alınan toplam satış tutarını
         // aşıyorsa fazlalık Nakit grubundan düşülür (çekmeceye giren gerçek
         // tutar = genelToplam).
+        // Çoklu ödeme ekranından tek yöntemle ödenen satış "Karma" etiketi
+        // almasın (canlı test 2026-10-08: düz nakit satış "Nakit Satış
+        // (Karma)" görünüyordu).
+        final gercekKarma =
+            karmaKalemler.map((k) => k['yontem']).toSet().length > 1;
         final cariKismi = karmaKalemler
             .where((k) => k['yontem'] == 'Cari')
             .fold(0.0, (s, k) => s + (k['tutar'] as num).toDouble());
@@ -198,7 +203,9 @@ class SatisTamamlamaServisi {
                 referansId: satisId,
                 referansTuru: 'satis',
                 tarih: tarih,
-                aciklama: 'Satış: $fisNo (Karma: ${girdi.key})',
+                aciklama: gercekKarma
+                    ? 'Satış: $fisNo (Karma: ${girdi.key})'
+                    : 'Satış: $fisNo',
                 kullaniciId: kullanici?.id,
                 odemeYontemi: girdi.key,
               ));
@@ -261,7 +268,9 @@ class SatisTamamlamaServisi {
                 fisId: satisId,
                 fisNo: fisNo,
                 aciklama:
-                    '$yontemler Satış (Karma): $fisNo — bakiyeyi etkilemez',
+                    karmaKalemler.map((k) => k['yontem']).toSet().length > 1
+                    ? '$yontemler Satış (Karma): $fisNo — bakiyeyi etkilemez'
+                    : '$yontemler Satış: $fisNo — bakiyeyi etkilemez',
                 borc: digerTutar,
                 alacak: digerTutar,
                 odemeTuru: yontemler,

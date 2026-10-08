@@ -139,6 +139,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
 
   // QR tara → cihaza bağlan
   Future<void> _qrBaglan(String adres) async {
+    if (!mounted) return;
     setState(() {
       _qrTarayici = false;
       _islemde = true;
@@ -171,6 +172,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
 
   // Veri Al (JSON)
   Future<void> _veriAl() async {
+    if (!mounted) return;
     if (_bagliAdres.isEmpty) return;
     setState(() {
       _islemde = true;
@@ -280,6 +282,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
 
   // Veri Gönder
   Future<void> _veriGonder() async {
+    if (!mounted) return;
     if (_bagliAdres.isEmpty) return;
     setState(() {
       _islemde = true;

@@ -46,7 +46,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 4, vsync: this);
     _araCtrl.addListener(_aramaChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(carilerProvider.notifier).yukle();
@@ -281,6 +281,12 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
     final tum = _filtrele(hepsi.where(aramaEslesiyor).toList());
     final musteriler   = _filtrele(durum.musteriler.where(aramaEslesiyor).toList());
     final tedarikciler = _filtrele(durum.tedarikciler.where(aramaEslesiyor).toList());
+    // Bayi sekmesi: Toptan Satış ekranıyla aynı kural (müşteri olabilen +
+    // müşteri tipi Bayi/Toptan). "Tümü" yine herkesi içerir.
+    final bayiler = _filtrele(hepsi.where((c) =>
+        aramaEslesiyor(c) &&
+        c.cariTipi.contains('Müşteri') &&
+        (c.musteriTipi == 'Bayi' || c.musteriTipi == 'Toptan')).toList());
     final toplamAlacak = durum.toplamAlacak;
     final toplamBorc   = durum.toplamBorc;
 
@@ -375,6 +381,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
                 Tab(text: 'Tümü (${tum.length})'),
                 Tab(text: 'Müşteri (${musteriler.length})'),
                 Tab(text: 'Tedarikçi (${tedarikciler.length})'),
+                Tab(text: 'Bayi (${bayiler.length})'),
               ],
             ),
           ]),
@@ -437,6 +444,9 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
                       onTopluExcel: (ids) => _excelDisaAktar(sadece: ids),
                       onRefresh: () => ref.read(carilerProvider.notifier).yukle()),
                   _CariTab(cariler: tedarikciler, onSil: _sil, onTopluSil: _topluSil,
+                      onTopluExcel: (ids) => _excelDisaAktar(sadece: ids),
+                      onRefresh: () => ref.read(carilerProvider.notifier).yukle()),
+                  _CariTab(cariler: bayiler, onSil: _sil, onTopluSil: _topluSil,
                       onTopluExcel: (ids) => _excelDisaAktar(sadece: ids),
                       onRefresh: () => ref.read(carilerProvider.notifier).yukle()),
                 ]),

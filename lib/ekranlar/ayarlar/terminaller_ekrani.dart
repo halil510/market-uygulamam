@@ -36,6 +36,7 @@ class _TerminallerEkraniState extends State<TerminallerEkrani> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() { _yukleniyor = true; _hata = null; });
     try {
       final buCihaz = await TerminalServisi().mevcutTerminal();
@@ -109,6 +110,7 @@ class _TerminallerEkraniState extends State<TerminallerEkrani> {
 
   Future<void> _guncelle(BulutTerminal t,
       {String? ad, bool? aktif, required String basari}) async {
+    if (!mounted) return;
     if (_islemDevam) return;
     setState(() => _islemDevam = true);
     try {

@@ -32,6 +32,7 @@ class _AuditLogEkraniState extends State<AuditLogEkrani> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final liste = await AuditLogServisi().gunlukGetir(tabloFiltre: _tabloFiltre);

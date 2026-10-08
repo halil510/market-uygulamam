@@ -312,7 +312,10 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
                     baslik: 'Alışveriş Sıklığı',
                     deger: istat.ortalamaGunAraligi == null
                         ? '—'
-                        : '${istat.ortalamaGunAraligi!.round()} günde bir',
+                        // 1 günden sık alışverişte "0 günde bir" yazıyordu.
+                        : istat.ortalamaGunAraligi! < 1
+                            ? 'Günde birden fazla'
+                            : '${istat.ortalamaGunAraligi!.round()} günde bir',
                     ikon: const Icon(Icons.event_repeat_outlined))),
           ]),
           if (c.limitTutari > 0) ...[

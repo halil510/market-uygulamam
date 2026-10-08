@@ -125,6 +125,7 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
 
   // ── WiFi ─────────────────────────────────────────────────────────────────
   Future<void> _wifiTara() async {
+    if (!mounted) return;
     setState(() { _wifiTaraniyor = true; _wifiCihazlar = []; });
     try {
       final bulunanlar = await YazdirmaServisi.wifiYazicilariTara();
@@ -295,6 +296,7 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
   bool _winYukleniyor = false;
 
   Future<void> _winYenile() async {
+    if (!mounted) return;
     setState(() => _winYukleniyor = true);
     final l = await _yazdirma.windowsYazicilar();
     if (!mounted) return;

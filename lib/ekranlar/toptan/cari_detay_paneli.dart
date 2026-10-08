@@ -118,6 +118,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
   /// panel SONSUZA KADAR "yükleniyor"da kalıyordu. Artık bağımsız sorgular
   /// paralel çalışır, hata kullanıcıya "Tekrar Dene" ile gösterilir.
   Future<void> _yukle() async {
+    if (!mounted) return;
     final cariId = widget.cari.id!;
     final grupId = widget.cari.fiyatGrubuId;
     setState(() {
@@ -295,6 +296,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
   /// akışla birebir aynı: zaten faturalıysa ona git, değilse cari
   /// bilgisi kontrolü yap, eksikse uyar, tamamsa fatura oluştur.
   Future<void> _faturalandir(SatisModel s) async {
+    if (!mounted) return;
     if (s.id == null || _islemYapiliyorSatisId.contains(s.id)) return;
     setState(() => _islemYapiliyorSatisId.add(s.id!));
     try {

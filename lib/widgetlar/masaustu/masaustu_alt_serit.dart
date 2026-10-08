@@ -70,9 +70,12 @@ class MasaustuAltSerit extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: t.onTap,
-          child: SizedBox(
-            width: 104,
+          // Uzun etiketler ("F5 : Fiyat Grupları") kenara yapışıp kırpılmış
+          // görünüyordu: düğme 140 px'e kadar genişler, iç boşluk bırakılır.
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 104, maxWidth: 140),
             height: 58,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             // Alan daralırsa (kısa pencere / üst üste binen ekran) içerik küçülür,
             // taşma çizgisi çıkmaz.
             child: FittedBox(

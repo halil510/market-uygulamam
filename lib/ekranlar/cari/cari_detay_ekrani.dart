@@ -108,6 +108,7 @@ List<CariHareketModel> _iptalEdilmisSatislariGizle(
     final asliVarMi = grup.any((g) =>
         g.fisTipi == 'Satış' ||
         g.fisTipi == 'Toptan Satış' ||
+        g.fisTipi == 'Toptan Satış (Sipariş)' ||
         g.fisTipi == 'Alım' ||
         g.fisTipi == 'Tedarikçi İadesi');
     final iptalVarMi = grup.any((g) => g.fisTipi.endsWith('İptali'));
@@ -247,7 +248,7 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
   // makbuz) — "...İptali" gibi salt-audit satırların basılacak bir belgesi
   // yok.
   static const _yazdirilabilirTipler = {
-    'Satış', 'Toptan Satış', 'Tahsilat', 'Odeme',
+    'Satış', 'Toptan Satış', 'Toptan Satış (Sipariş)', 'Tahsilat', 'Odeme',
   };
   // Çoklu seçim (2026-10-01): uzun basarak birden fazla fiş seçilebilir —
   // tek seçimde yazdır, seçili Satış fişlerinde "Son fiyata göre güncelle".

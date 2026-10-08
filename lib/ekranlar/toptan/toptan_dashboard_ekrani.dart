@@ -48,6 +48,7 @@ class _ToptanDashboardEkraniState extends State<ToptanDashboardEkrani> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     final tumCariler = await _cariDepo.tumunuGetir();
     // 🔴 DÜZELTME (kullanıcı bulgusu — "bayi/müşteri/tedarikçi doğru

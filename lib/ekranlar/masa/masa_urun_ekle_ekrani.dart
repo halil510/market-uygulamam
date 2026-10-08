@@ -139,6 +139,7 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
       ['Tümü', ...{for (final u in _urunler) u.anaGrup ?? 'Diğer'}];
 
   Future<void> _urunEkle(UrunModel urun, {double miktar = 1}) async {
+    if (!mounted) return;
     if (_islemAktif) return;
     setState(() => _islemAktif = true);
     try {

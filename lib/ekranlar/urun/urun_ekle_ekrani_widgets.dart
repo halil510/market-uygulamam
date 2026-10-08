@@ -110,6 +110,7 @@ class _SesliKomutSheetState extends State<_SesliKomutSheet> {
   }
 
   Future<void> _dinlemeyeBasla() async {
+    if (!mounted) return;
     setState(() => _basladi = true);
     await widget.ses.dinlemeyeBasla(
       onSonuc: (metin) { if (mounted) setState(() => _canliMetin = metin); },

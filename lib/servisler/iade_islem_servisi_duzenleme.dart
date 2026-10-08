@@ -76,12 +76,25 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
       // yazılmış kasa_hareketleri satırı (varsa) sorgulanıp SADECE o
       // satırın GERÇEK tutarıyla tersine çevriliyor.
       if (iadeId != null) {
+        // İade düzenlemesinin kasa düzeltmeleri (iade_duzeltme) de nete
+        // katılır; önceden yalnız ilk iade satırı ters çevriliyordu,
+        // düzenleme farkı kasada kalıyordu (canlı test 2026-10-08).
         final orijinalKasaSatirlari = await txn.query('kasa_hareketleri',
-            where: 'referans_id = ? AND referans_turu = ? AND deleted_at IS NULL',
-            whereArgs: [iadeId, 'iade']);
+            where: "referans_id = ? AND referans_turu IN ('iade', 'iade_duzeltme') AND deleted_at IS NULL",
+            whereArgs: [iadeId]);
+        var netNakitIade = 0.0;
         for (final k in orijinalKasaSatirlari) {
-          final kasaTutar = (k['tutar'] as num?)?.toDouble() ?? 0;
-          if (kasaTutar <= 0) continue;
+          final t = (k['tutar'] as num?)?.toDouble() ?? 0;
+          if (k['referans_turu'] == 'iade') {
+            if (t > 0) netNakitIade += t;
+          } else {
+            // 'İade Düzeltme' = iade arttı (eski kayıtlarda işaretli),
+            // 'Iade Iptali' = iade azaldı.
+            netNakitIade += k['hareket_tipi'] == 'Iade Iptali' ? -t.abs() : t;
+          }
+        }
+        if (netNakitIade > 0.005) {
+          final kasaTutar = ParaUtils.yuvarla(netNakitIade);
           kasaGid = const Uuid().v4();
           final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) + kasaTutar;
           final kasaSatiri = {
@@ -312,13 +325,19 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
                 "referans_id = ? AND referans_turu = 'iade' AND deleted_at IS NULL",
             whereArgs: [iadeId], limit: 1);
         if (orijinalKasaVarMi.isNotEmpty) {
+          // Yön düzeltmesi (canlı test 2026-10-08): iade ARTINCA kasadan
+          // ek para ÇIKAR, azalınca kasaya GERİ girer. Önceden bakiye her
+          // durumda +tutarFark ilerliyordu (iade artınca kasa artıyordu) ve
+          // raporlar 'İade Düzeltme'yi işaretine bakmadan çıkış sayıyordu.
           final oncekiBakiye = await _kasaDepo.sonBakiyeTxn(txn);
-          final yeniBakiye = oncekiBakiye + tutarFark;
+          final iadeArtti = tutarFark > 0;
+          final kasaFark = ParaUtils.yuvarla(tutarFark.abs());
+          final yeniBakiye = iadeArtti ? oncekiBakiye - kasaFark : oncekiBakiye + kasaFark;
           kasaGid = const Uuid().v4();
           final kasaSatiri = {
             'global_id': kasaGid,
-            'hareket_tipi': 'İade Düzeltme',
-            'tutar': tutarFark,
+            'hareket_tipi': iadeArtti ? 'İade Düzeltme' : 'Iade Iptali',
+            'tutar': kasaFark,
             'bakiye_sonrasi': yeniBakiye,
             'referans_id': iadeId,
             'referans_turu': 'iade_duzeltme',

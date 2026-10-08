@@ -20,15 +20,17 @@ class _OzetKartlari extends StatelessWidget {
     ];
 
     return Column(children: [
-      GridView.count(
-        crossAxisCount: 2,
+      // Sabit kart yüksekliği: oranlı ızgara geniş ekranda (masaüstü)
+      // kartları ekran boyu uzatıyordu (canlı test 2026-10-08).
+      LayoutBuilder(builder: (context, c) => GridView.count(
+        crossAxisCount: c.maxWidth >= 900 ? 4 : 2,
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
-        childAspectRatio: 1.6,
+        childAspectRatio: (c.maxWidth >= 900 ? (c.maxWidth - 30) / 4 : (c.maxWidth - 10) / 2) / 100,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         children: items.map((item) => _OzetKartWidget(item: item)).toList(),
-      ),
+      )),
       const SizedBox(height: 10),
       // Kredi kartı borcu ayrı bir vurgu şeridi olarak — asimetrik 2'li
       // grid yerine tam genişlikte, kendi kimliğiyle gösteriliyor (kart

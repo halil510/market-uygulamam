@@ -29,6 +29,7 @@ class _SeriMutabakatiEkraniState extends State<SeriMutabakatiEkrani> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() { _yukleniyor = true; _hata = null; });
     try {
       final r = await SeriMutabakatServisi().raporGetir();

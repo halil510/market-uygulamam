@@ -129,6 +129,7 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (!_formKey.currentState!.validate()) return;
     if (_kayit) return; // 🔴 çift tıklama koruması
     setState(() => _kayit = true);

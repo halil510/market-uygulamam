@@ -71,6 +71,7 @@ class _SiteIcerikEkraniState extends State<SiteIcerikEkrani> {
   }
 
   Future<void> _getir() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final v = await _servis.isletmeBilgileriGetir();
@@ -101,6 +102,7 @@ class _SiteIcerikEkraniState extends State<SiteIcerikEkrani> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (_kaydediliyor) return;
     setState(() => _kaydediliyor = true);
     final veri = {

@@ -50,6 +50,7 @@ class _VeriSagligiEkraniState extends State<VeriSagligiEkrani> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     final no = ++_calistirmaNo;
     setState(() {
       _sonuclar = const [];

@@ -87,12 +87,17 @@ class _SatisListeMasaustuGorunumState extends State<SatisListeMasaustuGorunum> {
         deger: (s) => ParaUtils.formatla(s.genelToplam, simge: ''),
         sirala: (s) => s.genelToplam),
     TabloKolon(
-        baslik: 'Kalan',
+        // "Kalan" (genel − ödenen) tutarsızdı: Hızlı Satış cari satışında
+        // ödenen = toplam (boş), toptan siparişte ödenen = 0 (dolu) ve
+        // tahsilatla hiç azalmıyordu. Cari satış borcu cari hesabında
+        // izlenir; burada tutarlı olarak veresiyeye yazılan tutar gösterilir.
+        baslik: 'Veresiye',
         genislik: 100,
         sagaYasli: true,
-        deger: (s) =>
-            s.kalanTutar > 0.005 ? ParaUtils.formatla(s.kalanTutar, simge: '') : '',
-        renk: (s) => s.kalanTutar > 0.005 ? TsRenk.hata : null),
+        deger: (s) => s.odemeYontemi == 'Cari'
+            ? ParaUtils.formatla(s.genelToplam, simge: '')
+            : '',
+        renk: (s) => s.odemeYontemi == 'Cari' ? TsRenk.hata : null),
     TabloKolon(
         baslik: 'Durum',
         genislik: 90,

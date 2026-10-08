@@ -74,6 +74,7 @@ class _FiyatGorIcerikState extends State<FiyatGorIcerik> {
   }
 
   Future<void> _urunGetir(String barkod) async {
+    if (!mounted) return;
     setState(() { _yukleniyor = true; _hata = null; });
     try {
       final u = await _urunDepo.barkodlaGetir(barkod) ??

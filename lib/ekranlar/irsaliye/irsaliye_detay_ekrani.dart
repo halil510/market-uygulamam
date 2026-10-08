@@ -138,6 +138,7 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
   }
 
   Future<void> _eIrsaliyeDurumSorgula() async {
+    if (!mounted) return;
     if (_irsaliye == null) return;
     final gib = GibServisi();
     final eDurum = _irsaliye!['e_irsaliye_durum']?.toString();

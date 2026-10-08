@@ -243,6 +243,7 @@ class _ToptanKademeleriBolumuState extends State<_ToptanKademeleriBolumu> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final (k, g) = await (
@@ -410,6 +411,7 @@ class _HareketSekmesiState extends ConsumerState<_HareketSekmesi> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     try {
       setState(() => _yukleniyor = true);
       final h = await _depo.hareketleriGetir(widget.urunId, limit: 50);
@@ -537,6 +539,7 @@ class _SubeStokSekmesiState extends State<_SubeStokSekmesi> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     try {
       setState(() => _yukleniyor = true);
       final s = await _depo.tumSubelerdekiStok(widget.urun.id!);

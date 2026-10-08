@@ -70,6 +70,7 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
   }
 
   Future<void> _urunAra(String q) async {
+    if (!mounted) return;
     if (q.trim().isEmpty) {
       setState(() => _aramaSonuclari = []);
       return;
@@ -91,6 +92,7 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
   }
 
   Future<void> _barkodOkundu(String barkod) async {
+    if (!mounted) return;
     setState(() => _kameraAcik = false);
     _kameraCtrl?.dispose();
     _kameraCtrl = null;
@@ -104,6 +106,7 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
   }
 
   Future<void> _urunEkle(UrunModel urun) async {
+    if (!mounted) return;
     _aramaCtrl.clear();
     setState(() => _aramaSonuclari = []);
 
@@ -142,6 +145,7 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
   void _kalemSil(int i) => setState(() => _sepet.removeAt(i));
 
   Future<void> _siparisiKaydet() async {
+    if (!mounted) return;
     if (_sepet.isEmpty || _kaydediliyor) return;
     setState(() => _kaydediliyor = true);
     try {

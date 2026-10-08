@@ -110,21 +110,24 @@ class _MasaRaporEkraniState extends ConsumerState<MasaRaporEkrani>
       children: [
         Row(children: [
           _ozetKart(
-            baslik: 'Toplam Ciro',
+            // Dönemler karışmasın (canlı test 2026-10-08: üstte bugünün
+            // cirosu, altta tüm zamanların masa toplamı aynı başlıkla
+            // görünüyordu — 97,50 ↔ 688,90).
+            baslik: 'Bugünkü Ciro',
             deger: ParaUtils.formatla(_toplamMasaCiro),
             ikon: Icons.attach_money,
             renk: const Color(0xFF2E7D32),
           ),
           const SizedBox(width: 12),
           _ozetKart(
-            baslik: 'Ort. Oturma',
+            baslik: 'Ort. Oturma (tümü)',
             deger: '${_ortalamaOturmaSuresi.toStringAsFixed(0)} dk',
             ikon: Icons.access_time,
             renk: TsRenk.primary,
           ),
         ]),
         const SizedBox(height: 16),
-        const Text('Masa Performansı', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        const Text('Masa Performansı (tüm zamanlar)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         ..._masaPerformans.map((m) => _MasaPerformansKarti(
           masaAdi: m['masa_adi'] as String? ?? '-',

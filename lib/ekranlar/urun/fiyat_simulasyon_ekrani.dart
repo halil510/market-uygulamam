@@ -49,6 +49,7 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
   int _simulasyonSira = 0;
 
   Future<void> _ara(String sorgu) async {
+    if (!mounted) return;
     if (sorgu.trim().length < 2) {
       setState(() => _sonuclar = []);
       return;
@@ -89,6 +90,7 @@ class _FiyatSimulasyonuEkraniState extends ConsumerState<FiyatSimulasyonuEkrani>
   }
 
   Future<void> _simuleEt() async {
+    if (!mounted) return;
     final u = _secili;
     final yeniFiyat = ParaUtils.sayiCoz(_yeniFiyatCtrl.text);
     if (u == null || yeniFiyat == null || u.id == null) return;

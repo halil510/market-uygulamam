@@ -203,6 +203,47 @@ class SatisDeposu {
     }
   }
 
+  /// [odemeDagilimiGetir]'in çok satışlı hali: {satisId: {yöntem: tutar}}.
+  /// Raporlarda Karma satışları yöntemlere bölmek için (canlı test
+  /// 2026-10-08: Gün Sonu Raporu Karma'yı "Diğer"e atıyordu — kart payı
+  /// hiç görünmüyor, nakit/cari eksik çıkıyordu).
+  Future<Map<int, Map<String, double>>> odemeDagilimlariGetir(
+      List<int> satisIdler) async {
+    final sonuc = <int, Map<String, double>>{};
+    if (satisIdler.isEmpty) return sonuc;
+    final db = await _d;
+    for (var i = 0; i < satisIdler.length; i += 500) {
+      final parca = satisIdler.skip(i).take(500).toList();
+      final yer = List.filled(parca.length, '?').join(',');
+      final kasaRows = await db.rawQuery('''
+        SELECT referans_id, odeme_yontemi, COALESCE(SUM(tutar), 0) AS tutar
+        FROM kasa_hareketleri
+        WHERE referans_id IN ($yer) AND referans_turu = 'satis' AND deleted_at IS NULL
+        GROUP BY referans_id, odeme_yontemi
+      ''', parca);
+      for (final r in kasaRows) {
+        final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+        if (tutar <= 0.005) continue;
+        final m = sonuc.putIfAbsent(r['referans_id'] as int, () => {});
+        final y = r['odeme_yontemi'] as String? ?? '—';
+        m[y] = (m[y] ?? 0) + tutar;
+      }
+      final cariRows = await db.rawQuery('''
+        SELECT fis_id, COALESCE(SUM(borc), 0) AS tutar
+        FROM cari_hareket
+        WHERE fis_id IN ($yer) AND fis_tipi = 'Satış' AND alacak = 0 AND borc > 0 AND is_deleted = 0
+        GROUP BY fis_id
+      ''', parca);
+      for (final r in cariRows) {
+        final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
+        if (tutar <= 0.005) continue;
+        final m = sonuc.putIfAbsent(r['fis_id'] as int, () => {});
+        m['Cari'] = (m['Cari'] ?? 0) + tutar;
+      }
+    }
+    return sonuc;
+  }
+
   // ══════════════════════════════════════════════════════════════════════
   // 🆕 FİŞ GERİ ÇAĞIRMA — fiş numarasıyla satış bul
   //
@@ -636,7 +677,7 @@ class SatisDeposu {
     final baslangic = DateTime(bugun.year, bugun.month, bugun.day).toIso8601String();
     final res = await db.rawQuery(
       "SELECT COALESCE(SUM(genel_toplam),0) AS toplam FROM satislar "
-      "WHERE fis_tipi = 'Toptan Satış' AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 AND datetime(tarih) >= datetime(?)",
+      "WHERE fis_tipi IN ('Toptan Satış', 'Toptan Satış (Sipariş)') AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 AND datetime(tarih) >= datetime(?)",
       [baslangic],
     );
     return (res.first['toplam'] as num?)?.toDouble() ?? 0;

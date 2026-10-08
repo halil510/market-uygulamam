@@ -382,6 +382,7 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
   void dispose() { _ctrl.dispose(); _scroll.dispose(); super.dispose(); }
 
   Future<void> _sor() async {
+    if (!mounted) return;
     final q = _ctrl.text.trim();
     if (q.isEmpty || _bekliyor) return;
     _ctrl.clear();
@@ -438,6 +439,7 @@ class _AiChatTabState extends ConsumerState<_AiChatTab> {
   }
 
   Future<void> _onayla(Map<String, dynamic> m) async {
+    if (!mounted) return;
     final o = m['oneri'] as AiEylemOnerisi;
     if (m['durum'] != 'bekliyor') return;
     setState(() => m['durum'] = 'uygulaniyor');

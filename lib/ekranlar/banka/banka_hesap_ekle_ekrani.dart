@@ -46,6 +46,7 @@ class _BankaHesapEkleEkraniState extends ConsumerState<BankaHesapEkleEkrani> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (widget.bankaId <= 0) {
       BildirimServisi.uyari(context, 'Geçersiz banka seçimi!');
       return;

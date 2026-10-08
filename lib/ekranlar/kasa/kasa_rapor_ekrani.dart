@@ -15,6 +15,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import '../../modeller/kasa_hareket_model.dart';
+import '../../depolar/kasa_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/tarih_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -52,7 +53,10 @@ final kasaRaporProvider = FutureProvider.family
   // sınıflandırmanın 4 ayrı dosyada birbirinden bağımsız kopyalanması,
   // birinin unutulup eksik kalmasına yol açmıştı (kasa_hareket_ekrani.dart).
   final girisTipleri = KasaHareketModel.girisTipleri;
-  for (final h in hareketler) {
+  // Grafik soldan sağa eskiden yeniye aksın (liste yeniden eskiye gelir;
+  // canlı test 2026-10-08: eksen 08.10 → 02.10 ters görünüyordu).
+  final kronolojik = [...hareketler]..sort((a, b) => a.tarih.compareTo(b.tarih));
+  for (final h in kronolojik) {
     final gun = DateFormat('dd.MM').format(h.tarih);
     if (girisTipleri.contains(h.hareketTipi)) {
       giris += h.tutar.abs();
@@ -69,13 +73,15 @@ final kasaRaporProvider = FutureProvider.family
     toplamCikis: cikis,
     netHareket:  giris - cikis,
     guncelBakiye: ozet.guncelBakiye,
+    // Çekmecedeki nakit (kart satışları hariç) — toplamla karışmasın.
+    nakitBakiye: await KasaDeposu().guncelBakiyeNakit(),
     gunlukData:  gunlukMap,
   );
 });
 
 class _KasaRaporVeri {
   final List<KasaHareketModel> hareketler;
-  final double toplamGiris, toplamCikis, netHareket, guncelBakiye;
+  final double toplamGiris, toplamCikis, netHareket, guncelBakiye, nakitBakiye;
   final Map<String, double> gunlukData;
 
   const _KasaRaporVeri({
@@ -84,6 +90,7 @@ class _KasaRaporVeri {
     required this.toplamCikis,
     required this.netHareket,
     required this.guncelBakiye,
+    required this.nakitBakiye,
     required this.gunlukData,
   });
 }
@@ -168,6 +175,7 @@ class _KasaRaporEkraniState extends ConsumerState<KasaRaporEkrani> {
           pw.Divider(),
           pw.SizedBox(height: 12),
           _pdfSatir('Güncel Kasa Bakiyesi', ParaUtils.formatla(veri.guncelBakiye), boldFont),
+          _pdfSatir('  Nakit (çekmece)', ParaUtils.formatla(veri.nakitBakiye), font),
           _pdfSatir('Toplam Giriş',         ParaUtils.formatla(veri.toplamGiris), font),
           _pdfSatir('Toplam Çıkış',         ParaUtils.formatla(veri.toplamCikis), font),
           _pdfSatir('Net Hareket',           ParaUtils.formatla(veri.netHareket),  font),
@@ -260,6 +268,14 @@ class _Icerik extends StatelessWidget {
                       style: const TextStyle(
                           color: Colors.white, fontSize: 30,
                           fontWeight: FontWeight.w800)),
+                  if ((veri.guncelBakiye - veri.nakitBakiye).abs() > 0.005) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                        'Nakit (çekmece): ${ParaUtils.formatla(veri.nakitBakiye)}  ·  '
+                        'Kart/diğer: ${ParaUtils.formatla(veri.guncelBakiye - veri.nakitBakiye)}',
+                        style: const TextStyle(color: Colors.white, fontSize: 13,
+                            fontWeight: FontWeight.w600)),
+                  ],
                 ],
               )),
               Container(
@@ -471,7 +487,7 @@ class _HareketSatiri extends StatelessWidget {
           ],
         )),
         Text(
-          '${giris ? '+' : ''}${ParaUtils.formatla(hareket.tutar)}',
+          '${giris ? '+' : '-'}${ParaUtils.formatla(hareket.tutar.abs())}',
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,

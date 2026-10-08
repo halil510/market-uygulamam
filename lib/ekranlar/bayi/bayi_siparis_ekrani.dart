@@ -57,6 +57,7 @@ class _BayiSiparisEkraniState extends State<BayiSiparisEkrani> {
   }
 
   Future<void> _ara(String sorgu) async {
+    if (!mounted) return;
     if (sorgu.trim().length < 2) {
       setState(() => _sonuclar = []);
       return;
@@ -77,6 +78,7 @@ class _BayiSiparisEkraniState extends State<BayiSiparisEkrani> {
   }
 
   Future<void> _urunEkle(UrunModel urun) async {
+    if (!mounted) return;
     _aramaCtrl.clear();
     setState(() => _sonuclar = []);
     final fiyat = await _fiyatServisi.hesapla(urun: urun, cari: widget.bayi, miktar: 1, birim: 'adet');
@@ -92,6 +94,7 @@ class _BayiSiparisEkraniState extends State<BayiSiparisEkrani> {
   }
 
   Future<void> _miktarGuncelle(_SepetKalemi kalem, double yeniMiktar) async {
+    if (!mounted) return;
     if (yeniMiktar <= 0) {
       setState(() => _sepet.remove(kalem));
       return;
@@ -108,6 +111,7 @@ class _BayiSiparisEkraniState extends State<BayiSiparisEkrani> {
   }
 
   Future<void> _siparisiGonder() async {
+    if (!mounted) return;
     if (_sepet.isEmpty || _gonderiliyor || widget.bayi.id == null) return;
     setState(() => _gonderiliyor = true);
     try {

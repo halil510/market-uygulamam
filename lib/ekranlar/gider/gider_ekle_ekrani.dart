@@ -122,6 +122,7 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (_seciliKategori == null) {
       BildirimServisi.uyari(context, 'Kategori seçin');
       return;

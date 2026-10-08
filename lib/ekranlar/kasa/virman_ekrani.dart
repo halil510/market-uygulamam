@@ -64,6 +64,7 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
   }
 
   Future<void> _verileriYukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final bakiye  = await _depo.guncelBakiye();

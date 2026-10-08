@@ -12,6 +12,11 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 final _kasaBakiyeProvider = FutureProvider.autoDispose<double>(
     (_) => KasaDeposu().guncelBakiye());
 
+/// Çekmecedeki fiziksel nakit (kart satışları hariç). Toplam bakiye kart
+/// satışlarını da içerdiği için sayımda kafa karıştırıyordu (2026-10-08).
+final _kasaNakitProvider = FutureProvider.autoDispose<double>(
+    (_) => KasaDeposu().guncelBakiyeNakit());
+
 final _kasaHareketlerProvider = FutureProvider.autoDispose<List<KasaHareketModel>>((ref) {
   final depo = KasaDeposu();
   final now  = DateTime.now();
@@ -27,11 +32,13 @@ class KasaEkrani extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bakiyeA   = ref.watch(_kasaBakiyeProvider);
+    final nakit     = ref.watch(_kasaNakitProvider).value;
     final hareketA  = ref.watch(_kasaHareketlerProvider);
     final fmt       = DateFormat('HH:mm');
 
     void yenile() {
       ref.invalidate(_kasaBakiyeProvider);
+      ref.invalidate(_kasaNakitProvider);
       ref.invalidate(_kasaHareketlerProvider);
     }
 
@@ -83,6 +90,14 @@ class KasaEkrani extends ConsumerWidget {
               Text(ParaUtils.formatla(bakiye),
                   style: const TextStyle(color: Colors.white, fontSize: 32,
                       fontWeight: FontWeight.w900)),
+              if (nakit != null && (bakiye - nakit).abs() > 0.005) ...[
+                const SizedBox(height: 6),
+                Text(
+                    'Nakit (çekmece): ${ParaUtils.formatla(nakit)}  ·  '
+                    'Kart/diğer: ${ParaUtils.formatla(bakiye - nakit)}',
+                    style: const TextStyle(color: Colors.white, fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ],
             ]),
           ),
         ),

@@ -32,6 +32,7 @@ class _SiteFotograflariEkraniState extends State<SiteFotograflariEkrani> {
   }
 
   Future<void> _getir() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final liste = await _servis.gorselleriGetir();

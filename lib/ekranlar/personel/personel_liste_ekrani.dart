@@ -557,6 +557,7 @@ class _PersonelFormSheetState extends ConsumerState<_PersonelFormSheet> {
   }
 
   Future<void> _kaydet() async {
+    if (!mounted) return;
     if (!_formKey.currentState!.validate()) return;
     setState(() => _yukleniyor = true);
     try {

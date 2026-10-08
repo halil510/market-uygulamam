@@ -51,6 +51,7 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
   }
 
   Future<void> _yukle() async {
+    if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
       final liste = await _depo.toptanSatisUrunleriGetir();
@@ -69,6 +70,7 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
   }
 
   Future<void> _aramaYap() async {
+    if (!mounted) return;
     final q = _aramaCtrl.text.trim();
     if (q.isEmpty) {
       setState(() => _aramaSonuclari = []);

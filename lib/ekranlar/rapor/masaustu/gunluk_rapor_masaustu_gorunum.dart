@@ -330,7 +330,7 @@ class _GunlukRaporMasaustuGorunumState extends State<GunlukRaporMasaustuGorunum>
                       children: [
                         _HesapSatiri('Toplam Satış', o.toplam),
                         _HesapSatiri('İade', -o.iade, eksi: true),
-                        _HesapSatiri('Maliyet (alış, KDV dahil)', -(o.maliyet), eksi: true),
+                        _HesapSatiri('Maliyet (alış, KDV dahil)', -o.maliyet, eksi: true),
                         const Divider(height: 14),
                         _HesapSatiri(
                           'Brüt Kâr',
@@ -345,7 +345,7 @@ class _GunlukRaporMasaustuGorunumState extends State<GunlukRaporMasaustuGorunum>
                           Padding(
                             padding: const EdgeInsets.only(top: 6),
                             child: Text(
-                              'İade edilen malın maliyeti maliyetten düşülmüştür.',
+                              'Maliyetten iade edilen malın alış maliyeti düşülmüştür.',
                               style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context)),
                             ),
                           ),

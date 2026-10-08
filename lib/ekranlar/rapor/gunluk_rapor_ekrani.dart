@@ -178,10 +178,13 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
         _havaleToplam = havale;
         _digerToplam  = diger;
         _giderToplam  = gider;
-        _maliyetToplam= maliyet;
-        _iadeToplam   = iade.tutar;
         // Net ciro/maliyet: iade edilen mal hem ciroyu hem maliyeti düşürür.
-        _brutKar      = (toplam - iade.tutar) - (maliyet - iade.maliyet);
+        // Gösterilen maliyet de NET (iade düşülmüş) — canlı testte (2026-10-08)
+        // "Satış − İade − Maliyet" satırları brüt kârı vermiyordu (ekranda
+        // brüt maliyet, hesapta net maliyet kullanılıyordu).
+        _maliyetToplam= maliyet - iade.maliyet;
+        _iadeToplam   = iade.tutar;
+        _brutKar      = (toplam - iade.tutar) - _maliyetToplam;
         _kar          = _brutKar - gider; // Net kar = brut kar - giderler
         _yukleniyor   = false;
       });
@@ -322,7 +325,7 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
       ozetSayfa.appendRow([TextCellValue('Diger (QR/Karma)'), DoubleCellValue(_digerToplam)]);
     }
     ozetSayfa.appendRow([TextCellValue('Gider'), DoubleCellValue(_giderToplam)]);
-    ozetSayfa.appendRow([TextCellValue('Maliyet (Alis)'), DoubleCellValue(_maliyetToplam)]);
+    ozetSayfa.appendRow([TextCellValue('Maliyet (Alis, iade dusulmus)'), DoubleCellValue(_maliyetToplam)]);
     ozetSayfa.appendRow([TextCellValue('Iade'), DoubleCellValue(_iadeToplam)]);
     ozetSayfa.appendRow([TextCellValue('Brut Kar'), DoubleCellValue(_brutKar)]);
     ozetSayfa.appendRow([TextCellValue('Net Kar'), DoubleCellValue(_kar)]);
@@ -529,7 +532,8 @@ double _toDouble(dynamic value) {
         ]),
         contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         content: SizedBox(
-          width: double.maxFinite,
+          // Masaüstünde pencere boyunca yayılmasın (canlı test 2026-10-08).
+          width: _masaustu ? 620 : double.maxFinite,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             // Tablo başlığı
             Container(
@@ -596,9 +600,12 @@ double _toDouble(dynamic value) {
               child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('İskonto',
+                    // İndirim birim fiyata zaten gömülü (katalog − satış
+                    // fiyatı farkı, bkz. SatisTamamlamaServisi._kalemOlustur);
+                    // "−20 … Genel Toplam 280" düşülmemiş gibi okunuyordu.
+                    const Text('İndirim (fiyata dahil)',
                         style: TextStyle(fontSize: 12, color: Colors.orange)),
-                    Text('-${ParaUtils.formatla(s.iskonto)}',
+                    Text(ParaUtils.formatla(s.iskonto),
                         style: const TextStyle(fontSize: 12,
                             color: Colors.orange, fontWeight: FontWeight.w600)),
                   ]),
@@ -760,7 +767,7 @@ double _toDouble(dynamic value) {
                 if (_digerToplam > 0)
                   _bilgiKart('Diğer (QR/Karma)', _digerToplam, Colors.blueGrey),
                 _bilgiKart('Gider',           _giderToplam,   Colors.red),
-                _bilgiKart('Maliyet (Alis)',  _maliyetToplam, Colors.brown),
+                _bilgiKart('Maliyet (Alış, iade düşülmüş)', _maliyetToplam, Colors.brown),
                 _bilgiKart('İade (−)',         _iadeToplam,    Colors.deepOrange),
                 _bilgiKart('Brut Kar',        _brutKar,       Colors.teal, bold: true),
                 _bilgiKart('Net Kar',         _kar,           Colors.purple, bold: true),

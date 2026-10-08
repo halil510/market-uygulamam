@@ -1281,6 +1281,33 @@ class SupabaseSyncServisi {
       }
       return idHaritasi[parent] ??= <int, int>{};
     }
+    // Zorunlu ebeveyni yerelde bulunamayan çocuk satır: ebeveyn bulutta
+    // SİLİNMİŞSE (ya da hiç yoksa) hiçbir turda gelmeyecek — kalıcı yetim
+    // sayılıp sessizce atlanır. Önceden "ebeveyni henüz yok, yeniden
+    // denenecek" uyarısı her Al'da 5 tur tekrarlıyordu (canlı 2026-10-08:
+    // yeni cihazda silinmiş 2 satışın kalemleri).
+    final ebeveynKaliciOnbellek = <String, bool>{};
+    Future<bool> bulutEbeveynKaliciYok(String parent, int cloudId) async {
+      final anahtar = '$parent#$cloudId';
+      final hazir = ebeveynKaliciOnbellek[anahtar];
+      if (hazir != null) return hazir;
+      var kalici = false;
+      try {
+        final kolon = _softDeleteKolonu[parent];
+        final res = await http
+            .get(
+              Uri.parse('${ayar.rest}/$parent?id=eq.$cloudId'
+                  '&select=${kolon == null ? 'id' : 'id,$kolon'}'),
+              headers: _getH(ayar.key),
+            )
+            .timeout(const Duration(seconds: 15));
+        if (res.statusCode == 200) {
+          final l = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
+          kalici = l.isEmpty || _silinmisMi(parent, l.first);
+        }
+      } catch (_) {/* bilinmiyor → eski davranış: yeniden dene */}
+      return ebeveynKaliciOnbellek[anahtar] = kalici;
+    }
     // Bu turda buluttan GÜNCELLENEREK gelen satışlar — kalemleri başka
     // cihazda değişmiş olabilir (fiş güncelleme), sonda mutabakat yapılır.
     final guncellenenSatisGidleri = <String>{};
@@ -1456,7 +1483,11 @@ class SupabaseSyncServisi {
                 // satışın kalemi: o kalem atlanır, sipariş/satışın
                 // geri kalanı ve tablonun diğer kayıtları kaybolmaz.)
                 atlaSatir = true;
-                atlananFk++;
+                if (await bulutEbeveynKaliciYok(parentTablo, cloudId)) {
+                  yetimAtlanan++; // ebeveyn bulutta silinmiş — gelmeyecek
+                } else {
+                  atlananFk++;
+                }
                 break;
               } else {
                 m.remove(kolon);
@@ -1532,7 +1563,7 @@ class SupabaseSyncServisi {
 
         log?.call('✅ $tablo: +${yeni.length} ~${guncel.length} -${sonuc.silinen[tablo] ?? 0}');
         if (yetimAtlanan > 0) {
-          log?.call('ℹ️ $tablo: $yetimAtlanan yetim satır (bulutta ebeveyn bağı boş) atlandı');
+          log?.call('ℹ️ $tablo: $yetimAtlanan yetim satır (ebeveyni bulutta silinmiş/boş) atlandı');
         }
         // Filigran CİHAZ SAATİNDEN değil, çekilen verideki en büyük
         // last_updated'ten ilerletilir (saat kayması veri kaybı koruması)

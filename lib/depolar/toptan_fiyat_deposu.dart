@@ -85,6 +85,20 @@ class ToptanFiyatDeposu {
     }
   }
 
+  /// Bir grubun TÜM ürün fiyatları (urunId → fiyat) — Fiyat Grubu detay
+  /// ekranında tanımlı fiyatları listelemek için.
+  Future<Map<int, double>> grubunUrunFiyatlariGetir(int fiyatGrubuId) async {
+    try {
+      final db = await _d;
+      final rows = await db.query('urun_fiyat_gruplari',
+          where: 'fiyat_grubu_id = ?', whereArgs: [fiyatGrubuId]);
+      return {for (final r in rows) r['urun_id'] as int: (r['fiyat'] as num).toDouble()};
+    } catch (e, st) {
+      LogServisi().hata('ToptanFiyatDeposu.grubunUrunFiyatlariGetir', hata: e, yigin: st);
+      return {};
+    }
+  }
+
   /// Bir ürünün TÜM grup fiyatlarını getirir (ürün detay/toplu düzenleme ekranı için).
   Future<Map<int, double>> urunTumGrupFiyatlariGetir(int urunId) async {
     try {

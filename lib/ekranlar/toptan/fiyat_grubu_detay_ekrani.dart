@@ -38,6 +38,11 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
   final _aramaCtrl = TextEditingController();
   List<UrunModel> _aramaSonuc = [];
   Map<int, double> _ozelFiyatlar = {}; // urunId -> fiyat (bu grup için)
+  // Arama boşken gösterilen: bu gruba özel fiyatı TANIMLI ürünler
+  // (kullanıcı bulgusu 2026-10-08: tanımlanan pastil fiyatı listede
+  // görünmüyordu — ekran yalnız arama sonucu gösteriyordu).
+  List<UrunModel> _tanimlilar = [];
+  bool _tanimlilarYukleniyor = true;
   bool _araniyor = false;
 
   @override
@@ -45,6 +50,23 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
     super.initState();
     _tab = TabController(length: 2, vsync: this);
     _aramaCtrl.addListener(_aramaDegisti);
+    _tanimlilariYukle();
+  }
+
+  Future<void> _tanimlilariYukle() async {
+    if (!mounted) return;
+    try {
+      final fiyatlar = await _depo.grubunUrunFiyatlariGetir(widget.grup.id!);
+      final urunler = await _urunDepo.idListesiyleGetir(fiyatlar.keys.toList());
+      if (!mounted) return;
+      setState(() {
+        _tanimlilar = urunler;
+        _ozelFiyatlar = {..._ozelFiyatlar, ...fiyatlar};
+        _tanimlilarYukleniyor = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _tanimlilarYukleniyor = false);
+    }
   }
 
   @override
@@ -71,7 +93,7 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
         final sonuc = await _urunDepo.ara(sorgu, limit: 30);
         if (!mounted) return;
         // Bu ürünlerin, bu grup için ZATEN kayıtlı özel fiyatlarını çek.
-        final fiyatlar = <int, double>{};
+        final fiyatlar = <int, double>{..._ozelFiyatlar};
         for (final u in sonuc) {
           final f = await _depo.urunGrupFiyatiGetir(u.id!, widget.grup.id!);
           if (f != null) fiyatlar[u.id!] = f;
@@ -132,6 +154,7 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
     if (sonuc == '__sil__') {
       await _depo.urunGrupFiyatiSil(urun.id!, widget.grup.id!);
       if (mounted) setState(() => _ozelFiyatlar.remove(urun.id));
+      await _tanimlilariYukle();
       if (mounted) BildirimServisi.basari(context, 'Özel fiyat kaldırıldı');
       return;
     }
@@ -143,6 +166,7 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
     }
     await _depo.urunGrupFiyatiKaydet(urun.id!, widget.grup.id!, yeniFiyat);
     if (mounted) setState(() => _ozelFiyatlar[urun.id!] = yeniFiyat);
+    await _tanimlilariYukle();
     if (mounted) BildirimServisi.basari(context, 'Fiyat kaydedildi ✓');
   }
 
@@ -170,6 +194,10 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
     );
   }
 
+  /// Arama boşken tanımlı fiyatlar, aramada sonuçlar.
+  List<UrunModel> get _gosterilen =>
+      _aramaCtrl.text.trim().isEmpty ? _tanimlilar : _aramaSonuc;
+
   Widget _urunFiyatlariSekmesi() {
     return Column(children: [
       Container(
@@ -191,8 +219,19 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
           ),
         ),
       ),
+      if (_aramaCtrl.text.trim().isEmpty && _tanimlilar.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Row(children: [
+            Text('Bu gruba özel fiyatı tanımlı ürünler (${_tanimlilar.length})',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.textSecondary)),
+            const Spacer(),
+            Text('Yeni ürün eklemek için yukarıdan arayın',
+                style: TextStyle(fontSize: 12, color: context.textHint)),
+          ]),
+        ),
       Expanded(
-        child: _aramaCtrl.text.trim().isEmpty
+        child: _aramaCtrl.text.trim().isEmpty && (_tanimlilar.isEmpty || _tanimlilarYukleniyor)
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(32),
@@ -204,13 +243,13 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
                   ]),
                 ),
               )
-            : _aramaSonuc.isEmpty && !_araniyor
+            : _aramaCtrl.text.trim().isNotEmpty && _aramaSonuc.isEmpty && !_araniyor
                 ? Center(child: Text('Sonuç bulunamadı', style: TextStyle(color: context.textHint)))
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-                    itemCount: _aramaSonuc.length,
+                    itemCount: _gosterilen.length,
                     itemBuilder: (c, i) {
-                      final u = _aramaSonuc[i];
+                      final u = _gosterilen[i];
                       final ozelFiyat = _ozelFiyatlar[u.id];
                       final indirimYuzde = ozelFiyat != null && u.satisFiyati > 0
                           ? ((u.satisFiyati - ozelFiyat) / u.satisFiyati * 100) : null;

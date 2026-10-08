@@ -87,6 +87,9 @@ class SupabaseOturum {
     return key;
   }
 
+  /// Oturumun erişim anahtarının bitiş zamanı (oturum yoksa null).
+  DateTime? get erisimBitis => _erisim == null ? null : _bitis;
+
   /// Geçerli (süresi dolmamış) erişim anahtarı var mı?
   bool get erisimGecerli =>
       _erisim != null && _bitis != null && DateTime.now().isBefore(_bitis!);

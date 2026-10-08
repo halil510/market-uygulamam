@@ -132,7 +132,19 @@ class AnlikBulutDinleyici with WidgetsBindingObserver {
       });
       _kalpZamanlayici = Timer.periodic(_kalpAtisi, (_) => _gonder('phoenix', 'heartbeat', {}));
       // Erişim anahtarı ~1 saatte dolar; dolmadan yeni anahtarla yeniden bağlan.
-      _tokenZamanlayici = Timer(_tokenYenileme, () {
+      // Süre anahtarın GERÇEK bitişine göre (canlı test 2026-10-08): sabit
+      // 40 dk, anahtarın son 20 dakikasında kurulan bağlantıda anahtar önce
+      // doluyor, Realtime kanalı kapatıyordu.
+      var yenilemeSuresi = _tokenYenileme;
+      final bitis = SupabaseOturum().erisimBitis;
+      if (bitis != null && !SupabaseOturum.gizliAnahtarMi(key)) {
+        final kalan = bitis.difference(DateTime.now()) - const Duration(minutes: 3);
+        if (kalan < yenilemeSuresi) {
+          yenilemeSuresi =
+              kalan > const Duration(seconds: 30) ? kalan : const Duration(seconds: 30);
+        }
+      }
+      _tokenZamanlayici = Timer(yenilemeSuresi, () {
         _kapat();
         unawaited(_baglan());
       });
@@ -197,6 +209,17 @@ class AnlikBulutDinleyici with WidgetsBindingObserver {
           }
           break;
         case 'system':
+          final sistemMesaji = yuk is Map ? '${yuk['message'] ?? ''}' : '';
+          if (yuk is Map &&
+              yuk['status'] == 'error' &&
+              RegExp('token|jwt|expired|unauthorized', caseSensitive: false)
+                  .hasMatch(sistemMesaji)) {
+            // Erişim anahtarı doldu/geçersiz: kalıcı ret değil — oturumu
+            // tazeleyip yeniden bağlan (önceden kanal, uygulama yeniden
+            // açılana kadar ölü kalıyordu).
+            _koptu();
+            break;
+          }
           if (yuk is Map && yuk['status'] == 'error' && !_abonelikHatasiBildirildi) {
             // En sık neden: tablolar supabase_realtime yayınında değil.
             _abonelikHatasiBildirildi = true;

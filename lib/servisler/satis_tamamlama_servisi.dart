@@ -73,7 +73,9 @@ class SatisTamamlamaServisi {
   // sepetin/fiyat hesaplama mantığının KENDİSİNE hiç dokunulmadı, sadece
   // KAYIT anında bu fark artık kayboluyor.
   SatisKalemModel _kalemOlustur(SepetKalem k, {required int satisId}) {
-    final bazFiyat = k.urun.satisFiyati;
+    // Müşterinin liste fiyatı (bayide toptan fiyatı): bayi fiyatı indirim
+    // olarak kaydedilmez — Toptan Satış ekranıyla aynı (2026-10-08).
+    final bazFiyat = k.listeFiyat;
     final indirimBirim = bazFiyat > k.birimFiyat ? bazFiyat - k.birimFiyat : 0.0;
     final iskontoOran = bazFiyat > 0 ? (indirimBirim / bazFiyat * 100) : 0.0;
     final iskontoTutar = indirimBirim * k.miktar;

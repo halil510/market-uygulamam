@@ -8,6 +8,10 @@ import '../../modeller/sepet_model.dart';
 import '../../modeller/promosyon_model.dart';
 import '../../depolar/promosyon_deposu.dart';
 import '../../servisler/urun_fiyat_hesaplayici.dart';
+import '../../servisler/fiyat_hesaplama_servisi.dart';
+import '../../modeller/fiyat_grubu_model.dart';
+import '../../modeller/fiyat_kademesi_model.dart';
+import 'dart:async';
 
 part 'sepet_provider.g.dart';
 
@@ -68,8 +72,116 @@ class Sepet extends _$Sepet {
 
   // Fiyat kuralı (promosyon → kayıtlı indirimli fiyat → ürün indirimi →
   // liste fiyatı) masa siparişiyle paylaşılır: UrunFiyatHesaplayici.
+  //
+  // Bayi/Toptan müşteri seçiliyse Toptan Satış ekranıyla AYNI kural
+  // (FiyatHesaplamaServisi.kuralUygula — kademe → gruba özel fiyat → ürün
+  // toptan fiyatı → grup iskontosu). Kullanıcı bulgusu 2026-10-08: Hızlı
+  // Satış'ta bayi seçilince toptan fiyatı 107 olan ürün 120'den satılıyordu.
   double _fiyatHesapla(UrunModel urun, double miktar) =>
+      _bazFiyatHesapla(urun, miktar) ??
       UrunFiyatHesaplayici.hesapla(urun, miktar, _promoCache[urun.id]);
+
+  /// Müşterinin liste fiyatı: bayi/toptanda toptan kuralı, perakendede null
+  /// (= etiket fiyatı; promosyon perakendede "indirim" olarak görünür).
+  double? _bazFiyatHesapla(UrunModel urun, double miktar) {
+    final cari = state.musteri;
+    if (!toptanMusteriMi(cari)) return null;
+    final v = urun.id == null ? null : _toptanCache[urun.id];
+    return FiyatHesaplamaServisi.kuralUygula(
+      urun: urun,
+      cari: cari,
+      miktar: miktar,
+      kademeler: v?.kademeler ?? const [],
+      grupOzelFiyat: v?.grupOzelFiyat,
+      grup: v?.grup,
+    ).birimFiyat;
+  }
+
+  /// Kalemlerin müşteriye göre liste fiyatını (bazFiyat) güncel tutar —
+  /// ekrandaki "İndirim", F6 iskontosu ve kayıttaki kalem indirimi bu
+  /// fiyatı esas alır.
+  List<SepetKalem> _bazla(List<SepetKalem> liste) => [
+        for (final k in liste)
+          () {
+            final baz = _bazFiyatHesapla(k.urun, k.miktar);
+            final ayni = baz == null
+                ? k.bazFiyat == null
+                : (k.bazFiyat != null && (k.bazFiyat! - baz).abs() < 0.0001);
+            return ayni ? k : k.copyWith(bazFiyat: () => baz);
+          }(),
+      ];
+
+  // Seçili bayi için ürün başına toptan verisi (kademe, gruba özel fiyat,
+  // grup). Müşteri değişince temizlenir.
+  final Map<int, ({List<FiyatKademesiModel> kademeler, double? grupOzelFiyat, FiyatGrubuModel? grup})>
+      _toptanCache = {};
+
+  Future<void> _toptanCacheYukle(UrunModel urun) async {
+    final cari = state.musteri;
+    if (!toptanMusteriMi(cari) || urun.id == null || _toptanCache.containsKey(urun.id)) return;
+    try {
+      final v = await FiyatHesaplamaServisi().toptanVerisiGetir(urun, cari!);
+      if (state.musteri?.id == cari.id) _toptanCache[urun.id!] = v;
+    } catch (_) {/* veri yoksa ürün toptan fiyatı / perakende kullanılır */}
+  }
+
+  /// Verilen ürünlerin toptan verisini yükleyip, elle değiştirilmemiş
+  /// kalemleri yeni kurala göre yeniden fiyatlar.
+  // Süren bayi fiyat yüklemeleri — ödeme başlamadan beklenir (fiyat,
+  // ödeme penceresi açıkken değişip tutarlar uyuşmasın diye).
+  final Set<Future<void>> _bekleyenTazelemeler = {};
+
+  /// Bekleyen bayi fiyat güncellemeleri bitene kadar bekler (ödeme öncesi).
+  Future<void> fiyatlarHazir() async {
+    while (_bekleyenTazelemeler.isNotEmpty) {
+      await Future.wait(_bekleyenTazelemeler.toList());
+    }
+  }
+
+  void _tazelemeBaslat(Iterable<UrunModel> urunler) {
+    late final Future<void> f;
+    f = _toptanFiyatlariTazele(urunler)
+        .catchError((_) {})
+        .whenComplete(() => _bekleyenTazelemeler.remove(f));
+    _bekleyenTazelemeler.add(f);
+  }
+
+  Future<void> _toptanFiyatlariTazele(Iterable<UrunModel> urunler) async {
+    final cari = state.musteri;
+    if (!toptanMusteriMi(cari)) return;
+    // Yüklemeden ÖNCE otomatik fiyatta olan kalemler (sonra elle
+    // değiştirilenlere dokunulmaz).
+    final otomatik = _otomatikKalemler();
+    for (final u in urunler) {
+      await _toptanCacheYukle(u);
+    }
+    if (state.musteri?.id != cari!.id) return;
+    _yenidenFiyatla(otomatik);
+  }
+
+  /// Elle fiyatı değiştirilmemiş kalemler (nesne kimliğiyle — kalem
+  /// sonradan değişirse yeni nesne olur, eşleşmez; serbest ürünler de dahil).
+  Set<SepetKalem> _otomatikKalemler() => Set<SepetKalem>.identity()
+    ..addAll(state.kalemler.where((k) => !_elleDegistirilmisMi(k)));
+
+  /// [otomatik] içindeki ve o zamandan beri değişmemiş kalemleri güncel
+  /// kurala göre yeniden fiyatlar.
+  void _yenidenFiyatla(Set<SepetKalem> otomatik) {
+    var degisti = false;
+    final liste = List<SepetKalem>.from(state.kalemler);
+    for (var i = 0; i < liste.length; i++) {
+      final k = liste[i];
+      if (!otomatik.contains(k)) continue;
+      final yeni = _fiyatHesapla(k.urun, k.miktar);
+      if ((yeni - k.birimFiyat).abs() > 0.001) {
+        liste[i] = k.copyWith(birimFiyat: yeni);
+        degisti = true;
+      }
+    }
+    // Fiyatı değişmese de (elle değiştirilmiş kalem) liste fiyatı yeni
+    // müşteriye göre güncellenir.
+    state = state.copyWith(kalemler: _bazla(degisti ? liste : state.kalemler));
+  }
 
   // Ürün bazlı promosyon cache: {urunId → [PromosyonModel, ...]}
   // Her ürün ilk kez sepete eklendiğinde DB'den doldurulur.
@@ -106,6 +218,7 @@ class Sepet extends _$Sepet {
   Future<void> ekleAsync(UrunModel urun, {double? miktar, double? fiyatOverride}) async {
     final adet = miktar ?? 1.0;
     if (urun.id != null) await _promoCacheYukle(urun.id!);
+    await _toptanCacheYukle(urun);
     ekle(urun, miktar: adet, fiyatOverride: fiyatOverride);
   }
 
@@ -147,7 +260,15 @@ class Sepet extends _$Sepet {
     } else {
       liste.insert(0, SepetKalem(urun: urun, birimFiyat: fiyat, miktar: adet));
     }
-    state = state.copyWith(kalemler: liste);
+    state = state.copyWith(kalemler: _bazla(liste));
+    // Senkron eklemede (ör. miktar diyaloğu) bayi verisi henüz yoksa yükle
+    // ve fiyatı düzelt.
+    if (fiyatOverride == null &&
+        toptanMusteriMi(state.musteri) &&
+        urun.id != null &&
+        !_toptanCache.containsKey(urun.id)) {
+      _tazelemeBaslat([urun]);
+    }
   }
 
   void miktarGuncelle(int i, double yeniMiktar) {
@@ -162,7 +283,7 @@ class Sepet extends _$Sepet {
           : _fiyatHesapla(mevcut.urun, yeniMiktar);
       liste[i] = mevcut.copyWith(miktar: yeniMiktar, birimFiyat: yeniFiyat);
     }
-    state = state.copyWith(kalemler: liste);
+    state = state.copyWith(kalemler: _bazla(liste));
   }
 
   void sil(int i) {
@@ -175,13 +296,28 @@ class Sepet extends _$Sepet {
     if (i < 0 || i >= state.kalemler.length) return;
     final liste = List<SepetKalem>.from(state.kalemler);
     liste[i] = liste[i].copyWith(birimFiyat: yeniFiyat);
-    state = state.copyWith(kalemler: liste);
+    state = state.copyWith(kalemler: _bazla(liste));
   }
 
   void iskontoGuncelle(double yuzde) =>
       state = state.copyWith(genelIskontoYuzde: yuzde.clamp(0, 100));
-  void musteriSec(CariModel? m) => state = state.copyWith(musteri: () => m);
-  void temizle()     => state = const SepetDurum();
+  /// Müşteri değişince elle değiştirilmemiş kalemler yeni müşterinin
+  /// fiyat kuralına göre yeniden fiyatlanır (perakende ↔ bayi).
+  void musteriSec(CariModel? m) {
+    // Eski müşterinin kuralıyla otomatik fiyatta olan kalemler.
+    final otomatik = _otomatikKalemler();
+    final eskiId = state.musteri?.id;
+    state = state.copyWith(musteri: () => m);
+    if (eskiId != m?.id) _toptanCache.clear();
+    _yenidenFiyatla(otomatik);
+    if (toptanMusteriMi(m)) {
+      _tazelemeBaslat(state.kalemler.map((k) => k.urun).toList());
+    }
+  }
+  void temizle() {
+    _toptanCache.clear();
+    state = const SepetDurum();
+  }
   void satisBasladi()=> state = state.copyWith(satisIsleniyor: true);
   void satisGitti()  => state = state.copyWith(satisIsleniyor: false);
 }

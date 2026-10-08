@@ -293,6 +293,18 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                             'askidaki_satislar', jsonEncode(list2));
                       }
                       ref.read(sepetProvider.notifier).temizle();
+                      // Askıya alınırken saklanan müşteri de geri gelsin
+                      // (önceden kayboluyordu: bayi sepeti perakendeye
+                      // dönüyor, veresiye yazılamıyordu). Kalemlerden ÖNCE
+                      // seçilir ki fiyatlar bayi listesine göre yorumlansın.
+                      final askiCari = secilen.cari;
+                      final askiCariId = askiCari is Map ? askiCari['id'] as int? : null;
+                      if (askiCariId != null) {
+                        final cari = await _cariDepo.idileGetir(askiCariId);
+                        if (cari != null) {
+                          ref.read(sepetProvider.notifier).musteriSec(cari);
+                        }
+                      }
                       for (final k in (secilen.kalemler as List)) {
                         final urun = await _urunDepo.idileGetir(k['urunId'] as int);
                         if (urun != null) {

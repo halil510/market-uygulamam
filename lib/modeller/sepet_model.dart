@@ -28,6 +28,13 @@ class SepetKalem {
   final double iskontoOran;
   final double birimFiyat;
 
+  /// Bu müşteri için liste (indirim öncesi) birim fiyatı. Boşsa ürünün
+  /// perakende fiyatı. Bayi/toptan müşteride toptan kuralının fiyatıdır —
+  /// bayi fiyatı "indirim" sayılmasın, F6 iskontosu ondan hesaplansın
+  /// (2026-10-08: bayiye 107 fiyat, ekranda/kayıtta 13 TL indirim
+  /// görünüyor, %5 iskonto fiyatı 114'e ÇIKARIYORDU).
+  final double? bazFiyat;
+
   /// KDV dahil, iskonto uygulanmış birim fiyat
   double get netFiyat => birimFiyat * (1 - iskontoOran / 100);
 
@@ -39,8 +46,10 @@ class SepetKalem {
 
   /// İndirim öncesi (liste) birim fiyat. Birim fiyat listeden YÜKSEKSE
   /// (elle yükseltilmiş / serbest ürün) indirim yoktur, baz = birim fiyat.
-  double get listeFiyat =>
-      urun.satisFiyati > birimFiyat ? urun.satisFiyati : birimFiyat;
+  double get listeFiyat {
+    final baz = bazFiyat ?? urun.satisFiyati;
+    return baz > birimFiyat ? baz : birimFiyat;
+  }
 
   /// İndirim öncesi satır tutarı (liste fiyatı × miktar).
   double get brutTutar => listeFiyat * miktar;
@@ -67,6 +76,7 @@ class SepetKalem {
     this.miktar = 1,
     this.iskontoOran = 0,
     double? birimFiyat,
+    this.bazFiyat,
   }) : birimFiyat = birimFiyat ?? urun.satisFiyati;
 
   /// Yeni nesne döndürür — immutable
@@ -74,10 +84,12 @@ class SepetKalem {
     double? miktar,
     double? iskontoOran,
     double? birimFiyat,
+    double? Function()? bazFiyat,
   }) => SepetKalem(
     urun:        urun,
     miktar:      miktar      ?? this.miktar,
     iskontoOran: iskontoOran ?? this.iskontoOran,
     birimFiyat:  birimFiyat  ?? this.birimFiyat,
+    bazFiyat:    bazFiyat != null ? bazFiyat() : this.bazFiyat,
   );
 }

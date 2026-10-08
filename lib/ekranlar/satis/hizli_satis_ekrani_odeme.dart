@@ -78,6 +78,9 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
   // Nakit olarak, tam sepet tutarı alınmış kabul edip bitirir (para üstü 0).
   // Çift satışı önlemek için F12 akışıyla AYNI korumalar (_islemAktif/_dialogAcik).
   Future<void> _hizliNakitSat() async {
+    // Bayi seçimi sonrası fiyatlar arka planda güncelleniyorsa bitsin.
+    await ref.read(sepetProvider.notifier).fiyatlarHazir();
+    if (!mounted) return;
     final sepet = ref.read(sepetProvider);
     if (sepet.bos || sepet.satisIsleniyor || _islemAktif || _dialogAcik) return;
     _islemBasladi();
@@ -93,6 +96,10 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
 
   // ── Ödeme Akışı ──────────────────────────────────────────────────────────────
   Future<void> _odemeYontemiSec() async {
+    // Bayi seçimi sonrası fiyatlar arka planda güncelleniyorsa bitsin —
+    // ödeme penceresindeki tutar kaydedilen satışla aynı olsun.
+    await ref.read(sepetProvider.notifier).fiyatlarHazir();
+    if (!mounted) return;
     final sepet  = ref.read(sepetProvider);
     // 🔴🔴 KRİTİK DÜZELTME (hızlı satış derin analizi, 2026-09-14): bu
     // fonksiyon çift-tıklamaya karşı HİÇ korunmuyordu — barkod okutma

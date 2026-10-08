@@ -17,6 +17,10 @@ import '../../depolar/sube_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../widgetlar/masaustu/ekran_ustte.dart';
+import '../../widgetlar/masaustu/masaustu_alt_serit.dart';
+import '../../widgetlar/masaustu/masaustu_sag_tik_menu.dart';
+import '../../widgetlar/masaustu/masaustu_tablo.dart';
 
 class DepoTransferEkrani extends ConsumerStatefulWidget {
   const DepoTransferEkrani({super.key});
@@ -165,6 +169,40 @@ class _DepoTransferEkraniState extends ConsumerState<DepoTransferEkrani> {
     }
   }
 
+  /// Masaüstü: seçili ürünün transfer miktarını diyalogla gir (0 = kaldır).
+  Future<void> _miktarGir(UrunModel u) async {
+    final ctrl = TextEditingController(
+        text: (_miktarlar[u.id!] ?? 0) > 0 ? _miktarlar[u.id!]!.toStringAsFixed(0) : '');
+    final sonuc = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(u.urunAdi, maxLines: 2, overflow: TextOverflow.ellipsis),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: InputDecoration(
+              labelText: 'Transfer miktarı (${u.birimAdi})',
+              helperText: 'Stok: ${u.stok.toStringAsFixed(0)} — 0 girerseniz listeden çıkar'),
+          onSubmitted: (v) => Navigator.pop(ctx, double.tryParse(v) ?? 0),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, double.tryParse(ctrl.text) ?? 0),
+              child: const Text('Tamam')),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (sonuc == null || !mounted) return;
+    setState(() {
+      _miktarlar[u.id!] = sonuc;
+      _ctrls[u.id!]?.text = sonuc > 0 ? sonuc.toStringAsFixed(0) : '';
+    });
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: TsRenk.arkaplan(context),
@@ -229,6 +267,20 @@ class _DepoTransferEkraniState extends ConsumerState<DepoTransferEkrani> {
       ),
       Expanded(child: _yukleniyor
         ? const TsYukleniyor(iskelet: true)
+        // Masaüstü: tablo + çift tık/F2 miktar, F9 transfer (canlı tarama
+        // 2026-10-08: telefon kart listesi görünüyordu).
+        : MediaQuery.sizeOf(context).width > 1100
+            ? _TransferTablosu(
+                urunler: _filtrelenmis,
+                miktarlar: _miktarlar,
+                islemde: _islem,
+                onMiktarGir: _miktarGir,
+                onKaldir: (u) => setState(() {
+                  _miktarlar.remove(u.id);
+                  _ctrls[u.id]?.clear();
+                }),
+                onTransfer: _transferYap,
+              )
         : ListView.builder(
             padding: const EdgeInsets.all(TsBosluk.md),
             itemCount: _filtrelenmis.length,
@@ -301,4 +353,140 @@ class _DepoSec extends StatelessWidget {
         style: TextStyle(color: renk, fontWeight: FontWeight.w600, fontSize: 13)),
     ),
   ]);
+}
+
+class _TransferTablosu extends StatefulWidget {
+  final List<UrunModel> urunler;
+  final Map<int, double> miktarlar;
+  final bool islemde;
+  final void Function(UrunModel u) onMiktarGir;
+  final void Function(UrunModel u) onKaldir;
+  final VoidCallback onTransfer;
+  const _TransferTablosu({
+    required this.urunler,
+    required this.miktarlar,
+    required this.islemde,
+    required this.onMiktarGir,
+    required this.onKaldir,
+    required this.onTransfer,
+  });
+
+  @override
+  State<_TransferTablosu> createState() => _TransferTablosuState();
+}
+
+class _TransferTablosuState extends State<_TransferTablosu> {
+  int? _seciliId;
+
+  double _m(UrunModel u) => widget.miktarlar[u.id] ?? 0;
+
+  late final List<TabloKolon<UrunModel>> _kolonlar = [
+    TabloKolon(
+        baslik: 'Ürün',
+        genislik: 320,
+        esnek: true,
+        deger: (u) => u.urunAdi,
+        sirala: (u) => u.urunAdi.toLowerCase()),
+    TabloKolon(
+        baslik: 'Barkod',
+        genislik: 150,
+        deger: (u) => u.barkod ?? '',
+        sirala: (u) => u.barkod ?? ''),
+    TabloKolon(
+        baslik: 'Stok',
+        genislik: 110,
+        sagaYasli: true,
+        deger: (u) => '${u.stok.toStringAsFixed(0)} ${u.birimAdi}',
+        sirala: (u) => u.stok,
+        renk: (u) => u.stok < 0 ? TsRenk.hata : null),
+    TabloKolon(
+        baslik: 'Transfer',
+        genislik: 120,
+        sagaYasli: true,
+        deger: (u) => _m(u) > 0 ? _m(u).toStringAsFixed(0) : '',
+        sirala: _m,
+        renk: (u) => _m(u) > 0 ? TsRenk.primary : null),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_tus);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_tus);
+    super.dispose();
+  }
+
+  UrunModel? get _secili {
+    for (final u in widget.urunler) {
+      if (u.id == _seciliId) return u;
+    }
+    return null;
+  }
+
+  int get _seciliSayisi => widget.miktarlar.values.where((v) => v > 0).length;
+
+  bool _tus(KeyEvent e) {
+    if (e is! KeyDownEvent || !mounted || !ekranUstte(context)) return false;
+    final k = e.logicalKey;
+    final u = _secili;
+    if ((k == LogicalKeyboardKey.f2 || k == LogicalKeyboardKey.enter) && u != null) {
+      // Enter yalnız arama kutusu dışında (odak tablodayken) işlenir.
+      if (k == LogicalKeyboardKey.enter &&
+          FocusManager.instance.primaryFocus?.context?.widget is EditableText) {
+        return false;
+      }
+      widget.onMiktarGir(u);
+    } else if (k == LogicalKeyboardKey.f4 && u != null && _m(u) > 0) {
+      widget.onKaldir(u);
+    } else if (k == LogicalKeyboardKey.f9 && _seciliSayisi > 0 && !widget.islemde) {
+      widget.onTransfer();
+    } else {
+      return false;
+    }
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final u = _secili;
+    final toplamAdet = widget.miktarlar.values.where((v) => v > 0).fold(0.0, (t, v) => t + v);
+    return Column(children: [
+      Expanded(
+        child: widget.urunler.isEmpty
+            ? Center(child: Text('Ürün bulunamadı',
+                style: TextStyle(color: TsRenk.metinIkincil(context))))
+            : MasaustuTablo<UrunModel>(
+                satirlar: widget.urunler,
+                kolonlar: _kolonlar,
+                secili: u,
+                onSec: (x) => setState(() => _seciliId = x.id),
+                onCift: widget.onMiktarGir,
+                onSagTik: (x, konum) => masaustuMenuAc(context, konum, [
+                  MenuOge('Miktar Gir', () => widget.onMiktarGir(x), ikon: Icons.edit_outlined),
+                  if (_m(x) > 0)
+                    MenuOge('Listeden Çıkar', () => widget.onKaldir(x),
+                        ikon: Icons.remove_circle_outline, ayiracOnce: true),
+                ]),
+              ),
+      ),
+      MasaustuAltSerit(
+        ozetler: [
+          AltOzet('Seçili Ürün', '$_seciliSayisi'),
+          AltOzet('Toplam Adet', toplamAdet.toStringAsFixed(0)),
+        ],
+        tuslar: [
+          AltTus('F2', 'Miktar Gir', Icons.edit_outlined, const Color(0xFF1565C0),
+              u == null ? null : () => widget.onMiktarGir(u)),
+          AltTus('F4', 'Çıkar', Icons.remove_circle_outline, const Color(0xFFC62828),
+              u == null || _m(u) <= 0 ? null : () => widget.onKaldir(u)),
+          AltTus('F9', 'Transfer Et', Icons.swap_horiz, const Color(0xFF2E7D32),
+              _seciliSayisi == 0 || widget.islemde ? null : widget.onTransfer),
+        ],
+      ),
+    ]);
+  }
 }

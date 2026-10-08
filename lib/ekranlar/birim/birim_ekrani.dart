@@ -18,6 +18,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../depolar/birim_deposu.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../widgetlar/masaustu/basit_liste_masaustu.dart';
+import '../../widgetlar/masaustu/masaustu_tablo.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart' show basariMesaji, hataMesaji;
 
 class BirimEkrani extends ConsumerStatefulWidget {
@@ -200,8 +202,51 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
     }
   }
 
+  String _carpanYazi(String b) {
+    final c = _carpanlar[b] ?? 1;
+    return c == 1 ? '—' : '1 $b = ${c.toStringAsFixed(c == c.roundToDouble() ? 0 : 2)} Adet';
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Masaüstü: tablo + F1/F2/F4 — mobildeki "sola kaydırarak sil" fareyle
+    // zordu (canlı tarama 2026-10-08).
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
+    if (masaustu) {
+      return Scaffold(
+        backgroundColor: TsRenk.arkaplan(context),
+        appBar: const TsAppBar(baslik: 'Birim Yönetimi', gradyanli: true),
+        body: _yukleniyor
+            ? const Center(child: CircularProgressIndicator())
+            : BasitListeMasaustu<String>(
+                satirlar: _birimler,
+                kolonlar: [
+                  TabloKolon(
+                      baslik: 'Birim',
+                      genislik: 220,
+                      esnek: true,
+                      deger: (b) => b,
+                      sirala: (b) => b.toLowerCase()),
+                  TabloKolon(
+                      baslik: 'Çarpan',
+                      genislik: 200,
+                      deger: _carpanYazi,
+                      sirala: (b) => _carpanlar[b] ?? 1),
+                  TabloKolon(
+                      baslik: 'Tür',
+                      genislik: 120,
+                      deger: (b) => _varsayilan.contains(b) ? 'Varsayılan' : 'Özel'),
+                ],
+                aramaMetniAl: (b) => b,
+                kayitEtiketi: 'Birim',
+                bosMesaj: 'Henüz birim yok — F1 ile ekleyin',
+                onEkle: _yeniBirimEkle,
+                onDuzenle: _carpanDuzenle,
+                onSil: _sil,
+                silinebilir: (b) => !_varsayilan.contains(b),
+              ),
+      );
+    }
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
       appBar: TsAppBar(

@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/kategori_deposu.dart';
+import '../../widgetlar/masaustu/basit_liste_masaustu.dart';
+import '../../widgetlar/masaustu/masaustu_tablo.dart';
 
 class KategoriEkrani extends ConsumerStatefulWidget {
   const KategoriEkrani({super.key});
@@ -95,10 +97,29 @@ class _KategoriEkraniState extends ConsumerState<KategoriEkrani> {
 
   @override
   Widget build(BuildContext context) {
+    // Masaüstü: tablo + F1/F4 (mobil kart listesi geniş ekranda dev kartlardı).
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
       appBar: const TsAppBar(baslik: 'Kategoriler'),
-      body: TsListe<Map<String, dynamic>>(
+      body: masaustu && !_yukleniyor
+          ? BasitListeMasaustu<Map<String, dynamic>>(
+              satirlar: _kategoriler,
+              kolonlar: [
+                TabloKolon(
+                    baslik: 'Kategori',
+                    genislik: 300,
+                    esnek: true,
+                    deger: (k) => k['ad'] as String? ?? '',
+                    sirala: (k) => (k['ad'] as String? ?? '').toLowerCase()),
+              ],
+              aramaMetniAl: (k) => k['ad'] as String? ?? '',
+              kayitEtiketi: 'Kategori',
+              bosMesaj: 'Kategori yok — F1 ile ekleyin',
+              onEkle: _ekle,
+              onSil: (k) => _sil(k['id'] as int),
+            )
+          : TsListe<Map<String, dynamic>>(
         yukleniyor: _yukleniyor,
         ogeler: _kategoriler,
         aramaMetniAl: (k) => k['ad'] as String? ?? '',
@@ -114,7 +135,9 @@ class _KategoriEkraniState extends ConsumerState<KategoriEkrani> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(onPressed: _ekle, child: const Icon(Icons.add)),
+      floatingActionButton: masaustu
+          ? null
+          : FloatingActionButton(onPressed: _ekle, child: const Icon(Icons.add)),
     );
   }
 }

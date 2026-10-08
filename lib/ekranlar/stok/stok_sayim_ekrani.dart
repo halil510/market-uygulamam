@@ -25,6 +25,10 @@ import '../../modeller/urun_model.dart';
 import '../../servisler/aktif_sube_servisi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../widgetlar/masaustu/ekran_ustte.dart';
+import '../../widgetlar/masaustu/masaustu_alt_serit.dart';
+import '../../widgetlar/masaustu/masaustu_sag_tik_menu.dart';
+import '../../widgetlar/masaustu/masaustu_tablo.dart';
 
 class StokSayimEkrani extends ConsumerStatefulWidget {
   const StokSayimEkrani({super.key});
@@ -196,6 +200,39 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
         ref.read(stokSayimProvider.notifier).sadeceSayilanToggle();
       }
       BildirimServisi.basari(context, '${urun.urunAdi}: $miktar ${urun.birimAdi} kaydedildi');
+    }
+  }
+
+  /// Masaüstü: seçili ürünün sayım miktarını diyalogla gir.
+  Future<void> _miktarSor(UrunModel urun) async {
+    final mevcut = ref.read(stokSayimProvider).sayimMiktarlari[urun.id];
+    final ctrl = TextEditingController(text: mevcut == null ? '' : _miktarYazi(mevcut));
+    final miktar = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(urun.urunAdi, style: const TextStyle(fontSize: 15)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: 'Sayılan miktar (${urun.birimAdi})',
+            helperText:
+                'Sistemdeki stok: ${_miktarYazi(ref.read(stokSayimProvider).mevcutStok(urun))}',
+            border: const OutlineInputBorder(),
+          ),
+          onSubmitted: (v) => Navigator.pop(ctx, ParaUtils.sayiCoz(v)),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, ParaUtils.sayiCoz(ctrl.text)),
+              child: const Text('Kaydet')),
+        ],
+      ),
+    ).whenComplete(() => dialogSonrasiBirak([ctrl]));
+    if (miktar != null && mounted) {
+      ref.read(stokSayimProvider.notifier).miktarGuncelle(urun.id!, miktar);
     }
   }
 
@@ -447,6 +484,18 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
               ? const Center(child: AppYukleniyor())
               : durum.gosterilenler.isEmpty
                   ? _BosEkran(sadeceSayilan: durum.sadeceSayilan)
+                  // Masaüstü: tablo + çift tık/F2 miktar, F4 çıkar, F9 uygula
+                  // (canlı tarama 2026-10-08: telefon kart listesi görünüyordu).
+                  : MediaQuery.sizeOf(context).width > 1100
+                      ? _SayimTablosu(
+                          durum: durum,
+                          scrollController: _scrollCtrl,
+                          onMiktarGir: _miktarSor,
+                          onCikar: (u) => ref
+                              .read(stokSayimProvider.notifier)
+                              .miktarGuncelle(u.id!, -1),
+                          onUygula: _sayimiUygula,
+                        )
                   : ListView.separated(
                       controller: _scrollCtrl,
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
@@ -473,7 +522,8 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
                     ),
         ),
       ]),
-      floatingActionButton: durum.sayilanUrunSayisi > 0
+      floatingActionButton: durum.sayilanUrunSayisi > 0 &&
+              MediaQuery.sizeOf(context).width <= 1100
           ? FloatingActionButton.extended(
               onPressed: durum.uygulamaIsleniyor ? null : _sayimiUygula,
               backgroundColor: Colors.green.shade700,
@@ -490,6 +540,157 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
             )
           : null,
     );
+  }
+}
+
+class _SayimTablosu extends StatefulWidget {
+  final StokSayimDurum durum;
+  final ScrollController scrollController;
+  final void Function(UrunModel u) onMiktarGir;
+  final void Function(UrunModel u) onCikar;
+  final VoidCallback onUygula;
+  const _SayimTablosu({
+    required this.durum,
+    required this.scrollController,
+    required this.onMiktarGir,
+    required this.onCikar,
+    required this.onUygula,
+  });
+
+  @override
+  State<_SayimTablosu> createState() => _SayimTablosuState();
+}
+
+class _SayimTablosuState extends State<_SayimTablosu> {
+  int? _seciliId;
+
+  double? _sayilan(UrunModel u) => widget.durum.sayimMiktarlari[u.id];
+  double _mevcut(UrunModel u) => widget.durum.mevcutStok(u);
+
+  String _fark(UrunModel u) {
+    final s = _sayilan(u);
+    if (s == null) return '';
+    final f = s - _mevcut(u);
+    if (f == 0) return '0';
+    return f > 0 ? '+${_miktarYazi(f)}' : _miktarYazi(f);
+  }
+
+  late final List<TabloKolon<UrunModel>> _kolonlar = [
+    TabloKolon(
+        baslik: 'Ürün',
+        genislik: 320,
+        esnek: true,
+        deger: (u) => u.urunAdi,
+        sirala: (u) => u.urunAdi.toLowerCase()),
+    TabloKolon(
+        baslik: 'Barkod',
+        genislik: 150,
+        deger: (u) => u.barkod ?? '',
+        sirala: (u) => u.barkod ?? ''),
+    TabloKolon(baslik: 'Birim', genislik: 80, deger: (u) => u.birimAdi),
+    TabloKolon(
+        baslik: 'Sistem Stoğu',
+        genislik: 120,
+        sagaYasli: true,
+        deger: (u) => _miktarYazi(_mevcut(u)),
+        sirala: _mevcut,
+        renk: (u) => _mevcut(u) < 0 ? TsRenk.hata : null),
+    TabloKolon(
+        baslik: 'Sayılan',
+        genislik: 110,
+        sagaYasli: true,
+        deger: (u) => _sayilan(u) == null ? '' : _miktarYazi(_sayilan(u)!),
+        sirala: (u) => _sayilan(u) ?? -1e12,
+        renk: (u) => _sayilan(u) == null ? null : TsRenk.primary),
+    TabloKolon(
+        baslik: 'Fark',
+        genislik: 100,
+        sagaYasli: true,
+        deger: _fark,
+        sirala: (u) => _sayilan(u) == null ? 0 : _sayilan(u)! - _mevcut(u),
+        renk: (u) {
+          final s = _sayilan(u);
+          if (s == null) return null;
+          final f = s - _mevcut(u);
+          return f == 0 ? null : (f > 0 ? TsRenk.basarili : TsRenk.hata);
+        }),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_tus);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_tus);
+    super.dispose();
+  }
+
+  UrunModel? get _secili {
+    for (final u in widget.durum.gosterilenler) {
+      if (u.id == _seciliId) return u;
+    }
+    return null;
+  }
+
+  bool _tus(KeyEvent e) {
+    if (e is! KeyDownEvent || !mounted || !ekranUstte(context)) return false;
+    final k = e.logicalKey;
+    final u = _secili;
+    if (k == LogicalKeyboardKey.f2 && u != null) {
+      widget.onMiktarGir(u);
+    } else if (k == LogicalKeyboardKey.f4 && u != null && _sayilan(u) != null) {
+      widget.onCikar(u);
+    } else if (k == LogicalKeyboardKey.f9 &&
+        widget.durum.sayilanUrunSayisi > 0 &&
+        !widget.durum.uygulamaIsleniyor) {
+      widget.onUygula();
+    } else {
+      return false;
+    }
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = widget.durum;
+    final u = _secili;
+    return Column(children: [
+      Expanded(
+        child: MasaustuTablo<UrunModel>(
+          satirlar: d.gosterilenler,
+          kolonlar: _kolonlar,
+          secili: u,
+          scrollController: widget.scrollController,
+          onSec: (x) => setState(() => _seciliId = x.id),
+          onCift: widget.onMiktarGir,
+          onSagTik: (x, konum) => masaustuMenuAc(context, konum, [
+            MenuOge('Miktar Gir', () => widget.onMiktarGir(x), ikon: Icons.edit_outlined),
+            if (_sayilan(x) != null)
+              MenuOge('Sayımdan Çıkar', () => widget.onCikar(x),
+                  ikon: Icons.remove_circle_outline, ayiracOnce: true),
+          ]),
+        ),
+      ),
+      MasaustuAltSerit(
+        ozetler: [
+          AltOzet('Sayılan Ürün', '${d.sayilanUrunSayisi}'),
+          if (d.kritikler.isNotEmpty)
+            AltOzet('Kritik Stok', '${d.kritikler.length}', renk: Colors.orange.shade700),
+        ],
+        tuslar: [
+          AltTus('F2', 'Miktar Gir', Icons.edit_outlined, const Color(0xFF1565C0),
+              u == null ? null : () => widget.onMiktarGir(u)),
+          AltTus('F4', 'Çıkar', Icons.remove_circle_outline, const Color(0xFFC62828),
+              u == null || _sayilan(u) == null ? null : () => widget.onCikar(u)),
+          AltTus('F9', AuthServisi().isMudur ? 'Sayımı Uygula' : 'Onaya Gönder',
+              Icons.save_alt, const Color(0xFF2E7D32),
+              d.sayilanUrunSayisi == 0 || d.uygulamaIsleniyor ? null : widget.onUygula),
+        ],
+      ),
+    ]);
   }
 }
 

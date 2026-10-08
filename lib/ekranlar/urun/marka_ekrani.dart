@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../servisler/bildirim_servisi.dart';
+import '../../widgetlar/masaustu/basit_liste_masaustu.dart';
+import '../../widgetlar/masaustu/masaustu_tablo.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/marka_deposu.dart';
 
@@ -120,6 +122,8 @@ class _MarkaEkraniState extends ConsumerState<MarkaEkrani> {
 
   @override
   Widget build(BuildContext context) {
+    // Masaüstü: tablo + F1/F2/F4 (mobil kart listesi yerine).
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
       appBar: TsAppBar(
@@ -127,7 +131,31 @@ class _MarkaEkraniState extends ConsumerState<MarkaEkrani> {
         gradyanli: true,
         aksiyonlar: [IconButton(icon: const Icon(Icons.refresh, color: Colors.white), onPressed: _yukle)],
       ),
-      body: TsListe<Map<String, dynamic>>(
+      body: masaustu && !_yukleniyor
+          ? BasitListeMasaustu<Map<String, dynamic>>(
+              satirlar: _markalar,
+              kolonlar: [
+                TabloKolon(
+                    baslik: 'Marka',
+                    genislik: 300,
+                    esnek: true,
+                    deger: (m) => m['ad'] as String? ?? '',
+                    sirala: (m) => (m['ad'] as String? ?? '').toLowerCase()),
+                TabloKolon(
+                    baslik: 'Ürün Sayısı',
+                    genislik: 120,
+                    sagaYasli: true,
+                    deger: (m) => '${(m['urun_sayisi'] as int?) ?? 0}',
+                    sirala: (m) => (m['urun_sayisi'] as int?) ?? 0),
+              ],
+              aramaMetniAl: (m) => m['ad'] as String? ?? '',
+              kayitEtiketi: 'Marka',
+              bosMesaj: 'Marka yok — F1 ile ekleyin',
+              onEkle: _markaEkle,
+              onDuzenle: _markaDuzenle,
+              onSil: _markaSil,
+            )
+          : TsListe<Map<String, dynamic>>(
         yukleniyor: _yukleniyor,
         ogeler: _markalar,
         aramaMetniAl: (m) => m['ad'] as String? ?? '',
@@ -150,7 +178,7 @@ class _MarkaEkraniState extends ConsumerState<MarkaEkrani> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: masaustu ? null : FloatingActionButton.extended(
         backgroundColor: TsRenk.primary,
         foregroundColor: Colors.white,
         elevation: 2,

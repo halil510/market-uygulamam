@@ -14,6 +14,8 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../widgetlar/ortak/onay_dialog.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
+import '../../saglayicilar/riverpod/auth_provider.dart';
+import 'masaustu/tedarik_siparis_masaustu_gorunum.dart';
 
 class TedarikSiparisEkrani extends ConsumerStatefulWidget {
   const TedarikSiparisEkrani({super.key});
@@ -175,6 +177,8 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
 
   @override
   Widget build(BuildContext context) {
+    // Masaüstü: tablo + F1-F4 (telefon kartları yerine, canlı tarama 2026-10-08).
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
     return Scaffold(
       backgroundColor: context.scaffoldBg,
       appBar: TsAppBar(
@@ -197,6 +201,18 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
       ),
       body: _yukleniyor
           ? const TsYukleniyor()
+          : masaustu
+              ? TedarikSiparisMasaustuGorunum(
+                  siparisler: _siparisler,
+                  bosMesaj: '${_durumEtiket(_aktifDurum)} sipariş yok',
+                  siparisVerebilir: ref.watch(authProvider.select((a) => a.isMudur)),
+                  onSiparisVer: _yeniSiparis,
+                  onDetay: _siparisDetay,
+                  onTeslimAl: _teslimAl,
+                  onIptal: (x) => _durumDegistir(x, 'iptal'),
+                  durumEtiket: _durumEtiket,
+                  durumRenk: _durumRenk,
+                )
           : _siparisler.isEmpty
               ? Center(
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -321,7 +337,7 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
                     },
                   ),
                 ),
-      floatingActionButton: _tab.index == 0
+      floatingActionButton: _tab.index == 0 && !masaustu
           ? TsYetkili(child: FloatingActionButton.extended(
         elevation: 6,
         backgroundColor: TsRenk.primary,

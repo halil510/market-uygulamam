@@ -318,6 +318,108 @@ class Sepet extends _$Sepet {
     _toptanCache.clear();
     state = const SepetDurum();
   }
+
+  // ── Çoklu alışveriş sekmesi (masaüstü, 2026-10-09) ────────────────────
+  // Kasada aynı anda birden çok müşteri: her sekmenin kendi sepeti ve
+  // müşterisi var. [state] her zaman AKTİF sekmedir — mevcut tüm ekranlar
+  // değişmeden çalışır; diğer sekmeler burada saklanır. Sekme 1 kalıcıdır,
+  // diğerleri satışı bitince kapanır. En fazla [maksSekme].
+  static const int maksSekme = 10;
+  final List<SepetDurum> _sekmeler = [const SepetDurum()];
+  final List<int> _sekmeNo = [1];
+  int _aktif = 0;
+
+  int get aktifSekme => _aktif;
+
+  /// Sekme özetleri (sekme çubuğu için). Aktif sekme canlı [state]'ten okunur.
+  List<({int no, int urunSayisi, double toplam, String? musteri})> get sekmeler => [
+        for (var i = 0; i < _sekmeler.length; i++)
+          () {
+            final d = i == _aktif ? state : _sekmeler[i];
+            return (
+              no: _sekmeNo[i],
+              urunSayisi: d.kalemler.length,
+              toplam: d.genelToplam,
+              musteri: d.musteri?.unvan,
+            );
+          }(),
+      ];
+
+  /// Satış kaydedilirken sekme değiştirilemez (satış sonrası temizlik
+  /// yanlış sekmeyi boşaltmasın).
+  bool get _sekmeDegisebilir => !state.satisIsleniyor;
+
+  void _aktifiDegistir(int yeni) {
+    _sekmeler[_aktif] = state;
+    _aktif = yeni;
+    // Bayi fiyat önbelleği müşteriye özgü: sekme değişince sıfırlanır.
+    _toptanCache.clear();
+    // Yeni nesne: aynı içerikli (boş) sekmeye geçişte de ekran yenilensin.
+    state = _sekmeler[yeni].copyWith();
+  }
+
+  /// F10: yeni alışveriş sekmesi açar ve ona geçer. Açılamazsa false.
+  bool yeniSekme() {
+    if (!_sekmeDegisebilir || _sekmeler.length >= maksSekme) return false;
+    var no = 2;
+    while (_sekmeNo.contains(no)) {
+      no++;
+    }
+    _sekmeler.add(const SepetDurum());
+    _sekmeNo.add(no);
+    _aktifiDegistir(_sekmeler.length - 1);
+    return true;
+  }
+
+  /// Sekmeye geç. Satış işlenirken false.
+  bool sekmeSec(int i) {
+    if (i < 0 || i >= _sekmeler.length || i == _aktif) return i == _aktif;
+    if (!_sekmeDegisebilir) return false;
+    _aktifiDegistir(i);
+    return true;
+  }
+
+  /// Sekmeyi kapatır (sekme 1 kapanmaz, boşaltılır). Aktifse sekme 1'e geçer.
+  void sekmeKapat(int i) {
+    if (i < 0 || i >= _sekmeler.length || !_sekmeDegisebilir) return;
+    if (i == 0) {
+      if (_aktif == 0) {
+        temizle();
+      } else {
+        _sekmeler[0] = const SepetDurum();
+        state = state.copyWith(); // sekme çubuğu yenilensin
+      }
+      return;
+    }
+    final aktifti = i == _aktif;
+    if (aktifti) _sekmeler[_aktif] = state;
+    _sekmeler.removeAt(i);
+    _sekmeNo.removeAt(i);
+    if (aktifti) {
+      _aktif = 0;
+      _toptanCache.clear();
+      state = _sekmeler[0].copyWith();
+    } else {
+      if (i < _aktif) _aktif--;
+      // Sekme listesi değişti — çubuk yenilensin.
+      state = state.copyWith();
+    }
+  }
+
+  /// Satış bittiğinde: ek sekmeyse kapanır (sekme 1'e dönülür), sekme 1 ise
+  /// boşaltılır ve hazır bekler.
+  void satisTamamlandi() {
+    if (_aktif == 0) {
+      temizle();
+      return;
+    }
+    final i = _aktif;
+    _sekmeler.removeAt(i);
+    _sekmeNo.removeAt(i);
+    _aktif = 0;
+    _toptanCache.clear();
+    state = _sekmeler[0].copyWith();
+  }
   void satisBasladi()=> state = state.copyWith(satisIsleniyor: true);
   void satisGitti()  => state = state.copyWith(satisIsleniyor: false);
 }

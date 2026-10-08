@@ -336,7 +336,8 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
         yeniGenelToplam: sepet.genelToplam,
         kullanici: kullanici,
       );
-      sepetNotifier.temizle();
+      // Satışı biten alışveriş sekmesi kapanır (sekme 1 ise boşalır).
+      sepetNotifier.satisTamamlandi();
       _satisSonrasiYenile(container, cariId: satis.cariId);
       if (!mounted) return;
 
@@ -388,8 +389,9 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
         kullanici:     kullanici,
         subeId:        AktifSubeServisi().subeId,
       );
-      // Satış kalıcı: ekran kapanmış olsa bile sepet boşaltılır.
-      sepetNotifier.temizle();
+      // Satış kalıcı: ekran kapanmış olsa bile sepet boşaltılır; ek
+      // alışveriş sekmesiyse sekme kapanır (sekme 1 hazır bekler).
+      sepetNotifier.satisTamamlandi();
       _satisSonrasiYenile(container, cariId: musteri?.id);
       _yuksekIskontoBildir(sepet, satisId: sonuc.satisId, fisNo: sonuc.fisNo);
       if (_nakitAlindi(odemeYontemi, karmaKalemler)) _kasaCekmecesiniAc();

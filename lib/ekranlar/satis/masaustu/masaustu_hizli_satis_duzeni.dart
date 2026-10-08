@@ -46,6 +46,9 @@ class MasaustuHizliSatisDuzeni extends ConsumerStatefulWidget {
   final VoidCallback onFiyatGor;
   final VoidCallback onKasaAc;
 
+  /// Fiş düzeltme modunda alışveriş sekmesi açılamaz/değiştirilemez.
+  final bool sekmeKilitli;
+
   const MasaustuHizliSatisDuzeni({
     super.key,
     required this.aramaPaneli,
@@ -62,6 +65,7 @@ class MasaustuHizliSatisDuzeni extends ConsumerStatefulWidget {
     required this.onCari,
     required this.onFiyatGor,
     required this.onKasaAc,
+    this.sekmeKilitli = false,
   });
 
   @override
@@ -74,6 +78,7 @@ class _MasaustuHizliSatisDuzeniState
   int? _secili;
   String _tampon = '';
   double _alinan = 0;
+  int _gorulenSekme = 0;
 
   @override
   void initState() {
@@ -101,10 +106,13 @@ class _MasaustuHizliSatisDuzeniState
     final sepet = ref.read(sepetProvider);
     final odemeAktif = !sepet.bos && !sepet.satisIsleniyor;
 
-    if (k == LogicalKeyboardKey.f1) {
+    if (k == LogicalKeyboardKey.tab && HardwareKeyboard.instance.isControlPressed) {
+      final n = ref.read(sepetProvider.notifier);
+      _sekmeSec((n.aktifSekme + 1) % n.sekmeler.length);
+    } else if (k == LogicalKeyboardKey.f1) {
       if (odemeAktif) widget.onHizliNakit();
     } else if (k == LogicalKeyboardKey.f2) {
-      widget.onAramaOdak();
+      widget.onKasaAc();
     } else if (k == LogicalKeyboardKey.f3) {
       widget.onStok();
     } else if (k == LogicalKeyboardKey.f4) {
@@ -120,7 +128,7 @@ class _MasaustuHizliSatisDuzeniState
     } else if (k == LogicalKeyboardKey.f9) {
       _sepetiTemizle();
     } else if (k == LogicalKeyboardKey.f10) {
-      widget.onKasaAc();
+      _yeniSekme();
     } else if (k == LogicalKeyboardKey.f12) {
       if (odemeAktif) widget.onOdeme();
     } else if (k == LogicalKeyboardKey.delete && !_metinKutusuOdakta()) {
@@ -144,6 +152,130 @@ class _MasaustuHizliSatisDuzeniState
     if (sepet.bos) return;
     final son = sepet.kalemler.length - 1;
     setState(() => _secili = ((_secili ?? (yon > 0 ? -1 : son + 1)) + yon).clamp(0, son));
+  }
+
+  // ── Alışveriş sekmeleri ───────────────────────────────────────────────
+  void _sekmeUyari(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+
+  void _yeniSekme() {
+    if (widget.sekmeKilitli) {
+      _sekmeUyari('Fiş düzeltme modunda yeni alışveriş açılamaz');
+      return;
+    }
+    final n = ref.read(sepetProvider.notifier);
+    if (n.sekmeler.length >= Sepet.maksSekme) {
+      _sekmeUyari('En fazla ${Sepet.maksSekme} alışveriş açılabilir');
+      return;
+    }
+    if (!n.yeniSekme()) _sekmeUyari('Satış işlenirken yeni alışveriş açılamaz');
+    widget.onAramaOdak();
+  }
+
+  void _sekmeSec(int i) {
+    final n = ref.read(sepetProvider.notifier);
+    if (i == n.aktifSekme) return;
+    if (widget.sekmeKilitli) {
+      _sekmeUyari('Fiş düzeltme modunda alışveriş değiştirilemez');
+      return;
+    }
+    if (!n.sekmeSec(i)) _sekmeUyari('Satış işlenirken alışveriş değiştirilemez');
+    widget.onAramaOdak();
+  }
+
+  Future<void> _sekmeKapat(int i) async {
+    final n = ref.read(sepetProvider.notifier);
+    final s = n.sekmeler[i];
+    if (s.urunSayisi > 0) {
+      final onay = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: Text('Alışveriş ${s.no} kapatılsın mı?'),
+          content: Text('Sepetteki ${s.urunSayisi} ürün silinecek (satış yapılmadan).'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Vazgeç')),
+            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Kapat')),
+          ],
+        ),
+      );
+      if (onay != true || !mounted) return;
+    }
+    n.sekmeKapat(i);
+  }
+
+  Widget _sekmeCubugu() {
+    final n = ref.read(sepetProvider.notifier);
+    final sekmeler = n.sekmeler;
+    final aktif = n.aktifSekme;
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        border: Border(bottom: BorderSide(color: context.borderColor)),
+      ),
+      child: Row(children: [
+        Expanded(
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: sekmeler.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 4),
+            itemBuilder: (_, i) => _sekmeKarti(sekmeler[i], i, i == aktif),
+          ),
+        ),
+        const SizedBox(width: 6),
+        TextButton.icon(
+          onPressed: _yeniSekme,
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('F10 : Yeni Alışveriş',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+        ),
+      ]),
+    );
+  }
+
+  Widget _sekmeKarti(
+      ({int no, int urunSayisi, double toplam, String? musteri}) s, int i, bool aktif) {
+    final renk = aktif ? const Color(0xFF1565C0) : context.textSecondary;
+    return Material(
+      color: aktif ? const Color(0xFF1565C0).withAlpha(28) : Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+        side: BorderSide(color: aktif ? const Color(0xFF1565C0) : context.borderColor),
+      ),
+      child: InkWell(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+        onTap: () => _sekmeSec(i),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('Alışveriş : ${s.no}',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: aktif ? FontWeight.w800 : FontWeight.w600,
+                    color: renk)),
+            if (s.urunSayisi > 0) ...[
+              const SizedBox(width: 6),
+              Text(
+                  '(${s.urunSayisi}) ${s.toplam.toStringAsFixed(2).replaceAll('.', ',')}'
+                  '${s.musteri != null ? ' • ${s.musteri}' : ''}',
+                  style: TextStyle(fontSize: 11, color: renk)),
+            ],
+            if (i > 0)
+              InkWell(
+                onTap: () => _sekmeKapat(i),
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.all(3),
+                  child: Icon(Icons.close, size: 14, color: renk),
+                ),
+              )
+            else
+              const SizedBox(width: 8),
+          ]),
+        ),
+      ),
+    );
   }
 
   // ── Sepet işlemleri ───────────────────────────────────────────────────
@@ -244,6 +376,14 @@ class _MasaustuHizliSatisDuzeniState
   @override
   Widget build(BuildContext context) {
     final sepet = ref.watch(sepetProvider);
+    final aktifSekme = ref.read(sepetProvider.notifier).aktifSekme;
+    if (aktifSekme != _gorulenSekme) {
+      // Başka alışverişe geçildi: satır seçimi/tampon o sepete ait değil.
+      _gorulenSekme = aktifSekme;
+      _secili = null;
+      _tampon = '';
+      _alinan = 0;
+    }
     // Satış bitip sepet boşalınca yerel durumu sıfırla.
     ref.listen<SepetDurum>(sepetProvider, (onceki, yeni) {
       if (yeni.bos && (onceki?.bos == false)) {
@@ -268,6 +408,7 @@ class _MasaustuHizliSatisDuzeniState
   Widget _sol(SepetDurum sepet) {
     return Column(children: [
       widget.aramaPaneli,
+      _sekmeCubugu(),
       if (widget.aramaSonuclari != null)
         Expanded(child: SingleChildScrollView(child: widget.aramaSonuclari))
       else ...[
@@ -301,7 +442,7 @@ class _MasaustuHizliSatisDuzeniState
         ana: FTus('F12', 'ÖDEME', const Color(0xFFD32F2F),
             odemeAktif ? widget.onOdeme : null),
         tuslar: [
-          FTus('F2', 'Ara', const Color(0xFFF9A825), widget.onAramaOdak),
+          FTus('F2', 'Kasa Aç', const Color(0xFF4527A0), widget.onKasaAc),
           FTus('F3', 'Stok', const Color(0xFFC62828), widget.onStok),
           FTus('F4', 'Askıya Al', const Color(0xFF2E7D32),
               sepet.bos ? null : widget.onAskiyaAl),
@@ -309,10 +450,12 @@ class _MasaustuHizliSatisDuzeniState
           FTus('F6', 'İskonto', const Color(0xFFEF6C00),
               sepet.bos ? null : _iskontoUygula),
           FTus('F7', 'Cari', const Color(0xFF1565C0), widget.onCari),
-          FTus('F8', 'Fiyat Gör', const Color(0xFF00838F), widget.onFiyatGor),
           FTus('F9', 'Temizle', const Color(0xFF546E7A),
               sepet.bos ? null : _sepetiTemizle),
-          FTus('F10', 'Kasa Aç', const Color(0xFF4527A0), widget.onKasaAc),
+          FTus('F10', 'Yeni Alışveriş', const Color(0xFF00838F),
+              ref.read(sepetProvider.notifier).sekmeler.length >= Sepet.maksSekme
+                  ? null
+                  : _yeniSekme),
           FTus('Del', 'Satır Sil', const Color(0xFF8D6E63),
               _secili == null ? null : _seciliyiSil),
         ],

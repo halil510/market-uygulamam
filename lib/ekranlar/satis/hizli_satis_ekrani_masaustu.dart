@@ -26,9 +26,10 @@ extension _HizliSatisMasaustuExt on _HizliSatisEkraniState {
         onCari: _musteriSec,
         onFiyatGor: () => context.push('/fiyat-gor'),
         onKasaAc: _kasaCekmecesiniAc,
+        sekmeKilitli: _guncellenenSatis != null,
       );
 
-  /// F10 / "Kasa Aç": para çekmecesini yazıcı üzerinden açar (ESC p).
+  /// F2 / "Kasa Aç": para çekmecesini yazıcı üzerinden açar (ESC p).
   Future<void> _kasaCekmecesiniAc() async {
     try {
       await YazdirmaServisi().kasaCekmecesiAc();

@@ -215,20 +215,28 @@ class _MasaustuHizliSatisDuzeniState
         border: Border(bottom: BorderSide(color: context.borderColor)),
       ),
       child: Row(children: [
+        // Tüm sekmeler HER ZAMAN sığar (canlı test 2026-10-09: 10 sekmede
+        // 8-10 sağda gizli kalıyor, aktif sekme görünmüyordu). Sekme
+        // daraldıkça etiket kısalır ("Alış. 7"), özet gizlenir.
         Expanded(
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: sekmeler.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 4),
-            itemBuilder: (_, i) => _sekmeKarti(sekmeler[i], i, i == aktif),
-          ),
+          child: Row(children: [
+            for (var i = 0; i < sekmeler.length; i++) ...[
+              if (i > 0) const SizedBox(width: 3),
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 230),
+                  child: _sekmeKarti(sekmeler[i], i, i == aktif),
+                ),
+              ),
+            ],
+          ]),
         ),
         const SizedBox(width: 6),
         TextButton.icon(
-          onPressed: _yeniSekme,
+          onPressed: sekmeler.length >= Sepet.maksSekme ? null : _yeniSekme,
           icon: const Icon(Icons.add, size: 18),
-          label: const Text('F10 : Yeni Alışveriş',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+          label: Text(sekmeler.length > 4 ? 'F10' : 'F10 : Yeni Alışveriş',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
         ),
       ]),
     );
@@ -236,44 +244,58 @@ class _MasaustuHizliSatisDuzeniState
 
   Widget _sekmeKarti(
       ({int no, int urunSayisi, double toplam, String? musteri}) s, int i, bool aktif) {
-    final renk = aktif ? const Color(0xFF1565C0) : context.textSecondary;
+    const mavi = Color(0xFF1565C0);
+    final renk = aktif ? Colors.white : context.textSecondary;
     return Material(
-      color: aktif ? const Color(0xFF1565C0).withAlpha(28) : Colors.transparent,
+      // Aktif sekme dolu renk — hangi müşteride olunduğu bir bakışta görülsün.
+      color: aktif ? mavi : Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-        side: BorderSide(color: aktif ? const Color(0xFF1565C0) : context.borderColor),
+        side: BorderSide(color: aktif ? mavi : context.borderColor),
       ),
       child: InkWell(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
         onTap: () => _sekmeSec(i),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text('Alışveriş : ${s.no}',
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: aktif ? FontWeight.w800 : FontWeight.w600,
-                    color: renk)),
-            if (s.urunSayisi > 0) ...[
-              const SizedBox(width: 6),
-              Text(
-                  '(${s.urunSayisi}) ${s.toplam.toStringAsFixed(2).replaceAll('.', ',')}'
-                  '${s.musteri != null ? ' • ${s.musteri}' : ''}',
-                  style: TextStyle(fontSize: 11, color: renk)),
-            ],
-            if (i > 0)
-              InkWell(
-                onTap: () => _sekmeKapat(i),
-                borderRadius: BorderRadius.circular(10),
-                child: Padding(
-                  padding: const EdgeInsets.all(3),
-                  child: Icon(Icons.close, size: 14, color: renk),
+        child: LayoutBuilder(builder: (context, c) {
+          final dar = c.maxWidth < 125;
+          final ozet = s.urunSayisi > 0 && c.maxWidth >= 170
+              ? '  (${s.urunSayisi}) ${s.toplam.toStringAsFixed(2).replaceAll('.', ',')}'
+                  '${s.musteri != null ? ' • ${s.musteri}' : ''}'
+              : '';
+          return Padding(
+            padding: EdgeInsets.fromLTRB(dar ? 6 : 10, 4, 2, 4),
+            child: Row(children: [
+              Expanded(
+                child: Text.rich(
+                  TextSpan(children: [
+                    TextSpan(
+                        text: dar ? 'Alış. ${s.no}' : 'Alışveriş : ${s.no}',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: aktif ? FontWeight.w800 : FontWeight.w600)),
+                    if (ozet.isNotEmpty)
+                      TextSpan(text: ozet, style: const TextStyle(fontSize: 11)),
+                    // Dar sekmede ürün varsa nokta işareti
+                    if (dar && s.urunSayisi > 0)
+                      const TextSpan(text: ' •', style: TextStyle(fontWeight: FontWeight.w900)),
+                  ]),
+                  style: TextStyle(color: renk),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              )
-            else
-              const SizedBox(width: 8),
-          ]),
-        ),
+              ),
+              if (i > 0)
+                InkWell(
+                  onTap: () => _sekmeKapat(i),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Icon(Icons.close, size: 13, color: renk),
+                  ),
+                ),
+            ]),
+          );
+        }),
       ),
     );
   }

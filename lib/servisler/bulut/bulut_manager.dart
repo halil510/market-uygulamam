@@ -72,6 +72,7 @@ class BulutManager {
   IBulutSaglayici? _saglayici;
   Timer? _timer;
   bool _gonderiliyor = false;
+  bool _oturumHatasiLoglandi = false;
   int _bekleyenSayisiCache = 0;
 
   final durum    = ValueNotifier<BulutDurum>(BulutDurum.bagliDegil);
@@ -467,16 +468,31 @@ class BulutManager {
     String uniqueAlan,
     List<Map<String, dynamic>> satirlar,
     String now,
-    DateTime turBasi,
-  ) async {
+    DateTime turBasi, [
+    _IstekButcesi? butce,
+  ]) async {
+    // Bölme, tek bozuk satırı ~2·log2(n) istekle ayıklar (500 satırda ~19);
+    // ama grubun TAMAMI bozuksa (ör. bulutta olmayan sütun) n·2 isteğe
+    // çıkıyordu. Bütçe bir turdaki toplam isteği sınırlar; bitince kalan
+    // satırlar BOZUK sayılmaz, geçici işaretlenip sonraki turda denenir.
+    butce ??= _IstekButcesi(_bolmeIstekSiniri);
+    if (butce.kalan <= 0) {
+      for (final s in satirlar) {
+        await _kuyrukSatiriBasarisizIsaretle(db, s['id'] as int,
+            'grup bölme istek sınırı — sonraki turda denenecek', now,
+            tablo: tablo);
+      }
+      return (basarili: 0, hata: 0, mesajlar: const <String>[]);
+    }
+    butce.kalan--;
     final veriler = satirlar.map((s) => _veriCoz(tablo, s)).toList();
 
     Future<({int basarili, int hata, List<String> mesajlar})> bol() async {
       final orta = satirlar.length ~/ 2;
       final a = await _upsertGrubuGonder(
-          db, tablo, uniqueAlan, satirlar.sublist(0, orta), now, turBasi);
+          db, tablo, uniqueAlan, satirlar.sublist(0, orta), now, turBasi, butce);
       final b = await _upsertGrubuGonder(
-          db, tablo, uniqueAlan, satirlar.sublist(orta), now, turBasi);
+          db, tablo, uniqueAlan, satirlar.sublist(orta), now, turBasi, butce);
       return (
         basarili: a.basarili + b.basarili,
         hata: a.hata + b.hata,
@@ -560,8 +576,16 @@ class BulutManager {
     // (sağlayıcının başlıkları SupabaseOturum.bearer ile bunu okur).
     try {
       await SupabaseOturum().tazele();
-    } catch (_) {
+      _oturumHatasiLoglandi = false;
+    } catch (e, st) {
       _gonderiliyor = false;
+      // Sessiz kalırsa "verilerim gitmiyor" tanısız kalır; 8 sn'de bir
+      // tekrarlanmasın diye yalnız ilk hatada loglanır.
+      if (!_oturumHatasiLoglandi) {
+        _oturumHatasiLoglandi = true;
+        LogServisi().hata('BulutManager: oturum tazelenemedi, gönderim bekliyor',
+            hata: e, yigin: st);
+      }
       return;
     }
     // Gizli anahtar yok ve geçerli oturum da yoksa (henüz giriş yapılmamış
@@ -581,8 +605,8 @@ class BulutManager {
     try {
       // 🔴 KENDİ KENDİNİ ONARAN DÜZELTME (2026-09-22): satislar.
       // sync_cakisma_kopyasi'nin buluta gönderilmeden önce ayıklanması
-      // bir önceki commit'te eklendi (bkz. aşağıdaki _veriCoz'daki
-      // 'satislar' bloğu) — ama o düzeltmeden ÖNCE senkronize olmaya
+      // bir önceki commit'te eklendi (bkz. _veriCoz →
+      // KolonHaritalama.yereleOzguSutunlariAyikla) — ama o düzeltmeden ÖNCE senkronize olmaya
       // çalışmış satışlar zaten HTTP 400 (PGRST204) aldığı için
       // 'kalici_hata'ya damgalanmıştı. Aşağıdaki sorgu SADECE
       // durum='beklemede' okur, yani o satışlar kod düzeltilse bile
@@ -730,8 +754,11 @@ class BulutManager {
     istatistik.value = _Istatistik(
       toplamGonderilen: mevcut.toplamGonderilen + toplamBasarili,
       toplamHata:       mevcut.toplamHata + toplamHata,
-      sonHatalar:       tumHatalar.take(20).toList(),
-      sonGonderim:      DateTime.now(),
+      // Yalnız gerçekten bir şey denenen turda güncellenir: önceden her 8 sn'lik
+      // boş tur "Son başarılı gönderim: az önce" yazıyor (sunucu kapalıyken
+      // bile) ve ekrandaki son hata listesini siliyordu.
+      sonHatalar:       isYapildiMi ? tumHatalar.take(20).toList() : mevcut.sonHatalar,
+      sonGonderim:      toplamBasarili > 0 ? DateTime.now() : mevcut.sonGonderim,
     );
 
     await _bekleyenSayisiniYenile(db);
@@ -803,4 +830,12 @@ class _Istatistik {
     this.sonHatalar = const [],
     this.sonGonderim,
   });
+}
+
+/// Bir tablo grubunun tek turdaki toplam istek hakkı (bkz. _upsertGrubuGonder).
+const _bolmeIstekSiniri = 40;
+
+class _IstekButcesi {
+  int kalan;
+  _IstekButcesi(this.kalan);
 }

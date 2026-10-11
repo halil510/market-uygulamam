@@ -191,6 +191,9 @@ class AnlikBulutDinleyici with WidgetsBindingObserver {
               final yeniden = !_ilkBaglanti;
               _ilkBaglanti = false;
               _ardisikHata = 0;
+              // Başarılı katılımdan sonra yeni bir ret yine loglanabilsin
+              // (yayın düzeltilip tekrar bozulursa sebep görünür kalsın).
+              _abonelikHatasiBildirildi = false;
               bagli.value = true;
               // Kopukken kaçan değişiklikleri yakalamak için bir tam çekme.
               if (yeniden) unawaited(OtomatikBulutCekme().simdiCek());

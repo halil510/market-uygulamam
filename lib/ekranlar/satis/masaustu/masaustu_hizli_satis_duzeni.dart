@@ -165,6 +165,19 @@ class _MasaustuHizliSatisDuzeniState
       return;
     }
     final n = ref.read(sepetProvider.notifier);
+    // Boş alışveriş açılmasın (kullanıcı isteği 2026-10-11): aktif sepet
+    // boşsa zaten yeni müşteri için hazır; başka bir sekme boşsa ona geçilir.
+    if (ref.read(sepetProvider).bos) {
+      _sekmeUyari('Sepet boş — yeni müşteri için bu alışverişi kullanın');
+      widget.onAramaOdak();
+      return;
+    }
+    final bosSekme = n.sekmeler.indexWhere((s) => s.urunSayisi == 0);
+    if (bosSekme >= 0) {
+      _sekmeSec(bosSekme);
+      _sekmeUyari('Boş olan Alışveriş ${n.sekmeler[bosSekme].no} açıldı');
+      return;
+    }
     if (n.sekmeler.length >= Sepet.maksSekme) {
       _sekmeUyari('En fazla ${Sepet.maksSekme} alışveriş açılabilir');
       return;

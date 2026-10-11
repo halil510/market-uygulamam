@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../saglayicilar/riverpod/masa_modu_provider.dart';
 import '../router/uygulama_router.dart';
+import '../../widgetlar/masaustu/ekran_ustte.dart';
 
 class _Oge {
   final String ad, rota;
@@ -169,6 +170,7 @@ class _MasaustuKabukState extends ConsumerState<MasaustuKabuk> {
         _menusuzRotalar.any(rota.startsWith)) {
       return false;
     }
+    if (IcGeri.dene()) return true;
     if (_router.canPop()) {
       _router.pop();
     } else {
@@ -202,6 +204,7 @@ class _MasaustuKabukState extends ConsumerState<MasaustuKabuk> {
         if (kok || _menusuzRotalar.any(rota.startsWith)) return icerik;
         final cs = Theme.of(context).colorScheme;
         void geri() {
+          if (IcGeri.dene()) return;
           if (router.canPop()) {
             router.pop();
           } else {

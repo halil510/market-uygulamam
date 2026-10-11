@@ -26,3 +26,25 @@ bool yaziAlaniOdakta() {
       (odak.widget is EditableText ||
           odak.findAncestorWidgetOfExactType<EditableText>() != null);
 }
+
+/// Masaüstünde Esc ve üst şeritteki "Geri", sayfayı kapatmadan ÖNCE ekranın
+/// kendi iç geri adımına sorar (ör. Ayarlar'da aramayı temizle / kategoriden
+/// tüm ayarlara dön). Genel Esc işleyicisi (masaustu_yan_menu.dart) GoRouter
+/// ile doğrudan pop/go yaptığından ekranın PopScope'unu hiç görmüyordu.
+/// İşleyici, adımı işlediyse true döner; kendi ekranı üstte değilse
+/// ([ekranUstte]) false dönmelidir.
+class IcGeri {
+  IcGeri._();
+  static final _isleyiciler = <bool Function()>[];
+
+  static void ekle(bool Function() f) => _isleyiciler.add(f);
+  static void cikar(bool Function() f) => _isleyiciler.remove(f);
+
+  /// En son eklenenden başlayarak sorar; biri işlerse true.
+  static bool dene() {
+    for (final f in _isleyiciler.reversed.toList()) {
+      if (f()) return true;
+    }
+    return false;
+  }
+}

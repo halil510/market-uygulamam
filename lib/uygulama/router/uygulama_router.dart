@@ -1,6 +1,7 @@
 // lib/uygulama/router/uygulama_router.dart
 // ✅ TAMAMEN DÜZELTİLDİ - Eksik import'lar eklendi
 
+import '../../widgetlar/masaustu/ekran_ustte.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../tema/uygulama_temasi.dart';
@@ -109,6 +110,8 @@ class UygulamaRouter {
 
     return GoRouter(
       navigatorKey: rootNavigatorKey,
+      // Kök Navigator'daki diyaloglar — ekranUstte() için.
+      observers: [UstRotaGozlemci.i],
       initialLocation: '/splash',
       refreshListenable: listenable,
       redirect: (context, state) => _redirect(ref, state),

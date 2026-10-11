@@ -13,9 +13,50 @@
 // birlikte kontrol ediyoruz.
 import 'package:flutter/widgets.dart';
 
+//
+// Kök Navigator'da açılan diyalog (showDialog varsayılanı) da kabuk ekranını
+// isCurrent=false yapmaz ve saydam olduğu için TickerMode'u da kapatmaz. Bu
+// yüzden ayrıca kök Navigator'daki en üst açılır rota ([UstRotaGozlemci])
+// kontrol edilir. Canlı test 2026-10-11: pencere kapatma diyaloğu açıkken
+// Hızlı Satış odağı 400 ms'de bir barkod kutusuna geri çekiyor, Enter
+// diyaloğa ulaşmıyordu (F tuşları da arkada çalışabiliyordu).
 bool ekranUstte(BuildContext context) {
   if (!TickerMode.valuesOf(context).enabled) return false;
-  return ModalRoute.of(context)?.isCurrent != false;
+  final rota = ModalRoute.of(context);
+  if (rota?.isCurrent == false) return false;
+  final ust = UstRotaGozlemci.i.enUstPopup;
+  if (ust != null && ust != rota && ust.isCurrent) return false;
+  return true;
+}
+
+/// Kök Navigator'daki açık diyalog/menü/alt sayfaları (PopupRoute) izler.
+/// GoRouter(observers: [UstRotaGozlemci.i]) ile bağlanır.
+class UstRotaGozlemci extends NavigatorObserver {
+  UstRotaGozlemci._();
+  static final i = UstRotaGozlemci._();
+
+  final _popuplar = <Route<dynamic>>[];
+
+  Route<dynamic>? get enUstPopup => _popuplar.isEmpty ? null : _popuplar.last;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PopupRoute) _popuplar.add(route);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _popuplar.remove(route);
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _popuplar.remove(route);
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    _popuplar.remove(oldRoute);
+    if (newRoute is PopupRoute) _popuplar.add(newRoute);
+  }
 }
 
 /// Klavye odağı bir yazı alanında mı? (Ör. Ctrl+A orada metni seçmeli,

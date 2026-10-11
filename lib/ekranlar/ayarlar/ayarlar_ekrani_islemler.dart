@@ -183,10 +183,11 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
           // KORUNMUYOR, uygulama yeniden açıldığında SIFIRDAN, varsayılan
           // şifreyle (1234) yeniden oluşturuluyor. Kullanıcıyı yanıltmamak
           // için metin düzeltildi.
-          'Bu işlem GERİ ALINAMAZ!\n\nTüm ürünler, satışlar, cariler, '
-          'kullanıcılar ve diğer TÜM veriler bu CİHAZDAN kesin olarak '
-          'silinecek.\n\nUygulama yeniden açıldığında sıfırdan başlayacak — '
-          'admin kullanıcısı varsayılan şifreyle (1234) yeniden '
+          'Tüm ürünler, satışlar, cariler, kullanıcılar ve diğer TÜM veriler '
+          'bu CİHAZDAN silinecek.\n\nSilmeden önce son durumun yedeği '
+          'otomatik alınır (Yedekleme ekranından geri yüklenebilir; '
+          'yedekler silinmez).\n\nUygulama yeniden açıldığında sıfırdan '
+          'başlayacak — admin kullanıcısı varsayılan şifreyle (1234) yeniden '
           'oluşturulacak, bunu ilk girişte değiştirmeniz gerekecek.'
           '${bulutYapilandirilmis ? '\n\n⚠️ BULUT UYARISI: Bu cihaz bir '
               'Supabase projesine bağlı. Bu işlem BULUTTAKİ veriyi SİLMEZ '
@@ -275,8 +276,14 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
     );
 
     try {
-      // Veritabanı (+wal/shm), resim/yedek/rapor klasörleri, ayarlar (tema
-      // hariç) ve güvenli depo (GİB şifresi, oturum) — bkz. servis.
+      // Son durumun yedeği — alınamazsa temizlik YAPILMAZ (yanlışlıkla
+      // temizlemenin dönüşü olsun). Ek klasör seçiliyse oraya da kopyalanır.
+      final sonYedek = await YedeklemeServisi().yedekAl();
+      LogServisi().uyari('Veritabanı temizleme öncesi yedek: $sonYedek');
+
+      // Bulut gönderimi durdurulur; veritabanı (+wal/shm/.bak), resim/rapor
+      // klasörleri, ayarlar (tema hariç) ve güvenli depo (GİB şifresi,
+      // oturum) silinir — yedekler kalır. Bkz. servis.
       await VeritabaniDosyaServisi().cihaziSifirla();
 
       // 6. Dialog'u kapat
@@ -317,8 +324,15 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
                       child: const SelectableText(
                         "-- DİKKAT: Bu, TÜM iş verisini kalıcı olarak siler!\n"
                         "-- Sadece emin olduğunuzda çalıştırın.\n"
+                        "-- Korunanlar: bulut giriş hesapları (silinirse hiçbir\n"
+                        "-- cihaz bağlanamaz) ve fatura seri sayaçları (silinirse\n"
+                        "-- numaralar başa döner, GİB aynı numarayı reddeder).\n"
+                        "-- GİB'e gönderilmiş e-Faturalar yasal saklama\n"
+                        "-- süresine tabidir — önce dışa aktarın.\n"
                         "DO \$\$\nDECLARE r RECORD;\nBEGIN\n"
-                        "  FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname='public') LOOP\n"
+                        "  FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname='public'\n"
+                        "      AND tablename NOT IN ('bulut_yetkili_hesaplar',\n"
+                        "        'fatura_seri_sayaclari','fatura_seri_bloklari','terminaller')) LOOP\n"
                         "    EXECUTE 'TRUNCATE TABLE public.' || quote_ident(r.tablename) || ' CASCADE';\n"
                         "  END LOOP;\nEND \$\$;",
                         style: TextStyle(
@@ -350,8 +364,12 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
       if (mounted) {
         BildirimServisi.basari(
             context, 'Veritabanı temizlendi. Uygulama yeniden başlatılıyor...');
-        // Uygulamayı kapat
-        Future.delayed(const Duration(seconds: 2), () {
+        // Önceden yalnız kapanıyordu; Windows'ta kendini yeniden açar.
+        Future.delayed(const Duration(seconds: 2), () async {
+          if (Platform.isWindows) {
+            await Process.start(Platform.resolvedExecutable, const [],
+                mode: ProcessStartMode.detached);
+          }
           exit(0);
         });
       }

@@ -816,6 +816,14 @@ class BulutManager {
 
   // ── Temizlik ───────────────────────────────────────────────────────────────
   void dispose() { _timer?.cancel(); durum.dispose(); istatistik.dispose(); }
+
+  /// Gönderim döngüsünü durdurur (cihaz sıfırlama): 8 sn'lik tur, silinen
+  /// veritabanını boş haliyle yeniden açıp buluta bağlanmasın.
+  void durdur() {
+    _timer?.cancel();
+    _timer = null;
+    _saglayici = null;
+  }
 }
 
 class _Istatistik {

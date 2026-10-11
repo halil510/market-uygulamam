@@ -29,6 +29,8 @@ import '../../servisler/excel_servisi.dart';
 import '../../saglayicilar/riverpod/masa_modu_provider.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../servisler/veritabani_dosya_servisi.dart';
+import '../../servisler/yedekleme_servisi.dart';
+import '../../servisler/log_servisi.dart';
 import '../../cekirdek/sabitler/db_sabitleri.dart';
 import '../../cekirdek/sabitler/uygulama_sabitleri.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';

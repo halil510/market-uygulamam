@@ -23,7 +23,10 @@ import 'package:sqflite/sqflite.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
 import '../cekirdek/sabitler/uygulama_sabitleri.dart';
 import '../veri/database/veritabani.dart';
+import 'bulut/anlik_bulut_dinleyici.dart';
+import 'bulut/bulut_manager.dart';
 import 'log_servisi.dart';
+import 'masa/qr_siparis_cekici_servisi.dart';
 
 class VeritabaniDosyaServisi {
   static final VeritabaniDosyaServisi _i = VeritabaniDosyaServisi._();
@@ -91,15 +94,38 @@ class VeritabaniDosyaServisi {
     await _ayarlariTemaHaricTemizle();
   }
 
-  /// Bu cihazdaki TÜM yerel veriyi siler: veritabanı (+wal/shm), ürün
-  /// resimleri, yedekler, raporlar, ayarlar (tema hariç) ve güvenli depo.
-  /// Buluttaki veriye dokunmaz.
+  /// Bu cihazdaki yerel veriyi siler: veritabanı (+wal/shm ve güvenlik
+  /// kopyaları), ürün resimleri, raporlar, ayarlar (tema hariç) ve güvenli
+  /// depo. Buluttaki veriye dokunmaz.
+  ///
+  /// `yedekler` klasörü SİLİNMEZ (2026-10-11): önceden tüm yedekler de
+  /// gidiyordu — yanlışlıkla temizlemenin hiçbir dönüşü yoktu. Çağıran,
+  /// silmeden önce son durumun yedeğini alır.
+  ///
+  /// Bulut gönderimi ve anlık dinleyici önce durdurulur: önceden 8 sn'lik
+  /// gönderim turu / anlık bildirim, silinen veritabanını boş haliyle
+  /// yeniden açıp (uygulama "Bulut Verisi Hâlâ Duruyor" diyaloğunda
+  /// beklerken) buluttan gelen kayıtları içine yazabiliyordu.
   Future<void> cihaziSifirla() async {
+    BulutManager().durdur();
+    AnlikBulutDinleyici().durdur();
+    QrSiparisCekiciServisi().durdur();
     await Veritabani().kapat();
-    await _dbDosyalariniSil(await _hedefYol());
+    final hedef = await _hedefYol();
+    await _dbDosyalariniSil(hedef);
+    // İçe Al / Geri Yükle güvenlik kopyaları (market.db.*.bak) tam veri
+    // içerir; temizlenen cihazda kalmasın (son yedek yedekler/'de).
+    try {
+      for (final f in Directory(p.dirname(hedef)).listSync().whereType<File>()) {
+        final ad = p.basename(f.path);
+        if (ad.startsWith('${p.basename(hedef)}.') && ad.endsWith('.bak')) {
+          await f.delete();
+        }
+      }
+    } catch (_) {}
 
     final appDir = await getApplicationDocumentsDirectory();
-    for (final dir in ['urun_resimleri', 'yedekler', 'raporlar']) {
+    for (final dir in ['urun_resimleri', 'raporlar']) {
       final d = Directory('${appDir.path}/$dir');
       if (await d.exists()) await d.delete(recursive: true);
     }

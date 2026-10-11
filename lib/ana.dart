@@ -17,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart'
     show sqfliteFfiInit, databaseFactory, databaseFactoryFfi;
 import 'uygulama/uygulama.dart';
+import 'uygulama/acilis_koruma.dart';
 import 'veri/database/veritabani.dart';
 import 'servisler/bildirim_servisi.dart';
 import 'servisler/bildirim_zamanlayici.dart';
@@ -86,29 +87,42 @@ Future<void> _baslatApp() async {
     if (Platform.isWindows) await _windowsVeriKlasorunuHazirla();
   }
 
-  // Hata görünürlüğü — release modda ekranın "bembeyaz" kalmasını önler,
-  // gerçek hata mesajını ekranda ve logcat'te gösterir.
-  await PencereKapatma.baslat(); // Windows: pencere X → Hızlı Satış
-  await CrashServisi.init();
+  // Elektrik kesintisi sonrası yarım kalmış ayar dosyası açılışı kalıcı
+  // olarak durdurmasın — SharedPreferences ilk kez okunmadan ÖNCE onarılır
+  // (bkz. acilis_koruma.dart). Aşağıdaki her adım ayrı korunur: biri hata
+  // verse de uygulama açılır (önceden hata runApp'ten önce düşüp pencere
+  // boş kalıyordu).
+  await guvenliAdim('Ayar dosyası', ayarDosyasiniOnar);
+  await guvenliAdim('Pencere', PencereKapatma.baslat); // Windows: X → Hızlı Satış
+  await guvenliAdim('Hata izleme', CrashServisi.init);
+  await guvenliAdim('Log', LogServisi.init);
 
-  await LogServisi.init();
+  // Veritabanı açılmıyorsa / bozuksa bulut senkronu dahil HİÇBİR servis
+  // başlamadan kurtarma ekranı (yedekten geri yükleme) gösterilir.
+  final dbHatasi = await veritabaniniDogrula();
+  if (dbHatasi != null) {
+    LogServisi().kritik('StartupDbError', hata: dbHatasi);
+    runApp(KurtarmaUygulamasi(hata: dbHatasi));
+    return;
+  }
+
   // İşletme hesabı oturumu (varsa) — bulut istekleri başlamadan önce.
-  await SupabaseOturum().yukle();
-  await BulutManager().baslat(); // Bulut sync başlat
+  await guvenliAdim('Bulut oturumu', SupabaseOturum().yukle);
+  await guvenliAdim('Bulut gönderim', BulutManager().baslat);
   // Diğer kasaların verisini (satış, stok, cari…) belirli aralıkla otomatik
   // çek — önceden yalnız "Buluttan Al" butonu / masa ekranı çekiyordu.
-  await OtomatikBulutCekme().baslat();
+  await guvenliAdim('Bulut çekme', OtomatikBulutCekme().baslat);
   // Anlık düşme: Supabase Realtime bildirimiyle değişen tabloyu hemen çek.
-  await AnlikBulutDinleyici().baslat();
+  await guvenliAdim('Anlık bulut', AnlikBulutDinleyici().baslat);
   // Kullanıcı isteği: müşteriler kendi telefonlarıyla (internetten,
   // mobil veri dahil) QR menüden sipariş versin — bu servis,
   // Supabase'de bekleyen QR siparişlerini periyodik olarak çekip
   // otomatik olarak masaya düşürüyor.
-  QrSiparisCekiciServisi().baslat();
+  await guvenliAdim('QR sipariş', () async => QrSiparisCekiciServisi().baslat());
   // Kullanıcı isteği: "bildirim merkezi — stok azaldı, borç günü
   // geldi, son kullanma, kasada açık var." Var olan (önceden boş
   // kalan) bildirimler tablosunu canlı koşullardan otomatik besliyor.
-  BildirimMerkeziServisi().baslat();
+  await guvenliAdim('Bildirim merkezi', () async => BildirimMerkeziServisi().baslat());
  
 
   await SystemChrome.setPreferredOrientations([
@@ -136,8 +150,8 @@ Future<void> _baslatApp() async {
       statusBarBrightness:     koyuMu ? Brightness.dark  : Brightness.light,
     ));
 
-    await BildirimServisi.init();
-    await BildirimZamanlayici().baslat();
+    await guvenliAdim('Bildirim', BildirimServisi.init);
+    await guvenliAdim('Bildirim zamanlayıcı', BildirimZamanlayici().baslat);
     await Veritabani().db; // migration burada çalışır
     // 🔴 DÜZELTME (Madde 27 — Yedekleme denetimi, 2026-09-16): "Otomatik
     // Yedekleme", BildirimZamanlayici içinde sadece uygulama süreci CANLI
@@ -149,7 +163,7 @@ Future<void> _baslatApp() async {
     // "kaçırılmış yedek var mı" kontrolü de yapılıyor — arka planda,
     // UI'ı bloklamadan.
     unawaited(BildirimZamanlayici().kacirilanYedekKontrolEt());
-    await BorcBildirimServisi().baslat();
+    await guvenliAdim('Borç bildirimi', BorcBildirimServisi().baslat);
 
     runApp(
       ProviderScope(
@@ -164,6 +178,9 @@ Future<void> _baslatApp() async {
         child: BarkoProApp(baslangicTema: baslangicTema),
       ),
     );
+    // Açılış başarılı: ayar dosyasının sağlam kopyası (bir sonraki
+    // kesintide onarım buradan yapılır).
+    unawaited(guvenliAdim('Ayar yedeği', ayarDosyasiniYedekle));
   } catch (e, st) {
     LogServisi().kritik('StartupError', hata: e, yigin: st);
     runApp(_HataApp(hata: e.toString()));

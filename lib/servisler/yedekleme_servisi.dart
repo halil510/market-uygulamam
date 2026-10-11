@@ -220,6 +220,16 @@ class YedeklemeServisi {
   Future<bool> yedekGerekliMi({int gunAralik = 1}) async {
     final son = await sonOtomatikYedekTarihi();
     if (son == null) return true;
-    return DateTime.now().difference(son).inDays >= gunAralik;
+    return yedekGunuGeldiMi(son, DateTime.now(), gunAralik: gunAralik);
+  }
+
+  /// Takvim günüyle karşılaştırır. Önceden "24 saat geçti mi" (inDays)
+  /// bakılıyordu: market her sabah ~10:00'da açılıp önceki yedek 10:16'da
+  /// alındıysa 23 sa 54 dk → yedek atlanıyor, yedekler gün aşırı kalıyordu.
+  @visibleForTesting
+  static bool yedekGunuGeldiMi(DateTime son, DateTime simdi, {int gunAralik = 1}) {
+    final sonGun = DateTime(son.year, son.month, son.day);
+    final bugun = DateTime(simdi.year, simdi.month, simdi.day);
+    return bugun.difference(sonGun).inDays >= gunAralik;
   }
 }

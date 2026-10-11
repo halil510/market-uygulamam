@@ -339,12 +339,12 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
             Positioned(
               top: -80,
               left: -60,
-              child: _buildGlowBlob(const Color(0xFF4361EE), 260),
+              child: _buildGlowBlob(TsRenk.primary, 260),
             ),
             Positioned(
               bottom: -100,
               right: -70,
-              child: _buildGlowBlob(const Color(0xFF3A0CA3), 300),
+              child: _buildGlowBlob(TsRenk.primaryKoyu, 300),
             ),
             SafeArea(
               child: FadeTransition(

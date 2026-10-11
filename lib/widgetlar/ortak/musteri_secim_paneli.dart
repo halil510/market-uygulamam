@@ -3,6 +3,7 @@
 // Cari seçim alt paneli (arama + liste) — Hızlı Satış ve Masa detayında
 // ortak kullanılır. Hangi carilerin listeleneceğine çağıran karar verir
 // (ör. masa yalnızca müşteri tipindekileri verir).
+import '../../tasarim_sistemi/ts_token.dart';
 import 'package:flutter/material.dart';
 import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import '../../modeller/cari_model.dart';
@@ -92,7 +93,7 @@ class _MusteriSecimPaneliState extends State<MusteriSecimPaneli> {
                 width: 36, height: 36,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF2E7D32), Color(0xFF43A047)]),
+                    colors: [TsRenk.basarili, TsRenk.basarili]),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(child: Text(
@@ -114,7 +115,7 @@ class _MusteriSecimPaneliState extends State<MusteriSecimPaneli> {
                     ),
                     child: const Text('Tedarikçi',
                         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                            color: Color(0xFF00796B))),
+                            color: TsRenk.vurguTurkuaz)),
                   ),
                 ],
               ]),

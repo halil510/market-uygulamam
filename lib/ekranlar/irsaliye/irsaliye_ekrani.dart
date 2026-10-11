@@ -94,10 +94,10 @@ class IrsaliyeEkrani extends ConsumerWidget {
                     leading: Container(
                       width: 44, height: 44,
                       decoration: BoxDecoration(
-                          color: TsRenk.zemin(Colors.teal),
+                          color: TsRenk.zemin(TsRenk.vurguTurkuaz),
                           borderRadius: BorderRadius.circular(12)),
                       child: const Icon(Icons.local_shipping,
-                          color: Colors.teal, size: 22),
+                          color: TsRenk.vurguTurkuaz, size: 22),
                     ),
                     title: Text(r['irsaliye_no']?.toString() ?? '-',
                         style: const TextStyle(
@@ -129,8 +129,8 @@ class IrsaliyeEkrani extends ConsumerWidget {
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
                                   color: durum == 'Teslim Edildi'
-                                      ? Colors.green
-                                      : Colors.orange)),
+                                      ? TsRenk.basarili
+                                      : TsRenk.uyari)),
                         ),
                       ],
                     ),

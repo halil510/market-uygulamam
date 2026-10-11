@@ -218,7 +218,7 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
                         leading: _resimGoster(u, boyut: 40),
                         title: Text(u.urunAdi, style: TextStyle(fontSize: 14, color: context.textPrimary)),
                         subtitle: _fiyatSatiri(u),
-                        trailing: const Icon(Icons.add_circle_outline, color: Colors.green, size: 22),
+                        trailing: const Icon(Icons.add_circle_outline, color: TsRenk.basarili, size: 22),
                         onTap: () => _urunEkle(u),
                       );
                     },
@@ -276,7 +276,7 @@ class _ToptanUrunListesiEkraniState extends State<ToptanUrunListesiEkrani> {
                             child: _fiyatSatiri(u),
                           ),
                           trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            icon: const Icon(Icons.delete_outline, color: TsRenk.hata),
                             tooltip: 'Listeden Kaldır',
                             onPressed: () => _urunKaldir(u),
                           ),

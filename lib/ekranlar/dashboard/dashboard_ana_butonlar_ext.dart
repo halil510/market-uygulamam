@@ -146,7 +146,7 @@ Widget _rozet(int sayi, Color renk) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
       decoration: BoxDecoration(
-        color: Colors.red.shade600,
+        color: TsRenk.hata,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white, width: 1.5),
         boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 4)],

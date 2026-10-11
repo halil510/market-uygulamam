@@ -1,4 +1,5 @@
 // lib/ekranlar/satis/widgets/kamera_paneli.dart
+import '../../../tasarim_sistemi/ts_token.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 class SatisKameraPaneli extends StatefulWidget {
@@ -89,9 +90,9 @@ class _SatisKameraPaneliState extends State<SatisKameraPaneli>
           final top = panelH * 0.3 + (_lazerAnim.value * panelH * 0.35);
           return Positioned(top: top, left: 40, right: 40,
             child: Container(height: 2,
-              decoration: BoxDecoration(
-                color: Colors.red.shade400,
-                boxShadow: const [BoxShadow(color: Color(0x80FF0000), blurRadius: 6)])));
+              decoration: const BoxDecoration(
+                color: TsRenk.hata,
+                boxShadow: [BoxShadow(color: Color(0x80FF0000), blurRadius: 6)])));
         }),
         // Kontrol butonları
         Positioned(top: 8, right: 8,

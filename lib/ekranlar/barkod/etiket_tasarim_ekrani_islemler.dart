@@ -241,13 +241,13 @@ extension _EtiketTasarimIslemlerExt on _EtiketTasarimEkraniState {
           ),
           const SizedBox(height: 8),
           ListTile(
-            leading: const Icon(Icons.print, color: Colors.blue),
+            leading: const Icon(Icons.print, color: TsRenk.bilgi),
             title: const Text('Bağlı Yazıcıya Doğrudan Gönder (ZPL)'),
             subtitle: Text('Zebra/ZPL uyumlu — ${_yazdirma.baglantiDurumu}'),
             onTap: () => Navigator.pop(ctx, 'direkt'),
           ),
           ListTile(
-            leading: const Icon(Icons.ios_share, color: Colors.orange),
+            leading: const Icon(Icons.ios_share, color: TsRenk.uyari),
             title: const Text('.zpl Dosyası Olarak Paylaş'),
             subtitle: const Text('BarTender veya başka bir uygulamaya aktarın'),
             onTap: () => Navigator.pop(ctx, 'dosya'),
@@ -296,7 +296,7 @@ extension _EtiketTasarimIslemlerExt on _EtiketTasarimEkraniState {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         
         title: const Row(children: [
-          Icon(Icons.print_disabled, color: Colors.red), SizedBox(width: 8),
+          Icon(Icons.print_disabled, color: TsRenk.hata), SizedBox(width: 8),
           Text('Yazıcı Bağlı Değil'),
         ]),
         content: const Text('Etiket yazdırmak için önce Yazıcı Ayarları ekranından '

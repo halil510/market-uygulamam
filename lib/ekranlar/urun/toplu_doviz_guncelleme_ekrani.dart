@@ -239,7 +239,7 @@ class _TopluDovizGuncellemeEkraniState extends State<TopluDovizGuncellemeEkrani>
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Text(ParaUtils.formatla(yeni),
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14,
-                      color: (fark ?? 0) > 0 ? Colors.red.shade600 : (fark ?? 0) < 0 ? Colors.green.shade600 : null)),
+                      color: (fark ?? 0) > 0 ? TsRenk.hata : (fark ?? 0) < 0 ? TsRenk.basarili : null)),
               Text('Eski: ${ParaUtils.formatla(eski)}',
                   style: TextStyle(fontSize: 10, color: TsRenk.metinIkincil(context))),
             ]),

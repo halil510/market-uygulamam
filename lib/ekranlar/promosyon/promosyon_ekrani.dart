@@ -115,7 +115,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.red),
+          backgroundColor: TsRenk.hata),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Sil'),
           ),
@@ -251,7 +251,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
             color: context.cardBg,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: Row(children: [
-              PromosyonChip('$aktifSayisi Aktif', Colors.green.shade700),
+              PromosyonChip('$aktifSayisi Aktif', TsRenk.basarili),
               const SizedBox(width: 8),
               PromosyonChip('${async.value!.length} Toplam', AppRenkler.primary),
             ]),
@@ -260,7 +260,7 @@ class _PromosyonEkraniState extends ConsumerState<PromosyonEkrani> {
           child: async.when(
             loading: () => const Center(child: AppYukleniyor()),
             error: (e, _) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const Icon(Icons.error_outline, size: 48, color: TsRenk.hata),
               const SizedBox(height: 12),
               Text('Hata: ${kullaniciyaHataMetni(e)}', textAlign: TextAlign.center),
               const SizedBox(height: 8),

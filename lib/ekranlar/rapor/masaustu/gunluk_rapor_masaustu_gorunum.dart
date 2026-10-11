@@ -120,11 +120,11 @@ class _GunlukRaporMasaustuGorunumState extends State<GunlukRaporMasaustuGorunum>
   ];
 
   static Color _odemeRengi(String y) => switch (y) {
-    'Nakit' => const Color(0xFF2E7D32),
-    'Kredi Kartı' => const Color(0xFFEF6C00),
+    'Nakit' => TsRenk.basarili,
+    'Kredi Kartı' => TsRenk.uyari,
     'Cari' => const Color(0xFF3949AB),
-    'Havale' => const Color(0xFF00897B),
-    _ => const Color(0xFF546E7A),
+    'Havale' => TsRenk.vurguTurkuaz,
+    _ => TsRenk.notr,
   };
 
   Widget _kpi(String baslik, String deger, Color renk, {IconData? ikon}) => Expanded(
@@ -183,7 +183,7 @@ class _GunlukRaporMasaustuGorunumState extends State<GunlukRaporMasaustuGorunum>
   );
 
   Color _karRengi(double v) => v > 0
-      ? const Color(0xFF2E7D32)
+      ? TsRenk.basarili
       : v < 0
       ? TsRenk.hata
       : TsRenk.metinIkincil(context);
@@ -246,20 +246,20 @@ class _GunlukRaporMasaustuGorunumState extends State<GunlukRaporMasaustuGorunum>
               _kpi(
                 'Toplam Satış',
                 ParaUtils.formatla(o.toplam),
-                const Color(0xFF1565C0),
+                TsRenk.bilgi,
                 ikon: Icons.point_of_sale,
               ),
-              _kpi('Fiş Sayısı', '$fisSayisi', const Color(0xFF6A1B9A), ikon: Icons.receipt_long),
+              _kpi('Fiş Sayısı', '$fisSayisi', TsRenk.vurguMor, ikon: Icons.receipt_long),
               _kpi(
                 'Ort. Fiş',
                 ParaUtils.formatla(fisSayisi > 0 ? o.toplam / fisSayisi : 0),
-                const Color(0xFF00838F),
+                TsRenk.vurguTurkuaz,
                 ikon: Icons.functions,
               ),
               _kpi(
                 'İade',
                 ParaUtils.formatla(o.iade),
-                const Color(0xFFD84315),
+                TsRenk.uyari,
                 ikon: Icons.assignment_return,
               ),
               _kpi('Gider', ParaUtils.formatla(o.gider), TsRenk.hata, ikon: Icons.money_off),
@@ -364,28 +364,28 @@ class _GunlukRaporMasaustuGorunumState extends State<GunlukRaporMasaustuGorunum>
             AltOzet(
               'Brüt Kâr',
               ParaUtils.formatla(o.brutKar),
-              renk: o.brutKar < 0 ? TsRenk.hata : const Color(0xFF2E7D32),
+              renk: o.brutKar < 0 ? TsRenk.hata : TsRenk.basarili,
             ),
             AltOzet(
               'Net Kâr',
               ParaUtils.formatla(o.netKar),
-              renk: o.netKar < 0 ? TsRenk.hata : const Color(0xFF2E7D32),
+              renk: o.netKar < 0 ? TsRenk.hata : TsRenk.basarili,
             ),
           ],
           tuslar: [
-            AltTus('F5', 'Yenile', Icons.refresh, const Color(0xFF1565C0), widget.onYenile),
+            AltTus('F5', 'Yenile', Icons.refresh, TsRenk.bilgi, widget.onYenile),
             AltTus(
               'F8',
               'PDF',
               Icons.picture_as_pdf,
-              const Color(0xFFC62828),
+              TsRenk.hata,
               widget.yukleniyor ? null : widget.onPdf,
             ),
             AltTus(
               'F9',
               'Excel',
               Icons.table_view,
-              const Color(0xFF2E7D32),
+              TsRenk.basarili,
               widget.yukleniyor || widget.satislar.isEmpty ? null : widget.onExcel,
             ),
           ],

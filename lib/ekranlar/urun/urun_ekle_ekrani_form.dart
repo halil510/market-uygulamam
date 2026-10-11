@@ -57,7 +57,7 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
       builder: (ctx) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.key, color: Colors.amber),
+            Icon(Icons.key, color: TsRenk.uyari),
             SizedBox(width: 8),
             Text('Gemini API Anahtarı'),
           ],
@@ -78,7 +78,7 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
               ),
               child: const Text(
                 'https://aistudio.google.com/apikey',
-                style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                style: TextStyle(color: TsRenk.bilgi, decoration: TextDecoration.underline),
               ),
             ),
             const SizedBox(height: 12),
@@ -349,8 +349,8 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
           ),
           if (_secilenResim != null || _mevcutResimYolu != null)
             ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Resmi Kaldır', style: TextStyle(color: Colors.red)),
+              leading: const Icon(Icons.delete, color: TsRenk.hata),
+              title: const Text('Resmi Kaldır', style: TextStyle(color: TsRenk.hata)),
               onTap: () {
                 setState(() { _secilenResim = null; _mevcutResimYolu = null; });
                 Navigator.pop(context);

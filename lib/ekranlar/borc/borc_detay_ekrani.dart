@@ -95,7 +95,7 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.delete_outline, color: Colors.red),
+          Icon(Icons.delete_outline, color: TsRenk.hata),
           SizedBox(width: 8),
           Text('Borç Kaydını Sil'),
         ]),
@@ -116,7 +116,7 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(backgroundColor: TsRenk.hata, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Devam Et'),
           ),
@@ -207,10 +207,10 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: b.odendi
-                    ? [Colors.green.shade700, Colors.green.shade500]
+                    ? [TsRenk.basarili, TsRenk.basarili]
                     : vadesiGecti
-                        ? [Colors.red.shade700, Colors.red.shade500]
-                        : [Colors.blue.shade700, Colors.blue.shade500],
+                        ? [TsRenk.hata, TsRenk.hata]
+                        : [TsRenk.bilgi, TsRenk.bilgi],
               ),
               borderRadius: BorderRadius.circular(20),
             ),
@@ -240,10 +240,10 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
             _Satir('Toplam Tutar', ParaUtils.formatla(b.tutar), bold: true),
             if (b.odenenTutar > 0) _Satir('Ödenen', ParaUtils.formatla(b.odenenTutar)),
             if (!b.odendi) _Satir('Kalan', ParaUtils.formatla(b.kalanTutar),
-                renk: vadesiGecti ? Colors.red : Colors.orange),
+                renk: vadesiGecti ? TsRenk.hata : TsRenk.uyari),
             _Satir('Kesim Tarihi', fmt.format(b.kesimTarihi)),
             _Satir('Son Ödeme', fmt.format(b.sonOdemeTarihi),
-                renk: vadesiGecti ? Colors.red : null),
+                renk: vadesiGecti ? TsRenk.hata : null),
             if (b.taksitSayisi > 1) _Satir('Taksit', '${b.odenenTaksit}/${b.taksitSayisi}'),
             if (b.aciklama != null) _Satir('Açıklama', b.aciklama!),
             if (b.dosyaNo != null) _Satir('Dosya No', b.dosyaNo!),
@@ -285,13 +285,13 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
                     value: (b.odenenTutar / b.tutar).clamp(0.0, 1.0),
                     minHeight: 10,
                     backgroundColor: TsRenk.ayirac(context),
-                    valueColor: AlwaysStoppedAnimation(b.odendi ? Colors.green : Colors.blue),
+                    valueColor: AlwaysStoppedAnimation(b.odendi ? TsRenk.basarili : TsRenk.bilgi),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Row(children: [
                   Text('${ParaUtils.formatla(b.odenenTutar)} ödendi',
-                      style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w600)),
+                      style: const TextStyle(fontSize: 11, color: TsRenk.basarili, fontWeight: FontWeight.w600)),
                   const Spacer(),
                   Text('%${(b.tutar > 0 ? (b.odenenTutar / b.tutar * 100) : 0).toStringAsFixed(0)}',
                       style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
@@ -336,9 +336,9 @@ class _BorcDetayEkraniState extends ConsumerState<BorcDetayEkrani> {
 
   Color _oncelikRenk(int oncelik) {
     switch (oncelik) {
-      case 1: return Colors.red;
-      case 2: return Colors.orange;
-      case 3: return Colors.green;
+      case 1: return TsRenk.hata;
+      case 2: return TsRenk.uyari;
+      case 3: return TsRenk.basarili;
       default: return context.textSecondary;
     }
   }
@@ -370,8 +370,8 @@ class _OdemeSatiri extends StatelessWidget {
       child: Row(children: [
         Container(
           padding: const EdgeInsets.all(9),
-          decoration: BoxDecoration(color: Colors.green.withAlpha(30), shape: BoxShape.circle),
-          child: Icon(_ikon, color: Colors.green, size: 18),
+          decoration: BoxDecoration(color: TsRenk.basarili.withAlpha(30), shape: BoxShape.circle),
+          child: Icon(_ikon, color: TsRenk.basarili, size: 18),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -383,7 +383,7 @@ class _OdemeSatiri extends StatelessWidget {
           ]),
         ),
         Text('+${ParaUtils.formatla(odeme.tutar)}',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: Colors.green)),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: TsRenk.basarili)),
       ]),
     );
   }

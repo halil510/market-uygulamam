@@ -43,7 +43,7 @@ extension _SyncGorunum on _SyncEkraniState {
               label: const Text('İptal'),
               onPressed: () => setState(() { _qrTarayici = false; _qrCtrl?.dispose(); _qrCtrl = null; }),
               style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.red),
+          backgroundColor: TsRenk.hata),
             ),
           )),
         ]),
@@ -101,7 +101,7 @@ extension _SyncGorunum on _SyncEkraniState {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: _sunucuAktif ? Colors.green : Colors.red,
+              color: _sunucuAktif ? TsRenk.basarili : TsRenk.hata,
               borderRadius: BorderRadius.circular(20)),
             child: Text(_sunucuAktif ? 'Hazır' : 'Başlatılıyor...',
               style: const TextStyle(color: Colors.white, fontSize: 11,
@@ -154,7 +154,7 @@ extension _SyncGorunum on _SyncEkraniState {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: _uzakCihaz != null
-              ? Colors.green.shade300 : TsRenk.ayirac(context)),
+              ? TsRenk.basarili : TsRenk.ayirac(context)),
         boxShadow: const [BoxShadow(
           color: Color(0x0D000000),
           blurRadius: 8, offset: Offset(0, 2))],
@@ -196,15 +196,15 @@ extension _SyncGorunum on _SyncEkraniState {
                     color: TsRenk.zemin(TsRenk.basarili),
                     shape: BoxShape.circle),
                   child: const Icon(Icons.phone_android,
-                      color: Colors.green, size: 24)),
+                      color: TsRenk.basarili, size: 24)),
                 const SizedBox(width: 12),
                 Expanded(child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_uzakCihaz!['cihaz']?.toString() ?? 'Cihaz',
                     style: const TextStyle(fontSize: 15,
                         fontWeight: FontWeight.w700)),
-                  Text('Bağlı ✅',
-                    style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
+                  const Text('Bağlı ✅',
+                    style: TextStyle(fontSize: 12, color: TsRenk.basarili)),
                 ])),
                 TextButton(
                   onPressed: () => setState(() {
@@ -212,7 +212,7 @@ extension _SyncGorunum on _SyncEkraniState {
                     _durum = ''; _progressGoster = false; _progress = 0;
                   }),
                   child: const Text('Bağlantıyı Kes',
-                    style: TextStyle(color: Colors.red, fontSize: 12)),
+                    style: TextStyle(color: TsRenk.hata, fontSize: 12)),
                 ),
               ]),
               const SizedBox(height: 16),
@@ -224,10 +224,10 @@ extension _SyncGorunum on _SyncEkraniState {
                     '${_uzakCihaz!['urun_sayisi'] ?? 0}', TsRenk.primaryKoyu),
                 const SizedBox(width: 8),
                 _statKutu('Cari',
-                    '${_uzakCihaz!['cari_sayisi'] ?? 0}', Colors.orange),
+                    '${_uzakCihaz!['cari_sayisi'] ?? 0}', TsRenk.uyari),
                 const SizedBox(width: 8),
                 _statKutu('Satış',
-                    '${_uzakCihaz!['satis_sayisi'] ?? 0}', Colors.green),
+                    '${_uzakCihaz!['satis_sayisi'] ?? 0}', TsRenk.basarili),
               ]),
             ]),
     );
@@ -248,7 +248,7 @@ extension _SyncGorunum on _SyncEkraniState {
           onPressed: _islemde ? null : _veriAl,
           style: FilledButton.styleFrom(
             foregroundColor: Colors.white,
-          backgroundColor: Colors.green,
+          backgroundColor: TsRenk.basarili,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14))),
@@ -279,13 +279,13 @@ extension _SyncGorunum on _SyncEkraniState {
       SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
-          icon: const Icon(Icons.storage, color: Colors.orange),
+          icon: const Icon(Icons.storage, color: TsRenk.uyari),
           label: const Text('Tüm Veritabanını Al (Komple Kopyala)',
-            style: TextStyle(color: Colors.orange,
+            style: TextStyle(color: TsRenk.uyari,
                 fontWeight: FontWeight.w600, fontSize: 13)),
           onPressed: _islemde ? null : _dbAl,
           style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Colors.orange),
+            side: const BorderSide(color: TsRenk.uyari),
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14))),

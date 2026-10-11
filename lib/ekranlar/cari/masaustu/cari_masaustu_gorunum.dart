@@ -45,7 +45,7 @@ class CariMasaustuGorunum extends StatefulWidget {
 class _CariMasaustuGorunumState extends State<CariMasaustuGorunum> {
   CariModel? _secili;
 
-  static const _alacakRengi = Color(0xFF2E7D32);
+  static const _alacakRengi = TsRenk.basarili;
 
   late final List<TabloKolon<CariModel>> _kolonlar = [
     TabloKolon(
@@ -237,16 +237,16 @@ class _CariMasaustuGorunumState extends State<CariMasaustuGorunum> {
           AltOzet('Toplam Bakiye', ParaUtils.formatla(alacak - borc)),
         ],
         tuslar: [
-          AltTus('F1', 'Ekle', Icons.person_add_alt, const Color(0xFF2E7D32),
+          AltTus('F1', 'Ekle', Icons.person_add_alt, TsRenk.basarili,
               () => _git('/cari/ekle')),
-          AltTus('F2', 'Düzenle', Icons.edit_outlined, const Color(0xFF1565C0),
+          AltTus('F2', 'Düzenle', Icons.edit_outlined, TsRenk.bilgi,
               s == null || _cokluVar ? null : () => _duzenle(s)),
           AltTus('F3', _cokluVar ? 'Sil (${_coklu.length})' : 'Sil', Icons.delete_outline,
-              const Color(0xFFC62828),
+              TsRenk.hata,
               _cokluVar ? _topluSil : (s == null ? null : () => widget.onSil(s))),
-          AltTus('F4', 'Al / Ver', Icons.swap_horiz, const Color(0xFF6A1B9A),
+          AltTus('F4', 'Al / Ver', Icons.swap_horiz, TsRenk.vurguMor,
               s == null ? null : () => _tahsilat(s)),
-          AltTus('F6', 'Menü', Icons.menu, const Color(0xFF546E7A),
+          AltTus('F6', 'Menü', Icons.menu, TsRenk.notr,
               s == null ? null : () => _menu(s, const Offset(400, 250))),
         ],
       ),

@@ -198,7 +198,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
             'Kullanıcı Adı: $kAdi\n'
             'Test modu: ${_testModu ? "GİB Test Ortamı" : "CANLI"}\n\n'
             '${basarili ? "Kullanıcı adı ve şifrenizi entegratör portalından doğrulayın — kimlik doğrulama YÖNTEMİ (Basic/Bearer/SOAP) kullandığınız entegratöre göre değişebilir, gerçek fatura göndermeden önce entegratörünüzün dokümanıyla teyit edin." : "URL, kullanıcı adı ve şifre doğru girildiğinden emin olun."}',
-        renk: basarili ? Colors.green : Colors.red,
+        renk: basarili ? TsRenk.basarili : TsRenk.hata,
       );
     } catch (e) {
       if (!mounted) return;
@@ -243,14 +243,14 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.blue.shade200),
                 ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Row(children: [
-                    Icon(Icons.info_outline, color: Colors.blue, size: 18),
+                child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Icon(Icons.info_outline, color: TsRenk.bilgi, size: 18),
                     SizedBox(width: 8),
                     Text('GİB e-Fatura Entegrasyonu',
-                        style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blue)),
+                        style: TextStyle(fontWeight: FontWeight.w700, color: TsRenk.bilgi)),
                   ]),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     'BarkoPro → e-Fatura Servisi (Özel Entegratör) → GİB\n\n'
                     'Bu ekran, GİB uyumlu bir özel entegratör (Foriba, Sovos, '
@@ -259,7 +259,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
                     'bilgilerini girin — Mali Mühür işlemleri, entegratörünüzün '
                     'yöntemine göre kendi tarafında (sizin adınıza) veya bu '
                     'ekrandaki isteğe bağlı alan üzerinden yapılabilir.',
-                    style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+                    style: TextStyle(fontSize: 12, color: TsRenk.bilgi),
                   ),
                 ]),
               ),
@@ -379,7 +379,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
                     ? 'GİB test ortamına gönderir (güvenli)'
                     : '⚠️ CANLI modda — gerçek fatura gönderilir!'),
                 value: _testModu,
-                activeThumbColor: Colors.green,
+                activeThumbColor: TsRenk.basarili,
                 onChanged: (v) => setState(() => _testModu = v),
               ),
               if (!_testModu)
@@ -389,16 +389,16 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
                   decoration: BoxDecoration(
                     color: TsRenk.zemin(TsRenk.uyari),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange.shade300),
+                    border: Border.all(color: TsRenk.uyari),
                   ),
                   child: const Row(children: [
-                    Icon(Icons.warning_amber, color: Colors.orange),
+                    Icon(Icons.warning_amber, color: TsRenk.uyari),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'CANLI mod aktif! Gönderilen faturalar GİB\'e iletilir ve '
                         'yasal geçerlilik taşır.',
-                        style: TextStyle(color: Colors.orange, fontSize: 12),
+                        style: TextStyle(color: TsRenk.uyari, fontSize: 12),
                       ),
                     ),
                   ]),

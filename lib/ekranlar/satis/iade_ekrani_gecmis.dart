@@ -81,7 +81,7 @@ extension _GecmisTabExt on _IadeEkraniState {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hayir')),
           FilledButton(
-            style: FilledButton.styleFrom(foregroundColor: Colors.white, backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(foregroundColor: Colors.white, backgroundColor: TsRenk.hata),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Sil'),
           ),
@@ -118,7 +118,7 @@ extension _GecmisTabExt on _IadeEkraniState {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         
         title: const Row(children: [
-          Icon(Icons.edit_note, color: Colors.orange),
+          Icon(Icons.edit_note, color: TsRenk.uyari),
           SizedBox(width: 8),
           Expanded(child: Text('İadeyi Düzenle', style: TextStyle(fontSize: 16))),
         ]),
@@ -152,7 +152,7 @@ extension _GecmisTabExt on _IadeEkraniState {
             icon: const Icon(Icons.edit, size: 16, color: Colors.white),
             label: const Text('Düzenlemeye Geç'),
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.orange),
+          backgroundColor: TsRenk.uyari),
             onPressed: () => Navigator.pop(ctx, true),
           ),
         ],
@@ -208,7 +208,7 @@ extension _GecmisTabExt on _IadeEkraniState {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         
         title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red),
+          Icon(Icons.warning_amber_rounded, color: TsRenk.hata),
           SizedBox(width: 8),
           Text('Fişi Sil'),
         ]),
@@ -217,7 +217,7 @@ extension _GecmisTabExt on _IadeEkraniState {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.red),
+          backgroundColor: TsRenk.hata),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Sil'),
           ),
@@ -310,7 +310,7 @@ extension _GecmisTabExt on _IadeEkraniState {
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
               SizedBox(width: 8),
               Text('Eksik Cari Bilgisi'),
             ]),
@@ -322,7 +322,7 @@ extension _GecmisTabExt on _IadeEkraniState {
               ...kontrol.eksikAlanlar.map((e) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(children: [
-                      const Icon(Icons.circle, size: 6, color: Colors.orange),
+                      const Icon(Icons.circle, size: 6, color: TsRenk.uyari),
                       const SizedBox(width: 8),
                       Text(e),
                     ]),
@@ -395,7 +395,7 @@ extension _GecmisTabExt on _IadeEkraniState {
           Text('İade #${iade['fis_no'] ?? iade['id']}',
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           IconButton(
-            icon: const Icon(Icons.edit, color: Colors.orange),
+            icon: const Icon(Icons.edit, color: TsRenk.uyari),
             tooltip: 'Düzelt',
             onPressed: () {
               Navigator.pop(ctx);
@@ -432,13 +432,13 @@ extension _GecmisTabExt on _IadeEkraniState {
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               const Text('TOPLAM', style: TextStyle(fontWeight: FontWeight.bold)),
               Text(ParaUtils.formatla((iade['toplam_tutar'] as num?)?.toDouble() ?? 0),
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange, fontSize: 16)),
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: TsRenk.uyari, fontSize: 16)),
             ]),
           ]),
         ),
         actions: [
           TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: TsRenk.hata),
             onPressed: () async {
               Navigator.pop(ctx);
               await _gecmisIadeSil(iade);
@@ -471,7 +471,7 @@ extension _GecmisTabExt on _IadeEkraniState {
           ),
           FilledButton(
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.orange),
+          backgroundColor: TsRenk.uyari),
             onPressed: () {
               Navigator.pop(ctx);
               _gecmisIadeyiDevamEt(iade);
@@ -522,7 +522,7 @@ extension _GecmisTabExt on _IadeEkraniState {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.orange),
+          backgroundColor: TsRenk.uyari),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Kaydet'),
           ),

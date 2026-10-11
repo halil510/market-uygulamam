@@ -281,9 +281,9 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
                           decoration: BoxDecoration(
                               color: TsRenk.zemin(TsRenk.uyari),
                               borderRadius: BorderRadius.circular(10)),
-                          child: Text(
+                          child: const Text(
                               'Banka hesabı bulunamadı. Önce bir hesap ekleyin veya "Nakit" seçin.',
-                              style: TextStyle(fontSize: 11, color: Colors.orange.shade800)),
+                              style: TextStyle(fontSize: 11, color: TsRenk.uyari)),
                         ),
                     ],
                     if (_kartSecimiGerekli) ...[
@@ -306,9 +306,9 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
                           decoration: BoxDecoration(
                               color: TsRenk.zemin(TsRenk.uyari),
                               borderRadius: BorderRadius.circular(10)),
-                          child: Text(
+                          child: const Text(
                               'Kredi kartı bulunamadı. Önce bir kart ekleyin veya başka yöntem seçin.',
-                              style: TextStyle(fontSize: 11, color: Colors.orange.shade800)),
+                              style: TextStyle(fontSize: 11, color: TsRenk.uyari)),
                         ),
                     ],
                   ]),

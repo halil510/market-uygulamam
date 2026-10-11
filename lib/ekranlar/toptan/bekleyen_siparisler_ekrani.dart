@@ -224,7 +224,7 @@ class _SiparisDetayEkraniState extends State<_SiparisDetayEkrani> {
         builder: (c) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(children: [
-            Icon(Icons.check_circle, color: Colors.green),
+            Icon(Icons.check_circle, color: TsRenk.basarili),
             SizedBox(width: 8),
             Text('Sipariş Onaylandı'),
           ]),
@@ -267,7 +267,7 @@ class _SiparisDetayEkraniState extends State<_SiparisDetayEkrani> {
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
               SizedBox(width: 8),
               Text('Eksik Cari Bilgisi'),
             ]),
@@ -277,7 +277,7 @@ class _SiparisDetayEkraniState extends State<_SiparisDetayEkrani> {
               ...kontrol.eksikAlanlar.map((e) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(children: [
-                      const Icon(Icons.circle, size: 6, color: Colors.orange),
+                      const Icon(Icons.circle, size: 6, color: TsRenk.uyari),
                       const SizedBox(width: 8),
                       Text(e),
                     ]),

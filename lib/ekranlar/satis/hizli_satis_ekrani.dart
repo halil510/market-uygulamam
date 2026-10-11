@@ -219,13 +219,13 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
           if (!sepet.bos) ...[
             _AppBarButon(
               icon: Icons.shopping_basket_outlined,
-              renk: Colors.teal,
+              renk: TsRenk.vurguTurkuaz,
               tooltip: 'Tedarikçi Alımı',
               onTap: _tedarikciyeAktar,
             ),
             _AppBarButon(
               icon: Icons.pause_circle_outlined,
-              renk: Colors.orange,
+              renk: TsRenk.uyari,
               tooltip: 'Askıya Al',
               onTap: _askiyaAl,
             ),
@@ -274,7 +274,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
                                   child: const Text('İptal')),
                               FilledButton(
                                 style: FilledButton.styleFrom(
-                                    backgroundColor: Colors.orange),
+                                    backgroundColor: TsRenk.uyari),
                                 onPressed: () => Navigator.pop(ctx, true),
                                 child: const Text('Evet, Yükle'),
                               ),
@@ -378,7 +378,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
           if (!Platform.isWindows)
             _AppBarButon(
               icon: _kameraAcik ? Icons.search_rounded : Icons.qr_code_scanner_rounded,
-              renk: _kameraAcik ? Colors.green : Colors.white,
+              renk: _kameraAcik ? TsRenk.basarili : Colors.white,
               tooltip: _kameraAcik ? 'Arama Modu' : 'Barkod Tara',
               onTap: _kameraToggle,
             ),
@@ -393,7 +393,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
       body: Column(children: [
         if (_guncellenenSatis != null)
           Material(
-            color: Colors.orange.shade800,
+            color: TsRenk.uyari,
             child: SafeArea(
               bottom: false,
               child: Padding(

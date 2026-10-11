@@ -66,8 +66,8 @@ class _StokRaporMasaustuGorunumState
       };
 
   static Color _durumRenk(StokDurum d) => switch (d) {
-        StokDurum.saglikli => const Color(0xFF2E7D32),
-        StokDurum.kritik => const Color(0xFFEF6C00),
+        StokDurum.saglikli => TsRenk.basarili,
+        StokDurum.kritik => TsRenk.uyari,
         StokDurum.stoksuz => TsRenk.hata,
       };
 
@@ -339,12 +339,12 @@ class _StokRaporMasaustuGorunumState
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 4, 4, 8),
                 child: Row(children: [
-                  _kpi('Ürün (listelenen)', '${l.length}', Colors.blue.shade700),
+                  _kpi('Ürün (listelenen)', '${l.length}', TsRenk.bilgi),
                   _kpi('Stok Değeri (Alış)', ParaUtils.formatla(stokDeger),
-                      Colors.indigo.shade700),
+                      TsRenk.primary),
                   _kpi('Satış Değeri (KDV dahil)', ParaUtils.formatla(satisDeger),
-                      Colors.green.shade700),
-                  _kpi('Kritik', '$kritik', const Color(0xFFEF6C00)),
+                      TsRenk.basarili),
+                  _kpi('Kritik', '$kritik', TsRenk.uyari),
                   _kpi('Stoksuz', '$stoksuz', TsRenk.hata),
                 ]),
               ),
@@ -368,9 +368,9 @@ class _StokRaporMasaustuGorunumState
                   AltOzet('Satış Değeri', ParaUtils.formatla(satisDeger)),
                 ],
                 tuslar: [
-                  AltTus('F5', 'Yenile', Icons.refresh, const Color(0xFF1565C0),
+                  AltTus('F5', 'Yenile', Icons.refresh, TsRenk.bilgi,
                       _yenile),
-                  AltTus('F9', 'Excel', Icons.table_view, const Color(0xFF2E7D32),
+                  AltTus('F9', 'Excel', Icons.table_view, TsRenk.basarili,
                       l.isEmpty ? null : () => _excel(l)),
                 ],
               ),

@@ -149,9 +149,9 @@ class _VeriSagligiEkraniState extends State<VeriSagligiEkrani> {
 }
 
 Color _durumRengi(SaglikDurum d) => switch (d) {
-      SaglikDurum.yesil => Colors.green,
-      SaglikDurum.sari => Colors.orange,
-      SaglikDurum.kirmizi => Colors.red,
+      SaglikDurum.yesil => TsRenk.basarili,
+      SaglikDurum.sari => TsRenk.uyari,
+      SaglikDurum.kirmizi => TsRenk.hata,
     };
 
 IconData _durumIkonu(SaglikDurum d) => switch (d) {
@@ -190,11 +190,11 @@ class _OzetSatiri extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(children: [
-      Expanded(child: _OzetKart(sayi: _say(SaglikDurum.yesil), renk: Colors.green, etiket: 'Sağlıklı')),
+      Expanded(child: _OzetKart(sayi: _say(SaglikDurum.yesil), renk: TsRenk.basarili, etiket: 'Sağlıklı')),
       const SizedBox(width: 8),
-      Expanded(child: _OzetKart(sayi: _say(SaglikDurum.sari), renk: Colors.orange, etiket: 'Uyarı')),
+      Expanded(child: _OzetKart(sayi: _say(SaglikDurum.sari), renk: TsRenk.uyari, etiket: 'Uyarı')),
       const SizedBox(width: 8),
-      Expanded(child: _OzetKart(sayi: _say(SaglikDurum.kirmizi), renk: Colors.red, etiket: 'Kritik')),
+      Expanded(child: _OzetKart(sayi: _say(SaglikDurum.kirmizi), renk: TsRenk.hata, etiket: 'Kritik')),
     ]);
   }
 }

@@ -88,7 +88,7 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
                       child: Text(
                         'Tahsilat/Ödeme için Cari ekranını, Gider için Gider '
                         'ekranını, Banka transferi için Virman ekranını kullanın.',
-                        style: TextStyle(fontSize: 11, color: Colors.orange),
+                        style: TextStyle(fontSize: 11, color: TsRenk.uyari),
                       ),
                     ),
                   ),
@@ -226,7 +226,7 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
                         itemBuilder: (_, i) {
                           final h = _hareketler[i];
                           final giris = KasaHareketModel.girisMi(h.hareketTipi);
-                          final renk = giris ? Colors.green : Colors.red;
+                          final renk = giris ? TsRenk.basarili : TsRenk.hata;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 6),
                             child: TsKart.liste(
@@ -313,7 +313,7 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
                 ? ParaUtils.formatla(h.tutar, simge: '')
                 : '',
             sirala: (h) => KasaHareketModel.girisMi(h.hareketTipi) ? h.tutar : 0.0,
-            renk: (h) => Colors.green.shade700),
+            renk: (h) => TsRenk.basarili),
         TabloKolon(
             baslik: 'Çıkış',
             genislik: 110,
@@ -322,7 +322,7 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
                 ? ''
                 : ParaUtils.formatla(h.tutar, simge: ''),
             sirala: (h) => KasaHareketModel.girisMi(h.hareketTipi) ? 0.0 : h.tutar,
-            renk: (h) => Colors.red.shade700),
+            renk: (h) => TsRenk.hata),
         TabloKolon(
             baslik: 'Bakiye',
             genislik: 120,

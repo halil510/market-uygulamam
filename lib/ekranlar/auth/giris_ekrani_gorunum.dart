@@ -102,14 +102,14 @@ extension _GirisGorunum on _GirisEkraniState {
         height: 72,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF4361EE), Color(0xFF3A0CA3)],
+            colors: [TsRenk.primary, TsRenk.primaryKoyu],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4361EE).withAlpha(90),
+              color: TsRenk.primary.withAlpha(90),
               blurRadius: 28,
               offset: const Offset(0, 8),
             ),
@@ -163,7 +163,7 @@ extension _GirisGorunum on _GirisEkraniState {
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                prefixIcon: Icon(Icons.person_outline, color: Color(0xFF4361EE)),
+                prefixIcon: Icon(Icons.person_outline, color: TsRenk.primary),
               ),
               items: liste.map((k) {
                 return DropdownMenuItem(
@@ -261,11 +261,11 @@ extension _GirisGorunum on _GirisEkraniState {
                         height: 14,
                         margin: const EdgeInsets.symmetric(horizontal: 5),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4361EE),
+                          color: TsRenk.primary,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF4361EE).withAlpha(60),
+                              color: TsRenk.primary.withAlpha(60),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -355,7 +355,7 @@ extension _GirisGorunum on _GirisEkraniState {
       color: isTemizle
           ? TsRenk.zemin(TsRenk.hata, opaklik: 0.18)
           : isSil
-              ? TsRenk.zemin(Colors.orange, opaklik: 0.18)
+              ? TsRenk.zemin(TsRenk.uyari, opaklik: 0.18)
               : Colors.white.withAlpha(16),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
@@ -379,7 +379,7 @@ extension _GirisGorunum on _GirisEkraniState {
           alignment: Alignment.center,
           child: isSil
               ? const Icon(Icons.backspace_outlined,
-                  color: Colors.orange, size: 24)
+                  color: TsRenk.uyari, size: 24)
               : isTemizle
                   ? const Text('C',
                       style: TextStyle(
@@ -416,7 +416,7 @@ extension _GirisGorunum on _GirisEkraniState {
                   borderRadius: BorderRadius.circular(16),
                   gradient: aktif
                       ? const LinearGradient(
-                          colors: [Color(0xFF4361EE), Color(0xFF3A0CA3)],
+                          colors: [TsRenk.primary, TsRenk.primaryKoyu],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         )
@@ -425,7 +425,7 @@ extension _GirisGorunum on _GirisEkraniState {
                   boxShadow: aktif
                       ? [
                           BoxShadow(
-                            color: const Color(0xFF4361EE).withAlpha(90),
+                            color: TsRenk.primary.withAlpha(90),
                             blurRadius: 18,
                             offset: const Offset(0, 8),
                           ),
@@ -482,7 +482,7 @@ extension _GirisGorunum on _GirisEkraniState {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: const Color(0xFF4361EE),
+                    color: TsRenk.primary,
                     width: 1.5,
                   ),
                 ),
@@ -497,7 +497,7 @@ extension _GirisGorunum on _GirisEkraniState {
                       child: Icon(
                         Icons.fingerprint,
                         size: 28,
-                        color: Color(0xFF4361EE),
+                        color: TsRenk.primary,
                       ),
                     ),
                   ),

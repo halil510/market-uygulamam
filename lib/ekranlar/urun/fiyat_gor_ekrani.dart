@@ -175,7 +175,7 @@ class _FiyatGorIcerikState extends State<FiyatGorIcerik> {
           style: const TextStyle(
             fontSize: 64,
             fontWeight: FontWeight.w900,
-            color: Color(0xFF2E7D32),
+            color: TsRenk.basarili,
             height: 1,
           ),
         ),
@@ -188,7 +188,7 @@ class _FiyatGorIcerikState extends State<FiyatGorIcerik> {
           ),
           child: Text(
             stokYok ? 'Stokta Yok' : 'Stok: ${u.stok.toStringAsFixed(0)} ${u.birimAdi}',
-            style: TsMetin.govdeVurgu.copyWith(color: stokYok ? Colors.red.shade700 : Colors.green.shade700),
+            style: TsMetin.govdeVurgu.copyWith(color: stokYok ? TsRenk.hata : TsRenk.basarili),
           ),
         ),
         if (u.barkod != null && u.barkod!.isNotEmpty)

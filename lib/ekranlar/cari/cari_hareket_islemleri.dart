@@ -117,7 +117,7 @@ extension _CariHareketIslemleri on _CariHareketEkraniState {
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: FilledButton.styleFrom(
-                  foregroundColor: Colors.white, backgroundColor: Colors.red),
+                  foregroundColor: Colors.white, backgroundColor: TsRenk.hata),
               child: const Text('Sil'),
             ),
           ],
@@ -281,7 +281,7 @@ extension _CariHareketIslemleri on _CariHareketEkraniState {
                     'Bu ekran sadece cari bakiyesinde para hareketi '
                     'yaratmayan düzeltmeler içindir. Nakit/kart/banka '
                     'tahsilat veya ödeme için Tahsilat/Ödeme ekranını kullanın.',
-                    style: TextStyle(fontSize: 11, color: Colors.orange),
+                    style: TextStyle(fontSize: 11, color: TsRenk.uyari),
                   ),
                 ),
               ),

@@ -82,7 +82,7 @@ extension _HizliSatisWidgetExt on _HizliSatisEkraniState {
               width: 36, height: 36,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF4361EE), Color(0xFF3A0CA3)],
+                  colors: [TsRenk.primary, TsRenk.primaryKoyu],
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(10),
@@ -105,7 +105,7 @@ extension _HizliSatisWidgetExt on _HizliSatisEkraniState {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
-                color: indirimVar ? Colors.orange : null,
+                color: indirimVar ? TsRenk.uyari : null,
               ),
             ),
             onTap: () { _urunSepeteEkleAkilli(u); },
@@ -139,12 +139,12 @@ class _OdemeSecimSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const yontemler = [
-      (ikon: Icons.payments,        label: 'Nakit',        renk: Color(0xFF4CAF50), deger: 'Nakit'),
-      (ikon: Icons.credit_card,     label: 'Kredi Kartı',  renk: Color(0xFF2196F3), deger: 'Kredi Kartı'),
-      (ikon: Icons.account_balance, label: 'Banka/Havale', renk: Color(0xFF9C27B0), deger: 'Havale'),
-      (ikon: Icons.people_outline,  label: 'Cari Hesap',   renk: Color(0xFFFF9800), deger: 'Cari'),
-      (ikon: Icons.qr_code,         label: 'QR Kod',       renk: Color(0xFF00BCD4), deger: 'QR'),
-      (ikon: Icons.tune,            label: 'Karma Ödeme',  renk: Color(0xFF607D8B), deger: 'Karma'),
+      (ikon: Icons.payments,        label: 'Nakit',        renk: TsRenk.basarili, deger: 'Nakit'),
+      (ikon: Icons.credit_card,     label: 'Kredi Kartı',  renk: TsRenk.bilgi, deger: 'Kredi Kartı'),
+      (ikon: Icons.account_balance, label: 'Banka/Havale', renk: TsRenk.vurguMor, deger: 'Havale'),
+      (ikon: Icons.people_outline,  label: 'Cari Hesap',   renk: TsRenk.uyari, deger: 'Cari'),
+      (ikon: Icons.qr_code,         label: 'QR Kod',       renk: TsRenk.vurguTurkuaz, deger: 'QR'),
+      (ikon: Icons.tune,            label: 'Karma Ödeme',  renk: TsRenk.notr, deger: 'Karma'),
     ];
 
     // Masaüstü klavyesi: 1 Nakit · 2 Kredi Kartı · 3 Havale · 4 Cari · 5 QR ·

@@ -23,9 +23,9 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
     if (numara == null || numara.isEmpty) return const SizedBox.shrink();
 
     final (String etiket, IconData ikon, Color renk, String aciklama) = switch (c.mukellefDurumu) {
-      'efatura' => ('e-Fatura mükellefi', Icons.verified_outlined, const Color(0xFF2E7D32),
+      'efatura' => ('e-Fatura mükellefi', Icons.verified_outlined, TsRenk.basarili,
           'GİB e-Fatura kayıtlı kullanıcı listesinde bulundu — faturası e-Fatura olarak kesilir.'),
-      'earsiv' => ('e-Arşiv', Icons.receipt_long_outlined, const Color(0xFF1565C0),
+      'earsiv' => ('e-Arşiv', Icons.receipt_long_outlined, TsRenk.bilgi,
           'GİB e-Fatura listesinde kayıtlı değil — faturası e-Arşiv olarak kesilir.'),
       _ => ('Mükellefiyet bilinmiyor · Sorgula', Icons.help_outline, TsRenk.metinIkincil(context),
           'Bu carinin e-Fatura mükellefi olup olmadığı henüz GİB\'den sorgulanmadı. '
@@ -205,13 +205,13 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
               Container(
                 width: 36, height: 36,
                 decoration: BoxDecoration(
-                  color: (giris ? Colors.green : Colors.red).withAlpha(26),
+                  color: (giris ? TsRenk.basarili : TsRenk.hata).withAlpha(26),
                   shape: BoxShape.circle),
                 child: Icon(
                   // İkon bakiye etkisiyle aynı yönde: borç (+, kırmızı) bakiyeyi
                   // artırır, alacak (−, yeşil) azaltır — tutar işaretiyle tutarlı.
                   giris ? Icons.remove : Icons.add,
-                  color: giris ? Colors.green : Colors.red, size: 18)),
+                  color: giris ? TsRenk.basarili : TsRenk.hata, size: 18)),
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(h.fisTipi, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
@@ -220,9 +220,9 @@ extension _CariDetaySekmelerExt on _CariDetayIcerikState {
               ])),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 if (borc > 0) Text('+${ParaUtils.formatla(borc)}',
-                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w700, fontSize: 13)),
+                    style: const TextStyle(color: TsRenk.hata, fontWeight: FontWeight.w700, fontSize: 13)),
                 if (alacak > 0) Text('−${ParaUtils.formatla(alacak)}',
-                    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w700, fontSize: 13)),
+                    style: const TextStyle(color: TsRenk.basarili, fontWeight: FontWeight.w700, fontSize: 13)),
               ]),
               if (satisMi) ...[
                 const SizedBox(width: 6),

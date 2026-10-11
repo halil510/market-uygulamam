@@ -48,13 +48,13 @@ extension _FaturaAyarSekmeleri on _FaturaAyarEkraniState {
     _Kart(children: [
       _SwitchSatir('e-Fatura Aktif', 'GIB kayıtlı mükellefler için zorunlu',
           _eFaturaAktif, (v) => setState(() => _eFaturaAktif = v),
-          Icons.receipt_long_outlined, Colors.blue),
+          Icons.receipt_long_outlined, TsRenk.bilgi),
       _SwitchSatir('e-Arşiv Aktif', 'Diğer alıcılar için fatura',
           _eArsivAktif, (v) => setState(() => _eArsivAktif = v),
-          Icons.archive_outlined, Colors.green),
+          Icons.archive_outlined, TsRenk.basarili),
       _SwitchSatir('e-İrsaliye Aktif', 'Taşıma irsaliyesi düzenleme',
           _eIrsaliyeAktif, (v) => setState(() => _eIrsaliyeAktif = v),
-          Icons.local_shipping_outlined, Colors.orange),
+          Icons.local_shipping_outlined, TsRenk.uyari),
     ]),
     const SizedBox(height: 16),
 
@@ -65,7 +65,7 @@ extension _FaturaAyarSekmeleri on _FaturaAyarEkraniState {
     const _Baslik('GİB Bağlantı Ayarları'),
     _Kart(children: [
       ListTile(
-        leading: const Icon(Icons.settings_outlined, color: Colors.red),
+        leading: const Icon(Icons.settings_outlined, color: TsRenk.hata),
         title: const Text('GİB e-Fatura Entegrasyonu',
             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
         subtitle: const Text(
@@ -84,9 +84,9 @@ extension _FaturaAyarSekmeleri on _FaturaAyarEkraniState {
           border: Border.all(color: Colors.blue.shade200)),
       child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.info_outline, color: Colors.blue, size: 16),
+          Icon(Icons.info_outline, color: TsRenk.bilgi, size: 16),
           SizedBox(width: 6),
-          Text('Türkiye e-Fatura (2026)', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.blue)),
+          Text('Türkiye e-Fatura (2026)', style: TextStyle(fontWeight: FontWeight.w700, color: TsRenk.bilgi)),
         ]),
         SizedBox(height: 6),
         Text(
@@ -97,7 +97,7 @@ extension _FaturaAyarSekmeleri on _FaturaAyarEkraniState {
           '• Ciro 3M TL üzeri → e-Fatura mükellefi (2024 sınırı)\n'
           '• GIB Portal: efatura.gov.tr\n'
           '• Entegratör API bilgilerini yukarıya giriniz',
-          style: TextStyle(fontSize: 11, height: 1.6, color: Colors.blue)),
+          style: TextStyle(fontSize: 11, height: 1.6, color: TsRenk.bilgi)),
       ]),
     ),
     const SizedBox(height: 80),
@@ -144,13 +144,13 @@ extension _FaturaAyarSekmeleri on _FaturaAyarEkraniState {
     _Kart(children: [
       _SwitchSatir('KDV Muafiyeti', 'Belirli mal/hizmetler KDV\'den muaf',
           _kdvMusaf, (v) => setState(() => _kdvMusaf = v),
-          Icons.no_meals_outlined, Colors.orange),
+          Icons.no_meals_outlined, TsRenk.uyari),
     ]),
     const SizedBox(height: 12),
     _Kart(children: [
       _SwitchSatir('Tevkifat (KDV Stopajı)', 'Belirli hizmetlerde KDV tevkifatı',
           _tevkifat, (v) => setState(() => _tevkifat = v),
-          Icons.calculate_outlined, Colors.purple),
+          Icons.calculate_outlined, TsRenk.vurguMor),
       if (_tevkifat) Padding(
         padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -169,12 +169,12 @@ extension _FaturaAyarSekmeleri on _FaturaAyarEkraniState {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
           color: TsRenk.zemin(TsRenk.uyari), borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.amber.shade300)),
+          border: Border.all(color: TsRenk.uyari)),
       child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.info_outline, color: Colors.amber, size: 16),
+          Icon(Icons.info_outline, color: TsRenk.uyari, size: 16),
           SizedBox(width: 6),
-          Text('Güncel KDV Oranları (2026)', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber)),
+          Text('Güncel KDV Oranları (2026)', style: TextStyle(fontWeight: FontWeight.w700, color: TsRenk.uyari)),
         ]),
         SizedBox(height: 6),
         Text(
@@ -182,7 +182,7 @@ extension _FaturaAyarSekmeleri on _FaturaAyarEkraniState {
           '• %10 — İndirimli oran (gıda, bazı hizmetler)\n'
           '• %1  — Özel indirimli (temel gıda, tarım)\n'
           '• %0  — KDV\'den muaf',
-          style: TextStyle(fontSize: 11, height: 1.6, color: Colors.amber)),
+          style: TextStyle(fontSize: 11, height: 1.6, color: TsRenk.uyari)),
       ]),
     ),
     const SizedBox(height: 80),

@@ -3,6 +3,7 @@
 // Herhangi bir TextField'a "suffixIcon" olarak eklenebilen, dinlerken
 // görsel geri bildirim veren mikrofon butonu. Konuşma bitince tanınan
 // metni [onMetin] ile geri döndürür.
+import '../../tasarim_sistemi/ts_token.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../../servisler/ses_tanima_servisi.dart';
@@ -89,7 +90,7 @@ class _MikrofonButonuState extends State<MikrofonButonu> with SingleTickerProvid
           ? ScaleTransition(
               scale: Tween(begin: 0.85, end: 1.15).animate(
                   CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut)),
-              child: const Icon(Icons.mic, color: Colors.red),
+              child: const Icon(Icons.mic, color: TsRenk.hata),
             )
           : const Icon(Icons.mic_none_outlined),
       onPressed: _baslatDurdur,

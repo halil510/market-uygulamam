@@ -2,6 +2,7 @@
 //
 // Satış Raporu: mobil ve masaüstü görünümün PAYLAŞTIĞI filtre, sorgu ve
 // yardımcılar.
+import '../../tasarim_sistemi/ts_token.dart';
 import 'dart:io';
 import 'package:excel/excel.dart' hide Border;
 import 'package:flutter/material.dart';
@@ -95,12 +96,12 @@ final satisRaporProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref
 });
 
 const _odemeRenkleri = <String, Color>{
-  'Nakit': Color(0xFF4CAF50),
-  'Kredi Kartı': Color(0xFF2196F3),
-  'Havale': Color(0xFF9C27B0),
-  'Cari': Color(0xFFFF9800),
-  'QR': Color(0xFF00BCD4),
-  'Karma': Color(0xFF607D8B),
+  'Nakit': TsRenk.basarili,
+  'Kredi Kartı': TsRenk.bilgi,
+  'Havale': TsRenk.vurguMor,
+  'Cari': TsRenk.uyari,
+  'QR': TsRenk.vurguTurkuaz,
+  'Karma': TsRenk.notr,
 };
 const _digerRenk = Color(0xFF9E9E9E);
 

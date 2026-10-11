@@ -41,7 +41,7 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.blue.shade900.withAlpha(30),
+                  color: TsRenk.bilgi.withAlpha(30),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
@@ -79,13 +79,13 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
             childAspectRatio: 1.4,
             children: [
               _statKart('Günlük Ciro', ParaUtils.formatla(d.gunlukCiro),
-                  Icons.today, const Color(0xFF1565C0)),
+                  Icons.today, TsRenk.bilgi),
               _statKart('Haftalık Ciro', ParaUtils.formatla(d.haftalikCiro),
-                  Icons.date_range, const Color(0xFF2E7D32)),
+                  Icons.date_range, TsRenk.basarili),
               _statKart('Aylık Ciro', ParaUtils.formatla(d.aylikCiro),
-                  Icons.calendar_month, const Color(0xFF6A1B9A)),
+                  Icons.calendar_month, TsRenk.vurguMor),
               _statKart('Günlük Gider', ParaUtils.formatla(d.gunlukGider),
-                  Icons.money_off, const Color(0xFFC62828)),
+                  Icons.money_off, TsRenk.hata),
             ],
           ),
           const SizedBox(height: 12),
@@ -101,13 +101,13 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
             childAspectRatio: 1.4,
             children: [
               _statKart('Bugünkü Kâr', ParaUtils.formatla(d.netKar),
-                  Icons.trending_up, const Color(0xFF00695C)),
+                  Icons.trending_up, TsRenk.vurguTurkuaz),
               _statKart('Brüt Marj', '%${d.brutMarjOrani.toStringAsFixed(1)}',
-                  Icons.percent, const Color(0xFF00838F)),
+                  Icons.percent, TsRenk.vurguTurkuaz),
               _statKart('Toplam Alacak', ParaUtils.formatla(d.toplamAlacak),
-                  Icons.arrow_downward, const Color(0xFF2E7D32)),
+                  Icons.arrow_downward, TsRenk.basarili),
               _statKart('Toplam Borç', ParaUtils.formatla(d.toplamBorc),
-                  Icons.arrow_upward, const Color(0xFFD84315)),
+                  Icons.arrow_upward, TsRenk.uyari),
             ],
           ),
           if (d.onayBekleyen > 0 || d.syncBekleyen > 0 || d.riskliCariSayisi > 0) ...[
@@ -136,7 +136,7 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
         if (d.onayBekleyen > 0)
           Expanded(child: _uyariRozeti(context,
               '${d.onayBekleyen} onay bekliyor', Icons.verified_user_outlined,
-              Colors.deepOrange, () => context.push('/onay-merkezi'))),
+              TsRenk.uyari, () => context.push('/onay-merkezi'))),
         if (d.onayBekleyen > 0 && (d.syncBekleyen > 0 || d.riskliCariSayisi > 0))
           const SizedBox(width: 8),
         if (d.syncBekleyen > 0)
@@ -147,7 +147,7 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
         if (d.riskliCariSayisi > 0)
           Expanded(child: _uyariRozeti(context,
               '${d.riskliCariSayisi} riskli cari', Icons.shield_outlined,
-              Colors.red, () => context.push('/risk-merkezi'))),
+              TsRenk.hata, () => context.push('/risk-merkezi'))),
       ]);
 
   Widget _uyariRozeti(BuildContext context, String metin, IconData ikon, Color renk, VoidCallback onTap) =>
@@ -336,7 +336,7 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
                 minHeight: 5,
                 backgroundColor: context.borderColor,
                 valueColor: AlwaysStoppedAnimation(
-                  oran < 0.3 ? Colors.red.shade600 : Colors.orange.shade700,
+                  oran < 0.3 ? TsRenk.hata : TsRenk.uyari,
                 ),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -359,17 +359,17 @@ class DashboardIstatistikSayfasi extends StatelessWidget {
       child: Row(children: [
         Expanded(
             child: _sayacKart(context, 'Ürün', d.toplamUrun, Icons.inventory_2,
-                const Color(0xFF3F51B5),
+                TsRenk.primary,
                 onTap: () => context.push('/urun'))),
         const SizedBox(width: 10),
         Expanded(
             child: _sayacKart(context, 'Kritik', d.kritikStok, Icons.warning_amber,
-                const Color(0xFFE65100),
+                TsRenk.uyari,
                 onTap: () => context.push('/stok'))),
         const SizedBox(width: 10),
         Expanded(
             child: _sayacKart(
-                context, 'Cari', d.toplamMusteri, Icons.people, const Color(0xFF00695C),
+                context, 'Cari', d.toplamMusteri, Icons.people, TsRenk.vurguTurkuaz,
                 onTap: () => context.push('/cari'))),
       ]),
     );

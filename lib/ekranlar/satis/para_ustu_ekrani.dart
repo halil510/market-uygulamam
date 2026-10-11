@@ -62,8 +62,8 @@ class _ParaUstuEkraniState extends ConsumerState<ParaUstuEkrani>
 
   Color _renk() {
     if (_alinan == 0) return context.textSecondary;
-    if (_alinan < widget.odenmesiGereken) return Colors.red;
-    return Colors.green;
+    if (_alinan < widget.odenmesiGereken) return TsRenk.hata;
+    return TsRenk.basarili;
   }
 
   @override
@@ -80,7 +80,7 @@ class _ParaUstuEkraniState extends ConsumerState<ParaUstuEkrani>
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [Colors.green.shade700, Colors.green.shade500]),
+            gradient: const LinearGradient(colors: [TsRenk.basarili, TsRenk.basarili]),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(children: [
@@ -125,7 +125,7 @@ class _ParaUstuEkraniState extends ConsumerState<ParaUstuEkrani>
               decoration: const InputDecoration(
                 hintText: "Manuel tutar girin...",
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.monetization_on, color: Colors.green),
+                prefixIcon: Icon(Icons.monetization_on, color: TsRenk.basarili),
                 suffixText: "₺",
               ),
               onChanged: (v) {
@@ -179,7 +179,7 @@ class _ParaUstuEkraniState extends ConsumerState<ParaUstuEkrani>
                   ? null
                   : () => Navigator.pop(context, _alinan == 0 ? null : _alinan),
               style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.green.shade700),
+          backgroundColor: TsRenk.basarili),
               icon: const Icon(Icons.check, color: Colors.white),
               label: Text(
                   _alinan == 0

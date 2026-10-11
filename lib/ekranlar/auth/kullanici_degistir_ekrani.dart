@@ -171,9 +171,9 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
   }
 
   Color _rolRenk(String rol) => switch (rol) {
-    'admin'    => Colors.red,
-    'mudur'    => Colors.purple,
-    'kasiyer'  => Colors.blue,
+    'admin'    => TsRenk.hata,
+    'mudur'    => TsRenk.vurguMor,
+    'kasiyer'  => TsRenk.bilgi,
     'depocu'   => Colors.brown,
     _          => context.textSecondary,
   };
@@ -382,7 +382,7 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
                     color: hata.isNotEmpty ? TsRenk.zemin(TsRenk.hata) : TsRenk.kart(context),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                        color: hata.isNotEmpty ? Colors.red.shade300 : TsRenk.ayirac(context),
+                        color: hata.isNotEmpty ? TsRenk.hata : TsRenk.ayirac(context),
                         width: hata.isNotEmpty ? 1.5 : 1),
                   ),
                   child: pin.isEmpty
@@ -413,10 +413,10 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.red.shade200)),
                 child: Row(children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                  const Icon(Icons.error_outline, color: TsRenk.hata, size: 16),
                   const SizedBox(width: 6),
                   Expanded(child: Text(hata,
-                      style: const TextStyle(fontSize: 12, color: Colors.red))),
+                      style: const TextStyle(fontSize: 12, color: TsRenk.hata))),
                 ]),
               );
             },
@@ -450,10 +450,10 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
                     child: Container(
                       height: 52, alignment: Alignment.center,
                       child: t == '⌫'
-                          ? const Icon(Icons.backspace_outlined, color: Colors.orange, size: 20)
+                          ? const Icon(Icons.backspace_outlined, color: TsRenk.uyari, size: 20)
                           : t == 'C'
                               ? const Text('C', style: TextStyle(fontSize: 18,
-                                  fontWeight: FontWeight.w700, color: Colors.red))
+                                  fontWeight: FontWeight.w700, color: TsRenk.hata))
                               : Text(t, style: const TextStyle(
                                   fontSize: 22, fontWeight: FontWeight.w600)),
                     ),

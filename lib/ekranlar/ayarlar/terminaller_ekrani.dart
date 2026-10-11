@@ -96,7 +96,7 @@ class _TerminallerEkraniState extends State<TerminallerEkrani> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              style: FilledButton.styleFrom(backgroundColor: TsRenk.hata),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Pasife Al'),
             ),
@@ -170,14 +170,14 @@ class _TerminallerEkraniState extends State<TerminallerEkrani> {
       decoration: BoxDecoration(
         color: context.cardBg,
         borderRadius: BorderRadius.circular(14),
-        border: t.aktif ? null : Border.all(color: Colors.red.withAlpha(120)),
+        border: t.aktif ? null : Border.all(color: TsRenk.hata.withAlpha(120)),
         boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 4)],
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Icon(Icons.point_of_sale_outlined,
-              color: t.aktif ? Colors.indigo : Colors.red),
+              color: t.aktif ? TsRenk.primary : TsRenk.hata),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -191,10 +191,10 @@ class _TerminallerEkraniState extends State<TerminallerEkrani> {
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                  decoration: BoxDecoration(color: Colors.indigo.withAlpha(30),
+                  decoration: BoxDecoration(color: TsRenk.primary.withAlpha(30),
                       borderRadius: BorderRadius.circular(6)),
                   child: const Text('Bu cihaz',
-                      style: TextStyle(fontSize: 10, color: Colors.indigo,
+                      style: TextStyle(fontSize: 10, color: TsRenk.primary,
                           fontWeight: FontWeight.w600)),
                 ),
               ],
@@ -209,7 +209,7 @@ class _TerminallerEkraniState extends State<TerminallerEkrani> {
               const Padding(
                 padding: EdgeInsets.only(top: 2),
                 child: Text('PASİF — yeni numara alamaz',
-                    style: TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontSize: 11, color: TsRenk.hata, fontWeight: FontWeight.w600)),
               ),
           ]),
         ),

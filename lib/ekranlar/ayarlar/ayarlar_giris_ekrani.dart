@@ -208,13 +208,13 @@ class _AyarlarGirisEkraniState extends ConsumerState<AyarlarGirisEkrani> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                       const Icon(Icons.lock_outline,
-                          color: Colors.orange, size: 14),
+                          color: TsRenk.uyari, size: 14),
                       const SizedBox(width: 6),
                       Text(
                         '${AuthServisi().aktifAd} — Yetkisiz',
                         style: const TextStyle(
                             fontSize: 12,
-                            color: Colors.orange,
+                            color: TsRenk.uyari,
                             fontWeight: FontWeight.w600),
                       ),
                     ]),
@@ -400,7 +400,7 @@ class _NumPad extends StatelessWidget {
                                     child: t == '⌫'
                                         ? const Icon(
                                             Icons.backspace_outlined,
-                                            color: Colors.orange, size: 22)
+                                            color: TsRenk.uyari, size: 22)
                                         : t == 'C'
                                             ? Text(t,
                                                 style: const TextStyle(

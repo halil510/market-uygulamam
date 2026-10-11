@@ -37,7 +37,7 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
               SizedBox(width: 8),
               Text('Eksik Cari Bilgisi'),
             ]),
@@ -49,7 +49,7 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
               ...kontrol.eksikAlanlar.map((e) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(children: [
-                      const Icon(Icons.circle, size: 6, color: Colors.orange),
+                      const Icon(Icons.circle, size: 6, color: TsRenk.uyari),
                       const SizedBox(width: 8),
                       Text(e),
                     ]),
@@ -265,7 +265,7 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(children: [
-              Icon(Icons.check_circle_outline, color: Colors.green),
+              Icon(Icons.check_circle_outline, color: TsRenk.basarili),
               SizedBox(width: 8),
               Text('Bayi Girişi Oluşturuldu'),
             ]),
@@ -308,7 +308,7 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.money_off, color: Colors.red),
+          Icon(Icons.money_off, color: TsRenk.hata),
           SizedBox(width: 8),
           Text('Borç Sil'),
         ]),
@@ -323,7 +323,7 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
               'Bu işlem GERİ ALINAMAZ. Hatayla girilmiş veya tahsil '
               'edilemeyen bir borcu kapatmak için kullanın — cari hareket '
               'geçmişinde izlenebilir kalır, hiçbir kayıt silinmez.',
-              style: TextStyle(fontSize: 11, color: Colors.orange),
+              style: TextStyle(fontSize: 11, color: TsRenk.uyari),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -343,7 +343,7 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(backgroundColor: TsRenk.hata, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Devam Et'),
           ),

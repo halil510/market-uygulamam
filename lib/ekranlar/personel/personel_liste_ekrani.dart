@@ -207,7 +207,7 @@ class _PersonelListeTab extends StatelessWidget {
             const SizedBox(width: 8),
             _StatChip(
                 '${personeller.where((p) => p.aktif).length} Aktif',
-                Icons.check_circle, Colors.green),
+                Icons.check_circle, TsRenk.basarili),
           ]),
         ),
 
@@ -245,8 +245,8 @@ class _PersonelKarti extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final renkler = [
-      Colors.blue.shade600, Colors.purple.shade600, Colors.teal.shade600,
-      Colors.orange.shade600, Colors.pink.shade600,
+      TsRenk.bilgi, TsRenk.vurguMor, TsRenk.vurguTurkuaz,
+      TsRenk.uyari, Colors.pink.shade600,
     ];
     final renk = renkler[personel.adSoyad.codeUnitAt(0) % renkler.length];
 
@@ -454,7 +454,7 @@ class _PersonelDetaySheet extends StatelessWidget {
             child: Text(personel.aktif ? 'Aktif' : 'Pasif',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: personel.aktif ? Colors.green.shade700 : Colors.red.shade700,
+                  color: personel.aktif ? TsRenk.basarili : TsRenk.hata,
                 )),
           ),
         ]),

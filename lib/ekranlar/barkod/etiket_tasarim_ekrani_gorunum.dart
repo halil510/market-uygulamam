@@ -282,7 +282,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
               _adetBtn(Icons.add, () => _adetDegistir(i, k.adet + 1)),
               const SizedBox(width: 4),
               _adetBtn(Icons.delete_outline, () => _adetDegistir(i, 0),
-                  renk: Colors.red),
+                  renk: TsRenk.hata),
             ]),
           ]),
         ]),
@@ -352,7 +352,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
             // sayılıyordu. Artık önizleme de aynı düzeni gösteriyor.
             Text('${ParaUtils.formatla(_onizlemeFiyat(u))} ₺',
                 style: TextStyle(fontSize: w * 0.045 * f, fontWeight: FontWeight.w900,
-                    color: Colors.red.shade700)),
+                    color: TsRenk.hata)),
           // Birim fiyat (1 KG / 1 LT) — termal ve ZPL çıktısıyla aynı hesap.
           if (_fiyatGoster && _birimFiyatliMod)
             Text(EtiketYardimci.birimFiyatMetni(u, _onizlemeFiyat(u)) ??
@@ -576,7 +576,7 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
               onPressed: () => _ayarlariUygula(s),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+              icon: const Icon(Icons.delete_outline, size: 20, color: TsRenk.hata),
               tooltip: 'Sil',
               onPressed: () => _ozelSablonSil('${s['ad']}'),
             ),

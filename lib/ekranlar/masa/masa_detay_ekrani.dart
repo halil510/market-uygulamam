@@ -134,16 +134,16 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
                   onTap: () => Navigator.pop(ctx, m),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: dolu ? Colors.red.withAlpha(25) : Colors.green.withAlpha(25),
+                      color: dolu ? TsRenk.hata.withAlpha(25) : TsRenk.basarili.withAlpha(25),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: dolu ? Colors.red.withAlpha(100) : Colors.green.withAlpha(100)),
+                      border: Border.all(color: dolu ? TsRenk.hata.withAlpha(100) : TsRenk.basarili.withAlpha(100)),
                     ),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Icon(dolu ? Icons.event_seat : Icons.check_circle_outline,
-                          color: dolu ? Colors.red : Colors.green, size: 22),
+                          color: dolu ? TsRenk.hata : TsRenk.basarili, size: 22),
                       const SizedBox(height: 4),
                       Text(m.ad, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                      if (dolu) const Text('Dolu — birleşir', style: TextStyle(fontSize: 9, color: Colors.red)),
+                      if (dolu) const Text('Dolu — birleşir', style: TextStyle(fontSize: 9, color: TsRenk.hata)),
                     ]),
                   ),
                 );
@@ -200,7 +200,7 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red), SizedBox(width: 8),
+          Icon(Icons.warning_amber_rounded, color: TsRenk.hata), SizedBox(width: 8),
           Text('Siparişi İptal Et'),
         ]),
         content: Text('"${widget.masa.ad}" masasındaki TÜM sipariş '
@@ -468,9 +468,9 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
                 Icon(Icons.swap_horiz, size: 20), SizedBox(width: 10), Text('Masayı Taşı / Birleştir'),
               ])),
               const PopupMenuItem(value: 'iptal', child: Row(children: [
-                Icon(Icons.cancel_outlined, size: 20, color: Colors.red),
+                Icon(Icons.cancel_outlined, size: 20, color: TsRenk.hata),
                 SizedBox(width: 10),
-                Text('Siparişi İptal Et', style: TextStyle(color: Colors.red)),
+                Text('Siparişi İptal Et', style: TextStyle(color: TsRenk.hata)),
               ])),
             ],
           ),

@@ -105,7 +105,7 @@ class _SifreEkraniState extends ConsumerState<SifreEkrani> {
       case 1:
         return ('Zayıf', TsRenk.hata);
       case 2:
-        return ('Orta', Colors.orange);
+        return ('Orta', TsRenk.uyari);
       case 3:
         return ('İyi', TsRenk.bilgi);
       default:

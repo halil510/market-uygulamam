@@ -153,9 +153,9 @@ class _BulutSyncEkraniState extends ConsumerState<BulutSyncEkrani> {
     // çiziyordu (uygulamanın geri kalanından farklı görünüyordu).
     // Artık paylaşılan BildirimServisi üzerinden gösteriliyor — tüm
     // çağrı yerleri (renk == red/green/orange) değişmeden aynı kalıyor.
-    if (renk == Colors.red) {
+    if (renk == TsRenk.hata) {
       BildirimServisi.hata(context, mesaj);
-    } else if (renk == Colors.orange) {
+    } else if (renk == TsRenk.uyari) {
       BildirimServisi.uyari(context, mesaj);
     } else {
       BildirimServisi.basari(context, mesaj);
@@ -377,17 +377,17 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
                               : _bagliMi == false ? Icons.error_outline
                               : Icons.sync,
                           size: 16,
-                          color: _bagliMi == true ? Colors.green
-                              : _bagliMi == false ? Colors.red
-                              : Colors.orange,
+                          color: _bagliMi == true ? TsRenk.basarili
+                              : _bagliMi == false ? TsRenk.hata
+                              : TsRenk.uyari,
                         ),
                         const SizedBox(width: 8),
                         Expanded(child: Text(_baglantiMesaj,
                             style: TextStyle(
                               fontSize: 12,
-                              color: _bagliMi == true ? Colors.green.shade800
-                                  : _bagliMi == false ? Colors.red.shade800
-                                  : Colors.orange.shade800,
+                              color: _bagliMi == true ? TsRenk.basarili
+                                  : _bagliMi == false ? TsRenk.hata
+                                  : TsRenk.uyari,
                             ))),
                       ]),
                     ),
@@ -412,18 +412,18 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
                   decoration: BoxDecoration(
                     color: TsRenk.zemin(TsRenk.uyari),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange.shade300),
+                    border: Border.all(color: TsRenk.uyari),
                   ),
                   child: Row(children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+                    const Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         '$_cozulmemisCakisma çözülmemiş senkron çakışması var',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.orange.shade900),
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: TsRenk.uyari),
                       ),
                     ),
-                    Icon(Icons.chevron_right, color: Colors.orange.shade800),
+                    const Icon(Icons.chevron_right, color: TsRenk.uyari),
                   ]),
                 ),
               ),
@@ -440,7 +440,7 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
                   label: 'Hızlı Gönder',
                   alt: 'Sadece değişenler →',
                   ikon: Icons.cloud_upload_outlined,
-                  renk: Colors.blue,
+                  renk: TsRenk.bilgi,
                   aktif: !_yukleniyor,
                   onPressed: () => _bulutaGonder(tamSync: false),
                 )),
@@ -449,7 +449,7 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
                   label: 'Hızlı Al',
                   alt: '← Sadece değişenler',
                   ikon: Icons.cloud_download_outlined,
-                  renk: Colors.green.shade700,
+                  renk: TsRenk.basarili,
                   aktif: !_yukleniyor,
                   onPressed: () => _buluttanAl(tamSync: false),
                 )),
@@ -462,7 +462,7 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
                   icon: const Icon(Icons.cloud_upload, size: 16),
                   label: const Text('Tam Gönder', style: TextStyle(fontSize: 12)),
                   style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.blue.shade700,
+                      foregroundColor: TsRenk.bilgi,
                       side: BorderSide(color: Colors.blue.shade200),
                       padding: const EdgeInsets.symmetric(vertical: 10)),
                 )),
@@ -472,7 +472,7 @@ Future<void> _buluttanAl({bool tamSync = false}) async {
                   icon: const Icon(Icons.cloud_download, size: 16),
                   label: const Text('Tam Al', style: TextStyle(fontSize: 12)),
                   style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.green.shade700,
+                      foregroundColor: TsRenk.basarili,
                       side: BorderSide(color: Colors.green.shade200),
                       padding: const EdgeInsets.symmetric(vertical: 10)),
                 )),

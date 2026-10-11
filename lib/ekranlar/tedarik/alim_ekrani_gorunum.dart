@@ -175,7 +175,7 @@ extension _AlimGorunum on _AlimEkraniState {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, color: Colors.red, size: 18),
+                  icon: const Icon(Icons.close, color: TsRenk.hata, size: 18),
                   onPressed: () => setState(() => _kalemler.removeAt(i)),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(
@@ -350,11 +350,11 @@ extension _AlimGorunum on _AlimEkraniState {
               decoration: BoxDecoration(
                 border: Border.all(
                   color: _tedarikci != null
-                      ? Colors.teal
+                      ? TsRenk.vurguTurkuaz
                       : TsRenk.ayirac(context),
                 ),
                 borderRadius: BorderRadius.circular(12),
-                color: _tedarikci != null ? TsRenk.zemin(Colors.teal) : null,
+                color: _tedarikci != null ? TsRenk.zemin(TsRenk.vurguTurkuaz) : null,
               ),
               child: Row(
                 children: [
@@ -362,7 +362,7 @@ extension _AlimGorunum on _AlimEkraniState {
                     Icons.business,
                     size: 18,
                     color: _tedarikci != null
-                        ? Colors.teal
+                        ? TsRenk.vurguTurkuaz
                         : context.textSecondary,
                   ),
                   const SizedBox(width: 8),
@@ -375,7 +375,7 @@ extension _AlimGorunum on _AlimEkraniState {
                       style: TextStyle(
                         fontSize: 13,
                         color: _tedarikci != null
-                            ? Colors.teal.shade700
+                            ? TsRenk.vurguTurkuaz
                             : TsRenk.metinIkincil(context),
                         fontWeight: _tedarikci != null
                             ? FontWeight.w600
@@ -441,9 +441,9 @@ extension _AlimGorunum on _AlimEkraniState {
                   color: TsRenk.zemin(TsRenk.uyari),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text(
+                child: const Text(
                   'Banka hesabı bulunamadı. Önce bir hesap ekleyin veya "Nakit" seçin.',
-                  style: TextStyle(fontSize: 11, color: Colors.orange.shade800),
+                  style: TextStyle(fontSize: 11, color: TsRenk.uyari),
                 ),
               ),
           ],

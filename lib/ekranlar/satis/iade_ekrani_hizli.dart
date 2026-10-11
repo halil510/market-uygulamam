@@ -128,16 +128,16 @@ extension _HizliTabExt on _IadeEkraniState {
                         Text(
                           'Kasadan nakit çıkışı OLUŞTURULMAZ — tutar ${_secilenCari!.unvan} '
                           'cari hesabının bakiyesinden gerçekten düşülecek/eklenecek.',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.blue.shade800),
+                          style: const TextStyle(
+                              fontSize: 12, color: TsRenk.bilgi),
                         ),
                       ] else if (secilenYontem != 'Nakit') ...[
                         const SizedBox(height: 8),
-                        Text(
+                        const Text(
                           'Bu seçenekte kasadan nakit çıkışı OLUŞTURULMAZ — iade '
                           'tutarını POS cihazından ayrıca müşteriye iade etmeniz gerekir.',
                           style: TextStyle(
-                              fontSize: 12, color: Colors.orange.shade800),
+                              fontSize: 12, color: TsRenk.uyari),
                         ),
                       ],
                     ]),

@@ -49,7 +49,7 @@ extension _YaziciAyarSekmeleri on _YaziciAyarEkraniState {
         const SizedBox(height: 8),
         ..._wifiCihazlar.map((ip) => _CihazKarti(
           ikon: Icons.print,
-          renkTon: Colors.green,
+          renkTon: TsRenk.basarili,
           baslik: ip,
           altBaslik: 'Port 9100 · TCP/IP',
           aksiyonEtiket: 'Bağlan',
@@ -107,7 +107,7 @@ extension _YaziciAyarSekmeleri on _YaziciAyarEkraniState {
         const SizedBox(height: 8),
         ..._btCihazlar.map((c) => _CihazKarti(
           ikon: Icons.bluetooth,
-          renkTon: Colors.purple,
+          renkTon: TsRenk.vurguMor,
           baslik: c.platformName.isNotEmpty ? c.platformName : 'Bilinmeyen Cihaz',
           altBaslik: c.remoteId.str,
           altBaslikMono: true,
@@ -164,7 +164,7 @@ extension _YaziciAyarSekmeleri on _YaziciAyarEkraniState {
         const SizedBox(height: 8),
         ..._usbCihazlar.map((c) => _CihazKarti(
           ikon: Icons.usb,
-          renkTon: Colors.deepOrange,
+          renkTon: TsRenk.uyari,
           baslik: c.productName?.isNotEmpty == true ? c.productName! : 'Bilinmeyen USB Cihaz',
           altBaslik: 'VID:${c.vid?.toRadixString(16) ?? '?'} PID:${c.pid?.toRadixString(16) ?? '?'}',
           altBaslikMono: true,

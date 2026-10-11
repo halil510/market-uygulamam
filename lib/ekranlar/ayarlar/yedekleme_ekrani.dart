@@ -102,7 +102,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: const Row(children: [
-          Icon(Icons.warning_amber, color: Colors.orange), SizedBox(width: 8),
+          Icon(Icons.warning_amber, color: TsRenk.uyari), SizedBox(width: 8),
           Text('Geri Yükle'),
         ]),
         content: Text('${y.tarihStr} tarihli yedek geri yüklenecek.\n\nMevcut veriler silinecek. Emin misiniz?'),
@@ -111,7 +111,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.orange),
+          backgroundColor: TsRenk.uyari),
             child: const Text('Geri Yükle'),
           ),
         ],
@@ -158,7 +158,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.red),
+          backgroundColor: TsRenk.hata),
             child: const Text('Sil'),
           ),
         ],
@@ -187,8 +187,8 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue.shade700, Colors.blue.shade900],
+                  gradient: const LinearGradient(
+                    colors: [TsRenk.bilgi, TsRenk.bilgi],
                     begin: Alignment.topLeft, end: Alignment.bottomRight),
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -228,12 +228,12 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
                       onPressed: _isleniyor ? null : _yedekAl,
                       icon: _isleniyor
                           ? const SizedBox(width: 16, height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue))
+                              child: CircularProgressIndicator(strokeWidth: 2, color: TsRenk.bilgi))
                           : const Icon(Icons.backup),
                       label: Text(_isleniyor ? 'Yedekleniyor...' : 'Şimdi Yedek Al'),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: Colors.blue.shade800,
+                        foregroundColor: TsRenk.bilgi,
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
@@ -298,10 +298,10 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: secili ? Colors.blue.shade600 : TsRenk.arkaplan(context),
+          color: secili ? TsRenk.bilgi : TsRenk.arkaplan(context),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: secili ? Colors.blue.shade600 : TsRenk.ayirac(context)),
+            color: secili ? TsRenk.bilgi : TsRenk.ayirac(context)),
         ),
         child: Column(children: [
           Icon(ikon, color: secili ? Colors.white : TsRenk.metinIkincil(context), size: 22),
@@ -330,7 +330,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
         ),
         child: Icon(
           y.otomatik ? Icons.auto_mode : Icons.backup,
-          color: y.otomatik ? Colors.green.shade600 : Colors.blue.shade600,
+          color: y.otomatik ? TsRenk.basarili : TsRenk.bilgi,
           size: 20,
         ),
       ),
@@ -339,7 +339,7 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
       subtitle: Row(children: [
         Text(y.otomatik ? 'Otomatik' : 'Manuel',
             style: TextStyle(fontSize: 11,
-                color: y.otomatik ? Colors.green.shade600 : Colors.blue.shade600)),
+                color: y.otomatik ? TsRenk.basarili : TsRenk.bilgi)),
         Text(' • ', style: TextStyle(fontSize: 11, color: context.textSecondary)),
         Text(y.boyutStr, style: TextStyle(fontSize: 11, color: context.textSecondary)),
       ]),
@@ -355,11 +355,11 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
           const PopupMenuItem(value: 'paylas', child: Row(children: [
             Icon(Icons.share, size: 18), SizedBox(width: 8), Text('Paylaş')])),
           const PopupMenuItem(value: 'geri', child: Row(children: [
-            Icon(Icons.restore, size: 18, color: Colors.orange), SizedBox(width: 8),
-            Text('Geri Yükle', style: TextStyle(color: Colors.orange))])),
+            Icon(Icons.restore, size: 18, color: TsRenk.uyari), SizedBox(width: 8),
+            Text('Geri Yükle', style: TextStyle(color: TsRenk.uyari))])),
           const PopupMenuItem(value: 'sil', child: Row(children: [
-            Icon(Icons.delete_outline, size: 18, color: Colors.red), SizedBox(width: 8),
-            Text('Sil', style: TextStyle(color: Colors.red))])),
+            Icon(Icons.delete_outline, size: 18, color: TsRenk.hata), SizedBox(width: 8),
+            Text('Sil', style: TextStyle(color: TsRenk.hata))])),
         ],
       ),
     ),

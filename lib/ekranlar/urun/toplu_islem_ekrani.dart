@@ -30,24 +30,24 @@ class _AlanTanim {
 
 const _alanlar = [
   // Fiyat grubu
-  _AlanTanim('alisFiyat',        'Alış Fiyatı (KDV Hariç)',  grup: 'Fiyat', sayisal: true,  ikon: Icons.south_east, renk: Color(0xFF1565C0)),
-  _AlanTanim('alisFiyatKdvDahil','Alış Fiyatı (KDV Dahil)', grup: 'Fiyat', sayisal: true,  ikon: Icons.south_east, renk: Color(0xFF1565C0)),
-  _AlanTanim('satisFiyati',      'Satış Fiyatı',             grup: 'Fiyat', sayisal: true,  ikon: Icons.north_east, renk: Color(0xFF2E7D32)),
-  _AlanTanim('indirimOrani',     'İndirim Oranı %',          grup: 'Fiyat', sayisal: true,  ikon: Icons.discount_outlined, renk: Color(0xFFE65100)),
-  _AlanTanim('indirimli_fiyat',  'İndirimli Fiyat',          grup: 'Fiyat', sayisal: true,  ikon: Icons.local_offer_outlined, renk: Color(0xFFE65100)),
+  _AlanTanim('alisFiyat',        'Alış Fiyatı (KDV Hariç)',  grup: 'Fiyat', sayisal: true,  ikon: Icons.south_east, renk: TsRenk.bilgi),
+  _AlanTanim('alisFiyatKdvDahil','Alış Fiyatı (KDV Dahil)', grup: 'Fiyat', sayisal: true,  ikon: Icons.south_east, renk: TsRenk.bilgi),
+  _AlanTanim('satisFiyati',      'Satış Fiyatı',             grup: 'Fiyat', sayisal: true,  ikon: Icons.north_east, renk: TsRenk.basarili),
+  _AlanTanim('indirimOrani',     'İndirim Oranı %',          grup: 'Fiyat', sayisal: true,  ikon: Icons.discount_outlined, renk: TsRenk.uyari),
+  _AlanTanim('indirimli_fiyat',  'İndirimli Fiyat',          grup: 'Fiyat', sayisal: true,  ikon: Icons.local_offer_outlined, renk: TsRenk.uyari),
   // Stok grubu
-  _AlanTanim('stok',             'Stok Miktarı',             grup: 'Stok',  sayisal: true,  ikon: Icons.inventory_2_outlined, renk: Color(0xFF6A1B9A)),
+  _AlanTanim('stok',             'Stok Miktarı',             grup: 'Stok',  sayisal: true,  ikon: Icons.inventory_2_outlined, renk: TsRenk.vurguMor),
   _AlanTanim('minimum_stok',     'Minimum Stok',             grup: 'Stok',  sayisal: true,  ikon: Icons.warning_amber_outlined, renk: Color(0xFFBF360C)),
   // KDV grubu
-  _AlanTanim('kdvOran',          'KDV Oranı %',              grup: 'KDV',   sayisal: true,  ikon: Icons.percent, renk: Color(0xFF00695C)),
+  _AlanTanim('kdvOran',          'KDV Oranı %',              grup: 'KDV',   sayisal: true,  ikon: Icons.percent, renk: TsRenk.vurguTurkuaz),
   // Grup/Sınıflandırma
-  _AlanTanim('anaGrup',          'Ana Grup',                 grup: 'Sınıf', sayisal: false, ikon: Icons.folder_outlined, renk: Color(0xFF37474F)),
-  _AlanTanim('altGrup',          'Alt Grup',                 grup: 'Sınıf', sayisal: false, ikon: Icons.folder_open_outlined, renk: Color(0xFF546E7A)),
-  _AlanTanim('alan1',            'Alan 1',                   grup: 'Sınıf', sayisal: false, ikon: Icons.label_outlined, renk: Color(0xFF455A64)),
-  _AlanTanim('alan2',            'Alan 2',                   grup: 'Sınıf', sayisal: false, ikon: Icons.label_outlined, renk: Color(0xFF455A64)),
-  _AlanTanim('marka',            'Marka',                    grup: 'Sınıf', sayisal: false, ikon: Icons.star_border_outlined, renk: Color(0xFF4527A0)),
-  _AlanTanim('mensei',           'Menşei',                   grup: 'Sınıf', sayisal: false, ikon: Icons.flag_outlined, renk: Color(0xFF2E7D32)),
-  _AlanTanim('birimAdi',         'Birim',                    grup: 'Sınıf', sayisal: false, ikon: Icons.straighten_outlined, renk: Color(0xFF00838F)),
+  _AlanTanim('anaGrup',          'Ana Grup',                 grup: 'Sınıf', sayisal: false, ikon: Icons.folder_outlined, renk: TsRenk.notr),
+  _AlanTanim('altGrup',          'Alt Grup',                 grup: 'Sınıf', sayisal: false, ikon: Icons.folder_open_outlined, renk: TsRenk.notr),
+  _AlanTanim('alan1',            'Alan 1',                   grup: 'Sınıf', sayisal: false, ikon: Icons.label_outlined, renk: TsRenk.notr),
+  _AlanTanim('alan2',            'Alan 2',                   grup: 'Sınıf', sayisal: false, ikon: Icons.label_outlined, renk: TsRenk.notr),
+  _AlanTanim('marka',            'Marka',                    grup: 'Sınıf', sayisal: false, ikon: Icons.star_border_outlined, renk: TsRenk.vurguMor),
+  _AlanTanim('mensei',           'Menşei',                   grup: 'Sınıf', sayisal: false, ikon: Icons.flag_outlined, renk: TsRenk.basarili),
+  _AlanTanim('birimAdi',         'Birim',                    grup: 'Sınıf', sayisal: false, ikon: Icons.straighten_outlined, renk: TsRenk.vurguTurkuaz),
   _AlanTanim('puan_orani',       'Puan Oranı',               grup: 'Diğer', sayisal: true,  ikon: Icons.stars_outlined, renk: Color(0xFFF9A825)),
 ];
 
@@ -547,17 +547,17 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
             decoration: BoxDecoration(
               color: _secili.isEmpty ? TsRenk.zemin(TsRenk.uyari) : TsRenk.zemin(TsRenk.basarili),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _secili.isEmpty ? Colors.orange.shade300 : Colors.green.shade300)),
+              border: Border.all(color: _secili.isEmpty ? TsRenk.uyari : TsRenk.basarili)),
             child: Row(children: [
               Icon(_secili.isEmpty ? Icons.warning_amber_rounded : Icons.check_circle_outline,
-                  color: _secili.isEmpty ? Colors.orange : Colors.green),
+                  color: _secili.isEmpty ? TsRenk.uyari : TsRenk.basarili),
               const SizedBox(width: 10),
               Text(
                 _secili.isEmpty ? 'Önce ürünler sekmesinden seçim yapın'
                     : '${_secili.length} ürün seçili — güncelleme hazır',
                 style: TextStyle(
                     fontWeight: FontWeight.w600, fontSize: 13,
-                    color: _secili.isEmpty ? Colors.orange.shade800 : Colors.green.shade800)),
+                    color: _secili.isEmpty ? TsRenk.uyari : TsRenk.basarili)),
             ]),
           ),
           const SizedBox(height: 16),

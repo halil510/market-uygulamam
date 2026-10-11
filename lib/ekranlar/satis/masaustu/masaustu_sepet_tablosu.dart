@@ -121,7 +121,7 @@ class MasaustuSepetTablosu extends StatelessWidget {
                         ? ParaUtils.formatla(k.toplamIndirim, simge: '')
                         : '',
                     sag: true,
-                    stil: yazi.copyWith(color: const Color(0xFFD84315)))),
+                    stil: yazi.copyWith(color: TsRenk.uyari))),
             _hucre(
                 7,
                 t(ParaUtils.formatla(k.toplamTutar, simge: ''),

@@ -362,7 +362,7 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.error_outline, size: 56, color: Colors.red),
+            const Icon(Icons.error_outline, size: 56, color: TsRenk.hata),
             const SizedBox(height: 12),
             const Text('Fiş yüklenemedi',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
@@ -554,7 +554,7 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
               ),
             ),
             if (iskontoOran > 0)
-              _badge('%${iskontoOran.toStringAsFixed(0)} ind.', Colors.orange),
+              _badge('%${iskontoOran.toStringAsFixed(0)} ind.', TsRenk.uyari),
             if (kdvOran > 0) ...[
               const SizedBox(width: 4),
               _badge('KDV %${kdvOran.toStringAsFixed(0)}', context.textSecondary),

@@ -60,11 +60,11 @@ class YetkiKoruma extends ConsumerWidget {
                 Container(
                   width: 80, height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.red.withAlpha(context.isDark ? 40 : 25),
+                    color: TsRenk.hata.withAlpha(context.isDark ? 40 : 25),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.lock_outline,
-                      color: Colors.red.shade700, size: 40),
+                  child: const Icon(Icons.lock_outline,
+                      color: TsRenk.hata, size: 40),
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -138,10 +138,10 @@ class MudurYetkiKorumasi extends ConsumerWidget {
               Container(
                 width: 80, height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.red.withAlpha(context.isDark ? 40 : 25),
+                  color: TsRenk.hata.withAlpha(context.isDark ? 40 : 25),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.lock_outline, color: Colors.red.shade700, size: 40),
+                child: const Icon(Icons.lock_outline, color: TsRenk.hata, size: 40),
               ),
               const SizedBox(height: 24),
               Text('Erişim Kısıtlı',

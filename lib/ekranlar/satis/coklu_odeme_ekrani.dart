@@ -37,10 +37,10 @@ class _YontemBilgi {
 }
 
 const _yontemler = [
-  _YontemBilgi('Nakit', Icons.payments_outlined, Color(0xFF2E7D32)),
-  _YontemBilgi('Kredi Kartı', Icons.credit_card, Color(0xFF1565C0)),
-  _YontemBilgi('Havale/EFT', Icons.account_balance, Color(0xFF6A1B9A)),
-  _YontemBilgi('Cari', Icons.person_outline, Color(0xFFEF6C00)),
+  _YontemBilgi('Nakit', Icons.payments_outlined, TsRenk.basarili),
+  _YontemBilgi('Kredi Kartı', Icons.credit_card, TsRenk.bilgi),
+  _YontemBilgi('Havale/EFT', Icons.account_balance, TsRenk.vurguMor),
+  _YontemBilgi('Cari', Icons.person_outline, TsRenk.uyari),
 ];
 
 class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
@@ -295,8 +295,8 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
     final etiket = _atamalar.isEmpty
         ? 'Tutar Girin'
         : (_kalan > 0.005 ? 'Kalan' : 'Para Üstü');
-    final renk = _kalan > 0.005 ? const Color(0xFFD32F2F)
-        : (_kalan < -0.005 ? const Color(0xFF2E7D32) : const Color(0xFF1565C0));
+    final renk = _kalan > 0.005 ? TsRenk.hata
+        : (_kalan < -0.005 ? TsRenk.basarili : TsRenk.bilgi);
 
     return Container(
       width: double.infinity,
@@ -388,14 +388,14 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
         tus('1', onTap: () => _rakamBas('1')),
         tus('2', onTap: () => _rakamBas('2')),
         tus('3', onTap: () => _rakamBas('3')),
-        tus('C', onTap: _temizleBas, bg: TsRenk.zemin(TsRenk.hata), fg: Colors.red),
+        tus('C', onTap: _temizleBas, bg: TsRenk.zemin(TsRenk.hata), fg: TsRenk.hata),
       ]),
       Row(children: [
         tus('4', onTap: () => _rakamBas('4')),
         tus('5', onTap: () => _rakamBas('5')),
         tus('6', onTap: () => _rakamBas('6')),
-        tus('⌫', onTap: _silBas, bg: TsRenk.zemin(TsRenk.uyari), fg: Colors.orange.shade800,
-            child: Icon(Icons.backspace_outlined, size: 20, color: Colors.orange.shade800)),
+        tus('⌫', onTap: _silBas, bg: TsRenk.zemin(TsRenk.uyari), fg: TsRenk.uyari,
+            child: const Icon(Icons.backspace_outlined, size: 20, color: TsRenk.uyari)),
       ]),
       Row(children: [
         tus('7', onTap: () => _rakamBas('7')),
@@ -404,8 +404,8 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
         tus('Kalan', onTap: () => setState(() {
           _ekran = _fmtSayi(_kalan <= 0 ? 0 : _kalan);
           _yeniGiris = true;
-        }), bg: TsRenk.zemin(TsRenk.bilgi), fg: Colors.blue.shade800,
-            child: Text('Kalan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.blue.shade800))),
+        }), bg: TsRenk.zemin(TsRenk.bilgi), fg: TsRenk.bilgi,
+            child: const Text('Kalan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: TsRenk.bilgi))),
       ]),
       Row(children: [
         tus('00', onTap: () { _rakamBas('0'); _rakamBas('0'); }),
@@ -424,7 +424,7 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
         Text('Ödenen', style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
         Text(ParaUtils.formatla(_toplamAtanan),
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
-                color: tamamlanabilir ? Colors.green : TsRenk.metinBirincil(context))),
+                color: tamamlanabilir ? TsRenk.basarili : TsRenk.metinBirincil(context))),
       ])),
       SizedBox(
         height: 52,
@@ -435,7 +435,7 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
               ? 'Satışı Tamamla'
               : (_atamalar.isEmpty ? 'Tutar girip yöntem seçin' : 'Kalan: ${ParaUtils.formatla(_kalan)}')),
           style: FilledButton.styleFrom(
-            backgroundColor: tamamlanabilir ? const Color(0xFF2E7D32) : TsRenk.metinIkincil(context),
+            backgroundColor: tamamlanabilir ? TsRenk.basarili : TsRenk.metinIkincil(context),
             foregroundColor: Colors.white,
             // Pasifken varsayılan gri-üstüne-gri "Kalan: ₺50,00" okunmuyordu.
             disabledBackgroundColor: TsRenk.arkaplan(context),

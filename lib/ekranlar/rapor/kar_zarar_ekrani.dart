@@ -240,7 +240,7 @@ class _OzetTab extends StatelessWidget {
           sol: _MetrikKart(
             baslik: 'Ciro',
             deger:  veri.ciro,
-            renk:   const Color(0xFF2196F3),
+            renk:   TsRenk.bilgi,
             ikon:   Icons.trending_up,
           ),
           sag: _MetrikKart(
@@ -255,14 +255,14 @@ class _OzetTab extends StatelessWidget {
           sol: _MetrikKart(
             baslik: 'Brüt Kâr',
             deger:  veri.brutKar,
-            renk:   const Color(0xFF4CAF50),
+            renk:   TsRenk.basarili,
             ikon:   Icons.show_chart,
             altMetin: '%${veri.brutKarOrani.toStringAsFixed(1)}',
           ),
           sag: _MetrikKart(
             baslik: 'Gider',
             deger:  veri.giderToplam,
-            renk:   const Color(0xFFC62828),
+            renk:   TsRenk.hata,
             ikon:   Icons.money_off,
           ),
         ),
@@ -274,12 +274,12 @@ class _OzetTab extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: veri.netKar >= 0
-                  ? [const Color(0xFF2E7D32), const Color(0xFF1B5E20)]
-                  : [const Color(0xFFC62828), const Color(0xFF7F0000)],
+                  ? [TsRenk.basarili, TsRenk.basarili]
+                  : [TsRenk.hata, const Color(0xFF7F0000)],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [BoxShadow(
-              color: (veri.netKar >= 0 ? Colors.green : Colors.red).withAlpha(76),
+              color: (veri.netKar >= 0 ? TsRenk.basarili : TsRenk.hata).withAlpha(76),
               blurRadius: 16, offset: const Offset(0, 6),
             )],
           ),
@@ -563,7 +563,7 @@ class _GiderTab extends StatelessWidget {
                   ),
                   child: Text(
                     'Toplam: ${ParaUtils.formatla(veri.giderToplam)}',
-                    style: TsMetin.kucukVurgu.copyWith(color: Colors.red.shade700),
+                    style: TsMetin.kucukVurgu.copyWith(color: TsRenk.hata),
                   ),
                 ),
               ]),
@@ -580,8 +580,8 @@ class _GiderTab extends StatelessWidget {
                       color: TsRenk.zemin(TsRenk.hata),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.category_outlined,
-                        color: Colors.red.shade400, size: 20),
+                    child: const Icon(Icons.category_outlined,
+                        color: TsRenk.hata, size: 20),
                   ),
                   title: Text(kat,
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
@@ -589,12 +589,12 @@ class _GiderTab extends StatelessWidget {
                     value: oran,
                     minHeight: 4,
                     backgroundColor: TsRenk.arkaplan(context),
-                    valueColor: AlwaysStoppedAnimation(Colors.red.shade400),
+                    valueColor: const AlwaysStoppedAnimation(TsRenk.hata),
                   ),
                   trailing: Text(ParaUtils.formatla(top),
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          color: Colors.red.shade600)),
+                          color: TsRenk.hata)),
                 );
               }),
             ],

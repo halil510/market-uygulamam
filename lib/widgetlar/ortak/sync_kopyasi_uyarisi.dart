@@ -8,6 +8,7 @@
 // üst widget her yeniden çizildiğinde TÜM kopya satışlar cari join'iyle
 // yeniden çekiliyordu — sadece adet göstermek için. Artık sorgu bir kez,
 // COUNT(*) ile çalışır.
+import '../../tasarim_sistemi/ts_token.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -37,7 +38,7 @@ class _SyncKopyasiUyarisiState extends State<SyncKopyasiUyarisi> {
       builder: (context, snapshot) {
         final adet = snapshot.data ?? 0;
         if (adet == 0) return const SizedBox.shrink();
-        final turuncu = Colors.orange;
+        const turuncu = TsRenk.uyari;
         return InkWell(
           onTap: () => context.push('/ayarlar/sync-cakismalari'),
           child: Container(
@@ -45,21 +46,21 @@ class _SyncKopyasiUyarisiState extends State<SyncKopyasiUyarisi> {
             margin: widget.kart ? const EdgeInsets.only(bottom: 10) : null,
             padding: EdgeInsets.symmetric(horizontal: widget.kart ? 12 : 16, vertical: 10),
             decoration: BoxDecoration(
-              color: turuncu.shade50,
+              color: TsRenk.zemin(turuncu, opaklik: 0.08),
               borderRadius: widget.kart ? BorderRadius.circular(10) : null,
-              border: widget.kart ? Border.all(color: turuncu.shade200) : null,
+              border: widget.kart ? Border.all(color: turuncu.withValues(alpha: 0.35)) : null,
             ),
             child: Row(children: [
-              Icon(Icons.warning_amber_rounded, size: 16, color: turuncu.shade800),
+              const Icon(Icons.warning_amber_rounded, size: 16, color: turuncu),
               const SizedBox(width: 8),
               Expanded(
                 child: Text('$adet ${widget.mesaj}',
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 12,
-                        color: turuncu.shade900,
+                        color: turuncu,
                         fontWeight: FontWeight.w600)),
               ),
-              Icon(Icons.chevron_right, size: 18, color: turuncu.shade800),
+              const Icon(Icons.chevron_right, size: 18, color: turuncu),
             ]),
           ),
         );

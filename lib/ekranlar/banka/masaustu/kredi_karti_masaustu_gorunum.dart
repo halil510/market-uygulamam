@@ -166,8 +166,8 @@ class _KrediKartiMasaustuGorunumState extends State<KrediKartiMasaustuGorunum> {
         tuslar: [
           if (widget.yetkili)
             AltTus('F1', 'Kart Ekle', Icons.add_card_outlined,
-                const Color(0xFF2E7D32), widget.onEkle),
-          AltTus('F2', 'Detay', Icons.credit_card, const Color(0xFF1565C0),
+                TsRenk.basarili, widget.onEkle),
+          AltTus('F2', 'Detay', Icons.credit_card, TsRenk.bilgi,
               s == null ? null : () => widget.onDetay(s)),
         ],
       ),

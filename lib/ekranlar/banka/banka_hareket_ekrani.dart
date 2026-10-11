@@ -107,7 +107,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 56, color: Colors.red),
+              const Icon(Icons.error_outline, size: 56, color: TsRenk.hata),
               const SizedBox(height: 12),
               Text('Hata: $_hata', textAlign: TextAlign.center),
               const SizedBox(height: 16),
@@ -302,7 +302,7 @@ class _BankaHareketEkraniState extends ConsumerState<BankaHareketEkrani> {
     // hep "Gelen" (yeşil, aşağı ok) gibi görünüyordu. Artık gerçek
     // işlem tipine bakılıyor.
     final giris = hareket.islemTipi == 'Gelen';
-    final renk = giris ? Colors.green : Colors.red;
+    final renk = giris ? TsRenk.basarili : TsRenk.hata;
     final fmt = DateFormat('dd.MM.yyyy HH:mm');
 
     return Container(

@@ -537,7 +537,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
         builder: (ctx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(children: [
-            Icon(Icons.shopping_basket_outlined, color: Colors.teal),
+            Icon(Icons.shopping_basket_outlined, color: TsRenk.vurguTurkuaz),
             SizedBox(width: 8),
             Text('Tedarikçi Seç'),
           ]),
@@ -560,9 +560,9 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
                     return ListTile(
                       dense: true,
                       leading: CircleAvatar(radius: 18,
-                        backgroundColor: TsRenk.zemin(Colors.teal),
+                        backgroundColor: TsRenk.zemin(TsRenk.vurguTurkuaz),
                         child: Text(t.unvan.isNotEmpty ? t.unvan[0].toUpperCase() : '?',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.teal.shade700))),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TsRenk.vurguTurkuaz))),
                       title: Text(t.unvan, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                       subtitle: t.telefon != null ? Text(t.telefon!) : null,
                       onTap: () => Navigator.pop(ctx, t),
@@ -599,7 +599,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Satış askıya alındı'),
-            backgroundColor: Colors.orange,
+            backgroundColor: TsRenk.uyari,
           ),
         );
       }

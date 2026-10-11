@@ -164,7 +164,7 @@ class MasaDetayIcerik extends StatelessWidget {
                     label: 'Hesap İstendi',
                     onTap: onHesapIstendi,
                     outlined: true,
-                    color: Colors.orange,
+                    color: TsRenk.uyari,
                     genislik: kucuk,
                   ),
                   _ActionButton(
@@ -211,7 +211,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final btnColor = color ?? const Color(0xFF6D4C41);
+    final btnColor = color ?? TsRenk.masaAcik;
     final width = genislik ?? (MediaQuery.of(context).size.width - 60) / (filled ? 2 : 3);
 
     if (filled) {
@@ -285,7 +285,7 @@ class _SiparisKalemListesiState extends ConsumerState<_SiparisKalemListesi> {
             Container(
               width: 44, height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFF6D4C41).withAlpha(26),
+                color: TsRenk.masaAcik.withAlpha(26),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -293,7 +293,7 @@ class _SiparisKalemListesiState extends ConsumerState<_SiparisKalemListesi> {
                   k.miktar == k.miktar.roundToDouble()
                       ? k.miktar.toInt().toString()
                       : k.miktar.toStringAsFixed(1),
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF6D4C41)),
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: TsRenk.masaAcik),
                 ),
               ),
             ),
@@ -315,7 +315,7 @@ class _SiparisKalemListesiState extends ConsumerState<_SiparisKalemListesi> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(k.not_!,
-                        style: TextStyle(fontSize: 10, color: Colors.orange.shade800)),
+                        style: const TextStyle(fontSize: 10, color: TsRenk.uyari)),
                   ),
               ]),
             ),
@@ -334,7 +334,7 @@ class _SiparisKalemListesiState extends ConsumerState<_SiparisKalemListesi> {
               ),
             ]),
             IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+              icon: const Icon(Icons.delete_outline, size: 20, color: TsRenk.hata),
               onPressed: () => _kalemSil(k.id!),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -347,9 +347,9 @@ class _SiparisKalemListesiState extends ConsumerState<_SiparisKalemListesi> {
 
   Color _durumRenk(String durum) {
     switch (durum) {
-      case 'beklemede': return const Color(0xFFD32F2F);
-      case 'hazirlaniyor': return const Color(0xFFEF6C00);
-      case 'hazir': return const Color(0xFF2E7D32);
+      case 'beklemede': return TsRenk.hata;
+      case 'hazirlaniyor': return TsRenk.uyari;
+      case 'hazir': return TsRenk.basarili;
       case 'servis_edildi': return const Color(0xFF9E9E9E);
       default: return context.textSecondary;
     }

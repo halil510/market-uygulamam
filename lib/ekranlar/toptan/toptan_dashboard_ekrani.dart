@@ -289,7 +289,7 @@ class _ToptanDashboardEkraniState extends State<ToptanDashboardEkrani> {
                         ),
                         const SizedBox(width: 6),
                         Text('Bakiye: ${ParaUtils.formatla(bayi.bakiye)}',
-                            style: TextStyle(fontSize: 12, color: limitAsimi ? Colors.red : context.textSecondary,
+                            style: TextStyle(fontSize: 12, color: limitAsimi ? TsRenk.hata : context.textSecondary,
                                 fontWeight: limitAsimi ? FontWeight.w700 : FontWeight.normal)),
                       ]),
                       trailing: const Icon(Icons.chevron_right),

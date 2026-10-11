@@ -226,7 +226,7 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
               child: const Text('İptal')),
           FilledButton(
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.red),
+          backgroundColor: TsRenk.hata),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Evet, Al'),
           ),

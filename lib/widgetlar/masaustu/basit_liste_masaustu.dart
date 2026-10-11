@@ -4,6 +4,7 @@
 // arama kutusu + tablo + alt şerit (F1 Ekle, F2 Düzenle, F4 Sil) + sağ tık.
 // Mobil kart listesi masaüstünde dev kartlar ve "sola kaydırarak sil" gibi
 // fareyle zor etkileşimler gösteriyordu (canlı tarama 2026-10-08).
+import '../../tasarim_sistemi/ts_token.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../cekirdek/utils/metin_arama.dart';
@@ -142,12 +143,12 @@ class _BasitListeMasaustuState<T> extends State<BasitListeMasaustu<T>> {
         tuslar: [
           if (widget.onEkle != null)
             AltTus('F1', 'Ekle', Icons.add_circle_outline,
-                const Color(0xFF2E7D32), widget.onEkle),
+                TsRenk.basarili, widget.onEkle),
           if (widget.onDuzenle != null)
-            AltTus('F2', 'Düzenle', Icons.edit_outlined, const Color(0xFF1565C0),
+            AltTus('F2', 'Düzenle', Icons.edit_outlined, TsRenk.bilgi,
                 s == null ? null : () => widget.onDuzenle!(s)),
           if (widget.onSil != null)
-            AltTus('F4', 'Sil', Icons.delete_outline, const Color(0xFFC62828),
+            AltTus('F4', 'Sil', Icons.delete_outline, TsRenk.hata,
                 s == null || !_silinebilir(s) ? null : () => widget.onSil!(s)),
         ],
       ),

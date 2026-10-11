@@ -246,11 +246,11 @@ class _DepoTransferEkraniState extends ConsumerState<DepoTransferEkrani> {
           ),
           Row(children: [
             Expanded(child: _DepoSec('Kaynak', _kaynakSubeId, _subeler,
-                (v) => setState(() => _kaynakSubeId = v), Colors.orange.shade700)),
+                (v) => setState(() => _kaynakSubeId = v), TsRenk.uyari)),
             Padding(padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Icon(Icons.arrow_forward, color: TsRenk.metinIkincil(context))),
             Expanded(child: _DepoSec('Hedef', _hedefSubeId, _subeler,
-                (v) => setState(() => _hedefSubeId = v), Colors.green.shade700)),
+                (v) => setState(() => _hedefSubeId = v), TsRenk.basarili)),
           ]),
           const SizedBox(height: 8),
           TextField(
@@ -479,11 +479,11 @@ class _TransferTablosuState extends State<_TransferTablosu> {
           AltOzet('Toplam Adet', toplamAdet.toStringAsFixed(0)),
         ],
         tuslar: [
-          AltTus('F2', 'Miktar Gir', Icons.edit_outlined, const Color(0xFF1565C0),
+          AltTus('F2', 'Miktar Gir', Icons.edit_outlined, TsRenk.bilgi,
               u == null ? null : () => widget.onMiktarGir(u)),
-          AltTus('F4', 'Çıkar', Icons.remove_circle_outline, const Color(0xFFC62828),
+          AltTus('F4', 'Çıkar', Icons.remove_circle_outline, TsRenk.hata,
               u == null || _m(u) <= 0 ? null : () => widget.onKaldir(u)),
-          AltTus('F9', 'Transfer Et', Icons.swap_horiz, const Color(0xFF2E7D32),
+          AltTus('F9', 'Transfer Et', Icons.swap_horiz, TsRenk.basarili,
               _seciliSayisi == 0 || widget.islemde ? null : widget.onTransfer),
         ],
       ),

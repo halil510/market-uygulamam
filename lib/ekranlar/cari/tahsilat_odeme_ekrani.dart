@@ -169,7 +169,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
             SizedBox(width: 8),
             Text('Emin misiniz?'),
           ]),
@@ -187,7 +187,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
                 child: const Text('İptal')),
             FilledButton(
               style: FilledButton.styleFrom(
-                  backgroundColor: Colors.orange.shade800,
+                  backgroundColor: TsRenk.uyari,
                   foregroundColor: Colors.white),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Evet, Devam Et'),
@@ -361,7 +361,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
                     style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
-                        color: _cari!.bakiye > 0 ? Colors.red : Colors.green)),
+                        color: _cari!.bakiye > 0 ? TsRenk.hata : TsRenk.basarili)),
               ],
             ),
           ),
@@ -408,10 +408,10 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
                 decoration: BoxDecoration(
                     color: TsRenk.zemin(TsRenk.uyari),
                     borderRadius: BorderRadius.circular(10)),
-                child: Text(
+                child: const Text(
                     'Banka hesabı bulunamadı. Önce bir hesap ekleyin veya "Nakit" seçin.',
                     style:
-                        TextStyle(fontSize: 11, color: Colors.orange.shade800)),
+                        TextStyle(fontSize: 11, color: TsRenk.uyari)),
               ),
             const SizedBox(height: 12),
           ],
@@ -435,10 +435,10 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
                 decoration: BoxDecoration(
                     color: TsRenk.zemin(TsRenk.uyari),
                     borderRadius: BorderRadius.circular(10)),
-                child: Text(
+                child: const Text(
                     'Kredi kartı bulunamadı. Önce bir kart ekleyin veya başka yöntem seçin.',
                     style:
-                        TextStyle(fontSize: 11, color: Colors.orange.shade800)),
+                        TextStyle(fontSize: 11, color: TsRenk.uyari)),
               ),
             const SizedBox(height: 12),
           ],

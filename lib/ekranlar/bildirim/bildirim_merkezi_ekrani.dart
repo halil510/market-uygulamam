@@ -161,12 +161,12 @@ class _BildirimKarti extends StatelessWidget {
   // dolmuş ürün) varsayılan gri renk/ikonla gösteriliyordu, kırmızı/
   // acil görünmüyordu.
   static const _renkler = {
-    'kritik': Color(0xFFD32F2F),
-    'hata':   Color(0xFFE65100),
-    'uyari':  Color(0xFFF57F17),
-    'basari': Color(0xFF2E7D32),
-    'bilgi':  Color(0xFF1565C0),
-    'sistem': Color(0xFF546E7A),
+    'kritik': TsRenk.hata,
+    'hata':   TsRenk.uyari,
+    'uyari':  TsRenk.uyari,
+    'basari': TsRenk.basarili,
+    'bilgi':  TsRenk.bilgi,
+    'sistem': TsRenk.notr,
   };
   static const _ikonlar = {
     'kritik': Icons.error_rounded,
@@ -177,7 +177,7 @@ class _BildirimKarti extends StatelessWidget {
     'sistem': Icons.settings_outlined,
   };
 
-  Color get _renk => _renkler[bildirim.tur] ?? const Color(0xFF546E7A);
+  Color get _renk => _renkler[bildirim.tur] ?? TsRenk.notr;
   IconData get _ikon => _ikonlar[bildirim.tur] ?? Icons.notifications_outlined;
 
   String _zamanFormat(DateTime dt) {
@@ -202,7 +202,7 @@ class _BildirimKarti extends StatelessWidget {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        decoration: BoxDecoration(color: Colors.blue.shade400, borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(color: TsRenk.bilgi, borderRadius: BorderRadius.circular(14)),
         child: const Icon(Icons.done_all, color: Colors.white),
       ),
       child: GestureDetector(

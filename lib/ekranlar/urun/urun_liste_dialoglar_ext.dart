@@ -231,7 +231,7 @@ extension _UrunListeDialoglarExt on _UrunListeEkraniState {
               child: const Text('İptal')),
           FilledButton(
             style: FilledButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.red),
+                foregroundColor: Colors.white, backgroundColor: TsRenk.hata),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Sil'),
           ),

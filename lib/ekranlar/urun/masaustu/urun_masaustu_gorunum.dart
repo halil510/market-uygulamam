@@ -426,15 +426,15 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
           AltOzet('Maliyet Değeri', ParaUtils.formatla(_ozet?.maliyet ?? maliyet)),
         ],
         tuslar: [
-          AltTus('F1', 'Ekle', Icons.add, const Color(0xFF2E7D32), widget.onEkle),
-          AltTus('F2', 'Düzenle', Icons.edit_outlined, const Color(0xFF1565C0),
+          AltTus('F1', 'Ekle', Icons.add, TsRenk.basarili, widget.onEkle),
+          AltTus('F2', 'Düzenle', Icons.edit_outlined, TsRenk.bilgi,
               _secili == null || _coklu ? null : () => _duzenle(_secili!)),
           AltTus('F3', _coklu ? 'Seçilileri Sil' : 'Sil', Icons.delete_outline,
-              const Color(0xFFC62828),
+              TsRenk.hata,
               _coklu
                   ? widget.onTopluSil
                   : (_secili == null ? null : () => widget.onSil(_secili!))),
-          AltTus('F6', 'Menü', Icons.menu, const Color(0xFF546E7A),
+          AltTus('F6', 'Menü', Icons.menu, TsRenk.notr,
               _secili == null ? null : () => _menu(_secili!, const Offset(400, 300))),
         ],
       ),

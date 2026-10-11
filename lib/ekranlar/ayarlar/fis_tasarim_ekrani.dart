@@ -364,9 +364,9 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
 
   PreferredSizeWidget _icSekmeBari({required bool beyaz}) => TabBar(
         controller: _tab,
-        labelColor: beyaz ? Colors.white : const Color(0xFF4361EE),
+        labelColor: beyaz ? Colors.white : TsRenk.primary,
         unselectedLabelColor: beyaz ? Colors.white60 : context.textSecondary,
-        indicatorColor: beyaz ? Colors.white : const Color(0xFF4361EE),
+        indicatorColor: beyaz ? Colors.white : TsRenk.primary,
         tabs: const [
           Tab(text: 'İçerik'),
           Tab(text: 'Tasarım'),
@@ -614,7 +614,7 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
         TextButton(onPressed: _logoSec, child: Text(var_ ? 'Değiştir' : 'Yükle')),
         if (var_)
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+            icon: const Icon(Icons.delete_outline, color: TsRenk.hata, size: 20),
             onPressed: _logoKaldir,
           ),
       ]),
@@ -660,7 +660,7 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF4361EE), width: 1.5),
+            borderSide: const BorderSide(color: TsRenk.primary, width: 1.5),
           ),
           filled: true,
           fillColor: TsRenk.kart(context),

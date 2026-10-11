@@ -294,17 +294,17 @@ void initState() {
                   ),
                   items: const [
                     DropdownMenuItem(value: 1, child: Row(children: [
-                      Icon(Icons.circle, color: Colors.red, size: 12),
+                      Icon(Icons.circle, color: TsRenk.hata, size: 12),
                       SizedBox(width: 4),
                       Text('Kritik'),
                     ])),
                     DropdownMenuItem(value: 2, child: Row(children: [
-                      Icon(Icons.circle, color: Colors.orange, size: 12),
+                      Icon(Icons.circle, color: TsRenk.uyari, size: 12),
                       SizedBox(width: 4),
                       Text('Orta'),
                     ])),
                     DropdownMenuItem(value: 3, child: Row(children: [
-                      Icon(Icons.circle, color: Colors.green, size: 12),
+                      Icon(Icons.circle, color: TsRenk.basarili, size: 12),
                       SizedBox(width: 4),
                       Text('Düşük'),
                     ])),

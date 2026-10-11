@@ -165,13 +165,13 @@ class _OzetTab extends StatelessWidget {
         shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
         crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.6,
         children: [
-          _KpiKart('Toplam Ciro', ParaUtils.formatla(ciro), Icons.trending_up, Colors.blue.shade700),
-          _KpiKart('Satış Sayısı', '$sayi adet', Icons.receipt_outlined, Colors.green.shade700),
-          _KpiKart('Ort. Fiş', ParaUtils.formatla(ortalama), Icons.calculate_outlined, Colors.purple.shade700),
-          _KpiKart('İskonto', ParaUtils.formatla(iskonto), Icons.discount_outlined, Colors.orange.shade700),
-          _KpiKart('İade', ParaUtils.formatla(iade), Icons.assignment_return_outlined, Colors.red.shade700),
-          _KpiKart('Net Ciro (iade düşülmüş)', ParaUtils.formatla(netCiro), Icons.account_balance_wallet_outlined, Colors.teal.shade700),
-          _KpiKart('Brüt Kâr', ParaUtils.formatla(brutKar), Icons.savings_outlined, brutKar >= 0 ? Colors.green.shade800 : Colors.red.shade700),
+          _KpiKart('Toplam Ciro', ParaUtils.formatla(ciro), Icons.trending_up, TsRenk.bilgi),
+          _KpiKart('Satış Sayısı', '$sayi adet', Icons.receipt_outlined, TsRenk.basarili),
+          _KpiKart('Ort. Fiş', ParaUtils.formatla(ortalama), Icons.calculate_outlined, TsRenk.vurguMor),
+          _KpiKart('İskonto', ParaUtils.formatla(iskonto), Icons.discount_outlined, TsRenk.uyari),
+          _KpiKart('İade', ParaUtils.formatla(iade), Icons.assignment_return_outlined, TsRenk.hata),
+          _KpiKart('Net Ciro (iade düşülmüş)', ParaUtils.formatla(netCiro), Icons.account_balance_wallet_outlined, TsRenk.vurguTurkuaz),
+          _KpiKart('Brüt Kâr', ParaUtils.formatla(brutKar), Icons.savings_outlined, brutKar >= 0 ? TsRenk.basarili : TsRenk.hata),
         ],
       ),
       if (iptal > 0) ...[
@@ -182,9 +182,9 @@ class _OzetTab extends StatelessWidget {
               color: TsRenk.zemin(TsRenk.hata), borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.red.shade200)),
           child: Row(children: [
-            const Icon(Icons.cancel_outlined, color: Colors.red, size: 18),
+            const Icon(Icons.cancel_outlined, color: TsRenk.hata, size: 18),
             const SizedBox(width: 8),
-            Text('$iptal iptal satış', style: TextStyle(color: Colors.red.shade700, fontSize: 13)),
+            Text('$iptal iptal satış', style: const TextStyle(color: TsRenk.hata, fontSize: 13)),
           ]),
         ),
       ],
@@ -287,10 +287,10 @@ class _ListeTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                  color: (iptal ? Colors.red : AppRenkler.primary).withAlpha(20),
+                  color: (iptal ? TsRenk.hata : AppRenkler.primary).withAlpha(20),
                   borderRadius: BorderRadius.circular(8)),
               child: Icon(iptal ? Icons.cancel_outlined : Icons.receipt_outlined,
-                  color: iptal ? Colors.red : AppRenkler.primary, size: 18),
+                  color: iptal ? TsRenk.hata : AppRenkler.primary, size: 18),
             ),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -303,10 +303,10 @@ class _ListeTab extends StatelessWidget {
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Text(ParaUtils.formatla(s.genelToplam),
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14,
-                      color: iptal ? Colors.red : AppRenkler.primary)),
+                      color: iptal ? TsRenk.hata : AppRenkler.primary)),
               if (iptal)
                 const Text('İPTAL', style: TextStyle(
-                    fontSize: 10, fontWeight: FontWeight.w700, color: Colors.red)),
+                    fontSize: 10, fontWeight: FontWeight.w700, color: TsRenk.hata)),
             ]),
           ]),
         );

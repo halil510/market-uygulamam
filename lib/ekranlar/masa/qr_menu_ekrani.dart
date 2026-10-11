@@ -353,7 +353,7 @@ class _UrunKartiMusteri extends StatelessWidget {
                         onTap: onCikar,
                         child: Container(
                           width: 28, height: 28,
-                          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                          decoration: const BoxDecoration(color: TsRenk.hata, shape: BoxShape.circle),
                           child: const Icon(Icons.remove, size: 14, color: Colors.white),
                         ),
                       ),
@@ -362,7 +362,7 @@ class _UrunKartiMusteri extends StatelessWidget {
                         onTap: onEkle,
                         child: Container(
                           width: 28, height: 28,
-                          decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                          decoration: const BoxDecoration(color: TsRenk.basarili, shape: BoxShape.circle),
                           child: const Icon(Icons.add, size: 14, color: Colors.white),
                         ),
                       ),

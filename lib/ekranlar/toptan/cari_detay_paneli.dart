@@ -216,7 +216,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
         builder: (c) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(children: [
-            Icon(Icons.info_outline, color: Colors.orange),
+            Icon(Icons.info_outline, color: TsRenk.uyari),
             SizedBox(width: 8),
             Text('Bu Satış Faturalandırılmış'),
           ]),
@@ -321,7 +321,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
               SizedBox(width: 8),
               Text('Eksik Cari Bilgisi'),
             ]),
@@ -332,7 +332,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
               ...kontrol.eksikAlanlar.map((e) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(children: [
-                      const Icon(Icons.circle, size: 6, color: Colors.orange),
+                      const Icon(Icons.circle, size: 6, color: TsRenk.uyari),
                       const SizedBox(width: 8),
                       Text(e),
                     ]),
@@ -411,7 +411,7 @@ class _CariDetayPaneliState extends State<_CariDetayPaneli> with SingleTickerPro
           margin: const EdgeInsets.all(14),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [Color(0xFF4E342E), Color(0xFF6D4C41)]),
+            gradient: const LinearGradient(colors: [TsRenk.masaKoyu, TsRenk.masaAcik]),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

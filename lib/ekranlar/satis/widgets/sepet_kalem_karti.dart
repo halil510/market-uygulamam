@@ -27,10 +27,10 @@ class SepetKalemKarti extends StatelessWidget {
     required this.kgMiMi,
   });
 
-  static const _primary   = Color(0xFF4361EE);
-  static const _danger    = Color(0xFFE53935);
-  static const _success   = Color(0xFF2E7D32);
-  static const _orange    = Color(0xFFE65100);
+  static const _primary   = TsRenk.primary;
+  static const _danger    = TsRenk.hata;
+  static const _success   = TsRenk.basarili;
+  static const _orange    = TsRenk.uyari;
 
   @override
   Widget build(BuildContext context) {

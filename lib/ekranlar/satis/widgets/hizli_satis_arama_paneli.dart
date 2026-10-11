@@ -65,7 +65,7 @@ class HizliSatisAramaPaneli extends StatelessWidget {
               width: 46, height: 46,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                  colors: [TsRenk.basarili, TsRenk.basarili],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),

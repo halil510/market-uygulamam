@@ -56,7 +56,7 @@ class _LogEkraniState extends ConsumerState<LogEkrani> {
           FilledButton(
             onPressed: () => Navigator.pop(bCtx, true),
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.red),
+          backgroundColor: TsRenk.hata),
             child: const Text('Temizle'),
           ),
         ],
@@ -81,7 +81,7 @@ class _LogEkraniState extends ConsumerState<LogEkrani> {
   /// 🔥 Tüm logları panoya kopyala (formatlı)
   Future<void> _kopyalaTumLoglar() async {
     if (_loglar.isEmpty) {
-      _snack('Kopyalanacak log yok', Colors.orange);
+      _snack('Kopyalanacak log yok', TsRenk.uyari);
       return;
     }
     final buffer = StringBuffer();
@@ -109,7 +109,7 @@ class _LogEkraniState extends ConsumerState<LogEkrani> {
     }
     
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
-    _snack('${_loglar.length} log kaydı panoya kopyalandı', Colors.green);
+    _snack('${_loglar.length} log kaydı panoya kopyalandı', TsRenk.basarili);
   }
 
   /// 🔥 Sadece hata ve kritik logları kopyala
@@ -120,7 +120,7 @@ class _LogEkraniState extends ConsumerState<LogEkrani> {
     }).toList();
     
     if (hataLoglar.isEmpty) {
-      _snack('Hata/kritik log bulunamadı', Colors.orange);
+      _snack('Hata/kritik log bulunamadı', TsRenk.uyari);
       return;
     }
     
@@ -148,16 +148,16 @@ class _LogEkraniState extends ConsumerState<LogEkrani> {
     }
     
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
-    _snack('${hataLoglar.length} hata/kritik log panoya kopyalandı', Colors.green);
+    _snack('${hataLoglar.length} hata/kritik log panoya kopyalandı', TsRenk.basarili);
   }
 
   void _snack(String mesaj, Color renk) {
     if (!mounted) return;
     // 🔴 UX TUTARLILIK DÜZELTMESİ: bkz. aynı düzeltme diğer ekranlarda —
     // artık paylaşılan BildirimServisi kullanılıyor.
-    if (renk == Colors.red) {
+    if (renk == TsRenk.hata) {
       BildirimServisi.hata(context, mesaj);
-    } else if (renk == Colors.orange) {
+    } else if (renk == TsRenk.uyari) {
       BildirimServisi.uyari(context, mesaj);
     } else {
       BildirimServisi.basari(context, mesaj);
@@ -166,10 +166,10 @@ class _LogEkraniState extends ConsumerState<LogEkrani> {
 
   Color _renk(String? seviye) {
     switch (seviye) {
-      case 'bilgi':  return Colors.blue;
-      case 'uyari':  return Colors.orange;
-      case 'hata':   return Colors.red;
-      case 'kritik': return Colors.purple;
+      case 'bilgi':  return TsRenk.bilgi;
+      case 'uyari':  return TsRenk.uyari;
+      case 'hata':   return TsRenk.hata;
+      case 'kritik': return TsRenk.vurguMor;
       default:       return context.textSecondary;
     }
   }
@@ -204,7 +204,7 @@ class _LogEkraniState extends ConsumerState<LogEkrani> {
                 dense: true, leading: Icon(Icons.copy_all, color: AppRenkler.primary), title: Text('Tüm Logları Kopyala'),
               )),
               const PopupMenuItem(value: 'hatalar', child: ListTile(
-                dense: true, leading: Icon(Icons.error_outline, color: Colors.red), title: Text('Sadece Hataları Kopyala'),
+                dense: true, leading: Icon(Icons.error_outline, color: TsRenk.hata), title: Text('Sadece Hataları Kopyala'),
               )),
             ],
           ),

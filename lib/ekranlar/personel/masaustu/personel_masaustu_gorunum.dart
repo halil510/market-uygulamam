@@ -149,9 +149,9 @@ class _PersonelMasaustuGorunumState extends State<PersonelMasaustuGorunum> {
         tuslar: [
           if (widget.yetkili)
             AltTus('F1', 'Ekle', Icons.person_add_alt_1_outlined,
-                const Color(0xFF2E7D32), widget.onEkle),
+                TsRenk.basarili, widget.onEkle),
           AltTus('F2', 'Detay / Düzenle', Icons.edit_outlined,
-              const Color(0xFF1565C0), s == null ? null : () => widget.onDetay(s)),
+              TsRenk.bilgi, s == null ? null : () => widget.onDetay(s)),
         ],
       ),
     ]);

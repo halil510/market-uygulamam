@@ -344,8 +344,8 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
     final c = widget.cari;
     if (c.bakiye == 0) return context.textSecondary;
     final musteri = c.cariTipi.contains('Müşteri');
-    if (musteri) return c.bakiye > 0 ? Colors.green.shade700 : Colors.blue.shade700;
-    return c.bakiye < 0 ? Colors.red.shade700 : Colors.blue.shade700;
+    if (musteri) return c.bakiye > 0 ? TsRenk.basarili : TsRenk.bilgi;
+    return c.bakiye < 0 ? TsRenk.hata : TsRenk.bilgi;
   }
 
   String get _bakiyeEtiket {
@@ -400,7 +400,7 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
           ],
           if (c.cariTipi.contains('Müşteri'))
             IconButton(
-              icon: const Icon(Icons.stars_outlined, color: Colors.amber),
+              icon: const Icon(Icons.stars_outlined, color: TsRenk.uyari),
               tooltip: 'Puanlar',
               onPressed: () => context.push('/cari/puan/${c.id}',
                   extra: {'unvan': c.unvan}),
@@ -448,7 +448,7 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
         children: [
           FloatingActionButton.small(
             heroTag: 'hareket',
-            backgroundColor: Colors.blue,
+            backgroundColor: TsRenk.bilgi,
             foregroundColor: Colors.white,
             onPressed: () => context.push('/cari/hareket/${c.id}'),
             tooltip: 'Hareket Ekle',

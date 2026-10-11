@@ -77,7 +77,7 @@ class IadeGecmisWidget extends StatelessWidget {
             background: Container(
               margin: const EdgeInsets.only(bottom: 8),
               decoration: BoxDecoration(
-                color: Colors.red.shade400,
+                color: TsRenk.hata,
                 borderRadius: BorderRadius.circular(12)),
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.only(right: 20),
@@ -118,7 +118,7 @@ class IadeGecmisWidget extends StatelessWidget {
                         '${tedarikciye ? '−' : '+'}${(iade['miktar'] as double).toStringAsFixed(0)} adet',
                         style: TextStyle(
                             fontSize: 12,
-                            color: tedarikciye ? Colors.orange.shade800 : _green,
+                            color: tedarikciye ? TsRenk.uyari : _green,
                             fontWeight: FontWeight.w600)),
                     Text(ParaUtils.formatla(iade['toplam_tutar'] as double? ?? 0),
                         style: TextStyle(fontSize: 11, color: textL)),

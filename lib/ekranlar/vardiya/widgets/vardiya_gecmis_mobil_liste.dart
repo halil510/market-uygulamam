@@ -75,7 +75,7 @@ class VardiyaGecmisMobilListe extends StatelessWidget {
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.picture_as_pdf_outlined,
-                    size: 20, color: Colors.red),
+                    size: 20, color: TsRenk.hata),
                 tooltip: 'PDF Rapor',
                 onPressed: () => onPdf(v),
                 padding: EdgeInsets.zero,
@@ -92,10 +92,10 @@ class VardiyaGecmisMobilListe extends StatelessWidget {
             if (v['onaylayan_adi'] != null) ...[
               const SizedBox(height: 2),
               Row(children: [
-                Icon(Icons.verified_user_outlined, size: 12, color: Colors.deepPurple.shade300),
+                const Icon(Icons.verified_user_outlined, size: 12, color: TsRenk.vurguMor),
                 const SizedBox(width: 4),
                 Text('Onaylayan: ${v['onaylayan_adi']}',
-                    style: TextStyle(fontSize: 10, color: Colors.deepPurple.shade300)),
+                    style: const TextStyle(fontSize: 10, color: TsRenk.vurguMor)),
               ]),
             ],
             const SizedBox(height: 8),
@@ -104,19 +104,19 @@ class VardiyaGecmisMobilListe extends StatelessWidget {
                   sureMetni(v['acilis_tarihi']?.toString(),
                       v['kapanis_tarihi']?.toString()),
                   Icons.timer_outlined,
-                  Colors.blue.shade700),
+                  TsRenk.bilgi),
               const SizedBox(width: 6),
               _chip(
                   ParaUtils.formatla(
                       (v['bitis_bakiye'] as num?)?.toDouble() ?? 0),
                   Icons.account_balance_wallet_outlined,
-                  Colors.green.shade700),
+                  TsRenk.basarili),
               const SizedBox(width: 6),
               if (fark.abs() > 0.01)
                 _chip(
                     '${fark > 0 ? '+' : ''}${ParaUtils.formatla(fark)}',
                     fark > 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                    fark > 0 ? Colors.blue.shade700 : Colors.red.shade700),
+                    fark > 0 ? TsRenk.bilgi : TsRenk.hata),
             ]),
           ]),
         );

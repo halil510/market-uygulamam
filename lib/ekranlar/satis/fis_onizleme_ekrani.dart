@@ -339,7 +339,7 @@ class _FisOnizlemeEkraniState extends ConsumerState<FisOnizlemeEkrani> {
                       Padding(
                         padding: const EdgeInsets.only(left: 2),
                         child: Text('  İndirim: -${_fmt.format(k.iskontoTutar)}',
-                            style: _fisStyle(9).copyWith(color: Colors.orange.shade700)),
+                            style: _fisStyle(9).copyWith(color: TsRenk.uyari)),
                       ),
                     Text('  ${_fmt.format(k.birimFiyat)} / birim',
                         style: _fisStyle(9).copyWith(color: context.textSecondary)),
@@ -350,14 +350,14 @@ class _FisOnizlemeEkraniState extends ConsumerState<FisOnizlemeEkrani> {
                 // Toplamlar
                 if (_toplamIskonto > 0.001)
                   _satir2('İSKONTO', '-${_fmt.format(_toplamIskonto)}',
-                      renk: Colors.orange),
+                      renk: TsRenk.uyari),
                 if (_kdvGoster && _toplamKdv > 0.001)
                   _satir2('KDV', _fmt.format(_toplamKdv)),
                 _satir2('TOPLAM', _fmt.format(s.genelToplam), bold: true, buyuk: true),
                 _satir2('Ödenen (${s.odemeYontemi})', _fmt.format(s.odenenTutar)),
                 if (_paraUstu > 0.01)
                   _satir2('PARA ÜSTÜ', _fmt.format(_paraUstu),
-                      bold: true, renk: Colors.blue.shade700),
+                      bold: true, renk: TsRenk.bilgi),
                 _divider(),
 
                 // ══════════════════════════════════════════════════════

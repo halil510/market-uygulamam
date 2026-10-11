@@ -115,7 +115,7 @@ class _BekleyenFislerEkraniState extends ConsumerState<BekleyenFislerEkrani> {
     final onay = await OnayDialog.goster(context,
         baslik: 'Askıdaki Fişi Sil',
         icerik: 'Bu fişteki ürünler kaybolacak. Emin misiniz?',
-        onayYazi: 'Sil', onayRengi: Colors.red);
+        onayYazi: 'Sil', onayRengi: TsRenk.hata);
     if (!onay) return;
     try {
       if (!mounted) return;
@@ -141,7 +141,7 @@ class _BekleyenFislerEkraniState extends ConsumerState<BekleyenFislerEkrani> {
         bosAltyazi: 'Hızlı satışta ⏸ butonuna basarak satışı askıya alabilirsiniz',
         bosIkon: Icons.pause_circle_outline,
         kartOlustur: (context, f, i) => TsKart.liste(
-          ikon: const Icon(Icons.pause_circle, color: Colors.orange),
+          ikon: const Icon(Icons.pause_circle, color: TsRenk.uyari),
           baslik: f.cari != null ? f.cari!['unvan'] as String : 'Perakende',
           altBaslik: '${f.kalemler.length} kalem · ${_fmt.format(f.tarih)}',
           deger: ParaUtils.formatla(f.toplam),

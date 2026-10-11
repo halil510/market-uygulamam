@@ -88,9 +88,9 @@ class _BorcTakipEkraniState extends ConsumerState<BorcTakipEkrani> {
         loading: () => const TsYukleniyor(),
         error: (e, _) => Center(
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            const Icon(Icons.error_outline, size: 56, color: Colors.red),
+            const Icon(Icons.error_outline, size: 56, color: TsRenk.hata),
             const SizedBox(height: 12),
-            Text('Hata: ${bildirimMetniniSadelestir(e.toString())}', style: const TextStyle(color: Colors.red)),
+            Text('Hata: ${bildirimMetniniSadelestir(e.toString())}', style: const TextStyle(color: TsRenk.hata)),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () => ref.invalidate(tumBorclarProvider),
@@ -117,11 +117,11 @@ class _BorcTakipEkraniState extends ConsumerState<BorcTakipEkrani> {
                 boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8)],
               ),
               child: Row(children: [
-                _ozetItem('Toplam Borç', ParaUtils.formatla(ozetToplam), Icons.payment, Colors.blue),
+                _ozetItem('Toplam Borç', ParaUtils.formatla(ozetToplam), Icons.payment, TsRenk.bilgi),
                 const SizedBox(width: 12),
-                _ozetItem('Gecikmiş', '$gecikmis', Icons.warning_amber, Colors.red),
+                _ozetItem('Gecikmiş', '$gecikmis', Icons.warning_amber, TsRenk.hata),
                 const SizedBox(width: 12),
-                _ozetItem('Aktif', '${borclar.where((b) => !b.odendi).length}', Icons.pending, Colors.orange),
+                _ozetItem('Aktif', '${borclar.where((b) => !b.odendi).length}', Icons.pending, TsRenk.uyari),
               ]),
             ),
 
@@ -146,7 +146,7 @@ class _BorcTakipEkraniState extends ConsumerState<BorcTakipEkrani> {
               child: gosterilecek.isEmpty
                   ? Center(
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        const Icon(Icons.check_circle_outline, size: 56, color: Colors.green),
+                        const Icon(Icons.check_circle_outline, size: 56, color: TsRenk.basarili),
                         const SizedBox(height: 12),
                         Text('Tüm borçlar ödenmiş!', style: TextStyle(color: context.textSecondary)),
                       ]),
@@ -204,7 +204,7 @@ class _BorcKarti extends ConsumerWidget {
         color: odendi ? context.borderColor : (vadesiGecti ? TsRenk.zemin(TsRenk.hata) : context.cardBg),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: vadesiGecti ? Colors.red.shade300 : (odendi ? TsRenk.ayirac(context) : renk.withAlpha(77)),
+          color: vadesiGecti ? TsRenk.hata : (odendi ? TsRenk.ayirac(context) : renk.withAlpha(77)),
           width: vadesiGecti ? 1.5 : 1,
         ),
       ),
@@ -252,11 +252,11 @@ class _BorcKarti extends ConsumerWidget {
                   Text('Kesim: ${DateFormat('dd.MM.yyyy').format(borc.kesimTarihi)}',
                       style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
                   const SizedBox(width: 12),
-                  Icon(Icons.event, size: 12, color: vadesiGecti ? Colors.red : TsRenk.metinIkincil(context)),
+                  Icon(Icons.event, size: 12, color: vadesiGecti ? TsRenk.hata : TsRenk.metinIkincil(context)),
                   const SizedBox(width: 4),
                   Text(
                     'Son Ödeme: ${DateFormat('dd.MM.yyyy').format(borc.sonOdemeTarihi)}',
-                    style: TextStyle(fontSize: 11, color: vadesiGecti ? Colors.red : TsRenk.metinIkincil(context)),
+                    style: TextStyle(fontSize: 11, color: vadesiGecti ? TsRenk.hata : TsRenk.metinIkincil(context)),
                   ),
                 ]),
               ]),
@@ -265,7 +265,7 @@ class _BorcKarti extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.red,
+                  color: TsRenk.hata,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text('GECİKTİ',
@@ -283,7 +283,7 @@ class _BorcKarti extends ConsumerWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
-                    color: odendi ? Colors.green : context.textPrimary,
+                    color: odendi ? TsRenk.basarili : context.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -292,7 +292,7 @@ class _BorcKarti extends ConsumerWidget {
                     value: borc.odemeOrani / 100,
                     backgroundColor: TsRenk.ayirac(context),
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      vadesiGecti ? Colors.red : renk,
+                      vadesiGecti ? TsRenk.hata : renk,
                     ),
                     minHeight: 4,
                   ),
@@ -311,7 +311,7 @@ class _BorcKarti extends ConsumerWidget {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: kalanGun <= 3 ? Colors.red : Colors.orange,
+                              color: kalanGun <= 3 ? TsRenk.hata : TsRenk.uyari,
                             )),
                       ),
                   ]),
@@ -354,11 +354,11 @@ class _BorcKarti extends ConsumerWidget {
   // yardımcı metotlarında context otomatik gelmez.
   Color _turRenk(BuildContext context, String tur) {
     switch (tur) {
-      case 'kredi_karti': return Colors.blue.shade700;
-      case 'vergi': return Colors.red.shade700;
-      case 'sgk': return Colors.orange.shade700;
-      case 'kira': return Colors.purple.shade700;
-      case 'fatura': return Colors.teal.shade700;
+      case 'kredi_karti': return TsRenk.bilgi;
+      case 'vergi': return TsRenk.hata;
+      case 'sgk': return TsRenk.uyari;
+      case 'kira': return TsRenk.vurguMor;
+      case 'fatura': return TsRenk.vurguTurkuaz;
       default: return context.textSecondary;
     }
   }

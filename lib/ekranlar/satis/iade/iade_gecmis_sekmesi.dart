@@ -184,7 +184,7 @@ class _GecmisSatiri extends StatelessWidget {
       background: Container(
         margin: const EdgeInsets.only(bottom: 8),
         decoration:
-            BoxDecoration(color: Colors.red.shade400, borderRadius: BorderRadius.circular(12)),
+            BoxDecoration(color: TsRenk.hata, borderRadius: BorderRadius.circular(12)),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         child: const Column(mainAxisSize: MainAxisSize.min, children: [
@@ -206,7 +206,7 @@ class _GecmisSatiri extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
                 color: TsRenk.zemin(TsRenk.uyari), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.assignment_return, color: Colors.orange, size: 22),
+            child: const Icon(Icons.assignment_return, color: TsRenk.uyari, size: 22),
           ),
           title: Text(r['fis_no']?.toString() ?? 'İade #${r['id']}',
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
@@ -220,7 +220,7 @@ class _GecmisSatiri extends StatelessWidget {
               children: [
                 Text(ParaUtils.formatla((r['toplam_tutar'] as num?)?.toDouble() ?? 0),
                     style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 13, color: Colors.orange)),
+                        fontWeight: FontWeight.w800, fontSize: 13, color: TsRenk.uyari)),
                 Text('${r['kalem_sayisi'] ?? 0} kalem',
                     style: TextStyle(fontSize: 10, color: TsRenk.metinIkincil(context))),
               ]),

@@ -133,7 +133,7 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
       final onay = await OnayDialog.goster(context,
           baslik: 'Siparişi İptal Et',
           icerik: 'Bu tedarikçi siparişi iptal edilecek. Emin misiniz?',
-          onayYazi: 'İptal Et', onayRengi: Colors.red);
+          onayYazi: 'İptal Et', onayRengi: TsRenk.hata);
       if (!onay || !mounted) return;
     }
     try {
@@ -159,7 +159,7 @@ class _TedarikSiparisEkraniState extends ConsumerState<TedarikSiparisEkrani>
 
   Color _durumRenk(String durum) {
     switch (durum) {
-      case 'beklemede': return Colors.orange;
+      case 'beklemede': return TsRenk.uyari;
       case 'teslim_alindi': return AppRenkler.success;
       case 'iptal': return AppRenkler.error;
       default: return context.textSecondary;
@@ -480,7 +480,7 @@ class _SiparisDetayPanel extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.w700)),
                   Text('Teslim: ${teslim.toStringAsFixed(0)}',
                       style: TextStyle(fontSize: 11,
-                          color: teslim >= miktar ? AppRenkler.success : Colors.orange)),
+                          color: teslim >= miktar ? AppRenkler.success : TsRenk.uyari)),
                 ]),
               );
             },

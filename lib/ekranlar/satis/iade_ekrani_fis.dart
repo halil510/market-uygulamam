@@ -213,17 +213,17 @@ extension _FisTabExt on _IadeEkraniState {
                           'Kasadan nakit çıkışı OLUŞTURULMAZ — tutar '
                           '${_bulunanSatis!.cariAdi ?? 'cari'} hesabının bakiyesinden '
                           'gerçekten düşülecek/eklenecek.',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.blue.shade800),
+                          style: const TextStyle(
+                              fontSize: 12, color: TsRenk.bilgi),
                         ),
                       ] else if (secilenYontem != 'Nakit') ...[
                         const SizedBox(height: 8),
-                        Text(
+                        const Text(
                           'Bu seçenekte kasadan nakit çıkışı OLUŞTURULMAZ — iade '
                           'tutarını POS cihazından ayrıca müşterinin kartına iade '
                           'etmeniz gerekir.',
                           style: TextStyle(
-                              fontSize: 12, color: Colors.orange.shade800),
+                              fontSize: 12, color: TsRenk.uyari),
                         ),
                       ],
                     ]),
@@ -418,7 +418,7 @@ extension _FisTabExt on _IadeEkraniState {
                                     padding: EdgeInsets.symmetric(
                                         horizontal: 8, vertical: 4),
                                     child: Icon(Icons.check_circle,
-                                        size: 16, color: Colors.green),
+                                        size: 16, color: TsRenk.basarili),
                                   )
                                 else
                                   TextButton.icon(

@@ -74,7 +74,7 @@ extension _CariDetayGenelOzetExt on _CariDetayPaneliState {
                 style: TextStyle(fontSize: 11.5, color: context.textSecondary)),
           ]),
         ),
-        IconButton(icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red), onPressed: () => _adresSil(a['id'] as int)),
+        IconButton(icon: const Icon(Icons.delete_outline, size: 16, color: TsRenk.hata), onPressed: () => _adresSil(a['id'] as int)),
       ]),
     );
   }
@@ -170,8 +170,8 @@ extension _CariDetayGenelOzetExt on _CariDetayPaneliState {
         child: Row(children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.teal.withAlpha(30), shape: BoxShape.circle),
-            child: const Icon(Icons.local_shipping_outlined, color: Colors.teal, size: 18),
+            decoration: BoxDecoration(color: TsRenk.vurguTurkuaz.withAlpha(30), shape: BoxShape.circle),
+            child: const Icon(Icons.local_shipping_outlined, color: TsRenk.vurguTurkuaz, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -201,10 +201,10 @@ extension _CariDetayGenelOzetExt on _CariDetayPaneliState {
             decoration: BoxDecoration(color: context.cardBg, borderRadius: BorderRadius.circular(14)),
             child: Row(children: yaslandirma.entries.map((e) {
               final renk = switch (e.key) {
-                'Vadesi Gelmemiş' => Colors.green,
-                '1-30 Gün' => Colors.amber.shade700,
-                '31-60 Gün' => Colors.orange,
-                _ => Colors.red,
+                'Vadesi Gelmemiş' => TsRenk.basarili,
+                '1-30 Gün' => TsRenk.uyari,
+                '31-60 Gün' => TsRenk.uyari,
+                _ => TsRenk.hata,
               };
               return Expanded(
                 child: Column(children: [
@@ -294,14 +294,14 @@ extension _CariDetayGenelOzetExt on _CariDetayPaneliState {
       Row(children: [
         Expanded(child: _raporKarti('Toplam İşlem', '${_satislar.length}', Icons.receipt_long_outlined, AppRenkler.primary)),
         const SizedBox(width: 8),
-        Expanded(child: _raporKarti('Ort. Sepet', ParaUtils.formatla(ortalamaSepet), Icons.shopping_basket_outlined, Colors.blue)),
+        Expanded(child: _raporKarti('Ort. Sepet', ParaUtils.formatla(ortalamaSepet), Icons.shopping_basket_outlined, TsRenk.bilgi)),
       ]),
       const SizedBox(height: 8),
       Row(children: [
         Expanded(child: _raporKarti('Zamanında Ödeme', '%${(zamanindaOran * 100).toStringAsFixed(0)}',
-            Icons.verified_outlined, zamanindaOran > 0.7 ? Colors.green : Colors.orange)),
+            Icons.verified_outlined, zamanindaOran > 0.7 ? TsRenk.basarili : TsRenk.uyari)),
         const SizedBox(width: 8),
-        Expanded(child: _raporKarti('Açık Bakiye', ParaUtils.formatla(toplamAcikBakiye), Icons.account_balance_wallet_outlined, Colors.red)),
+        Expanded(child: _raporKarti('Açık Bakiye', ParaUtils.formatla(toplamAcikBakiye), Icons.account_balance_wallet_outlined, TsRenk.hata)),
       ]),
 
       // ── Aylık satış grafiği (Logo Mobile Sales: "Haftalık/Aylık Satış") ──
@@ -414,7 +414,7 @@ extension _CariDetayGenelOzetExt on _CariDetayPaneliState {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
               gradient: const LinearGradient(
                 begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                colors: [Color(0xFF6D4C41), Color(0xFFA1887F)],
+                colors: [TsRenk.masaAcik, Color(0xFFA1887F)],
               ),
             ),
           ]);

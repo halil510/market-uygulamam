@@ -80,7 +80,7 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
       icerik:
           'Mevcut veritabanının üzerine yazılacak. Bu işlem geri alınamaz.\n\nDevam etmek istediğinize emin misiniz?',
       onayYazi: 'Devam Et',
-      onayRengi: Colors.orange,
+      onayRengi: TsRenk.uyari,
     );
     if (!onay || !mounted) return;
     // Yedek geri yükleme / DB temizleme ile aynı koruma: tüm veritabanının
@@ -181,7 +181,7 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
               'GELİR. Buluttaki veriyi de silmek isterseniz, temizlik '
               'sonrası çıkan talimatları izleyin.' : ''}',
       onayYazi: 'Evet, Temizle',
-      onayRengi: Colors.red,
+      onayRengi: TsRenk.hata,
       ikon: Icons.warning_amber_rounded,
     );
     if (!onay) return;
@@ -419,18 +419,18 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.check_circle, color: Colors.green),
+          Icon(Icons.check_circle, color: TsRenk.basarili),
           SizedBox(width: 8),
           Text('İçe Aktarma Tamamlandı')
         ]),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          _SonucSatiri('Eklenen Ürün', sonuc.eklenen, Colors.green),
-          _SonucSatiri('Güncellenen Ürün', sonuc.guncellenen, Colors.blue),
+          _SonucSatiri('Eklenen Ürün', sonuc.eklenen, TsRenk.basarili),
+          _SonucSatiri('Güncellenen Ürün', sonuc.guncellenen, TsRenk.bilgi),
           if (sonuc.indirimliKaydedilen > 0)
             _SonucSatiri(
-                'Otomatik İndirimli', sonuc.indirimliKaydedilen, Colors.orange),
+                'Otomatik İndirimli', sonuc.indirimliKaydedilen, TsRenk.uyari),
           if (sonuc.hatali > 0)
-            _SonucSatiri('Hatalı Satır', sonuc.hatali, Colors.red),
+            _SonucSatiri('Hatalı Satır', sonuc.hatali, TsRenk.hata),
           const SizedBox(height: 8),
           Text('Toplam ${sonuc.toplam} satır işlendi'),
           if (sonuc.indirimliKaydedilen > 0)
@@ -443,7 +443,7 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
                 border: Border.all(color: Colors.orange.shade200),
               ),
               child: Row(children: [
-                const Icon(Icons.local_offer, color: Colors.orange, size: 16),
+                const Icon(Icons.local_offer, color: TsRenk.uyari, size: 16),
                 const SizedBox(width: 8),
                 Expanded(
                     child: Text(
@@ -468,7 +468,7 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.error_outline, color: Colors.red),
+          Icon(Icons.error_outline, color: TsRenk.hata),
           SizedBox(width: 8),
           Text('İçe Aktarma Başarısız')
         ]),

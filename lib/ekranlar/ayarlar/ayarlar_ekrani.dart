@@ -83,7 +83,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         baslik: 'Çıkış Yap',
         icerik: 'Oturumu kapatmak istiyor musunuz?',
         onayYazi: 'Çıkış Yap',
-        onayRengi: Colors.red,
+        onayRengi: TsRenk.hata,
         ikon: Icons.logout,
       );
     } catch (_) {
@@ -119,7 +119,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
         baslik: 'Uygulamadan Çık',
         icerik: 'Uygulamadan çıkmak istediğinize emin misiniz?',
         onayYazi: 'Evet, Çık',
-        onayRengi: Colors.red,
+        onayRengi: TsRenk.hata,
       );
       if (exitConfirmed) exit(0);
       return false;
@@ -150,7 +150,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                       height: 40,
                       decoration: const BoxDecoration(
                           gradient: LinearGradient(
-                              colors: [Color(0xFF4361EE), Color(0xFF3A0CA3)]),
+                              colors: [TsRenk.primary, TsRenk.primaryKoyu]),
                           shape: BoxShape.circle),
                       child: Center(
                           child: Text(
@@ -194,7 +194,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 const _AyarBaslik('Satış'),
                 ListTile(
                   leading:
-                      const Icon(Icons.bolt_rounded, color: Color(0xFF4361EE)),
+                      const Icon(Icons.bolt_rounded, color: TsRenk.primary),
                   title: const Text('Hızlı Tuşlar'),
                   subtitle: const Text(
                       'Barkodsuz/sık satılan ürünler için kasa tuşları '
@@ -206,7 +206,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 const _AyarBaslik('Sistem'),
                 SwitchListTile(
                   secondary: const Icon(Icons.table_restaurant,
-                      color: Color(0xFF6D4C41)),
+                      color: TsRenk.masaAcik),
                   title: const Text('Masa / Restoran Modülü'),
                   subtitle: const Text(
                       'Sadece kafe/lokanta hizmeti olan şubelerde açın. '
@@ -218,7 +218,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 if (ref.watch(masaModuProvider))
                   ListTile(
                       leading: const Icon(Icons.add_box_outlined,
-                          color: Color(0xFF6D4C41)),
+                          color: TsRenk.masaAcik),
                       title: const Text('Masa Ekle / Yönet'),
                       subtitle: const Text(
                           'Tek veya toplu masa ekle · QR menü kartlarını yazdır'),
@@ -232,14 +232,14 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/ayarlar/yazdirma')),
                 ListTile(
-                    leading: const Icon(Icons.store, color: Colors.indigo),
+                    leading: const Icon(Icons.store, color: TsRenk.primary),
                     title: const Text('Şube Yönetimi'),
                     subtitle: const Text('Çoklu şube ekle ve yönet'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/sube')),
                 ListTile(
                     leading:
-                        const Icon(Icons.local_shipping, color: Colors.teal),
+                        const Icon(Icons.local_shipping, color: TsRenk.vurguTurkuaz),
                     title: const Text('İrsaliye / Sevkiyat'),
                     subtitle: const Text('Sevk irsaliyeleri yönetimi'),
                     trailing: const Icon(Icons.chevron_right),
@@ -251,14 +251,14 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/lot')),
                 ListTile(
-                    leading: const Icon(Icons.auto_graph, color: Colors.purple),
+                    leading: const Icon(Icons.auto_graph, color: TsRenk.vurguMor),
                     title: const Text('Akıllı Analiz'),
                     subtitle:
                         const Text('Yapay zeka destekli satış analizleri'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/ai')),
                 ListTile(
-                    leading: const Icon(Icons.receipt_long, color: Colors.red),
+                    leading: const Icon(Icons.receipt_long, color: TsRenk.hata),
                     title: const Text('GIB e-Fatura Entegrasyonu'),
                     subtitle: const Text('e-Fatura / e-Arşiv yapılandırması'),
                     trailing: const Icon(Icons.chevron_right),
@@ -302,7 +302,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                     onTap: () => context.push('/barkod/etiket')),
                 ListTile(
                     leading:
-                        const Icon(Icons.qr_code_2, color: Colors.deepPurple),
+                        const Icon(Icons.qr_code_2, color: TsRenk.vurguMor),
                     title: const Text('Barkod Üreteci'),
                     subtitle: const Text('EAN-13, QR, Code128 üret ve kaydet'),
                     trailing: const Icon(Icons.chevron_right),
@@ -354,7 +354,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/ayarlar/ai-asistan')),
                 ListTile(
-                  leading: const Icon(Icons.cloud_sync, color: Colors.blue),
+                  leading: const Icon(Icons.cloud_sync, color: TsRenk.bilgi),
                   title: const Text('Bulut Senkronizasyon'),
                   subtitle:
                       const Text('Supabase ile bulut veri senkronizasyonu'),
@@ -362,7 +362,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                   onTap: () => context.push('/ayarlar/bulut-sync'),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.bug_report_outlined, color: Colors.deepOrange),
+                  leading: const Icon(Icons.bug_report_outlined, color: TsRenk.uyari),
                   title: const Text('Hata İzleme'),
                   subtitle: const Text(
                       'Uygulama hatalarını uzaktan görmek için Sentry bağlayın (isteğe bağlı)'),
@@ -371,7 +371,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.photo_library_outlined,
-                      color: Colors.teal),
+                      color: TsRenk.vurguTurkuaz),
                   title: const Text('İşyeri Fotoğrafları (Web Sitesi)'),
                   subtitle: const Text(
                       'QR menü sitesindeki fotoğrafları buradan yönetin'),
@@ -380,7 +380,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 ),
                 ListTile(
                   leading:
-                      const Icon(Icons.edit_note_outlined, color: Colors.teal),
+                      const Icon(Icons.edit_note_outlined, color: TsRenk.vurguTurkuaz),
                   title: const Text('Site İçeriği (Web Sitesi)'),
                   subtitle: const Text(
                       'İşletme adı, hakkımızda, iletişim ve konum bilgilerini buradan düzenleyin'),
@@ -388,7 +388,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                   onTap: () => context.push('/ayarlar/site-icerik'),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.history, color: Colors.deepPurple),
+                  leading: const Icon(Icons.history, color: TsRenk.vurguMor),
                   title: const Text('İşlem Geçmişi (Audit Log)'),
                   subtitle: const Text('Kim, ne zaman, ne değiştirdi'),
                   trailing: const Icon(Icons.chevron_right),
@@ -396,7 +396,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.format_list_numbered,
-                      color: Colors.indigo),
+                      color: TsRenk.primary),
                   title: const Text('Fatura Seri Mutabakatı'),
                   subtitle: const Text(
                       'Numara blokları, kullanılan/kalan numaralar, boşluk kontrolü'),
@@ -405,7 +405,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.point_of_sale_outlined,
-                      color: Colors.indigo),
+                      color: TsRenk.primary),
                   title: const Text('Terminaller'),
                   subtitle: const Text(
                       'Fatura kesen cihazlar — ad verme, kaybolan cihazı pasife alma'),
@@ -414,7 +414,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.health_and_safety_outlined,
-                      color: Colors.green),
+                      color: TsRenk.basarili),
                   title: const Text('Veri Sağlığı Merkezi'),
                   subtitle: const Text(
                       'Mutabakat, negatif stok, mükerrer barkod, sync durumu'),
@@ -423,7 +423,7 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.event_repeat_outlined,
-                      color: Colors.indigo),
+                      color: TsRenk.primary),
                   title: const Text('Dönem Yönetimi / Yıl Sonu Devir'),
                   subtitle: const Text(
                       'Yıl sonu kontrolü, yedekleme, dönem kapatma'),
@@ -448,72 +448,72 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
                 const _AyarBaslik('Veri İşlemleri'),
                 ListTile(
                     leading: const Icon(Icons.bolt_outlined,
-                        color: Colors.deepPurple),
+                        color: TsRenk.vurguMor),
                     title: const Text('Toplu Ürün İşlemi'),
                     subtitle: const Text('Fiyat, grup, KDV toplu güncelleme'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/urun/toplu-islem')),
                 ListTile(
                     leading: const Icon(Icons.price_change_outlined,
-                        color: Colors.orange),
+                        color: TsRenk.uyari),
                     title: const Text('Toplu Fiyat Güncelleme'),
                     subtitle: const Text('Kategori/marka bazlı zam/indirim'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/urun/toplu-fiyat')),
                 ListTile(
-                    leading: const Icon(Icons.trending_up, color: Colors.green),
+                    leading: const Icon(Icons.trending_up, color: TsRenk.basarili),
                     title: const Text('Kar / Zarar Raporu'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/rapor/kar')),
                 ListTile(
-                    leading: const Icon(Icons.visibility, color: Colors.green),
+                    leading: const Icon(Icons.visibility, color: TsRenk.basarili),
                     title: const Text('Pasif Ürünleri Aktif Yap'),
                     subtitle: const Text(
                         'Listede görünmeyen ürünleri aktif hale getir'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _pasifleriAktifYap),
                 ListTile(
-                    leading: const Icon(Icons.upload_file, color: Colors.green),
+                    leading: const Icon(Icons.upload_file, color: TsRenk.basarili),
                     title: const Text('Ürünleri Excel\'e Aktar'),
                     subtitle: const Text('Tüm ürünleri xlsx olarak paylaş'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _urunleriExcelEAktar),
                 ListTile(
                     leading: const Icon(Icons.download_for_offline,
-                        color: Colors.blue),
+                        color: TsRenk.bilgi),
                     title: const Text('Excel\'den Ürün Al'),
                     subtitle:
                         const Text('Xlsx dosyasından toplu yükle/güncelle'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _exceldenUrunIceAl),
                 ListTile(
-                    leading: const Icon(Icons.download, color: Colors.purple),
+                    leading: const Icon(Icons.download, color: TsRenk.vurguMor),
                     title: const Text('Veritabanını İçe Aktar'),
                     subtitle: const Text('.db dosyasından geri yükleme yap'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _veritabaniniIceriAl),
                 ListTile(
                     leading:
-                        const Icon(Icons.upload_file, color: Colors.orange),
+                        const Icon(Icons.upload_file, color: TsRenk.uyari),
                     title: const Text('Veritabanını Dışa Aktar'),
                     subtitle: const Text(
                         '${DbSabitler.dbAdi} dosyasını kaydet/paylaş'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _dbDisariAktar),
                 ListTile(
-                    leading: const Icon(Icons.delete_sweep, color: Colors.red),
+                    leading: const Icon(Icons.delete_sweep, color: TsRenk.hata),
                     title: const Text('Veritabanını Temizle',
-                        style: TextStyle(color: Colors.red)),
+                        style: TextStyle(color: TsRenk.hata)),
                     subtitle: const Text('Tüm verileri kalıcı olarak siler'),
                     trailing:
-                        const Icon(Icons.warning_amber, color: Colors.red),
+                        const Icon(Icons.warning_amber, color: TsRenk.hata),
                     onTap: _veritabaniniTemizle),
                 const Divider(),
                 ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.red),
+                  leading: const Icon(Icons.logout, color: TsRenk.hata),
                   title: const Text('Çıkış Yap',
                       style: TextStyle(
-                          color: Colors.red, fontWeight: FontWeight.w600)),
+                          color: TsRenk.hata, fontWeight: FontWeight.w600)),
                   onTap: _cikisYap,
                 ),
                 const SizedBox(height: 8),

@@ -166,7 +166,7 @@ class _QrHataGorunumu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.wifi_off, size: 56, color: Colors.orange.shade400),
+      const Icon(Icons.wifi_off, size: 56, color: TsRenk.uyari),
       const SizedBox(height: 16),
       Text(mesaj, textAlign: TextAlign.center, style: TextStyle(color: context.textSecondary)),
       const SizedBox(height: 20),
@@ -243,7 +243,7 @@ class _ErisimNotu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final renk = bulutModu ? Colors.green : context.textHint;
+    final renk = bulutModu ? TsRenk.basarili : context.textHint;
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(bulutModu ? Icons.public : Icons.info_outline, size: 14, color: renk),
       const SizedBox(width: 6),

@@ -182,9 +182,9 @@ appBar: TsAppBar(
               ])),
               if (f.eFaturaDurum == 'gonderildi' || f.eFaturaDurum == 'onaylandi')
                 const PopupMenuItem(value: 'gib_iptal', child: Row(children: [
-                  Icon(Icons.block_outlined, size: 18, color: Colors.red),
+                  Icon(Icons.block_outlined, size: 18, color: TsRenk.hata),
                   SizedBox(width: 8),
-                  Text('GİB\'de İptal Et', style: TextStyle(color: Colors.red)),
+                  Text('GİB\'de İptal Et', style: TextStyle(color: TsRenk.hata)),
                 ])),
             ],
           ),
@@ -251,17 +251,17 @@ appBar: TsAppBar(
               // kez düşülmüş gibi görünüp toplam tutmazdı.
               _toplamSatir('Ara Toplam', f.toplamAraToplam + f.toplamIskonto),
               if (f.toplamIskonto > 0)
-                _toplamSatir('Iskonto', -f.toplamIskonto, renk: Colors.red),
+                _toplamSatir('Iskonto', -f.toplamIskonto, renk: TsRenk.hata),
               _toplamSatir('KDV', f.toplamKdv),
               const Divider(height: 16),
               _toplamSatir('GENEL TOPLAM', f.genelToplam,
                   bold: true, renk: TsRenk.primaryKoyu),
               if (f.odenenTutar > 0) ...[
                 const SizedBox(height: 4),
-                _toplamSatir('Odenen', f.odenenTutar, renk: Colors.green),
+                _toplamSatir('Odenen', f.odenenTutar, renk: TsRenk.basarili),
                 _toplamSatir('Kalan', f.kalanTutar,
                     bold: true,
-                    renk: f.kalanTutar > 0 ? Colors.red : Colors.green),
+                    renk: f.kalanTutar > 0 ? TsRenk.hata : TsRenk.basarili),
               ],
             ]),
           ),
@@ -313,9 +313,9 @@ appBar: TsAppBar(
     Color renk;
     String etiket;
     switch (durum) {
-      case 'odendi':    renk = Colors.green; etiket = 'Odendi'; break;
-      case 'kismi':     renk = Colors.orange; etiket = 'Kismi'; break;
-      default:          renk = Colors.red; etiket = 'Beklemede';
+      case 'odendi':    renk = TsRenk.basarili; etiket = 'Odendi'; break;
+      case 'kismi':     renk = TsRenk.uyari; etiket = 'Kismi'; break;
+      default:          renk = TsRenk.hata; etiket = 'Beklemede';
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

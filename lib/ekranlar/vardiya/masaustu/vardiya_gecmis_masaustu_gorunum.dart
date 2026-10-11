@@ -169,10 +169,10 @@ class _VardiyaGecmisMasaustuGorunumState
         ],
         tuslar: [
           AltTus('F2', 'PDF Rapor', Icons.picture_as_pdf_outlined,
-              const Color(0xFFC62828), s == null ? null : () => widget.onPdf(s)),
+              TsRenk.hata, s == null ? null : () => widget.onPdf(s)),
           if (widget.dahaVarMi)
             AltTus('F7', widget.dahaYukleniyor ? 'Yükleniyor…' : 'Daha Fazla',
-                Icons.expand_more, const Color(0xFF455A64),
+                Icons.expand_more, TsRenk.notr,
                 widget.dahaYukleniyor ? null : widget.onDahaFazla),
         ],
       ),

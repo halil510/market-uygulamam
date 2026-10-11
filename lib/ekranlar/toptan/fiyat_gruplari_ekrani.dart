@@ -190,11 +190,11 @@ class _FiyatGruplariEkraniState extends State<FiyatGruplariEkrani> {
                                     Text(g.aciklama!, style: TextStyle(fontSize: 12, color: context.textSecondary)),
                                   if (g.varsayilanIskontoOrani > 0)
                                     Text('Varsayılan iskonto: %${g.varsayilanIskontoOrani.toStringAsFixed(0)}',
-                                        style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600)),
+                                        style: const TextStyle(fontSize: 12, color: TsRenk.basarili, fontWeight: FontWeight.w600)),
                                 ]),
                               ),
                               IconButton(icon: const Icon(Icons.edit_outlined, size: 20), onPressed: () => _duzenle(g)),
-                              IconButton(icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red), onPressed: () => _sil(g)),
+                              IconButton(icon: const Icon(Icons.delete_outline, size: 20, color: TsRenk.hata), onPressed: () => _sil(g)),
                             ]),
                             ),
                           );

@@ -66,7 +66,7 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
       final onay = await OnayDialog.goster(context,
           baslik: 'İrsaliyeyi İptal Et',
           icerik: 'Bu irsaliye iptal edilecek. Emin misiniz?',
-          onayYazi: 'İptal Et', onayRengi: Colors.red);
+          onayYazi: 'İptal Et', onayRengi: TsRenk.hata);
       if (!onay || !mounted) return;
     }
     try {
@@ -206,12 +206,12 @@ class _IrsaliyeDetayEkraniState extends ConsumerState<IrsaliyeDetayEkrani> {
     final tarih  = DateTime.tryParse(_irsaliye!['tarih']?.toString() ?? '');
     final toplam = (_irsaliye!['toplam_tutar'] as num?)?.toDouble() ?? 0;
     final eDurum = _irsaliye!['e_irsaliye_durum']?.toString() ?? 'hazir';
-    final eRenk  = eDurum == 'onaylandi' ? Colors.teal
-                 : eDurum == 'gonderildi' ? Colors.green
-                 : eDurum == 'gonderiliyor' ? Colors.blue
-                 : eDurum == 'reddedildi' ? Colors.red
+    final eRenk  = eDurum == 'onaylandi' ? TsRenk.vurguTurkuaz
+                 : eDurum == 'gonderildi' ? TsRenk.basarili
+                 : eDurum == 'gonderiliyor' ? TsRenk.bilgi
+                 : eDurum == 'reddedildi' ? TsRenk.hata
                  : eDurum == 'gib_iptal' ? Colors.grey
-                 : eDurum == 'hata' ? Colors.red : Colors.orange;
+                 : eDurum == 'hata' ? TsRenk.hata : TsRenk.uyari;
     final eEtiket = eDurum == 'onaylandi' ? 'GİB Onayladı'
                   : eDurum == 'gonderildi' ? 'e-İrsaliye Gönderildi'
                   : eDurum == 'gonderiliyor' ? 'Gönderiliyor'

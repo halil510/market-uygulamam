@@ -124,7 +124,7 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
               style: TextStyle(fontSize: 13, color: context.textSecondary)),
           if (iskonto != null)
             Text('Grup varsayılanı (%${widget.grup.varsayilanIskontoOrani.toStringAsFixed(0)} indirim): ${ParaUtils.formatla(iskonto)}',
-                style: const TextStyle(fontSize: 12, color: Colors.orange, fontStyle: FontStyle.italic)),
+                style: const TextStyle(fontSize: 12, color: TsRenk.uyari, fontStyle: FontStyle.italic)),
           const SizedBox(height: 14),
           TextField(
             controller: ctrl,
@@ -142,7 +142,7 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
           if (mevcut != null)
             TextButton(
               onPressed: () => Navigator.pop(ctx, '__sil__'),
-              child: const Text('Özel Fiyatı Kaldır', style: TextStyle(color: Colors.red)),
+              child: const Text('Özel Fiyatı Kaldır', style: TextStyle(color: TsRenk.hata)),
             ),
           TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Vazgeç')),
           FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: const Text('Kaydet')),
@@ -259,7 +259,7 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
                           color: context.cardBg,
                           borderRadius: BorderRadius.circular(14),
                           border: ozelFiyat != null
-                              ? Border.all(color: Colors.green.withAlpha(100), width: 1.5)
+                              ? Border.all(color: TsRenk.basarili.withAlpha(100), width: 1.5)
                               : null,
                           boxShadow: [BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 4)],
                         ),
@@ -274,9 +274,9 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
                               const SizedBox(width: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(color: Colors.green.withAlpha(30), borderRadius: BorderRadius.circular(6)),
+                                decoration: BoxDecoration(color: TsRenk.basarili.withAlpha(30), borderRadius: BorderRadius.circular(6)),
                                 child: Text('-%${indirimYuzde.toStringAsFixed(0)}',
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.green)),
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: TsRenk.basarili)),
                               ),
                             ],
                           ]),
@@ -285,7 +285,7 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
                             child: ozelFiyat != null
                                 ? Text(ParaUtils.formatla(ozelFiyat),
                                     textAlign: TextAlign.right,
-                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Colors.green))
+                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: TsRenk.basarili))
                                 : Text('Belirle', textAlign: TextAlign.right,
                                     style: TextStyle(color: context.textHint, fontSize: 13)),
                           ),

@@ -24,7 +24,7 @@ extension _BulutSyncIslemlerExt on _BulutSyncEkraniState {
     try {
       final adet = await BulutManager().kaliciHatalariYenidenDene();
       _snack('$adet kayıt yeniden gönderim kuyruğuna alındı — sonuç birkaç '
-          'saniye içinde burada görünür', Colors.green);
+          'saniye içinde burada görünür', TsRenk.basarili);
       // Gönderim turunun bitmesine fırsat ver, sonra listeyi tazele.
       await Future.delayed(const Duration(seconds: 5));
       await _kaliciHatalariYukle();
@@ -37,7 +37,7 @@ extension _BulutSyncIslemlerExt on _BulutSyncEkraniState {
     final url = _urlCtrl.text.trim();
     final key = _keyCtrl.text.trim();
     if (url.isEmpty || key.isEmpty) {
-      _snack('URL ve API Key boş olamaz', Colors.red);
+      _snack('URL ve API Key boş olamaz', TsRenk.hata);
       return;
     }
     setState(() => _kayitYukleniyor = true);
@@ -49,14 +49,14 @@ extension _BulutSyncIslemlerExt on _BulutSyncEkraniState {
       if (!mounted) return;
       setState(() => _kayitYukleniyor = false);
       _snack('Adres ve anahtar kaydedildi ✓ — şimdi aşağıdan işletme hesabıyla giriş yapın.',
-          Colors.green);
+          TsRenk.basarili);
       return;
     }
     final test = await SupabaseSyncServisi.baglantiTest(url: url, key: key);
     if (!test.basarili) {
       if (!mounted) return;
       setState(() { _kayitYukleniyor = false; _bagliMi = false; _baglantiMesaj = test.mesaj; });
-      _snack('Bağlantı başarısız: ${test.mesaj}', Colors.red);
+      _snack('Bağlantı başarısız: ${test.mesaj}', TsRenk.hata);
       return;
     }
     await SupabaseSyncServisi.ayarlariKaydet(url, key);
@@ -73,22 +73,22 @@ extension _BulutSyncIslemlerExt on _BulutSyncEkraniState {
     if (SupabaseOturum.gizliAnahtarMi(key)) {
       _snack('⚠️ Tam yetkili GİZLİ anahtar kaydedildi — senkron çalışır ama '
           'cihazda tutulması güvensiz. Herkese açık (sb_publishable_) anahtarı '
-          'girip işletme hesabıyla giriş yapın.', Colors.orange);
+          'girip işletme hesabıyla giriş yapın.', TsRenk.uyari);
     } else {
-      _snack('Bağlantı bilgileri kaydedildi ✓', Colors.green);
+      _snack('Bağlantı bilgileri kaydedildi ✓', TsRenk.basarili);
     }
   }
 
   Future<void> _qrMenuUrlKaydet() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(QrMenuAdresi.bulutUrlAnahtari, _qrMenuUrlCtrl.text.trim());
-    if (mounted) _snack('QR Menü adresi kaydedildi ✓', Colors.green);
+    if (mounted) _snack('QR Menü adresi kaydedildi ✓', TsRenk.basarili);
   }
 
   Future<void> _girisYap() async {
     final eposta = _epostaCtrl.text.trim();
     if (eposta.isEmpty || _sifreCtrl.text.isEmpty) {
-      _snack('E-posta ve şifre girin', Colors.red);
+      _snack('E-posta ve şifre girin', TsRenk.hata);
       return;
     }
     setState(() => _girisYapiliyor = true);
@@ -102,12 +102,12 @@ extension _BulutSyncIslemlerExt on _BulutSyncEkraniState {
       await _kaliciHatalariYukle();
       if (!mounted) return;
       setState(() => _girisYapiliyor = false);
-      _snack('Giriş yapıldı ✓ — bulut bağlantısı işletme hesabıyla güvenli.', Colors.green);
+      _snack('Giriş yapıldı ✓ — bulut bağlantısı işletme hesabıyla güvenli.', TsRenk.basarili);
       _baglantiKontrol();
     } catch (e) {
       if (!mounted) return;
       setState(() => _girisYapiliyor = false);
-      _snack(e is OturumHatasi ? e.mesaj : 'Giriş yapılamadı: $e', Colors.red);
+      _snack(e is OturumHatasi ? e.mesaj : 'Giriş yapılamadı: $e', TsRenk.hata);
     }
   }
 
@@ -116,7 +116,7 @@ extension _BulutSyncIslemlerExt on _BulutSyncEkraniState {
     if (!mounted) return;
     setState(() {});
     _snack('Oturum kapatıldı — cihaz yeniden giriş yapana kadar buluta erişemez.',
-        Colors.orange);
+        TsRenk.uyari);
     _baglantiKontrol();
   }
 
@@ -135,7 +135,7 @@ extension _BulutSyncIslemlerExt on _BulutSyncEkraniState {
   // 🔥 Hata mesajlarını panoya kopyala
   Future<void> _kopyalaHatalar() async {
     if (_sonSonuc == null || _sonSonuc!.hatalar.isEmpty) {
-      _snack('Kopyalanacak hata yok', Colors.orange);
+      _snack('Kopyalanacak hata yok', TsRenk.uyari);
       return;
     }
     final buffer = StringBuffer();
@@ -147,6 +147,6 @@ extension _BulutSyncIslemlerExt on _BulutSyncEkraniState {
     buffer.writeln('─' * 40);
     buffer.writeln('Toplam ${_sonSonuc!.hatalar.length} hata');
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
-    _snack('${_sonSonuc!.hatalar.length} hata panoya kopyalandı', Colors.green);
+    _snack('${_sonSonuc!.hatalar.length} hata panoya kopyalandı', TsRenk.basarili);
   }
 }

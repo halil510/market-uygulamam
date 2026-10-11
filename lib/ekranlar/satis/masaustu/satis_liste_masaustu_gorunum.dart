@@ -187,7 +187,7 @@ class _SatisListeMasaustuGorunumState extends State<SatisListeMasaustuGorunum> {
         ozetler: [
           AltOzet('Satış Sayısı', '${l.length}'),
           AltOzet('Toplam (iptalsiz)', ParaUtils.formatla(toplam),
-              renk: const Color(0xFF2E7D32)),
+              renk: TsRenk.basarili),
           if (iptalli > 0) AltOzet('İptal', '$iptalli', renk: TsRenk.hata),
           if (secimVar)
             AltOzet('Seçili (${widget.seciliIds.length})',
@@ -195,11 +195,11 @@ class _SatisListeMasaustuGorunumState extends State<SatisListeMasaustuGorunum> {
         ],
         tuslar: [
           AltTus('F2', 'Detay', Icons.receipt_long_outlined,
-              const Color(0xFF1565C0),
+              TsRenk.bilgi,
               s == null ? null : () => widget.onDetay(s)),
-          AltTus('F3', 'Seç', Icons.check_box_outlined, const Color(0xFFC62828),
+          AltTus('F3', 'Seç', Icons.check_box_outlined, TsRenk.hata,
               s == null ? null : () => widget.onSecToggle(s)),
-          AltTus('F5', 'Yenile', Icons.refresh, const Color(0xFF2E7D32),
+          AltTus('F5', 'Yenile', Icons.refresh, TsRenk.basarili,
               () => widget.onYenile()),
         ],
       ),

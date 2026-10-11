@@ -115,7 +115,7 @@ class _SplashEkraniState extends ConsumerState<SplashEkrani>
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: [Color(0xFF1A237E), Color(0xFF4361EE), Color(0xFF7209B7)],
+            colors: [TsRenk.primaryKoyu, TsRenk.primary, TsRenk.vurguMor],
             stops: [0.0, 0.5, 1.0],
           ),
         ),

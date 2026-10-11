@@ -2,6 +2,7 @@
 //
 // Masa durumunun (boş/dolu/hesap istendi/rezerve) renkli rozeti —
 // masa_detay_ekrani.dart'tan ayrıldı (2026-10-07 refactor).
+import '../../../tasarim_sistemi/ts_token.dart';
 import 'package:flutter/material.dart';
 
 import '../../../uygulama/tema/uygulama_temasi.dart';
@@ -27,10 +28,10 @@ class MasaDurumRozeti extends StatelessWidget {
       };
 
   static Color renk(BuildContext context, String durum) => switch (durum) {
-        'bos' => const Color(0xFF2E7D32),
-        'dolu' => const Color(0xFFF57C00),
-        'hesap_istendi' => const Color(0xFFD32F2F),
-        'rezerve' => const Color(0xFF1976D2),
+        'bos' => TsRenk.basarili,
+        'dolu' => TsRenk.uyari,
+        'hesap_istendi' => TsRenk.hata,
+        'rezerve' => TsRenk.bilgi,
         _ => context.textSecondary,
       };
 

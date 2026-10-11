@@ -50,9 +50,9 @@ class _BankaDetayEkraniState extends ConsumerState<BankaDetayEkrani> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 56, color: Colors.red),
+              const Icon(Icons.error_outline, size: 56, color: TsRenk.hata),
               const SizedBox(height: 12),
-              Text('Hata: ${bildirimMetniniSadelestir(e.toString())}', style: const TextStyle(color: Colors.red)),
+              Text('Hata: ${bildirimMetniniSadelestir(e.toString())}', style: const TextStyle(color: TsRenk.hata)),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => ref.invalidate(bankaDetayProvider(widget.bankaId)),
@@ -121,7 +121,7 @@ class _BankaDetayIcerik extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: banka.aktif ? Colors.green : Colors.red,
+                color: banka.aktif ? TsRenk.basarili : TsRenk.hata,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -188,10 +188,10 @@ class _BankaDetayIcerik extends StatelessWidget {
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: () => _sil(context),
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            label: const Text('Bankayı Sil', style: TextStyle(color: Colors.red)),
+            icon: const Icon(Icons.delete_outline, color: TsRenk.hata),
+            label: const Text('Bankayı Sil', style: TextStyle(color: TsRenk.hata)),
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.red),
+              side: const BorderSide(color: TsRenk.hata),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
@@ -227,7 +227,7 @@ class _BankaDetayIcerik extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red),
+          Icon(Icons.warning_amber_rounded, color: TsRenk.hata),
           SizedBox(width: 8),
           Text('Bankayı Sil'),
         ]),

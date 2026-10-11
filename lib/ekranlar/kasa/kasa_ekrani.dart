@@ -79,8 +79,8 @@ class KasaEkrani extends ConsumerWidget {
               borderRadius: BorderRadius.circular(20),
               gradient: LinearGradient(
                 colors: bakiye >= 0
-                    ? [Colors.green.shade700, Colors.green.shade500]
-                    : [Colors.red.shade700, Colors.red.shade500],
+                    ? [TsRenk.basarili, TsRenk.basarili]
+                    : [TsRenk.hata, TsRenk.hata],
                 begin: Alignment.topLeft, end: Alignment.bottomRight),
             ),
             child: Column(children: [

@@ -199,7 +199,7 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani>
                   ),
                   TsYetkili(
                       child: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    icon: const Icon(Icons.delete_outline, color: TsRenk.hata),
                     tooltip: 'Seçilileri Sil',
                     onPressed: () => _seciliUrunleriSil(durum.seciliIds),
                   )),
@@ -254,7 +254,7 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani>
                           child: ListTile(
                               dense: true,
                               leading: Icon(Icons.upload_file,
-                                  size: 18, color: Colors.green),
+                                  size: 18, color: TsRenk.basarili),
                               title: Text('Excel\'den İçe Aktar',
                                   style: TextStyle(fontSize: 13)))),
                       PopupMenuItem(

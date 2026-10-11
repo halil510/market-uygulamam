@@ -65,15 +65,15 @@ class CariExcelIceAktarYardimcisi {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.check_circle, color: Colors.green), SizedBox(width: 8),
+          Icon(Icons.check_circle, color: TsRenk.basarili), SizedBox(width: 8),
           Text('İçe Aktarma Tamamlandı'),
         ]),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          _sonucSatiri('Eklenen Cari', sonuc.eklenen, Colors.green),
-          _sonucSatiri('Güncellenen Cari', sonuc.guncellenen, Colors.blue),
+          _sonucSatiri('Eklenen Cari', sonuc.eklenen, TsRenk.basarili),
+          _sonucSatiri('Güncellenen Cari', sonuc.guncellenen, TsRenk.bilgi),
           if (sonuc.acilisBakiyesiYazilan > 0)
-            _sonucSatiri('Açılış Bakiyesi Yazılan', sonuc.acilisBakiyesiYazilan, Colors.orange),
-          if (sonuc.hatali > 0) _sonucSatiri('Hatalı Satır', sonuc.hatali, Colors.red),
+            _sonucSatiri('Açılış Bakiyesi Yazılan', sonuc.acilisBakiyesiYazilan, TsRenk.uyari),
+          if (sonuc.hatali > 0) _sonucSatiri('Hatalı Satır', sonuc.hatali, TsRenk.hata),
           const SizedBox(height: 8),
           Text('Toplam ${sonuc.toplam} satır işlendi'),
           if (sonuc.acilisBakiyesiYazilan > 0)
@@ -86,7 +86,7 @@ class CariExcelIceAktarYardimcisi {
                 border: Border.all(color: Colors.orange.shade200),
               ),
               child: const Row(children: [
-                Icon(Icons.info_outline, color: Colors.orange, size: 16),
+                Icon(Icons.info_outline, color: TsRenk.uyari, size: 16),
                 SizedBox(width: 8),
                 Expanded(child: Text(
                   'Yeni eklenen carilerin Excel\'deki Borç/Alacak tutarı '
@@ -108,7 +108,7 @@ class CariExcelIceAktarYardimcisi {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.error_outline, color: Colors.red), SizedBox(width: 8),
+          Icon(Icons.error_outline, color: TsRenk.hata), SizedBox(width: 8),
           Text('İçe Aktarma Başarısız'),
         ]),
         content: ConstrainedBox(

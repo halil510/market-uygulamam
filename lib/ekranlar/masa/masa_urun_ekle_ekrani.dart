@@ -248,7 +248,7 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
                   label: Text(k),
                   selected: _kategori == k,
                   onSelected: (_) => setState(() => _kategori = k),
-                  selectedColor: const Color(0xFF6D4C41),
+                  selectedColor: TsRenk.masaAcik,
                   labelStyle: TextStyle(color: _kategori == k ? Colors.white : TsRenk.metinIkincil(context)),
                 ),
               )).toList(),
@@ -491,12 +491,12 @@ class _UrunEkleKarti extends StatelessWidget {
               if (!yukleniyor)
                 Container(
                   width: 32, height: 32,
-                  decoration: const BoxDecoration(color: Color(0xFF6D4C41), shape: BoxShape.circle),
+                  decoration: const BoxDecoration(color: TsRenk.masaAcik, shape: BoxShape.circle),
                   child: const Icon(Icons.add, size: 16, color: Colors.white),
                 )
               else
                 const SizedBox(width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6D4C41))),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: TsRenk.masaAcik)),
             ],
           ),
         ),
@@ -528,7 +528,7 @@ class _UrunKareGorseli extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         gradient: dosyaVar ? null : LinearGradient(
-          colors: [const Color(0xFF6D4C41).withAlpha(51), const Color(0xFF6D4C41).withAlpha(13)]),
+          colors: [TsRenk.masaAcik.withAlpha(51), TsRenk.masaAcik.withAlpha(13)]),
         borderRadius: BorderRadius.circular(koseYari),
       ),
       child: dosyaVar
@@ -541,7 +541,7 @@ class _UrunKareGorseli extends StatelessWidget {
   Widget _harfRozeti() => Center(
     child: Text(
       urun.urunAdi.isNotEmpty ? urun.urunAdi[0].toUpperCase() : '?',
-      style: TextStyle(fontSize: harfBoyut, fontWeight: FontWeight.w600, color: const Color(0xFF6D4C41)),
+      style: TextStyle(fontSize: harfBoyut, fontWeight: FontWeight.w600, color: TsRenk.masaAcik),
     ),
   );
 }

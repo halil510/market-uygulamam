@@ -13,10 +13,10 @@ class _OzetKartlari extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _OzetItem('Toplam Borç', ozet['toplam_borc'] ?? 0, Colors.indigo, Icons.summarize_rounded),
-      _OzetItem('Ödenen (Manuel)', ozet['toplam_odenen'] ?? 0, Colors.green, Icons.check_circle_rounded),
-      _OzetItem('Kalan', ozet['kalan_borc'] ?? 0, Colors.orange, Icons.pending_rounded),
-      _OzetItem('Gecikmiş', ozet['gecmis_borc'] ?? 0, Colors.red, Icons.warning_rounded),
+      _OzetItem('Toplam Borç', ozet['toplam_borc'] ?? 0, TsRenk.primary, Icons.summarize_rounded),
+      _OzetItem('Ödenen (Manuel)', ozet['toplam_odenen'] ?? 0, TsRenk.basarili, Icons.check_circle_rounded),
+      _OzetItem('Kalan', ozet['kalan_borc'] ?? 0, TsRenk.uyari, Icons.pending_rounded),
+      _OzetItem('Gecikmiş', ozet['gecmis_borc'] ?? 0, TsRenk.hata, Icons.warning_rounded),
     ];
 
     return Column(children: [
@@ -38,7 +38,7 @@ class _OzetKartlari extends StatelessWidget {
       // bkz. dosya başındaki açıklama).
       _OzetKartWidget(
         item: _OzetItem('Kredi Kartı Borcu', ozet['kredi_karti_borcu'] ?? 0,
-            Colors.purple, Icons.credit_card_rounded),
+            TsRenk.vurguMor, Icons.credit_card_rounded),
         tamGenislik: true,
       ),
     ]);
@@ -132,11 +132,11 @@ class _BorcKartModern extends StatelessWidget {
     final theme = Theme.of(context);
     final Color accentRenk;
     if (borc.vadesiGecti) {
-      accentRenk = Colors.red;
+      accentRenk = TsRenk.hata;
     } else if (borc.kritik) {
-      accentRenk = Colors.orange;
+      accentRenk = TsRenk.uyari;
     } else {
-      accentRenk = Colors.blue;
+      accentRenk = TsRenk.bilgi;
     }
 
     // ÖNCEDEN BURADA CİDDİ, ARALIKLI (INTERMITTENT) BİR LAYOUT HATASI
@@ -252,9 +252,9 @@ class _BorcKartModern extends StatelessWidget {
                                 color: TsRenk.zemin(TsRenk.basarili),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text('✓ Ödendi',
+                              child: const Text('✓ Ödendi',
                                   style: TextStyle(
-                                      color: Colors.green.shade700,
+                                      color: TsRenk.basarili,
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600)),
                             ),
@@ -283,7 +283,7 @@ class _BorcKartModern extends StatelessWidget {
                                 _tarihMetni(borc),
                                 style: TextStyle(
                                     fontSize: 11,
-                                    color: borc.vadesiGecti ? Colors.red : TsRenk.metinIkincil(context)),
+                                    color: borc.vadesiGecti ? TsRenk.hata : TsRenk.metinIkincil(context)),
                               ),
                             ],
                           ),
@@ -346,7 +346,7 @@ class _OdenenBorcKart extends StatelessWidget {
     final fmt = DateFormat('dd MMM yyyy', 'tr_TR');
     return TsKart.liste(
       onTap: onDetay,
-      ikon: Icon(Icons.check_circle_rounded, color: Colors.green.shade600),
+      ikon: const Icon(Icons.check_circle_rounded, color: TsRenk.basarili),
       baslik: borc.baslik,
       altBaslik: borc.odemeTarihi != null
           ? 'Ödendi: ${fmt.format(borc.odemeTarihi!)}'
@@ -363,8 +363,8 @@ class _OncelikBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (renk, etiket) = switch (oncelik) {
-      1 => (Colors.red, 'Kritik'),
-      2 => (Colors.orange, 'Orta'),
+      1 => (TsRenk.hata, 'Kritik'),
+      2 => (TsRenk.uyari, 'Orta'),
       _ => (context.textSecondary, 'Düşük'),
     };
     return Container(
@@ -390,10 +390,10 @@ class _KrediKartiKart extends StatelessWidget {
         ? (kart.kullanilanLimit / kart.kartLimit).clamp(0.0, 1.0)
         : 0.0;
     final renk = doluluk > 0.8
-        ? Colors.red
+        ? TsRenk.hata
         : doluluk > 0.5
-            ? Colors.orange
-            : Colors.indigo;
+            ? TsRenk.uyari
+            : TsRenk.primary;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),

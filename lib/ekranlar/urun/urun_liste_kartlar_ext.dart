@@ -11,11 +11,11 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
             color: TsRenk.zemin(TsRenk.bilgi, opaklik: 0.18),
             borderRadius: BorderRadius.circular(20)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.blue)),
+          Text(label, style: const TextStyle(fontSize: 12, color: TsRenk.bilgi)),
           const SizedBox(width: 4),
           GestureDetector(
               onTap: onRemove,
-              child: const Icon(Icons.close, size: 14, color: Colors.blue)),
+              child: const Icon(Icons.close, size: 14, color: TsRenk.bilgi)),
         ]),
       );
 
@@ -33,10 +33,10 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
           }
           final u = urunler[i];
           final stokRenk = u.stok <= 0
-              ? Colors.red
+              ? TsRenk.hata
               : u.kritikStok
-                  ? Colors.orange
-                  : Colors.green;
+                  ? TsRenk.uyari
+                  : TsRenk.basarili;
 
           final kart = RepaintBoundary(
             child: TsKart(
@@ -143,9 +143,9 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                               color: TsRenk.zemin(TsRenk.bilgi),
                               borderRadius: BorderRadius.circular(4)),
                           child: Text(u.anaGrup!,
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 10,
-                                  color: Colors.blue.shade700,
+                                  color: TsRenk.bilgi,
                                   fontWeight: FontWeight.w500)),
                         ),
                       ],
@@ -228,9 +228,9 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                       if (u.karOrani > 0) ...[
                         const SizedBox(height: 3),
                         Text('%${u.karOrani.toStringAsFixed(1)} ▲',
-                            style: TextStyle(
+                            style: const TextStyle(
                                 fontSize: 10,
-                                color: Colors.green.shade600,
+                                color: TsRenk.basarili,
                                 fontWeight: FontWeight.w600)),
                       ],
                       const SizedBox(height: 8),
@@ -244,7 +244,7 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                                 color: TsRenk.zemin(TsRenk.bilgi),
                                 borderRadius: BorderRadius.circular(8)),
                             child: const Icon(Icons.info_outline,
-                                size: 19, color: Colors.blue),
+                                size: 19, color: TsRenk.bilgi),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -325,10 +325,10 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
           }
           final u = urunler[i];
           final stokRenk = u.stok <= 0
-              ? Colors.red
+              ? TsRenk.hata
               : u.kritikStok
-                  ? Colors.orange
-                  : Colors.green;
+                  ? TsRenk.uyari
+                  : TsRenk.basarili;
           return RepaintBoundary(
             child: TsKart(
               secili: durum.seciliIds.contains(u.id),
@@ -383,7 +383,7 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                           if (u.barkod != null && u.barkod!.isNotEmpty)
                             IconButton(
                               icon: const Icon(Icons.qr_code_2,
-                                  size: 18, color: Colors.blue),
+                                  size: 18, color: TsRenk.bilgi),
                               onPressed: () =>
                                   _barkodGoster(u.barkod!, u.urunAdi),
                               padding: EdgeInsets.zero,

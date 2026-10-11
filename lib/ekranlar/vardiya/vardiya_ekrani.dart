@@ -154,7 +154,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.lock_open_rounded, color: Colors.green),
+          Icon(Icons.lock_open_rounded, color: TsRenk.basarili),
           SizedBox(width: 8),
           Text('Vardiya Aç'),
         ]),
@@ -181,7 +181,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
               onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
           FilledButton(
             style: FilledButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.green),
+                foregroundColor: Colors.white, backgroundColor: TsRenk.basarili),
             onPressed: () {
               final v =
                   ParaUtils.sayiCoz(kasaCtrl.text) ?? 0;
@@ -258,7 +258,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(children: [
-              Icon(Icons.admin_panel_settings_outlined, color: Colors.deepPurple),
+              Icon(Icons.admin_panel_settings_outlined, color: TsRenk.vurguMor),
               SizedBox(width: 8),
               Text('Müdür Onayı Gerekli'),
             ]),
@@ -284,7 +284,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
               ),
               if (hata != null) ...[
                 const SizedBox(height: 8),
-                Text(hata!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                Text(hata!, style: const TextStyle(color: TsRenk.hata, fontSize: 12)),
               ],
             ]),
             actions: [
@@ -293,7 +293,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
                   child: const Text('İptal')),
               FilledButton(
                 style: FilledButton.styleFrom(
-                    foregroundColor: Colors.white, backgroundColor: Colors.deepPurple),
+                    foregroundColor: Colors.white, backgroundColor: TsRenk.vurguMor),
                 onPressed: dogrulaniyor ? null : dogrula,
                 child: dogrulaniyor
                     ? const SizedBox(
@@ -335,7 +335,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(children: [
-            Icon(Icons.lock_rounded, color: Colors.orange),
+            Icon(Icons.lock_rounded, color: TsRenk.uyari),
             SizedBox(width: 8),
             Text('Vardiya Kapat'),
           ]),
@@ -404,10 +404,10 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
                               ? Icons.arrow_upward
                               : Icons.arrow_downward,
                       color: fark.abs() < 1
-                          ? Colors.green
+                          ? TsRenk.basarili
                           : fark > 0
-                              ? Colors.blue
-                              : Colors.red,
+                              ? TsRenk.bilgi
+                              : TsRenk.hata,
                       size: 18),
                   const SizedBox(width: 8),
                   Text(
@@ -418,10 +418,10 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         color: fark.abs() < 1
-                            ? Colors.green
+                            ? TsRenk.basarili
                             : fark > 0
-                                ? Colors.blue
-                                : Colors.red),
+                                ? TsRenk.bilgi
+                                : TsRenk.hata),
                   ),
                 ]),
               ),
@@ -434,7 +434,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
             FilledButton(
               style: FilledButton.styleFrom(
                   foregroundColor: Colors.white,
-                  backgroundColor: Colors.orange),
+                  backgroundColor: TsRenk.uyari),
               onPressed: () => Navigator.pop(ctx, {
                 'sayim':
                     ParaUtils.sayiCoz(sayimCtrl.text) ?? 0,
@@ -550,25 +550,25 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
             childAspectRatio: 1.7,
             children: [
               VardiyaKpi('Satış', '${_satisOzet['satis_sayisi'] ?? 0} adet',
-                  Icons.receipt_outlined, Colors.blue.shade700),
+                  Icons.receipt_outlined, TsRenk.bilgi),
               VardiyaKpi(
                   'Ciro',
                   ParaUtils.formatla(
                       (_satisOzet['toplam_ciro'] as num?)?.toDouble() ?? 0),
                   Icons.trending_up,
-                  Colors.green.shade700),
+                  TsRenk.basarili),
               VardiyaKpi(
                   'Nakit',
                   ParaUtils.formatla(
                       (_satisOzet['nakit'] as num?)?.toDouble() ?? 0),
                   Icons.payments_outlined,
-                  Colors.purple.shade700),
+                  TsRenk.vurguMor),
               VardiyaKpi(
                   'Kredi K.',
                   ParaUtils.formatla(
                       (_satisOzet['kart'] as num?)?.toDouble() ?? 0),
                   Icons.credit_card_outlined,
-                  Colors.teal.shade700),
+                  TsRenk.vurguTurkuaz),
             ],
           ),
           const SizedBox(height: 12),
@@ -609,10 +609,10 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
                   color: TsRenk.zemin(TsRenk.hata),
                   borderRadius: BorderRadius.circular(12)),
               child: Row(children: [
-                const Icon(Icons.cancel_outlined, color: Colors.red, size: 16),
+                const Icon(Icons.cancel_outlined, color: TsRenk.hata, size: 16),
                 const SizedBox(width: 6),
                 Text('${_satisOzet['iptal_sayisi']} iptal satış',
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 12)),
+                    style: const TextStyle(color: TsRenk.hata, fontSize: 12)),
               ]),
             ),
           ],

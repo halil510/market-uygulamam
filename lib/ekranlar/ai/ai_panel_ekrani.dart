@@ -130,7 +130,7 @@ class _OzetTab extends StatelessWidget {
       ]),
       const SizedBox(height: 12),
       Row(children: [
-        Expanded(child: _StatKart('Ort. Sepet', ParaUtils.formatla((ozet['ortalama_sepet'] as num?)?.toDouble() ?? 0), Icons.receipt_long, Colors.blue)),
+        Expanded(child: _StatKart('Ort. Sepet', ParaUtils.formatla((ozet['ortalama_sepet'] as num?)?.toDouble() ?? 0), Icons.receipt_long, TsRenk.bilgi)),
         const SizedBox(width: 12),
         Expanded(child: _StatKart('Kritik Stok', '${ozet['kritik_stok'] ?? 0} ürün', Icons.warning_amber, TsRenk.uyari)),
       ]),
@@ -243,7 +243,7 @@ class _PromosyonTab extends StatelessWidget {
           decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))),
           margin: const EdgeInsets.only(bottom: 8),
           child: Material(type: MaterialType.transparency, child: ListTile(
-            leading: const Icon(Icons.local_offer, color: Colors.purple),
+            leading: const Icon(Icons.local_offer, color: TsRenk.vurguMor),
             title: Text(r['urun_adi'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             subtitle: Text(
               'Stok: ${(r['stok'] as num?)?.toStringAsFixed(0) ?? 0} | 30g Satış: ${(r['satis_adet'] as num?)?.toStringAsFixed(0) ?? 0}',
@@ -251,8 +251,8 @@ class _PromosyonTab extends StatelessWidget {
             ),
             trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
               Text(ParaUtils.formatla(fiyat), style: TextStyle(decoration: TextDecoration.lineThrough, fontSize: 11, color: context.textSecondary)),
-              Text(ParaUtils.formatla(indirimli), style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.purple, fontSize: 13)),
-              const Text('%10 indirim', style: TextStyle(fontSize: 10, color: Colors.purple)),
+              Text(ParaUtils.formatla(indirimli), style: const TextStyle(fontWeight: FontWeight.w800, color: TsRenk.vurguMor, fontSize: 13)),
+              const Text('%10 indirim', style: TextStyle(fontSize: 10, color: TsRenk.vurguMor)),
             ]),
           )),
         );
@@ -681,7 +681,7 @@ class AiOneriKarti extends StatelessWidget {
   Widget build(BuildContext context) {
     final bitti = oneri.kullanildi && durum == 'bekliyor'; // yazıyla onay/iptal edildi
     final aktif = durum == 'bekliyor' && !oneri.kullanildi && !oneri.suresiDoldu;
-    final renk = oneri.kritik ? Colors.deepOrange : Theme.of(context).colorScheme.primary;
+    final renk = oneri.kritik ? TsRenk.uyari : Theme.of(context).colorScheme.primary;
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -719,10 +719,10 @@ class AiOneriKarti extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(Icons.warning_amber_rounded, size: 15, color: Colors.amber.shade800),
+                const Icon(Icons.warning_amber_rounded, size: 15, color: TsRenk.uyari),
                 const SizedBox(width: 5),
                 Expanded(
-                  child: Text(u, style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.3)),
+                  child: Text(u, style: const TextStyle(fontSize: 12, color: TsRenk.uyari, height: 1.3)),
                 ),
               ]),
             ),

@@ -42,7 +42,7 @@ class _SiteFotograflariEkraniState extends State<SiteFotograflariEkrani> {
       // sonsuza kadar true kalıyordu.
       if (mounted) {
         setState(() => _yukleniyor = false);
-        _snack('Fotoğraflar yüklenemedi: $e', Colors.red);
+        _snack('Fotoğraflar yüklenemedi: $e', TsRenk.hata);
       }
     }
   }
@@ -62,13 +62,13 @@ class _SiteFotograflariEkraniState extends State<SiteFotograflariEkrani> {
         _snack(ok
             ? 'Fotoğraf eklendi — web sitesinde görünecek ✓'
             : 'Fotoğraf yüklendi ama liste kaydedilemedi, tekrar deneyin',
-            ok ? Colors.green : Colors.orange);
+            ok ? TsRenk.basarili : TsRenk.uyari);
       } else {
         _snack('Yükleme başarısız — internet ve bulut ayarlarını kontrol edin '
-            '(SQL kurulumunun yapılmış olması gerekir)', Colors.red);
+            '(SQL kurulumunun yapılmış olması gerekir)', TsRenk.hata);
       }
     } catch (e) {
-      _snack('Yükleme başarısız: ${kullaniciyaHataMetni(e)}', Colors.red);
+      _snack('Yükleme başarısız: ${kullaniciyaHataMetni(e)}', TsRenk.hata);
     } finally {
       // Çevrimdışıyken servis hata atarsa ekle butonu önceden kalıcı kilitleniyordu.
       if (mounted) setState(() => _islemde = false);
@@ -95,7 +95,7 @@ class _SiteFotograflariEkraniState extends State<SiteFotograflariEkrani> {
     try {
       await _servis.gorselleriKaydet(_adresler);
       await _servis.fotoSil(adres);
-      if (mounted) _snack('Fotoğraf silindi ✓', Colors.green);
+      if (mounted) _snack('Fotoğraf silindi ✓', TsRenk.basarili);
     } catch (e) {
       // 🔴 DÜZELTME: try-catch yoktu — hata durumunda hem _islemde
       // sonsuza kadar true kalıyordu hem de listeden zaten çıkarılan
@@ -104,7 +104,7 @@ class _SiteFotograflariEkraniState extends State<SiteFotograflariEkrani> {
       _adresler
         ..clear()
         ..addAll(yedek);
-      if (mounted) _snack('Silinemedi: $e', Colors.red);
+      if (mounted) _snack('Silinemedi: $e', TsRenk.hata);
     } finally {
       if (mounted) setState(() => _islemde = false);
     }
@@ -114,9 +114,9 @@ class _SiteFotograflariEkraniState extends State<SiteFotograflariEkrani> {
     if (!mounted) return;
     // 🔴 UX TUTARLILIK DÜZELTMESİ: bkz. aynı düzeltme diğer ekranlarda —
     // artık paylaşılan BildirimServisi kullanılıyor.
-    if (c == Colors.red) {
+    if (c == TsRenk.hata) {
       BildirimServisi.hata(context, m);
-    } else if (c == Colors.orange) {
+    } else if (c == TsRenk.uyari) {
       BildirimServisi.uyari(context, m);
     } else {
       BildirimServisi.basari(context, m);

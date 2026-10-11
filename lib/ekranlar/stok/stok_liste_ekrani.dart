@@ -345,10 +345,10 @@ class _StokListeEkraniState extends ConsumerState<StokListeEkrani>
         }
         final u = liste[i];
         final stokRenk = u.stok <= 0
-            ? Colors.red
+            ? TsRenk.hata
             : u.minimumStok > 0 && u.stok <= u.minimumStok
-                ? Colors.orange
-                : Colors.green;
+                ? TsRenk.uyari
+                : TsRenk.basarili;
 
         return RepaintBoundary(
           child: TsKart.liste(

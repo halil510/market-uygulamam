@@ -65,7 +65,7 @@ class _KullaniciListeEkraniState extends ConsumerState<KullaniciListeEkrani> {
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.red),
+          backgroundColor: TsRenk.hata),
             child: const Text('Sil'),
           ),
         ],
@@ -95,15 +95,15 @@ class _KullaniciListeEkraniState extends ConsumerState<KullaniciListeEkrani> {
   Color _rolRenk(String rol) {
     switch (rol) {
       case 'admin':
-        return Colors.red;
+        return TsRenk.hata;
       case 'mudur':
-        return Colors.purple;
+        return TsRenk.vurguMor;
       case 'kasiyer':
-        return Colors.blue;
+        return TsRenk.bilgi;
       case 'personel':
-        return Colors.green;
+        return TsRenk.basarili;
       case 'depocu':
-        return Colors.orange;
+        return TsRenk.uyari;
       default:
         return context.textSecondary;
     }
@@ -246,10 +246,10 @@ class _KullaniciListeEkraniState extends ConsumerState<KullaniciListeEkrani> {
                                     value: 'sil',
                                     child: ListTile(
                                       dense: true,
-                                      leading: Icon(Icons.delete, color: Colors.red),
+                                      leading: Icon(Icons.delete, color: TsRenk.hata),
                                       title: Text(
                                         'Sil',
-                                        style: TextStyle(color: Colors.red),
+                                        style: TextStyle(color: TsRenk.hata),
                                       ),
                                     ),
                                   ),

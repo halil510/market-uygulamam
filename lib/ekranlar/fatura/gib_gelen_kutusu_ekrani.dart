@@ -83,7 +83,7 @@ class _GibGelenKutusuEkraniState extends State<GibGelenKutusuEkrani> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: kabul ? Colors.green : Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: kabul ? TsRenk.basarili : TsRenk.hata),
             child: Text(kabul ? 'Kabul Et' : 'Reddet'),
           ),
         ],
@@ -160,8 +160,8 @@ class _GibGelenKutusuEkraniState extends State<GibGelenKutusuEkrani> {
         Row(children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.purple.withAlpha(26), borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.south_west, color: Colors.purple, size: 18),
+            decoration: BoxDecoration(color: TsRenk.vurguMor.withAlpha(26), borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.south_west, color: TsRenk.vurguMor, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -189,13 +189,13 @@ class _GibGelenKutusuEkraniState extends State<GibGelenKutusuEkrani> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
-              color: (durum == 'accepted' ? Colors.green : Colors.red).withAlpha(20),
+              color: (durum == 'accepted' ? TsRenk.basarili : TsRenk.hata).withAlpha(20),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               durum == 'accepted' ? '✓ Kabul Edildi' : '✗ Reddedildi',
               textAlign: TextAlign.center,
-              style: TsMetin.kucukVurgu.copyWith(color: durum == 'accepted' ? Colors.green.shade700 : Colors.red.shade700),
+              style: TsMetin.kucukVurgu.copyWith(color: durum == 'accepted' ? TsRenk.basarili : TsRenk.hata),
             ),
           )
         else
@@ -208,9 +208,9 @@ class _GibGelenKutusuEkraniState extends State<GibGelenKutusuEkrani> {
                   onPressed: isleniyor ? null : () => _yanitla(f, false),
                   icon: isleniyor
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.close, size: 16, color: Colors.red),
-                  label: const Text('Reddet', style: TextStyle(color: Colors.red)),
-                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
+                      : const Icon(Icons.close, size: 16, color: TsRenk.hata),
+                  label: const Text('Reddet', style: TextStyle(color: TsRenk.hata)),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: TsRenk.hata)),
                 ),
               ),
               const SizedBox(width: 8),
@@ -221,7 +221,7 @@ class _GibGelenKutusuEkraniState extends State<GibGelenKutusuEkrani> {
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.check, size: 16),
                   label: const Text('Kabul Et'),
-                  style: FilledButton.styleFrom(backgroundColor: Colors.green),
+                  style: FilledButton.styleFrom(backgroundColor: TsRenk.basarili),
                 ),
               ),
             ]);

@@ -59,10 +59,10 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
 
   // Durum renkleri
   Color _durumRenk(String durum) => switch (durum) {
-    'dolu'          => const Color(0xFFF57C00),      // Turuncu
-    'hesap_istendi' => const Color(0xFFD32F2F),      // Kırmızı
-    'rezerve'       => const Color(0xFF1976D2),      // Mavi
-    _               => const Color(0xFF2E7D32),      // Yeşil (boş)
+    'dolu'          => TsRenk.uyari,      // Turuncu
+    'hesap_istendi' => TsRenk.hata,      // Kırmızı
+    'rezerve'       => TsRenk.bilgi,      // Mavi
+    _               => TsRenk.basarili,      // Yeşil (boş)
   };
 
   // Durum ikonları
@@ -160,10 +160,10 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)]),
               child: Row(children: [
-                _ozetItem('Toplam', '${masalar.length}', Icons.table_restaurant, const Color(0xFF455A64)),
-                _ozetItem('Dolu', '$doluSayi', Icons.restaurant_menu, const Color(0xFFF57C00)),
-                _ozetItem('Hesap İstendi', '$hesapSayi', Icons.notifications_active, const Color(0xFFD32F2F)),
-                if (rezerveSayi > 0) _ozetItem('Rezerve', '$rezerveSayi', Icons.event_busy, const Color(0xFF1976D2)),
+                _ozetItem('Toplam', '${masalar.length}', Icons.table_restaurant, TsRenk.notr),
+                _ozetItem('Dolu', '$doluSayi', Icons.restaurant_menu, TsRenk.uyari),
+                _ozetItem('Hesap İstendi', '$hesapSayi', Icons.notifications_active, TsRenk.hata),
+                if (rezerveSayi > 0) _ozetItem('Rezerve', '$rezerveSayi', Icons.event_busy, TsRenk.bilgi),
               ]),
             ),
 
@@ -382,14 +382,14 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
           ),
         if (m.durum == 'rezerve')
           ListTile(
-            leading: const Icon(Icons.event_available, color: Colors.green),
+            leading: const Icon(Icons.event_available, color: TsRenk.basarili),
             title: const Text('Rezervasyonu İptal Et'),
             onTap: () async {
               Navigator.pop(ctx);
               final onay = await OnayDialog.goster(context,
                   baslik: 'Rezervasyonu İptal Et',
                   icerik: '"${m.ad}" için yaklaşan rezervasyon iptal edilecek. Emin misiniz?',
-                  onayYazi: 'İptal Et', onayRengi: Colors.red);
+                  onayYazi: 'İptal Et', onayRengi: TsRenk.hata);
               if (!onay || !mounted) return;
               await RezervasyonServisi().masaYaklasanRezervasyonlariIptalEt(m.id!);
               ref.read(masaListesiProvider.notifier).yukle();
@@ -397,14 +397,14 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
           ),
         if (m.durum == 'bos')
           TsYetkili(child: ListTile(
-            leading: const Icon(Icons.delete_outline, color: Colors.red),
-            title: const Text('Masayı Sil', style: TextStyle(color: Colors.red)),
+            leading: const Icon(Icons.delete_outline, color: TsRenk.hata),
+            title: const Text('Masayı Sil', style: TextStyle(color: TsRenk.hata)),
             onTap: () async {
               Navigator.pop(ctx);
               final onay = await OnayDialog.goster(context,
                   baslik: 'Masayı Sil',
                   icerik: '"${m.ad}" masası silinecek. Emin misiniz?',
-                  onayYazi: 'Sil', onayRengi: Colors.red);
+                  onayYazi: 'Sil', onayRengi: TsRenk.hata);
               if (!onay || !mounted) return;
               try {
                 await MasaDeposu().masaSil(m.id!);

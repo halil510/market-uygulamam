@@ -29,7 +29,7 @@ class _KrediKartiDetayEkraniState extends ConsumerState<KrediKartiDetayEkrani> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.orange),
+          Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
           SizedBox(width: 8),
           Text('Kartı Sil'),
         ]),
@@ -43,7 +43,7 @@ class _KrediKartiDetayEkraniState extends ConsumerState<KrediKartiDetayEkrani> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(backgroundColor: TsRenk.hata, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Evet, Sil'),
           ),
@@ -117,9 +117,9 @@ class _KrediKartiDetayEkraniState extends ConsumerState<KrediKartiDetayEkrani> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 56, color: Colors.red),
+              const Icon(Icons.error_outline, size: 56, color: TsRenk.hata),
               const SizedBox(height: 12),
-              Text('Hata: ${bildirimMetniniSadelestir(e.toString())}', style: const TextStyle(color: Colors.red)),
+              Text('Hata: ${bildirimMetniniSadelestir(e.toString())}', style: const TextStyle(color: TsRenk.hata)),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => ref.invalidate(krediKartiDetayProvider(widget.kartId)),
@@ -189,7 +189,7 @@ class _KartDetayIcerik extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: kart.aktif ? Colors.green : Colors.red,
+                color: kart.aktif ? TsRenk.basarili : TsRenk.hata,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -214,7 +214,7 @@ class _KartDetayIcerik extends ConsumerWidget {
               const Text('Limit Bilgisi', style: TextStyle(fontWeight: FontWeight.w700)),
               Text('${limitDoluluk.toStringAsFixed(0)}% kullanıldı',
                   style: TextStyle(
-                    color: limitDoluluk > 80 ? Colors.red : Colors.orange,
+                    color: limitDoluluk > 80 ? TsRenk.hata : TsRenk.uyari,
                     fontWeight: FontWeight.w600,
                   )),
             ]),
@@ -223,7 +223,7 @@ class _KartDetayIcerik extends ConsumerWidget {
               value: (limitDoluluk / 100).clamp(0, 1),
               backgroundColor: context.borderColor,
               valueColor: AlwaysStoppedAnimation<Color>(
-                limitDoluluk > 80 ? Colors.red : Colors.orange,
+                limitDoluluk > 80 ? TsRenk.hata : TsRenk.uyari,
               ),
             ),
             const SizedBox(height: 12),

@@ -45,7 +45,7 @@ class _SayimOnayEkraniState extends ConsumerState<SayimOnayEkrani> {
         icerik: 'Bekleyen tüm sayım kalemleri için stok güncellenecek. '
             'Bu işlem geri alınamaz (yeni bir "Sayım" hareketi olarak '
             'kaydedilir). Onaylıyor musunuz?',
-        onayYazi: 'Onayla ve Uygula', onayRengi: Colors.green.shade700,
+        onayYazi: 'Onayla ve Uygula', onayRengi: TsRenk.basarili,
         ikon: Icons.check_circle_outline);
     if (!onay || !mounted) return;
 
@@ -68,7 +68,7 @@ class _SayimOnayEkraniState extends ConsumerState<SayimOnayEkrani> {
         icerik: 'Bekleyen TÜM sayım kalemleri silinecek — stokta HİÇBİR '
             'değişiklik yapılmayacak. Sayımı yapan kişi baştan saymalı. '
             'Devam edilsin mi?',
-        onayYazi: 'Reddet', onayRengi: Colors.red.shade700,
+        onayYazi: 'Reddet', onayRengi: TsRenk.hata,
         ikon: Icons.cancel_outlined);
     if (!onay || !mounted) return;
 
@@ -168,7 +168,7 @@ class _SayimOnayEkraniState extends ConsumerState<SayimOnayEkrani> {
                             fontWeight: FontWeight.w700, fontSize: 13,
                             color: fark == 0
                                 ? TsRenk.metinIkincil(context)
-                                : (fark > 0 ? Colors.green.shade700 : Colors.red.shade700),
+                                : (fark > 0 ? TsRenk.basarili : TsRenk.hata),
                           ),
                         ),
                       ),
@@ -193,8 +193,8 @@ class _SayimOnayEkraniState extends ConsumerState<SayimOnayEkrani> {
                             icon: const Icon(Icons.close),
                             label: const Text('Reddet'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red.shade700,
-                              side: BorderSide(color: Colors.red.shade300),
+                              foregroundColor: TsRenk.hata,
+                              side: const BorderSide(color: TsRenk.hata),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                           ),
@@ -211,7 +211,7 @@ class _SayimOnayEkraniState extends ConsumerState<SayimOnayEkrani> {
                             label: const Text('Onayla'),
                             style: FilledButton.styleFrom(
                               foregroundColor: Colors.white,
-                              backgroundColor: Colors.green.shade700,
+                              backgroundColor: TsRenk.basarili,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                           ),

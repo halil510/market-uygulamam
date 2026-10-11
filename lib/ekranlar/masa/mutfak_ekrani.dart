@@ -14,10 +14,10 @@ class MutfakEkrani extends ConsumerWidget {
   static const _durumSira = ['beklemede', 'hazirlaniyor', 'hazir', 'servis_edildi'];
 
   Color _durumRenk(String d) => switch (d) {
-    'hazirlaniyor' => const Color(0xFFEF6C00),
-    'hazir' => const Color(0xFF2E7D32),
+    'hazirlaniyor' => TsRenk.uyari,
+    'hazir' => TsRenk.basarili,
     'servis_edildi' => const Color(0xFF9E9E9E),
-    _ => const Color(0xFFD32F2F),
+    _ => TsRenk.hata,
   };
 
   String _durumEtiket(String d) => switch (d) {
@@ -102,7 +102,7 @@ class MutfakEkrani extends ConsumerWidget {
                         color: TsRenk.kart(context),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: beklenenUzun ? Colors.red.shade300 : TsRenk.ayirac(context),
+                          color: beklenenUzun ? TsRenk.hata : TsRenk.ayirac(context),
                           width: beklenenUzun ? 1.5 : 1,
                         ),
                         boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
@@ -112,7 +112,7 @@ class MutfakEkrani extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           decoration: BoxDecoration(
-                            color: beklenenUzun ? Colors.red.shade700 : const Color(0xFF6D4C41),
+                            color: beklenenUzun ? TsRenk.hata : TsRenk.masaAcik,
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                           ),
                           child: Row(children: [
@@ -123,7 +123,7 @@ class MutfakEkrani extends ConsumerWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: beklenenUzun ? Colors.red.shade400 : Colors.white24,
+                                color: beklenenUzun ? TsRenk.hata : Colors.white24,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text('${fark.inMinutes} dk',
@@ -160,7 +160,7 @@ class MutfakEkrani extends ConsumerWidget {
                                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
                               subtitle: k.not_ != null && k.not_!.isNotEmpty
                                   ? Text('Not: ${k.not_}',
-                                      style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontStyle: FontStyle.italic))
+                                      style: const TextStyle(fontSize: 11, color: TsRenk.uyari, fontStyle: FontStyle.italic))
                                   : null,
                               trailing: GestureDetector(
                                 onTap: () => ref.read(mutfakProvider.notifier).kalemDurumGuncelle(k.id!, _sonraki(k.durum)),

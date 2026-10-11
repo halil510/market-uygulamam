@@ -116,7 +116,7 @@ class _MasaRaporEkraniState extends ConsumerState<MasaRaporEkrani>
             baslik: 'Bugünkü Ciro',
             deger: ParaUtils.formatla(_toplamMasaCiro),
             ikon: Icons.attach_money,
-            renk: const Color(0xFF2E7D32),
+            renk: TsRenk.basarili,
           ),
           const SizedBox(width: 12),
           _ozetKart(
@@ -155,7 +155,7 @@ class _MasaRaporEkraniState extends ConsumerState<MasaRaporEkrani>
               sections: entries.map((e) => PieChartSectionData(
                 value: e.value,
                 title: '${e.value.toStringAsFixed(0)}%',
-                color: e.key == 'Dolu' ? Colors.orange : (e.key == 'Boş' ? Colors.green : context.textSecondary),
+                color: e.key == 'Dolu' ? TsRenk.uyari : (e.key == 'Boş' ? TsRenk.basarili : context.textSecondary),
                 radius: 80,
                 titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
               )).toList(),
@@ -168,7 +168,7 @@ class _MasaRaporEkraniState extends ConsumerState<MasaRaporEkrani>
             spacing: 12,
             children: entries.map((e) => Row(mainAxisSize: MainAxisSize.min, children: [
               Container(width: 12, height: 12, decoration: BoxDecoration(
-                color: e.key == 'Dolu' ? Colors.orange : (e.key == 'Boş' ? Colors.green : context.textSecondary),
+                color: e.key == 'Dolu' ? TsRenk.uyari : (e.key == 'Boş' ? TsRenk.basarili : context.textSecondary),
                 shape: BoxShape.circle,
               )),
               const SizedBox(width: 4),
@@ -280,10 +280,10 @@ class _MasaPerformansKarti extends StatelessWidget {
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-            color: const Color(0xFF6D4C41).withAlpha(26),
+            color: TsRenk.masaAcik.withAlpha(26),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.table_restaurant, color: Color(0xFF6D4C41)),
+          child: const Icon(Icons.table_restaurant, color: TsRenk.masaAcik),
         ),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -333,7 +333,7 @@ class _MasaCiroKarti extends StatelessWidget {
         LinearProgressIndicator(
           value: yuzde / 100,
           backgroundColor: TsRenk.ayirac(context),
-          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6D4C41)),
+          valueColor: const AlwaysStoppedAnimation<Color>(TsRenk.masaAcik),
         ),
         const SizedBox(height: 2),
         Text('$siparisSayisi sipariş • %${yuzde.toStringAsFixed(1)}',

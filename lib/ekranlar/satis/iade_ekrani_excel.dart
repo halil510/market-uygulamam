@@ -132,13 +132,13 @@ extension _IadeExcelExt on _IadeEkraniState {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text('$iskontoluKalem kalemde Excel’deki indirim uygulandı.',
-                      style: const TextStyle(fontSize: 12, color: Colors.green)),
+                      style: const TextStyle(fontSize: 12, color: TsRenk.basarili)),
                 ),
               if (bulunamayan.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text('${bulunamayan.length} satır sistemde bulunamadı, atlanacak.',
-                      style: const TextStyle(fontSize: 12, color: Colors.orange)),
+                      style: const TextStyle(fontSize: 12, color: TsRenk.uyari)),
                 ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
@@ -180,7 +180,7 @@ extension _IadeExcelExt on _IadeEkraniState {
                         : 'Kasadan çıkış yazılmaz — tutarı POS’tan ayrıca iade etmeniz gerekir.',
                 style: TextStyle(
                     fontSize: 12,
-                    color: yontem == 'Cari' ? Colors.blue.shade800 : Colors.orange.shade800,
+                    color: yontem == 'Cari' ? TsRenk.bilgi : TsRenk.uyari,
                     fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),

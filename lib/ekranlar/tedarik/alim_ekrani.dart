@@ -278,11 +278,11 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
                                     dense: true,
                                     leading: CircleAvatar(
                                       radius: 16,
-                                      backgroundColor: TsRenk.zemin(Colors.teal),
+                                      backgroundColor: TsRenk.zemin(TsRenk.vurguTurkuaz),
                                       child: Text(
                                           t.unvan.isNotEmpty ? t.unvan[0].toUpperCase() : '?',
                                           style: TsMetin.kucukVurgu
-                                              .copyWith(color: Colors.teal.shade700)),
+                                              .copyWith(color: TsRenk.vurguTurkuaz)),
                                     ),
                                     title: Text(t.unvan,
                                         style: const TextStyle(

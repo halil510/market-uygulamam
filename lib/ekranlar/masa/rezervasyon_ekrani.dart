@@ -124,7 +124,7 @@ class _RezervasyonEkraniState extends ConsumerState<RezervasyonEkrani>
       final onay = await OnayDialog.goster(context,
           baslik: 'Rezervasyonu İptal Et',
           icerik: 'Bu rezervasyon iptal edilecek. Emin misiniz?',
-          onayYazi: 'İptal Et', onayRengi: Colors.red);
+          onayYazi: 'İptal Et', onayRengi: TsRenk.hata);
       if (!onay || !mounted) return;
     }
     try {
@@ -606,9 +606,9 @@ class _RezervasyonKarti extends StatelessWidget {
               border: Border.all(color: Colors.orange.shade200),
             ),
             child: Row(children: [
-              const Icon(Icons.note, size: 14, color: Colors.orange),
+              const Icon(Icons.note, size: 14, color: TsRenk.uyari),
               const SizedBox(width: 6),
-              Expanded(child: Text(rezervasyon.not_!, style: TextStyle(fontSize: 11, color: Colors.orange.shade800))),
+              Expanded(child: Text(rezervasyon.not_!, style: const TextStyle(fontSize: 11, color: TsRenk.uyari))),
             ]),
           ),
         ],
@@ -623,7 +623,7 @@ class _RezervasyonKarti extends StatelessWidget {
                   onPressed: () => onDurumDegistir(RezervasyonDurum.onaylandi),
                   icon: const Icon(Icons.check, size: 16),
                   label: const Text('Onayla'),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.green),
+                  style: OutlinedButton.styleFrom(foregroundColor: TsRenk.basarili),
                 ),
               ),
             if (rezervasyon.durum == RezervasyonDurum.beklemede) const SizedBox(width: 8),
@@ -632,7 +632,7 @@ class _RezervasyonKarti extends StatelessWidget {
                 onPressed: () => onDurumDegistir(RezervasyonDurum.iptal),
                 icon: const Icon(Icons.close, size: 16),
                 label: const Text('İptal'),
-                style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                style: OutlinedButton.styleFrom(foregroundColor: TsRenk.hata),
               ),
             ),
             if (rezervasyon.durum == RezervasyonDurum.onaylandi) ...[
@@ -642,7 +642,7 @@ class _RezervasyonKarti extends StatelessWidget {
                   onPressed: () => onDurumDegistir(RezervasyonDurum.geldi),
                   icon: const Icon(Icons.login, size: 16),
                   label: const Text('Geldi'),
-                  style: FilledButton.styleFrom(backgroundColor: Colors.green),
+                  style: FilledButton.styleFrom(backgroundColor: TsRenk.basarili),
                 ),
               ),
             ],

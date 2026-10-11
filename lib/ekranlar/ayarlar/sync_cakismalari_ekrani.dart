@@ -122,7 +122,7 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
         icerik: '${ParaUtils.kisaFisNo(s.fisNo)} (${ParaUtils.formatla(s.genelToplam)}) '
             'silinecek; stok, kasa ve cari etkisi otomatik olarak geri '
             'alınacak. Bu işlem geri alınamaz.',
-        onayYazi: 'Evet, sil', onayRengi: Colors.red, ikon: Icons.delete_outline);
+        onayYazi: 'Evet, sil', onayRengi: TsRenk.hata, ikon: Icons.delete_outline);
     if (!onay || s.id == null) return;
     try {
       await _satisDepo.sil(s.id!, neden: 'Senkron çakışması kopyası — kullanıcı onayıyla silindi');
@@ -170,7 +170,7 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
             'güncellenir/korunur ve bir sonraki senkronda buluta '
             'gönderilir.',
         onayYazi: 'Evet, bu cihazdaki değeri uygula',
-        onayRengi: Colors.orange.shade800, ikon: Icons.history);
+        onayRengi: TsRenk.uyari, ikon: Icons.history);
     if (!onay || c.id == null) return;
     await _depo.yerelIleCoz(c.id!, kullanici: AuthServisi().aktifAd);
     await _cozumSonrasi();
@@ -203,7 +203,7 @@ class _SyncCakismalariEkraniState extends State<SyncCakismalariEkrani> {
           'Tümünde bu cihazdaki değer kalsın mı?',
           '$kapsam ${hedef.length} çakışmada bu cihazdaki (yerel) değer '
               'uygulanıp buluta gönderilecek. Buluttan gelen değerler kaybolur.',
-          Colors.orange.shade800),
+          TsRenk.uyari),
       'gelen' => (
           'Tümünde buluttaki değer uygulansın mı?',
           '$kapsam ${hedef.length} çakışmada buluttan gelen değer uygulanacak. '
@@ -401,12 +401,12 @@ class _SyncKopyasiKarti extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.cardBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.orange.shade400),
+        border: Border.all(color: TsRenk.uyari),
         boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 4)],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.warning_amber_rounded, size: 18, color: Colors.orange.shade800),
+          const Icon(Icons.warning_amber_rounded, size: 18, color: TsRenk.uyari),
           const SizedBox(width: 8),
           Expanded(
             child: Text(ParaUtils.kisaFisNo(satis.fisNo),
@@ -426,13 +426,13 @@ class _SyncKopyasiKarti extends StatelessWidget {
             onPressed: onGercek,
             icon: const Icon(Icons.check_circle_outline, size: 16),
             label: const Text('Gerçek satış'),
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.green.shade800),
+            style: OutlinedButton.styleFrom(foregroundColor: TsRenk.basarili),
           ),
           OutlinedButton.icon(
             onPressed: onSil,
             icon: const Icon(Icons.delete_outline, size: 16),
             label: const Text('Kopya, sil'),
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade800),
+            style: OutlinedButton.styleFrom(foregroundColor: TsRenk.hata),
           ),
         ]),
       ]),
@@ -466,7 +466,7 @@ class _CakismaKarti extends StatelessWidget {
         border: Border.all(
           color: cakisma.cozuldu
               ? context.textHint.withAlpha(60)
-              : Colors.orange.shade400,
+              : TsRenk.uyari,
         ),
         boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 4)],
       ),
@@ -475,7 +475,7 @@ class _CakismaKarti extends StatelessWidget {
           Icon(
             cakisma.cozuldu ? Icons.check_circle : Icons.warning_amber_rounded,
             size: 18,
-            color: cakisma.cozuldu ? Colors.green : Colors.orange.shade800,
+            color: cakisma.cozuldu ? TsRenk.basarili : TsRenk.uyari,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -500,13 +500,13 @@ class _CakismaKarti extends StatelessWidget {
               Expanded(
                 child: Row(children: [
                   Expanded(
-                    child: _degerKutusu('Sizde (kaybedildi)', yerel, TsRenk.zemin(TsRenk.uyari), Colors.orange.shade800),
+                    child: _degerKutusu('Sizde (kaybedildi)', yerel, TsRenk.zemin(TsRenk.uyari), TsRenk.uyari),
                   ),
                   const SizedBox(width: 6),
                   const Icon(Icons.arrow_forward, size: 14),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: _degerKutusu('Buluttan (uygulandı)', gelen, TsRenk.zemin(TsRenk.basarili), Colors.green.shade800),
+                    child: _degerKutusu('Buluttan (uygulandı)', gelen, TsRenk.zemin(TsRenk.basarili), TsRenk.basarili),
                   ),
                 ]),
               ),
@@ -520,13 +520,13 @@ class _CakismaKarti extends StatelessWidget {
               onPressed: onYerel,
               icon: const Icon(Icons.history, size: 16),
               label: const Text('Benimkini kullan'),
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.orange.shade800),
+              style: OutlinedButton.styleFrom(foregroundColor: TsRenk.uyari),
             ),
             OutlinedButton.icon(
               onPressed: onGelen,
               icon: const Icon(Icons.cloud_done_outlined, size: 16),
               label: const Text('Buluttakini kullan'),
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.green.shade800),
+              style: OutlinedButton.styleFrom(foregroundColor: TsRenk.basarili),
             ),
             TextButton.icon(
               onPressed: onManuel,

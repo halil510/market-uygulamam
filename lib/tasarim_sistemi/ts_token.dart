@@ -26,11 +26,22 @@ class TsRenk {
   static const masaAcik = Color(0xFF6D4C41);
   static const accent = Color(0xFF7209B7);
 
-  static const basarili = Color(0xFF2ECC71);
-  static const uyari = Color(0xFFF39C12);
-  static const hata = Color(0xFFE74C3C);
-  static const bilgi = Color(0xFF3498DB);
-  static const notr = Color(0xFF6B7280);
+  // Durum renkleri — kurumsal ERP kuralı: renk yalnız DURUM bildirir
+  // (başarılı/hata/uyarı/bilgi), geri kalan her şey nötr. Tonlar hem
+  // beyaz zeminde hem koyu temada okunacak (Material 700 kademesi) ve
+  // üstüne beyaz yazı yazılabilecek koyulukta seçildi. Ekranlarda
+  // Colors.red / Color(0xFF...) YAZILMAZ — bu adlar kullanılır, renk
+  // değişecekse yalnız burası değişir.
+  static const basarili = Color(0xFF388E3C);
+  static const uyari = Color(0xFFE65100);
+  static const hata = Color(0xFFD32F2F);
+  static const bilgi = Color(0xFF1976D2);
+  static const notr = Color(0xFF607D8B);
+
+  // Kategori ayrımı için (ör. ödeme türü, grafik serisi) iki yardımcı
+  // vurgu — durum anlamı TAŞIMAZ.
+  static const vurguMor = Color(0xFF8E24AA);
+  static const vurguTurkuaz = Color(0xFF00897B);
 
   static const beyaz = Color(0xFFFFFFFF);
   static const arkaplanAcik = Color(0xFFF8F9FE);

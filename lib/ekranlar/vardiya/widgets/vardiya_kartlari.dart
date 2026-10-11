@@ -78,14 +78,14 @@ class VardiyaDurumKart extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
             colors: acik
-                ? [Colors.green.shade700, Colors.green.shade500]
+                ? [TsRenk.basarili, TsRenk.basarili]
                 : [context.textSecondary, TsRenk.arkaplan(context)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: (acik ? Colors.green : context.textSecondary).withAlpha(76),
+              color: (acik ? TsRenk.basarili : context.textSecondary).withAlpha(76),
               blurRadius: 12,
               offset: const Offset(0, 6))
         ],
@@ -132,7 +132,7 @@ class VardiyaDurumKart extends StatelessWidget {
                     const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: acik ? Colors.orange : Colors.green,
+              foregroundColor: acik ? TsRenk.uyari : TsRenk.basarili,
               elevation: 0,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),

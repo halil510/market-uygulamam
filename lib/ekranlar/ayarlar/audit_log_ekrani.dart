@@ -49,9 +49,9 @@ class _AuditLogEkraniState extends State<AuditLogEkrani> {
   (IconData, Color) _islemGorseli(String tur) {
     switch (tur) {
       case 'Silme':
-        return (Icons.delete_outline, Colors.red);
+        return (Icons.delete_outline, TsRenk.hata);
       case 'İptal':
-        return (Icons.cancel_outlined, Colors.orange);
+        return (Icons.cancel_outlined, TsRenk.uyari);
       default:
         return (Icons.edit_outlined, context.textSecondary);
     }

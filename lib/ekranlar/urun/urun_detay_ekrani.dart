@@ -50,7 +50,7 @@ class _UrunDetayEkraniState extends ConsumerState<UrunDetayEkrani>
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.red),
+          backgroundColor: TsRenk.hata),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Sil')),
         ],
@@ -102,7 +102,7 @@ class _UrunDetayEkraniState extends ConsumerState<UrunDetayEkrani>
               ),
               TsYetkili(
                 child: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  icon: const Icon(Icons.delete_outline, color: TsRenk.hata),
                   onPressed: () => _sil(urun),
                 ),
               ),
@@ -453,11 +453,11 @@ class _HareketSekmesiState extends ConsumerState<_HareketSekmesi> {
             Container(
               width: 36, height: 36,
               decoration: BoxDecoration(
-                color: (pozitif ? Colors.green : Colors.red).withAlpha(26),
+                color: (pozitif ? TsRenk.basarili : TsRenk.hata).withAlpha(26),
                 shape: BoxShape.circle),
               child: Icon(
                 pozitif ? Icons.add : Icons.remove,
-                color: pozitif ? Colors.green : Colors.red, size: 18)),
+                color: pozitif ? TsRenk.basarili : TsRenk.hata, size: 18)),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(h.aciklama ?? h.hareketTuru,
@@ -468,7 +468,7 @@ class _HareketSekmesiState extends ConsumerState<_HareketSekmesi> {
             Text('${pozitif ? '+' : ''}${mik.toStringAsFixed(mik.truncateToDouble() == mik ? 0 : 2)}',
                 style: TextStyle(
                     fontWeight: FontWeight.w700, fontSize: 15,
-                    color: pozitif ? Colors.green : Colors.red)),
+                    color: pozitif ? TsRenk.basarili : TsRenk.hata)),
           ]),
         );
       },
@@ -572,17 +572,17 @@ class _SubeStokSekmesiState extends State<_SubeStokSekmesi> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withAlpha(30),
+                color: TsRenk.uyari.withAlpha(30),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Row(children: [
-                const Icon(Icons.info_outline, color: Colors.orange, size: 18),
-                const SizedBox(width: 8),
+              child: const Row(children: [
+                Icon(Icons.info_outline, color: TsRenk.uyari, size: 18),
+                SizedBox(width: 8),
                 Expanded(child: Text(
                   'Şube toplamı, genel toplamla tam eşleşmiyor. Bu ürün için '
                   'henüz Stok Sayımı yapılmamış olabilir — sayım yaptığınızda '
                   'düzelir.',
-                  style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                  style: TextStyle(fontSize: 12, color: TsRenk.uyari),
                 )),
               ]),
             ),

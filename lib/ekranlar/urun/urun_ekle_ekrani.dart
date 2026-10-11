@@ -252,7 +252,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
           ),
           if (duzenleme)
             IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
+              icon: const Icon(Icons.delete, color: TsRenk.hata),
               onPressed: _yukleniyor ? null : _sil,
             ),
           IconButton(
@@ -316,7 +316,7 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                   _alan('barkodlar', 'Ek Barkodlar (virgülle)',
                     suffix: IconButton(
                       icon: const Icon(Icons.qr_code_scanner, size: 20,
-                          color: Color(0xFF4361EE)),
+                          color: TsRenk.primary),
                       tooltip: 'Barkod okut — virgülle ekler',
                       onPressed: () async {
                         final b = await _barkodSrv.barkodTara(context);
@@ -376,11 +376,11 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                         border: Border.all(color: Colors.orange.shade200),
                       ),
                       child: const Row(children: [
-                        Icon(Icons.info_outline, color: Colors.orange, size: 16),
+                        Icon(Icons.info_outline, color: TsRenk.uyari, size: 16),
                         SizedBox(width: 8),
                         Expanded(child: Text(
                           'KG/LİTRE birimi: Hızlı satışta tartım girişi aktif olacak.',
-                          style: TextStyle(fontSize: 12, color: Colors.orange),
+                          style: TextStyle(fontSize: 12, color: TsRenk.uyari),
                         )),
                       ]),
                     ),
@@ -553,18 +553,18 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                 AltOzet('Ctrl+S', 'veya F2 ile kaydet'),
               ],
               tuslar: [
-                AltTus('F2', 'Kaydet', Icons.save, const Color(0xFF2E7D32),
+                AltTus('F2', 'Kaydet', Icons.save, TsRenk.basarili,
                     _yukleniyor ? null : _kaydet),
                 if (duzenleme)
-                  AltTus('F3', 'Sil', Icons.delete_outline, const Color(0xFFC62828),
+                  AltTus('F3', 'Sil', Icons.delete_outline, TsRenk.hata,
                       _yukleniyor ? null : _sil),
-                AltTus('F4', 'Barkod Üret', Icons.qr_code, const Color(0xFF6A1B9A),
+                AltTus('F4', 'Barkod Üret', Icons.qr_code, TsRenk.vurguMor,
                     _yukleniyor ? null : _otomatikBarkodUret),
               ],
             )
           : null,
       floatingActionButton: masaustu ? null : FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF4361EE),
+        backgroundColor: TsRenk.primary,
         foregroundColor: Colors.white,
         elevation: 2,
         onPressed: _yukleniyor ? null : _kaydet,

@@ -185,7 +185,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16)),
             title: const Row(children: [
-              Icon(Icons.warning_amber_rounded, color: Color(0xFFE65100)),
+              Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
               SizedBox(width: 8),
               Expanded(child: Text('Sepet Dolu', style: TextStyle(fontSize: 15))),
             ]),
@@ -199,7 +199,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
                   child: const Text('Vazgeç')),
               FilledButton(
                 style: FilledButton.styleFrom(
-                    backgroundColor: Colors.orange.shade800),
+                    backgroundColor: TsRenk.uyari),
                 onPressed: () => Navigator.pop(ctx, true),
                 child: const Text('Sepeti Boşalt, Devam Et'),
               ),
@@ -214,7 +214,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
         builder: (ctx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(children: [
-            Icon(Icons.receipt_long_rounded, color: Color(0xFF4361EE)),
+            Icon(Icons.receipt_long_rounded, color: TsRenk.primary),
             SizedBox(width: 8),
             Expanded(child: Text('Fiş Bulundu', style: TextStyle(fontSize: 15))),
           ]),
@@ -235,12 +235,12 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
                 decoration: BoxDecoration(
                   color: TsRenk.zemin(TsRenk.uyari),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade300),
+                  border: Border.all(color: TsRenk.uyari),
                 ),
-                child: Row(children: [
+                child: const Row(children: [
                   Icon(Icons.info_outline_rounded,
-                      size: 18, color: Colors.orange.shade900),
-                  const SizedBox(width: 8),
+                      size: 18, color: TsRenk.uyari),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Fişin ürünleri sepete yüklenecek. Miktar '
@@ -249,7 +249,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
                       'Tamamladığınızda FİŞ GÜNCELLENECEK — müşterideki '
                       'basılı fiş ile sistemdeki kayıt farklı olacaktır.',
                       style: TextStyle(
-                          fontSize: 12, color: Colors.orange.shade900),
+                          fontSize: 12, color: TsRenk.uyari),
                     ),
                   ),
                 ]),
@@ -283,7 +283,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Row(children: [
-              Icon(Icons.info_outline, color: Colors.orange),
+              Icon(Icons.info_outline, color: TsRenk.uyari),
               SizedBox(width: 8),
               Expanded(child: Text('Bu Satış Faturalandırılmış')),
             ]),
@@ -437,7 +437,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(children: [
-          Icon(Icons.search_off_rounded, color: Color(0xFFE65100)),
+          Icon(Icons.search_off_rounded, color: TsRenk.uyari),
           SizedBox(width: 8),
           Text('Ürün Bulunamadı', style: TextStyle(fontSize: 15)),
         ]),
@@ -501,7 +501,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
         builder: (ctx, ss) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(children: [
-            const Icon(Icons.scale_rounded, color: Colors.orange),
+            const Icon(Icons.scale_rounded, color: TsRenk.uyari),
             const SizedBox(width: 8),
             Expanded(child: Text(urun.urunAdi,
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
@@ -514,7 +514,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
               decoration: InputDecoration(
                 labelText: 'Miktar (${urun.birimAdi})',
-                prefixIcon: const Icon(Icons.scale_rounded, color: Colors.orange),
+                prefixIcon: const Icon(Icons.scale_rounded, color: TsRenk.uyari),
                 border: const OutlineInputBorder(),
               ),
               onChanged: (v) {
@@ -529,7 +529,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
                 color: m > 0 ? TsRenk.zemin(TsRenk.basarili) : TsRenk.arkaplan(ctx),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: m > 0 ? Colors.green.shade300 : TsRenk.ayirac(ctx)),
+                    color: m > 0 ? TsRenk.basarili : TsRenk.ayirac(ctx)),
               ),
               child: Column(children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -548,7 +548,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
                   const Text('Tutar:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   Text(m > 0 ? ParaUtils.formatla(m * urun.indirimliFiyat) : '—',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
-                        color: m > 0 ? Colors.green.shade700 : context.textSecondary)),
+                        color: m > 0 ? TsRenk.basarili : context.textSecondary)),
                 ]),
               ]),
             ),
@@ -569,7 +569,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
               icon: const Icon(Icons.add_shopping_cart_rounded),
               label: const Text('Ekle'),
               style: FilledButton.styleFrom(foregroundColor: Colors.white,
-                  backgroundColor: Colors.orange),
+                  backgroundColor: TsRenk.uyari),
             ),
           ],
         ),

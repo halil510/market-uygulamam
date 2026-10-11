@@ -143,9 +143,9 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
         // Özet kartlar
         Container(color: context.cardBg, padding: const EdgeInsets.all(12),
           child: Row(children: [
-            _ozetKart('Toplam', _toplamTutar, Colors.blue),
+            _ozetKart('Toplam', _toplamTutar, TsRenk.bilgi),
             const SizedBox(width: 12),
-            _ozetKart('Kalan', _toplamKalan, Colors.orange),
+            _ozetKart('Kalan', _toplamKalan, TsRenk.uyari),
             const SizedBox(width: 12),
             _ozetKart('${_filtreli.length} Fatura', null, context.textSecondary),
           ]),
@@ -158,9 +158,9 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
             child: Row(children: [
               _yonChip('Tümü', null),
               const SizedBox(width: 6),
-              _yonChip('Giden (Satış)', 'giden', renk: Colors.blue, ikon: Icons.north_east),
+              _yonChip('Giden (Satış)', 'giden', renk: TsRenk.bilgi, ikon: Icons.north_east),
               const SizedBox(width: 6),
-              _yonChip('Gelen (Alış)', 'gelen', renk: Colors.purple, ikon: Icons.south_west),
+              _yonChip('Gelen (Alış)', 'gelen', renk: TsRenk.vurguMor, ikon: Icons.south_west),
             ]),
           ),
         ),
@@ -172,24 +172,24 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
             child: Row(children: [
               _eFaturaChip('Tümü', null),
               const SizedBox(width: 6),
-              _eFaturaChip('Beklemede', 'hazir', renk: Colors.orange),
+              _eFaturaChip('Beklemede', 'hazir', renk: TsRenk.uyari),
               const SizedBox(width: 6),
-              _eFaturaChip('Gönderildi', 'gonderildi', renk: Colors.green),
+              _eFaturaChip('Gönderildi', 'gonderildi', renk: TsRenk.basarili),
               const SizedBox(width: 6),
-              _eFaturaChip('GİB Onayladı', 'onaylandi', renk: Colors.teal),
+              _eFaturaChip('GİB Onayladı', 'onaylandi', renk: TsRenk.vurguTurkuaz),
               const SizedBox(width: 6),
-              _eFaturaChip('Reddedildi', 'reddedildi', renk: Colors.red),
+              _eFaturaChip('Reddedildi', 'reddedildi', renk: TsRenk.hata),
               const SizedBox(width: 6),
               _eFaturaChip('GİB\'de İptal', 'gib_iptal', renk: Colors.grey),
               const SizedBox(width: 6),
-              _eFaturaChip('Hata', 'hata', renk: Colors.red),
+              _eFaturaChip('Hata', 'hata', renk: TsRenk.hata),
               const SizedBox(width: 12),
               ChoiceChip(
                 label: const Text('İptaller', style: TextStyle(fontSize: 12)),
                 selected: _iptalleriGoster,
                 avatar: Icon(Icons.delete_outline, size: 16,
                     color: _iptalleriGoster ? Colors.white : context.textSecondary),
-                selectedColor: Colors.red.shade400,
+                selectedColor: TsRenk.hata,
                 labelStyle: TextStyle(color: _iptalleriGoster ? Colors.white : context.textSecondary),
                 onSelected: (v) => setState(() { _iptalleriGoster = v; _filtrele(); }),
               ),
@@ -289,7 +289,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
           sagaYasli: true,
           deger: (f) => ParaUtils.formatla(f.kalanTutar, simge: ''),
           sirala: (f) => f.kalanTutar,
-          renk: (f) => f.kalanTutar > 0.005 ? Colors.orange.shade800 : null),
+          renk: (f) => f.kalanTutar > 0.005 ? TsRenk.uyari : null),
       TabloKolon(
           baslik: 'Ödeme',
           genislik: 90,
@@ -361,7 +361,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
     final odendi = f.odendi;
     final vadesiGecti = f.vadesiGecti;
     final iptalEdilmis = f.durum == 'iptal';
-    final Color durum = odendi ? Colors.green : vadesiGecti ? Colors.red : Colors.orange;
+    final Color durum = odendi ? TsRenk.basarili : vadesiGecti ? TsRenk.hata : TsRenk.uyari;
 
     final eDurum = f.eFaturaDurum ?? 'hazir';
     // 🔴🔴 DÜZELTME (erp_roadmap madde 38 — e-Belge durum makinesi, 2026-09-14
@@ -370,12 +370,12 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
     // 'reddedildi'/'gib_iptal'e normalleştiriyor) bu ekranda hâlâ turuncu
     // "Beklemede" olarak görünüyordu — yasal geçerliliği OLMAYAN bir fatura,
     // sanki hâlâ gönderim bekliyormuş gibi duruyordu. Artık tanınıyor.
-    final eRenk  = eDurum == 'onaylandi' ? Colors.teal
-                 : eDurum == 'gonderildi' ? Colors.green
-                 : eDurum == 'gonderiliyor' ? Colors.blue
-                 : eDurum == 'reddedildi' ? Colors.red
+    final eRenk  = eDurum == 'onaylandi' ? TsRenk.vurguTurkuaz
+                 : eDurum == 'gonderildi' ? TsRenk.basarili
+                 : eDurum == 'gonderiliyor' ? TsRenk.bilgi
+                 : eDurum == 'reddedildi' ? TsRenk.hata
                  : eDurum == 'gib_iptal' ? Colors.grey
-                 : eDurum == 'hata' ? Colors.red : Colors.orange;
+                 : eDurum == 'hata' ? TsRenk.hata : TsRenk.uyari;
     final eEtiket = eDurum == 'onaylandi' ? 'GİB Onayladı'
                   : eDurum == 'gonderildi' ? 'Gönderildi'
                   : eDurum == 'gonderiliyor' ? 'Gönderiliyor'
@@ -398,7 +398,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
             Row(children: [
               Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.bilgi), borderRadius: BorderRadius.circular(12)),
-                child: Text(f.faturaNo ?? '—', style: TsMetin.kucukVurgu.copyWith(color: Colors.blue))),
+                child: Text(f.faturaNo ?? '—', style: TsMetin.kucukVurgu.copyWith(color: TsRenk.bilgi))),
               const SizedBox(width: 6),
               Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(color: context.borderColor, borderRadius: BorderRadius.circular(12)),
@@ -423,7 +423,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
                 style: TsMetin.govdeVurgu),
             if (f.vadeTarihi != null)
               Text('Vade: ${DateFormat('dd.MM.yyyy').format(f.vadeTarihi!)}',
-                  style: TextStyle(fontSize: 12, color: vadesiGecti ? Colors.red : context.textSecondary)),
+                  style: TextStyle(fontSize: 12, color: vadesiGecti ? TsRenk.hata : context.textSecondary)),
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -434,7 +434,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
               if (f.kalanTutar > 0) Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Text('Kalan', style: TextStyle(fontSize: 11, color: context.textSecondary)),
                 Text(ParaUtils.formatla(f.kalanTutar),
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.orange)),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: TsRenk.uyari)),
               ]),
             ]),
           ]),
@@ -505,7 +505,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
       },
       background: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(color: Colors.red.shade400, borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: TsRenk.hata, borderRadius: BorderRadius.circular(12)),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         child: const Column(mainAxisSize: MainAxisSize.min, children: [

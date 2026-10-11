@@ -82,7 +82,7 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
             Container(
               margin: const EdgeInsets.only(right: 6, top: 6),
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(color: Colors.amber, shape: BoxShape.circle),
+              decoration: const BoxDecoration(color: TsRenk.uyari, shape: BoxShape.circle),
               child: Text('${sepet.kalemSayisi}',
                   style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.black))),
           ]),
@@ -122,15 +122,15 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
                     color: _seciliCari != null ? TsRenk.zemin(TsRenk.basarili) : TsRenk.arkaplan(context),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: _seciliCari != null
-                        ? Colors.green.shade300 : TsRenk.ayirac(context))),
+                        ? TsRenk.basarili : TsRenk.ayirac(context))),
                 child: Row(children: [
                   Icon(_seciliCari != null ? Icons.person : Icons.person_add_outlined,
-                      color: _seciliCari != null ? Colors.green : context.textSecondary, size: 18),
+                      color: _seciliCari != null ? TsRenk.basarili : context.textSecondary, size: 18),
                   const SizedBox(width: 8),
                   Expanded(child: Text(
                     _seciliCari?.unvan ?? 'Müşteri Seç',
                     style: TextStyle(fontWeight: FontWeight.w500,
-                        color: _seciliCari != null ? Colors.green.shade700 : TsRenk.metinIkincil(context)))),
+                        color: _seciliCari != null ? TsRenk.basarili : TsRenk.metinIkincil(context)))),
                   Icon(Icons.chevron_right, color: context.textSecondary, size: 18),
                 ]),
               ),
@@ -179,7 +179,7 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
                   decoration: BoxDecoration(
                     color: miktar > 0 ? TsRenk.zemin(TsRenk.basarili) : TsRenk.kart(context),
                     borderRadius: BorderRadius.circular(12),
-                    border: miktar > 0 ? Border.all(color: Colors.green.shade300) : null,
+                    border: miktar > 0 ? Border.all(color: TsRenk.basarili) : null,
                     boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4)]),
                   child: Row(children: [
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -192,7 +192,7 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
                         onTap: () => ref.read(sepetProvider.notifier).miktarGuncelle(kalemIdx, miktar - 1),
                         child: Container(width: 30, height: 30,
                             decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.hata), shape: BoxShape.circle),
-                            child: const Icon(Icons.remove, size: 16, color: Colors.red))),
+                            child: const Icon(Icons.remove, size: 16, color: TsRenk.hata))),
                       Padding(padding: const EdgeInsets.symmetric(horizontal: 10),
                           child: Text(miktar.toStringAsFixed(0),
                               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
@@ -200,14 +200,14 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
                         onTap: () => ref.read(sepetProvider.notifier).miktarGuncelle(kalemIdx, miktar + 1),
                         child: Container(width: 30, height: 30,
                             decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.basarili), shape: BoxShape.circle),
-                            child: const Icon(Icons.add, size: 16, color: Colors.green))),
+                            child: const Icon(Icons.add, size: 16, color: TsRenk.basarili))),
                     ])
                     else GestureDetector(
                       onTap: () => ref.read(sepetProvider.notifier).ekle(u),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                         decoration: BoxDecoration(
-                            color: _sicak ? Colors.red.shade600 : AppRenkler.primary,
+                            color: _sicak ? TsRenk.hata : AppRenkler.primary,
                             borderRadius: BorderRadius.circular(20)),
                         child: const Text('Ekle',
                             style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))),
@@ -237,7 +237,7 @@ class _SicakSogukSatisEkraniState extends ConsumerState<SicakSogukSatisEkrani> {
             label: const Text('Sepete Git'),
             style: FilledButton.styleFrom(
                 foregroundColor: Colors.white,
-          backgroundColor: _sicak ? Colors.red.shade700 : AppRenkler.primary,
+          backgroundColor: _sicak ? TsRenk.hata : AppRenkler.primary,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
           )),

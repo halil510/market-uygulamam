@@ -207,7 +207,7 @@ class PromosyonFormSheetState extends ConsumerState<PromosyonFormSheet> {
               border: const OutlineInputBorder(),
               suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
                 if (_seciliUrun != null)
-                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                  const Icon(Icons.check_circle, color: TsRenk.basarili, size: 20),
                 IconButton(
                   icon: const Icon(Icons.qr_code_scanner_outlined, size: 20),
                   tooltip: 'Barkod Tara',
@@ -234,17 +234,17 @@ class PromosyonFormSheetState extends ConsumerState<PromosyonFormSheet> {
               child: Column(children: [
                 // FittedBox: dar ekranda (420 px) önizleme satırı taşmasın.
                 FittedBox(fit: BoxFit.scaleDown, child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  PromosyonHesapKutu('Normal Birim', ParaUtils.formatla(_seciliUrun!.satisFiyati), Colors.blue),
+                  PromosyonHesapKutu('Normal Birim', ParaUtils.formatla(_seciliUrun!.satisFiyati), TsRenk.bilgi),
                   Icon(Icons.arrow_forward, size: 14, color: context.textSecondary),
                   PromosyonHesapKutu('İndirimli Birim',
                     _oranCtrl.text.isNotEmpty
                       ? ParaUtils.formatla(_seciliUrun!.satisFiyati * (1 - _oranDeger / 100))
                       : '—',
-                    Colors.orange),
+                    TsRenk.uyari),
                   Icon(Icons.close, size: 14, color: context.textSecondary),
-                  PromosyonHesapKutu('Min Miktar', _minMiktarCtrl.text.isEmpty ? '1' : _minMiktarCtrl.text, Colors.purple),
+                  PromosyonHesapKutu('Min Miktar', _minMiktarCtrl.text.isEmpty ? '1' : _minMiktarCtrl.text, TsRenk.vurguMor),
                   Icon(Icons.drag_handle, size: 14, color: context.textSecondary),
-                  PromosyonHesapKutu('Toplam', _toplamOnizleme, Colors.green),
+                  PromosyonHesapKutu('Toplam', _toplamOnizleme, TsRenk.basarili),
                 ])),
                 if (_oranCtrl.text.isNotEmpty && ParaUtils.sayiCoz(_oranCtrl.text) != null) ...[
                   const SizedBox(height: 6),
@@ -252,7 +252,7 @@ class PromosyonFormSheetState extends ConsumerState<PromosyonFormSheet> {
                     '${_minMiktarCtrl.text.isEmpty ? "1" : _minMiktarCtrl.text} adet alımda '
                     '%${_oranCtrl.text} indirim → '
                     '$_toplamOnizleme ödenecek',
-                    style: TextStyle(fontSize: 11, color: Colors.green.shade700,
+                    style: const TextStyle(fontSize: 11, color: TsRenk.basarili,
                         fontWeight: FontWeight.w600),
                     textAlign: TextAlign.center,
                   ),
@@ -269,7 +269,7 @@ class PromosyonFormSheetState extends ConsumerState<PromosyonFormSheet> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.green.shade200)),
               child: Row(children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                const Icon(Icons.check_circle, color: TsRenk.basarili, size: 18),
                 const SizedBox(width: 8),
                 Expanded(child: Text(_seciliUrun!.urunAdi,
                     style: const TextStyle(fontWeight: FontWeight.w600))),
@@ -463,7 +463,7 @@ class PromosyonFormSheetState extends ConsumerState<PromosyonFormSheet> {
                 onChanged: (v) => setState(() => _aktif = v),
                 dense: true,
                 contentPadding: EdgeInsets.zero,
-                activeThumbColor: Colors.green,
+                activeThumbColor: TsRenk.basarili,
               ),
             ),
           const SizedBox(height: 20),

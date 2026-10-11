@@ -227,7 +227,7 @@ class _DonemYonetimiEkraniState extends State<DonemYonetimiEkrani> {
             'büyük veritabanlarında biraz sürebilir, lütfen bekleyin. '
             'Kritik bir kontrol ya da arşiv doğrulaması başarısız '
             'olursa işlem güvenle durur, hiçbir veri değişmez.',
-        onayYazi: 'Devri Başlat', onayRengi: Colors.orange,
+        onayYazi: 'Devri Başlat', onayRengi: TsRenk.uyari,
         ikon: Icons.warning_amber_rounded);
     if (!onay || !mounted) return;
     // Yedek geri yükleme ile aynı koruma: hareketleri aktif veritabanından
@@ -271,7 +271,7 @@ class _DonemYonetimiEkraniState extends State<DonemYonetimiEkrani> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(children: [
-          Icon(Icons.construction_outlined, color: Colors.orange),
+          Icon(Icons.construction_outlined, color: TsRenk.uyari),
           SizedBox(width: 8),
           Text('Henüz Mevcut Değil'),
         ]),
@@ -373,15 +373,15 @@ class _AktifDonemYokKarti extends StatelessWidget {
         border: Border.all(color: Colors.orange.shade200),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.event_busy_outlined, color: Colors.orange.shade800),
-          const SizedBox(width: 10),
+        const Row(children: [
+          Icon(Icons.event_busy_outlined, color: TsRenk.uyari),
+          SizedBox(width: 10),
           Expanded(child: Text('Açık bir dönem yok',
-              style: TextStyle(fontWeight: FontWeight.w700, color: Colors.orange.shade900))),
+              style: TextStyle(fontWeight: FontWeight.w700, color: TsRenk.uyari))),
         ]),
         const SizedBox(height: 8),
-        Text('Yıl sonu devir sistemini kullanabilmek için önce bir dönem açılmalı.',
-            style: TextStyle(fontSize: 12, color: Colors.orange.shade800)),
+        const Text('Yıl sonu devir sistemini kullanabilmek için önce bir dönem açılmalı.',
+            style: TextStyle(fontSize: 12, color: TsRenk.uyari)),
         const SizedBox(height: 14),
         SizedBox(
           width: double.infinity,
@@ -389,7 +389,7 @@ class _AktifDonemYokKarti extends StatelessWidget {
             onPressed: isleniyor ? null : onAc,
             icon: const Icon(Icons.add),
             label: Text('${DateTime.now().year} Dönemini Aç'),
-            style: FilledButton.styleFrom(backgroundColor: Colors.orange.shade700),
+            style: FilledButton.styleFrom(backgroundColor: TsRenk.uyari),
           ),
         ),
       ]),
@@ -531,7 +531,7 @@ class _AksiyonButonlari extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : const Icon(Icons.swap_horiz),
           label: const Text('Devir Sihirbazını Başlat'),
-          style: FilledButton.styleFrom(backgroundColor: Colors.orange.shade700),
+          style: FilledButton.styleFrom(backgroundColor: TsRenk.uyari),
         ),
       ),
       const SizedBox(height: 8),
@@ -554,9 +554,9 @@ class _KontrolSatiri extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final renk = switch (kontrol.durum) {
-      SaglikDurum.yesil => Colors.green,
-      SaglikDurum.sari => Colors.orange,
-      SaglikDurum.kirmizi => Colors.red,
+      SaglikDurum.yesil => TsRenk.basarili,
+      SaglikDurum.sari => TsRenk.uyari,
+      SaglikDurum.kirmizi => TsRenk.hata,
     };
     final ikon = switch (kontrol.durum) {
       SaglikDurum.yesil => Icons.check_circle,
@@ -679,7 +679,7 @@ class _GecmisDonemDetaySayfasiState extends State<_GecmisDonemDetaySayfasi> {
                                 ? Icons.check_circle : Icons.radio_button_unchecked,
                             size: 16,
                             color: s.durum == DonemDurumu.kapali || s.durum == DonemDurumu.arsivlendi
-                                ? Colors.green : Colors.orange,
+                                ? TsRenk.basarili : TsRenk.uyari,
                           ),
                           const SizedBox(width: 8),
                           Text('Şube #${s.subeId} — ${s.durum}', style: const TextStyle(fontSize: 13)),

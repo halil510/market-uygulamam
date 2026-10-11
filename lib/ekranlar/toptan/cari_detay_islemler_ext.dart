@@ -33,9 +33,9 @@ extension _CariDetayIslemlerExt on _CariDetayPaneliState {
           ),
           children: [
             _islemKisayolu('Yeni Satış', Icons.add_shopping_cart, AppRenkler.primary, _yeniSatis),
-            _islemKisayolu('Sipariş Al', Icons.playlist_add_check_circle_outlined, Colors.deepPurple, _siparisAl),
-            _islemKisayolu('Bekleyen Siparişler', Icons.pending_actions_outlined, Colors.orange, _bekleyenSiparisler),
-            _islemKisayolu('Toptan Ürünler', Icons.inventory_2_outlined, Colors.teal,
+            _islemKisayolu('Sipariş Al', Icons.playlist_add_check_circle_outlined, TsRenk.vurguMor, _siparisAl),
+            _islemKisayolu('Bekleyen Siparişler', Icons.pending_actions_outlined, TsRenk.uyari, _bekleyenSiparisler),
+            _islemKisayolu('Toptan Ürünler', Icons.inventory_2_outlined, TsRenk.vurguTurkuaz,
                 () => context.push('/toptan/urunler')),
           ],
         ),
@@ -200,7 +200,7 @@ extension _CariDetayIslemlerExt on _CariDetayPaneliState {
                       _ekstreHucre(s.fisNo ?? '—', flex: 3, sonuk: true),
                       _ekstreHucre(ParaUtils.formatla(s.genelToplam), flex: 3, sagaYasla: true, kalin: true),
                       _ekstreHucre(ParaUtils.formatla(bakiyeler[i]), flex: 3, sagaYasla: true,
-                          renk: bakiyeler[i] > 0 ? Colors.red.shade400 : Colors.green.shade600),
+                          renk: bakiyeler[i] > 0 ? TsRenk.hata : TsRenk.basarili),
                       IconButton(
                         icon: const Icon(Icons.print_outlined, size: 18),
                         color: AppRenkler.primary,
@@ -242,9 +242,9 @@ extension _CariDetayIslemlerExt on _CariDetayPaneliState {
       itemBuilder: (c, i) {
         final f = _faturalar[i];
         final (renk, etiket) = switch (f.odemeDurumu) {
-          'odendi' => (Colors.green, 'Ödendi'),
-          'kısmen' => (Colors.orange, 'Kısmi Ödeme'),
-          _ => (Colors.red, 'Beklemede'),
+          'odendi' => (TsRenk.basarili, 'Ödendi'),
+          'kısmen' => (TsRenk.uyari, 'Kısmi Ödeme'),
+          _ => (TsRenk.hata, 'Beklemede'),
         };
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
@@ -301,9 +301,9 @@ extension _CariDetayIslemlerExt on _CariDetayPaneliState {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                  color: (iptalMi ? context.textSecondary : Colors.green).withAlpha(30), shape: BoxShape.circle),
+                  color: (iptalMi ? context.textSecondary : TsRenk.basarili).withAlpha(30), shape: BoxShape.circle),
               child: Icon(iptalMi ? Icons.undo : Icons.payments_outlined,
-                  color: iptalMi ? context.textSecondary : Colors.green, size: 18),
+                  color: iptalMi ? context.textSecondary : TsRenk.basarili, size: 18),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -316,7 +316,7 @@ extension _CariDetayIslemlerExt on _CariDetayPaneliState {
             ),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Text(ParaUtils.formatla(tutar),
-                  style: TextStyle(fontWeight: FontWeight.w700, color: iptalMi ? context.textSecondary : Colors.green)),
+                  style: TextStyle(fontWeight: FontWeight.w700, color: iptalMi ? context.textSecondary : TsRenk.basarili)),
               if (!iptalMi)
                 IconButton(
                   icon: const Icon(Icons.print_outlined, size: 18),

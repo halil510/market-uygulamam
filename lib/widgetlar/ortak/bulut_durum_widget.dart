@@ -1,5 +1,6 @@
 // lib/widgetlar/ortak/bulut_durum_widget.dart
 // AppBar'a küçük bulut ikonu — sync durumunu gösterir
+import '../../tasarim_sistemi/ts_token.dart';
 import 'package:flutter/material.dart';
 import '../../servisler/bulut/bulut_manager.dart';
 
@@ -31,23 +32,23 @@ class BulutDurumIkonu extends StatelessWidget {
     switch (d) {
       case BulutDurum.bagli:
         return const Icon(Icons.cloud_done_rounded,
-            color: Color(0xFF2ECC71), size: 20);
+            color: TsRenk.basarili, size: 20);
       case BulutDurum.gonderiliyor:
         return const SizedBox(
           width: 18, height: 18,
           child: CircularProgressIndicator(
-            strokeWidth: 2, color: Color(0xFF4361EE)));
+            strokeWidth: 2, color: TsRenk.primary));
       case BulutDurum.bekliyor:
         return const Icon(Icons.cloud_upload_outlined,
-            color: Color(0xFFF39C12), size: 20);
+            color: TsRenk.uyari, size: 20);
       case BulutDurum.hata:
         return const Icon(Icons.cloud_off_rounded,
-            color: Color(0xFFE74C3C), size: 20);
+            color: TsRenk.hata, size: 20);
       case BulutDurum.baglaniyor:
         return const SizedBox(
           width: 18, height: 18,
           child: CircularProgressIndicator(
-            strokeWidth: 2, color: Colors.blue));
+            strokeWidth: 2, color: TsRenk.bilgi));
       default:
         return const SizedBox.shrink();
     }

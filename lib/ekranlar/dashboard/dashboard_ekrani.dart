@@ -103,20 +103,20 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
           border: Border.all(color: Colors.red.shade200),
         ),
         child: Row(children: [
-          Icon(Icons.warning_amber_rounded,
-              color: Colors.red.shade700, size: 22),
+          const Icon(Icons.warning_amber_rounded,
+              color: TsRenk.hata, size: 22),
           const SizedBox(width: 10),
-          Expanded(
+          const Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Güvenlik Uyarısı',
                   style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 13,
-                      color: Colors.red.shade800)),
+                      color: TsRenk.hata)),
               Text(
                   'Admin şifreniz hâlâ varsayılan ("1234") — lütfen değiştirin.',
-                  style: TextStyle(fontSize: 11.5, color: Colors.red.shade700)),
+                  style: TextStyle(fontSize: 11.5, color: TsRenk.hata)),
             ]),
           ),
           TextButton(
@@ -125,7 +125,7 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
                 style: TextStyle(fontWeight: FontWeight.w700)),
           ),
           IconButton(
-            icon: Icon(Icons.close, size: 18, color: Colors.red.shade400),
+            icon: const Icon(Icons.close, size: 18, color: TsRenk.hata),
             onPressed: () => setState(() => _varsayilanSifreUyarisi = false),
           ),
         ]),
@@ -176,7 +176,7 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Row(children: [
-          Icon(Icons.logout, color: Colors.red),
+          Icon(Icons.logout, color: TsRenk.hata),
           SizedBox(width: 8),
           Text('Çıkış Yap'),
         ]),

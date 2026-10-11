@@ -250,7 +250,7 @@ class _Icerik extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
+                colors: [TsRenk.basarili, TsRenk.basarili],
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [BoxShadow(
@@ -296,17 +296,17 @@ class _Icerik extends StatelessWidget {
           Row(children: [
             Expanded(child: _OzetKart(
               baslik: 'Giriş', deger: veri.toplamGiris,
-              ikon: Icons.arrow_downward, renk: Colors.green.shade600)),
+              ikon: Icons.arrow_downward, renk: TsRenk.basarili)),
             const SizedBox(width: 10),
             Expanded(child: _OzetKart(
               baslik: 'Çıkış', deger: veri.toplamCikis,
-              ikon: Icons.arrow_upward, renk: Colors.red.shade600)),
+              ikon: Icons.arrow_upward, renk: TsRenk.hata)),
             const SizedBox(width: 10),
             Expanded(child: _OzetKart(
               baslik: 'Net', deger: veri.netHareket,
               ikon: Icons.swap_vert,
               renk: veri.netHareket >= 0
-                  ? Colors.blue.shade600 : Colors.orange.shade700)),
+                  ? TsRenk.bilgi : TsRenk.uyari)),
           ]),
 
           const SizedBox(height: 16),
@@ -466,12 +466,12 @@ class _HareketSatiri extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: (giris ? Colors.green : Colors.red).withAlpha(20),
+            color: (giris ? TsRenk.basarili : TsRenk.hata).withAlpha(20),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
             giris ? Icons.arrow_downward : Icons.arrow_upward,
-            color: giris ? Colors.green.shade600 : Colors.red.shade600,
+            color: giris ? TsRenk.basarili : TsRenk.hata,
             size: 16,
           ),
         ),
@@ -491,7 +491,7 @@ class _HareketSatiri extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: giris ? Colors.green.shade600 : Colors.red.shade600,
+            color: giris ? TsRenk.basarili : TsRenk.hata,
           ),
         ),
       ]),

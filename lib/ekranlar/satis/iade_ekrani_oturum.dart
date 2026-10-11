@@ -42,7 +42,7 @@ extension _IadeOturumExt on _IadeEkraniState {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         
         title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red),
+          Icon(Icons.warning_amber_rounded, color: TsRenk.hata),
           SizedBox(width: 8),
           Text('İadeyi Sil'),
         ]),
@@ -50,13 +50,13 @@ extension _IadeOturumExt on _IadeEkraniState {
           Text('${iade['urun_adi']} iadesi silinecek.'),
           const SizedBox(height: 8),
           const Text('- Stok geri alinacak\n- Kasa ve cari duzeltilecek',
-              style: TextStyle(color: Colors.red, fontSize: 12, height: 1.5)),
+              style: TextStyle(color: TsRenk.hata, fontSize: 12, height: 1.5)),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.red),
+          backgroundColor: TsRenk.hata),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Sil'),
           ),
@@ -202,7 +202,7 @@ extension _IadeOturumExt on _IadeEkraniState {
                   const Text('Toplam:', style: TextStyle(fontWeight: FontWeight.w600)),
                   Text(ParaUtils.formatla(hesaplaToplam()),
                       style: const TextStyle(fontWeight: FontWeight.w800,
-                          fontSize: 16, color: Colors.green)),
+                          fontSize: 16, color: TsRenk.basarili)),
                 ],
               ),
             ),

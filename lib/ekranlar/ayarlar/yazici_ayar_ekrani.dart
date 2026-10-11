@@ -22,10 +22,10 @@ part 'yazici_ayar_sekmeleri.dart';
 part 'yazici_ayar_widgetlari.dart';
 
 // ─── Renk sabitleri ───────────────────────────────────────────────────────────
-const _blue   = Color(0xFF4361EE);
-const _green  = Color(0xFF2E7D32);
-const _purple = Color(0xFF6A1B9A);
-const _orange = Color(0xFFE65100);
+const _blue   = TsRenk.primary;
+const _green  = TsRenk.basarili;
+const _purple = TsRenk.vurguMor;
+const _orange = TsRenk.uyari;
 
 class YaziciAyarEkrani extends ConsumerStatefulWidget {
   /// true ise kendi Scaffold/AppBar'ını çizmez — Yazdırma Merkezi
@@ -346,7 +346,7 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
         const SizedBox(height: 8),
         ..._winYazicilar.map((ad) => _CihazKarti(
           ikon: Icons.print,
-          renkTon: Colors.deepOrange,
+          renkTon: TsRenk.uyari,
           baslik: ad,
           altBaslik: 'Windows yazıcı',
           altBaslikMono: false,

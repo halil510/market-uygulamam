@@ -91,7 +91,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
             FilledButton(
               style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.red),
+          backgroundColor: TsRenk.hata),
               onPressed: () => Navigator.pop(ctx, ctrl.text.isEmpty ? 'İptal' : ctrl.text),
               child: const Text('İptal Et')),
           ],
@@ -149,7 +149,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
               SizedBox(width: 8),
               Text('Eksik Cari Bilgisi'),
             ]),
@@ -161,7 +161,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
               ...kontrol.eksikAlanlar.map((e) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(children: [
-                      const Icon(Icons.circle, size: 6, color: Colors.orange),
+                      const Icon(Icons.circle, size: 6, color: TsRenk.uyari),
                       const SizedBox(width: 8),
                       Text(e),
                     ]),
@@ -259,12 +259,12 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
               color: TsRenk.zemin(TsRenk.hata), borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.shade300)),
+              border: Border.all(color: TsRenk.hata)),
             child: Row(children: [
-              const Icon(Icons.cancel_outlined, color: Colors.red),
+              const Icon(Icons.cancel_outlined, color: TsRenk.hata),
               const SizedBox(width: 8),
               Expanded(child: Text('Bu satış iptal edilmiştir${s.iptalNedeni != null ? ": ${s.iptalNedeni}" : ""}',
-                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600))),
+                  style: const TextStyle(color: TsRenk.hata, fontWeight: FontWeight.w600))),
             ]),
           ),
 
@@ -344,7 +344,7 @@ class _SatisDetayIcerikState extends ConsumerState<_SatisDetayIcerik> {
         _Kart(children: [
           if ((s.iskonto) > 0)
             _Satir('İskonto', '-${ParaUtils.formatla(s.iskonto)}',
-                renk: Colors.orange.shade700),
+                renk: TsRenk.uyari),
           _Satir('Toplam', ParaUtils.formatla(s.genelToplam), bold: true),
           if ((s.odenenTutar) > 0 && (s.odenenTutar) != s.genelToplam)
             _Satir('Ödenen', ParaUtils.formatla(s.odenenTutar)),

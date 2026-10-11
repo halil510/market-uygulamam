@@ -17,13 +17,13 @@ class _BaglantiDurumKarti extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bagliMi = yazdirma.bagliMi;
-    final renk    = bagliMi ? Colors.green : Colors.orange;
+    final renk    = bagliMi ? TsRenk.basarili : TsRenk.uyari;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: TsRenk.kart(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: renk.shade300),
+        border: Border.all(color: renk.withValues(alpha: 0.45)),
         boxShadow: [BoxShadow(
           color: renk.withAlpha(20),
           blurRadius: 8, offset: const Offset(0, 2))],
@@ -35,16 +35,16 @@ class _BaglantiDurumKarti extends StatelessWidget {
             color: renk.withAlpha(30),
             shape: BoxShape.circle),
           child: Icon(bagliMi ? Icons.print : Icons.print_disabled,
-              color: renk.shade700, size: 22),
+              color: renk, size: 22),
         ),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(bagliMi ? 'Yazıcı Bağlı' : 'Yazıcı Bağlı Değil',
               style: TextStyle(fontWeight: FontWeight.w700,
-                  color: renk.shade800, fontSize: 14)),
+                  color: renk, fontSize: 14)),
           if (bagliMi)
             Text(yazdirma.baglantiDurumu,
-                style: TextStyle(fontSize: 12, color: renk.shade600)),
+                style: TextStyle(fontSize: 12, color: renk)),
           if (!bagliMi)
             Text('Aşağıdan bir yazıcı seçin',
                 style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
@@ -55,8 +55,8 @@ class _BaglantiDurumKarti extends StatelessWidget {
             icon: const Icon(Icons.link_off, size: 16),
             label: const Text('Kes', style: TextStyle(fontSize: 12)),
             style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.red,
-              side: const BorderSide(color: Colors.red),
+              foregroundColor: TsRenk.hata,
+              side: const BorderSide(color: TsRenk.hata),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
@@ -69,7 +69,7 @@ class _BaglantiDurumKarti extends StatelessWidget {
 /// Bulunan cihaz kartı (WiFi IP veya BT cihazı)
 class _CihazKarti extends StatelessWidget {
   final IconData ikon;
-  final MaterialColor renkTon;
+  final Color renkTon;
   final String baslik, altBaslik, aksiyonEtiket;
   final Color aksiyonRenk;
   final bool altBaslikMono;
@@ -98,7 +98,7 @@ class _CihazKarti extends StatelessWidget {
         decoration: BoxDecoration(
           color: renkTon.withAlpha(30),
           borderRadius: BorderRadius.circular(12)),
-        child: Icon(ikon, color: renkTon.shade700, size: 20),
+        child: Icon(ikon, color: renkTon, size: 20),
       ),
       const SizedBox(width: 12),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -132,7 +132,7 @@ class _KayitliYaziciKarti extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final wifimi = yazici.tur == 'ag';
-    final renk   = wifimi ? Colors.blue : Colors.purple;
+    final renk   = wifimi ? TsRenk.bilgi : TsRenk.vurguMor;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -148,7 +148,7 @@ class _KayitliYaziciKarti extends StatelessWidget {
             color: renk.withAlpha(25),
             borderRadius: BorderRadius.circular(12)),
           child: Icon(wifimi ? Icons.wifi : Icons.bluetooth,
-              color: renk.shade600, size: 18),
+              color: renk, size: 18),
         ),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -157,10 +157,10 @@ class _KayitliYaziciKarti extends StatelessWidget {
               ? '${yazici.ip ?? "?"}:${yazici.port}'
               : (yazici.cihazId ?? ''),
               style: const TextStyle(fontSize: 11, fontFamily: 'monospace',
-                  color: Color(0xFF607D8B))),
+                  color: TsRenk.notr)),
         ])),
         IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+          icon: const Icon(Icons.delete_outline, color: TsRenk.hata, size: 20),
           onPressed: onSil,
           tooltip: 'Kaldır',
           style: IconButton.styleFrom(

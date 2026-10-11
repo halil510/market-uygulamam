@@ -223,7 +223,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
           ],
         )),
         IconButton(
-          icon: const Icon(Icons.close, color: Colors.red, size: 20),
+          icon: const Icon(Icons.close, color: TsRenk.hata, size: 20),
           onPressed: () => _pluCikar(u),
           tooltip: 'Çıkar',
         ),
@@ -310,7 +310,7 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
                               ? Chip(
                                   label: const Text('Eklendi',
                                       style: TextStyle(
-                                          fontSize: 11, color: Colors.green)),
+                                          fontSize: 11, color: TsRenk.basarili)),
                                   backgroundColor: TsRenk.zemin(TsRenk.basarili),
                                   side: BorderSide(color: Colors.green.shade200),
                                 )
@@ -352,8 +352,8 @@ class _PluYonetimEkraniState extends ConsumerState<PluYonetimEkrani>
 
   Widget _harf(UrunModel u, double boyut) {
     const renkler = [
-      TsRenk.primaryKoyu, Color(0xFF2E7D32), Color(0xFFC62828),
-      Color(0xFF6A1B9A), Color(0xFF00695C), Color(0xFFE65100),
+      TsRenk.primaryKoyu, TsRenk.basarili, TsRenk.hata,
+      TsRenk.vurguMor, TsRenk.vurguTurkuaz, TsRenk.uyari,
     ];
     final renk = renkler[u.urunAdi.codeUnits.fold(0, (a, b) => a + b) % renkler.length];
     return Container(

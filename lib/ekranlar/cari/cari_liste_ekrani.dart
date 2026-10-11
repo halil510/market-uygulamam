@@ -97,7 +97,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
         title: Row(children: [
           Container(padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.hata), shape: BoxShape.circle),
-            child: const Icon(Icons.delete_outline, color: Colors.red, size: 20)),
+            child: const Icon(Icons.delete_outline, color: TsRenk.hata, size: 20)),
           const SizedBox(width: 10),
           const Text('Cari Sil', style: TextStyle(fontSize: 16)),
         ]),
@@ -118,14 +118,14 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
                       'silindikten sonra raporlarda görünmeyecek.'
                     : '\n\n⚠️ Bu carinin ${ParaUtils.formatla(c.bakiye.abs())} borcu var — '
                       'silindikten sonra raporlarda görünmeyecek.',
-                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                style: const TextStyle(color: TsRenk.hata, fontWeight: FontWeight.w600),
               ),
             if (bekleyenSiparisSayisi > 0)
               TextSpan(
                 text: '\n\n⚠️ Bu carinin $bekleyenSiparisSayisi bekleyen siparişi var — '
                     'cari silindikten sonra arama/seçim listelerinde görünmeyeceği için '
                     'bu siparişleri kapatmak zorlaşacak.',
-                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                style: const TextStyle(color: TsRenk.hata, fontWeight: FontWeight.w600),
               ),
           ],
         )),
@@ -134,7 +134,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
           FilledButton(
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.red),
+          backgroundColor: TsRenk.hata),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Sil')),
         ],
@@ -181,7 +181,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
                   '⚠️ ${bakiyeli.length} carinin bakiyesi var (toplam '
                   '${ParaUtils.formatla(bakiyeli.fold<double>(0, (t, c) => t + c.bakiye.abs()))}) — '
                   'silindikten sonra raporlarda görünmeyecek.',
-                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                  style: const TextStyle(color: TsRenk.hata, fontWeight: FontWeight.w600)),
             ),
           if (siparisli > 0)
             Padding(
@@ -189,13 +189,13 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
               child: Text(
                   '⚠️ $siparisli carinin bekleyen siparişi var — silindikten sonra bu '
                   'siparişleri kapatmak zorlaşacak.',
-                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                  style: const TextStyle(color: TsRenk.hata, fontWeight: FontWeight.w600)),
             ),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
           FilledButton(
-            style: FilledButton.styleFrom(foregroundColor: Colors.white, backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(foregroundColor: Colors.white, backgroundColor: TsRenk.hata),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text('${cariler.length} Cariyi Sil'),
           ),
@@ -312,7 +312,7 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
                   value: 'excel_ice',
                   child: ListTile(
                       dense: true,
-                      leading: Icon(Icons.upload_file, size: 18, color: Colors.green),
+                      leading: Icon(Icons.upload_file, size: 18, color: TsRenk.basarili),
                       title: Text('Excel\'den İçe Aktar', style: TextStyle(fontSize: 13)))),
               PopupMenuItem(
                   value: 'excel',
@@ -397,14 +397,14 @@ class _CariListeEkraniState extends ConsumerState<CariListeEkrani>
             // Alacak chip
             if (toplamAlacak > 0) _OzetChip(
               ikon: Icons.arrow_downward_rounded,
-              renk: Colors.green.shade600,
+              renk: TsRenk.basarili,
               etiket: 'Alacak',
               tutar: toplamAlacak),
             if (toplamAlacak > 0) const SizedBox(width: 8),
             // Borç chip
             if (toplamBorc > 0) _OzetChip(
               ikon: Icons.arrow_upward_rounded,
-              renk: Colors.red.shade600,
+              renk: TsRenk.hata,
               etiket: 'Borç',
               tutar: toplamBorc),
             const Spacer(),
@@ -529,8 +529,8 @@ class _CariKart extends ConsumerWidget {
   Color _renk(BuildContext context) {
     if (cari.bakiye == 0) return context.textSecondary;
     final mst = cari.cariTipi.contains('Müşteri');
-    if (mst) return cari.bakiye > 0 ? Colors.green.shade600 : Colors.blue.shade600;
-    return cari.bakiye < 0 ? Colors.red.shade600 : Colors.blue.shade600;
+    if (mst) return cari.bakiye > 0 ? TsRenk.basarili : TsRenk.bilgi;
+    return cari.bakiye < 0 ? TsRenk.hata : TsRenk.bilgi;
   }
 
   String get _etiket {
@@ -542,9 +542,9 @@ class _CariKart extends ConsumerWidget {
 
   Color get _avatarRenk {
     final tip = cari.cariTipi;
-    if (tip.contains('Müşteri') && !tip.contains('Tedarikçi')) return const Color(0xFF1565C0);
-    if (tip.contains('Tedarikçi') && !tip.contains('Müşteri')) return const Color(0xFF6A1B9A);
-    return const Color(0xFF00695C);
+    if (tip.contains('Müşteri') && !tip.contains('Tedarikçi')) return TsRenk.bilgi;
+    if (tip.contains('Tedarikçi') && !tip.contains('Müşteri')) return TsRenk.vurguMor;
+    return TsRenk.vurguTurkuaz;
   }
 
   /// Kullanıcının anlaşılır bulacağı tip rozeti: Müşteri / Tedarikçi /
@@ -556,15 +556,15 @@ class _CariKart extends ConsumerWidget {
     String etiket;
     Color renk;
     if (musteriMi && tedarikciMi) {
-      etiket = 'Müşteri + Tedarikçi'; renk = const Color(0xFF00695C);
+      etiket = 'Müşteri + Tedarikçi'; renk = TsRenk.vurguTurkuaz;
     } else if (tedarikciMi) {
-      etiket = 'Tedarikçi'; renk = const Color(0xFF6A1B9A);
+      etiket = 'Tedarikçi'; renk = TsRenk.vurguMor;
     } else if (cari.musteriTipi == 'Bayi') {
-      etiket = 'Bayi'; renk = const Color(0xFFEF6C00);
+      etiket = 'Bayi'; renk = TsRenk.uyari;
     } else if (cari.musteriTipi == 'Toptan') {
-      etiket = 'Toptan Müşteri'; renk = const Color(0xFF1565C0);
+      etiket = 'Toptan Müşteri'; renk = TsRenk.bilgi;
     } else {
-      etiket = 'Müşteri'; renk = const Color(0xFF1565C0);
+      etiket = 'Müşteri'; renk = TsRenk.bilgi;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -586,7 +586,7 @@ class _CariKart extends ConsumerWidget {
     background: Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-          color: Colors.red.shade400, borderRadius: BorderRadius.circular(16)),
+          color: TsRenk.hata, borderRadius: BorderRadius.circular(16)),
       alignment: Alignment.centerRight,
       padding: const EdgeInsets.only(right: 20),
       child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -638,7 +638,7 @@ class _CariKart extends ConsumerWidget {
                   const SizedBox(width: 5),
                   const Tooltip(
                     message: 'e-Fatura mükellefi (GİB\'de kayıtlı)',
-                    child: Icon(Icons.verified, size: 15, color: Color(0xFF2E7D32)),
+                    child: Icon(Icons.verified, size: 15, color: TsRenk.basarili),
                   ),
                 ],
               ]),

@@ -12,10 +12,10 @@ import '../../modeller/urun_model.dart';
 import '../../cekirdek/utils/para_utils.dart';
 
 const _renkPaleti = [
-  Color(0xFF1565C0), Color(0xFF2E7D32), Color(0xFFC62828),
-  Color(0xFF6A1B9A), Color(0xFF00695C), Color(0xFFE65100),
-  Color(0xFF37474F), Color(0xFF558B2F), Color(0xFF4527A0),
-  Color(0xFF00838F), Color(0xFF283593), Color(0xFF880E4F),
+  TsRenk.bilgi, TsRenk.basarili, TsRenk.hata,
+  TsRenk.vurguMor, TsRenk.vurguTurkuaz, TsRenk.uyari,
+  TsRenk.notr, TsRenk.basarili, TsRenk.vurguMor,
+  TsRenk.vurguTurkuaz, TsRenk.primaryKoyu, Color(0xFF880E4F),
 ];
 
 Color _renk(String s) =>

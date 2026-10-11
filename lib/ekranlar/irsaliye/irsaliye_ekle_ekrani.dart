@@ -105,10 +105,10 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
             itemCount: cariler.length,
             itemBuilder: (_, i) => ListTile(
               leading: CircleAvatar(
-                backgroundColor: TsRenk.zemin(Colors.teal),
+                backgroundColor: TsRenk.zemin(TsRenk.vurguTurkuaz),
                 child: Text(cariler[i].unvan.isNotEmpty
                     ? cariler[i].unvan[0].toUpperCase() : '?',
-                    style: TextStyle(color: Colors.teal.shade700,
+                    style: const TextStyle(color: TsRenk.vurguTurkuaz,
                         fontWeight: FontWeight.w700)),
               ),
               title: Text(cariler[i].unvan),
@@ -274,7 +274,7 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
                         style: TextStyle(
                             fontSize: 11,
                             color: _aramaSonuclari[i].stok > 0
-                                ? Colors.green : Colors.red)),
+                                ? TsRenk.basarili : TsRenk.hata)),
                     onTap: () => _urunEkle(_aramaSonuclari[i]),
                   ),
                 ),
@@ -316,11 +316,11 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
                         leading: Container(
                           width: 36, height: 36,
                           decoration: BoxDecoration(
-                            color: TsRenk.zemin(Colors.teal),
+                            color: TsRenk.zemin(TsRenk.vurguTurkuaz),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(Icons.inventory_2_outlined,
-                              color: Colors.teal, size: 18),
+                              color: TsRenk.vurguTurkuaz, size: 18),
                         ),
                         title: Text(k.urunAdi,
                             style: const TextStyle(
@@ -330,7 +330,7 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
                         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                           IconButton(
                             icon: const Icon(Icons.remove_circle_outline,
-                                size: 20, color: Colors.red),
+                                size: 20, color: TsRenk.hata),
                             padding: EdgeInsets.zero,
                             constraints:
                                 const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -363,7 +363,7 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
                           ),
                           IconButton(
                             icon: const Icon(Icons.add_circle_outline,
-                                size: 20, color: Colors.green),
+                                size: 20, color: TsRenk.basarili),
                             padding: EdgeInsets.zero,
                             constraints:
                                 const BoxConstraints(minWidth: 28, minHeight: 28),

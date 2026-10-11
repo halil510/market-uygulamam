@@ -202,13 +202,13 @@ class _PromosyonMasaustuGorunumState extends State<PromosyonMasaustuGorunum> {
         ],
         tuslar: [
           if (widget.yetkili) ...[
-            AltTus('F1', 'Ekle', Icons.local_offer_outlined, const Color(0xFF2E7D32), widget.onEkle),
-            AltTus('F2', 'Düzenle', Icons.edit_outlined, const Color(0xFF1565C0),
+            AltTus('F1', 'Ekle', Icons.local_offer_outlined, TsRenk.basarili, widget.onEkle),
+            AltTus('F2', 'Düzenle', Icons.edit_outlined, TsRenk.bilgi,
                 s == null ? null : () => widget.onDuzenle(s)),
             AltTus('F3', s != null && !s.aktif ? 'Aktife Al' : 'Pasife Al',
-                Icons.toggle_on_outlined, const Color(0xFFEF6C00),
+                Icons.toggle_on_outlined, TsRenk.uyari,
                 s == null ? null : () => widget.onToggle(s)),
-            AltTus('F4', 'Sil', Icons.delete_outline, const Color(0xFFC62828),
+            AltTus('F4', 'Sil', Icons.delete_outline, TsRenk.hata,
                 s == null ? null : () => widget.onSil(s)),
           ],
         ],

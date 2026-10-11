@@ -116,7 +116,7 @@ class _UrunRaporMasaustuGorunumState
               sagaYasli: true,
               deger: (r) => ParaUtils.formatla(r.kar, simge: ''),
               sirala: (r) => r.kar,
-              renk: (r) => r.kar < 0 ? TsRenk.hata : const Color(0xFF2E7D32)),
+              renk: (r) => r.kar < 0 ? TsRenk.hata : TsRenk.basarili),
           TabloKolon(
               baslik: 'Marj %',
               genislik: 80,
@@ -188,13 +188,13 @@ class _UrunRaporMasaustuGorunumState
             AltOzet('Brüt Kâr', ParaUtils.formatla(sonuc?.toplamKar ?? 0),
                 renk: (sonuc?.toplamKar ?? 0) < 0
                     ? TsRenk.hata
-                    : const Color(0xFF2E7D32)),
+                    : TsRenk.basarili),
           ],
         ],
         tuslar: [
-          AltTus('F5', 'Yenile', Icons.refresh, const Color(0xFF1565C0),
+          AltTus('F5', 'Yenile', Icons.refresh, TsRenk.bilgi,
               () => ref.invalidate(urunRaporSonucProvider(widget.tur))),
-          AltTus('F9', 'Excel', Icons.table_view, const Color(0xFF2E7D32),
+          AltTus('F9', 'Excel', Icons.table_view, TsRenk.basarili,
               sonuc == null ? null : () => _excel(sonuc)),
         ],
       ),

@@ -327,7 +327,7 @@ class GradientAppBar extends StatelessWidget implements PreferredSizeWidget {
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF1A237E), Color(0xFF4361EE)],
+          colors: [TsRenk.primaryKoyu, TsRenk.primary],
         ),
       ),
       child: AppBar(

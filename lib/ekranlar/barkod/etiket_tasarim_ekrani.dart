@@ -245,11 +245,11 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
                       ? Icons.print
                       : (bagli ? Icons.bluetooth_connected : Icons.bluetooth_disabled),
                   size: 14,
-                  color: bagli ? Colors.green : Colors.red,
+                  color: bagli ? TsRenk.basarili : TsRenk.hata,
                 ),
                 label: Text(win ? (bagli ? 'Yazıcı Bağlı' : 'Yazıcı Yok') : (bagli ? 'Bağlı' : 'Yok'),
                     style: TextStyle(fontSize: 11,
-                        color: bagli ? Colors.green.shade700 : Colors.red.shade700)),
+                        color: bagli ? TsRenk.basarili : TsRenk.hata)),
                 backgroundColor: bagli ? TsRenk.zemin(TsRenk.basarili) : TsRenk.zemin(TsRenk.hata),
               ),
             ),
@@ -288,7 +288,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
         onLongPress: _zplDisaAktar,
         child: FloatingActionButton.extended(
           elevation: 6,
-          backgroundColor: const Color(0xFF4361EE),
+          backgroundColor: TsRenk.primary,
           foregroundColor: Colors.white,
           onPressed: _yazdir,
           icon: const Icon(Icons.print),

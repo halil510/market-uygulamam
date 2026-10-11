@@ -181,7 +181,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
               ),
               child: Text(
                 'Kalan: ${ParaUtils.formatla(widget.borc.kalanTutar)}',
-                style: TextStyle(fontSize: 12, color: Colors.orange.shade700, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 12, color: TsRenk.uyari, fontWeight: FontWeight.w600),
               ),
             ),
           ]),
@@ -230,7 +230,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
                           Text(ParaUtils.formatla(h.bakiye),
                               style: TextStyle(
                                   fontSize: 11,
-                                  color: h.bakiye >= 0 ? Colors.green : Colors.red,
+                                  color: h.bakiye >= 0 ? TsRenk.basarili : TsRenk.hata,
                                   fontWeight: FontWeight.w600)),
                         ]),
                       ))
@@ -245,9 +245,9 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
                 color: TsRenk.zemin(TsRenk.uyari),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
+              child: const Text(
                 'Banka hesabı bulunamadı. Önce bir hesap ekleyin veya "Nakit" seçin.',
-                style: TextStyle(fontSize: 11, color: Colors.orange.shade800),
+                style: TextStyle(fontSize: 11, color: TsRenk.uyari),
               ),
             ),
             const SizedBox(height: 12),
@@ -271,7 +271,7 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
                           Text('Limit: ${ParaUtils.formatla(k.kalanLimit)}',
                               style: TextStyle(
                                   fontSize: 11,
-                                  color: k.kalanLimit >= 0 ? Colors.green : Colors.red,
+                                  color: k.kalanLimit >= 0 ? TsRenk.basarili : TsRenk.hata,
                                   fontWeight: FontWeight.w600)),
                         ]),
                       ))
@@ -286,9 +286,9 @@ class BorcOdemeBottomSheetState extends ConsumerState<BorcOdemeBottomSheet> {
                 color: TsRenk.zemin(TsRenk.uyari),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
+              child: const Text(
                 'Kredi kartı bulunamadı. Önce bir kart ekleyin veya başka yöntem seçin.',
-                style: TextStyle(fontSize: 11, color: Colors.orange.shade800),
+                style: TextStyle(fontSize: 11, color: TsRenk.uyari),
               ),
             ),
             const SizedBox(height: 12),

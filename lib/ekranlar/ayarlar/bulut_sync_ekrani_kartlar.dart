@@ -23,7 +23,7 @@ extension _BulutSyncKartlarExt on _BulutSyncEkraniState {
     final durum = BulutManager().durum.value;
     final sonGonderim = BulutManager().istatistik.value.sonGonderim;
     final sorunlu = durum.sorun || (ozet?.yenidenDenenen ?? 0) > 0;
-    final renk = sorunlu ? Colors.orange : Colors.green;
+    final renk = sorunlu ? TsRenk.uyari : TsRenk.basarili;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -120,7 +120,7 @@ extension _BulutSyncKartlarExt on _BulutSyncEkraniState {
                 bagli
                     ? 'Anlık senkron: AÇIK — diğer cihazlardaki değişiklik saniyeler içinde gelir.'
                     : 'Anlık senkron: bağlanıyor / kapalı — değişiklikler yukarıdaki aralıkla gelir.',
-                style: TextStyle(fontSize: 11, color: bagli ? Colors.green : context.textSecondary)),
+                style: TextStyle(fontSize: 11, color: bagli ? TsRenk.basarili : context.textSecondary)),
             ),
           ),
           ValueListenableBuilder<DateTime?>(
@@ -146,11 +146,11 @@ extension _BulutSyncKartlarExt on _BulutSyncEkraniState {
       decoration: BoxDecoration(
         color: TsRenk.kart(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withAlpha(120)),
+        border: Border.all(color: TsRenk.hata.withAlpha(120)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(Icons.cloud_off_outlined, color: Colors.red, size: 20),
+          const Icon(Icons.cloud_off_outlined, color: TsRenk.hata, size: 20),
           const SizedBox(width: 8),
           Expanded(child: Text('$toplam kayıt buluta gönderilemedi (kalıcı hata)',
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
@@ -325,18 +325,18 @@ class _SonucKarti extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(sonuc.basarili ? Icons.check_circle_outline : Icons.warning_amber_outlined,
-              color: sonuc.basarili ? Colors.green : Colors.orange, size: 20),
+              color: sonuc.basarili ? TsRenk.basarili : TsRenk.uyari, size: 20),
           const SizedBox(width: 8),
           Expanded(child: Text(sonuc.ozet, style: TextStyle(
             fontWeight: FontWeight.w600, fontSize: 13,
-            color: sonuc.basarili ? Colors.green.shade800 : Colors.orange.shade800,
+            color: sonuc.basarili ? TsRenk.basarili : TsRenk.uyari,
           ))),
           if (onCopy != null)
             IconButton(
               icon: const Icon(Icons.copy, size: 18),
               tooltip: 'Tüm Hataları Kopyala',
               onPressed: onCopy,
-              color: Colors.orange.shade700,
+              color: TsRenk.uyari,
             ),
         ]),
         if (sonuc.hatalar.isNotEmpty) ...[
@@ -344,13 +344,13 @@ class _SonucKarti extends StatelessWidget {
           const Divider(height: 1),
           const SizedBox(height: 6),
           Text('Hatalar (${sonuc.hatalar.length})',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-                  color: Colors.orange.shade800)),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                  color: TsRenk.uyari)),
           const SizedBox(height: 4),
           ...sonuc.hatalar.take(5).map((h) => Padding(
             padding: const EdgeInsets.only(bottom: 3),
             child: Row(children: [
-              const Icon(Icons.circle, size: 5, color: Colors.red),
+              const Icon(Icons.circle, size: 5, color: TsRenk.hata),
               const SizedBox(width: 6),
               Expanded(child: Text(h,
                   style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
@@ -381,9 +381,9 @@ class _LogWidget extends StatelessWidget {
         final isDivider = log.contains('─────');
 
         final Color renk = isDivider ? TsRenk.metinIkincil(context)
-            : isHata  ? Colors.red.shade700
-            : isBasar ? Colors.green.shade700
-            : isInfo  ? Colors.blue.shade700
+            : isHata  ? TsRenk.hata
+            : isBasar ? TsRenk.basarili
+            : isInfo  ? TsRenk.bilgi
             : context.textPrimary;   // koyu temada okunabilir olsun
 
         if (isHata) {
@@ -394,7 +394,7 @@ class _LogWidget extends StatelessWidget {
               builder: (ctx) => AlertDialog(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 title: const Row(children: [
-                  Icon(Icons.error_outline, color: Colors.red, size: 20),
+                  Icon(Icons.error_outline, color: TsRenk.hata, size: 20),
                   SizedBox(width: 8),
                   Expanded(child: Text('Hata Detayı',
                       style: TextStyle(fontSize: 15))),
@@ -429,7 +429,7 @@ class _LogWidget extends StatelessWidget {
                 Expanded(child: Text(log,
                     style: TextStyle(fontFamily: 'monospace',
                         fontSize: 11.5, color: renk))),
-                Icon(Icons.info_outline, size: 14, color: Colors.red.shade300),
+                const Icon(Icons.info_outline, size: 14, color: TsRenk.hata),
               ]),
             ),
           );

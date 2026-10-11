@@ -84,13 +84,13 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
       };
 
   Color _durumRengi(String? durum) => switch (durum) {
-        'onaylandi' => Colors.teal,
-        'gonderildi' => Colors.green,
-        'gonderiliyor' => Colors.blue,
-        'reddedildi' => Colors.red,
+        'onaylandi' => TsRenk.vurguTurkuaz,
+        'gonderildi' => TsRenk.basarili,
+        'gonderiliyor' => TsRenk.bilgi,
+        'reddedildi' => TsRenk.hata,
         'gib_iptal' => Colors.grey,
-        'hata' => Colors.red,
-        _ => Colors.orange,
+        'hata' => TsRenk.hata,
+        _ => TsRenk.uyari,
       };
 
   String _durumEtiketi(String? durum) => switch (durum) {
@@ -129,7 +129,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
     showDialog(context: context, barrierDismissible: false,
       builder: (_) => const AlertDialog(
         content: Row(children: [
-          CircularProgressIndicator(color: Color(0xFF4361EE), strokeWidth: 3),
+          CircularProgressIndicator(color: TsRenk.primary, strokeWidth: 3),
           SizedBox(width: 16),
           Text('GİB sorgulanıyor...'),
         ])));
@@ -155,7 +155,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
             Text(durum == 'reddedildi' ? 'Red sebebi: $aciklama' : aciklama,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13,
-                    color: durum == 'reddedildi' ? Colors.red : null)),
+                    color: durum == 'reddedildi' ? TsRenk.hata : null)),
           ],
           Text('UUID: ${ettn.substring(0, 8)}...',
               style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
@@ -192,7 +192,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red),
+          Icon(Icons.warning_amber_rounded, color: TsRenk.hata),
           SizedBox(width: 8),
           Text('GİB\'de İptal Et'),
         ]),
@@ -203,7 +203,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
           FilledButton(
-            style: FilledButton.styleFrom(foregroundColor: Colors.white, backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(foregroundColor: Colors.white, backgroundColor: TsRenk.hata),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('İptal Et')),
         ],
@@ -217,7 +217,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
     showDialog(context: context, barrierDismissible: false,
       builder: (_) => const AlertDialog(
         content: Row(children: [
-          CircularProgressIndicator(color: Color(0xFF4361EE), strokeWidth: 3),
+          CircularProgressIndicator(color: TsRenk.primary, strokeWidth: 3),
           SizedBox(width: 16),
           Text('GİB\'e iptal isteği gönderiliyor...'),
         ])));
@@ -265,7 +265,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
       showDialog(context: context, builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(children: [
-          Icon(Icons.settings_outlined, color: Colors.orange),
+          Icon(Icons.settings_outlined, color: TsRenk.uyari),
           SizedBox(width: 8),
           Text('GİB Ayarları Eksik'),
         ]),
@@ -308,19 +308,19 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
             ),
           ListTile(
             leading: Icon(Icons.receipt_long,
-                color: onerilenTip == EFaturaTipi.eFatura ? Colors.blue : Colors.blue.withAlpha(150)),
+                color: onerilenTip == EFaturaTipi.eFatura ? TsRenk.bilgi : TsRenk.bilgi.withAlpha(150)),
             title: Text('e-Fatura',
                 style: TextStyle(fontWeight: onerilenTip == EFaturaTipi.eFatura ? FontWeight.w800 : null)),
             subtitle: const Text('GİB kayıtlı mükellefler için'),
-            trailing: onerilenTip == EFaturaTipi.eFatura ? const Icon(Icons.check_circle, color: Colors.blue, size: 18) : null,
+            trailing: onerilenTip == EFaturaTipi.eFatura ? const Icon(Icons.check_circle, color: TsRenk.bilgi, size: 18) : null,
             onTap: () => Navigator.pop(ctx, EFaturaTipi.eFatura)),
           ListTile(
             leading: Icon(Icons.receipt_outlined,
-                color: onerilenTip == EFaturaTipi.eArsiv ? Colors.green : Colors.green.withAlpha(150)),
+                color: onerilenTip == EFaturaTipi.eArsiv ? TsRenk.basarili : TsRenk.basarili.withAlpha(150)),
             title: Text('e-Arşiv',
                 style: TextStyle(fontWeight: onerilenTip == EFaturaTipi.eArsiv ? FontWeight.w800 : null)),
             subtitle: const Text('Diğer alıcılar için'),
-            trailing: onerilenTip == EFaturaTipi.eArsiv ? const Icon(Icons.check_circle, color: Colors.green, size: 18) : null,
+            trailing: onerilenTip == EFaturaTipi.eArsiv ? const Icon(Icons.check_circle, color: TsRenk.basarili, size: 18) : null,
             onTap: () => Navigator.pop(ctx, EFaturaTipi.eArsiv)),
         ]),
       ));
@@ -340,7 +340,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(
             style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.blue),
+          backgroundColor: TsRenk.bilgi),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Gönder')),
         ],
@@ -353,7 +353,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
     showDialog(context: context, barrierDismissible: false,
       builder: (_) => const AlertDialog(
         content: Row(children: [
-          CircularProgressIndicator(color: Color(0xFF4361EE), strokeWidth: 3),
+          CircularProgressIndicator(color: TsRenk.primary, strokeWidth: 3),
           SizedBox(width: 16),
           Text('GİB sistemine gönderiliyor...'),
         ])));
@@ -378,7 +378,7 @@ extension _FaturaDetayIslemlerExt on _FaturaDetayEkraniState {
           showDialog(context: context,
           builder: (ctx) => AlertDialog(
             title: const Row(children: [
-              Icon(Icons.error_outline, color: Colors.red),
+              Icon(Icons.error_outline, color: TsRenk.hata),
               SizedBox(width: 8),
               Text('Gönderim Hatası'),
             ]),

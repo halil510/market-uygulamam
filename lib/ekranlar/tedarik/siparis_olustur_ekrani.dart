@@ -275,7 +275,7 @@ class _SiparisOlusturEkraniState extends ConsumerState<SiparisOlusturEkrani> {
                                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.close, color: Colors.red, size: 18),
+                              icon: const Icon(Icons.close, color: TsRenk.hata, size: 18),
                               onPressed: () => setState(() => _kalemler.removeAt(i)),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),

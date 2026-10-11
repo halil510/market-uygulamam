@@ -522,7 +522,7 @@ double _toDouble(dynamic value) {
                   fontWeight: FontWeight.normal)),
           if (s.cariAdi != null)
             Text(s.cariAdi!,
-                style: const TextStyle(fontSize: 11, color: Colors.blue,
+                style: const TextStyle(fontSize: 11, color: TsRenk.bilgi,
                     fontWeight: FontWeight.normal)),
         ]),
         contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -599,10 +599,10 @@ double _toDouble(dynamic value) {
                     // fiyatı farkı, bkz. SatisTamamlamaServisi._kalemOlustur);
                     // "−20 … Genel Toplam 280" düşülmemiş gibi okunuyordu.
                     const Text('İndirim (fiyata dahil)',
-                        style: TextStyle(fontSize: 12, color: Colors.orange)),
+                        style: TextStyle(fontSize: 12, color: TsRenk.uyari)),
                     Text(ParaUtils.formatla(s.iskonto),
                         style: const TextStyle(fontSize: 12,
-                            color: Colors.orange, fontWeight: FontWeight.w600)),
+                            color: TsRenk.uyari, fontWeight: FontWeight.w600)),
                   ]),
             ),
             if (s.kdvTutar > 0) Padding(
@@ -630,7 +630,7 @@ double _toDouble(dynamic value) {
                             fontSize: 13)),
                     Text(ParaUtils.formatla(s.genelToplam),
                         style: const TextStyle(fontWeight: FontWeight.w800,
-                            fontSize: 17, color: Colors.green)),
+                            fontSize: 17, color: TsRenk.basarili)),
                   ]),
             ),
           ]),
@@ -649,7 +649,7 @@ double _toDouble(dynamic value) {
   Widget _bilgiKart(String baslik, double deger, Color renk, {bool bold = false}) {
     Color gosterim = renk;
     if (bold && baslik.contains('Kar')) {
-      gosterim = deger > 0 ? Colors.green : deger < 0 ? Colors.red : context.textSecondary;
+      gosterim = deger > 0 ? TsRenk.basarili : deger < 0 ? TsRenk.hata : context.textSecondary;
     }
     return Container(
       decoration: BoxDecoration(
@@ -754,18 +754,18 @@ double _toDouble(dynamic value) {
                 // not) — "neden eksik" sorusunu önlemek için, varsa
                 // Sync Çakışmaları ekranına götüren bir uyarı gösteriliyor.
                 const SyncKopyasiUyarisi(kart: true, mesaj: 'senkron kopyası şüpheli satış bu toplamlara dahil EDİLMEDİ — incelemek için dokunun'),
-                _bilgiKart('Toplam Satış',   _toplamTutar,  Colors.blue,   bold: true),
-                _bilgiKart('Nakit Satış',     _nakitToplam,  Colors.green),
-                _bilgiKart('Kredi Kartı',     _kartToplam,   Colors.orange),
-                _bilgiKart('Cari Satış',      _cariToplam,   Colors.indigo),
-                _bilgiKart('Havale',          _havaleToplam, Colors.teal),
+                _bilgiKart('Toplam Satış',   _toplamTutar,  TsRenk.bilgi,   bold: true),
+                _bilgiKart('Nakit Satış',     _nakitToplam,  TsRenk.basarili),
+                _bilgiKart('Kredi Kartı',     _kartToplam,   TsRenk.uyari),
+                _bilgiKart('Cari Satış',      _cariToplam,   TsRenk.primary),
+                _bilgiKart('Havale',          _havaleToplam, TsRenk.vurguTurkuaz),
                 if (_digerToplam > 0)
                   _bilgiKart('Diğer (QR/Karma)', _digerToplam, Colors.blueGrey),
-                _bilgiKart('Gider',           _giderToplam,   Colors.red),
+                _bilgiKart('Gider',           _giderToplam,   TsRenk.hata),
                 _bilgiKart('Maliyet (Alış, iade düşülmüş)', _maliyetToplam, Colors.brown),
-                _bilgiKart('İade (−)',         _iadeToplam,    Colors.deepOrange),
-                _bilgiKart('Brut Kar',        _brutKar,       Colors.teal, bold: true),
-                _bilgiKart('Net Kar',         _kar,           Colors.purple, bold: true),
+                _bilgiKart('İade (−)',         _iadeToplam,    TsRenk.uyari),
+                _bilgiKart('Brut Kar',        _brutKar,       TsRenk.vurguTurkuaz, bold: true),
+                _bilgiKart('Net Kar',         _kar,           TsRenk.vurguMor, bold: true),
                 const SizedBox(height: 12),
                 const Divider(),
                 Padding(padding: const EdgeInsets.symmetric(vertical: 8),
@@ -815,7 +815,7 @@ double _toDouble(dynamic value) {
                         leading: CircleAvatar(radius: 20,
                           backgroundColor: TsRenk.zemin(TsRenk.bilgi),
                           child: Text(idStr.length >= 3 ? idStr.substring(idStr.length - 3) : idStr,
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue))),
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: TsRenk.bilgi))),
                         title: Text('Fiş: $idStr',
                             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                         subtitle: Row(children: [

@@ -46,7 +46,7 @@ extension _FaturaAyarTasarim on _FaturaAyarEkraniState {
         ),
         if (var_)
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+            icon: const Icon(Icons.delete_outline, color: TsRenk.hata, size: 20),
             onPressed: () => _gorselKaldir(logoMu),
           ),
       ]),
@@ -64,16 +64,16 @@ extension _FaturaAyarTasarim on _FaturaAyarEkraniState {
     _Kart(children: [
       _SwitchSatir('Logo Göster', 'Fatura başlığında firma logosu',
           _logoGoster, (v) => setState(() => _logoGoster = v),
-          Icons.image_outlined, Colors.blue),
+          Icons.image_outlined, TsRenk.bilgi),
       _SwitchSatir('İmza/Kaşe Alanı', 'Fatura altında imza ve kaşe alanı',
           _imzaGoster, (v) => setState(() => _imzaGoster = v),
-          Icons.draw_outlined, Colors.indigo),
+          Icons.draw_outlined, TsRenk.primary),
       _SwitchSatir('KDV Ayrı Göster', 'Her satırda KDV tutarını ayrıca belirt',
           _kdvAyri, (v) => setState(() => _kdvAyri = v),
-          Icons.percent_outlined, Colors.teal),
+          Icons.percent_outlined, TsRenk.vurguTurkuaz),
       _SwitchSatir('Barkod/QR Göster', 'Fatura altında barkod veya QR kod',
           _barkodGoster, (v) => setState(() => _barkodGoster = v),
-          Icons.qr_code_outlined, Colors.purple),
+          Icons.qr_code_outlined, TsRenk.vurguMor),
     ]),
     const SizedBox(height: 12),
     const _Baslik('Numaralandırma ve İskonto'),
@@ -104,20 +104,20 @@ extension _FaturaAyarTasarim on _FaturaAyarEkraniState {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.orange.withAlpha(30),
+        color: TsRenk.uyari.withAlpha(30),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.orange.shade300),
+        border: Border.all(color: TsRenk.uyari),
       ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(Icons.warning_amber_rounded, size: 18, color: Colors.orange.shade800),
-        const SizedBox(width: 8),
+      child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.warning_amber_rounded, size: 18, color: TsRenk.uyari),
+        SizedBox(width: 8),
         Expanded(
           child: Text(
             'Birden fazla cihazdan/şubeden fatura kesiyorsanız her cihaza '
             'FARKLI bir ön ek verin (ör. Merkez: "HLF", Şube: "HLS"). Aynı '
             'ön ek kullanılırsa, iki cihaz aynı anda aynı fatura numarasını '
             'üretebilir — bu GİB\'e karşı mükerrer/sıra hatası riski taşır.',
-            style: TextStyle(fontSize: 11.5, color: Colors.orange.shade900),
+            style: TextStyle(fontSize: 11.5, color: TsRenk.uyari),
           ),
         ),
       ]),

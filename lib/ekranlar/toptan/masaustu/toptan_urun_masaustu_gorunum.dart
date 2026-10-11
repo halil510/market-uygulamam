@@ -139,7 +139,7 @@ class _ToptanUrunMasaustuGorunumState extends State<ToptanUrunMasaustuGorunum> {
         ozetler: [AltOzet('Ürün', '${widget.urunler.length}')],
         tuslar: [
           AltTus('F4', 'Listeden Kaldır', Icons.remove_circle_outline,
-              const Color(0xFFC62828), s == null ? null : () => widget.onKaldir(s)),
+              TsRenk.hata, s == null ? null : () => widget.onKaldir(s)),
         ],
       ),
     ]);

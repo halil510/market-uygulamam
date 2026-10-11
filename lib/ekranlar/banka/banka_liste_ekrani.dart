@@ -79,7 +79,7 @@ class BankaListeEkrani extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(TsRadius.lg)),
         title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red),
+          Icon(Icons.warning_amber_rounded, color: TsRenk.hata),
           SizedBox(width: 8),
           Text('Bankayı Sil'),
         ]),

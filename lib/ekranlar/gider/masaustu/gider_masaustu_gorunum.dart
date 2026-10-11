@@ -154,11 +154,11 @@ class _GiderMasaustuGorunumState extends State<GiderMasaustuGorunum> {
         tuslar: [
           if (widget.yetkili)
             AltTus('F1', 'Ekle', Icons.add_circle_outline,
-                const Color(0xFF2E7D32), widget.onEkle),
-          AltTus('F2', 'Düzenle', Icons.edit_outlined, const Color(0xFF1565C0),
+                TsRenk.basarili, widget.onEkle),
+          AltTus('F2', 'Düzenle', Icons.edit_outlined, TsRenk.bilgi,
               s == null ? null : () => widget.onDuzenle(s)),
           if (widget.yetkili)
-            AltTus('F4', 'Sil', Icons.delete_outline, const Color(0xFFC62828),
+            AltTus('F4', 'Sil', Icons.delete_outline, TsRenk.hata,
                 s == null ? null : () => widget.onSil(s)),
         ],
       ),

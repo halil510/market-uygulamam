@@ -469,11 +469,11 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
                       fontWeight: FontWeight.w600, fontSize: 13)),
               if (durum.kritikler.isNotEmpty) ...[
                 const SizedBox(width: 12),
-                Icon(Icons.warning_amber, color: Colors.orange.shade700, size: 16),
+                const Icon(Icons.warning_amber, color: TsRenk.uyari, size: 16),
                 const SizedBox(width: 4),
                 Text('${durum.kritikler.length} kritik stok',
-                    style: TextStyle(
-                        color: Colors.orange.shade700, fontSize: 12)),
+                    style: const TextStyle(
+                        color: TsRenk.uyari, fontSize: 12)),
               ],
             ]),
           ),
@@ -526,7 +526,7 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
               MediaQuery.sizeOf(context).width <= 1100
           ? FloatingActionButton.extended(
               onPressed: durum.uygulamaIsleniyor ? null : _sayimiUygula,
-              backgroundColor: Colors.green.shade700,
+              backgroundColor: TsRenk.basarili,
               foregroundColor: Colors.white,
               icon: durum.uygulamaIsleniyor
                   ? const SizedBox(
@@ -678,15 +678,15 @@ class _SayimTablosuState extends State<_SayimTablosu> {
         ozetler: [
           AltOzet('Sayılan Ürün', '${d.sayilanUrunSayisi}'),
           if (d.kritikler.isNotEmpty)
-            AltOzet('Kritik Stok', '${d.kritikler.length}', renk: Colors.orange.shade700),
+            AltOzet('Kritik Stok', '${d.kritikler.length}', renk: TsRenk.uyari),
         ],
         tuslar: [
-          AltTus('F2', 'Miktar Gir', Icons.edit_outlined, const Color(0xFF1565C0),
+          AltTus('F2', 'Miktar Gir', Icons.edit_outlined, TsRenk.bilgi,
               u == null ? null : () => widget.onMiktarGir(u)),
-          AltTus('F4', 'Çıkar', Icons.remove_circle_outline, const Color(0xFFC62828),
+          AltTus('F4', 'Çıkar', Icons.remove_circle_outline, TsRenk.hata,
               u == null || _sayilan(u) == null ? null : () => widget.onCikar(u)),
           AltTus('F9', AuthServisi().isMudur ? 'Sayımı Uygula' : 'Onaya Gönder',
-              Icons.save_alt, const Color(0xFF2E7D32),
+              Icons.save_alt, TsRenk.basarili,
               d.sayilanUrunSayisi == 0 || d.uygulamaIsleniyor ? null : widget.onUygula),
         ],
       ),
@@ -772,8 +772,8 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
             child: Icon(
               sayildi ? Icons.check_circle : (kritik ? Icons.warning_amber : Icons.inventory_2_outlined),
               color: sayildi
-                  ? Colors.green.shade600
-                  : kritik ? Colors.orange.shade700 : TsRenk.metinIkincil(context),
+                  ? TsRenk.basarili
+                  : kritik ? TsRenk.uyari : TsRenk.metinIkincil(context),
               size: 20,
             ),
           ),
@@ -793,7 +793,7 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
                     style: TextStyle(
                         fontSize: 11,
                         color: kritik
-                            ? Colors.orange.shade700
+                            ? TsRenk.uyari
                             : TsRenk.metinIkincil(context),
                         fontWeight: kritik ? FontWeight.w600 : FontWeight.normal)),
                 if (widget.urun.barkod != null) ...[
@@ -852,7 +852,7 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: sayildi
-                              ? Colors.green.shade300
+                              ? TsRenk.basarili
                               : TsRenk.ayirac(context),
                         ),
                       ),
@@ -865,7 +865,7 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: sayildi
-                              ? Colors.green.shade700
+                              ? TsRenk.basarili
                               : TsRenk.metinIkincil(context),
                         ),
                       ),

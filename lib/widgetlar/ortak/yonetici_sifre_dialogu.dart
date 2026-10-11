@@ -15,6 +15,7 @@
 // Bu yüzden çağıran taraf, dialogu göstermeden ÖNCE (buton görünürlüğü)
 // VE eylemi uygulamadan hemen önce AuthServisi().isMudur kontrolü
 // yapmalıdır.
+import '../../tasarim_sistemi/ts_token.dart';
 import '../../cekirdek/utils/denetleyici_birak.dart';
 import 'package:flutter/material.dart';
 import '../../depolar/kullanici_deposu.dart';
@@ -36,7 +37,7 @@ Future<bool> yoneticiSifresiIleOnayIste(
       builder: (ctx, ss) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(children: [
-          const Icon(Icons.lock_outline, color: Colors.red),
+          const Icon(Icons.lock_outline, color: TsRenk.hata),
           const SizedBox(width: 8),
           Expanded(child: Text(baslik)),
         ]),
@@ -65,7 +66,7 @@ Future<bool> yoneticiSifresiIleOnayIste(
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.red),
+                foregroundColor: Colors.white, backgroundColor: TsRenk.hata),
             onPressed: dogruluyor
                 ? null
                 : () async {

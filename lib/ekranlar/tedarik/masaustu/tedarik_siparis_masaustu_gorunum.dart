@@ -165,12 +165,12 @@ class _TedarikSiparisMasaustuGorunumState extends State<TedarikSiparisMasaustuGo
         tuslar: [
           if (widget.siparisVerebilir)
             AltTus('F1', 'Sipariş Ver', Icons.add_shopping_cart,
-                const Color(0xFF2E7D32), widget.onSiparisVer),
-          AltTus('F2', 'Detay', Icons.receipt_long_outlined, const Color(0xFF1565C0),
+                TsRenk.basarili, widget.onSiparisVer),
+          AltTus('F2', 'Detay', Icons.receipt_long_outlined, TsRenk.bilgi,
               s == null ? null : () => widget.onDetay(s)),
-          AltTus('F3', 'Teslim Al', Icons.check, const Color(0xFF00897B),
+          AltTus('F3', 'Teslim Al', Icons.check, TsRenk.vurguTurkuaz,
               _bekliyor(s) ? () => widget.onTeslimAl(s!) : null),
-          AltTus('F4', 'İptal Et', Icons.close, const Color(0xFFC62828),
+          AltTus('F4', 'İptal Et', Icons.close, TsRenk.hata,
               _bekliyor(s) ? () => widget.onIptal(s!) : null),
         ],
       ),

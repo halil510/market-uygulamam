@@ -18,9 +18,9 @@ extension _SyncBluetoothGorunum on _SyncEkraniState {
             border: Border.all(color: Colors.orange.shade200)),
           child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+              Icon(Icons.warning_amber_rounded, color: TsRenk.uyari, size: 18),
               SizedBox(width: 8),
-              Text('Önemli Sınırlama', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.orange)),
+              Text('Önemli Sınırlama', style: TextStyle(fontWeight: FontWeight.w700, color: TsRenk.uyari)),
             ]),
             SizedBox(height: 8),
             Text(
@@ -37,7 +37,7 @@ extension _SyncBluetoothGorunum on _SyncEkraniState {
               '(Android\'in kendini Bluetooth ile "yayınlama" özelliği '
               'kısıtlı). Bulamazsa, WiFi sekmesindeki QR kod yöntemi '
               'HER ZAMAN güvenilir çalışır — onu kullanmanızı öneririz.',
-              style: TextStyle(fontSize: 12, height: 1.6, color: Colors.orange)),
+              style: TextStyle(fontSize: 12, height: 1.6, color: TsRenk.uyari)),
           ]),
         ),
         const SizedBox(height: 20),
@@ -83,11 +83,11 @@ extension _SyncBluetoothGorunum on _SyncEkraniState {
             color: TsRenk.kart(context),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _btTarama ? Colors.blue.shade300 : TsRenk.ayirac(context))),
+              color: _btTarama ? TsRenk.bilgi : TsRenk.ayirac(context))),
           child: Column(children: [
             Row(children: [
               Icon(Icons.bluetooth_searching,
-                  color: _btTarama ? Colors.blue : context.textSecondary, size: 28),
+                  color: _btTarama ? TsRenk.bilgi : context.textSecondary, size: 28),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Cihaz Ara (BLE)',
@@ -106,7 +106,7 @@ extension _SyncBluetoothGorunum on _SyncEkraniState {
               onPressed: _btIslemde ? null : _btTaramaToggle,
               style: FilledButton.styleFrom(
                 foregroundColor: Colors.white,
-          backgroundColor: _btTarama ? Colors.red : TsRenk.primaryKoyu,
+          backgroundColor: _btTarama ? TsRenk.hata : TsRenk.primaryKoyu,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             )),
@@ -130,20 +130,20 @@ extension _SyncBluetoothGorunum on _SyncEkraniState {
                     color: secili ? TsRenk.zemin(TsRenk.bilgi) : TsRenk.arkaplan(context),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: secili ? Colors.blue.shade300 : TsRenk.ayirac(context))),
+                      color: secili ? TsRenk.bilgi : TsRenk.ayirac(context))),
                   child: ListTile(
                     leading: Container(
                       width: 40, height: 40,
                       decoration: BoxDecoration(
                         color: TsRenk.zemin(TsRenk.bilgi, opaklik: 0.18),
                         shape: BoxShape.circle),
-                      child: const Icon(Icons.phone_android, color: Colors.blue, size: 22)),
+                      child: const Icon(Icons.phone_android, color: TsRenk.bilgi, size: 22)),
                     title: Text(ad, style: const TextStyle(
                         fontWeight: FontWeight.w700, fontSize: 14)),
                     subtitle: Text(
                       ip == '?' ? 'IP bilinmiyor - WiFi sekmesini kullanın' : ip,
                       style: TextStyle(fontSize: 11,
-                          color: ip == '?' ? Colors.orange : TsRenk.metinIkincil(context))),
+                          color: ip == '?' ? TsRenk.uyari : TsRenk.metinIkincil(context))),
                     trailing: ip != '?' ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -151,7 +151,7 @@ extension _SyncBluetoothGorunum on _SyncEkraniState {
                           onPressed: _btIslemde ? null : () => _btVeriAl(ip, ad),
                           style: FilledButton.styleFrom(
                             foregroundColor: Colors.white,
-          backgroundColor: Colors.green,
+          backgroundColor: TsRenk.basarili,
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                           child: const Text('Al', style: TextStyle(fontSize: 12)),
@@ -223,8 +223,8 @@ extension _SyncBluetoothGorunum on _SyncEkraniState {
                     : TsRenk.ayirac(context))),
             child: Text(_btDurum,
               style: TextStyle(fontSize: 13,
-                color: _btDurum.startsWith('✅') ? Colors.green.shade700
-                    : _btDurum.startsWith('❌') ? Colors.red.shade700
+                color: _btDurum.startsWith('✅') ? TsRenk.basarili
+                    : _btDurum.startsWith('❌') ? TsRenk.hata
                     : context.textSecondary)),
           ),
         ],

@@ -133,7 +133,7 @@ class HizliSatisSepetListesi extends ConsumerWidget {
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
                       FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE53935)),
+                        style: FilledButton.styleFrom(backgroundColor: TsRenk.hata),
                         onPressed: () => Navigator.pop(ctx, true),
                         child: const Text('Temizle'),
                       ),
@@ -152,11 +152,11 @@ class HizliSatisSepetListesi extends ConsumerWidget {
                   border: Border.all(color: const Color(0x33E53935)),
                 ),
                 child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.delete_sweep_rounded, size: 14, color: Color(0xFFE53935)),
+                  Icon(Icons.delete_sweep_rounded, size: 14, color: TsRenk.hata),
                   SizedBox(width: 4),
                   Text('Temizle', style: TextStyle(
                       fontSize: 11, fontWeight: FontWeight.w600,
-                      color: Color(0xFFE53935))),
+                      color: TsRenk.hata)),
                 ]),
               ),
             ),

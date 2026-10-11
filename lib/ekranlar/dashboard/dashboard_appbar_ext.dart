@@ -255,7 +255,7 @@ extension _DashboardAppBarExt on _DashboardEkraniState {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: TsRenk.hata,
                       borderRadius: BorderRadius.circular(10)),
                   constraints: const BoxConstraints(minWidth: 16),
                   child: Text(sayi > 99 ? '99+' : '$sayi',

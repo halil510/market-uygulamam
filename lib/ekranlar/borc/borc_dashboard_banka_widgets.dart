@@ -14,7 +14,7 @@ class _BankaHesapKartOzet extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: TsKart.liste(
-        ikon: const Icon(Icons.account_balance_rounded, color: Colors.blue),
+        ikon: const Icon(Icons.account_balance_rounded, color: TsRenk.bilgi),
         baslik: hesap.hesapAdi,
         altBaslik: hesap.hesapNo,
         sagAksiyon: Column(
@@ -25,7 +25,7 @@ class _BankaHesapKartOzet extends StatelessWidget {
                 style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
-                    color: hesap.bakiye >= 0 ? Colors.green : Colors.red)),
+                    color: hesap.bakiye >= 0 ? TsRenk.basarili : TsRenk.hata)),
             Text(hesap.paraBirimi, style: TextStyle(fontSize: 10, color: TsRenk.metinIkincil(context))),
           ],
         ),
@@ -126,7 +126,7 @@ class _BakiyeKolonu extends StatelessWidget {
           style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: deger >= 0 ? Colors.green.shade700 : Colors.red),
+              color: deger >= 0 ? TsRenk.basarili : TsRenk.hata),
         ),
       ],
     );
@@ -147,7 +147,7 @@ class _TotalBakiyeBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF0D1B6E), Color(0xFF283593)]),
+        gradient: const LinearGradient(colors: [Color(0xFF0D1B6E), TsRenk.primaryKoyu]),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(children: [

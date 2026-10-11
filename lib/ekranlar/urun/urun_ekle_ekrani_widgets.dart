@@ -40,11 +40,11 @@ extension _UrunEkleWidgetExt on _UrunEkleEkraniState {
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: Colors.amber.shade200),
           ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.auto_awesome, size: 14, color: Colors.amber.shade700),
-            const SizedBox(width: 4),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.auto_awesome, size: 14, color: TsRenk.uyari),
+            SizedBox(width: 4),
             Text('AI ile dolduruldu',
-                style: TextStyle(fontSize: 10, color: Colors.amber.shade800)),
+                style: TextStyle(fontSize: 10, color: TsRenk.uyari)),
           ]),
         ),
     ]),
@@ -130,10 +130,10 @@ class _SesliKomutSheetState extends State<_SesliKomutSheet> {
           Container(
             width: 72, height: 72,
             decoration: BoxDecoration(
-              color: Colors.red.withAlpha(26),
+              color: TsRenk.hata.withAlpha(26),
               shape: BoxShape.circle,
             ),
-            child: Icon(_basladi ? Icons.mic : Icons.mic_none, color: Colors.red, size: 36),
+            child: Icon(_basladi ? Icons.mic : Icons.mic_none, color: TsRenk.hata, size: 36),
           ),
           const SizedBox(height: 16),
           Text(_basladi ? 'Dinliyorum...' : 'Hazırlanıyor...',
@@ -234,7 +234,7 @@ class _DovizleHesaplaDialogState extends State<_DovizleHesaplaDialog> {
           child: Column(children: [
             Text('TL Karşılığı', style: TextStyle(fontSize: 11, color: context.textSecondary)),
             Text('${_sonuc.toStringAsFixed(2)} ₺',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.green)),
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: TsRenk.basarili)),
           ]),
         ),
         const SizedBox(height: 8),

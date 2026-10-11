@@ -29,7 +29,7 @@ class PromosyonKarti extends StatelessWidget {
     final now = DateTime.now();
     final suresiDoldu = promosyon.bitisTarihi != null && promosyon.bitisTarihi!.isBefore(now);
     final renk = suresiDoldu ? context.textSecondary
-        : promosyon.aktif ? Colors.green.shade700 : Colors.orange.shade700;
+        : promosyon.aktif ? TsRenk.basarili : TsRenk.uyari;
     final etiket = suresiDoldu ? 'Süresi Doldu' : promosyon.aktif ? 'Aktif' : 'Pasif';
 
     return Container(
@@ -68,11 +68,11 @@ class PromosyonKarti extends StatelessWidget {
             },
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'duzenle',
-                  child: Row(children: [Icon(Icons.edit_outlined, size: 16, color: Colors.blue), SizedBox(width: 8), Text('Düzenle')])),
+                  child: Row(children: [Icon(Icons.edit_outlined, size: 16, color: TsRenk.bilgi), SizedBox(width: 8), Text('Düzenle')])),
               PopupMenuItem(value: 'toggle',
                   child: Text(promosyon.aktif ? 'Pasife Al' : 'Aktife Al')),
               const PopupMenuItem(value: 'sil',
-                  child: Row(children: [Icon(Icons.delete_outline, size: 16, color: Colors.red), SizedBox(width: 8), Text('Sil', style: TextStyle(color: Colors.red))])),
+                  child: Row(children: [Icon(Icons.delete_outline, size: 16, color: TsRenk.hata), SizedBox(width: 8), Text('Sil', style: TextStyle(color: TsRenk.hata))])),
             ],
           )),
         ]),
@@ -80,9 +80,9 @@ class PromosyonKarti extends StatelessWidget {
         const Divider(height: 1),
         const SizedBox(height: 8),
         Row(children: [
-          PromosyonBilgiChip(Icons.discount, '%${promosyonOranMetni(promosyon.iskontoOran)} İndirim', Colors.orange.shade700),
+          PromosyonBilgiChip(Icons.discount, '%${promosyonOranMetni(promosyon.iskontoOran)} İndirim', TsRenk.uyari),
           const SizedBox(width: 8),
-          PromosyonBilgiChip(Icons.production_quantity_limits, 'Min: ${promosyon.minMiktar.toStringAsFixed(0)}', Colors.blue.shade700),
+          PromosyonBilgiChip(Icons.production_quantity_limits, 'Min: ${promosyon.minMiktar.toStringAsFixed(0)}', TsRenk.bilgi),
         ]),
         if (promosyon.baslangicTarihi != null || promosyon.bitisTarihi != null) ...[
           const SizedBox(height: 6),

@@ -61,7 +61,7 @@ class SatisAltPanel extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         color: bos
                             ? TsRenk.metinIkincil(context)
-                            : const Color(0xFF4361EE),
+                            : TsRenk.primary,
                       ),
                     ),
                   )),
@@ -74,7 +74,7 @@ class SatisAltPanel extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                       color: bos
                           ? TsRenk.metinIkincil(context)
-                          : const Color(0xFF4361EE),
+                          : TsRenk.primary,
                       letterSpacing: -0.5,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
@@ -83,13 +83,13 @@ class SatisAltPanel extends StatelessWidget {
                   const SizedBox(height: 2),
                   Row(children: [
                     const Icon(Icons.discount_outlined,
-                        size: 11, color: Color(0xFFE65100)),
+                        size: 11, color: TsRenk.uyari),
                     const SizedBox(width: 3),
                     Text(
                       '${sepet.genelIskontoYuzde.toStringAsFixed(0)}% genel indirim uygulandı',
                       style: const TextStyle(
                         fontSize: 10,
-                        color: Color(0xFFE65100),
+                        color: TsRenk.uyari,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

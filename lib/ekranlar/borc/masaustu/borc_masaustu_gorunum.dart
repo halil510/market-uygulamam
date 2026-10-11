@@ -203,13 +203,13 @@ class _BorcMasaustuGorunumState extends State<BorcMasaustuGorunum> {
           ],
         ],
         tuslar: [
-          AltTus('F1', 'Borç Ekle', Icons.add_circle_outline, const Color(0xFF2E7D32), _ekle),
+          AltTus('F1', 'Borç Ekle', Icons.add_circle_outline, TsRenk.basarili, _ekle),
           if (!widget.odenenMod)
-            AltTus('F2', 'Öde', Icons.payments_outlined, const Color(0xFF1565C0),
+            AltTus('F2', 'Öde', Icons.payments_outlined, TsRenk.bilgi,
                 s == null || s.odendi ? null : () => _ode(s)),
-          AltTus('F3', 'Detay', Icons.info_outline, const Color(0xFF6A1B9A),
+          AltTus('F3', 'Detay', Icons.info_outline, TsRenk.vurguMor,
               s == null ? null : () => _detay(s)),
-          AltTus('F6', 'Menü', Icons.menu, const Color(0xFF546E7A),
+          AltTus('F6', 'Menü', Icons.menu, TsRenk.notr,
               s == null ? null : () => _menu(s, const Offset(400, 250))),
         ],
       ),

@@ -134,8 +134,8 @@ class _BekleyenSiparisMasaustuGorunumState
         ],
         tuslar: [
           AltTus('F2', 'Detay / Onayla', Icons.open_in_new,
-              const Color(0xFF1565C0), s == null ? null : () => widget.onDetay(s)),
-          AltTus('F5', 'Yenile', Icons.refresh, const Color(0xFF455A64),
+              TsRenk.bilgi, s == null ? null : () => widget.onDetay(s)),
+          AltTus('F5', 'Yenile', Icons.refresh, TsRenk.notr,
               () => widget.onYenile()),
         ],
       ),

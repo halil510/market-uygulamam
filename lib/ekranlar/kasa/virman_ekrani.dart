@@ -287,8 +287,8 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
                 color: TsRenk.zemin(TsRenk.uyari), borderRadius: BorderRadius.circular(10)),
-            child: Text('Kayıtlı banka hesabı bulunamadı. Önce Banka Hesapları ekranından bir hesap ekleyin.',
-                style: TextStyle(fontSize: 11, color: Colors.orange.shade800)),
+            child: const Text('Kayıtlı banka hesabı bulunamadı. Önce Banka Hesapları ekranından bir hesap ekleyin.',
+                style: TextStyle(fontSize: 11, color: TsRenk.uyari)),
           ),
       ],
 
@@ -313,8 +313,8 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
                 color: TsRenk.zemin(TsRenk.uyari), borderRadius: BorderRadius.circular(10)),
-            child: Text('Kayıtlı kredi kartı bulunamadı. Önce Kredi Kartları ekranından bir kart ekleyin.',
-                style: TextStyle(fontSize: 11, color: Colors.orange.shade800)),
+            child: const Text('Kayıtlı kredi kartı bulunamadı. Önce Kredi Kartları ekranından bir kart ekleyin.',
+                style: TextStyle(fontSize: 11, color: TsRenk.uyari)),
           ),
       ],
 
@@ -327,14 +327,14 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
                 color: TsRenk.zemin(TsRenk.bilgi), borderRadius: BorderRadius.circular(10)),
-            child: Row(children: [
-              Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
-              const SizedBox(width: 8),
+            child: const Row(children: [
+              Icon(Icons.info_outline, size: 16, color: TsRenk.bilgi),
+              SizedBox(width: 8),
               Expanded(child: Text(
                 '"Havale/EFT" ve "Diğer" bu uygulamada bakiyesi takip edilen '
                 'bir hesap değildir — sadece Kasa/Banka/Kredi Kartı tarafı '
                 '(varsa) kaydedilir.',
-                style: TextStyle(fontSize: 11, color: Colors.blue.shade800))),
+                style: TextStyle(fontSize: 11, color: TsRenk.bilgi))),
             ]),
           ),
         ),

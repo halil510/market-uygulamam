@@ -423,13 +423,13 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                                   // Veresiye satış - POZİTİF göster (+)
                                   pozitif = true;
                                   tutar = h.borc;
-                                  renk = Colors.green.shade700;
+                                  renk = TsRenk.basarili;
                                   ikonVeri = Icons.arrow_downward;
                                 } else {
                                   // Tahsilat - NEGATİF göster (-)
                                   pozitif = false;
                                   tutar = h.alacak;
-                                  renk = Colors.red.shade700;
+                                  renk = TsRenk.hata;
                                   ikonVeri = Icons.arrow_upward;
                                 }
                               } else {
@@ -438,13 +438,13 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                                   // Alım / Borçlandık → kırmızı - (borcumuz arttı)
                                   pozitif = false;
                                   tutar = h.alacak;
-                                  renk = Colors.red.shade700;
+                                  renk = TsRenk.hata;
                                   ikonVeri = Icons.arrow_upward;
                                 } else {
                                   // Ödeme yaptık / Borcumuz azaldı → yeşil +
                                   pozitif = true;
                                   tutar = h.borc;
-                                  renk = Colors.green.shade700;
+                                  renk = TsRenk.basarili;
                                   ikonVeri = Icons.arrow_downward;
                                 }
                               }
@@ -454,7 +454,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                                 direction: DismissDirection.endToStart,
                                 background: Container(
                                   decoration: BoxDecoration(
-                                      color: Colors.red,
+                                      color: TsRenk.hata,
                                       borderRadius: BorderRadius.circular(12)),
                                   alignment: Alignment.centerRight,
                                   padding: const EdgeInsets.only(right: 16),
@@ -507,9 +507,9 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                                           ),
                                           if (h.fisId != null && h.fisId! > 0)
                                             IconButton(
-                                              icon: Icon(Icons.receipt_long,
+                                              icon: const Icon(Icons.receipt_long,
                                                   size: 18,
-                                                  color: Colors.blue.shade600),
+                                                  color: TsRenk.bilgi),
                                               onPressed: () =>
                                                   _fisDetayinaGit(h),
                                               tooltip: 'Fiş Detayı',
@@ -535,10 +535,10 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
                                                 borderRadius:
                                                     BorderRadius.circular(6)),
                                             child: Text(h.fisTipi,
-                                                style: TextStyle(
+                                                style: const TextStyle(
                                                     fontSize: 10,
                                                     color:
-                                                        Colors.blue.shade700)),
+                                                        TsRenk.bilgi)),
                                           ),
                                         ],
                                       ),

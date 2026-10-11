@@ -11,6 +11,7 @@
 //
 // Sadece GÖRÜNÜM + klavye kısayolları: iş mantığı (ödeme, sepete ekleme,
 // müşteri seçimi…) çağıran ekrandan geri-çağrı (callback) ile gelir.
+import '../../../tasarim_sistemi/ts_token.dart';
 import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -244,7 +245,7 @@ class _MasaustuHizliSatisDuzeniState
 
   Widget _sekmeKarti(
       ({int no, int urunSayisi, double toplam, String? musteri}) s, int i, bool aktif) {
-    const mavi = Color(0xFF1565C0);
+    const mavi = TsRenk.bilgi;
     final renk = aktif ? Colors.white : context.textSecondary;
     return Material(
       // Aktif sekme dolu renk — hangi müşteride olunduğu bir bakışta görülsün.
@@ -461,20 +462,20 @@ class _MasaustuHizliSatisDuzeniState
     return Column(children: [
       MasaustuToplamKarti(sepet: sepet, alinanPara: _alinan),
       MasaustuFTuslari(
-        ana: FTus('F12', 'ÖDEME', const Color(0xFFD32F2F),
+        ana: FTus('F12', 'ÖDEME', TsRenk.hata,
             odemeAktif ? widget.onOdeme : null),
         tuslar: [
-          FTus('F2', 'Kasa Aç', const Color(0xFF4527A0), widget.onKasaAc),
-          FTus('F3', 'Stok', const Color(0xFFC62828), widget.onStok),
-          FTus('F4', 'Askıya Al', const Color(0xFF2E7D32),
+          FTus('F2', 'Kasa Aç', TsRenk.vurguMor, widget.onKasaAc),
+          FTus('F3', 'Stok', TsRenk.hata, widget.onStok),
+          FTus('F4', 'Askıya Al', TsRenk.basarili,
               sepet.bos ? null : widget.onAskiyaAl),
-          FTus('F5', 'Son Fiş', const Color(0xFF6A1B9A), widget.onSonFis),
-          FTus('F6', 'İskonto', const Color(0xFFEF6C00),
+          FTus('F5', 'Son Fiş', TsRenk.vurguMor, widget.onSonFis),
+          FTus('F6', 'İskonto', TsRenk.uyari,
               sepet.bos ? null : _iskontoUygula),
-          FTus('F7', 'Cari', const Color(0xFF1565C0), widget.onCari),
-          FTus('F9', 'Temizle', const Color(0xFF546E7A),
+          FTus('F7', 'Cari', TsRenk.bilgi, widget.onCari),
+          FTus('F9', 'Temizle', TsRenk.notr,
               sepet.bos ? null : _sepetiTemizle),
-          FTus('F10', 'Yeni Alışveriş', const Color(0xFF00838F),
+          FTus('F10', 'Yeni Alışveriş', TsRenk.vurguTurkuaz,
               ref.read(sepetProvider.notifier).sekmeler.length >= Sepet.maksSekme
                   ? null
                   : _yeniSekme),

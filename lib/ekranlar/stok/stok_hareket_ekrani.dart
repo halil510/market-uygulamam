@@ -130,11 +130,11 @@ class _StokHareketEkraniState extends ConsumerState<StokHareketEkrani> {
               child: Row(children: [
                 _turChip('Tümü', null),
                 const SizedBox(width: 8),
-                _turChip('Giriş', 'Giriş', color: Colors.green),
+                _turChip('Giriş', 'Giriş', color: TsRenk.basarili),
                 const SizedBox(width: 8),
-                _turChip('Çıkış', 'Çıkış', color: Colors.red),
+                _turChip('Çıkış', 'Çıkış', color: TsRenk.hata),
                 const SizedBox(width: 8),
-                _turChip('Sayım', 'Sayım', color: Colors.blue),
+                _turChip('Sayım', 'Sayım', color: TsRenk.bilgi),
                 const SizedBox(width: 16),
                 Text('${_filtreli.length} kayıt',
                     style: TextStyle(fontSize: 12, color: context.textSecondary)),
@@ -182,7 +182,7 @@ class _StokHareketEkraniState extends ConsumerState<StokHareketEkrani> {
                         final h = _filtreli[i];
                         final giris = h.hareketTuru == 'Giriş';
                         final sayim = h.hareketTuru == 'Sayım';
-                        final renk = sayim ? Colors.blue : giris ? Colors.green : Colors.red;
+                        final renk = sayim ? TsRenk.bilgi : giris ? TsRenk.basarili : TsRenk.hata;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 6),
                           child: TsKart.liste(

@@ -148,7 +148,7 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         elevation: 6,
-        backgroundColor: Colors.green,
+        backgroundColor: TsRenk.basarili,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Puan Ekle'),
@@ -208,8 +208,8 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
                   margin: const EdgeInsets.all(16),
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.amber.shade700, Colors.orange.shade500],
+                    gradient: const LinearGradient(
+                      colors: [TsRenk.uyari, TsRenk.uyari],
                     ),
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -247,7 +247,7 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
                   child: TsKart(
                       child: Row(children: [
                         Icon(Icons.info_outline,
-                            color: Colors.blue, size: 18),
+                            color: TsRenk.bilgi, size: 18),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -296,7 +296,7 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
                             : TsRenk.zemin(TsRenk.hata),
                         child: Icon(
                           kazandi ? Icons.add : Icons.remove,
-                          color: kazandi ? Colors.green : Colors.red,
+                          color: kazandi ? TsRenk.basarili : TsRenk.hata,
                           size: 18,
                         ),
                       ),
@@ -312,7 +312,7 @@ class _MusteriPuanEkraniState extends ConsumerState<MusteriPuanEkrani> {
                         '${kazandi ? '+' : ''}${puan.toStringAsFixed(0)} puan',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: kazandi ? Colors.green : Colors.red,
+                          color: kazandi ? TsRenk.basarili : TsRenk.hata,
                           fontSize: 13,
                         ),
                       ),

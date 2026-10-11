@@ -543,8 +543,8 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: _seciliCari!.bakiye > 0
-                            ? Colors.red
-                            : Colors.green),
+                            ? TsRenk.hata
+                            : TsRenk.basarili),
                   ),
                   if (_seciliCari!.vergiNo != null) ...[
                     const SizedBox(width: 16),
@@ -583,7 +583,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
               child: Column(children: [
                 _toplamSatir('Ara Toplam', _araToplam),
                 if (_iskonto > 0)
-                  _toplamSatir('İskonto', -_iskonto, renk: Colors.red),
+                  _toplamSatir('İskonto', -_iskonto, renk: TsRenk.hata),
                 _toplamSatir('KDV', _kdvToplam),
                 const Divider(height: 16),
                 _toplamSatir('GENEL TOPLAM', _genelToplam,
@@ -633,13 +633,13 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
           ),
           const SizedBox(width: 8),
           IconButton(
-            icon: const Icon(Icons.inventory_2_outlined, color: Colors.blue),
+            icon: const Icon(Icons.inventory_2_outlined, color: TsRenk.bilgi),
             tooltip: 'Ürün Seç',
             onPressed: () => _urunSec(i),
           ),
           if (_kalemler.length > 1)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              icon: const Icon(Icons.delete_outline, color: TsRenk.hata),
               onPressed: () => _kalemSil(i),
             ),
         ]),
@@ -774,7 +774,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                     fontSize: bold ? 16 : 13,
                     fontWeight:
                         bold ? FontWeight.w800 : FontWeight.w600,
-                    color: renk ?? (val < 0 ? Colors.red : null)),
+                    color: renk ?? (val < 0 ? TsRenk.hata : null)),
               ),
             ]),
       );

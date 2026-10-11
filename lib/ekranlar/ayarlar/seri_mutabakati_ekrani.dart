@@ -108,7 +108,7 @@ class _SeriMutabakatiEkraniState extends State<SeriMutabakatiEkrani> {
 
   Widget _ozetKarti(SeriMutabakatRaporu r) {
     final temiz = r.toplamBosluk == 0;
-    final renk = temiz ? Colors.green : Colors.red;
+    final renk = temiz ? TsRenk.basarili : TsRenk.hata;
     return _kart(
       kenar: renk,
       child: Row(children: [
@@ -129,9 +129,9 @@ class _SeriMutabakatiEkraniState extends State<SeriMutabakatiEkrani> {
   Widget _blokKarti(BlokMutabakati b) {
     final tarih = DateTime.tryParse(b.tahsisZamani ?? '');
     final durumEtiket = b.kalan > 0 ? 'Aktif' : 'Tükendi';
-    final durumRenk = b.sorunlu ? Colors.red : (b.kalan > 0 ? Colors.blue : Colors.grey);
+    final durumRenk = b.sorunlu ? TsRenk.hata : (b.kalan > 0 ? TsRenk.bilgi : Colors.grey);
     return _kart(
-      kenar: b.sorunlu ? Colors.red : null,
+      kenar: b.sorunlu ? TsRenk.hata : null,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text('${b.seri} ${b.yil} · ${b.baslangic}–${b.bitis}',
@@ -147,12 +147,12 @@ class _SeriMutabakatiEkraniState extends State<SeriMutabakatiEkrani> {
           _deger('Kullanılan', '${b.kullanilan}'),
           _deger('Kalan', '${b.kalan}'),
           if (b.silinmis.isNotEmpty) _deger('Silinmiş', '${b.silinmis.length}'),
-          if (b.bosluklar.isNotEmpty) _deger('Boşluk', '${b.bosluklar.length}', renk: Colors.red),
+          if (b.bosluklar.isNotEmpty) _deger('Boşluk', '${b.bosluklar.length}', renk: TsRenk.hata),
         ]),
         if (b.bosluklar.isNotEmpty) ...[
           const SizedBox(height: 6),
           Text('Faturası olmayan: ${_numaraListesi(b, b.bosluklar)}',
-              style: const TextStyle(fontSize: 12, color: Colors.red)),
+              style: const TextStyle(fontSize: 12, color: TsRenk.hata)),
         ],
         if (b.silinmis.isNotEmpty) ...[
           const SizedBox(height: 4),

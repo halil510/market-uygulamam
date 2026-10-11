@@ -118,13 +118,13 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
           Text('İşlem: ${_islemAdi()}', style: const TextStyle(fontWeight: FontWeight.w600)),
           Text('Değer: ${_tipi == 'yuzde' ? '%$deger' : '${deger.toStringAsFixed(2)} ₺'}'),
           const SizedBox(height: 8),
-          const Text('Bu işlem geri alınamaz!', style: TextStyle(color: Colors.red, fontSize: 12)),
+          const Text('Bu işlem geri alınamaz!', style: TextStyle(color: TsRenk.hata, fontSize: 12)),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true),
               style: FilledButton.styleFrom(foregroundColor: Colors.white,
-          backgroundColor: Colors.orange),
+          backgroundColor: TsRenk.uyari),
               child: const Text('Güncelle')),
         ],
       ));
@@ -203,10 +203,10 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
             const Text('İşlem Türü', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 10),
             Wrap(spacing: 8, children: [
-              _islemChip('zam',        'Zam',         Icons.trending_up,   Colors.red),
-              _islemChip('indirim',    'İndirim',     Icons.trending_down,  Colors.green),
-              _islemChip('sabitFiyat', 'Sabit Fiyat', Icons.price_change,   Colors.blue),
-              _islemChip('alisUstune', 'Alış+Kâr',    Icons.calculate,      Colors.purple),
+              _islemChip('zam',        'Zam',         Icons.trending_up,   TsRenk.hata),
+              _islemChip('indirim',    'İndirim',     Icons.trending_down,  TsRenk.basarili),
+              _islemChip('sabitFiyat', 'Sabit Fiyat', Icons.price_change,   TsRenk.bilgi),
+              _islemChip('alisUstune', 'Alış+Kâr',    Icons.calculate,      TsRenk.vurguMor),
             ]),
           ]))),
           const SizedBox(height: 10),
@@ -265,7 +265,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
               Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.uyari), borderRadius: BorderRadius.circular(12)),
                 child: Text(_tumunuSec ? '${_secili.length} ürün (Tümü)' : '${_seciliIds.length} ürün seçili',
-                    style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w700))),
+                    style: const TextStyle(color: TsRenk.uyari, fontWeight: FontWeight.w700))),
             ]),
             if (_secili.isNotEmpty && _degerCtrl.text.isNotEmpty) ...[
               const Divider(height: 16),
@@ -275,8 +275,8 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
                   child: Row(children: [
                     Expanded(child: Text(u.urunAdi, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
                     Text(ParaUtils.formatla(u.satisFiyati), style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
-                    const Icon(Icons.arrow_forward, size: 14, color: Colors.orange),
-                    Text(ParaUtils.formatla(yeni), style: TsMetin.kucukVurgu.copyWith(color: Colors.orange)),
+                    const Icon(Icons.arrow_forward, size: 14, color: TsRenk.uyari),
+                    Text(ParaUtils.formatla(yeni), style: TsMetin.kucukVurgu.copyWith(color: TsRenk.uyari)),
                   ]));
               })),
               if (_secili.length > 3) Text('... ve ${_secili.length - 3} ürün daha',
@@ -290,7 +290,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.update),
             label: Text(_tumunuSec ? 'Tüm Filtrelileri Güncelle (${_secili.length})' : 'Seçilileri Güncelle (${_seciliIds.length})'),
-            style: FilledButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white,
+            style: FilledButton.styleFrom(backgroundColor: TsRenk.uyari, foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 50)),
           ),
         ]),
@@ -331,9 +331,9 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
                       subtitle: Row(children: [
                         Text(ParaUtils.formatla(u.satisFiyati), style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
                         if (yeni != null) ...[
-                          const Icon(Icons.arrow_forward, size: 12, color: Colors.orange),
+                          const Icon(Icons.arrow_forward, size: 12, color: TsRenk.uyari),
                           Text(ParaUtils.formatla(yeni),
-                              style: TextStyle(fontSize: 12, color: yeni > u.satisFiyati ? Colors.red : Colors.green,
+                              style: TextStyle(fontSize: 12, color: yeni > u.satisFiyati ? TsRenk.hata : TsRenk.basarili,
                                   fontWeight: FontWeight.w600)),
                         ],
                       ]),

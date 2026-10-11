@@ -93,7 +93,7 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
                   ref.read(satislarProvider.notifier).secimTemizle(),
             ),
             TsYetkili(child: IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              icon: const Icon(Icons.delete_outline, color: TsRenk.hata),
               tooltip: 'Seçilenleri Sil',
               onPressed: () async {
                 final onay = await showDialog<bool>(context: context,
@@ -293,12 +293,12 @@ class _IstatistikSeridi extends StatelessWidget {
       color: context.cardBg,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(children: [
-        _StatBadge('${satislar.length} Satış', Colors.blue.shade700),
+        _StatBadge('${satislar.length} Satış', TsRenk.bilgi),
         const SizedBox(width: 8),
-        _StatBadge(ParaUtils.formatla(toplam), Colors.green.shade700),
+        _StatBadge(ParaUtils.formatla(toplam), TsRenk.basarili),
         if (iptalli > 0) ...[
           const SizedBox(width: 8),
-          _StatBadge('$iptalli İptal', Colors.red.shade700),
+          _StatBadge('$iptalli İptal', TsRenk.hata),
         ],
       ]),
     );
@@ -372,7 +372,7 @@ class _SatisKarti extends StatelessWidget {
               ),
               child: Icon(
                 iptal ? Icons.cancel_outlined : Icons.receipt_outlined,
-                color: iptal ? Colors.red.shade600 : AppRenkler.primary,
+                color: iptal ? TsRenk.hata : AppRenkler.primary,
                 size: 22,
               ),
             ),
@@ -397,9 +397,9 @@ class _SatisKarti extends StatelessWidget {
                           : (satis.fisTipi == 'İade' ? Icons.undo_outlined
                               : Icons.receipt_outlined),
                       size: 12,
-                      color: iptal ? Colors.red.shade700
-                          : (satis.fisTipi == 'İade' ? Colors.orange.shade700
-                              : Colors.blue.shade700)),
+                      color: iptal ? TsRenk.hata
+                          : (satis.fisTipi == 'İade' ? TsRenk.uyari
+                              : TsRenk.bilgi)),
                   ),
                   // Fiş no - kısa format
                   Flexible(child: Text(
@@ -412,9 +412,9 @@ class _SatisKarti extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                           color: TsRenk.zemin(TsRenk.hata), borderRadius: BorderRadius.circular(4)),
-                      child: Text('İPTAL',
+                      child: const Text('İPTAL',
                           style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
-                              color: Colors.red.shade700)),
+                              color: TsRenk.hata)),
                     ),
                   ],
                 ]),

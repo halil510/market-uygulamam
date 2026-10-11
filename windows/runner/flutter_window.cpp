@@ -54,6 +54,22 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // Windows kapanırken / oturum kapatılırken ve kurulum programı (Inno Setup
+  // Restart Manager) güncelleme için uygulamayı kapatmak istediğinde
+  // WM_QUERYENDSESSION + WM_ENDSESSION gelir. Pencere X'indeki "kapatılsın
+  // mı?" sorusu (window_manager preventClose) burada sorulmaz; aksi halde
+  // güncelleme "uygulama kapatılamadı" diye takılıyordu. Veritabanı WAL
+  // modunda: kaydedilmiş her işlem diskte, süreç sonu güvenli.
+  switch (message) {
+    case WM_QUERYENDSESSION:
+      return TRUE;
+    case WM_ENDSESSION:
+      if (wparam) {
+        DestroyWindow(hwnd);
+      }
+      return 0;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =

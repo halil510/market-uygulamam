@@ -63,7 +63,7 @@ $iscc = @(
 ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 
 if ($iscc) {
-  & $iscc (Join-Path $PSScriptRoot 'BarkoPro.iss')
+  & $iscc "/DAppSurum=$surum" (Join-Path $PSScriptRoot 'BarkoPro.iss')
   if ($LASTEXITCODE -eq 0) {
     Write-Host "  -> $cikis\BarkoPro_Kurulum_$surum.exe" -ForegroundColor Green
   } else {

@@ -6,7 +6,10 @@
 ; Bu yüzden güncelleme/kaldırma işlemi müşteri verisine dokunmaz.
 
 #define AppAdi "BarkoPro"
-#define AppSurum "2.3.0"
+; Sürüm kurulum_olustur.ps1'den pubspec.yaml'a göre gelir (/DAppSurum=...).
+#ifndef AppSurum
+  #define AppSurum "2.3.0"
+#endif
 #define Yayinci "BarkoPro"
 #define ExeAdi "halk_market.exe"
 #define KaynakDizin "..\..\build\windows\x64\runner\Release"
@@ -58,3 +61,56 @@ Name: "{autodesktop}\{#AppAdi}"; Filename: "{app}\{#ExeAdi}"; IconFilename: "{ap
 [Run]
 Filename: "{app}\{#ExeAdi}"; Description: "{#AppAdi} uygulamasını başlat"; \
   Flags: nowait postinstall skipifsilent
+
+[Code]
+// Aynı AppId ile kurulu sürüm varsa bu bir GÜNCELLEMEDİR: klasör sorulmaz
+// (DisableDirPage=auto), dosyalar üzerine yazılır, veriler (%APPDATA%)
+// korunur. Sihirbaz metinleri de "Kur" yerine "Güncelle" der.
+var
+  Guncelleme: Boolean;
+  EskiSurum: String;
+
+function OncekiSurumuBul(var Surum: String): Boolean;
+var
+  Anahtar: String;
+begin
+  Anahtar := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{960DAF8A-5D65-4670-BB60-CF5A50680120}_is1';
+  Result := RegQueryStringValue(HKLM64, Anahtar, 'DisplayVersion', Surum)
+    or RegQueryStringValue(HKLM32, Anahtar, 'DisplayVersion', Surum)
+    or RegQueryStringValue(HKCU, Anahtar, 'DisplayVersion', Surum);
+end;
+
+procedure InitializeWizard;
+begin
+  Guncelleme := OncekiSurumuBul(EskiSurum);
+  if Guncelleme then
+    WizardForm.Caption := '{#AppAdi} Güncelleme (' + EskiSurum + ' → {#AppSurum})';
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if not Guncelleme then Exit;
+  case CurPageID of
+    wpReady:
+      begin
+        WizardForm.PageNameLabel.Caption := 'Güncellemeye hazır';
+        WizardForm.PageDescriptionLabel.Caption :=
+          '{#AppAdi} ' + EskiSurum + ' sürümü {#AppSurum} sürümüne güncellenecek.';
+        WizardForm.ReadyLabel.Caption :=
+          'Satışlarınız, ürünleriniz ve ayarlarınız korunur; yalnızca program dosyaları yenilenir.' + #13#10#13#10 +
+          'Devam etmek için Güncelle düğmesine tıklayın.';
+        WizardForm.NextButton.Caption := 'Güncelle';
+      end;
+    wpInstalling:
+      begin
+        WizardForm.PageNameLabel.Caption := 'Güncelleniyor';
+        WizardForm.PageDescriptionLabel.Caption := '{#AppAdi} güncellenirken lütfen bekleyin.';
+      end;
+    wpFinished:
+      begin
+        WizardForm.FinishedHeadingLabel.Caption := 'Güncelleme tamamlandı';
+        WizardForm.FinishedLabel.Caption :=
+          '{#AppAdi} {#AppSurum} sürümüne güncellendi. Verileriniz yerinde.';
+      end;
+  end;
+end;

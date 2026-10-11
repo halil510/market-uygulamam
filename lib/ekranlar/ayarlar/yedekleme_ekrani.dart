@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 import '../../servisler/yedekleme_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../depolar/ayarlar_deposu.dart';
@@ -26,7 +28,10 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
   DateTime?        _sonOtomatik;
   bool             _yukleniyor   = true;
   bool             _isleniyor    = false;
+  bool             _geriYukleniyor = false;
   String           _sikligi      = 'gunluk';
+  String           _klasor       = '';
+  String?          _ekKlasor;
 
   @override
   void initState() {
@@ -41,11 +46,15 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
       final liste = await _servis.yedekListesi();
       final son   = await _servis.sonOtomatikYedekTarihi();
       final sikligi = await _ayarlarDepo.getir('yedek_sikligi') ?? 'gunluk';
+      final klasor = await _servis.yedekKlasoru();
+      final ek     = await _servis.ekKlasor();
       if (!mounted) return;
       setState(() {
         _yedekler    = liste;
         _sonOtomatik = son;
         _sikligi     = sikligi;
+        _klasor      = klasor;
+        _ekKlasor    = ek;
         _yukleniyor  = false;
       });
     } catch (_) {
@@ -61,7 +70,13 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
       final yol = await _servis.yedekAl();
       await _yukle();
       if (!mounted) return;
-      BildirimServisi.basari(context, 'Yedek alındı ✓');
+      final ekHata = _servis.sonEkKopyaHatasi;
+      if (ekHata != null) {
+        BildirimServisi.hata(context, 'Yedek alındı ama $ekHata');
+        return;
+      }
+      BildirimServisi.basari(context,
+          _ekKlasor == null ? 'Yedek alındı ✓' : 'Yedek alındı ve ek klasöre kopyalandı ✓');
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -96,7 +111,48 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
     }
   }
 
-  Future<void> _geriYukle(YedekBilgi y) async {
+  Future<void> _ekKlasorSec() async {
+    try {
+      final yol = await FilePicker.getDirectoryPath(
+          dialogTitle: 'Yedeklerin ayrıca kopyalanacağı klasörü seçin (USB / ikinci disk)');
+      if (yol == null) return;
+      if (p.equals(yol, _klasor)) {
+        if (mounted) {
+          BildirimServisi.hata(context, 'Bu zaten varsayılan yedek klasörü — farklı bir klasör seçin');
+        }
+        return;
+      }
+      await _servis.ekKlasorKaydet(yol);
+      await _yukle();
+      if (mounted) BildirimServisi.basari(context, 'Ek yedek klasörü kaydedildi');
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Klasör seçilemedi: $e');
+    }
+  }
+
+  Future<void> _ekKlasorKaldir() async {
+    await _servis.ekKlasorKaydet(null);
+    await _yukle();
+  }
+
+  Future<void> _dosyadanGeriYukle() async {
+    try {
+      final dosya = await FilePicker.pickFile(
+        dialogTitle: 'Geri yüklenecek yedek dosyasını seçin (barkopro_....zip)',
+        type: FileType.custom,
+        allowedExtensions: ['zip'],
+      );
+      if (dosya?.path == null) return;
+      final yol = dosya!.path!;
+      await _geriYukleYol(yol, p.basename(yol));
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'Dosya seçilemedi: $e');
+    }
+  }
+
+  Future<void> _geriYukle(YedekBilgi y) => _geriYukleYol(y.yol, '${y.tarihStr} tarihli yedek');
+
+  Future<void> _geriYukleYol(String yol, String etiket) async {
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -105,7 +161,8 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
           Icon(Icons.warning_amber, color: TsRenk.uyari), SizedBox(width: 8),
           Text('Geri Yükle'),
         ]),
-        content: Text('${y.tarihStr} tarihli yedek geri yüklenecek.\n\nMevcut veriler silinecek. Emin misiniz?'),
+        content: Text('$etiket geri yüklenecek.\n\nMevcut veriler bu yedekle değiştirilecek '
+            '(mevcut halin güvenlik kopyası saklanır). Emin misiniz?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
           FilledButton(
@@ -128,22 +185,47 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
     final onaylandi = await yoneticiSifresiIleOnayIste(
       context,
       baslik: 'Yedek Geri Yükleme Onayı',
-      aciklama: '${y.tarihStr} tarihli yedek geri yüklenecek — mevcut '
+      aciklama: '$etiket geri yüklenecek — mevcut '
           'TÜM veriler bu yedekle DEĞİŞTİRİLECEK. Devam etmek için '
           'şifrenizi girin.',
     );
     if (!onaylandi || !mounted) return;
     if (!ref.read(authProvider).isMudur) return; // savunma: eylem anında ikinci kez doğrula
 
+    setState(() => _isleniyor = _geriYukleniyor = true);
     try {
-      await _servis.yedekiGeriYukle(y.yol);
-      if (mounted) {
-        BildirimServisi.basari(context,
-          'Geri yükleme tamamlandı. Uygulamayı yeniden başlatın.');
-      }
+      await _servis.yedekiGeriYukle(yol);
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+      if (mounted) {
+        setState(() => _isleniyor = _geriYukleniyor = false);
+        BildirimServisi.hata(context, 'Geri yükleme yapılamadı, mevcut veriler değişmedi.\n$e');
+      }
+      return;
     }
+    if (!mounted) return;
+    // Açık ekranlar/önbellekler eski veriyi tutuyor; temiz başlangıç şart.
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Geri Yükleme Tamamlandı'),
+        content: Text(Platform.isWindows
+            ? 'Veriler yedekten yüklendi. Uygulama şimdi yeniden başlatılacak.'
+            : 'Veriler yedekten yüklendi. Uygulamayı tamamen kapatıp yeniden açın.'),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(Platform.isWindows ? 'Yeniden Başlat' : 'Tamam'),
+          ),
+        ],
+      ),
+    );
+    if (Platform.isWindows) {
+      await Process.start(Platform.resolvedExecutable, const [],
+          mode: ProcessStartMode.detached);
+      exit(0);
+    }
+    if (mounted) setState(() => _isleniyor = _geriYukleniyor = false);
   }
 
   Future<void> _sil(YedekBilgi y) async {
@@ -230,7 +312,9 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
                           ? const SizedBox(width: 16, height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2, color: TsRenk.bilgi))
                           : const Icon(Icons.backup),
-                      label: Text(_isleniyor ? 'Yedekleniyor...' : 'Şimdi Yedek Al'),
+                      label: Text(_geriYukleniyor
+                          ? 'Geri yükleniyor...'
+                          : _isleniyor ? 'Yedekleniyor...' : 'Şimdi Yedek Al'),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: TsRenk.bilgi,
@@ -269,6 +353,9 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
               ),
               const SizedBox(height: 16),
 
+              _klasorKarti(),
+              const SizedBox(height: 16),
+
               // Yedek listesi
               if (_yedekler.isEmpty)
                 Center(child: Padding(
@@ -287,6 +374,58 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
                 ..._yedekler.map((y) => _yedekKarti(y)),
               ],
             ]),
+    );
+  }
+
+  Widget _klasorKarti() {
+    final ikincil = TsRenk.metinIkincil(context);
+    // Ek klasör: dart:io ile doğrudan yazılabilen masaüstü yolları. Android'de
+    // seçilen klasör çoğu zaman uygulamaya yazma izni vermez.
+    final ekDestekli = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: TsRenk.kart(context),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: TsRenk.ayirac(context)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Yedek Klasörü',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          const SizedBox(height: 6),
+          Text('Yedekler her zaman buraya alınır:',
+              style: TextStyle(fontSize: 12, color: ikincil)),
+          SelectableText(_klasor, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          if (ekDestekli) ...[
+            const SizedBox(height: 12),
+            Text('Ek kopya (USB / ikinci disk) — bilgisayar bozulursa yedek orada kalır:',
+                style: TextStyle(fontSize: 12, color: ikincil)),
+            Text(_ekKlasor ?? 'Seçilmedi',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                    color: _ekKlasor == null ? TsRenk.uyari : null)),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              OutlinedButton.icon(
+                onPressed: _isleniyor ? null : _ekKlasorSec,
+                icon: const Icon(Icons.create_new_folder_outlined, size: 18),
+                label: Text(_ekKlasor == null ? 'Ek Klasör Seç' : 'Değiştir'),
+              ),
+              if (_ekKlasor != null)
+                TextButton(
+                  onPressed: _isleniyor ? null : _ekKlasorKaldir,
+                  child: const Text('Kaldır'),
+                ),
+            ]),
+          ],
+          const Divider(height: 24),
+          OutlinedButton.icon(
+            onPressed: _isleniyor ? null : _dosyadanGeriYukle,
+            icon: const Icon(Icons.file_open_outlined, size: 18, color: TsRenk.uyari),
+            label: const Text('Dosyadan Geri Yükle (.zip)'),
+          ),
+        ]),
+      ),
     );
   }
 
@@ -342,6 +481,8 @@ class _YedeklemeEkraniState extends ConsumerState<YedeklemeEkrani> {
                 color: y.otomatik ? TsRenk.basarili : TsRenk.bilgi)),
         Text(' • ', style: TextStyle(fontSize: 11, color: context.textSecondary)),
         Text(y.boyutStr, style: TextStyle(fontSize: 11, color: context.textSecondary)),
+        if (y.ekKlasorde)
+          Text(' • ek klasörde', style: TextStyle(fontSize: 11, color: context.textSecondary)),
       ]),
       trailing: PopupMenuButton<String>(
         icon: const Icon(Icons.more_vert, size: 20),

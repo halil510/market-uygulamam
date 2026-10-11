@@ -25,6 +25,8 @@ class YedekBilgi {
   final DateTime tarih;
   final int boyutByte;
   final bool otomatik;
+  /// Yalnızca kullanıcının seçtiği ek klasörde bulunan (ör. USB) yedek.
+  final bool ekKlasorde;
 
   const YedekBilgi({
     required this.yol,
@@ -32,6 +34,7 @@ class YedekBilgi {
     required this.tarih,
     required this.boyutByte,
     required this.otomatik,
+    this.ekKlasorde = false,
   });
 
   String get boyutStr {
@@ -51,13 +54,65 @@ class YedeklemeServisi {
 
   static const _maxYedekSayisi = 10; // Maksimum tutulacak yedek
   static const _sonYedekKey    = 'son_otomatik_yedek';
+  // Cihaza özgü yol → SharedPreferences (ayarlar tablosu buluta/diğer
+  // cihazlara gider, oradaki USB yolu başka bilgisayarda anlamsız).
+  static const _ekKlasorKey    = 'yedek_ek_klasor';
+
+  /// Son yedekte ek klasöre kopyalama başarısızsa sebebi (ör. USB takılı
+  /// değil). Yedeğin kendisi yine de varsayılan klasöre alınmıştır.
+  String? sonEkKopyaHatasi;
 
   // ── Yedek dizini ──────────────────────────────────────────────────────
   Future<Directory> _yedekDizini() async {
     final dir = await getApplicationDocumentsDirectory();
-    final yedekDir = Directory('${dir.path}/yedekler');
+    final yedekDir = Directory(p.join(dir.path, 'yedekler'));
     await yedekDir.create(recursive: true);
     return yedekDir;
+  }
+
+  /// Varsayılan yedek klasörünün yolu (ekranda göstermek için).
+  Future<String> yedekKlasoru() async => (await _yedekDizini()).path;
+
+  // ── Ek yedek klasörü (USB / ikinci disk) ──────────────────────────────
+  // Yedek HER ZAMAN önce varsayılan klasöre alınır, sonra buraya kopyalanır:
+  // bilgisayarın diski bozulsa / çalınsa da yedek ayrı yerde durur; USB
+  // takılı değilse yedek yine alınmış olur.
+  Future<String?> ekKlasor() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final yol = prefs.getString(_ekKlasorKey);
+      return (yol == null || yol.trim().isEmpty) ? null : yol;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> ekKlasorKaydet(String? yol) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (yol == null || yol.trim().isEmpty) {
+      await prefs.remove(_ekKlasorKey);
+    } else {
+      await prefs.setString(_ekKlasorKey, yol);
+    }
+  }
+
+  Future<void> _ekKlasoreKopyala(String zipYolu) async {
+    sonEkKopyaHatasi = null;
+    final ek = await ekKlasor();
+    if (ek == null) return;
+    try {
+      if (p.equals(p.dirname(zipYolu), ek)) return;
+      final dizin = Directory(ek);
+      await dizin.create(recursive: true);
+      final hedef = p.join(ek, p.basename(zipYolu));
+      final gecici = '$hedef.tmp';
+      await File(zipYolu).copy(gecici);
+      await File(gecici).rename(hedef);
+      await _klasoruTemizle(dizin);
+    } catch (e, st) {
+      sonEkKopyaHatasi = 'Ek klasöre ($ek) kopyalanamadı: $e';
+      LogServisi().hata('YedeklemeServisi.ekKlasoreKopyala', hata: e, yigin: st);
+    }
   }
 
   // ── Manuel yedek al ───────────────────────────────────────────────────
@@ -97,7 +152,8 @@ class YedeklemeServisi {
       }
 
       // Eski yedekleri temizle
-      await _eskiYedekleriTemizle();
+      await _klasoruTemizle(yedekDir);
+      await _ekKlasoreKopyala(zipYolu);
 
       if (kDebugMode) debugPrint('Yedek alındı: $zipYolu');
       return zipYolu;
@@ -108,9 +164,13 @@ class YedeklemeServisi {
   }
 
   // ── Eski yedekleri temizle ────────────────────────────────────────────
-  Future<void> _eskiYedekleriTemizle() async {
+  // Yalnızca uygulamanın ürettiği barkopro_*.zip dosyalarına dokunur (ek
+  // klasör kullanıcının başka dosyalarını da içerebilir).
+  Future<void> _klasoruTemizle(Directory dizin) async {
     try {
-      final liste = await yedekListesi();
+      final liste = _klasordekiYedekler(dizin)
+          .where((y) => y.dosyaAdi.startsWith('barkopro_'))
+          .toList();
       if (liste.length <= _maxYedekSayisi) return;
 
       // En eskiden başlayarak sil
@@ -166,12 +226,30 @@ class YedeklemeServisi {
   }
 
   // ── Yedek listesi ─────────────────────────────────────────────────────
+  /// Varsayılan klasördeki yedekler + ek klasörde olup burada olmayanlar
+  /// (ör. bilgisayar yenilendi, yedek yalnız USB'de kaldı).
   Future<List<YedekBilgi>> yedekListesi() async {
     try {
-      final dir = await _yedekDizini();
+      final liste = _klasordekiYedekler(await _yedekDizini());
+      final ek = await ekKlasor();
+      if (ek != null && Directory(ek).existsSync()) {
+        final adlar = liste.map((y) => y.dosyaAdi).toSet();
+        liste.addAll(_klasordekiYedekler(Directory(ek), ekKlasorde: true)
+            .where((y) => !adlar.contains(y.dosyaAdi)));
+        liste.sort((a, b) => b.tarih.compareTo(a.tarih));
+      }
+      return liste;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  List<YedekBilgi> _klasordekiYedekler(Directory dir, {bool ekKlasorde = false}) {
+    try {
       final dosyalar = dir.listSync()
           .whereType<File>()
           .where((f) => f.path.endsWith('.zip'))
+          .where((f) => !ekKlasorde || p.basename(f.path).startsWith('barkopro_'))
           .toList();
 
       final liste = dosyalar.map((f) {
@@ -193,6 +271,7 @@ class YedeklemeServisi {
           tarih:     tarih,
           boyutByte: stat.size,
           otomatik:  adi.contains('_oto_'),
+          ekKlasorde: ekKlasorde,
         );
       }).toList();
 

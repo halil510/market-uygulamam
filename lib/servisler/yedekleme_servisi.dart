@@ -211,9 +211,30 @@ class YedeklemeServisi {
         yedekOneki: 'geri_yukleme_oncesi',
         kapat: Veritabani().kapat,
       );
+      await cekmeFiligranlariniSifirla();
     } catch (e, st) {
       LogServisi().hata('YedeklemeServisi.geriYukle', hata: e, yigin: st);
       rethrow;
+    }
+  }
+
+  /// Buluttan çekme filigranlarını (mp_sync_al_*, mp_sync_al_sz_*) siler →
+  /// sonraki senkron tabloları baştan çeker.
+  ///
+  /// Neden: yedek 10:00'da alındı, 10:00-17:00 arası satışlar buluta gitti,
+  /// çekme filigranı 17:00. Yedek geri yüklenince bu satışlar yerelde yok
+  /// ama filigran "17:00'a kadar aldım" dediği için bir daha çekilmezdi
+  /// (yalnız açılıştaki 48 saatlik geniş pencere kısmen kurtarıyordu).
+  /// Bulut kullanmayan cihazda anahtar yoktur, etkisizdir.
+  @visibleForTesting
+  static Future<void> cekmeFiligranlariniSifirla() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final k in prefs.getKeys().where((k) => k.startsWith('mp_sync_al_')).toList()) {
+        await prefs.remove(k);
+      }
+    } catch (e, st) {
+      LogServisi().hata('YedeklemeServisi.cekmeFiligranlariniSifirla', hata: e, yigin: st);
     }
   }
 

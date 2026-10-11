@@ -128,4 +128,36 @@ void main() {
     expect(bakDosyalari('import_oncesi'), hasLength(3));
     expect(bakDosyalari('geri_yukleme_oncesi'), hasLength(1));
   });
+
+  test('dosya sürümü SQLite başlığından okunur', () async {
+    final db = await openDatabase('${tmp.path}/v.db', version: 81,
+        onCreate: (db, v) => db.execute('CREATE TABLE t (deger TEXT)'));
+    await db.close();
+    expect(VeritabaniDosyaServisi.dosyaSurumu(
+        await File('${tmp.path}/v.db').readAsBytes()), 81);
+  });
+
+  test('daha yeni uygulama sürümünün dosyası reddedilir, mevcut veri değişmez',
+      () async {
+    final yeni = await openDatabase('${tmp.path}/yeni.db', version: 90,
+        onCreate: (db, v) async {
+      await db.execute('CREATE TABLE t (deger TEXT)');
+      await db.insert('t', {'deger': 'yeni'});
+    });
+    await yeni.close();
+
+    await expectLater(
+      servis.dosyayiDegistir(
+        hedef: hedef,
+        yeniIcerik: await File('${tmp.path}/yeni.db').readAsBytes(),
+        yedekOneki: 'import_oncesi',
+        kapat: kapat,
+        uygulamaSurumu: 81,
+      ),
+      throwsA(isA<Exception>().having(
+          (e) => e.toString(), 'mesaj', contains('daha yeni'))),
+    );
+    expect(await _degerOku(hedef), 'eski');
+    expect(kapatSayisi, 0, reason: 'veritabanı kapatılmadan reddedilmeli');
+  });
 }

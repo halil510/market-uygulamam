@@ -78,7 +78,11 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
       context,
       baslik: 'Veritabanını İçe Aktar',
       icerik:
-          'Mevcut veritabanının üzerine yazılacak. Bu işlem geri alınamaz.\n\nDevam etmek istediğinize emin misiniz?',
+          'Seçeceğiniz .db dosyası bu cihazın veritabanı olacak. Mevcut '
+          'verinin güvenlik kopyası saklanır; bu cihazın ayarları (tema '
+          'hariç) sıfırlanır.\n\nYalnız BU kasanın dışa aktarılmış dosyasını '
+          'yükleyin — başka bir kasanın dosyası iki cihazı aynı kasa kimliğiyle '
+          'çalıştırır.\n\nDevam etmek istediğinize emin misiniz?',
       onayYazi: 'Devam Et',
       onayRengi: TsRenk.uyari,
     );
@@ -95,7 +99,10 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
     if (!AuthServisi().isMudur) return; // savunma: eylem anında ikinci kez doğrula
 
     try {
-      final dosya = await FilePicker.pickFile(type: FileType.any);
+      final dosya = await FilePicker.pickFile(
+        dialogTitle: 'İçe aktarılacak veritabanı dosyasını seçin (.db)',
+        type: FileType.any,
+      );
       if (dosya == null) return;
       if (dosya.path == null) {
         if (mounted) BildirimServisi.hata(context, 'Dosya yolu alınamadı');
@@ -129,7 +136,14 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
         if (mounted) {
           BildirimServisi.basari(context,
               'Veritabanı içe aktarıldı. Uygulama yeniden başlatılıyor...');
-          Future.delayed(const Duration(seconds: 1), () => exit(0));
+          // Önceden yalnız kapanıyordu (exit); Windows'ta kendini yeniden açar.
+          Future.delayed(const Duration(seconds: 1), () async {
+            if (Platform.isWindows) {
+              await Process.start(Platform.resolvedExecutable, const [],
+                  mode: ProcessStartMode.detached);
+            }
+            exit(0);
+          });
         }
       } catch (e) {
         if (mounted) Navigator.of(context).pop();
@@ -516,13 +530,9 @@ extension _AyarlarIslemlerExt on _AyarlarEkraniState {
 
   Future<void> _dbDisariAktar() async {
     try {
-      final dbYolu = await VeritabaniDosyaServisi().dosyaYolu();
-      final dbDosya = File(dbYolu);
-      if (!await dbDosya.exists()) {
-        if (mounted) BildirimServisi.hata(context, 'DB dosyası bulunamadı');
-        return;
-      }
-      await DosyaPaylasim.paylas(ShareParams(files: [XFile(dbYolu)], text: 'BarkoPro Veritabanı'));
+      // Açık market.db değil: WAL'daki son işlemler dahil, tarihli kopya.
+      final kopya = await VeritabaniDosyaServisi().disaAktarKopyasi();
+      await DosyaPaylasim.paylas(ShareParams(files: [XFile(kopya)], text: 'BarkoPro Veritabanı'));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'Hata: $e');
     }

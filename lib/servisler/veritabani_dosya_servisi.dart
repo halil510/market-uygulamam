@@ -21,6 +21,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
+import '../cekirdek/sabitler/uygulama_sabitleri.dart';
 import '../veri/database/veritabani.dart';
 import 'log_servisi.dart';
 
@@ -42,6 +43,39 @@ class VeritabaniDosyaServisi {
 
   Future<String> _hedefYol() async =>
       p.join(await getDatabasesPath(), DbSabitler.dbAdi);
+
+  /// Dışa aktarma için TUTARLI ve TAM bir kopya üretir (geçici klasörde,
+  /// tarihli adla) ve yolunu döndürür.
+  ///
+  /// Önceden açık market.db doğrudan paylaşılıyordu: WAL modunda son
+  /// işlemler bir süre market.db-wal'da bekler, kopyaya girmez (canlı ölçüm
+  /// 2026-10-11: 4 MB WAL, kopyada son audit kayıtları yok, buluta gitmiş 9
+  /// iş "bekliyor" görünüyordu). Yedek Al'daki checkpoint düzeltmesinin
+  /// aynısı.
+  Future<String> disaAktarKopyasi() async {
+    final db = await Veritabani().db;
+    await db.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
+    final damga = DateTime.now()
+        .toIso8601String()
+        .substring(0, 19)
+        .replaceAll(RegExp(r'[-:]'), '')
+        .replaceAll('T', '_');
+    final hedef = p.join(
+        (await getTemporaryDirectory()).path, 'BarkoPro_veritabani_$damga.db');
+    await File(await _hedefYol()).copy(hedef);
+    if (!await butunlukKontrolEt(hedef)) {
+      throw Exception('Kopya doğrulanamadı — lütfen tekrar deneyin.');
+    }
+    return hedef;
+  }
+
+  /// SQLite başlığındaki user_version (bayt 60-63, big-endian) = dosyanın
+  /// veritabanı sürümü.
+  @visibleForTesting
+  static int dosyaSurumu(List<int> icerik) =>
+      icerik.length < 64
+          ? 0
+          : (icerik[60] << 24) | (icerik[61] << 16) | (icerik[62] << 8) | icerik[63];
 
   /// Seçilen .db dosyasını cihazın veritabanı yapar. Bozuksa hiçbir şey
   /// değişmez ve [Exception] fırlatılır. Başarılıysa ayarlar (tema hariç)
@@ -97,11 +131,21 @@ class VeritabaniDosyaServisi {
     required List<int> yeniIcerik,
     required String yedekOneki,
     required Future<void> Function() kapat,
+    int uygulamaSurumu = UygSabitler.dbVersiyon,
   }) async {
     if (yeniIcerik.length < 16 ||
         String.fromCharCodes(yeniIcerik.sublist(0, 15)) != _sqliteImza) {
       throw Exception('Seçilen dosya geçerli bir SQLite veritabanı değil — '
           'işlem iptal edildi, mevcut verileriniz DEĞİŞTİRİLMEDİ.');
+    }
+    // Daha yeni uygulama sürümünün dosyası: eski uygulama onu "düşük
+    // sürüm" diye işaretler, sonraki güncellemede migrasyonlar zaten var
+    // olan sütunları yeniden eklemeye çalışıp açılışı bozar.
+    final dosyaSurum = dosyaSurumu(yeniIcerik);
+    if (dosyaSurum > uygulamaSurumu) {
+      throw Exception('Bu dosya daha yeni bir BarkoPro sürümüne ait '
+          '(veritabanı v$dosyaSurum, bu uygulama v$uygulamaSurumu). Önce '
+          'uygulamayı güncelleyin — mevcut verileriniz DEĞİŞTİRİLMEDİ.');
     }
 
     final hedefDosya = File(hedef);

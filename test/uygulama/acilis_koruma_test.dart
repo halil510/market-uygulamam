@@ -4,6 +4,7 @@
 // yarım/NUL dolu ayar dosyası ve gün aşırı alınan otomatik yedek.
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:market_plus/servisler/yedekleme_servisi.dart';
 import 'package:market_plus/uygulama/acilis_koruma.dart';
 
@@ -55,6 +56,24 @@ void main() {
       ayar.writeAsStringSync('{bozuk');
       await ayarDosyasiYedekle(ayar);
       expect(File('${ayar.path}.son_saglam').readAsStringSync(), '{"a":1}');
+    });
+  });
+
+  test('yedek geri yüklenince yalnız buluttan ÇEKME filigranları silinir',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'mp_sync_al_satislar': '2026-10-11T17:00:00Z',
+      'mp_sync_al_sz_satislar': '2026-10-11T17:00:00Z',
+      'mp_sync_gonder_satislar': '2026-10-11T17:00:00Z',
+      'mp_sync_otogonder_satislar': '2026-10-11T17:00:00Z',
+      'tema_adi': 'dark',
+    });
+    await YedeklemeServisi.cekmeFiligranlariniSifirla();
+    final p = await SharedPreferences.getInstance();
+    expect(p.getKeys(), {
+      'mp_sync_gonder_satislar',
+      'mp_sync_otogonder_satislar',
+      'tema_adi',
     });
   });
 

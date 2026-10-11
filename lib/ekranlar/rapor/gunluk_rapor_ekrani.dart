@@ -328,9 +328,9 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
     // ---------- 3. KDV OZET SAYFASI ----------
     final kdvOzetSayfa = excel['KDV Ozeti'];
     kdvOzetSayfa.appendRow([
-      TextCellValue('KDV Orani (%)'), 
-      TextCellValue('Matrah (KDV Haric Net Tutar)'), 
-      TextCellValue('KDV Tutari (TL)'),
+      TextCellValue('KDV Oranı (%)'), 
+      TextCellValue('Matrah (KDV Hariç Net Tutar)'), 
+      TextCellValue('KDV Tutarı (TL)'),
       TextCellValue('Toplam Tutar (KDV Dahil)')
     ]);
     

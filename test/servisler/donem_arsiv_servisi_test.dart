@@ -217,6 +217,44 @@ void main() {
       expect(satislarSonuc.arsivSayim, 2); // hâlâ 2 — çoğalmadı
     });
 
+    test('çok şube: 1. şubenin devri şirket geneli cari/banka satırlarını '
+        'sildikten sonra 2. şubenin arşivi doğrulamada takılmaz', () async {
+      await ornekVeriEkle();
+      final servis = DonemArsivServisi();
+      await servis.arsivleVeDogrula(
+        donemYili: 2026, subeId: 1, baslangic: baslangic, bitis: bitis,
+        aktifDbTest: aktif, arsivDosyaYoluTest: arsivYolu,
+      );
+      // 1. şubenin temizleme fazı cari/banka'yı şube filtresiz siler.
+      await aktif.delete('cari_hareket');
+      await aktif.delete('banka_hareketler');
+
+      final sonuclar = await servis.arsivleVeDogrula(
+        donemYili: 2026, subeId: 2, baslangic: baslangic, bitis: bitis,
+        aktifDbTest: aktif, arsivDosyaYoluTest: arsivYolu,
+      );
+      for (final s in sonuclar) {
+        expect(s.dogrulandiMi, isTrue, reason: '${s.tablo} doğrulanamadı');
+      }
+    });
+
+    test('arşiv tablosu eski şemadaysa yeni sütunlar eklenir', () async {
+      await ornekVeriEkle();
+      // Önceki sürümün oluşturduğu, bir sütunu eksik arşiv tablosu.
+      final eski = await openDatabase(arsivYolu);
+      await eski.execute(
+          'CREATE TABLE banka_hareketler (id INTEGER PRIMARY KEY, tarih TEXT, tutar REAL)');
+      await eski.close();
+
+      final sonuclar = await DonemArsivServisi().arsivleVeDogrula(
+        donemYili: 2026, subeId: 1, baslangic: baslangic, bitis: bitis,
+        aktifDbTest: aktif, arsivDosyaYoluTest: arsivYolu,
+      );
+      final banka = sonuclar.firstWhere((s) => s.tablo == 'banka_hareketler');
+      expect(banka.dogrulandiMi, isTrue);
+      expect(banka.kopyalanan, 1);
+    });
+
     test('hiç satır yoksa (boş dönem) yine de doğrulanır (0=0)', () async {
       final servis = DonemArsivServisi();
       final sonuclar = await servis.arsivleVeDogrula(

@@ -499,13 +499,13 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
             DropdownButtonFormField<String>(
               initialValue: _odemeDurumu,
               decoration: const InputDecoration(
-                  labelText: 'Odeme Durumu',
+                  labelText: 'Ödeme Durumu',
                   border: OutlineInputBorder(),
                   isDense: true),
               items: const [
                 DropdownMenuItem(value: 'beklemede', child: Text('Beklemede')),
-                DropdownMenuItem(value: 'odendi', child: Text('Odendi')),
-                DropdownMenuItem(value: 'kismi', child: Text('Kismi Odendi')),
+                DropdownMenuItem(value: 'odendi', child: Text('Ödendi')),
+                DropdownMenuItem(value: 'kismi', child: Text('Kısmi Ödendi')),
               ],
               onChanged: (v) => setState(() => _odemeDurumu = v!),
             ),
@@ -516,7 +516,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
               initialValue: _seciliCari,
               isExpanded: true,
               decoration: const InputDecoration(
-                  labelText: 'Cari Sec *',
+                  labelText: 'Cari Seç *',
                   border: OutlineInputBorder(),
                   isDense: true,
                   prefixIcon: Icon(Icons.people, size: 18)),
@@ -624,7 +624,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
             child: TextFormField(
               controller: k.adCtrl,
               decoration: const InputDecoration(
-                  labelText: 'Urun/Hizmet *',
+                  labelText: 'Ürün/Hizmet *',
                   border: OutlineInputBorder(),
                   isDense: true),
               validator: (v) =>

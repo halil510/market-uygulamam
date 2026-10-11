@@ -10,6 +10,7 @@ import 'dart:typed_data';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:sqflite/sqflite.dart';
 import '../veri/database/veritabani.dart';
+import 'veritabani_dosya_servisi.dart';
 
 class SyncServisi {
   static final SyncServisi _i = SyncServisi._();
@@ -175,7 +176,13 @@ class SyncServisi {
 
       // ── Seçili tablolar import ──
       else if (metod == 'POST' && yol == '/api/import') {
-        final body = await utf8.decoder.bind(req).join();
+        final govde = await _govdeOku(req, _maksJsonBoyutu);
+        if (govde == null) {
+          req.response.statusCode = 413;
+          _jsonYanit(req, {'hata': 'İstek çok büyük'});
+          return;
+        }
+        final body = utf8.decode(govde);
         final data = jsonDecode(body) as Map<String, dynamic>;
         final sonuc = await _veriIcerAktar(data);
         _jsonYanit(req, sonuc);
@@ -206,45 +213,28 @@ class SyncServisi {
 
       // ── DB dosyası yükle (POST binary) ──
       else if (metod == 'POST' && yol == '/api/db') {
-        final bytes = await req
-            .fold<List<int>>([], (a, b) => a..addAll(b));
-        final db = await Veritabani().db;
-        final tempYol = '${db.path}.transfer_temp';
-        await File(tempYol).writeAsBytes(bytes);
-        // Doğrulama - sqlite formatı
-        final magic = bytes.length > 16
-            ? String.fromCharCodes(bytes.take(6))
-            : '';
-        if (!magic.startsWith('SQLite')) {
-          await File(tempYol).delete();
-          req.response.statusCode = 400;
-          _jsonYanit(req, {'hata': 'Geçerli SQLite dosyası değil'});
+        final bytes = await _govdeOku(req, _maksDbBoyutu);
+        if (bytes == null) {
+          req.response.statusCode = 413;
+          _jsonYanit(req, {'hata': 'Dosya çok büyük'});
           return;
         }
-        // ÖNCEDEN BURADA CİDDİ BİR GÜVENLİK AÇIĞI VARDI: mevcut
-        // veritabanı hiçbir güvenlik yedeği alınmadan doğrudan üzerine
-        // yazılıyordu — yanlış bir .db dosyası (kazayla eski bir yedek,
-        // başka bir cihazın verisi vb.) yüklenirse, kullanıcının MEVCUT
-        // verisi GERİ DÖNÜŞSÜZ kaybolurdu. Bu, YedeklemeServisi'nde
-        // (geri yükleme) daha önce bulunup düzeltilen AYNI sınıf hataydı
-        // — burada da aynı güvenlik önlemi uygulanıyor: önce mevcut DB'nin
-        // bir kopyası alınıyor, yazma başarısız olursa oradan geri dönülüyor.
-        final guvenlikYedegi = '${db.path}.wifi_yukleme_oncesi_${DateTime.now().millisecondsSinceEpoch}.bak';
-        if (await File(db.path).exists()) {
-          await File(db.path).copy(guvenlikYedegi);
-        }
+        // Yedekten Geri Yükle / Veritabanını İçe Al ile AYNI yol: imza,
+        // güvenlik kopyası, eski -wal/-shm temizliği (kalırsa yeni dosyaya
+        // eski günlük uygulanıp DB bozulabilirdi), PRAGMA integrity_check,
+        // bozuksa önceki veriye geri dönüş.
         try {
-          await Veritabani().kapat();
-          await File(tempYol).copy(db.path);
-          await File(tempYol).delete();
+          final db = await Veritabani().db;
+          await VeritabaniDosyaServisi().dosyayiDegistir(
+            hedef: db.path,
+            yeniIcerik: bytes,
+            yedekOneki: 'wifi_yukleme_oncesi',
+            kapat: Veritabani().kapat,
+          );
           _jsonYanit(req, {'ok': true, 'mesaj': 'DB yüklendi, uygulama yeniden başlatılmalı'});
         } catch (e) {
-          // Yazma başarısız oldu — güvenlik yedeğinden geri al
-          if (await File(guvenlikYedegi).exists()) {
-            await File(guvenlikYedegi).copy(db.path);
-          }
-          req.response.statusCode = 500;
-          _jsonYanit(req, {'hata': 'DB yükleme başarısız, önceki veri geri yüklendi: $e'});
+          req.response.statusCode = 400;
+          _jsonYanit(req, {'hata': 'DB yüklenmedi, mevcut veri korundu: $e'});
         }
       }
 
@@ -284,6 +274,22 @@ class SyncServisi {
       req.response.statusCode = 500;
       _jsonYanit(req, {'hata': e.toString()});
     }
+  }
+
+  // Gövde tamamen RAM'e alınıyor; sınırsız bırakılırsa ağdaki tek bir
+  // dev istek uygulamayı bellek yetersizliğinden düşürebilirdi.
+  static const _maksDbBoyutu = 1024 * 1024 * 1024; // 1 GB
+  static const _maksJsonBoyutu = 256 * 1024 * 1024; // 256 MB
+
+  /// İstek gövdesini okur; [maks] baytı aşarsa okumayı keser, null döner.
+  Future<Uint8List?> _govdeOku(HttpRequest req, int maks) async {
+    if (req.contentLength > maks) return null;
+    final b = BytesBuilder(copy: false);
+    await for (final parca in req) {
+      b.add(parca);
+      if (b.length > maks) return null;
+    }
+    return b.takeBytes();
   }
 
   void _jsonYanit(HttpRequest req, Map<String, dynamic> data) {

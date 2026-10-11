@@ -136,7 +136,7 @@ appBar: TsAppBar(
               onPressed: _pdfGoster),
           IconButton(
               icon: const Icon(Icons.payment),
-              tooltip: 'Odeme Kaydet',
+              tooltip: 'Ödeme Kaydet',
               onPressed: (f.kalanTutar > 0 && !_islemDevam) ? _odemeKaydet : null),
           // 🔴 DÜZELTME (erp_roadmap madde 38 — e-Belge durum makinesi,
           // GERÇEK BULGU): "Durum Sorgula" GİB'den 'onaylandi' dönüp bunu
@@ -273,7 +273,7 @@ appBar: TsAppBar(
           FilledButton.icon(
             onPressed: _islemDevam ? null : _odemeKaydet,
             icon: const Icon(Icons.payment),
-            label: Text('Odeme Kaydet (${ParaUtils.formatla(f.kalanTutar)})'),
+            label: Text('Ödeme Kaydet (${ParaUtils.formatla(f.kalanTutar)})'),
             style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14)),
           ),

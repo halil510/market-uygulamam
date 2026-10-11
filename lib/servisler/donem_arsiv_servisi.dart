@@ -195,7 +195,8 @@ class DonemArsivServisi {
 
   /// Aktif DB'deki [tablo]'nun CREATE TABLE SQL'ini sqlite_master'dan
   /// alıp [arsiv]'a birebir uygular (IF NOT EXISTS garantisiyle, bkz.
-  /// aşağıdaki not). Tablo [arsiv]'da zaten varsa no-op.
+  /// aşağıdaki not). Tablo [arsiv]'da zaten varsa yalnız eksik sütunlar
+  /// eklenir.
   Future<void> _semaKopyala(Database aktif, Database arsiv, String tablo) async {
     final semaSatirlari = await aktif.rawQuery(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", [tablo]);
@@ -215,6 +216,22 @@ class DonemArsivServisi {
           RegExp(r'CREATE TABLE', caseSensitive: false), 'CREATE TABLE IF NOT EXISTS');
     }
     await arsiv.execute(semaSql);
+
+    // Arşiv tablosu önceki bir sürümde oluşturulduysa IF NOT EXISTS onu
+    // olduğu gibi bırakır; sonradan eklenen sütunlar eksik kalır ve
+    // kopyalama "no column named …" ile çökerdi. Eksik sütunlar eklenir
+    // (tipiyle; kısıt/varsayılan gerekmez — satırlar aktiften birebir
+    // kopyalanıyor).
+    final aktifSutunlar = await aktif.rawQuery('PRAGMA table_info($tablo)');
+    final arsivSutunlar = (await arsiv.rawQuery('PRAGMA table_info($tablo)'))
+        .map((r) => r['name'] as String)
+        .toSet();
+    for (final s in aktifSutunlar) {
+      final ad = s['name'] as String;
+      if (arsivSutunlar.contains(ad)) continue;
+      final tip = (s['type'] as String?) ?? '';
+      await arsiv.execute('ALTER TABLE $tablo ADD COLUMN "$ad" $tip');
+    }
   }
 
   Future<DonemArsivTabloSonucu> _tabloyuArsivle({
@@ -238,6 +255,9 @@ class DonemArsivServisi {
 
     var islenen = 0;
     int? sonId;
+    // Şirket geneli tablolarda (cari/banka) doğrulama, bu turda kopyalanan
+    // satırların id'leri üzerinden yapılır — bkz. aşağıdaki not.
+    final kopyalananIdler = <int>[];
     while (true) {
       final sayfaWhere = sonId == null ? where : '$where AND id > ?';
       final sayfaArgs = sonId == null ? args : [...args, sonId];
@@ -258,6 +278,9 @@ class DonemArsivServisi {
 
       islenen += satirlar.length;
       sonId = satirlar.last['id'] as int;
+      if (kural.subeKolonu == null) {
+        kopyalananIdler.addAll(satirlar.map((s) => s['id'] as int));
+      }
       ilerlemeBildir?.call('${kural.tablo} arşivleniyor: $islenen satır');
       if (satirlar.length < _sayfaBoyutu) break;
     }
@@ -265,16 +288,40 @@ class DonemArsivServisi {
     final toplamIfadesi = kural.toplamKolonlari.map((k) => 'COALESCE(SUM($k),0)').join(' + ');
     final aktifOzet = await aktif
         .rawQuery('SELECT COUNT(*) AS n, $toplamIfadesi AS t FROM ${kural.tablo} WHERE $where', args);
-    final arsivOzet = await arsiv
-        .rawQuery('SELECT COUNT(*) AS n, $toplamIfadesi AS t FROM ${kural.tablo} WHERE $where', args);
+    var arsivSayim = 0;
+    var arsivToplam = 0.0;
+    if (kural.subeKolonu != null) {
+      final arsivOzet = await arsiv.rawQuery(
+          'SELECT COUNT(*) AS n, $toplamIfadesi AS t FROM ${kural.tablo} WHERE $where',
+          args);
+      arsivSayim = (arsivOzet.first['n'] as int?) ?? 0;
+      arsivToplam = (arsivOzet.first['t'] as num?)?.toDouble() ?? 0;
+    } else {
+      // Çok şubeli devirde ilk şubenin temizleme fazı şirket geneli
+      // cari/banka satırlarını aktiften siler; sonraki şubenin turunda
+      // aktif 0 satır, ortak arşiv dosyası ise o satırları içerir —
+      // tarih aralığıyla karşılaştırma "0 ≠ N" deyip devri FAILED
+      // yapıyordu. Arşiv tarafı bu turda kopyalanan id'lerle sınırlanır:
+      // "aktifteki her satır arşive birebir geçti mi" sorusunun cevabı.
+      for (var i = 0; i < kopyalananIdler.length; i += 500) {
+        final parca = kopyalananIdler.sublist(
+            i, i + 500 > kopyalananIdler.length ? kopyalananIdler.length : i + 500);
+        final r = await arsiv.rawQuery(
+            'SELECT COUNT(*) AS n, $toplamIfadesi AS t FROM ${kural.tablo} '
+            'WHERE id IN (${List.filled(parca.length, '?').join(',')})',
+            parca);
+        arsivSayim += (r.first['n'] as int?) ?? 0;
+        arsivToplam += (r.first['t'] as num?)?.toDouble() ?? 0;
+      }
+    }
 
     return DonemArsivTabloSonucu(
       tablo: kural.tablo,
       kopyalanan: islenen,
       aktifSayim: (aktifOzet.first['n'] as int?) ?? 0,
-      arsivSayim: (arsivOzet.first['n'] as int?) ?? 0,
+      arsivSayim: arsivSayim,
       aktifToplam: (aktifOzet.first['t'] as num?)?.toDouble() ?? 0,
-      arsivToplam: (arsivOzet.first['t'] as num?)?.toDouble() ?? 0,
+      arsivToplam: arsivToplam,
     );
   }
 

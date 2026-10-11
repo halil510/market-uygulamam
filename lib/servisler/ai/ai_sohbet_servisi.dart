@@ -690,7 +690,7 @@ class AiSohbetServisi {
     if (rows.isEmpty) return 'Alan1 verisi bulunamadı.';
     final alan1Var = rows.where((r) => r['alan1_val'] != 'Tanımsız').length;
     if (alan1Var == 0) {
-      return 'Alan1 alani henuz tanimlanmamis. Urun duzenleme ekranindan alan1 bilgisi girebilirsiniz.';
+      return 'Alan1 alanı henüz tanımlanmamış. Ürün düzenleme ekranından Alan1 bilgisi girebilirsiniz.';
     }
     final sb = StringBuffer();
     sb.writeln('ALAN1 DETAYI');

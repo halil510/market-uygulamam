@@ -1,4 +1,11 @@
 // lib/ekranlar/satis/iade/iade_gecmis_widget.dart
+//
+// 🔴 DÜZENLEME MODU (2026-10-13): Tedarikçi ve bayi satırlarında swipe-to-
+// delete ve satır tıklaması artık devre dışı (tedarikçi zaten silinemez/
+// düzenlenemez; bayi silinebilir ama düzenlenemez — bkz. _cariIadeKisiti).
+// Önceden kullanıcı swipe yapıp onay veriyor, sonra "silinemez" mesajı
+// alıyordu; satıra tıklayıp "düzenlenemez" mesajı alıyordu. UX kafa
+// karışıklığını gidermek için etkileşim burada kapatıldı.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../cekirdek/utils/para_utils.dart';
@@ -71,9 +78,21 @@ class IadeGecmisWidget extends StatelessWidget {
           final idx  = entry.key;
           final iade = entry.value;
           final tedarikciye = iade['cari_iade_turu'] == 'tedarikci';
+          final bayiMi = iade['cari_iade_turu'] == 'bayi';
+          // 🔴 DÜZENLEME MODU (2026-10-13): satırın etkileşimi türüne göre.
+          //   tedarikci → swipe kapalı, tıklama kapalı (silinemez/düzenlenemez)
+          //   bayi      → swipe AÇIK (silinebilir), tıklama KAPALI (düzenlenemez)
+          //   müşteri   → ikisi de açık
+          final duzenlenebilir = iade['cari_iade_turu'] == null;
+          final silinebilir = !tedarikciye;
+          final dismissYonu = silinebilir
+              ? DismissDirection.endToStart
+              : DismissDirection.none;
+
           return Dismissible(
-            key: ValueKey('${iade['iade_id'] ?? ''}_${iade['kalem_id'] ?? idx}_$idx'),
-            direction: DismissDirection.endToStart,
+            key: ValueKey(
+                'oturum_${iade['iade_id'] ?? ''}_${iade['kalem_id'] ?? idx}_$idx'),
+            direction: dismissYonu,
             background: Container(
               margin: const EdgeInsets.only(bottom: 8),
               decoration: BoxDecoration(
@@ -87,10 +106,10 @@ class IadeGecmisWidget extends StatelessWidget {
                 Text('Sil', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
               ]),
             ),
-            confirmDismiss: (_) => onSilOnay(iade),
-            onDismissed: (_) => onSil(idx, iade),
+            confirmDismiss: silinebilir ? (_) => onSilOnay(iade) : null,
+            onDismissed: silinebilir ? (_) => onSil(idx, iade) : null,
             child: GestureDetector(
-              onTap: () => onDuzenle(idx, iade),
+              onTap: duzenlenebilir ? () => onDuzenle(idx, iade) : null,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: TsKart(
@@ -123,11 +142,17 @@ class IadeGecmisWidget extends StatelessWidget {
                     Text(ParaUtils.formatla(iade['toplam_tutar'] as double? ?? 0),
                         style: TextStyle(fontSize: 11, color: textL)),
                     // Tedarikçi/bayi iadesi oturumda düzenlenemez (kendi belgesi var).
-                    if (iade['cari_iade_turu'] == null)
+                    if (duzenlenebilir)
                       Row(mainAxisSize: MainAxisSize.min, children: [
                         Icon(Icons.edit_outlined, size: 12, color: textL),
                         const SizedBox(width: 2),
                         Text('Düzenle', style: TextStyle(fontSize: 10, color: textL)),
+                      ])
+                    else if (bayiMi)
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.lock_outline, size: 12, color: textL),
+                        const SizedBox(width: 2),
+                        Text('Fiyat kuralı', style: TextStyle(fontSize: 10, color: textL)),
                       ]),
                   ]),
                 ]),

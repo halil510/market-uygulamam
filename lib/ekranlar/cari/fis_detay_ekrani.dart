@@ -18,6 +18,11 @@
 //  - EKLEME: Hata ekranı
 //  - EKLEME: PDF export
 //  - EKLEME: RepaintBoundary
+//
+// 🔴 DÜZELTME (2026-10-13, kullanıcı bulgusu: "fişi tıklayınca iade
+// fişini hangi ürünleri gösteren ürünler görünmüyor"): boş kalem mesajı
+// koşuluna 'Alım İadesi' ve 'Tedarikçi İadesi' eklendi — aksi halde
+// kalem bulunamadığında yanıltıcı "gösterilmiyor" mesajı çıkıyordu.
 
 import '../../cekirdek/utils/dosya_paylasim.dart';
 import 'package:market_plus/servisler/pdf_font_servisi.dart';
@@ -40,6 +45,7 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../depolar/fis_detay_deposu.dart';
 import '../../depolar/satis_deposu.dart';
 import '../../servisler/yazdirma_servisi.dart';
+import '../../servisler/iade_fis_yazdirma.dart';
 import '../../cekirdek/utils/hata_utils.dart';
 
 class FisDetayEkrani extends ConsumerStatefulWidget {
@@ -67,15 +73,22 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
   bool _yukleniyor = true;
   String? _hata;
 
-  // Kullanıcı isteği (2026-09-21): Satış Detayı'ndaki Karma ödeme kırılımı
-  // (Nakit/Kart/Cari ne kadar) Cari Fiş Detayı'nda hiç yoktu — burada
-  // "Ödeme" alanı sadece düz "Karma" yazıyordu, hangi yöntemden ne kadar
-  // ödendiği görünmüyordu (bkz. SatisDetayEkrani._odemeDagilimi — AYNI
-  // desen, SatisDeposu.odemeDagilimiGetir üzerinden).
   List<Map<String, dynamic>>? _odemeDagilimi;
 
   static const _satisFisTipleri = {
     'Satış', 'Toptan Satış', 'Toptan Satış (Sipariş)', 'Masa Satış',
+  };
+
+  /// Kalem listesi boş kalınca gösterilecek mesajın anlamlı olup olmadığı.
+  /// Kalem tablosu OLMAYAN hareketler (Tahsilat, Ödeme, Virman vb.) için
+  /// "kalem bulunamadı" mesajı yanıltıcı olur — onun yerine "gösterilmiyor"
+  /// deniyor. Kalem tablosu OLAN tipler (Satış, İade, Alım ve bunların
+  /// alt türleri) ise "bulunamadı" der (veri tutarsızlığına işaret eder).
+  static const _kalemBeklenenFisTipleri = {
+    'Satış', 'Toptan Satış', 'Toptan Satış (Sipariş)', 'Masa Satış',
+    'İade', 'Satış İade', 'Iade',
+    'Alım', 'Tedarik', 'Sipariş',
+    'Alım İadesi', 'Tedarikçi İadesi',
   };
 
   @override
@@ -86,7 +99,10 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
 
   Future<void> _yukle() async {
     if (!mounted) return;
-    setState(() { _yukleniyor = true; _hata = null; });
+    setState(() {
+      _yukleniyor = true;
+      _hata = null;
+    });
 
     try {
       final sonuc = await _depo.getir(fisId: widget.fisId, fisTipi: widget.fisTipi);
@@ -102,29 +118,25 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
       }
 
       if (!mounted) return;
-      // 🔴🔴 KRİTİK DÜZELTME: Bu, başarılı yükleme yolundaki TEK
-      // durum güncellemesiydi ve setState() İÇİNDE DEĞİLDİ — sadece
-      // catch (hata) bloğu setState() çağırıyordu. Sonuç: veri
-      // BAŞARIYLA çekilse bile ekran hiçbir zaman yeniden çizilmiyordu,
-      // kullanıcı sonsuza kadar "yükleniyor" döngüsünde kalıyordu.
       setState(() => _yukleniyor = false);
-
     } catch (e) {
-      if (kDebugMode) debugPrint('FisDetay hata (${widget.fisTipi} id=${widget.fisId}): $e');
+      if (kDebugMode) {
+        debugPrint('FisDetay hata (${widget.fisTipi} id=${widget.fisId}): $e');
+      }
       if (mounted) {
-          _yukleniyor = false;
-          _hata = 'Fiş detayı yüklenemedi.\n$e';
-        if (mounted) setState(() {});
+        _yukleniyor = false;
+        _hata = 'Fiş detayı yüklenemedi.\n$e';
+        setState(() {});
       }
     }
   }
 
   // ── Toplamlar ──────────────────────────────────────────────────────────
-  double get _araToplam => _kalemler.fold(0.0,
-      (s, k) => s + ((k['toplam_tutar'] as num?)?.toDouble() ?? 0));
+  double get _araToplam => _kalemler.fold(
+      0.0, (s, k) => s + ((k['toplam_tutar'] as num?)?.toDouble() ?? 0));
 
-  double get _kdvToplam => _kalemler.fold(0.0,
-      (s, k) => s + ((k['kdv_tutar'] as num?)?.toDouble() ?? 0));
+  double get _kdvToplam => _kalemler.fold(
+      0.0, (s, k) => s + ((k['kdv_tutar'] as num?)?.toDouble() ?? 0));
 
   double get _genelToplam {
     if (_fis != null) {
@@ -148,7 +160,26 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
       await YazdirmaServisi().fisYazdir(satis, cariUnvan: widget.cariUnvan);
       if (mounted) BildirimServisi.basari(context, 'Yazdırıldı');
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Yazıcı hatası: ${kullaniciyaHataMetni(e)}');
+      if (mounted) {
+        BildirimServisi.hata(context, 'Yazıcı hatası: ${kullaniciyaHataMetni(e)}');
+      }
+    }
+  }
+
+  /// 🆕 İade fişi (müşteri / bayi / tedarikçi) termal yazdırma — cari
+  /// ekstresindeki yazdır ikonuyla AYNI kod yolu (IadeFisiYazdirici).
+  Future<void> _iadeFisiYazdir() async {
+    try {
+      await IadeFisiYazdirici.fisten(
+        fisId: widget.fisId,
+        fisTipi: widget.fisTipi,
+        cariUnvan: widget.cariUnvan,
+      );
+      if (mounted) BildirimServisi.basari(context, 'Yazdırıldı');
+    } catch (e) {
+      if (mounted) {
+        BildirimServisi.hata(context, 'Yazıcı hatası: ${kullaniciyaHataMetni(e)}');
+      }
     }
   }
 
@@ -172,12 +203,16 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
       }
 
       sh.appendRow([TextCellValue('FİŞ DETAYI')]);
-      sh.appendRow([TextCellValue('Cari:'), TextCellValue(excelIcinGuvenliMetin(widget.cariUnvan))]);
+      sh.appendRow([
+        TextCellValue('Cari:'),
+        TextCellValue(excelIcinGuvenliMetin(widget.cariUnvan))
+      ]);
       sh.appendRow([TextCellValue('Fiş Tipi:'), TextCellValue(widget.fisTipi)]);
       sh.appendRow([
         TextCellValue('Fiş No:'),
         TextCellValue(_fis?['fis_no']?.toString() ??
-            _fis?['siparis_no']?.toString() ?? widget.fisId.toString())
+            _fis?['siparis_no']?.toString() ??
+            widget.fisId.toString())
       ]);
       sh.appendRow([
         TextCellValue('Tarih:'),
@@ -218,10 +253,12 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
         ]);
       }
 
-      final dir  = await getTemporaryDirectory();
-      final path = '${dir.path}/fis_${widget.fisId}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/fis_${widget.fisId}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       File(path).writeAsBytesSync(ex.encode()!);
-      await DosyaPaylasim.paylas(ShareParams(files: [XFile(path)],
+      await DosyaPaylasim.paylas(ShareParams(
+          files: [XFile(path)],
           text: 'Fiş Detayı — ${widget.fisTipi} / ${widget.cariUnvan}'));
       if (mounted) BildirimServisi.basari(context, 'Excel oluşturuldu');
     } catch (e) {
@@ -233,30 +270,35 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
   Future<void> _exportPdf() async {
     if (!mounted) return;
     try {
-      final font     = await PdfFontServisi.normal();
+      final font = await PdfFontServisi.normal();
       final boldFont = await PdfFontServisi.kalin();
       final pdf = pw.Document();
 
       pdf.addPage(pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (ctx) => [
-          pw.Center(child: pw.Text('FİŞ DETAYI',
-              style: pw.TextStyle(font: boldFont, fontSize: 18))),
+          pw.Center(
+              child: pw.Text('FİŞ DETAYI',
+                  style: pw.TextStyle(font: boldFont, fontSize: 18))),
           pw.SizedBox(height: 8),
-          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-              pw.Text('Cari: ${widget.cariUnvan}',
-                  style: pw.TextStyle(font: boldFont, fontSize: 11)),
-              pw.Text(
-                'Fiş No: ${_fis?['fis_no'] ?? _fis?['siparis_no'] ?? widget.fisId}',
-                style: pw.TextStyle(font: font, fontSize: 10)),
-              pw.Text('Tür: ${widget.fisTipi}',
-                  style: pw.TextStyle(font: font, fontSize: 10)),
-            ]),
-            pw.Text(
-              _tarihFormatla(_fis?['tarih'] ?? _fis?['siparis_tarihi']),
-              style: pw.TextStyle(font: font, fontSize: 10)),
-          ]),
+          pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Cari: ${widget.cariUnvan}',
+                          style: pw.TextStyle(font: boldFont, fontSize: 11)),
+                      pw.Text(
+                          'Fiş No: ${_fis?['fis_no'] ?? _fis?['siparis_no'] ?? widget.fisId}',
+                          style: pw.TextStyle(font: font, fontSize: 10)),
+                      pw.Text('Tür: ${widget.fisTipi}',
+                          style: pw.TextStyle(font: font, fontSize: 10)),
+                    ]),
+                pw.Text(
+                    _tarihFormatla(_fis?['tarih'] ?? _fis?['siparis_tarihi']),
+                    style: pw.TextStyle(font: font, fontSize: 10)),
+              ]),
           pw.Divider(),
           pw.SizedBox(height: 6),
           if (_kalemler.isNotEmpty) ...[
@@ -271,35 +313,47 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
               },
               children: [
                 pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: PdfColors.grey700),
-                  children: ['Ürün', 'Miktar', 'Birim Fiyat', 'İsk.%', 'Toplam']
+                  decoration:
+                      const pw.BoxDecoration(color: PdfColors.grey700),
+                  children: [
+                    'Ürün', 'Miktar', 'Birim Fiyat', 'İsk.%', 'Toplam'
+                  ]
                       .map((h) => pw.Padding(
                             padding: const pw.EdgeInsets.all(4),
                             child: pw.Text(h,
-                                style: pw.TextStyle(font: boldFont, fontSize: 9, color: PdfColors.white)),
+                                style: pw.TextStyle(
+                                    font: boldFont,
+                                    fontSize: 9,
+                                    color: PdfColors.white)),
                           ))
                       .toList(),
                 ),
                 ..._kalemler.map((k) {
-                  final m  = (k['miktar']      as num?)?.toDouble() ?? 0;
+                  final m = (k['miktar'] as num?)?.toDouble() ?? 0;
                   final bp = (k['birim_fiyat'] as num?)?.toDouble() ?? 0;
-                  final is_= (k['iskonto_oran'] as num?)?.toDouble() ?? 0;
+                  final isk = (k['iskonto_oran'] as num?)?.toDouble() ?? 0;
                   final tt = (k['toplam_tutar'] as num?)?.toDouble() ??
-                      (m * bp * (1 - is_ / 100));
+                      (m * bp * (1 - isk / 100));
                   return pw.TableRow(children: [
-                    pw.Padding(padding: const pw.EdgeInsets.all(4),
+                    pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
                         child: pw.Text(k['urun_adi']?.toString() ?? '-',
                             style: pw.TextStyle(font: font, fontSize: 8))),
-                    pw.Padding(padding: const pw.EdgeInsets.all(4),
+                    pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
                         child: pw.Text(m.toStringAsFixed(m % 1 == 0 ? 0 : 3),
                             style: pw.TextStyle(font: font, fontSize: 8))),
-                    pw.Padding(padding: const pw.EdgeInsets.all(4),
+                    pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
                         child: pw.Text(ParaUtils.formatla(bp),
                             style: pw.TextStyle(font: font, fontSize: 8))),
-                    pw.Padding(padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text(is_ > 0 ? '%${is_.toStringAsFixed(0)}' : '-',
+                    pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
+                        child: pw.Text(
+                            isk > 0 ? '%${isk.toStringAsFixed(0)}' : '-',
                             style: pw.TextStyle(font: font, fontSize: 8))),
-                    pw.Padding(padding: const pw.EdgeInsets.all(4),
+                    pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
                         child: pw.Text(ParaUtils.formatla(tt),
                             style: pw.TextStyle(font: boldFont, fontSize: 8))),
                   ]);
@@ -313,9 +367,8 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
             child: pw.Container(
               padding: const pw.EdgeInsets.all(12),
               decoration: const pw.BoxDecoration(color: PdfColors.grey100),
-              child: pw.Text(
-                'GENEL TOPLAM: ${ParaUtils.formatla(_genelToplam)}',
-                style: pw.TextStyle(font: boldFont, fontSize: 14)),
+              child: pw.Text('GENEL TOPLAM: ${ParaUtils.formatla(_genelToplam)}',
+                  style: pw.TextStyle(font: boldFont, fontSize: 14)),
             ),
           ),
         ],
@@ -343,8 +396,23 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
                   icon: const Icon(Icons.print_outlined),
                   tooltip: 'Fişi Yazdır',
                   onPressed: _fisYazdir),
-            IconButton(icon: Image.asset("assets/images/pdf_icon.png", width: 22, height: 22, errorBuilder: (_, _, _) => const Icon(Icons.picture_as_pdf)), tooltip: 'PDF', onPressed: _exportPdf),
-            IconButton(icon: const Icon(Icons.download), tooltip: 'Excel', onPressed: _exportExcel),
+            if (IadeFisiYazdirici.iadeMi(widget.fisTipi))
+              IconButton(
+                  icon: const Icon(Icons.print_outlined),
+                  tooltip: 'İade Fişini Yazdır',
+                  onPressed: _iadeFisiYazdir),
+            IconButton(
+                icon: Image.asset('assets/images/pdf_icon.png',
+                    width: 22,
+                    height: 22,
+                    errorBuilder: (_, _, _) =>
+                        const Icon(Icons.picture_as_pdf)),
+                tooltip: 'PDF',
+                onPressed: _exportPdf),
+            IconButton(
+                icon: const Icon(Icons.download),
+                tooltip: 'Excel',
+                onPressed: _exportExcel),
           ],
           IconButton(icon: const Icon(Icons.refresh), onPressed: _yukle),
         ],
@@ -369,7 +437,8 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
             const SizedBox(height: 8),
             Text(_hata!,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
+                style:
+                    TextStyle(fontSize: 12, color: TsRenk.metinIkincil(context))),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _yukle,
@@ -419,7 +488,8 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
                 const Padding(
                   padding: EdgeInsets.only(top: 2),
                   child: SizedBox(
-                      width: 14, height: 14,
+                      width: 14,
+                      height: 14,
                       child: CircularProgressIndicator(strokeWidth: 2)),
                 )
               else
@@ -430,7 +500,8 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
                             padding: const EdgeInsets.only(top: 2),
                             child: Row(children: [
                               Icon(Icons.subdirectory_arrow_right,
-                                  size: 14, color: TsRenk.metinIkincil(context)),
+                                  size: 14,
+                                  color: TsRenk.metinIkincil(context)),
                               const SizedBox(width: 4),
                               Text(
                                   '${d['yontem']}: ${ParaUtils.formatla(d['tutar'] as double)}',
@@ -451,28 +522,28 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
       Expanded(
         child: _kalemler.isEmpty
             ? Center(
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.receipt_long_outlined, size: 56, color: TsRenk.ayirac(context)),
-                  const SizedBox(height: 12),
-                  Text(
-                    widget.fisTipi == 'Satış' || widget.fisTipi == 'Toptan Satış' ||
-                            widget.fisTipi == 'Toptan Satış (Sipariş)' ||
-                            widget.fisTipi == 'Masa Satış' ||
-                            widget.fisTipi == 'İade' || widget.fisTipi == 'Alım'
-                        ? 'Bu fişe ait kalem bulunamadı'
-                        : 'Bu hareket için kalem detayı gösterilmiyor',
-                    style: TextStyle(color: TsRenk.metinIkincil(context)),
-                    textAlign: TextAlign.center,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: TextButton.icon(
-                      onPressed: _yukle,
-                      icon: const Icon(Icons.refresh, size: 16),
-                      label: const Text('Yenile'),
-                    ),
-                  ),
-                ]),
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.receipt_long_outlined,
+                          size: 56, color: TsRenk.ayirac(context)),
+                      const SizedBox(height: 12),
+                      Text(
+                        _kalemBeklenenFisTipleri.contains(widget.fisTipi)
+                            ? 'Bu fişe ait kalem bulunamadı'
+                            : 'Bu hareket için kalem detayı gösterilmiyor',
+                        style: TextStyle(color: TsRenk.metinIkincil(context)),
+                        textAlign: TextAlign.center,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: TextButton.icon(
+                          onPressed: _yukle,
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Yenile'),
+                        ),
+                      ),
+                    ]),
               )
             : ListView.builder(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
@@ -488,50 +559,65 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
   }
 
   Widget _kalemKarti(Map<String, dynamic> k, int idx) {
-    final urunAdi    = k['urun_adi']?.toString() ?? '-';
-    final barkod     = k['barkod']?.toString();
-    final birimAdi   = k['birim_adi']?.toString() ?? '';
-    final miktar     = (k['miktar']      as num?)?.toDouble() ?? 0;
+    final urunAdi = k['urun_adi']?.toString() ?? '-';
+    final barkod = k['barkod']?.toString();
+    final birimAdi = k['birim_adi']?.toString() ?? '';
+    final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;
     final birimFiyat = (k['birim_fiyat'] as num?)?.toDouble() ?? 0;
-    final iskontoOran= (k['iskonto_oran'] as num?)?.toDouble() ?? 0;
-    final kdvOran    = (k['kdv_oran']    as num?)?.toDouble() ?? 0;
-    final kdvTutar   = (k['kdv_tutar']   as num?)?.toDouble() ?? 0;
-    final toplamTutar= (k['toplam_tutar'] as num?)?.toDouble() ??
+    final iskontoOran = (k['iskonto_oran'] as num?)?.toDouble() ?? 0;
+    final kdvOran = (k['kdv_oran'] as num?)?.toDouble() ?? 0;
+    final kdvTutar = (k['kdv_tutar'] as num?)?.toDouble() ?? 0;
+    final toplamTutar = (k['toplam_tutar'] as num?)?.toDouble() ??
         (miktar * birimFiyat * (1 - iskontoOran / 100));
-    final ondalik    = miktar != miktar.roundToDouble();
+    final ondalik = miktar != miktar.roundToDouble();
 
     return Container(
-          decoration: BoxDecoration(color: TsRenk.kart(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: TsRenk.ayirac(context))),
+      decoration: BoxDecoration(
+          color: TsRenk.kart(context),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: TsRenk.ayirac(context))),
       margin: const EdgeInsets.only(bottom: 8),
-      
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Container(
-              width: 28, height: 28,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primary.withAlpha(26),
-                borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Center(
                 child: Text('${idx + 1}',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
                         color: Theme.of(context).colorScheme.primary)),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(urunAdi,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
-                if (barkod != null && barkod.isNotEmpty)
-                  Text(barkod, style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(urunAdi,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 13),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis),
+                    if (barkod != null && barkod.isNotEmpty)
+                      Text(barkod,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: TsRenk.metinIkincil(context))),
+                  ]),
             ),
             Text(
               ParaUtils.formatla(toplamTutar),
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15,
+              style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
                   color: Theme.of(context).colorScheme.primary),
             ),
           ]),
@@ -542,12 +628,17 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
                 text: TextSpan(
                   style: TextStyle(fontSize: 12, color: context.textSecondary),
                   children: [
-                    TextSpan(text: ondalik ? miktar.toStringAsFixed(3) : miktar.toInt().toString()),
+                    TextSpan(
+                        text: ondalik
+                            ? miktar.toStringAsFixed(3)
+                            : miktar.toInt().toString()),
                     if (birimAdi.isNotEmpty)
-                      TextSpan(text: ' $birimAdi',
+                      TextSpan(
+                          text: ' $birimAdi',
                           style: const TextStyle(fontWeight: FontWeight.w600)),
                     const TextSpan(text: '  ×  '),
-                    TextSpan(text: ParaUtils.formatla(birimFiyat),
+                    TextSpan(
+                        text: ParaUtils.formatla(birimFiyat),
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                   ],
                 ),
@@ -561,7 +652,8 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
             ],
             if (kdvTutar > 0.001) ...[
               const SizedBox(width: 4),
-              _badge('+${ParaUtils.formatla(kdvTutar)}', TsRenk.metinIkincil(context)),
+              _badge('+${ParaUtils.formatla(kdvTutar)}',
+                  TsRenk.metinIkincil(context)),
             ],
           ]),
         ]),
@@ -581,7 +673,8 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
           boxShadow: [
             BoxShadow(
                 color: Theme.of(context).colorScheme.primary.withAlpha(76),
-                blurRadius: 8, offset: const Offset(0, 4)),
+                blurRadius: 8,
+                offset: const Offset(0, 4)),
           ],
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -593,7 +686,9 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
           ]),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(ParaUtils.formatla(_genelToplam),
-                style: const TextStyle(color: Colors.white, fontSize: 22,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
                     fontWeight: FontWeight.w900)),
             if (_kdvToplam > 0.001)
               Text('KDV: ${ParaUtils.formatla(_kdvToplam)}',
@@ -606,8 +701,11 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
         crossAxisAlignment:
             right ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
-          Text(val, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          Text(label,
+              style:
+                  TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context))),
+          Text(val,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
         ],
       );
 
@@ -619,6 +717,7 @@ class _FisDetayEkraniState extends ConsumerState<FisDetayEkrani> {
           border: Border.all(color: color.withAlpha(76)),
         ),
         child: Text(label,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+            style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w600, color: color)),
       );
 }

@@ -27,6 +27,7 @@ import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
 import '../../servisler/yazdirma_servisi.dart';
+import '../../servisler/iade_fis_yazdirma.dart';
 import '../../widgetlar/ortak/fis_fiyat_guncelle_akisi.dart';
 import '../../cekirdek/utils/hata_utils.dart';
 part 'cari_detay_ekrani_islemler.dart';
@@ -247,8 +248,12 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
   // olan tipler seçilebilir (Satış/Toptan Satış → fiş, Tahsilat/Odeme →
   // makbuz) — "...İptali" gibi salt-audit satırların basılacak bir belgesi
   // yok.
+  // 🔴 DÜZELTME (kullanıcı bulgusu — "caride iade fişi yazdırılmıyor"):
+  // İade hareketleri (müşteri 'İade', bayi 'İade', tedarikçi 'Tedarikçi
+  // İadesi' / 'Alım İadesi') listeye eklendi → İADE FİŞİ basılır.
   static const _yazdirilabilirTipler = {
     'Satış', 'Toptan Satış', 'Toptan Satış (Sipariş)', 'Tahsilat', 'Odeme',
+    'İade', 'Alım İadesi', 'Tedarikçi İadesi',
   };
   // Çoklu seçim (2026-10-01): uzun basarak birden fazla fiş seçilebilir —
   // tek seçimde yazdır, seçili Satış fişlerinde "Son fiyata göre güncelle".

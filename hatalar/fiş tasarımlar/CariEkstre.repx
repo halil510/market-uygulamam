@@ -1,0 +1,185 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<XtraReportsLayoutSerializer SerializerVersion="13.1.5.0" Ref="1" Name="ReportView" ControlType="Barko.Reports.PrintReport.ReportView, Barko.Reports.PrintReport, Version=2.0.0.7, Culture=neutral, PublicKeyToken=null" DataMember="Evraklar" DataSource="#Ref-0" PageHeight="1100" PageWidth="850" Version="13.1" Margins="23, 23, 209, 100">
+  <Bands>
+    <Item1 Ref="2" ControlType="DetailBand" Name="Detail" TextAlignment="TopLeft" Padding="0,0,0,0,100" HeightF="20.833334">
+      <Controls>
+        <Item1 Ref="3" Name="line2" ControlType="XRLine" SizeF="751.0416,2.083334" LocationFloat="25, 17.5600052" />
+        <Item2 Ref="4" Name="label9" ControlType="XRLabel" LocationFloat="255.166641, 0" SizeF="78.7500458,17.5600052" Padding="2,2,0,0,100" Text="label9">
+          <DataBindings>
+            <Item1 Ref="5" PropertyName="Text" DataMember="Evraklar.Evrak Numarası" />
+          </DataBindings>
+        </Item2>
+        <Item3 Ref="6" Name="label7" ControlType="XRLabel" LocationFloat="585.7084, 0" SizeF="69.583374,17.5600052" TextAlignment="TopRight" Padding="2,2,0,0,100" Text="label7">
+          <DataBindings>
+            <Item1 Ref="7" FormatString="{0:n2}" PropertyName="Text" DataMember="Evraklar.Bakiye" />
+          </DataBindings>
+          <StylePriority Ref="8" UseTextAlignment="false" />
+        </Item3>
+        <Item4 Ref="9" Name="label8" ControlType="XRLabel" LocationFloat="679.7917, 0" SizeF="92.49994,17.5600052" TextAlignment="TopLeft" Padding="2,2,0,0,100" Text="label8">
+          <DataBindings>
+            <Item1 Ref="10" FormatString="{0:n2}" PropertyName="Text" DataMember="Evraklar.Ödeme Türü" />
+          </DataBindings>
+          <StylePriority Ref="11" UseFont="false" UseTextAlignment="false" />
+        </Item4>
+        <Item5 Ref="12" Name="label22" ControlType="XRLabel" LocationFloat="333.958374, 0" SizeF="69.583374,17.5600052" TextAlignment="TopRight" Padding="2,2,0,0,100" Text="label22">
+          <DataBindings>
+            <Item1 Ref="13" FormatString="{0:n2}" PropertyName="Text" DataMember="Evraklar.Tutar" />
+          </DataBindings>
+          <StylePriority Ref="14" UseTextAlignment="false" />
+        </Item5>
+        <Item6 Ref="15" Name="label2" ControlType="XRLabel" LocationFloat="117.791718, 0" SizeF="129.208313,17.5600052" Padding="2,2,0,0,100" Text="label2">
+          <DataBindings>
+            <Item1 Ref="16" PropertyName="Text" DataMember="Evraklar.Evrak Tipi" />
+          </DataBindings>
+        </Item6>
+        <Item7 Ref="17" Name="label1" ControlType="XRLabel" LocationFloat="24.708374, 0" SizeF="86.20828,17.5600052" Padding="2,2,0,0,100" Text="label1">
+          <DataBindings>
+            <Item1 Ref="18" FormatString="{0:dd.MM.yyyy}" PropertyName="Text" DataMember="Evraklar.Tarih" />
+          </DataBindings>
+        </Item7>
+        <Item8 Ref="19" Name="label6" ControlType="XRLabel" LocationFloat="501.7083, 0" SizeF="69.583374,17.5600052" TextAlignment="TopRight" Padding="2,2,0,0,100" Text="label6">
+          <DataBindings>
+            <Item1 Ref="20" FormatString="{0:n2}" PropertyName="Text" DataMember="Evraklar.Alacak" />
+          </DataBindings>
+          <StylePriority Ref="21" UseTextAlignment="false" />
+        </Item8>
+        <Item9 Ref="22" Name="label3" ControlType="XRLabel" LocationFloat="416.708344, 0" SizeF="69.583374,17.5600052" TextAlignment="TopRight" Padding="2,2,0,0,100" Text="label3">
+          <DataBindings>
+            <Item1 Ref="23" FormatString="{0:n2}" PropertyName="Text" DataMember="Evraklar.Borç" />
+          </DataBindings>
+          <StylePriority Ref="24" UseTextAlignment="false" />
+        </Item9>
+      </Controls>
+    </Item1>
+    <Item2 Ref="25" Name="TopMargin" ControlType="TopMarginBand" TextAlignment="TopLeft" Padding="0,0,0,0,100" HeightF="209.291656">
+      <Controls>
+        <Item1 Ref="26" Name="label17" ControlType="XRLabel" LocationFloat="31.2916584, 166.166626" SizeF="156.249985,25.2084045" Font="Arial, 12pt, style=Bold" Padding="2,2,0,0,100" Text="Güncel Bakiyeniz :">
+          <StylePriority Ref="27" UseFont="false" />
+        </Item1>
+        <Item2 Ref="28" Name="label24" ControlType="XRLabel" LocationFloat="236.375031, 143.6066" SizeF="90.083374,17.5600052" Font="Arial, 9.75pt, style=Bold" Padding="2,2,0,0,100" Text="label24">
+          <DataBindings>
+            <Item1 Ref="29" PropertyName="Text" DataMember="Evraklar.Tarih" />
+          </DataBindings>
+          <StylePriority Ref="30" UseFont="false" />
+          <Summary Ref="31" FormatString="{0:dd.MM.yyyy}" Running="Report" Func="Max" />
+        </Item2>
+        <Item3 Ref="32" Name="label20" ControlType="XRLabel" LocationFloat="310.833282, 27.8749466" SizeF="217.291687,23.0000019" Font="Times New Roman, 12pt, style=Bold, Underline" Padding="2,2,0,0,100" Text="CARİ HESAP EKSTRESİ">
+          <StylePriority Ref="33" UseFont="false" />
+        </Item3>
+        <Item4 Ref="34" Name="label31" ControlType="XRLabel" LocationFloat="313.479065, 166.166611" SizeF="185.416718,25.2084045" Font="Times New Roman, 12pt, style=Bold" Padding="2,2,0,0,100" Text="label31">
+          <DataBindings>
+            <Item1 Ref="35" PropertyName="Text" DataMember="Cari Sabit Değerler.Para birimi" />
+          </DataBindings>
+          <StylePriority Ref="36" UseFont="false" />
+        </Item4>
+        <Item5 Ref="37" Name="label25" ControlType="XRLabel" LocationFloat="31.2916584, 143.6066" SizeF="114.67923,17.5600281" Font="Arial, 9.75pt, style=Bold" Padding="2,2,0,0,100" Text="Ekstre Dönemi :">
+          <StylePriority Ref="38" UseFont="false" />
+        </Item5>
+        <Item6 Ref="39" Name="label4" ControlType="XRLabel" LocationFloat="187.541641, 166.166626" SizeF="114.413376,25.20839" TextAlignment="TopRight" Font="Arial, 12pt, style=Bold" Padding="2,2,0,0,100" Text="label4">
+          <DataBindings>
+            <Item1 Ref="40" FormatString="{0:n2}" PropertyName="Text" DataMember="Cari Sabit Değerler.Bakiye" />
+          </DataBindings>
+          <StylePriority Ref="41" UseFont="false" UseTextAlignment="false" />
+          <Summary Ref="42" Func="Custom" />
+        </Item6>
+        <Item7 Ref="43" Name="label19" ControlType="XRLabel" LocationFloat="146.291656, 143.6066" SizeF="90.083374,17.5600052" Font="Arial, 9.75pt, style=Bold" Padding="2,2,0,0,100" Text="label19">
+          <DataBindings>
+            <Item1 Ref="44" PropertyName="Text" DataMember="Evraklar.Tarih" />
+          </DataBindings>
+          <StylePriority Ref="45" UseFont="false" />
+          <Summary Ref="46" FormatString="{0:dd.MM.yyyy}  /" Running="Report" Func="Min" />
+        </Item7>
+        <Item8 Ref="47" ControlType="XRPageInfo" Name="pageInfo1" SizeF="162.999878,23" Font="Times New Roman, 9.75pt, style=Bold" Padding="2,2,0,0,100" LocationFloat="599.479248, 73.2083" PageInfo="DateTime" Format="Rapor Tarihi: {0:dd.MM.yyyy}" TextAlignment="TopRight">
+          <StylePriority Ref="48" UseFont="false" UseTextAlignment="false" />
+        </Item8>
+        <Item9 Ref="49" Name="label5" ControlType="XRLabel" LocationFloat="31.2916565, 115.999969" SizeF="509.958344,23" Font="Arial, 9.75pt, style=Bold" Padding="2,2,0,0,100" Text="label5">
+          <DataBindings>
+            <Item1 Ref="50" PropertyName="Text" DataMember="Cari Sabit Değerler.Ünvan" />
+          </DataBindings>
+          <StylePriority Ref="51" UseFont="false" />
+        </Item9>
+      </Controls>
+    </Item2>
+    <Item3 Ref="52" Name="BottomMargin" ControlType="BottomMarginBand" TextAlignment="TopLeft" Padding="0,0,0,0,100" />
+    <Item4 Ref="53" ControlType="GroupHeaderBand" Name="GroupHeader1" HeightF="21.875">
+      <Controls>
+        <Item1 Ref="54" Name="label12" ControlType="XRLabel" LocationFloat="250.145828, 0" SizeF="80,19.1666641" TextAlignment="TopCenter" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" Text="Evrak No">
+          <StylePriority Ref="55" UseFont="false" UseTextAlignment="false" />
+        </Item1>
+        <Item2 Ref="56" Name="label13" ControlType="XRLabel" LocationFloat="418.8958, 0" SizeF="80,19.1666641" TextAlignment="TopCenter" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" Text="Borç">
+          <StylePriority Ref="57" UseFont="false" UseTextAlignment="false" />
+        </Item2>
+        <Item3 Ref="58" Name="label10" ControlType="XRLabel" LocationFloat="25.8958435, 0" SizeF="80,19.1666641" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" Text="Tarih">
+          <StylePriority Ref="59" UseFont="false" />
+        </Item3>
+        <Item4 Ref="60" Name="label11" ControlType="XRLabel" LocationFloat="120.895851, 0" SizeF="80,19.1666641" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" Text="İşlem Türü">
+          <StylePriority Ref="61" UseFont="false" />
+        </Item4>
+        <Item5 Ref="62" Name="label16" ControlType="XRLabel" LocationFloat="682.4792, 0" SizeF="88.625,19.1666565" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" Text="Ödeme Türü">
+          <StylePriority Ref="63" UseFont="false" />
+        </Item5>
+        <Item6 Ref="64" Name="label21" ControlType="XRLabel" LocationFloat="336.1458, 0" SizeF="80,19.1666641" TextAlignment="TopCenter" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" Text="Tutar">
+          <StylePriority Ref="65" UseFont="false" UseTextAlignment="false" />
+        </Item6>
+        <Item7 Ref="66" Name="label14" ControlType="XRLabel" LocationFloat="509.4792, 0" SizeF="80,19.1666641" TextAlignment="TopCenter" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" Text="Alacak">
+          <StylePriority Ref="67" UseFont="false" UseTextAlignment="false" />
+        </Item7>
+        <Item8 Ref="68" Name="label15" ControlType="XRLabel" LocationFloat="599.479248, 0" SizeF="80,19.1666641" TextAlignment="TopCenter" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" Text="Bakiye">
+          <StylePriority Ref="69" UseFont="false" UseTextAlignment="false" />
+        </Item8>
+      </Controls>
+    </Item4>
+    <Item5 Ref="70" ControlType="ReportFooterBand" Name="ReportFooter" HeightF="63.5416679">
+      <Controls>
+        <Item1 Ref="71" Name="label23" ControlType="XRLabel" LocationFloat="481.2917, 19.5833321" SizeF="87,17" TextAlignment="TopRight" Font="Arial, 10pt, style=Bold" Padding="2,2,0,0,100" Text="label23">
+          <DataBindings>
+            <Item1 Ref="72" PropertyName="Text" DataMember="Evraklar.Alacak" />
+          </DataBindings>
+          <StylePriority Ref="73" UseFont="false" UseTextAlignment="false" />
+          <Summary Ref="74" FormatString="{0:n2}" Running="Report" />
+        </Item1>
+        <Item2 Ref="75" Name="label30" ControlType="XRLabel" LocationFloat="250, 19.5833473" SizeF="92.35899,16.9999752" WordWrap="false" TextAlignment="TopLeft" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" Text="label30">
+          <DataBindings>
+            <Item1 Ref="76" PropertyName="Text" DataMember="Evraklar.Cari" />
+          </DataBindings>
+          <StylePriority Ref="77" UseFont="false" UseTextAlignment="false" />
+          <Summary Ref="78" IgnoreNullValues="true" FormatString="{0:#,#} Adet İşlem" Running="Report" Func="Count" />
+        </Item2>
+        <Item3 Ref="79" Name="label18" ControlType="XRLabel" LocationFloat="167.708313, 19.5833473" SizeF="82.29167,18.8333187" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" Text="TOPLAM">
+          <StylePriority Ref="80" UseFont="false" />
+        </Item3>
+        <Item4 Ref="81" Name="label40" ControlType="XRLabel" LocationFloat="401.958344, 19.5833321" SizeF="87,17" TextAlignment="TopRight" Font="Arial, 10pt, style=Bold" Padding="2,2,0,0,100" Text="label40">
+          <DataBindings>
+            <Item1 Ref="82" PropertyName="Text" DataMember="Evraklar.Borç" />
+          </DataBindings>
+          <StylePriority Ref="83" UseFont="false" UseTextAlignment="false" />
+          <Summary Ref="84" FormatString="{0:n2}" Running="Report" />
+        </Item4>
+      </Controls>
+    </Item5>
+    <Item6 Ref="85" ControlType="PageFooterBand" Name="PageFooter" HeightF="37.5">
+      <Controls>
+        <Item1 Ref="86" Name="label27" ControlType="XRLabel" LocationFloat="401.958344, 10.7916622" SizeF="87,17" TextAlignment="TopRight" Font="Arial, 10pt, style=Bold" Padding="2,2,0,0,100" Text="label27">
+          <DataBindings>
+            <Item1 Ref="87" PropertyName="Text" DataMember="Evraklar.Borç" />
+          </DataBindings>
+          <StylePriority Ref="88" UseFont="false" UseTextAlignment="false" />
+          <Summary Ref="89" FormatString="{0:n2}" Running="Page" />
+        </Item1>
+        <Item2 Ref="90" Name="label29" ControlType="XRLabel" LocationFloat="481.2917, 10.7916622" SizeF="87,17" TextAlignment="TopRight" Font="Arial, 10pt, style=Bold" Padding="2,2,0,0,100" Text="label29">
+          <DataBindings>
+            <Item1 Ref="91" PropertyName="Text" DataMember="Evraklar.Alacak" />
+          </DataBindings>
+          <StylePriority Ref="92" UseFont="false" UseTextAlignment="false" />
+          <Summary Ref="93" FormatString="{0:n2}" Running="Page" />
+        </Item2>
+        <Item3 Ref="94" Name="label26" ControlType="XRLabel" LocationFloat="167.708328, 10.7916517" SizeF="120.833328,18.8333187" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" Text="Sayfa Toplamı">
+          <StylePriority Ref="95" UseFont="false" />
+        </Item3>
+      </Controls>
+    </Item6>
+  </Bands>
+  <ObjectStorage>
+    <Item1 ObjectType="DevExpress.XtraReports.Serialization.ObjectStorageInfo, DevExpress.XtraReports.v13.1" Ref="0" Content="~Xtra#NULL" Type="System.Data.DataSet" />
+  </ObjectStorage>
+</XtraReportsLayoutSerializer>

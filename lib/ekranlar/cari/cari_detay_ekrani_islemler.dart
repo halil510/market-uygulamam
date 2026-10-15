@@ -148,6 +148,10 @@ extension _CariDetayIslemlerExt on _CariDetayIcerikState {
           oncekiBakiye: b.oncekiBakiye,
           sonBakiye: b.sonBakiye,
         );
+      } else if (IadeFisiYazdirici.iadeMi(h.fisTipi)) {
+        // 🆕 İade fişi (müşteri / bayi / tedarikçi) — tür, belgenin
+        // cari tipine göre otomatik belirlenir.
+        await IadeFisiYazdirici.hareketten(h, cariUnvan: widget.cari.unvan);
       } else {
         throw Exception('Bu hareket türü yazdırılamaz');
       }

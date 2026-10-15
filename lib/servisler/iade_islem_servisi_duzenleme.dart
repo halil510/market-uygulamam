@@ -117,17 +117,76 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
       // 'iade' ve 'satislar' tablolarının BAĞIMSIZ, tesadüfen aynı ID'yi
       // üretebilen sayaçları yüzünden fis_tipi kontrolsüz bir SATIŞIN
       // cari_hareket kaydını yanlışlıkla silebilirdi.
+            // 🔴 DÜZELTME (2026-10-13): ÖNCEDEN burada sadece soft-delete
+      // yapılıyordu. Çok kalemli bir oturum iadesinde bir kalem silinince,
+      // AYNI fis_id'nin TÜM cari_hareket satırı siliniyor, kalan kalemlerin
+      // cari etkisi KAYBOLUYORDU. Şimdi:
+      //   1. Silinen kalem hariç KALAN kalemlerin toplamı hesaplanır.
+      //   2. Eski cari_hareket soft-delete edilir.
+      //   3. Kalan > 0 ise AYNI ödeme yöntemiyle yeni cari_hareket satırı
+      //      yazılır (orijinal ödeme yöntemi korunarak).
+      //   4. Kalan = 0 ise yalnız soft-delete (tüm iade silindi).
       if (cariId != null) {
+        final kalanToplam = (await txn.rawQuery(
+                'SELECT COALESCE(SUM(toplam),0) t FROM iade_kalem WHERE iade_id = ?',
+                [iadeId]))
+            .first['t'] as num?;
+        final kalan = (kalanToplam?.toDouble() ?? 0);
+
+        // Eski satırın odeme_turu / tipini oku — yenisi aynı semantikle
+        // yazılsın (nötr ↔ gerçek etki KORUNUR).
+        final eskiCariHareket = await txn.rawQuery(
+            "SELECT odeme_turu, borc, alacak FROM cari_hareket WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi') AND is_deleted = 0 ORDER BY id DESC LIMIT 1",
+            [iadeId, cariId]);
+        final orjOdeme = eskiCariHareket.isNotEmpty
+            ? (eskiCariHareket.first['odeme_turu'] as String? ?? 'Nakit')
+            : 'Nakit';
+        final orjBorc = eskiCariHareket.isNotEmpty
+            ? (eskiCariHareket.first['borc'] as num?)?.toDouble() ?? 0
+            : 0;
+        final orjAlacak = eskiCariHareket.isNotEmpty
+            ? (eskiCariHareket.first['alacak'] as num?)?.toDouble() ?? 0
+            : 0;
+        final gercekEtki = orjBorc != orjAlacak;
+
+        final cariRows = await txn
+            .rawQuery('SELECT cari_tipi FROM cari WHERE id = ?', [cariId]);
+        final cariTipiStr = cariRows.isNotEmpty
+            ? (cariRows.first['cari_tipi'] as String? ?? '')
+            : '';
+        final isTedarikci = cariSafTedarikciMi(cariTipiStr);
+
         await txn.rawUpdate(
             "UPDATE cari_hareket SET is_deleted = 1, last_updated = ? WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi')",
             [now, iadeId, cariId]);
-        final etkilenenCariHareketler = await txn.query('cari_hareket',
+        final silinenler = await txn.query('cari_hareket',
             where: "fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi')",
             whereArgs: [iadeId, cariId]);
-        for (final c in etkilenenCariHareketler) {
+        for (final c in silinenler) {
           await SyncKuyrukYazici.ekleTxn(txn,
               tablo: 'cari_hareket', veri: Map<String, dynamic>.from(c));
         }
+
+        if (kalan > 0.005) {
+          final yeniSatir = {
+            'global_id': const Uuid().v4(),
+            'cari_id': cariId,
+            'tarih': now,
+            'fis_tipi': isTedarikci ? 'Alım İadesi' : 'İade',
+            'fis_id': iadeId,
+            'fis_no': fisNo,
+            'aciklama': gercekEtki
+                ? '$fisNo — kalan kalemler'
+                : '$fisNo — kalan kalemler (bakiyeyi etkilemez)',
+            'borc': gercekEtki ? (isTedarikci ? kalan : 0) : kalan,
+            'alacak': gercekEtki ? (isTedarikci ? 0 : kalan) : kalan,
+            'odeme_turu': orjOdeme,
+          };
+          final yeniId = await txn.insert('cari_hareket', yeniSatir);
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'cari_hareket', veri: {...yeniSatir, 'id': yeniId});
+        }
+
         await txn.rawUpdate(
             'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2) WHERE id = ?',
             [cariId, cariId]);

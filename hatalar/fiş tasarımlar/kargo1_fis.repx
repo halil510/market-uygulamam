@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<XtraReportsLayoutSerializer SerializerVersion="13.1.5.0" Ref="1" Name="ReportView" ControlType="Barko.Reports.PrintReport.ReportView, Barko.Reports.PrintReport, Version=1.0.0.7, Culture=neutral, PublicKeyToken=null" DataMember="Ürünler" DataSource="#Ref-0" ShowPrintMarginsWarning="false" PaperKind="Custom" PageHeight="325" PageWidth="232" Version="13.1" Margins="0, 0, 315, 0">
+  <Bands>
+    <Item1 Ref="2" ControlType="DetailBand" Name="Detail" TextAlignment="TopLeft" Padding="0,0,0,0,100" HeightF="0" />
+    <Item2 Ref="3" Name="TopMargin" ControlType="TopMarginBand" TextAlignment="TopLeft" Padding="0,0,0,0,100" HeightF="315">
+      <Controls>
+        <Item1 Ref="4" Name="label7" ControlType="XRLabel" LocationFloat="145.291672, 256.874969" SizeF="32.2916565,38.125" TextAlignment="BottomLeft" Font="Times New Roman, 11pt, style=Bold" Padding="2,2,0,0,100" Angle="90" Text="Tel: ">
+          <StylePriority Ref="5" UseFont="false" UseTextAlignment="false" />
+        </Item1>
+        <Item2 Ref="6" Name="label6" ControlType="XRLabel" LocationFloat="184.708328, 19.9999657" SizeF="32.2916641,285.000031" TextAlignment="MiddleCenter" Font="Times New Roman, 14pt, style=Bold" Padding="2,2,0,0,100" Angle="90" Text="label6">
+          <DataBindings>
+            <Item1 Ref="7" PropertyName="Text" DataMember="Sabit değerler.Aciklama2" />
+          </DataBindings>
+          <StylePriority Ref="8" UseFont="false" UseTextAlignment="false" />
+        </Item2>
+        <Item3 Ref="9" Name="label5" ControlType="XRLabel" LocationFloat="145.2917, 64.99996" SizeF="32.2916565,191.875" TextAlignment="BottomLeft" Font="Times New Roman, 11pt, style=Bold" Padding="2,2,0,0,100" Angle="90" Text="label5">
+          <DataBindings>
+            <Item1 Ref="10" PropertyName="Text" DataMember="Sabit değerler.CariTelefon" />
+          </DataBindings>
+          <StylePriority Ref="11" UseFont="false" UseTextAlignment="false" />
+        </Item3>
+        <Item4 Ref="12" Name="label4" ControlType="XRLabel" LocationFloat="113, 64.99996" SizeF="32.2916565,116.250031" TextAlignment="BottomLeft" Font="Times New Roman, 11pt, style=Bold" Padding="2,2,0,0,100" Angle="90" Text="label4">
+          <DataBindings>
+            <Item1 Ref="13" PropertyName="Text" DataMember="Sabit değerler.CariIl" />
+          </DataBindings>
+          <StylePriority Ref="14" UseFont="false" UseTextAlignment="false" />
+        </Item4>
+        <Item5 Ref="15" Name="label3" ControlType="XRLabel" LocationFloat="113, 181.25" SizeF="32.2916565,116.250031" TextAlignment="BottomLeft" Font="Times New Roman, 11pt, style=Bold" Padding="2,2,0,0,100" Angle="90" Text="label3">
+          <DataBindings>
+            <Item1 Ref="16" PropertyName="Text" DataMember="Sabit değerler.CariIlce" />
+          </DataBindings>
+          <StylePriority Ref="17" UseFont="false" UseTextAlignment="false" />
+        </Item5>
+        <Item6 Ref="18" Name="label2" ControlType="XRLabel" LocationFloat="59.375, 9.999974" SizeF="41.6666641,285.000031" TextAlignment="BottomLeft" Font="Times New Roman, 11pt, style=Bold" Padding="2,2,0,0,100" Angle="90" Text="label2">
+          <DataBindings>
+            <Item1 Ref="19" PropertyName="Text" DataMember="Sabit değerler.CariAdres" />
+          </DataBindings>
+          <StylePriority Ref="20" UseFont="false" UseTextAlignment="false" />
+        </Item6>
+        <Item7 Ref="21" Name="label1" ControlType="XRLabel" LocationFloat="9.999998, 9.999974" SizeF="42.7083435,285.000031" TextAlignment="BottomLeft" Font="Times New Roman, 11pt, style=Bold" Padding="2,2,0,0,100" Angle="90" Text="label1">
+          <DataBindings>
+            <Item1 Ref="22" PropertyName="Text" DataMember="Sabit değerler.CariUnvan" />
+          </DataBindings>
+          <StylePriority Ref="23" UseFont="false" UseTextAlignment="false" />
+        </Item7>
+      </Controls>
+    </Item2>
+    <Item3 Ref="24" Name="BottomMargin" ControlType="BottomMarginBand" TextAlignment="TopLeft" Padding="0,0,0,0,100" HeightF="0" />
+  </Bands>
+  <ObjectStorage>
+    <Item1 ObjectType="DevExpress.XtraReports.Serialization.ObjectStorageInfo, DevExpress.XtraReports.v13.1" Ref="0" Content="~Xtra#NULL" Type="System.Data.DataSet" />
+  </ObjectStorage>
+</XtraReportsLayoutSerializer>

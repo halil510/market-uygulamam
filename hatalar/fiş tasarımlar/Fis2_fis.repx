@@ -1,0 +1,668 @@
+/// <XRTypeInfo>
+///   <AssemblyFullName>Barko.Reports.PrintReport, Version=1.0.0.7, Culture=neutral, PublicKeyToken=null</AssemblyFullName>
+///   <AssemblyLocation>C:\Program Files (x86)\BarkoPOS\Barko.Reports.PrintReport.dll</AssemblyLocation>
+///   <TypeName>Barko.Reports.PrintReport.ReportView</TypeName>
+///   <Localization>tr-TR</Localization>
+///   <Version>13.1</Version>
+///   <References>
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\Barko.Reports.PrintReport.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\Barko.Domain.Model.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\Barko.Infrastructure.Data.Model.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\EntityFramework.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.ComponentModel.DataAnnotations\v4.0_4.0.0.0__31bf3856ad364e35\System.ComponentModel.DataAnnotations.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System\v4.0_4.0.0.0__b77a5c561934e089\System.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Configuration\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Configuration.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Xml\v4.0_4.0.0.0__b77a5c561934e089\System.Xml.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Data.SqlXml\v4.0_4.0.0.0__b77a5c561934e089\System.Data.SqlXml.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Security\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Security.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Core\v4.0_4.0.0.0__b77a5c561934e089\System.Core.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Numerics\v4.0_4.0.0.0__b77a5c561934e089\System.Numerics.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_64\System.Data\v4.0_4.0.0.0__b77a5c561934e089\System.Data.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_64\System.Transactions\v4.0_4.0.0.0__b77a5c561934e089\System.Transactions.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_64\System.EnterpriseServices\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.EnterpriseServices.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.DirectoryServices\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.DirectoryServices.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Runtime.Remoting\v4.0_4.0.0.0__b77a5c561934e089\System.Runtime.Remoting.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_64\System.Web\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Web.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\Microsoft.Build.Framework\v4.0_4.0.0.0__b03f5f7f11d50a3a\Microsoft.Build.Framework.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Xaml\v4.0_4.0.0.0__b77a5c561934e089\System.Xaml.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Runtime.Caching\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Runtime.Caching.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Web.ApplicationServices\v4.0_4.0.0.0__31bf3856ad364e35\System.Web.ApplicationServices.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Drawing\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Drawing.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Web.Services\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Web.Services.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Design\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Design.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Windows.Forms\v4.0_4.0.0.0__b77a5c561934e089\System.Windows.Forms.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\Accessibility\v4.0_4.0.0.0__b03f5f7f11d50a3a\Accessibility.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Deployment\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Deployment.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Runtime.Serialization.Formatters.Soap\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Runtime.Serialization.Formatters.Soap.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Drawing.Design\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Drawing.Design.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_64\System.Data.OracleClient\v4.0_4.0.0.0__b77a5c561934e089\System.Data.OracleClient.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Web.RegularExpressions\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Web.RegularExpressions.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\Microsoft.Build.Utilities.v4.0\v4.0_4.0.0.0__b03f5f7f11d50a3a\Microsoft.Build.Utilities.v4.0.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.DirectoryServices.Protocols\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.DirectoryServices.Protocols.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\Microsoft.Build.Tasks.v4.0\v4.0_4.0.0.0__b03f5f7f11d50a3a\Microsoft.Build.Tasks.v4.0.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.ServiceProcess\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.ServiceProcess.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Configuration.Install\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Configuration.Install.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Runtime.Serialization\v4.0_4.0.0.0__b77a5c561934e089\System.Runtime.Serialization.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.ServiceModel.Internals\v4.0_4.0.0.0__31bf3856ad364e35\System.ServiceModel.Internals.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\SMDiagnostics\v4.0_4.0.0.0__b77a5c561934e089\SMDiagnostics.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Data.Entity\v4.0_4.0.0.0__b77a5c561934e089\System.Data.Entity.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Xml.Linq\v4.0_4.0.0.0__b77a5c561934e089\System.Xml.Linq.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\Microsoft.CSharp\v4.0_4.0.0.0__b03f5f7f11d50a3a\Microsoft.CSharp.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Dynamic\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Dynamic.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\Barko.Localization.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\MetroFramework.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\Barko.Controls.KeyboardControl.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\Barko.Infrastructure.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Management\v4.0_4.0.0.0__b03f5f7f11d50a3a\System.Management.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\Microsoft.JScript\v4.0_10.0.0.0__b03f5f7f11d50a3a\Microsoft.JScript.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\MySql.Data.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\Barko.Infrastructure.Data.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\Barko.Services.LoggingService.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\Barko.Services.Message.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.XtraBars.v13.1.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.Utils.v13.1.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.XtraEditors.v13.1.dll" />
+///     <Reference Path="C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.ComponentModel.Composition\v4.0_4.0.0.0__b77a5c561934e089\System.ComponentModel.Composition.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.XtraPrinting.v13.1.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.XtraTreeList.v13.1.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.XtraReports.v13.1.Extensions.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.Utils.v13.1.UI.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.XtraRichEdit.v13.1.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.XtraVerticalGrid.v13.1.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.XtraCharts.v13.1.Extensions.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.XtraCharts.v13.1.Wizard.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.XtraNavBar.v13.1.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.XtraPivotGrid.v13.1.dll" />
+///     <Reference Path="C:\Program Files (x86)\BarkoPOS\DevExpress.CodeParser.v13.1.dll" />
+///   </References>
+///   <Resources>
+///     <Resource Name="XtraReportSerialization.ReportView">
+/// zsrvvgEAAACRAAAAbFN5c3RlbS5SZXNvdXJjZXMuUmVzb3VyY2VSZWFkZXIsIG1zY29ybGliLCBWZXJzaW9uPTQuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49Yjc3YTVjNTYxOTM0ZTA4OSNTeXN0ZW0uUmVzb3VyY2VzLlJ1bnRpbWVSZXNvdXJjZVNldAIAAAABAAAAAAAAAFBBRFBBRFAg898HAAAAAA0BAABMcABpAGMAdAB1AHIAZQBCAG8AeAAxAC4ASQBtAGEAZwBlACYAUwB5AHMAdABlAG0ALgBEAHIAYQB3AGkAbgBnAC4ASQBtAGEAZwBlAAAAAAAgm0UAAP/Y/+AAEEpGSUYAAQEBAEgASAAA/+EAOkV4aWYAAE1NACoAAAAIAANREAABAAAAAQEAAABREQAEAAAAAQAACxNREgAEAAAAAQAACxMAAAAA/9sAQwACAQECAQECAgICAgICAgMF
+/// AwMDAwMGBAQDBQcGBwcHBgcHCAkLCQgICggHBwoNCgoLDAwMDAcJDg8NDA4LDAwM/9sAQwECAgIDAwMGAwMGDAgHCAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM/8AAEQgA0QHyAwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAAB
+/// AgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/aAAwDAQACEQMRAD8A/fyiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKK
+/// KACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiivmn/gsF+2F4j/YK/wCCcvxI+KnhG102
+/// 88TeHo9PttOXUEaS2ilvdRtbETOikF/L+0mQJkBigBIBNAH0tRX8vp/4Oav2wif+R88Of+ErY/8AxFH/ABE0/th/9D74d/8ACVsf/iKC+Rn9QVFfy+/8RNP7Yf8A0Pvh3/wlbH/4ij/iJp/bD/6H3w7/AOErY/8AxFAcjP6gqK/l/h/4Obv2woZVY+OvDMu0/ck8K2W1vrtUH8iK9N+DP/B21+0X4J1yFvGnhH4XePNHU/vbe3tLrRL6QcfduVlmiXjPW2bn06UC5Gf0Z0V8y/8ABND/AIKu/C3/AIKjfDa61bwPcXmleItECDXfDGrBI9T0gtkK5CMySwOVOyaNipwVOxwyL9NUEhRRRQAUUUUAFFFFABRRRQAUUUUAFFfgX/wVj/4OFf2jv2dP+CivxM+HfgHVfCvh/wAJ+A9Qg0uzt5dDjvJrsmzt5pJZpJCSWMkr4CbAECjBILN+xv8AwTq/aL1f9rn9hP4S/EzxBa2Nnr3jbwvY
+/// 6tqMNkrLbLcyRKZfKVizKhfcVUsxAIBJxkhTi1qez0UUUEhRRRQAUUUUAFFFFABRRRQAUUV/OL8Y/wDg5P8A2opviz4m/sPxF4a0HRY9UuYrDT4/D9tP9lgWVljQyShndgoGWJ5OSABwO/A5dVxbapW07nnZhmlHBRTrX12sf0dUV/NB/wARJH7W/wD0PWgf+ExY/wDxuj/iJI/a3/6HrQP/AAmLH/43Xo/6tYvvH73/AJHlf61YLtL7l/mf0v0V/NB/xEkftb/9D1oH/hMWP/xuj/iJI/a3/wCh60D/AMJix/8AjdH+rWL7x+9/5B/rVgu0vuX+Z/S/RX86Pw//AODpP9prwpqELata/DXxRaBwZo7zQ5beV0zyFeCdApxwCUYDrg1+g3/BP3/g5a+Ff7WHi3S/CHxA0W5+E/i7Vp1tbKW4vBfaJfSsdqRi62xtDI56LLGqZIUSMxAPLiMjxdGPM43Xlr/wTtwuf4KvLkjKz89P+Afp
+/// RRRX5o/8FB/+Dl/4Zfso+NtU8G/DvQZviv4r0eVra/uor4WOh2Eyna8X2nZI08iH7wiQpn5fNDBgvDhsLVxEuSjG7PRxOLo4eHPWlZH6XUV/Oj47/wCDpX9pvxTdzHS7T4Y+GbdmJiSz0Oa4kjXnAZ57hwxxjJCqDjoOlce3/ByV+1szE/8ACceH19h4YscD/wAcr148N4t72+//AIB4cuKcCnpd/L/Nn9L1FfzQf8RJH7W//Q9aB/4TFj/8bq7o/wDwcvftYaXKGm8TeEdRAOdtz4atwp9v3ew4/HPNP/VvF94/e/8AIX+tWC/vfd/wT+lKivwZ/Z//AODs34n+Hdbt4vid8OfBvijSGdVln8PPPpN9CmfmcLNJPHKwHIT90CRjcucj9i/2LP23fh7+358ErTx58OdWkvtLlkNteWlzH5N9pF0FDPbXMWTskUMDwWRlKsjOjKx8/GZZiMMr1Y6d90epgs1w2KdqMte2zPW6K8A/4KEf
+/// 8FJ/hp/wTY+Ftt4i8fXt1Pf6s7w6LoWnIsupazIgBfy0ZlVY0DKXldlRd6DJZ0VvyC+Mf/B2N8a/Euuzf8IN4A+HPhLR24jTVFu9ZvRz181ZbePkdvJOPU9aeDyrE4lc1OOnd6IWMzfC4WXLVlr2WrP38or+a/U/+DmL9rDUJJGj8R+DrEOOFt/DUBCfTzC5/MmvtT/ggj/wWc+NX7cH7XOtfDn4nXejeINNk8NXOt2l5a6XHZXFhLbz20ZB8rCtE4uCDuXIYJg4JB6cRkOJo03Vlay8/wDgHJheIsJXqqjC935f8E/Xyvjz9qD9pr4jeMfH7eH/AAFJ4k0DwyPE48E2upeGrbSpvEXiLWUsZ7+5+yyarusLWxtYraWGSSaGaWacSoiwCASXH2HXwH8cPBug/Dz4meGvhj8SJrbwz4Hb4s6j490rxBf6zLpNjrVpqdpqs09ot8rx+TqEOq6iyra+arS2xjkj8wLcRw+Ke6dR8Ev2mfiB
+/// 8Mf7T1LxFrXjPxX4V8J+MIvBfjvTvG1jpEfibwfdXUVlNZ3tvc6MiWN3YeVqNjJIjR+bHFdPK0wa3ktm+1K/PT4TWNjYfDPxj+zD8PbrRvH39seMJVl8RaRqSak2meG7t4Lu7utcvELFNSihklsbdZne5vPLtJjuQXU0H6F0AFFFFABRRRQAUUUUAFFFFABXwh/wcw/8oUvjB/19+G//AFI9Lr7vr4Q/4OYf+UKXxg/6+/Df/qR6XQB/P3/wSP8AAGg/FX/gpr8E/DfijRNI8SeHdZ8SJb6hpeqWcd5ZX0XkynZLDIGSRcgHDAjIFf04/wDDpf8AZX/6Nq+AX/hv9J/+MV/L1/wTF+N3hn9mz/goR8I/H3jTUX0jwn4U19b7VL1LSa7a2hEMqlhFCjyvywGERjz0r+hX/iJl/Yp/6K5qX/hCeIv/AJAoNKh7h/w6X/ZX/wCjavgF/wCG/wBJ/wDjFH/Dpf8AZX/6Nq+AX/hv9J/+MV4f
+/// /wARMv7FP/RXNS/8ITxF/wDIFH/ETL+xT/0VzUv/AAhPEX/yBQZntd5/wSM/ZVvrdo3/AGa/gOqt1MfgPS42/NYAf1r8/P8AguV/wQJ+BvgH9jDx18YPhN4dX4ceKPh9YHW7qx02eQ6Tq9nDgzxG2dmSFxFvZGhCAuoDhgcj6Wn/AODmr9iuGPcvxY1aU/3V8C+Ic/rYgV8a/wDBW7/g5f8AhL+0J+yT47+Evwh0HxX4ku/iFo8+h3ev6rYf2Zp2n2twpjnaOOU/aJJvLLBQ0SIC4be20xsFRvc/Of8A4Im/G/WvgH/wVT+CmqaLczQ/294jtvC2oxK2FvbLUZFtZI3H8Sq7xTAf34Iz1UV/WtX8q3/Bv1+yhrn7U/8AwVE+Hk+n2xOh/DO9j8Za7eMhMdpFavm2TOMeZLc+UqqSCVWZxkRMK/qpoHPcKK5f4tfG7wX8A/CsmueOvF3hnwXosZw1/ruqQafaqfTzJmVf1r551T/guZ+y
+/// JpM7Rv8AtA/Dm4KnBa01A3SZ/wB6JWX9aCD6Q+KnxG074PfDDxJ4u1j7R/ZPhbS7rV73yE3y+RbxNLJsXIy21DgZGTX4rP8A8HmFy+pSeT+zVGdPMh8qSX4ibLgx/wAJeNdMZVYjGVEjAHIDNjJ/QPxD/wAFwv2M/FmgX2lal8cPAd9pup28lpdW0xmaO4ikUq6MPL5VlJBHoa/ONv2Kv+CSIvZpI/jlqUNtIxMVqvim5MdsvZVYwGQgDj53Y8cknmgqK7nq3gv/AIPFvhncyoPE3wT+JOmqcbm0fUNP1Lb68TSW2f8APSvvH9hn/gr58Af+Ch902m/DjxvDJ4ohiaabw3q1u+m6uiLgu6Qygeei5G6SAyIuQCwPFfkD8Yv+Cef/AATJ8V6RO3gr9rbWPBereWwt2ubtNXsFfHymSF7VJnAPZbiMnnnuPzF1pr79n344yz+D/Gdteap4L1gzaH4r8OzukcskL5hvbZmAdQww21hkAlWB
+/// 5BCuVM/tRr4t/bo/4L6/s5fsF+KNQ8M674j1Lxh420tjHd+HfCdouoXdm4xmOeV3jtoZBkExyTLIBzt6VwP7Z3/BS/xZo3/BvBb/ALQWiN/Yvjvxx4N0MRTWh2f2VfarLa2s88J5wYTcSyRkj70aZr+ff/gn5+xVrn/BQf8Aa28K/CfQNVtdEvPE0lxcXer3sbXSadbwxPPPcNHvV5nO3AXcC8ki7mUFnUJjG+5+uXjj/g8h8N2oJ8LfAHxJqYycDWvFNvpjY7Z8mC6H6mvpL/gj5/wcDaX/AMFT/jfr3w71L4aTfDnxNpujSa9Y+Vr/APbVrqFtFNDDMDIba3aORWuISF2MGUsdwK4PE/D7/g0j/Zv8N6IsOveJvix4pv2GZLiXV7azjDYH+rjgtlKqDyAzOeeWIr6Y/wCCfv8AwRY+Bn/BNf4gav4s+Hum+ILnxRrFgdLfU9a1Rrya3tGkSR4YlASNFd442Y7Sx8tRuwMUA+Xofzt/
+/// 8Fwv+Uv37Qn/AGM0X/pvs6/ou/4If/8AKIj9nf8A7EfT/wD0WK/nR/4Lhf8AKX79oT/sZov/AE32df0Mf8EevH+hfC3/AIIsfAfxF4m1rSfDvh/SPANhc32p6ndx2lnZRLEMySyyEIijuWIFIueyPr6snxz480P4YeEdQ8QeJdZ0rw9oOkwm4vtS1K7jtLSzjHV5JZCERR6sQK/J/wDb9/4Oxfh38J2vfD3wA0Fvijr8ZaI+I9TWWx8N2rjI3RL8txe4YDhBDC6sGS4bpX45/H79rP8AaC/4KvfGfTtP8Va14u+KHiK7n83R/C2kWbvZWTA43WunW42JsDYM7K0gX78pAzTJUOrP20/ae/4OyfgL8H/HMmh+APDvi74tRWpZbjWdPEem6SXBxthkuMSz4Iz5iReUwIKSODx9a/8ABK//AIKfeFf+CqvwC1Xxt4Z8P674Wm8P6zJoWqaZqjRyPDcLDDOGjkjJWSNo54yCQrAhgVGAT+TX
+/// 7AH/AAadeOPiZ9h8Q/tBeIv+EA0Z9sv/AAi+hTRXetTjg7Z7n57e37grGJ2IP3o2r9Hv21brwf8A8EL/APgkL4+v/gh4Y0/wv/YMMNvo8YDXTvqmoXNvYpfXDysz3EiNKkjGVmLLAE+6AoBSt0PQf28P+Cw3wD/4J1Stp/xB8YLN4raITReF9Eh/tDWHVlLIXiUhYFcA7XuHiRscMa/Pr4j/APB5B4Zsbj/ijPgF4m1iHeQD4g8T2+jybfXbbwXgz7bvxr8gf2Uv2ZvHn/BRj9rnR/Amg341Pxt4/v57u/1nW7t5MbY3nur26lO6SRgiMx6s7lV6tkftn8G/+DQP4L+G9It38d/Ez4neLdXEYFx/ZjWWj6c78ZZIjDNMvsDcN179grlS3PIP+IzHVf8Ao2XT/wDw5j//ACoo/wCIzHVf+jZdP/8ADmP/APKivpr/AIhO/wBlv/n9+Kv/AIUUX/yPQ3/Bp1+y2R/x/fFYe48Qxcf+S9BP
+/// unl/wm/4PDPhjrd7aw+Ofg74/wDDKzOqS3Gi39prUNsCcF28w20hUdTsRmwDhScA/ph+yL+238Lf27fhp/wlnwr8Yab4r0mKQQ3SxB4bvTpSNwiubeQLLA+OQsirkYIyCDX43f8ABTr/AINbPDP7M/7L/jb4o/CP4ieLNQ/4QLSrrxDqOg+Kltrj7VZW0bTXAt7i3hhKSJEjsqyJIJCoQsm7ePhj/giB+1br37JP/BTr4U32k3t1DpPjnX7LwZr9lG37rU7XUJ1tY/MU8HybiaKdWHzAxMAcO6sD5U1dH9Zlfxj/ABMbb448SEcEajd4P/bV6/s4r+Mf4m/8jv4k/wCwhd/+jXr6zhX4qny/U+J4w+Gl6v8AQ/qS/Z4/4Jo/s5eIPgB4Fv774A/BW8vr3w9p89xcT+CdNklnka2jZndjDlmYkkk8kkmuw/4ddfsz/wDRvPwP/wDCF0v/AOMV3v7MP/JtXw8/7FnTf/SWOu5r5uWIq8z9
+/// 5/ez62FGnyr3V9x4T/w66/Zn/wCjefgf/wCELpf/AMYo/wCHXX7M/wD0bz8D/wDwhdL/APjFe7UVP1ir/M/vZXsaf8q+4+T/AIwf8EOf2VfjL4fuLG6+DPhPw/JMpEd34agOiXFu3Z1NsUUkdcOrKcYKkcV/NB+1h8Frb9nr9pv4j/D23vJtUsfBniXUtBgup1VZbqG3uZIUdwoC7mVAWAAGSccV/Xp8RviV4e+EHgvUPEfirXNK8OaBpURnvNR1K6S2trZB1Lu5Cj86/ka/bR+LWl/Hj9sD4qeNtDMx0PxZ4u1XV9OeaMxyPbT3kskTMrAFWKMpKnlScHpX1PDVatOU1Ntxt17nx3FlGjCEJQSUr9N7WP3a+OX7XfjDwL/wbOab8Ro9UvZfGWrfD/RtJfVfOK3QkvZbbT5LrzB8wmCTPIHHO8A5B5H88fhzQJvEGr2unWaL5tw4ijHRV9zjoAOfoK/db9tLw5eeE/8Ag1B8MWOoQSWt
+/// 2vhXwfK8Tgq8Yk1PTpFDA8htrDIPQ8V+HPw68Sx+EPGun6jMrPDbufMC9drKVJHuAc/hWuA9pTwWIqYWN5pz5V3aXur7zolRweIzrAYfNajhh5SpqpL+WDmlOXXVRu/ke2eG/gF4e0S0iFxa/wBo3Kj55Zmbax74QHaB6A5+prF+O3gDRtG8AtdWen21ncQzptaJNpYE4IPqO/4Vvj4+eFSP+Qk3/gNL/wDE1yfxn+Luh+KfBMlhp1w91PNKhP7p0CAHJPzAegHHrX5DkdPiernFCtjFW5edOXMpqNr66aRSt02P9B/EbEeEGE4FzHA5FPAe19hNU1TdGVVz5fcs03UlO9vebbvq3ub/APwS1+EHh/49ft//AA18J+KtOi1bw/qd3dyXllKWEdyILC5uEVtpBK+ZEmRnBAIOQSK/azxf/wAEif2bfGmmyWtx8I/DVmsnO/TWn0+RT6hoJEI/PFfiH/wTg+P2g/suftvfD/x54pa8Tw9o
+/// N1dC+ktYTNLEk9lcWwcIOWCtMrEDJ2g4BOAf2L/4fvfswf8AQ/aj/wCEvqv/AMj1/O/0ucu8TavF+DxHBcMa6EcPG7wvtuVVPa1XK/stFLl5N9WrdEfw/wCHdbJY5bUhmLp87m/j5b25Y2+Lpe/4n50f8FhP+CVGn/sI3WjeMPBN5qF34A8R3h05rW+k8640e8KPKkYkwDJE8cchUsNymIhmbcpr1X/g1W+MereDv2//ABF4OhuJP7C8aeFJ5ry2/he5s5ont5fqiS3K/wDbY+1L/wAFm/8Agq38Lf2sf2ctJ8BfDa/1DX57nWodS1C9n0uezhtIYY5AEXz1RzI7yIcqpUKjgkEgVx//AAbF/wDKVPTP+xW1X+UVf0d4G4/i7G+HtOXHFKcMZFzj+9i41JQi/clOLSal0u0nJRUndyu/l84p5fR4ij/Zck6ba+F3SbWqTXT8r2Of/wCDjv4tat8R/wDgrN4+0nULh5NP8C2Wl6JpUW47
+/// YYXsLe9k46bmnu5iSOoCZ6V9Sf8ABBj/AIIe/CT9qz9mCx+MnxYt9Q8XNrmo3dvpWgpezWVjaRWs725ebyWSSaRpY3O0uI9m0FWJJr5//wCDl/8AZi8RfB//AIKSa54+u7O4bwt8VbSyvtNvxEfs63FtZQWc9oWz/rV+zJLg4yk64ztbHSf8Eef+DgO1/wCCenwPX4XeO/BGqeJvB9je3F9peoaFPEuoWXnyebLC8EzJHKpkaRw/moV3bdrcFf16pGtPLaawT1sr20e2vzuebTlh6ebVXjlpd2vqt9Plbbofs1oX/BJz9mHw7brHB+z/APB+YL0a78KWV3J/31LGzfrXo3wb/ZX+GP7Ol1fTfD/4c+BPAs2pqqXknh/QbXTXulUkqshhRS4BJIBzjJr4W0n/AIOn/wBmfUbNZJ9O+KWnyMMmGfQoGdfYmO5dfyJqz/xFI/sw/wBz4kf+E+v/AMer5mWBzCWkoyf3n1ccwy5axnBfNH6O
+/// VDqGn2+rWUltdQQ3NvMu2SKVA6OPQg8EfWvzz03/AIOg/wBlu9nVZrr4gWKseXm8Osyr/wB+3Y/kK92/Zy/4LK/sz/tU67b6T4R+LHh/+2rpxFBp2sRz6LdXMh6JEl4kXnN7R7u/oa5qmAxMFzTptL0Z008wwtR8sKkW/VH0lo2iWXh3T47PT7O1sbWLhIbeJYo0+iqABVqiiuQ7AooooAKKKKACiiigAooooAK+EP8Ag5h/5QpfGD/r78N/+pHpdfd9fCH/AAcw/wDKFL4wf9ffhv8A9SPS6AP5tv2Sv2btY/bE/aZ8F/C3w/fabpmueOL17CyutRLraQOlvLOTIY1ZwpWFh8qnkjtkj9GP+IQr9oD/AKKN8Hf/AAJ1L/5Er5N/4Ia/8phf2ev+xkuP/TZe1/WlQaSk0z+d/wD4hCv2gP8Aoo3wd/8AAnUv/kSj/iEK/aA/6KN8Hf8AwJ1L/wCRK/ogooJ5mfzs6h/waHftERWjNa+P
+/// /gvcTgfKkt/qcKMfdhZMR/3ya+Uf28P+CL/7QX/BObwtH4j+IXhnS77we00dtJ4j8OagdR020mkbbGk25I5od7FVV5IljLsqBy7Kp/rUr4o/4OE/jV4T+E3/AASc+Len+I9W0+x1Dxto8nh/QLOZx5+pX8xURrCn3mMfMrFQdiRs5wFzQNSdz8iP+DX79vf/AIZd/bgm+GOrW8Mnhn44eRpy3SxL52n6rbLM9mS2NzQyiSaErziSSFhtHmE/sn/wWx/4KRXH/BMb9ie88ZaLa2d9428SajF4c8LwXal7ZL2WOWVp5VXlo4YIZpNuQHZETcu/I/m//wCCT2iXniP/AIKffs+2enxtJdf8J/pFztU8+VBcpcTH6CGKVj7Ka/YP/g8SiY/sZfB59rbF+Im0tjgE6TqGBn3wfyNA5bn4qWml/Gv/AIKeftMxxqvjL4zfFTXlklQzSi4uI4VILkM5WCztULKMAxQRl1Ubdyg/ZvhP/g1G/ay8
+/// T6LDeXM3wd8PSzKGNlqnii7a5hJHKv8AZrGaLI6fLIw9Ca77/g0N8Z6LoP7bnxK0nUNQsbTWNe8IRLpVvNIElvfJug86xZ+8yqUYqOdqlsYUkf0MUBKTTsj+bz/iEm/aq/6GL4C/+FNqv/yro/4hJv2qv+hi+Av/AIU2q/8Ayrr+kOignmZ/N5/xCTftVf8AQxfAX/wptV/+Vdfn/wDtNfs969+yb+0F4u+GfimfSLrxH4Kv/wCztRl0ueSezeXy0kzE8kcbsu115ZFPtX9odfyJ/wDBYfx7o/xP/wCCqfx81zQLyHUNJuvFsttDcQtujle2hhtJip6EedBKARwQAQSCDQXCTe5+oX7aH/Knz8Nf+xe8F/8Apzsq+LP+DYr/AJTC+C/+wBrX/pLX2r+2tA9v/wAGffwzWRWRm8OeCXAIxkNqNiwP4gg/jXxV/wAGxX/KYXwX/wBgDWv/AEloEtmf0+0UUUGZ/JT/AMFwv+Uv37Qn/YzR
+/// f+m+zrwj4kftA+OvjD4G8KeF/FHi7Xtc8LeBbOKw8O6JcXJGm6NFEpVDDbLiISBSQZiplYHDORgD3f8A4Lhf8pfv2hP+xmi/9N9nX2b8LP8Ag2dtP2yv+CcPwj+LXwp8at4d+IHirwlZ6pqmi+IC02j6ncvHlminjUzWhZjk5WZOAAicmkdHNZHB/wDBGf8A4ID+Gv8Agoh4ag8ceMPjH4aHhu2ZHuvCng++juvEFvnBEd+8i4sScH5BHIzKwKuhr97f2S/2GPhL+wx4I/4R/wCFfgbRPCNnKqi6uLeIyX2olRgNc3Uhaadh2MjsR0GBxX8pPxk/Z1+PX/BLH456fceJNH8afCXxhZysmk67Y3LwRXoB3EWt9AximVgoLRK5O3AkQcrX6K/sAf8AB2P40+HRsfDv7Qnh3/hOtHXbD/wlWgwxWmsQjgb7i1+W3uO5LRGAgDhJGNMzkm9T9+a/Pn/g6G/5Q1/ED/sNeHv/AE82dfWP7J37
+/// b3wo/bk8B/8ACRfCvxxovi/T4wv2qK2kMd5pzMMhLm2kCzW7kchZUUkcjI5r5U/4Oe9Onv8A/gjP8R2hieRbXVvD80pUZ2INasgWPsCRQZ9T8ff+DZb/AJTC+Av+wRrP/pDJX9QVfyuf8G73xV8O/CD/AIK3/DPUPE+sWOh6fqUWo6RDdXkoig+1XFnKkETOflUySbY1yRud0UcsAf6o6Cp7hRRRQSeEf8FSv+UZH7Rn/ZMPEv8A6armv5UP2CP+T+/gF/2U/wALf+nmzr+pD/gsb8UfD/wo/wCCWnx9vPEWrWWkw6r4D1rRbE3EoQ3t9d2E9vbW0YP35ZZXVFUckn0BNfy6/wDBPnT59V/4KC/ACC2hkmmb4neF2CIuThdYtGY/QKCSegAJPAoNI7H9kFfxlfEQbviB4gB5B1O6yP8Ats9f2a1/GP8AE3/kd/En/YQu/wD0a9fWcK/FU+X6nxHGHw0vV/oenaZ+0x+0Rp+mW8Fj8SPj
+/// tBZQxKlvHb+JdYWGOMABQgWXaFC4wBxjGKn/AOGo/wBpL/opvx//APCn1r/47X9VX7MP/JtXw8/7FnTf/SWOu5rOXEUE7exX3/8AAN48N1Gv94l/XzP5HP8AhqP9pL/opvx//wDCn1r/AOO0qftQftJyuqr8TP2gGZjgAeJtaJJ/7+1/XFRR/rFD/nyvv/4A/wDVqr/0ES/H/M/kk/4Z5/aV/a51qyN14N+OnxHulfbb3Wo6dqupxwFuM+fMGSMHoWZlHqa+/f8Agmr/AMGxfjbxd460vxV+0VDZ+GPCenzLcHwjb3kd3qWslTkRXMkJaKC3b5dwSR5GUsuIThq/d6iufEcRV5w5KSUV5b/L/hjow/DOHhU9rWk5vz2/r5nwv/wcZ2kVh/wRv+JkEEccMMNzoMcccahVjUa1YAAAcAAcYFfzT6BoVx4m1m3sLRVa4uW2ruO1R3JJ9AAScZPHQ9K/pp/4OI/D154k/wCCP/xZjsbeS6kt
+/// W0i8kSNSzLDDrFlJK+B2SNWcnsqk9q/mg8CeI18J+L7HUJFLx28h3gddrAqxHuASfwr2+F7fVnf+Z/kjLFUcBV4gwVLNZOGGlOmqsluqbnabW+qjdrRneD9mSTH/ACGo/wDwFP8A8XWL4++Cc/gfQW1AX8d5HG6q6+V5ZUE4BHJzzj869s0zVbfWrGO5tJo7i3kGVdGyD/n07Vyvx6lWP4bXSswBeWJVHqd4P8ga+vq4eCg5RP778Tfo3+G+XcE5hnuTYZqdOhOpTmq1ScW1G8WrzlGSfo009Dx3wD4NuPiF4xsdGtZI4Zr52USSZ2oFVnY8dflU8dzjp1r1r/hh+/8A+his/wDwDb/4uuI/Zmbb8dPD+ePnnH/kvLX2DX5fxdxBjsDi4UsNKycU9k9btdU+x/jRx5xVmWWY6FDBzUYuCb91PVykuqfRI+RfjD+zxqPwg0i31Ca+ttQs7iYW5aOMxtG5BIyCTwdp5z1wO9fY3/BsX/yl
+/// T0z/ALFbVf5RV86/thfFLT9R0q28N2NxHdXC3AuLxo23LCFBCoSP4iTnHYLz1FfSv/Brzod1q3/BUiO4t4Wkh0vwdql1cuOkSGS1iBP1eVB+NetgcVisRk0q2M+Jp9LXXR2/rTU/RvDnGY7GU6FfHr33LTS149Hb+rqzP6Cfjt+z/wCCv2nPhrfeD/iB4Z0nxZ4b1HBmsdQh8xAwztkQ/ejkXOVkQq6nkEHmvzh+LP8Awad/BPxVrk954R8dfETwdbzElbCSW31O2tvQRmSMTY/66Sufev1Oor5nD42vQ/hSa/rsfumJwOHxH8aCf9dz8Yta/wCDQazmmP8AZv7QF1ax9hdeC1uGH4rfRj9Kwrv/AINA9ajb/R/2hdLlXsZPAjx/y1Bq/bqiu1Z9jl9v8F/kef8A6v5f/wA+/wAX/mfhL4i/4NGfiJaWcjaT8ZvBeoXCj5Eu9DubNHPuyySkf98mviP9vf8A4JGfGr/gnXZ2t98RNB0u
+/// 98L6lOLODxBod4b7S5JyGYQuXSOWNiqkjzYkDYIUsQQP6tq/Or/g55+Jvh/wz/wTK1Pw3fatY2+v+KNb0xdK09ph9pvRBdRzTMifeKIiEs2NoJUE5ZQe/Ls8xc68KU2pJtLb8dDzsz4fwUMPOrTXK4pvf/M+Uf8Ag2i/4KmeMtS+NNv+zz461q88RaBq2n3Fx4Rub+ZprvS57aPzXsldiWa3a3SV0Un90YNq/KwCfuHX8vv/AAb6Wkt1/wAFh/gwY1ZhDNrEj4/hX+xNQGT+JFf1BVzcRUYU8V7itdJv1u/8jr4ZxFSrg/3jvZtL0sv8wooorwj6AKKKKACiiigAooooAK+Iv+Djjwfqnjj/AIIyfGaz0fT7rUru3XRtRkht4zI6W9rren3NxKQP4Y4IZZGPZUY9q+3aKAP4jvht8drz4O+PdL8U+FPFn/CO+JNDlafT9TsL5YbqykKNGWjcHKko7rkdmI717f8A8Po/2kP+jk/iL/4U
+/// zf41/Xz/AGNZ/wDPrbf9+l/wo/saz/59bb/v0v8AhQac5/IN/wAPo/2kP+jk/iL/AOFM3+NH/D6P9pD/AKOT+Iv/AIUzf41/Xz/Y1n/z623/AH6X/Cj+xrP/AJ9bb/v0v+FAuY/j81n/AILF/tE69p72tx+0r8T1ik4Jt/GE9rJ+DxSK4/Aiqfw//Zt/aD/b98bWmpaL4Q+Lvxd1rUIxFDrt5De6lG0ZO4B9TuiYY48nI8yZVyfU1/YhHpdrC4Zba3Vl5BEYBFWKA5z8sf8AghF/wQBvP2B/F4+L3xcutM1L4pNayWui6RYSefZ+FYplKTSGbA868eMmMsgCRo8iKZN5evuH/goV+wl4R/4KN/st678MPF8lxZW+oMl3puqWqhrnRb+LJhuow3BKksrKcB43kQkBia9tooJu73P5Q/2z/wDghp+0r+wt4pkuLzwLrXjfw/p9wJ7DxV4JtJ9ThGxi0czwwg3NnIu1WJdAiMQFlfG4+f6B
+/// /wAFhf2nPgxanw/b/tEfE3Sm08mJrXV9aN7dW/fYxvRJKuOyk8DAGBxX9flRXFlDdkebDFJt6b0DYoK5z+Rf/h+7+1N/0cz4w/7/AOn/APxij/h+7+1N/wBHM+MP+/8Ap/8A8Yr+uT+xrP8A59bb/v0v+FH9jWf/AD623/fpf8KB8/kfyFeIP+CsX7TX7RFufDdx8e/ij4jbUAY20/SdYeCa8U8FDHZBGkUjgrggjqDk17J/wTr/AODfn47ftu+M9JOueEfEHwn+Ge9DqOv69Ytpt4bcH5o7GzmUTSSsvCO0YhXO4s2BG39S1vax2ilYo441JyQihc1JQTzdj87f+DiL4L2/gj/ghR4t8J+DdEkh0HwOnhyG1sbOIsum6bZalZLnA5EUMEeWboqIWOApI/J7/g1k0a68Z/8ABWrRNS0mGTUtP8P+GtWn1K5tl82GxWSJYo/Mdchd7sFUEgtzjODj+nOmQW8dsm2ONI164VcCgFKysPoo
+/// ooJP5Mf+C+OmXHgD/gsH8dF1yNtJbVtZttRsvtf7n7ZbSafahJoy2N6Flddy5G5GXqpA/o4/4I2eENV8Bf8ABKr9n/SNb0+80nVLPwRpq3FndxGGe3YwqwV0bBVsEZUgEdCAa+k5LeOZ1Zo0Zo+VJXJX6U+gqUrqxgfE74V+GfjX4H1Dwz4w8PaL4q8O6rH5V5pmrWUd5aXK+jxyAq34jg1+Sv8AwUA/4NNvB/xB+3eIv2evEX/CCaw+6X/hF9dmlu9EuG5O2G4+e4tck/xeegACqiCv2JooJvY/jx+N/wCz38eP+CT/AMbLG/8AFWmeMfhD4qsZWTSvENldtbW94M5Itr+BvKmVgoLxBydpAkQZK1+5P/BDL9rLxp/wWj/YD+K3gv8AaE0mDxZ4bXHhj/hI4bP7Avie1ubZhOhaLbH9qgIUmaAIFM0WFV0LN+ocsSzxlXVXVuoYZBojjWJAqqqqowABgCgpyufzGf8ABQH/AINsfj9+
+/// yf4n1S48D+Hr741fDlvMe11DQ4Vm1iCHtFd6cMSyS4yN1qsqPt3FYtwjHzZ4d/b0/aW/YoEfh+P4qfGj4bpFH5UGi63ql/axWyJxtis735YgMgfIi9vQV/YRTZYlnjKuqurdQwyDQPn7n8in/D939qb/AKOZ8Yf9/wDT/wD4xTZv+C637UVzC8cn7S3jJkcYO27so2H0ZIgw/A1/XN/Y1n/z623/AH6X/ClGj2inItbf/v0P8KB8/kfxy2nh/wCPX/BRXxnY6hHZ/GL456w0jx2d+6aj4iWzLkB1SdvMjt48gBvmRFCjOAvH7Jf8EIP+DeTxR+zD8YNJ+N/x2jsbDxVoKSSeGPCdtcpdnSp5Ymia7vZYyYmmWOSRUijZ0Qt5hcuFEf7IUUEuV9Ar+Nf41eEdU8NfHfxZ4TvtPvLfxPa67d6dJpJhY3n2nz2UQiIZZnLEAKAS2RjORX9lFR/ZY/P83y4/M6b9o3fnXrZXmjwTk+Xmvbrb
+/// b5M8XNspWOUU5cvLfpfe3+Ryf7PejXXhz4B+B9PvreW1vrDw/YW9xBIu14ZEt41ZWHYgggj2rsKKK8pu7ueulZWCiiikMKKKKAMnx54G0f4n+CNY8N+INPtdX0HxBZTabqVjcpuhvLaZDHLE47qyMykehr+f7/goN/wbPfFj4DeK9S1r4L28nxP8BySGW2sFuY4/EGlx8ny5I3KrcqvADxMZG7xDBY/0L0V34HMa2Elels909jz8wyyhjIKNbps1uj+N74gfCXx38Artv+Es8K+MvA1xHlW/tnSrrSnXOOP3yIeeP0rltR8dvq8Kx3etPdRqdyrNeGRVPTIBNf2lVXbSrV2LNbW5YnJJjHNe9Hip296n+P8AwDx48O1oUpYeliZKnLeOtn6pNJ/cfxa2/iO3tJ0lhv4YpYyGR0nCshHQgg5BrWg8Vat46u1sItU1TWriY4W2S6kuXk+iAkn8q/s0/si0/wCfW3/79D/CpILWO1UrFHHG
+/// pOSFULmlLiaLfM6Ovr/wDz5cFUpSUpVNV/dX+Z/KH+zj/wAEj/2jf2otat7Twx8JfF1lZzEbtU16xfRdNiU/x+dchBIo7iESP6KTxX77f8EdP+CRuj/8Eu/hTqjX2qW/ib4keMBC2v6tBGyWsCRbjHZ2qt8whQu5LsA8rHcwUBI4/sqivLzDOq+Kj7N+7Hsuvqe7luQ4fBy9oryl3fT0R/P9/wAF+v8Ago3+0L8Af+ClfirwnovxG8X/AA/8G6Zp+nN4dttNuzYQahbyWcUk1zlcGU/a2uYtxJx5O0Y218Xf8Pfv2jv+jgviN/4UMn+Nf1nXFnDd7fNijk29N6hsVH/ZFp/z62//AH6H+FdOHzqhTpRpugm0rX0189jmxORVqtWVRYiSu72108tz+TX/AIe/ftHf9HBfEb/woZP8aP8Ah79+0d/0cF8Rv/Chk/xr+sr+yLT/AJ9bf/v0P8KP7ItP+fW3/wC/Q/wrb+38P/0Dr71/8iY/
+/// 6u1/+gmX4/8AyR/JNr3/AAVY/aE8T2/kXX7QnxU2MQMW/i+7tS3bGYpFJznpnn8qpeDP2V/jx+174vXUNJ8B/FT4hatqhVX1aXTb29WUYyplvZQUVfRpJAvPXmv66YLGC2bdHDFG3qqAVLT/ANZIxX7qik/X/JIn/Vdz0rV5SX9d2z8tf+CCn/BD/wAUfsO+M7z4t/FprC18dXunPpmj+H7S4W6XQ4ZSjTS3EyZja4bYIwsTMiJvO9zJiP8AUqiivAxWKqYio6tXc+iweDp4akqNJaIKKKK5jqCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiivzG/wCDoj4jabo37JPg3wHoGh6fqnxs+L3iKHwz4JvYdNe81rRIPNhm1C7tPJjkulUIkEMn2dWc/aUwrHAoA/Tmivz1+D2h/sr6P4i+EfwI034S6p488ZaxYG2kvfGPw51DS7qSz0+1DXesXs+p2kXmkyeSh2F3
+/// aa8iGFUs69P4x+Mnwx/4IM/s1r4es/C/xE8cza/4omvbax8OaJ5013eaxqMotLXzZGS3XZ+6tYohKZfKtkIjYAmgD7jor49/ai/4LK+Df2dbPwneaV4C+IvxG0nxh4ssfBNhq/h+CyTTbrV7skRWlrLdXEJvmO1x5lms8CtFIjyo6Mo+wqACivhj/g4stfCvhL/gk98XPHmsaHpVx4k8L6Ktp4e1l7RW1HRLm9u7a1V7WcDzYWMkkRJRgDtG7IFR/BDXPBn/AATE/Y4+Enh/w34Di8cftC+PfCWm2lvoekxxR+IPHGox2sbXN3fXkmWhs4ppHkmu7hjHAr7VDO0cTgH3XRXwt8G/2E/hj+w74R8ZftA/tKaj8O5/GWoXK+JPEN/9kW18H+Dpgy+VBpNnIoUOkmxRdOhvLqZt5IaQRj0bxX/wVA0/wd8YPhT4Tvvhf8SLST4wXs8GjLcw2kOpwWkMPnSalc6aZ/tdvZohHmGaNJoidskK
+/// OQpAPqOivj3TP+Cz3gfX/jj4/wDAWm/D/wCLl7rXgZdNt4Lb+wBBfeJr/ULf7XbWNlZyyJcLJ9lBnle6S3jt41LztEg3nkf2r/27PCvx58MfDL4B+NPh78evCPi/9pK9GjrpuiXKaRqnh2OAw3l1NLfJOqskFqUlnW1M4CO8Mg3MUIB94UV8keNv+Cl3w1/ZA+O3w3+Ar6L8RJo7rTru2/4SfVI3TR9GsdJtk+03V7qWoSpJOqAxK1wvmiSVyhkaXKVBdf8ABZXwJov7Xtj8KNc8G/ELwnDqHhaTxhF4m8Q2VvplidOE62sUptZJhfxma7ZbWOKa2imkmZFWNg6sQD6+qvqWq2ujWbXF5cW9pbqQGlmkEaAkgAEnjkkAe5r5m+EH/BUbR/jF+3Z/woeH4Z/FDQNYk8H/APCcRatrdjbWds2mm4+zxySQeebu2aSTKiK6hhnBHzRKCGPzt8U/hF4X/wCCgP8AwXt0ueTRbG48H/se6LFr
+/// /iLUPJ3HVPFV+iPp9q+VPmJZ2sK3SlDlJjtI5OQD9KqK+LfAP7QHw9/4KMf8FEJvD+n6P8bdH1T9l1IdVub2a7m0DQb+61W2je2gubLzVnuHFuGkVLiFDH+8V1+cq317468caT8MvBGs+JPEGoW+k6D4esZ9T1K+uG2w2dtDG0ksrnsqIrMT6A0AatMFzGZ/K8xPMxnZu+bH0r83f2D/ABj4+/4LoWWpfGjxtrXijwB+zZJq1zYeAvAOhanJpd54sgtpGgk1HWby2cTOjTLIgs4pEiDRMriVV3zey/tVf8ETP2f/AI3fs8eL/DPhH4R/CXwD401jTpY9F8Xab4StbbU9D1DGYL5biBY7gyRyhXyJAWIwScmgD7AorwPwZ+0H4T+Dt5Y/BPwHa+LPin4q+HGj2Nhqtrp06Xk+ixCFEgfU7+7mjhS4lQLJ5TzNcyKxkETrlqq/sRf8FA7T9tjx78V9BsfA/iTw2fhD4gPhbVdRu7uzutPv
+/// NTRd09rby28zl5IAY/NDKu0yqvJyAAe/XerWthd2tvPdW8NxfO0dtHJIFe4YKXKoDyxCqzEDoFJ6CrFfmL/wTX8EeDfjL+3R+0T+2k/h5YfCdrqD/DX4dS6bpkt9calZ2c3lajqsUcAke4a8vspHIi+YI0kU8M1Wf2xP+DhST4b/APBMbxh+0B8MfhP4o1CHTfHMngDSZvE0KLp7TIHWTVZhazOzWCzxtANsiNJMVTKE5AB+mNFfnp8NPit+1R8cPAC+IvhL+1N+xr8WdauLcyx6JbeGLr+yfMAy0Yu7XVZZwFIIy0QYY+ZQc4+yfj1+1B4P/ZyOgWviG+uJde8XXh0/w7oOnWz3mreILlV3NHbW0YLuEX55JDtihTLyvGgLAA9Cor5f1b/gpNceGv2yvhr8FNV+EPjyw8TfE2xvNVtWF9pV0NFsrUKZrq/EF1IIIssEVlZxJICibmwDl+Pv+Cx/ww+HX7Zlj8GdS0nxpZ30uiT+Ib/x
+/// Dfaaun6Rp9lHcvYxOPtDpc3BuL8R2kAt4JBPNPEIi4YGgD60or5h+DH/AAU80v40ftz3XwLh+GPxQ8Patb+Eh40Gr63Z2traHT3nEELSQi4a5tnlfcFhuYopxsJaJRzWl8KP+ClfhP41ftm+KPg1oPhfx19q8F+GovE2s+Ib/TBZaXaxTSBLeHbIwufNlAkdQ8KBo4i6llIJAPoyivkLwp/wWi+GHiv9prxt8NR4f+I2m3HgTT7G4utQvtBeFtRvL6IXFlptnp4J1Ga8mtRPcLD9lDCK2ldgFXJ6P9lj/gpppP7Tvxw+M3gaT4c/ELwPefA9LN9euNbisp43a6ge4jji+xXFxul8lQ5jGXXcFZVf5KAPpqivnT9l7/gpR4U/at+I/wAZNG0Xwv440XSfglcxWOs63rOnLbW95dNC88kMESu0++GJUaRJI45EMqqUDcVxHjb/AILAWfwt1rS7PxV8AP2iNC/4Si6Fn4YMmiabNP4nlZS6
+/// RW9rHftdLKY1aRo5oY3iRWaURBH2gH2FRWb4M1y78TeEdL1K/wBG1Dw7fX9rFcXGlX0kEl1psjqGaCVoJJYWkQkqxikdCQdrsME6VABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAUPFGr3GgeHb2+tdLv8AXLm1haWLT7J4UuLxgMiOMzSRxBm6AvIi+rAc1+b2rfAv47/F/wD4LI6P+0Z46+Bfiqb4e/DHwlPofw78OW3iPQZNStNQuSBc6jdodQFujPFJPGFjll4WA5BQ1+mFFAHyH8bviP8AHD4o3umt8P8A9nXWvAvjzUQPDafEDxPqnhq6/wCEL0m7nge/uoYbe+uJLh1FvFItsV8uSWGEyBlTaed/bd/YZ8bft9f8FB/g3p3jDTFX9mv4Q2c3ivUDJqEW/wAZeI3DW9vayW8Z8wW8ELO7MwVJRPPEVKsCft6igD4F/aI/
+/// Zm+OXxx/4K/fDfxNa+AfDcfwN+BvhuV/Cl7qniCO3s38QXoWGa+NjbiSaf7La5jigkW3HmAss6Bsj76oooA+Lf8Agvb+yL8SP29P+Cf9x8IPhjptle6x448TaRbahc314lrZ6RYQ3IuZbudmYO0aNBGCsKySkuNqHkj2z9k79jqw/ZxXVPEGs6tL44+KXixI/wDhJfF95bLBNfBMmO0tYQWWz0+HJENpGxVASzNLK8kr+zUUAfCf/Ba/9lD4oftJ63+zzrHgnwjcfEvwj8NfH0XiPxd4LtNeh0W91eJEC29zBPNLDH5lsTM6o0yFmkXBHLL7V+zp8PtW+HUXjDxda/Azwr4FvtR05ZreyttUtrzxZ4knjjLLFqN2B5CuGHlpm6uV53GVACtfQVFAHxj/AMEef+Cf3iT9l7wH4r+JHxgjtL79oT4xa9qPiPxbcxXf2y30VbmcGPTbJ8kRwLFDbFghO5o40LPHBAEwfhn+zx8dfHH/AAWR
+/// +IPxm8ZeCPDeneB/Dul2Xgn4d3+oeIRPJaaOWNzql5DYwCQNd3c4jjWSV7ZooVwyzBQj/dlFAHxJ8A/2EvFXxa/4KjfE/wDaQ+NWg29qNBjg8G/CbRZbyG8XT9Jt3M0uqSLE7oJrm4PmRhsSQgHcN20rD+wx+wR4p1r9uL4wftOfHXQIbXx/4i1caN4B0STUY9Qh8JeHbSLyraVRG7Qpez+ZOZGUsYxJKEdRcTK33DRQB+dv/BMv4F/tIfDDx1+0X8b/AIqfCvw/p3xE+K2r3WrWmlt4pt73V5tPsrXytG0OMRf6FbqvzZuGum3b13xqcuuz/wAEjv2ev2gP2QP2NPHeqfEbwF4XuPi54vuta8d6vY2fiJLrUvFniK6kkligklIS0so1hjtrZVWeaPcWffEqkP8AfNFAHxj/AMEWP2Yvix+zd+z/AKtP8YPD3h7Q/H3xA1m98YeLriDV/wC09R1bWL2Yu7SmNRb28UEKxQJDFJOpCbg6
+/// cq30t+018DLH9p79nDx/8NtUvLrTtN+IHhzUPDl1d2wBmtY7u2kt2kQNwWUSFgDwSBniu4ooA/Hj9h/9sT4qf8ENdC+HP7H/AMZPhfY+Or6/v7nT/hr4h8H+LtIt/wDhJEuLmaaO3ubbULi2NrIZXeON5GUTMViRXkQtJ+kXwn8QfHX4h+LI9U8UaB4B+GvhSOGZV0P7XN4g169dkxFJLcxmC1s9jctFGt4JBjE0ZzV+3/Yl+GZ+KFl401Lw/c+JvE2k3smo6Ve+JdYvteOh3Ehy0lil7NKlkew+zrGAoCjAAA9WoA/Lr/gnr8A/2t/2Qv8Agm/8QPh/a/DLTNK+Nj6l4k8R6l42vPEOnX//AAneq3Msstvd2cayfNczqIIfN1EwJAFjkeOcK1tWp8Gv2Tv2n/2S/wDghrrnwv8ABfgzw+3xq1PSWs7b7N4rS71C41PU7lm1TWby+uFgiWWMXErxxI05H2eP99JuCJ+mNFAHwbr37PXx
+/// /wD2Zf8AgitcfCX4M+CfC9n8TtN0G28J+GbDS/ESSf2ZBL5cFzqc97cR2sb3m17i6YRxKqyttUzY3P03gv4KfGb9jv8A4J7eAfh/8MPhD8JvE/8AwickWk3vgjUfEsscd9ootZRI39oParE+oTXZjnlL23k4mmQFyFmb7MrA+Knwv0H42/DbXfCHijT11bw54msZdN1KzaR41ureVSkiFkKsuVJGVII7EUAfhb+3x+y1b/tlfG74f/s/+E/2KvBP7Kvx68at/wAJbpfjeLxJpcLaFa2MqvdXKroe8zM2GRBPsy7Blwyhl+4bH9m79oP4K/8ABX3xD8Tv+EGh+NHhvU/hnp3g7wd4jvPEtrpEHheeHy3vVv0kMlwq3VzG0zT2ltcMA8a+W2H2/Un7M3/BOX4Kfse+MNS8SfD3wDpuj+J9Yt/sd3rl1c3GqatNb5VvI+2Xcks4hLIhMYcITGhx8q49soA/Pv8AYP8A2Vf2idA/4Kd/HL4y
+/// fFrQfCcsPiU2Xhbw94gudTT7RbaDZ7pGg03TrfzvJt7q5bzS1zdrKvlxs8LuWrov2BP2D/F9x+2l8af2mPjpocNv8QfF2uDTfA2iyahFqEXhLw7aQmC1dBGzQx3syyziRkZioklCsouJlb7iooA/P/8A4JG/s+ftA/D/AOIXx0+L/wAbPh34f8L+OvjF4jm1e4tz4kh1TVBp9rD5GlaSgt1+ywwwR7gJjcSM+/540PzDS/4JJfAP46fA3wZ8U/iJ8Yfh9oOn/E74ravfeLNetrXxFDqOrajcqTHp2lxMqra21pbWkaRR7rmbc8zkmFVy/wB3UUAfA/8AwTb/AGGPiJ+yD+z78WfjV468K2HjT9rP4oXWt+Kr3TV1SOSC2nk3Gy0OzupH8qC3ZYLVXYMFyI1Z2S3iK5f/AATD/Z0/aM/Yo/4Jy/ETUPEHgDwxqHx98WSa142utPXxDFeXnirxPeM8kbXc2IbS1jULBF5UUsqYUsJVyVP6
+/// GUUAfnn+xP8AAL9pz9h7/gn1p/hLwv8ADn4f3nxc8UXkur61qms+J/tcbazeFrjUdY1WSOOIzOZWWGK1tvMzHAhe6UHC2v2afCP7SXwu8d302r/s96Nf/E/xLAlhffF7xD8TbTxFDDDuUtvtorSynhtkwZE0+wt4IJJFG54nkkuF/QKigDyz4QfE34o+Lvj58SNF8WfDGz8I+AfDstrH4S8Sr4jgvp/FquhaeQ2ka7rVY2AXErZYngEZIb8Avib8VPHfxS+Jmn+PPhhYeA/Cnh3Vks/BurReJYdUn8XWmH33bwRoDaDiMhHYvmRgQNgZ/VaKAPK/2a/if8U/iP4g+IUXxG+Ftn8N9N0HxFPp3hS4j8SwaxL4o01CQmoukKAWok4YROxkXcQwG0M/qlFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFF
+/// ABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRR
+/// RQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAf//Z</Resource>
+///   </Resources>
+/// </XRTypeInfo>
+namespace XtraReportSerialization {
+    
+    public class ReportView : DevExpress.XtraReports.UI.XtraReport {
+        private DevExpress.XtraReports.UI.BottomMarginBand BottomMargin;
+        private DevExpress.XtraReports.UI.TopMarginBand TopMargin;
+        private DevExpress.XtraReports.UI.XRLabel label21;
+        private DevExpress.XtraReports.UI.XRLabel label19;
+        private DevExpress.XtraReports.UI.XRPictureBox pictureBox1;
+        private DevExpress.XtraReports.UI.XRLine line1;
+        private DevExpress.XtraReports.UI.XRLabel label16;
+        private DevExpress.XtraReports.UI.XRLabel label15;
+        private DevExpress.XtraReports.UI.XRLabel label10;
+        private DevExpress.XtraReports.UI.XRLabel label9;
+        private DevExpress.XtraReports.UI.XRLabel label8;
+        private DevExpress.XtraReports.UI.XRLabel label7;
+        private DevExpress.XtraReports.UI.XRLabel label6;
+        private DevExpress.XtraReports.UI.XRLabel label4;
+        private DevExpress.XtraReports.UI.DetailBand Detail;
+        private DevExpress.XtraReports.UI.XRLabel label2;
+        private DevExpress.XtraReports.UI.XRLabel label17;
+        private DevExpress.XtraReports.UI.XRLabel label13;
+        private DevExpress.XtraReports.UI.XRLabel label11;
+        private DevExpress.XtraReports.UI.XRLabel label18;
+        private DevExpress.XtraReports.UI.ReportFooterBand ReportFooter;
+        private DevExpress.XtraReports.UI.XRBarCode barCode1;
+        private DevExpress.XtraReports.UI.XRLine line4;
+        private DevExpress.XtraReports.UI.XRLine line3;
+        private DevExpress.XtraReports.UI.XRLabel label14;
+        private DevExpress.XtraReports.UI.XRLabel label28;
+        private DevExpress.XtraReports.UI.XRLine line2;
+        private DevExpress.XtraReports.UI.XRLabel label1;
+        private DevExpress.XtraReports.UI.XRLabel label3;
+        private DevExpress.XtraReports.UI.XRLabel label12;
+        private DevExpress.XtraReports.UI.XRPanel panel1;
+        private DevExpress.XtraReports.UI.XRLabel label20;
+        private DevExpress.XtraReports.UI.XRLabel label5;
+        private DevExpress.XtraReports.UI.CalculatedField F_Ind_KDVli_fiyat;
+        private DevExpress.XtraReports.UI.CalculatedField F_Tutar;
+        private DevExpress.XtraReports.UI.CalculatedField Iskontosuz_GToplam;
+        private System.Resources.ResourceManager _resources;
+        private string _resourceString;
+        public ReportView() {
+            this._resourceString = DevExpress.XtraReports.Serialization.XRResourceManager.GetResourceFor("XtraReportSerialization.ReportView");
+            this.InitializeComponent();
+        }
+        private System.Resources.ResourceManager resources {
+            get {
+                if (_resources == null) {
+                    this._resources = new DevExpress.XtraReports.Serialization.XRResourceManager(this._resourceString);
+                }
+                return this._resources;
+            }
+        }
+        private void InitializeComponent() {
+            DevExpress.XtraPrinting.BarCode.Code93ExtendedGenerator code93ExtendedGenerator1 = new DevExpress.XtraPrinting.BarCode.Code93ExtendedGenerator();
+            DevExpress.XtraReports.UI.XRSummary summary1 = new DevExpress.XtraReports.UI.XRSummary();
+            this.BottomMargin = new DevExpress.XtraReports.UI.BottomMarginBand();
+            this.TopMargin = new DevExpress.XtraReports.UI.TopMarginBand();
+            this.Detail = new DevExpress.XtraReports.UI.DetailBand();
+            this.ReportFooter = new DevExpress.XtraReports.UI.ReportFooterBand();
+            this.label2 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label17 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label13 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label11 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label18 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label21 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label19 = new DevExpress.XtraReports.UI.XRLabel();
+            this.pictureBox1 = new DevExpress.XtraReports.UI.XRPictureBox();
+            this.line1 = new DevExpress.XtraReports.UI.XRLine();
+            this.label16 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label15 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label10 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label9 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label8 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label7 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label6 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label4 = new DevExpress.XtraReports.UI.XRLabel();
+            this.barCode1 = new DevExpress.XtraReports.UI.XRBarCode();
+            this.line4 = new DevExpress.XtraReports.UI.XRLine();
+            this.line3 = new DevExpress.XtraReports.UI.XRLine();
+            this.label14 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label28 = new DevExpress.XtraReports.UI.XRLabel();
+            this.line2 = new DevExpress.XtraReports.UI.XRLine();
+            this.label1 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label3 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label12 = new DevExpress.XtraReports.UI.XRLabel();
+            this.panel1 = new DevExpress.XtraReports.UI.XRPanel();
+            this.label5 = new DevExpress.XtraReports.UI.XRLabel();
+            this.label20 = new DevExpress.XtraReports.UI.XRLabel();
+            this.F_Ind_KDVli_fiyat = new DevExpress.XtraReports.UI.CalculatedField();
+            this.F_Tutar = new DevExpress.XtraReports.UI.CalculatedField();
+            this.Iskontosuz_GToplam = new DevExpress.XtraReports.UI.CalculatedField();
+            ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
+            // 
+            // BottomMargin
+            // 
+            this.BottomMargin.HeightF = 50.41666F;
+            this.BottomMargin.Name = "BottomMargin";
+            this.BottomMargin.Padding = new DevExpress.XtraPrinting.PaddingInfo(0, 0, 0, 0, 100F);
+            this.BottomMargin.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // TopMargin
+            // 
+            this.TopMargin.Controls.AddRange(new DevExpress.XtraReports.UI.XRControl[] {
+                        this.label21,
+                        this.label19,
+                        this.pictureBox1,
+                        this.line1,
+                        this.label16,
+                        this.label15,
+                        this.label10,
+                        this.label9,
+                        this.label8,
+                        this.label7,
+                        this.label6,
+                        this.label4});
+            this.TopMargin.HeightF = 190.625F;
+            this.TopMargin.Name = "TopMargin";
+            this.TopMargin.Padding = new DevExpress.XtraPrinting.PaddingInfo(0, 0, 0, 0, 100F);
+            this.TopMargin.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // Detail
+            // 
+            this.Detail.Controls.AddRange(new DevExpress.XtraReports.UI.XRControl[] {
+                        this.label2,
+                        this.label17,
+                        this.label13,
+                        this.label11,
+                        this.label18});
+            this.Detail.HeightF = 20.91669F;
+            this.Detail.Name = "Detail";
+            this.Detail.Padding = new DevExpress.XtraPrinting.PaddingInfo(0, 0, 0, 0, 100F);
+            this.Detail.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // ReportFooter
+            // 
+            this.ReportFooter.Controls.AddRange(new DevExpress.XtraReports.UI.XRControl[] {
+                        this.barCode1,
+                        this.line4,
+                        this.line3,
+                        this.label14,
+                        this.label28,
+                        this.line2,
+                        this.label1,
+                        this.label3,
+                        this.label12,
+                        this.panel1,
+                        this.label5});
+            this.ReportFooter.HeightF = 323.9583F;
+            this.ReportFooter.Name = "ReportFooter";
+            // 
+            // label2
+            // 
+            this.label2.CanGrow = false;
+            this.label2.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Ürünler.UrunBirim")});
+            this.label2.Font = new System.Drawing.Font("Times New Roman", 9F);
+            this.label2.LocationFloat = new DevExpress.Utils.PointFloat(165.5F, 0F);
+            this.label2.Name = "label2";
+            this.label2.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label2.SizeF = new System.Drawing.SizeF(28.12498F, 17F);
+            this.label2.StylePriority.UseFont = false;
+            this.label2.StylePriority.UseTextAlignment = false;
+            this.label2.Text = "label2";
+            this.label2.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // label17
+            // 
+            this.label17.CanGrow = false;
+            this.label17.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Ürünler.UrunVergiliIndirimliFiyat", "{0:n2}")});
+            this.label17.Font = new System.Drawing.Font("Times New Roman", 9F);
+            this.label17.LocationFloat = new DevExpress.Utils.PointFloat(190.7917F, 0F);
+            this.label17.Name = "label17";
+            this.label17.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label17.SizeF = new System.Drawing.SizeF(43.33334F, 17F);
+            this.label17.StylePriority.UseFont = false;
+            this.label17.StylePriority.UseTextAlignment = false;
+            this.label17.Text = "label17";
+            this.label17.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopRight;
+            // 
+            // label13
+            // 
+            this.label13.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Ürünler.UrunMiktar")});
+            this.label13.Font = new System.Drawing.Font("Times New Roman", 9F);
+            this.label13.LocationFloat = new DevExpress.Utils.PointFloat(139.8333F, 0F);
+            this.label13.Name = "label13";
+            this.label13.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label13.SizeF = new System.Drawing.SizeF(28.12498F, 17F);
+            this.label13.StylePriority.UseFont = false;
+            this.label13.StylePriority.UseTextAlignment = false;
+            this.label13.Text = "label13";
+            this.label13.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopRight;
+            // 
+            // label11
+            // 
+            this.label11.CanGrow = false;
+            this.label11.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Ürünler.UrunAdi")});
+            this.label11.Font = new System.Drawing.Font("Times New Roman", 9F);
+            this.label11.LocationFloat = new DevExpress.Utils.PointFloat(0F, 0F);
+            this.label11.Name = "label11";
+            this.label11.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label11.SizeF = new System.Drawing.SizeF(139.8333F, 17F);
+            this.label11.StylePriority.UseFont = false;
+            this.label11.Text = "[]";
+            // 
+            // label18
+            // 
+            this.label18.CanGrow = false;
+            this.label18.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Ürünler.F_Tutar", "{0:n2}")});
+            this.label18.Font = new System.Drawing.Font("Times New Roman", 9F);
+            this.label18.LocationFloat = new DevExpress.Utils.PointFloat(241F, 0F);
+            this.label18.Name = "label18";
+            this.label18.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label18.SizeF = new System.Drawing.SizeF(54.79166F, 17F);
+            this.label18.StylePriority.UseFont = false;
+            this.label18.StylePriority.UseTextAlignment = false;
+            this.label18.Text = "label18";
+            this.label18.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopRight;
+            // 
+            // label21
+            // 
+            this.label21.Font = new System.Drawing.Font("Times New Roman", 9F, System.Drawing.FontStyle.Bold);
+            this.label21.LocationFloat = new DevExpress.Utils.PointFloat(7.083305F, 128.1667F);
+            this.label21.Name = "label21";
+            this.label21.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label21.SizeF = new System.Drawing.SizeF(54.16667F, 18.83334F);
+            this.label21.StylePriority.UseFont = false;
+            this.label21.StylePriority.UseTextAlignment = false;
+            this.label21.Text = "İşlem  :";
+            this.label21.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // label19
+            // 
+            this.label19.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Sabit değerler.EvrakNumarasi")});
+            this.label19.Font = new System.Drawing.Font("Times New Roman", 9F);
+            this.label19.LocationFloat = new DevExpress.Utils.PointFloat(61.24997F, 128.1667F);
+            this.label19.Name = "label19";
+            this.label19.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label19.SizeF = new System.Drawing.SizeF(100F, 18.83334F);
+            this.label19.StylePriority.UseFont = false;
+            this.label19.Text = "label19";
+            // 
+            // pictureBox1
+            // 
+            this.pictureBox1.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox1.Image")));
+            this.pictureBox1.LocationFloat = new DevExpress.Utils.PointFloat(44.79167F, 10.00001F);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.SizeF = new System.Drawing.SizeF(197.75F, 58.33333F);
+            this.pictureBox1.Sizing = DevExpress.XtraPrinting.ImageSizeMode.StretchImage;
+            // 
+            // line1
+            // 
+            this.line1.LocationFloat = new DevExpress.Utils.PointFloat(8.166663F, 180.8333F);
+            this.line1.Name = "line1";
+            this.line1.SizeF = new System.Drawing.SizeF(288.5417F, 2.083336F);
+            // 
+            // label16
+            // 
+            this.label16.Font = new System.Drawing.Font("Times New Roman", 9F, System.Drawing.FontStyle.Bold);
+            this.label16.LocationFloat = new DevExpress.Utils.PointFloat(7.083321F, 85.29166F);
+            this.label16.Name = "label16";
+            this.label16.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label16.SizeF = new System.Drawing.SizeF(54.16667F, 18.83334F);
+            this.label16.StylePriority.UseFont = false;
+            this.label16.StylePriority.UseTextAlignment = false;
+            this.label16.Text = "Tarih :";
+            this.label16.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // label15
+            // 
+            this.label15.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Sabit değerler.EvrakTarih", "{0:dd.MM.yyyy}")});
+            this.label15.Font = new System.Drawing.Font("Times New Roman", 9F);
+            this.label15.LocationFloat = new DevExpress.Utils.PointFloat(61.24997F, 85.29166F);
+            this.label15.Name = "label15";
+            this.label15.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label15.SizeF = new System.Drawing.SizeF(100F, 18.83334F);
+            this.label15.StylePriority.UseFont = false;
+            this.label15.Text = "label3";
+            // 
+            // label10
+            // 
+            this.label10.Font = new System.Drawing.Font("Times New Roman", 9.75F, System.Drawing.FontStyle.Bold);
+            this.label10.LocationFloat = new DevExpress.Utils.PointFloat(252.5833F, 163.875F);
+            this.label10.Name = "label10";
+            this.label10.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label10.SizeF = new System.Drawing.SizeF(47.41669F, 16.74998F);
+            this.label10.StylePriority.UseFont = false;
+            this.label10.StylePriority.UseTextAlignment = false;
+            this.label10.Text = "Tutar";
+            this.label10.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // label9
+            // 
+            this.label9.Font = new System.Drawing.Font("Times New Roman", 9.75F, System.Drawing.FontStyle.Bold);
+            this.label9.LocationFloat = new DevExpress.Utils.PointFloat(192.4167F, 163.875F);
+            this.label9.Name = "label9";
+            this.label9.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label9.SizeF = new System.Drawing.SizeF(40.625F, 16.74998F);
+            this.label9.StylePriority.UseFont = false;
+            this.label9.StylePriority.UseTextAlignment = false;
+            this.label9.Text = "Fiyat";
+            this.label9.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // label8
+            // 
+            this.label8.Font = new System.Drawing.Font("Times New Roman", 9.75F, System.Drawing.FontStyle.Bold);
+            this.label8.LocationFloat = new DevExpress.Utils.PointFloat(136.4583F, 163.875F);
+            this.label8.Name = "label8";
+            this.label8.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label8.SizeF = new System.Drawing.SizeF(48.95834F, 16.74998F);
+            this.label8.StylePriority.UseFont = false;
+            this.label8.StylePriority.UseTextAlignment = false;
+            this.label8.Text = "Miktar";
+            this.label8.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // label7
+            // 
+            this.label7.Font = new System.Drawing.Font("Times New Roman", 9.75F, System.Drawing.FontStyle.Bold);
+            this.label7.LocationFloat = new DevExpress.Utils.PointFloat(7.999992F, 163.875F);
+            this.label7.Name = "label7";
+            this.label7.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label7.SizeF = new System.Drawing.SizeF(54.16667F, 16.74998F);
+            this.label7.StylePriority.UseFont = false;
+            this.label7.StylePriority.UseTextAlignment = false;
+            this.label7.Text = "Ürün";
+            this.label7.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // label6
+            // 
+            this.label6.Font = new System.Drawing.Font("Times New Roman", 9F, System.Drawing.FontStyle.Bold);
+            this.label6.LocationFloat = new DevExpress.Utils.PointFloat(7.083321F, 106.2917F);
+            this.label6.Name = "label6";
+            this.label6.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label6.SizeF = new System.Drawing.SizeF(54.16667F, 18.83334F);
+            this.label6.StylePriority.UseFont = false;
+            this.label6.StylePriority.UseTextAlignment = false;
+            this.label6.Text = "Saat   :";
+            this.label6.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // label4
+            // 
+            this.label4.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Sabit değerler.EvrakTarih", "{0:HH:mm}")});
+            this.label4.Font = new System.Drawing.Font("Times New Roman", 9F);
+            this.label4.LocationFloat = new DevExpress.Utils.PointFloat(61.24999F, 106.2917F);
+            this.label4.Name = "label4";
+            this.label4.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label4.SizeF = new System.Drawing.SizeF(100F, 18.83334F);
+            this.label4.StylePriority.UseFont = false;
+            this.label4.Text = "label3";
+            // 
+            // barCode1
+            // 
+            this.barCode1.Alignment = DevExpress.XtraPrinting.TextAlignment.MiddleCenter;
+            this.barCode1.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Sabit değerler.EvrakNumarasi", "f")});
+            this.barCode1.LocationFloat = new DevExpress.Utils.PointFloat(13F, 134.5417F);
+            this.barCode1.Name = "barCode1";
+            this.barCode1.Padding = new DevExpress.XtraPrinting.PaddingInfo(10, 10, 0, 0, 100F);
+            this.barCode1.ShowText = false;
+            this.barCode1.SizeF = new System.Drawing.SizeF(254.6667F, 38.62498F);
+            this.barCode1.StylePriority.UseTextAlignment = false;
+            this.barCode1.Symbology = code93ExtendedGenerator1;
+            this.barCode1.TextAlignment = DevExpress.XtraPrinting.TextAlignment.BottomCenter;
+            // 
+            // line4
+            // 
+            this.line4.LocationFloat = new DevExpress.Utils.PointFloat(188.9583F, 223.4583F);
+            this.line4.Name = "line4";
+            this.line4.SizeF = new System.Drawing.SizeF(105.2083F, 3.125F);
+            // 
+            // line3
+            // 
+            this.line3.LocationFloat = new DevExpress.Utils.PointFloat(2F, 223.4583F);
+            this.line3.Name = "line3";
+            this.line3.SizeF = new System.Drawing.SizeF(105.2083F, 3.125F);
+            // 
+            // label14
+            // 
+            this.label14.Font = new System.Drawing.Font("Times New Roman", 9.75F, System.Drawing.FontStyle.Bold);
+            this.label14.LocationFloat = new DevExpress.Utils.PointFloat(188.9583F, 200.5417F);
+            this.label14.Name = "label14";
+            this.label14.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label14.SizeF = new System.Drawing.SizeF(101.0417F, 16.74998F);
+            this.label14.StylePriority.UseFont = false;
+            this.label14.StylePriority.UseTextAlignment = false;
+            this.label14.Text = "Teslim Eden";
+            this.label14.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // label28
+            // 
+            this.label28.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Sabit değerler.CariBakiye", "Şimdiki Bakiye: {0:n2} TL")});
+            this.label28.Font = new System.Drawing.Font("Times New Roman", 9F, System.Drawing.FontStyle.Bold);
+            this.label28.LocationFloat = new DevExpress.Utils.PointFloat(0.5416949F, 105.4584F);
+            this.label28.Name = "label28";
+            this.label28.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label28.SizeF = new System.Drawing.SizeF(290F, 25.08335F);
+            this.label28.StylePriority.UseFont = false;
+            this.label28.Text = "label1";
+            // 
+            // line2
+            // 
+            this.line2.LocationFloat = new DevExpress.Utils.PointFloat(1.999998F, 2.916673F);
+            this.line2.Name = "line2";
+            this.line2.SizeF = new System.Drawing.SizeF(288.5417F, 2.083336F);
+            // 
+            // label1
+            // 
+            this.label1.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Sabit değerler.CariOncekiBakiye", "Önceki Bakiye: {0:n2} TL")});
+            this.label1.Font = new System.Drawing.Font("Times New Roman", 9F, System.Drawing.FontStyle.Bold);
+            this.label1.LocationFloat = new DevExpress.Utils.PointFloat(0F, 82.45836F);
+            this.label1.Name = "label1";
+            this.label1.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label1.SizeF = new System.Drawing.SizeF(290F, 20.91669F);
+            this.label1.StylePriority.UseFont = false;
+            this.label1.Text = "label1";
+            // 
+            // label3
+            // 
+            this.label3.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Sabit değerler.CariUnvan", "Müşteri Bilgi: {0:#,#}")});
+            this.label3.Font = new System.Drawing.Font("Times New Roman", 9F, System.Drawing.FontStyle.Bold);
+            this.label3.LocationFloat = new DevExpress.Utils.PointFloat(1.999998F, 54.25002F);
+            this.label3.Name = "label3";
+            this.label3.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label3.SizeF = new System.Drawing.SizeF(288F, 28.20835F);
+            this.label3.StylePriority.UseFont = false;
+            this.label3.Text = "label3";
+            // 
+            // label12
+            // 
+            this.label12.Font = new System.Drawing.Font("Times New Roman", 8F);
+            this.label12.LocationFloat = new DevExpress.Utils.PointFloat(93.62499F, 297.9583F);
+            this.label12.Name = "label12";
+            this.label12.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label12.SizeF = new System.Drawing.SizeF(100F, 16.00005F);
+            this.label12.StylePriority.UseFont = false;
+            this.label12.StylePriority.UseTextAlignment = false;
+            this.label12.Text = "Mali degeri yoktur";
+            this.label12.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopCenter;
+            // 
+            // panel1
+            // 
+            this.panel1.Borders = ((DevExpress.XtraPrinting.BorderSide)((((DevExpress.XtraPrinting.BorderSide.Left | DevExpress.XtraPrinting.BorderSide.Top) 
+                        | DevExpress.XtraPrinting.BorderSide.Right) 
+                        | DevExpress.XtraPrinting.BorderSide.Bottom)));
+            this.panel1.Controls.AddRange(new DevExpress.XtraReports.UI.XRControl[] {
+                        this.label20});
+            this.panel1.LocationFloat = new DevExpress.Utils.PointFloat(5.166658F, 20.08334F);
+            this.panel1.Name = "panel1";
+            this.panel1.SizeF = new System.Drawing.SizeF(285.4167F, 29.16667F);
+            this.panel1.StylePriority.UseBorders = false;
+            // 
+            // label5
+            // 
+            this.label5.Font = new System.Drawing.Font("Times New Roman", 9.75F, System.Drawing.FontStyle.Bold);
+            this.label5.LocationFloat = new DevExpress.Utils.PointFloat(5.166658F, 200.5417F);
+            this.label5.Name = "label5";
+            this.label5.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 0, 0, 100F);
+            this.label5.SizeF = new System.Drawing.SizeF(101.0417F, 16.74998F);
+            this.label5.StylePriority.UseFont = false;
+            this.label5.StylePriority.UseTextAlignment = false;
+            this.label5.Text = "Teslim Alan";
+            this.label5.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopLeft;
+            // 
+            // label20
+            // 
+            this.label20.BorderDashStyle = DevExpress.XtraPrinting.BorderDashStyle.Double;
+            this.label20.Borders = DevExpress.XtraPrinting.BorderSide.None;
+            this.label20.CanGrow = false;
+            this.label20.DataBindings.AddRange(new DevExpress.XtraReports.UI.XRBinding[] {
+                        new DevExpress.XtraReports.UI.XRBinding("Text", null, "Ürünler.EvrakToplamTutar")});
+            this.label20.Font = new System.Drawing.Font("Times New Roman", 11F, System.Drawing.FontStyle.Bold);
+            this.label20.LocationFloat = new DevExpress.Utils.PointFloat(1.874932F, 4F);
+            this.label20.Name = "label20";
+            this.label20.Padding = new DevExpress.XtraPrinting.PaddingInfo(2, 2, 2, 2, 100F);
+            this.label20.SizeF = new System.Drawing.SizeF(283.5417F, 29.24998F);
+            this.label20.StylePriority.UseBorderDashStyle = false;
+            this.label20.StylePriority.UseBorders = false;
+            this.label20.StylePriority.UseFont = false;
+            this.label20.StylePriority.UsePadding = false;
+            this.label20.StylePriority.UseTextAlignment = false;
+            summary1.FormatString = "TOPLAM : {0:n2}";
+            summary1.Running = DevExpress.XtraReports.UI.SummaryRunning.Report;
+            this.label20.Summary = summary1;
+            this.label20.Text = "label20";
+            this.label20.TextAlignment = DevExpress.XtraPrinting.TextAlignment.TopCenter;
+            // 
+            // F_Ind_KDVli_fiyat
+            // 
+            this.F_Ind_KDVli_fiyat.DataMember = "Ürünler";
+            this.F_Ind_KDVli_fiyat.Expression = "([UrunFiyat] - ([UrunIskontoTutar]/[UrunMiktar])) * (1+([UrunKdvOran]/100))";
+            this.F_Ind_KDVli_fiyat.Name = "F_Ind_KDVli_fiyat";
+            // 
+            // F_Tutar
+            // 
+            this.F_Tutar.DataMember = "Ürünler";
+            this.F_Tutar.Expression = "[UrunVergiliIndirimliFiyat] * [UrunMiktar]";
+            this.F_Tutar.Name = "F_Tutar";
+            // 
+            // Iskontosuz_GToplam
+            // 
+            this.Iskontosuz_GToplam.DataMember = "Ürünler";
+            this.Iskontosuz_GToplam.Expression = "[EvrakToplamIndirim]+[EvrakToplamTutar]";
+            this.Iskontosuz_GToplam.Name = "Iskontosuz_GToplam";
+            // 
+            // ReportView
+            // 
+            this.Bands.AddRange(new DevExpress.XtraReports.UI.Band[] {
+                        this.Detail,
+                        this.TopMargin,
+                        this.BottomMargin,
+                        this.ReportFooter});
+            this.CalculatedFields.AddRange(new DevExpress.XtraReports.UI.CalculatedField[] {
+                        this.F_Ind_KDVli_fiyat,
+                        this.F_Tutar,
+                        this.Iskontosuz_GToplam});
+            this.DataMember = "Ürünler";
+            this.Margins = new System.Drawing.Printing.Margins(0, 0, 191, 50);
+            this.Name = "ReportView";
+            this.PageHeight = 1310;
+            this.PageWidth = 300;
+            this.PaperKind = System.Drawing.Printing.PaperKind.Custom;
+            this.PrinterName = "POS-80";
+            this.ShowPrintMarginsWarning = false;
+            this.Version = "13.1";
+            ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
+        }
+    }
+}

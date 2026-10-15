@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<XtraReportsLayoutSerializer SerializerVersion="13.1.5.0" Ref="1" Name="ReportView" ControlType="Barko.Reports.PrintReport.ReportView, Barko.Reports.PrintReport, Version=1.0.0.7, Culture=neutral, PublicKeyToken=null" DataMember="Sabit değerler" DataSource="#Ref-0" PaperKind="Custom" PageHeight="650" PageWidth="310" Version="13.1" Margins="10, 10, 630, 26">
+  <Bands>
+    <Item1 Ref="2" ControlType="DetailBand" Name="Detail" TextAlignment="TopLeft" Padding="0,0,0,0,100" HeightF="11.458333" />
+    <Item2 Ref="3" Name="TopMargin" ControlType="TopMarginBand" TextAlignment="TopLeft" Padding="0,0,0,0,100" HeightF="630">
+      <Controls>
+        <Item1 Ref="4" Name="line1" ControlType="XRLine" SizeF="3.633728,262.839172" LocationFloat="181.996124, 202.277145" AnchorVertical="Top" LineDirection="Vertical" />
+        <Item2 Ref="5" Name="label8" ControlType="XRLabel" LocationFloat="211.02211, 32.199482" SizeF="54.48912,528.4645" TextAlignment="BottomLeft" Font="Times New Roman, 12pt, style=Bold" Padding="2,2,2,0,100" Angle="90" Text="ASLANLAR GRUP DOĞAN ASLAN&#xD;&#xA;HASIRCILAR  CAD. NO:505&#xD;&#xA;FATİH  İSTANBUL" Multiline="true">
+          <StylePriority Ref="6" UseFont="false" UseTextAlignment="false" UsePadding="false" />
+        </Item2>
+        <Item3 Ref="7" Name="label7" ControlType="XRLabel" LocationFloat="211.0221, 560.66394" SizeF="35.1092949,59.33618" Font="Times New Roman, 12pt, style=Bold, Underline" Padding="2,2,0,0,100" Angle="90" Text="GÖND:">
+          <StylePriority Ref="8" UseFont="false" />
+        </Item3>
+        <Item4 Ref="9" Name="label6" ControlType="XRLabel" LocationFloat="130.740448, 32.199482" SizeF="32.80596,528.4645" TextAlignment="BottomLeft" Font="Times New Roman, 12pt, style=Bold" Padding="2,2,2,0,100" Angle="90" Text="label6">
+          <DataBindings>
+            <Item1 Ref="10" PropertyName="Text" DataMember="Sabit değerler.CariTelefon" />
+          </DataBindings>
+          <StylePriority Ref="11" UseFont="false" UseTextAlignment="false" UsePadding="false" />
+        </Item4>
+        <Item5 Ref="12" Name="label5" ControlType="XRLabel" LocationFloat="98.2951, 176.337082" SizeF="31.693985,190.528412" TextAlignment="BottomLeft" Font="Times New Roman, 12pt, style=Bold" Padding="2,2,2,0,100" Angle="90" Text="label5">
+          <DataBindings>
+            <Item1 Ref="13" PropertyName="Text" DataMember="Sabit değerler.CariIlce" />
+          </DataBindings>
+          <StylePriority Ref="14" UseFont="false" UseTextAlignment="false" UsePadding="false" />
+        </Item5>
+        <Item6 Ref="15" Name="label4" ControlType="XRLabel" LocationFloat="92.0464554, 370.135529" SizeF="31.693985,190.528412" TextAlignment="BottomLeft" Font="Times New Roman, 12pt, style=Bold" Padding="2,2,2,0,100" Angle="90" Text="label4">
+          <DataBindings>
+            <Item1 Ref="16" PropertyName="Text" DataMember="Sabit değerler.CariIl" />
+          </DataBindings>
+          <StylePriority Ref="17" UseFont="false" UseTextAlignment="false" UsePadding="false" />
+        </Item6>
+        <Item7 Ref="18" Name="label3" ControlType="XRLabel" LocationFloat="53.1092949, 32.199482" SizeF="41.284626,528.4645" TextAlignment="BottomLeft" Font="Times New Roman, 12pt, style=Bold" Padding="2,2,2,0,100" Angle="90" Text="label3">
+          <DataBindings>
+            <Item1 Ref="19" PropertyName="Text" DataMember="Sabit değerler.CariAdres" />
+          </DataBindings>
+          <StylePriority Ref="20" UseFont="false" UseTextAlignment="false" UsePadding="false" />
+        </Item7>
+        <Item8 Ref="21" Name="label2" ControlType="XRLabel" LocationFloat="18.0000076, 560.66394" SizeF="35.1092834,59.33618" Font="Times New Roman, 12pt, style=Bold, Underline" Padding="2,2,0,0,100" Angle="90" Text="ALICI:">
+          <StylePriority Ref="22" UseFont="false" />
+        </Item8>
+        <Item9 Ref="23" Name="label1" ControlType="XRLabel" LocationFloat="18.0000076, 32.199482" SizeF="35.1092873,528.4645" TextAlignment="BottomLeft" Font="Times New Roman, 12pt, style=Bold" Padding="2,2,2,0,100" Angle="90" Text="label1" KeepTogether="true">
+          <DataBindings>
+            <Item1 Ref="24" PropertyName="Text" DataMember="Sabit değerler.CariUnvan" />
+          </DataBindings>
+          <StylePriority Ref="25" UseFont="false" UseTextAlignment="false" UsePadding="false" />
+        </Item9>
+        <Item10 Ref="26" ControlType="XRShape" Name="shape1" BorderWidth="2" SizeF="286.361572,609.730164" LocationFloat="4.197186, 20.2698345">
+          <Shape Ref="27" ShapeName="Rectangle" />
+          <StylePriority Ref="28" UseBorderWidth="false" />
+        </Item10>
+      </Controls>
+    </Item2>
+    <Item3 Ref="29" Name="BottomMargin" ControlType="BottomMarginBand" TextAlignment="TopLeft" Padding="0,0,0,0,100" HeightF="26.041666" />
+  </Bands>
+  <ObjectStorage>
+    <Item1 ObjectType="DevExpress.XtraReports.Serialization.ObjectStorageInfo, DevExpress.XtraReports.v13.1" Ref="0" Content="~Xtra#NULL" Type="System.Data.DataSet" />
+  </ObjectStorage>
+</XtraReportsLayoutSerializer>

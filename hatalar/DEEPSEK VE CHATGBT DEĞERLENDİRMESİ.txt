@@ -1,0 +1,997 @@
+1. Türkçe Yazım Bütünlüğü
+Süre: 1 saat
+Etki: +0.5 puan
+
+Odenen, Musteri, Islem, Odemesi gibi Türkçe'siz yazımlar bir ekranda; aynı kavram başka ekranda Ödenen, Müşteri. Kullanıcı fark etmese de bilinçaltı "yarım kalmış" hissi verir.
+
+Neden ilk sırada? En hızlı, en görünür kazanç. Ctrl+F ile 20–30 yeri bul, düzelt. Bitti.
+
+🥈 2. Renk Paletini Sadeleştir
+Süre: Yarım gün
+Etki: +0.6 puan
+
+Şu an 5–6 renk her yerde. Dashboard'da 8 KPI yan yana gelince pastel gökkuşağı.
+
+Hedef:
+
+1 nötr zemin (kart/arka plan)
+
+1 marka rengi (mavi)
+
+3 durum rengi (yeşil/kırmızı/turuncu) — sadece gerçek durum için
+
+Geri kalanı gri tonları
+
+Neden ikinci? Görsel dilin komple değişir. İlk ekran açılışında "profesyonel" hissini veren şey bu. Kod değişikliği az, görsel etki dev.
+
+🥉 3. TsMetin Disiplini
+Süre: 1 gün
+Etki: +0.4 puan
+
+20–30 yerde doğrudan TextStyle(fontSize: 13, ...) yazılmış. TsMetin.baslikM veya TsMetin.govdeVurgu varken elle yazmak → bir gün bir yeri değiştirince 20 yer tutarsız kalır.
+
+Kural: TextStyle sadece TsMetin içinde tanımlanır. Ekranlarda sadece referans verilir.
+
+Neden üçüncü? Kullanıcı fark etmez ama bakım maliyetini yarıya indirir. Bir sonraki özellik eklemesinde zaman kazandırır.
+
+4. Dashboard Sadeleştirme
+Süre: Yarım gün
+Etki: +0.3 puan
+
+Şu an: SliverAppBar (240px) + KPI grid + 12 büyük buton + sayfa göstergesi + banner + FAB. Kullanıcı nereye bakacağını bilemiyor.
+
+Yeni düzen:
+
+Üst: 3 KPI (ciro, kâr, kritik stok) — büyük, net
+
+Orta: 6 ana buton (Hızlı Satış, Ürün, Cari, Rapor, Masa, Ayarlar)
+
+Alt: "Tümü" butonu → diğer 6 butonu ayrı sayfaya taşı
+
+Neden dördüncü? İlk izlenim. Ama mevcut hali de çalışıyor; kozmetik.
+
+5. Ayarlar Ekranı Yeniden Düzenleme
+Süre: 1–2 gün
+Etki: +0.3 puan
+
+Şu an 60+ ListTile tek liste. Kayboluyor.
+
+Yeni düzen:
+
+Üstte arama kutusu
+
+Kategorili grid: Firma / Yazıcı / Sync / Kullanıcı / Veri / Sistem
+
+Her kategoriye tıklayınca alt sayfa
+
+Neden beşinci? Büyük iş, ama kullanıcı günde bir kere giriyor. Acelesi yok.
+
+6. Motion Guide (Animasyon Kuralları)
+Süre: Yarım gün
+Etki: +0.2 puan
+
+Her ekran kendi süresini/curve'ünü yazıyor. Bazıları 200ms, bazıları 400ms, bazıları 700ms. Gözle fark edilir — "bu ekran daha yavaş açılıyor" hissi.
+
+Kural:
+
+Mikro geçişler: 150ms
+
+Sayfa/kart açılışları: 250ms
+
+Sheet/dialog: 300ms
+
+Curve: easeOutCubic (tek standart)
+
+Neden son? Cila. Kullanıcı fark etmez ama "premium" hissini verir.
+
+Tablo Halinde
+#	İş	Süre	Puan	Öncelik Sebebi
+1	Türkçe yazım	1 saat	+0.5	En hızlı, en görünür
+2	Renk paleti	Yarım gün	+0.6	Görsel dil değişir
+3	TsMetin disiplini	1 gün	+0.4	Bakım kolaylığı
+4	Dashboard sadeleştir	Yarım gün	+0.3	İlk izlenim
+5	Ayarlar ekranı	1–2 gün	+0.3	Az girilir, acelesi yok
+6	Motion guide	Yarım gün	+0.2	Cila
+Toplam: ~4–5 gün iş → 8.2 → 10
+
+Sana Tavsiyem
+Bu hafta: 1 + 2 yap. 1.5 gün sürer, puan 8.2 → 9.3 olur. Fark bariz.
+
+Gelecek hafta: 3 + 4 yap. Bir hafta daha bekle, kullanıcı geri bildirimi topla.
+
+Sonra: 5 + 6. Çünkü ikisi de "kullanıcı şikayet etmiyorsa acele etme" kategorisinde.
+
+Sıralamada önemli nokta: Semantics'i listeye almadım çünkü sen "gerek yok" dedin. Hedefin tek kişilik/küçük kullanımsa doğru karar. Ama bir gün zincir markete satmaya karar verirsen o zaman listenin 2. sırasına oturur (yasal zorunluluk olur). Şimdilik unut gitsin.
+
+KO TARAFINDA PERFORMANS
+User asking about performance on the code side. Let me analyze the codebase for performance issues. They gave me a huge file dump earlier. Let me give concrete performance findings from what I saw.
+
+Let me think about what I actually saw in the code:
+
+N+1 query problems
+
+Missing indexes
+
+Full table scans
+
+Large ListView without pagination
+
+Rebuilds without memoization
+
+Sync operations blocking UI
+
+Provider invalidation storms
+
+Bulk insert without transaction (already fixed in urun_deposu)
+
+Let me be honest and specific from what I saw.
+
+Kod Tarafında Performans — Gerçek Bulgular
+Verdiğin dosyaları okurken gözüme çarpan somut performans sorunlarını sıralıyorum. Teorik değil, kodun içinde gerçekten olan şeyler.
+
+🔴 Kritik (Fark Ediyorsun, Kullanıcı Şikayet Ediyor)
+1. N+1 Sorgu — Toplu İşlemlerde Felaket
+Nerede: bulutaBildir, _topluBulutSenkronuGonder, yetkileriKaydet, urun_deposu.topluEkleGuncelle
+
+Sorun: 500 ürünü buluta bildirmek için 500 kere db.query() çağrılıyor. Her sorgu disk I/O. 500 × 5ms = 2.5 saniye sadece okuma.
+
+Zaten yarısı düzeltilmiş: _topluBulutSenkronuGonder artık IN (...) ile 500'lük parçalar halinde. Ama bulutaBildir (satış), qrMenuSecimleriniKaydet ve yetkileriKaydet hâlâ tek tek.
+
+Etki: Toplu Excel içe aktarımda 3–5 saniye bekleme.
+
+2. Provider Invalidation Fırtınası
+Nerede: _yenile() fonksiyonları — borc_dashboard_ekrani.dart örneği:
+
+dart
+void _yenile() {
+  ref.invalidate(borcDashboardProvider);
+  ref.invalidate(borcOzetProvider);
+  ref.invalidate(gecmisBorclarProvider);
+  ref.invalidate(yaklasanBorclarProvider);
+  ref.invalidate(tumBorclarProvider);
+  ref.invalidate(aktifBorclarProvider);
+  ref.invalidate(odenenBorclarProvider);
+  ref.invalidate(tumKrediKartlariProvider);
+  ref.invalidate(krediKartlariToplamProvider);
+  ref.invalidate(bankaHesaplarProvider(null));
+}
+Sorun: 10 provider'ın hepsi aynı anda yeniden çalışıyor. Her biri ayrı SQL sorgusu → 10 ayrı sorgu tek ekran yenilemesi için.
+
+Neden kötü: Biri diğerine bağlıysa, sırayla 10 kez hesaplama yapılıyor. tumBorclarProvider zaten borcDashboardProvider'ın verisini kullanıyor olabilir → aynı veri 2 kez çekiliyor.
+
+Çözüm: Tek FutureProvider içinde toplu sorgu, geri kalanı select ile türet.
+
+Etki: Borç dashboard'u açılınca 300ms'lik bir gecikme yerine 80ms.
+
+3. Sync Ana İzlek Üzerinde Çalışıyor
+Nerede: BulutManager().upsert(...) — her yazma işleminden sonra çağrılıyor.
+
+Sorun: Kullanıcı ürün kaydediyor → DB yazılıyor → BulutManager().upsert() → ağ isteği başlıyor → kullanıcı bekliyor.
+
+Aslında bakmam gereken şey: upsert gerçekten async mi? Kod tabanında await BulutManager().upsert(...) yok, sadece BulutManager().upsert(...) var. Bu iyi — fire-and-forget. Ama:
+
+Gerçek sorun: Aynı anda 20 ürün kaydedilirse 20 ağ isteği paralel başlar → Supabase rate limit → yavaşlama / hata.
+
+Çözüm: upsert çağrıları bir kuyruğa düşsün, 200ms debounce ile toplu gönderilsin.
+
+4. _yukle() — Her Ekran Açılışında Tam Yeniden Yükleme
+Nerede: Neredeyse her ekranın initState'i
+
+Sorun: Kullanıcı Cari Detay → geri → tekrar Cari Detay → her seferinde 5000 satırlık sorgu. hareketleriniGetir(limit: 5000).
+
+Neden: Provider önbelleklenmiyor veya autoDispose yanlış kullanılıyor.
+
+Çözüm: Sık girilen ekranlarda provider'ı autoDispose olmayacak şekilde tut veya keepAlive + 2 dakika TTL.
+
+Etki: Geri-ileri gezintisinde anlık açılış.
+
+🟡 Orta (Hissediliyor Ama Katlanılır)
+5. tumunuGetir() — Tam Liste Bellekte
+Nerede: urun_deposu.tumunuGetir, cari_deposu.tumunuGetir, kasa_deposu.hareketleriniGetir
+
+Sorun: 4000 ürünlük market → her liste açılışında 4000 UrunModel belleğe. Her biri 20+ alan → ~15 MB geçici bellek.
+
+Mobilde: jank + yavaş kaydırma.
+
+Çözüm: Sayfalama (limit/offset) zaten sayfaliGetir'de var ama her yerde kullanılmıyor. Kritik listeler limit: 100 + scroll ile artır.
+
+6. _filtrele() — Her Keystroke'ta Full Filter
+Nerede: cari_liste_ekrani, urun_liste_ekrani, personel_liste_ekrani
+
+Sorun: _aramaCtrl.addListener → her harf yazılışında 4000 cari bellekte filtreleniyor.
+
+İyi kısım: cari_liste_ekrani.dart'ta debounce var (300ms).
+
+Kötü kısım: urun_liste_ekrani yok. Her tuş → full filter + rebuild.
+
+Çözüm: Debounce + ValueNotifier<List> ile sadece liste rebuild.
+
+7. Her Build'de Yeniden Parse
+Nerede: double.tryParse, DateTime.parse, double.parse — build() içinde
+
+Örnek: fatura_detay_pdf_ext.dart:
+
+dart
+final kdvGruplari = <double, double>{};
+for (final d in f.detaylar) {
+  kdvGruplari[d.kdvOrani] = (kdvGruplari[d.kdvOrani] ?? 0) + d.kdvTutari;
+}
+PDF içinde OK (bir kez çalışıyor). Ama _OzetTab, _KpiKart gibi widget'larda her rebuild'de aynı hesap yapılıyor.
+
+Çözüm: late final veya provider ile bir kez hesapla.
+
+8. initState İçinde Çok İş
+Nerede: masa_detay_ekrani, hizli_satis_ekrani, dashboard_ekrani
+
+Sorun: initState içinde 5–6 await zinciri:
+
+dart
+_yukle();
+_promolariYukle();
+_baglantiKontrolEt();
+_cihazIdAl();
+_ayarlariYukle();
+Her biri ayrı async → ilk frame gecikmesi.
+
+Çözüm: Future.wait() ile paralel yükleme.
+
+🟢 İyi Olan Şeyler (Bunları Sakın Bozmayın)
+SyncKuyrukYazici — atomik kuyruk yazımı. Profesyonel.
+
+sqfliteFfiInit() + WAL modu — Windows performansı için doğru.
+
+_windowsVeriKlasorunuHazirla() — veri yolunu bir kez ayarlamak.
+
+Paket parçalama (500'lük) — _topluBulutSenkronuGonder'da doğru yapılmış.
+
+FutureBuilder yerine AsyncValue.when — Riverpod'un önbellek avantajı kullanılıyor.
+
+const constructor'lar — çoğu yerde var.
+
+RepaintBoundary — fiş kalemlerinde kullanılmış.
+
+Somut Öncelik Sırası
+#	Sorun	Süre	Etki
+1	Provider invalidation fırtınası	1 gün	Büyük — dashboard/cari anlık açılır
+2	initState paralelleştir	Yarım gün	Orta — ilk frame hızlanır
+3	upsert debounce kuyruğu	Yarım gün	Büyük — bulk işlemler donmaz
+4	N+1 kalan yerler	1 gün	Orta — Excel toplu işlem hızlanır
+5	Sayfalama eksik listeler	1 gün	Orta — mobilde büyük veri kasmaz
+6	build içinde hesap	Yarım gün	Küçük — genel akıcılık
+Toplam: ~4 gün → mevcut performansın 2–3 katı.
+
+Nasıl Ölçersin (Yapmadan Önce)
+Flutter DevTools Performance aç. Şunları izle:
+
+Frame Rendering Time → 16ms üstü = jank
+
+Async Timeline → hangi _yukle() ne kadar sürüyor
+
+CPU Profiler → hangi widget rebuild oluyor
+
+Ama bence en pratik test:
+
+4000 ürünlük bir Excel yükle
+
+Ekranlar arası hızlı gez
+
+Cari listesini aç, kapat, tekrar aç
+
+Bu 3 senaryoda "aaa yavaş" dediğin yer zaten en kritik noktan — oradan başla.
+
+Sana Tavsiyem
+Şimdi yapma. Sıra şu olsun:
+
+Önce UI (8.2 → 9.3): Türkçe + renk + TsMetin
+
+Sonra Dashboard/Ayarlar sadeleştirme (9.3 → 9.7)
+
+En son performans (9.7 → 10)
+
+Neden? Çünkü UI değişikliği provider yapısını da değiştirecek. Şimdi provider'ları optimize edip sonra UI'dan dolayı yeniden değiştirirsen 2 katı iş yaparsın.
+
+Performans işini UI bittikten sonra, tek seferde ve doğru yap.
+
+SEN: Kıdemli Flutter geliştiricisisin. Bu projede 3+ yıllık tecrüben var gibi davran.
+Proje: BarkoPro — Flutter masaüstü + mobil market/POS ERP sistemi.
+
+## PROJE BAĞLAMI
+- Flutter + Riverpod (StateNotifierProvider / FutureProvider / autoDispose family)
+- SQLite (sqflite_common_ffi, masaüstünde FFI)
+- Tasarım sistemi: lib/tasarim_sistemi/tasarim_sistemi.dart
+  → TsRenk, TsMetin, TsBosluk, TsRadius, TsKart, TsButon, TsAppBar, TsBosDurum
+- Sabitler: lib/cekirdek/sabitler/uygulama_sabitleri.dart
+  → AppSpacing, AppRadius, AppTextStyles
+- Depo katmanı: lib/depolar/*.dart (repository pattern)
+- Provider katmanı: lib/saglayicilar/riverpod/*.dart
+- Ekran katmanı: lib/ekranlar/**/*.dart
+- Masaüstü görünümler: lib/ekranlar/**/masaustu/*.dart
+- Eşik: MediaQuery.width > 1100 = masaüstü
+
+## GENEL KURALLAR (HİÇBİR ZAMAN İHLAL ETME)
+1. Davranışı DEĞİŞTİRME — sadece görsel/mimari iyileştirme yap.
+2. Yorum satırlarını SİLME — kod tabanında çok değerli "neden böyle" notları var.
+3. Yeni paket ekleme — mevcut bağımlılıklarla çöz.
+4. Her dosya değişikliğinden sonra `flutter analyze` çalıştır, hata kalmasın.
+5. Türkçe karakterler UTF-8 olmalı, bozuk görünmesin.
+6. Git commit atma — sadece kod değiştir, ben commit edeceğim.
+7. Test dosyası yazma — mevcut testler varsa bozma yeter.
+8. Tasarım sistemindeki mevcut sınıfları kullan, yeni TsXxx yaratma.
+9. Bir dosyayı değiştirmeden önce 3 satır yorum yaz: "NEDEN:", "NE:", "ETKİ:".
+10. Her görev bittiğinde tek paragraf özet ver: ne değişti, kaç dosya, kaç satır.
+
+## GÖREV SIRASI (bittikçe sonrakine geç, sırayla)
+
+### GÖREV 1 — Türkçe Yazım Bütünlüğü
+Amaç: Kod tabanında tutarsız Türkçe yazımları düzelt.
+Tara: lib/**/*.dart
+Aranacak: 'Odenen', 'Musteri', 'Islem', 'Odemesi', 'Odeme ', 'Kullanici' (UI metinlerinde),
+          'Adet ' başlıklarında 'Adet' yerine 'Adet' (zaten doğru), 'Tarih ' vb.
+Kural: SADECE kullanıcıya gösterilen metinler (Text, labelText, hintText, tooltip, title,
+       'baslik:', 'etiket:', 'mesaj:' parametreleri) düzeltilecek.
+       Değişken adı, dosya adı, DB kolonu, JSON key DEĞİŞMEYECEK.
+Rapor: Kaç yerde düzeltme yapıldı.
+
+### GÖREV 2 — Renk Paleti Sadeleştirme
+Amaç: 8 KPI yan yana gelince pastel gökkuşağı oluyor. Sadeleştir.
+Kural:
+  - Nötr zemin: mevcut TsRenk.kart(context), TsRenk.arkaplan(context) — dokunma
+  - Vurgu: SADECE TsRenk.primary (mavi)
+  - Durum renkleri: TsRenk.basarili / TsRenk.hata / TsRenk.uyari — sadece GERÇEK durum için
+  - Şu anda renkli olan ama nötr olması gereken kartlar:
+    → _OzetKartWidget, _KpiKart, _StatKart, _OzetKart, PromosyonBilgiChip
+    → Bu kartlarda arka plan rengi `renk.withAlpha(20)` yerine nötr zemin
+    → Sadece ikon + değer metni renkli kalsın
+  - Dashboard KPI grid'inde 8 kart → 3 kritik kalsın (ciro, kâr, kritik stok),
+    diğer 5 kart gri/nötr, tıklanabilir.
+Dokunma: Modül renkleri (TsModul.masa, TsModul.mutfak, TsModul.belge, TsModul.ana) kalsın.
+Rapor: Hangi ekranlarda kaç kart nötrleştirildi.
+
+### GÖREV 3 — TsMetin Disiplini
+Amaç: Ekranlarda doğrudan TextStyle kullanımını kaldır.
+Tara: lib/ekranlar/**/*.dart içinde `TextStyle(fontSize:` geçen yerler.
+Kural: Ekranda `TextStyle(fontSize: X, fontWeight: Y)` varsa ve
+       TsMetin.baslikM / baslikL / govde / govdeVurgu / kucuk / kucukVurgu / etiket /
+       price / priceLarge / overline / h1..h4
+       eşleşen bir şey varsa onu kullan.
+       Eşleşme yoksa TsMetin'e YENİ bir alan ekleme — mevcut en yakın olanı seç.
+İstisna:
+  - Fiş önizleme (fis_onizleme_ekrani) — monospace font gerekli, dokunma
+  - PDF üretimi (pw.TextStyle) — pdf paketi kendi tipografisi, dokunma
+  - Termal fiş çıktıları — dokunma
+Rapor: Kaç yerde değişti, hangi ekranlarda kaldı (istisna listesi).
+
+### GÖREV 4 — Dashboard Sadeleştirme
+Dosya: lib/ekranlar/dashboard/dashboard_ekrani.dart
+         + dashboard_ana_butonlar_ext.dart
+         + dashboard_tum_uygulamalar_ext.dart
+         + widgets/dashboard_istatistik_sayfasi.dart
+Amaç: Ekran kalabalığı azalt.
+Kural:
+  1. SliverAppBar expandedHeight 240 → 180
+  2. "İstatistikler" sayfasındaki 8 KPI grid → 4'e indir:
+     Günlük Ciro, Bugünkü Kâr, Toplam Alacak, Kritik Stok
+     Diğer 4'ünü (Haftalık Ciro, Aylık Ciro, Günlük Gider, Brüt Marj) kaldır.
+  3. Ana sayfadaki 12 büyük buton → 6'ya indir:
+     Hızlı Satış, Ürün Listesi, Cariler, Satış Listesi, Raporlar, Ayarlar
+     Geri kalan 6'sı zaten "Tümü" ekranında var → orada kalsın.
+  4. Sayfa göstergesi (segmented switcher) varsa koru.
+  5. SyncMiniButon ve bildirim zili kalsın.
+  6. Varsayılan şifre bandı kalsın (güvenlik uyarısı).
+Rapor: Eski/yeni buton sayısı, KPI sayısı.
+
+### GÖREV 5 — Ayarlar Ekranı Yeniden Düzenleme
+Dosya: lib/ekranlar/ayarlar/ayarlar_ekrani.dart
+Amaç: 60+ ListTile tek liste → arama + kategorili görünüm.
+Kural:
+  1. Üste bir arama kutusu ekle (mevcut aramalar gibi, debounce 300ms).
+  2. Altına kategori grid'i: 6 büyük kart.
+     - Firma & Görünüm
+     - Yazıcı & Fiş
+     - Bulut & Senkron
+     - Kullanıcı & Yetki
+     - Veri İşlemleri
+     - Diğer
+  3. Her kategoriye tıklanınca alttan veya yeni sayfa olarak kategori içeriği açılsın.
+  4. Mevcut ListTile'ları silme — sadece _KategoriSayfasi içine taşı, davranışı koru.
+  5. Arama kutusuna yazılınca tüm kategorilerdeki eşleşen ListTile'lar
+     tek listede, üstte kategori başlığıyla gösterilsin.
+Rapor: Kaç kategori, kaç ListTile taşındı.
+
+### GÖREV 6 — Motion Guide (Animasyon Standartları)
+Amaç: Her ekran kendi süresi/curve'ünü yazmasın.
+Yeni dosya: lib/tasarim_sistemi/motion.dart
+İçerik:
+  class TsMotion {
+    static const Duration hizli = Duration(milliseconds: 150);
+    static const Duration normal = Duration(milliseconds: 250);
+    static const Duration yavas = Duration(milliseconds: 350);
+    static const Curve varsayilan = Curves.easeOutCubic;
+    static const Curve girisCikis = Curves.easeInOut;
+  }
+Kural:
+  - lib/ekranlar/**/*.dart içindeki `Duration(milliseconds: ...)` animasyonlarda
+    eşleşen TsMotion sabitini kullan.
+  - Curve'leri `TsMotion.varsayilan` yap (easeOutCubic).
+  - Snackbar/dialog gibi framework içi süreleri DEĞİŞTİRME.
+Rapor: Kaç animasyon standarda uyduruldu.
+
+### GÖREV 7 — Provider Invalidation Fırtınası (PERFORMANS)
+Dosya: lib/ekranlar/borc/borc_dashboard_ekrani.dart
+       + lib/ekranlar/cari/cari_detay_ekrani.dart
+       + lib/ekranlar/cari/cari_liste_ekrani.dart
+       + benzer _yenile() fonksiyonları olan diğer ekranlar
+Amaç: 10 provider'ı tek seferde invalidate etmek yerine toplu veri çek.
+Kural:
+  1. lib/saglayicilar/riverpod/borc_provider.dart içinde
+     borcDashboardProvider zaten tüm veriyi çekiyor mu? Kontrol et.
+     Evet ise → diğer 9 provider'ın çoğu bunun türevi olmalı.
+     Hayır ise → borcDashboardProvider'ı tek çatı provider yap,
+     geri kalanı `ref.watch(borcDashboardProvider).select(...)` ile türet.
+  2. _yenile() fonksiyonu tek satır kalsın: ref.invalidate(borcDashboardProvider);
+  3. Aynı deseni cari ekranlarında da uygula.
+  4. autoDispose kullanılan yerlerde ekran açık kaldıkça önbelleği koru
+     (ref.keepAlive() veya autoDispose kaldır).
+Rapor: Hangi ekranda kaç provider → kaç provider'a düştü.
+
+### GÖREV 8 — initState Paralelleştirme (PERFORMANS)
+Dosya: Tüm ekranlarda `initState` içinde 3+ await çağrısı olan yerler.
+Kural:
+  - Sırayla `_yukle(); _promolariYukle(); _baglantiKontrolEt();` yapılıyorsa
+  - Hepsini `Future.wait([...])` içine al.
+  - Hata durumunda tek hata mesajı göster, kısmi veri ekrana basma.
+  - setState'i mümkün olduğunca tek seferde yap.
+Rapor: Kaç ekran paralelleştirildi.
+
+### GÖREV 9 — upsert Debounce Kuyruğu (PERFORMANS)
+Dosya: lib/servisler/bulut/bulut_manager.dart
+Amaç: 20 ürün arka arkaya kaydedilince 20 ağ isteği paralel gitmesin.
+Kural:
+  1. BulutManager().upsert() çağrılarını bir RAM kuyruğuna al
+     (tablo + global_id bazında dedupe: aynı satır son hali kazanır).
+  2. 300ms debounce ile tek seferde toplu gönder.
+  3. Kuyruk boşalınca `istatistik.value` güncelle.
+  4. Mevcut SyncKuyrukYazici diski kalıcı tutuyor — bu RAM kuyruğu
+     onun üzerine ağ tarafı için ikinci katman.
+  5. `zorlaGonder()` çağrısı kuyruğu hemen işlesin.
+  6. Uygulama kapanırken (AppLifecycleState.paused/detached) kuyruğu flush et.
+Rapor: Kaç yerde upsert → kuyruk üzerinden geçiyor.
+
+### GÖREV 10 — N+1 Kalan Yerler (PERFORMANS)
+Dosya: satis_deposu.bulutaBildir, kullanici_deposu.yetkileriKaydet,
+       urun_deposu_plu_sorgu.qrMenuSecimleriniKaydet
+Kural:
+  - Tek tek `db.query(...)` yerine `IN (...)` ile 500'lük parça toplu sorgu.
+  - Örnek: _topluBulutSenkronuGonder metodundaki desen zaten var, aynısını uygula.
+Rapor: Kaç sorgu döngüsü toplu sorguya çevrildi.
+
+### GÖREV 11 — build() İçinde Hesap (PERFORMANS)
+Amaç: Her rebuild'de aynı hesap tekrar yapılmasın.
+Kural:
+  - `build()` içinde for döngüsü + fold + map ile hesap varsa
+  - Widget'ı StatefulWidget yap, hesabı `late final` alan veya
+    `didUpdateWidget` içinde bir kez hesapla.
+  - Provider kullanılıyorsa `select` ile ilgili alanı dinle.
+Rapor: Kaç build içi hesap taşındı.
+
+### GÖREV 12 — Eksik Sayfalama (PERFORMANS)
+Dosya: urun_deposu.tumunuGetir, cari_deposu.tumunuGetir, kasa_deposu.hareketleriniGetir
+Kural:
+  - Şu anki haliyle TÜM kayıtları çeken yerlere `limit: 100` ekle
+  - Liste sonuna gelince otomatik "daha fazla yükle" (scroll controller)
+  - `sayfaliGetir` zaten var — onu kullanan yerlere yönlendir.
+  - Ekran davranışı değişmesin: başta 100, scroll edince 200, 300...
+Rapor: Kaç ekranda sayfalama aktifleşti.
+
+## RAPOR FORMATI (her görev sonunda)
+
+
+
+CHATGBT ANALİZ SONUCU
+BARKOPRO uygulaması — Derin kod incelemesi
+Yüklediğin test.zip arşivini inceledim. İlk önemli tespit şu: Bu, yalnızca basit bir market satış uygulaması değil; satış, stok, cari hesap, kasa, banka, e-fatura, bulut senkronizasyonu, masaüstü kullanım ve dönem arşivleme gibi ERP özellikleri içeren kapsamlı bir proje.
+Önemli sınırlama: Şu an gelişmiş analiz aracını çalıştıramadım. Bu nedenle incelemeyi arşivdeki kaynak kodların statik incelemesi üzerinden sürdürebiliyorum; projeyi derleyip bütün testleri yeniden çalıştırdığımı söyleyemem. Aşağıdaki puan, tamamlanmış bir üretim testi değil, mevcut kod üzerinden yapılan ön teknik değerlendirmedir.
+1. İlk incelemede ortaya çıkan tablo
+Arşivdeki toplam öğe
+906
+
+
+Dart kaynak dosyası (tüm arşiv)
+798
+
+
+Uygulama kaynakları (lib/)
+581
+
+
+lib/ içindeki Dart kaynak kodu
+Yaklaşık 6,28 MB
+
+
+Arşivdeki test dosyaları
+Çok sayıda, farklı katmanlara yayılmış
+
+
+İncelenen test adları; satış ve iade, cari bakiye, kasa mutabakatı, Supabase senkronizasyonu, dönem devri, veritabanı migrasyonları ve mobil/masaüstü ekranlarını kapsıyor. Bu, projede kalite kontrol için ciddi bir altyapı oluşturulduğunu gösteriyor. Ancak test dosyalarının bulunması, testlerin güncel kodda başarıyla geçtiğinin kanıtı değildir.
+2. İlk teknik puanım
+6,5
+/ 10
+
+Gelişmiş ama riskleri bulunan ERP
+Ön değerlendirme · Statik kod incelemesi
+Modül kapsamı ve test altyapısı güçlü; ancak finansal veri bütünlüğü, dönem devri ve gerçek üretim davranışı ayrıca doğrulanmalı.
+
+
+
+Bu puan, uygulamanın tüm özelliklerinin çalıştığı veya çalışmadığı hakkında kesin bir hüküm değildir. Derleme ve canlı çalışma testleri tamamlanmadı.
+
+3. Tespit edilen başlıca riskler
+Aşağıdaki bulguların bazıları doğrudan kodda görülen tasarım riskleridir. Özellikle dönem devriyle ilgili bulgu, yalnızca genel bir öneri değil, incelenen sorgu ve işlem akışından kaynaklanan somut bir problemdir.
+
+1. Çok şubeli yıl sonu devrinde cari hareketler
+Kritik
+
+lib/servisler/donem_arsiv_servisi.dart dosyasında cari hareketlerin silinmesi, sube_id filtresi olmadan şirket genelinde gerçekleştiriliyor. Açılış bakiyeleri ise belirli bir donemId üzerinden okunuyor.
+Risk: Bir şubenin devri cari hareketleri temizledikten sonra aynı yıl için başka şubenin devri çalıştırılırsa ikinci işlemde aktif kayıt sayısı ile ortak arşivdeki kayıt sayısı uyuşmayabilir. Bu, arşiv doğrulamasının başarısız olmasına yol açabilir. Şirket genelindeki bakiyelerin şubeler arasında yanlış dağıtılması da ayrıca kontrol edilmelidir.
+Öncelik: Çok şubeli canlı kullanım öncesinde düzeltilmeli.
+
+
+
+
+2. Arşivleme kapsamı ile silme kapsamının uyumu
+Kritik
+
+DonemArsivServisi altı tabloya kadar veri kopyalıyor: beş hareket tablosu ve satis_kalem. Buna karşılık diğer ilişkili tabloların tamamı arşive alınmıyor.
+Risk: Fatura kalemleri, iadeler, masa siparişleri ve diğer ilişkili kayıtların geçmişe dönük görüntülenmesi veya yabancı anahtar ilişkileri etkilenebilir. Satış silme işleminde bazı referanslar kontrol edilse de bütün ilişkili tabloların kapsandığı henüz kanıtlanmış değil.
+Öncelik: Her tablo için ilişki haritası ve silme öncesi referans kontrolü.
+
+
+
+
+3. Yerel ağ üzerinden veritabanı aktarımı
+Yüksek
+
+lib/servisler/sync_servisi.dart içinde yerel aktarım sunucusu HTTP kullanıyor; erişim için URL içindeki oturum token'ı kontrol ediliyor. Sunucuda tablo aktarımı, JSON içe aktarma ve tüm veritabanını indirme/yükleme uçları bulunuyor.
+Risk: Token'ın paylaşılması, ağ trafiğinin korunmaması veya yanlışlıkla güvenilmeyen ağa açılma, işletme verilerinin açığa çıkmasına ya da değiştirilmesine neden olabilir. Token kontrolü tek başına aktarım güvenliğinin tamamını sağlamaz.
+Öncelik: Sunucunun hangi arayüzde dinlediği, token ömrü, erişim yetkileri, istek boyut sınırları ve aktarım doğrulaması incelenmeli.
+
+
+
+
+4. Arşivleme, veritabanını her zaman küçültmez
+Yüksek
+
+Dönem devri servisinde eski hareketlerin silinmesi ile SQLite dosyasının fiziksel boyutunun küçülmesi ayrı işlemler. DELETE sonrasında dosya boyutu kendiliğinden küçülmeyebilir.
+Risk: Eski kayıtlar silinse bile market.db ve WAL dosyalarının kapladığı alan beklediğin kadar azalmaz. Ayrıca bulutta eski satırlar korunuyorsa bulut depolama alanı da otomatik olarak azalmaz.
+Öncelik: Güvenli yedekleme, WAL kontrolü, kontrollü VACUUM/bakım süreci ve bulut arşiv politikası.
+
+
+
+
+5. Arşiv ile aktif verinin tekrar doğrulanması
+Yüksek
+
+donem_arsiv_servisi.dart satır sayısı ve toplam tutar üzerinden doğrulama yapıyor. Ancak aynı yılın arşiv dosyası birden fazla şube tarafından kullanılıyor ve şirket geneli hareketler de aynı dosyada tutuluyor.
+Risk: Tekrarlanan devir, farklı şubelerin devri veya yarım kalan bir işlemin devam ettirilmesi senaryolarında aynı arşiv dosyasının nasıl doğrulanacağı daha kapsamlı test edilmeli. Satır sayısı ve toplam tutarın eşleşmesi, bütün satırların birebir aynı olduğunu tek başına kanıtlamaz.
+Öncelik: Şube bazlı arşiv kapsamı, satır kimliği ve içerik özeti üzerinden doğrulama.
+
+
+
+
+6. Sessizce yutulan hatalar
+Orta-yüksek
+
+Kaynak taramasında boş catch blokları ve catch içinde hatayı yok sayan örnekler bulundu. Bazıları isteğe bağlı işlemler için kasıtlı olabilir; hepsi otomatik olarak hata sayılmaz.
+Risk: Yedekleme, yazdırma, oturum, senkronizasyon veya finansal işlem sırasında hata kullanıcıya bildirilmezse işlem başarısız olduğu hâlde başarılı sanılabilir.
+Öncelik: Kritik işlemlerde hata kaydı, kullanıcıya açık durum ve yeniden deneme politikasını standartlaştırmak.
+
+
+
+
+7. Kaynak paketi derleme için eksik
+Doğrulama engeli
+
+İncelenen ZIP'in kökünde pubspec.yaml görünmüyor. Dolayısıyla bu paket tek başına bağımlılıkları kurup uygulamayı derlemek ve testleri yeniden çalıştırmak için yeterli değil.
+Risk: Kodun güncel Flutter/Dart sürümünde hatasız derlendiği, bütün platformlarda çalıştığı ve testlerin geçtiği bu arşivden doğrulanamıyor.
+Öncelik: Tam proje paketiyle flutter analyze, flutter test ve gerçek cihaz testleri.
+
+
+
+4. Diğer önemli teknik bulgular
+Bunlar da düzeltilmesi veya gerçek çalışma ortamında doğrulanması gereken noktalar.
+No.	Bulgu	Risk
+8	Arşiv şeması güncelliği: _semaKopyala() mevcut arşiv tablosu varsa şemayı yeniden oluşturmuyor.	Uygulama güncellendiğinde arşiv eski şemada kalabilir.
+9	İçe aktarma isteği sınırları: Yerel ağ sunucusu HTTP gövdesini belleğe topluyor; incelenen bölümde açık bir gövde boyutu sınırı görünmüyor.	Büyük veya kötü amaçlı isteklerde bellek ve kullanılabilirlik riski.
+10	Veritabanı yüklemesi: Yüklenen dosya için SQLite imza kontrolü ve güvenlik yedeği var.	İmza kontrolü tek başına bütünlük kontrolü değildir; dosyanın açılabildiği, şemasının doğru olduğu ve işletme verilerinin tutarlı kaldığı da doğrulanmalı.
+11	Senkronizasyon hataları: Kalıcı kuyruk ve yeniden deneme yaklaşımı olumlu.	Sürekli hata veren kayıtlar kuyrukta birikebilir; operatörün bunları teşhis edip çözebilmesi gerekir.
+12	Güvenli oturum yönetimi: supabase_oturum.dart içinde güvenli depolama ve erişim anahtarı yenileme mantığı mevcut.	Ağ kesintisi, süresi dolmuş oturum ve yetki reddi senaryoları tüm bulut işlemlerinde doğrulanmalı.
+Bu maddelerden 8–12 arasındakiler, mevcut koddan hareketle belirlenen risklerdir; her birinin gerçek ortamda kesin bir arızaya neden olduğunu söylemek için ek test gerekir.
+5. Uygulamaya 10 üzerinden ayrıntılı puanım
+Aşağıdaki puanlar, kod incelemesine dayanan yaklaşık değerlendirmelerdir; ölçülmüş performans veya test sonuçları değildir.
+Değerlendirme alanı	Puan
+Özellik kapsamı ve ERP mimarisi	8,0/10
+Kodun modüllere ayrılması	7,5/10
+Test altyapısının kapsamı	8,0/10
+Finansal veri bütünlüğü	6,0/10
+Veritabanı ve dönem devri güvenliği	5,0/10
+Bulut senkronizasyonu	6,5/10
+Güvenlik ve hata yönetimi	6,0/10
+Derleme ve gerçek cihaz uyumluluğu	Henüz doğrulanmadı
+Mobil/tablet/masaüstü kullanıcı deneyimi	Görsel inceleme yapılmadı
+Genel ön puanım: 6,5/10.
+Bu puanın düşük kalmasının ana sebebi özellik eksikliği değil. Uygulama kapsamlı; fakat özellikle finansal hareketlerin temizlenmesi, arşivlenmesi ve çok şubeli senaryolarda doğrulanması gibi geri dönüşü zor işlemlerde daha güçlü kanıt gerekiyor.
+6. Hangi sırayla düzeltmelisin?
+
+Kod mimarisi hakkında somut bulgular
+- lib/ekranlar/ altında 243 Dart dosyası var.
+- lib/servisler/ altında 118 dosya var.
+- lib/depolar/ altında 48 dosya var.
+- lib/veri/ altında 31 dosya var.
+- lib/saglayicilar/ altında 33 dosya var.
+- lib/uygulama/ altında 17 dosya var.
+Bu dağılım, ekranlar, servisler, veri katmanı ve durum yönetimi için ayrı alanlar oluşturulduğunu gösteriyor. Ancak klasörlerin ayrılmış olması tek başına temiz mimari anlamına gelmez. Asıl soru, bu katmanların birbirine ne kadar bağımlı olduğu ve iş kurallarının doğru yerde tutulup tutulmadığıdır.
+1. En büyük mimari sorun: Katmanlar birbirine fazla bağımlı
+Ekranlar — ekranlar/
+243 dosya · Arayüz, form ve kullanıcı işlemleri
+
+Çift yönlü bağımlılık riski
+
+Durum yönetimi
+saglayicilar/
+Riverpod ve iş akışı durumu
+
+
+İş servisleri
+servisler/
+Satış, senkronizasyon, arşiv
+
+
+
+
+Depolar ve veritabanı
+depolar/ · veri/database/
+SQLite sorguları, kayıt ve güncelleme işlemleri
+
+
+İçe aktarma ilişkilerinde ekranların servis ve depo katmanlarını doğrudan kullandığını; servislerin de depolara, depoların ise bazı servisler ve veritabanı katmanına geri bağımlı olduğunu gördüm.
+Örneğin:
+- ekranlar/ → depolar/: 175 içe aktarma ilişkisi.
+- depolar/ → servisler/: 86 ilişki.
+- servisler/ → depolar/: 86 ilişki.
+- depolar/ → veri/: 46 ilişki.
+Bunlar dosyalar arasındaki içe aktarma sayılarıdır; tek başlarına döngüsel bağımlılık kanıtı değildir. Ancak mimarinin daha ayrık hâle getirilmesi gerektiğine dair güçlü bir işarettir.
+Önerim: Ekranlar doğrudan SQL çalıştırmamalı; iş servisleri de ekran koduna bağımlı olmamalı. Veri erişimi, iş kuralları ve arayüz sorumlulukları daha net ayrılmalı.
+2. Çok büyük dosyalar bakım maliyetini yükseltiyor
+Dosya	Satır	Değerlendirme
+servisler/supabase_sync_servisi.dart	1.757	Senkronizasyon sorumlulukları ayrıştırılmalı
+depolar/satis_deposu.dart	1.081	Veri erişimi ve satış iş kuralları ayrılmalı
+servisler/yazdirma_servisi.dart	996	Yazıcı protokolü, şablon ve biçimlendirme ayrılmalı
+depolar/cari_deposu.dart	907	Cari sorguları ve bakiye hesapları incelenmeli
+veri/database/veritabani_supabase.dart	878	Yerel veri ile bulut işlemlerinin sınırı netleştirilmeli
+servisler/donem_devir_servisi.dart	785	Devir aşamaları ayrı bileşenlere bölünebilir
+Bu dosyaların uzun olması otomatik olarak hatalı oldukları anlamına gelmez. Sorun, farklı sorumlulukların tek dosyada toplanması ve değişikliklerin birbirini etkileme ihtimalidir.
+Örneğin satış deposunda 57, cari deposunda 51 veritabanı işlem çağrısı bulunuyor. Bu, sorguların nasıl gruplandığının, işlemlerin atomik olup olmadığının ve bakiye hesaplarının tek bir kaynaktan yönetilip yönetilmediğinin incelenmesini gerektiriyor.
+3. Riverpod geçişi tamamlanmış mı?
+Kaynaklarda flutter_riverpod yaygın biçimde kullanılıyor. Buna karşın bazı dosyalarda ChangeNotifier ve klasik StatefulWidget kullanımları da var.
+Bu durum tek başına hata değildir. Ancak aynı iş akışı hem Riverpod hem de eski durum yönetimi yaklaşımıyla yürütülüyorsa şu sorunlar ortaya çıkabilir:
+- Ekranların güncel olmayan veriyi göstermesi.
+- Aynı verinin birden fazla yerde tutulması.
+- Ekran kapandıktan sonra devam eden asenkron işlemler.
+- Testlerde durumun doğru sıfırlanamaması.
+Burada gerekli çalışma, bütün StatefulWidget kullanımlarını körlemesine değiştirmek değil; hangi durumun nerede tutulduğunu ve hangi bileşenin o durumun sahibi olduğunu belirlemektir.
+4. Kod kalitesi açısından diğer bulgular
+- dynamic kullanımı: Kaynaklarda yaygın. Veritabanı satırları gibi bazı yerlerde doğal olsa da iş kurallarında gereksiz kullanımı çalışma zamanı tür hatalarını artırabilir.
+- Boş catch blokları: En az 12 örnek buldum. Her birinin hata yutmasının kasıtlı mı, riskli mi olduğu tek tek kontrol edilmeli.
+- Asenkron işlemler: unawaited kullanımının olduğu yerlerde hataların yakalanıp yakalanmadığı ve işlemlerin yaşam döngüsü kontrol edilmeli.
+- Veritabanı migrasyonları: Migrasyon kodları büyük dosyalara bölünmüş. Eski sürümden en güncel sürüme yükseltme, gerçek bir kopya veritabanı üzerinde doğrulanmalı.
+- Senkronizasyon: Yerel veri, Supabase ve cihazlar arası aktarım aynı anda ele alındığı için hata kurtarma ve çakışma çözümü kritik önemde.
+5. Mimari puanım
+Alan	Ön değerlendirme
+Katmanların klasör bazında ayrılması	7/10
+Sorumlulukların dosyalara dağılımı	5/10
+Bağımlılıkların yönetimi	5/10
+Durum yönetiminin tutarlılığı	6/10
+Test edilebilirlik potansiyeli	7/10
+Bakım ve genişletilebilirlik	5,5/10
+Kod mimarisi için ön puanım: 5,9/10.
+Bu puan, bütün sınıfların ve bağımlılık döngülerinin eksiksiz denetlendiği anlamına gelmez; dosya yapısı, import ilişkileri ve büyük bileşenler üzerinden yapılan teknik değerlendirmedir.
+Ben olsam projeyi baştan yazmazdım. Önce finansal işlemlerin doğruluğunu koruyarak satis_deposu.dart, cari_deposu.dart, supabase_sync_servisi.dart ve donem_devir_servisi.dart dosyalarını sorumluluklarına göre ayırır, her adımda mevcut testleri çalıştırırdım. Sonrasında tasarım sistemini ve ekranların mobil/tablet uyumunu geliştirirdim.
+
+
+
+DEEPSEK BULUT İÇİN HATALAR DEDİ
+### GÖREV 14 — Bulut Kritik Bug'lar
+Dosyalar: lib/servisler/bulut/bulut_manager.dart
+          lib/servisler/bulut/anlik_bulut_dinleyici.dart
+
+BULGU 1: bulut_manager.dart _isle() sonundaki istatistik.value atamasında
+sonGonderim HER ZAMAN DateTime.now() olarak yazılıyor — gönderilecek
+kayıt olmasa bile. UI'da "Son başarılı gönderim: az önce" yanlış
+görünüyor. Düzeltme: toplamBasarili > 0 ise güncelle, değilse
+mevcut.sonGonderim'i koru.
+
+BULGU 2: bulut_manager.dart _isle() başında SupabaseOturum().tazele()
+hatası yakalanıp sessizce yutuluyor (sadece return). LogServisi'ne
+uyarı yaz ama spam olmasın diye bir kez logla, sonraki başarılı
+tazelemede flag'i sıfırla.
+
+BULGU 3: bulut_manager.dart _upsertGrubuGonder — kalıcı hatada grup
+ikiye bölünüyor ama derinlik sınırı yok. 500 satırlık grupta 18+
+HTTP isteği atabiliyor. Split derinliği 3 ile sınırla (500 → 250 → 125,
+sonra dur). Derinlik aşıldıysa satırları 'kalici_hata' olarak işaretle.
+
+BULGU 4: anlik_bulut_dinleyici.dart _baglan içindeki postgres_changes
+aboneliği {'event': '*', 'schema': 'public'} — TÜM public tabloları
+dinliyor. KolonHaritalama'da senkron tablolar listesi varsa onu kullan,
+yoksa elle önemli 30-40 tabloyu listele.
+
+BULGU 5: anlik_bulut_dinleyici.dart _mesaj içinde phx_reply: ok
+alındığında _abonelikHatasiBildirildi = false yapılsın (tekrar
+reddedilirse log yazılabilsin).
+
+BULGU 6: anlik_bulut_dinleyici.dart _baglan — BulutManager yapılandırılmamışsa
+_ basladi = false yapıp dur, sonsuz 30s retry yapma.
+
+Her bulgu için: değişen satır, test senaryosu, etki özeti ver.
+Bulut Kodu — Derin Analiz
+Kodu okudum. Genel olarak mimari sağlam — ama 3 gerçek bug + 4 orta seviye sorun + birkaç ufak not var. Sırayla:
+
+🔴 Kritik Bug'lar (Düzeltilmeli)
+1. sonGonderim Her _isle() Çağrısında Güncelleniyor
+Dosya: bulut_manager.dart, _isle() sonu
+
+dart
+istatistik.value = _Istatistik(
+  toplamGonderilen: mevcut.toplamGonderilen + toplamBasarili,
+  toplamHata:       mevcut.toplamHata + toplamHata,
+  sonHatalar:       tumHatalar.take(20).toList(),
+  sonGonderim:      DateTime.now(),  // ← HER ZAMAN güncelleniyor
+);
+Sorun: _isle() 8 saniyede bir çalışıyor. Gönderilecek kayıt olmasa bile sonGonderim şimdiye çekiliyor. UI'da:
+
+dart
+Text(sonGonderim != null
+    ? 'Son başarılı gönderim: ${_gecenSure(sonGonderim)}'
+    : 'Bu oturumda henüz gönderim yapılmadı')
+Sonuç: Kullanıcı ekranda "Son başarılı gönderim: az önce" görüyor ama aslında hiçbir şey gönderilmemiş. Sunucu 5 dakikadır kapalı olsa bile "az önce" yazıyor.
+
+Düzeltme:
+
+dart
+sonGonderim: toplamBasarili > 0 
+    ? DateTime.now() 
+    : mevcut.sonGonderim,  // eskisini koru
+2. SupabaseOturum().tazele() Hatası Sessizce Yutuluyor
+Dosya: bulut_manager.dart, _isle() başı
+
+dart
+try {
+  await SupabaseOturum().tazele();
+} catch (_) {
+  _gonderiliyor = false;
+  return;
+}
+Sorun: Token yenileme sürekli başarısız olursa (ağ yok, refresh token süresi doldu) hiçbir log yazılmıyor, kullanıcı hiçbir uyarı görmüyor. Senkron sessizce duruyor.
+
+Yarın bir kullanıcı gelip "verilerim gitmiyor" derse, tanı imkansız.
+
+Düzeltme:
+
+dart
+try {
+  await SupabaseOturum().tazele();
+} catch (e, st) {
+  _gonderiliyor = false;
+  // Her seferinde log yazma — spam olur. Ama ilk hatayı mutlaka kaydet.
+  if (!_oturumHatasiLoglandi) {
+    _oturumHatasiLoglandi = true;
+    LogServisi().uyari('BulutManager: oturum tazelenemedi, senkron bekliyor',
+        hata: e, yigin: st);
+  }
+  return;
+}
+// Başarıyla geçince flag'i sıfırla
+_oturumHatasiLoglandi = false;
+3. Grup Bölme (Recursive Split) Yüzlerce HTTP İsteği Atabiliyor
+Dosya: bulut_manager.dart, _upsertGrubuGonder
+
+dart
+if (sonuc.tur == BulutHataTuru.kalici && satirlar.length > 1) {
+  return await bol();  // ikiye böl, iki yarıyı tekrar dene
+}
+Senaryo: 500 satır gönderdin. Sunucu 400 döndü (bir satırda geçersiz sütun var). bol() 250/250 çalıştırır. Bir tanesi yine 400 dönerse → 125/125. Bu log₂(500) ≈ 9 seviye demek. Worst case: ~18 HTTP isteği tek bir poison row için.
+
+Daha kötüsü: 500 satırın TAMAMI poison ise (ör. yanlış sütun adı), 500 tane tek satırlık istek atılır, hepsi başarısız olur. Toplam: 999 HTTP isteği.
+
+Düzeltme:
+
+Bölmeyi sadece 2 seviye yap (500 → 250 → 125 → dur).
+
+125 hâlâ 400 dönüyorsa → muhtemelen tüm grup bozuk, satırları tek tek değil, ilk 5'ini deneyerek pattern'i bul, geri kalanı atla.
+
+Ya da en kötü senaryo için bir "max split depth" (ör. 3) parametresi ekle.
+
+dart
+Future<...> _upsertGrubuGonder(..., {int derinlik = 0}) async {
+  ...
+  if (sonuc.tur == BulutHataTuru.kalici && satirlar.length > 1 && derinlik < 3) {
+    return await bol(derinlik: derinlik + 1);
+  }
+  // derinlik == 3 ise satırları tek tek değil, "kalici_hata" olarak işaretle
+  // ve insan müdahalesi bekle.
+  ...
+}
+🟡 Orta Seviye Sorunlar
+4. _bekleyenSayisiCache++ Yarış Durumu
+Dosya: bulut_manager.dart, _kuyrukaYaz
+
+dart
+await db.transaction((txn) async {
+  await SyncKuyrukYazici.ekleTxn(...);
+});
+_bekleyenSayisiCache++;
+Sorun: İki upsert() neredeyse aynı anda çalışırsa (Dart tek thread olsa da, await sınırlarında interleave olabilir):
+
+Task A: transaction başlar
+
+Task B: transaction başlar
+
+Task A: biter, cache++ (cache = 1)
+
+Task B: biter, cache++ (cache = 2) ✓
+
+Bu OK. Ama:
+
+_isle() çalışırken _bekleyenSayisiniYenile() DB'den doğru değeri okur, cache'i overwrite eder.
+
+Sonra yeni bir upsert() cache++ yapar.
+
+Sonuç doğru.
+
+Yani pratikte kendi kendini düzeltiyor, ama anlık olarak yanlış olabilir. UI'da "5 kayıt bekliyor" gösterirken aslında 3 olabilir. Kabul edilebilir.
+
+Öneri: Yine de _bekleyenSayisiniYenile() çağrısını _kuyrukaYaz başarılı olduktan sonra da tetikle (nadir ama temiz). Veya += 1 yerine _bekleyenSayisiniYenile() çağır (fazladan DB sorgusu ama kesin doğru). Tercih senin.
+
+5. Anlık Dinleyici Yapılandırılmamışken Sonsuz Dener
+Dosya: anlik_bulut_dinleyici.dart, _baglan
+
+dart
+if (url == null || url.isEmpty || key == null || !SupabaseOturum.gonderimeHazir(key)) {
+  _yenidenPlanla(const Duration(seconds: 30));
+  return;
+}
+Sorun: Kullanıcı henüz Supabase yapılandırmamışsa (yeni kurulum), uygulama 30 saniyede bir boşuna bağlanmayı dener. Pil + log gürültüsü.
+
+Düzeltme:
+
+İlk 5 denemede 30s, sonra exponential backoff: 30s, 1m, 2m, 5m, 5m...
+
+VEYA BulutManager().durum.value == BulutDurum.yapilandirilmamis iken hiç deneme — zaten başlatma kodu seni çağıracak.
+
+dart
+if (BulutManager().durum.value == BulutDurum.yapilandirilmamis) {
+  // Yapılandırma yok — kendini durdur, manager başlatınca yeniden gel.
+  _basladi = false;
+  return;
+}
+6. Realtime Aboneliği TÜM Tablolara
+Dosya: anlik_bulut_dinleyici.dart, _baglan
+
+dart
+'postgres_changes': [
+  {'event': '*', 'schema': 'public'}  // TÜM public şeması
+],
+Sorun: Sunucudan her tablonun her INSERT/UPDATE/DELETE'i geliyor. app_log, sync_queue, bildirimler gibi senkronla ilgisi olmayan tablolar da dahil.
+
+Sonuç:
+
+Gereksiz WebSocket trafiği
+
+_bekleyenTablolar set'ine app_log gibi tablolar girerse, _cek() de gereksiz çalışır
+
+Sunucu tarafında da yük artar
+
+Düzeltme: Sadece senkronize edilen tabloları filtrele:
+
+dart
+'postgres_changes': [
+  {
+    'event': '*',
+    'schema': 'public',
+    // 'table': 'urunler',  // Bu filtre tek tablo için
+  },
+],
+Supabase Realtime, tek tek tablo filter destekliyor. 30 tablo varsa 30 giriş yaz:
+
+dart
+'postgres_changes': [
+  {'event': '*', 'schema': 'public', 'table': 'urunler'},
+  {'event': '*', 'schema': 'public', 'table': 'satislar'},
+  {'event': '*', 'schema': 'public', 'table': 'cari'},
+  // ... (sadece senkron sisteminde olan tablolar)
+],
+KolonHaritalama'da senkron tablo listesi varsa onu kullan. Yoksa elle yaz.
+
+7. _abonelikHatasiBildirildi Hiç Sıfırlanmıyor
+Dosya: anlik_bulut_dinleyici.dart, _mesaj
+
+dart
+if (yuk['status'] == 'error' && !_abonelikHatasiBildirildi) {
+  _abonelikHatasiBildirildi = true;
+  LogServisi().uyari('...Realtime aboneliği reddedildi...');
+}
+Sorun: Abonelik bir kez reddedilirse, log bir kez yazılır. Kullanıcı Supabase'de yayın ayarını düzeltip yeniden bağlanırsa ve tekrar reddedilirse — log artık yazılmaz. Kullanıcı "düzelttim ama çalışmıyor" der, sebep görünmez.
+
+Düzeltme: Başarılı bir phx_reply: ok aldığında flag'i sıfırla:
+
+dart
+case 'phx_reply':
+  if (yuk['status'] == 'ok') {
+    _abonelikHatasiBildirildi = false;  // ← ekle
+    ...
+  }
+🟢 Düşük Öncelikli Notlar
+8. _veriCoz Yorumu Bayat
+_isle() içindeki yorum diyor ki:
+
+"bkz. aşağıdaki _veriCoz'daki 'satislar' bloğu"
+
+Ama _veriCoz'da 'satislar' diye özel bir blok yok. Muhtemelen KolonHaritalama.yereleOzguSutunlariAyikla ile genel olarak çözülüyor. Yorumu güncelle.
+
+9. simdiGonder() Değer Döndürmüyor
+dart
+Future<void> simdiGonder() => _isle();
+UI'dan çağrılınca "ne kadar gönderildi, ne kadar hata aldı" bilgisi yok. Şu an istatistik'ten okunuyor ama çağrı sonrası belirsiz — timer bitmeden mi okundu?
+
+10. _upsertGrubuGonder Split'te Veriyi Yeniden Decode Ediyor
+dart
+final veriler = satirlar.map((s) => _veriCoz(tablo, s)).toList();
+
+Future<...> bol() async {
+  final a = await _upsertGrubuGonder(..., satirlar.sublist(0, orta), ...);
+  // içeride tekrar _veriCoz çağrılıyor
+Performans açısından önemsiz (nadiren split olur) ama prensip olarak verileri bir kez hesaplayıp recursive çağrıya parametre olarak geçirebilirsin.
+
+11. 8 Saniyelik Boş DB Sorgusu
+_isle() her 8 saniyede bir çalışıp iki sorgu atıyor (yeniSatirlar + tekrarSatirlari) — kuyruk boş olsa bile. Bu 2 sorgu her 8 saniyede bir → günde ~21.600 sorgu. SQLite hızlı ama gereksiz.
+
+Düzeltme: Wake-on-write pattern. upsert() çağrılınca bir flag set et, _isle() sadece flag set ise çalışsın. Zaten _workerTetikle() var, onu kullan:
+
+dart
+// 8 saniyelik timer yerine, sadece _kuyrukaYaz başarılı olunca schedule
+// Ayrıca periyodik bir "güvenlik ağı" (5 dk) kalsın
+✅ Gerçekten İyi Olan Şeyler
+Bunlara dokunma:
+
+SyncKuyrukYazici.ekleTxn — delete-before-insert deseni. Aynı global_id için kuyrukta eski kayıt varsa silinir. Kuyruk şişmez, her zaman en güncel hali gider. Mükemmel.
+
+Backoff mantığı saf fonksiyonda (sync_backoff.dart). Test edilebilir, DB'siz. Bu seviye ayrımı profesyonel iş.
+
+Realtime'ın sadece "trigger" olması, veriyi yazmaması. Bildirim gelince mevcut güvenli hattan (FK çeviri, LWW, watermark) çekiyor. Bu endüstri standardı yaklaşım. Doğru.
+
+kalici_hata vs gecici hatası ayrımı. 4xx → sonsuz deneme yok, insan müdahalesi bekler. 5xx/ağ → backoff ile sonsuz dene. Kitap gibi doğru.
+
+Watermark (otoGonderZamaniYaz). Sunucu saati ile çakışma tespitinde kullanılıyor. Akıllı.
+
+_isle() reentrancy guard (_gonderiliyor flag'i). Double-check await Veritabani().db sonrası. Doğru.
+
+_veriCoz'da kredi_kartlari.kart_no_maskeli son-hal düzeltmesi. NULL/boş gelirse fallback. Sunucu 400 dönmesin diye.
+
+upsert() içinde audit log kancası. Cloud yapılandırılmamış olsa bile audit çalışsın diye en başa konmuş. Düşünülmüş.
+
+AnlikBulutDinleyici — Realtime'ın WebSocket protokolü doğru uygulanmış. phx_join, heartbeat, phx_reply, system mesajları hepsi doğru işleniyor.
+
+_kaliciHatalariKuyrugaGeriAl — otomatik vs manuel. Otomatik 20 denemeden sonra durur, manuel tümünü sıfırlar. Doğru denge.
+
+Öncelik Sıralaması
+#	Sorun	Süre	Etki
+1	sonGonderim yanlış güncelleniyor	5 dk	Yüksek — kullanıcıyı yanıltıyor
+2	Oturum tazeleme hatası sessiz	10 dk	Yüksek — tanı imkansız
+3	Recursive split derinlik sınırı	30 dk	Orta-Yüksek — sunucu yükü
+4	Realtime tüm tablolara abone	30 dk	Orta — pil/ağ
+5	_abonelikHatasiBildirildi sıfırlanmıyor	5 dk	Düşük
+6	Yapılandırılmamışken sonsuz deneme	15 dk	Düşük
+7	Cache++ drift	15 dk	Çok düşük — self-correcting
+8	Boş 8s DB sorgusu	1 saat	Düşük — kaynak
+Toplam: 2–3 saatte hepsi dü
+

@@ -175,9 +175,10 @@ class SatisDeposu {
       final sonuc = <Map<String, dynamic>>[];
 
       final kasaRows = await db.rawQuery('''
-        SELECT odeme_yontemi, COALESCE(SUM(tutar), 0) AS tutar
+        SELECT odeme_yontemi,
+               COALESCE(SUM(CASE WHEN hareket_tipi = 'İade' THEN -tutar ELSE tutar END), 0) AS tutar
         FROM kasa_hareketleri
-        WHERE referans_id = ? AND referans_turu = 'satis' AND deleted_at IS NULL
+        WHERE referans_id = ? AND referans_turu IN ('satis','fis_guncelleme') AND deleted_at IS NULL
         GROUP BY odeme_yontemi
       ''', [satisId]);
       for (final r in kasaRows) {
@@ -259,9 +260,10 @@ class SatisDeposu {
       final parca = satisIdler.skip(i).take(500).toList();
       final yer = List.filled(parca.length, '?').join(',');
       final kasaRows = await db.rawQuery('''
-        SELECT referans_id, odeme_yontemi, COALESCE(SUM(tutar), 0) AS tutar
+        SELECT referans_id, odeme_yontemi,
+               COALESCE(SUM(CASE WHEN hareket_tipi = 'İade' THEN -tutar ELSE tutar END), 0) AS tutar
         FROM kasa_hareketleri
-        WHERE referans_id IN ($yer) AND referans_turu = 'satis' AND deleted_at IS NULL
+        WHERE referans_id IN ($yer) AND referans_turu IN ('satis','fis_guncelleme') AND deleted_at IS NULL
         GROUP BY referans_id, odeme_yontemi
       ''', parca);
       for (final r in kasaRows) {

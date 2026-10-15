@@ -1,0 +1,194 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<XtraReportsLayoutSerializer SerializerVersion="13.1.5.0" Ref="1" Name="XtraReport" ControlType="DevExpress.XtraReports.UI.XtraReport, DevExpress.XtraReports.v13.1, Version=13.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" DataSource="#Ref-0" ShowPrintMarginsWarning="false" PaperKind="A4" PageHeight="827" PageWidth="1169" Version="13.1" Landscape="true" Margins="21, 24, 123, 29">
+  <Bands>
+    <Item1 Ref="2" Name="topMarginBand1" ControlType="TopMarginBand" HeightF="122.625">
+      <Controls>
+        <Item1 Ref="3" ControlType="XRTable" Name="table1" SizeF="1104,32.29167" LocationFloat="9.999974, 85.4166641" Font="Times New Roman, 8pt, style=Bold" BackColor="Black" ForeColor="White" Borders="All" BorderColor="White" TextAlignment="TopCenter">
+          <Rows>
+            <Item1 Ref="4" Name="tableRow1" ControlType="XRTableRow" Weight="1">
+              <Cells>
+                <Item1 Ref="5" ControlType="XRTableCell" Name="tableCell7" Text="KOD" Weight="0.10462070278658749" Padding="0,0,8,0,100">
+                  <StylePriority Ref="6" UsePadding="false" />
+                </Item1>
+                <Item2 Ref="7" ControlType="XRTableCell" Name="tableCell4" Text="ÜRÜN ADI" Weight="0.59969614112888892" Padding="0,0,8,0,100">
+                  <StylePriority Ref="8" UsePadding="false" />
+                </Item2>
+                <Item3 Ref="9" ControlType="XRTableCell" Name="tableCell1" Text="SATIŞ&#xD;&#xA;MİKTARI" Weight="0.16209134806685205" Padding="0,0,2,0,100" Multiline="true">
+                  <StylePriority Ref="10" UsePadding="false" />
+                </Item3>
+                <Item4 Ref="11" ControlType="XRTableCell" Name="tableCell2" Text="İADE&#xD;&#xA;MİKTARI" Weight="0.13262254234045479" Padding="0,0,2,0,100" Multiline="true">
+                  <StylePriority Ref="12" UsePadding="false" />
+                </Item4>
+                <Item5 Ref="13" ControlType="XRTableCell" Name="tableCell5" Text="CİRO" Weight="0.16994977012435453" Padding="0,0,8,0,100">
+                  <StylePriority Ref="14" UsePadding="false" />
+                </Item5>
+                <Item6 Ref="15" ControlType="XRTableCell" Name="tableCell3" Text="TRANSFER&#xD;&#xA;GİRİŞ" Weight="0.14928237292875357" Padding="0,0,2,0,100" Multiline="true">
+                  <StylePriority Ref="16" UsePadding="false" />
+                </Item6>
+                <Item7 Ref="17" ControlType="XRTableCell" Name="tableCell6" Text="TRANSFER&#xD;&#xA;ÇIKIŞ" Weight="0.15279192248161488" Padding="0,0,2,0,100" Multiline="true">
+                  <StylePriority Ref="18" UsePadding="false" />
+                </Item7>
+                <Item8 Ref="19" ControlType="XRTableCell" Name="tableCell19" Text="STOK" Weight="0.11597621108039835" Padding="0,0,8,0,100">
+                  <StylePriority Ref="20" UsePadding="false" />
+                </Item8>
+                <Item9 Ref="21" ControlType="XRTableCell" Name="tableCell8" Text="SATIŞ&#xD;&#xA;İŞLEM SAY." Weight="0.137111885559693" Padding="0,0,2,0,100" Multiline="true">
+                  <StylePriority Ref="22" UsePadding="false" />
+                </Item9>
+                <Item10 Ref="23" ControlType="XRTableCell" Name="tableCell9" Text="AÇIKLAMA" Weight="0.35800323778594006" Padding="0,0,8,0,100">
+                  <StylePriority Ref="24" UsePadding="false" />
+                </Item10>
+              </Cells>
+            </Item1>
+          </Rows>
+          <StylePriority Ref="25" UseFont="false" UseTextAlignment="false" UseBorders="false" UseBackColor="false" UseForeColor="false" UseBorderColor="false" />
+        </Item1>
+        <Item2 Ref="26" ControlType="XRPageInfo" Name="pageInfo1" SizeF="187.499939,22.9999847" Font="Times New Roman, 10pt, style=Bold" Padding="2,2,0,0,100" LocationFloat="9.999974, 43.75" PageInfo="DateTime" Format="Rapor Tarihi: {0:dd.MM.yyyy HH:mm}">
+          <StylePriority Ref="27" UseFont="false" />
+        </Item2>
+        <Item3 Ref="28" Name="label31" ControlType="XRLabel" LocationFloat="420.224243, 21.62501" SizeF="278.331421,23" TextAlignment="TopCenter" Font="Times New Roman, 12pt, style=Bold, Underline" Padding="2,2,0,0,100" Text="ÜRÜN SATIŞ RAPORU">
+          <StylePriority Ref="29" UseFont="false" UseTextAlignment="false" />
+        </Item3>
+      </Controls>
+    </Item1>
+    <Item2 Ref="30" ControlType="DetailBand" Name="detailBand1" HeightF="14.9526491">
+      <Controls>
+        <Item1 Ref="31" ControlType="XRTable" Name="table2" SizeF="1104,13.0337868" LocationFloat="9.999948, 0" Font="Arial Narrow, 7pt, style=Bold" Padding="0,0,0,0,100" TextAlignment="TopCenter">
+          <Rows>
+            <Item1 Ref="32" Name="tableRow2" ControlType="XRTableRow" Weight="1">
+              <Cells>
+                <Item1 Ref="33" ControlType="XRTableCell" Name="tableCell10" TextAlignment="TopLeft" Text="tableCell10" Weight="0.10462073156468998" Padding="0,0,0,0,100">
+                  <DataBindings>
+                    <Item1 Ref="34" PropertyName="Text" DataMember="Table1.Kod" />
+                  </DataBindings>
+                  <StylePriority Ref="35" UseTextAlignment="false" UsePadding="false" />
+                </Item1>
+                <Item2 Ref="36" ControlType="XRTableCell" Name="tableCell11" TextAlignment="TopLeft" Text="tableCell11" Weight="0.59969611235078646" Padding="0,0,0,0,100">
+                  <DataBindings>
+                    <Item1 Ref="37" PropertyName="Text" DataMember="Table1.Ürün Adı" />
+                  </DataBindings>
+                  <StylePriority Ref="38" UseTextAlignment="false" UsePadding="false" />
+                </Item2>
+                <Item3 Ref="39" ControlType="XRTableCell" Name="tableCell12" TextAlignment="TopRight" Text="tableCell12" Weight="0.16209134087232652" Padding="0,0,0,0,100" Multiline="true">
+                  <DataBindings>
+                    <Item1 Ref="40" FormatString="{0:n2}" PropertyName="Text" DataMember="Table1.Satış Miktarı" />
+                  </DataBindings>
+                  <StylePriority Ref="41" UseTextAlignment="false" UsePadding="false" />
+                </Item3>
+                <Item4 Ref="42" ControlType="XRTableCell" Name="tableCell13" TextAlignment="TopRight" Text="tableCell13" Weight="0.13262272220359528" Padding="0,0,0,0,100" Multiline="true">
+                  <DataBindings>
+                    <Item1 Ref="43" FormatString="{0:n2}" PropertyName="Text" DataMember="Table1.Satış İade" />
+                  </DataBindings>
+                  <StylePriority Ref="44" UseTextAlignment="false" UsePadding="false" />
+                </Item4>
+                <Item5 Ref="45" ControlType="XRTableCell" Name="tableCell14" TextAlignment="TopRight" Text="tableCell14" Weight="0.16994955428858571" Padding="0,0,0,0,100">
+                  <DataBindings>
+                    <Item1 Ref="46" FormatString="{0:n2}" PropertyName="Text" DataMember="Table1.Ciro" />
+                  </DataBindings>
+                  <StylePriority Ref="47" UseTextAlignment="false" UsePadding="false" />
+                </Item5>
+                <Item6 Ref="48" ControlType="XRTableCell" Name="tableCell15" TextAlignment="TopRight" Text="tableCell15" Weight="0.14928251681926608" Padding="0,0,0,0,100" Multiline="true">
+                  <DataBindings>
+                    <Item1 Ref="49" FormatString="{0:n2}" PropertyName="Text" DataMember="Table1.Transfer Miktar Giriş" />
+                  </DataBindings>
+                  <StylePriority Ref="50" UseTextAlignment="false" UsePadding="false" />
+                </Item6>
+                <Item7 Ref="51" ControlType="XRTableCell" Name="tableCell16" TextAlignment="TopRight" Text="tableCell16" Weight="0.14927703698891714" Padding="0,0,0,0,100" Multiline="true">
+                  <DataBindings>
+                    <Item1 Ref="52" FormatString="{0:n2}" PropertyName="Text" DataMember="Table1.Transfer Çıkış" />
+                  </DataBindings>
+                  <StylePriority Ref="53" UseTextAlignment="false" UsePadding="false" />
+                </Item7>
+                <Item8 Ref="54" ControlType="XRTableCell" Name="tableCell17" TextAlignment="TopCenter" Text="tableCell17" Weight="0.11949093829353208" Padding="0,0,0,0,100" Multiline="true">
+                  <DataBindings>
+                    <Item1 Ref="55" FormatString="{0:n0}" PropertyName="Text" DataMember="Table1.Stok miktarı" />
+                  </DataBindings>
+                  <StylePriority Ref="56" UseTextAlignment="false" UsePadding="false" />
+                </Item8>
+                <Item9 Ref="57" ControlType="XRTableCell" Name="tableCell20" Text="tableCell20" Weight="0.13711177044728318">
+                  <DataBindings>
+                    <Item1 Ref="58" PropertyName="Text" DataMember="Table1.Satış Evrak Adet" />
+                  </DataBindings>
+                </Item9>
+                <Item10 Ref="59" ControlType="XRTableCell" Name="tableCell18" TextAlignment="TopLeft" Text="tableCell18" Weight="0.35800341613017639" Padding="0,0,0,0,100">
+                  <DataBindings>
+                    <Item1 Ref="60" PropertyName="Text" DataMember="Table1.Açıklama 2" />
+                  </DataBindings>
+                  <StylePriority Ref="61" UseTextAlignment="false" UsePadding="false" />
+                </Item10>
+              </Cells>
+            </Item1>
+          </Rows>
+          <StylePriority Ref="62" UseFont="false" UseTextAlignment="false" UsePadding="false" />
+        </Item1>
+      </Controls>
+    </Item2>
+    <Item3 Ref="63" Name="bottomMarginBand1" ControlType="BottomMarginBand" HeightF="29.166666" />
+    <Item4 Ref="64" ControlType="ReportFooterBand" Name="ReportFooter" HeightF="24.918829">
+      <Controls>
+        <Item1 Ref="65" ControlType="XRTable" Name="table3" SizeF="1104,13.0337868" LocationFloat="12.0291777, 5.265149" Font="Arial, 8pt, style=Bold" Padding="0,0,0,0,100" TextAlignment="TopCenter">
+          <Rows>
+            <Item1 Ref="66" Name="tableRow3" ControlType="XRTableRow" Weight="1">
+              <Cells>
+                <Item1 Ref="67" ControlType="XRTableCell" Name="tableCell23" TextAlignment="TopRight" Text="tableCell23" Weight="0.866408184787803" Padding="0,0,0,0,100" Multiline="true">
+                  <DataBindings>
+                    <Item1 Ref="68" PropertyName="Text" DataMember="Table1.Satış Miktarı" />
+                  </DataBindings>
+                  <StylePriority Ref="69" UseTextAlignment="false" UsePadding="false" />
+                  <Summary Ref="70" FormatString="{0:N2}" Running="Report" />
+                </Item1>
+                <Item2 Ref="71" ControlType="XRTableCell" Name="tableCell24" TextAlignment="TopRight" Text="tableCell24" Weight="0.13262272220359528" Padding="0,0,0,0,100" Multiline="true">
+                  <DataBindings>
+                    <Item1 Ref="72" PropertyName="Text" DataMember="Table1.Satış İade" />
+                  </DataBindings>
+                  <StylePriority Ref="73" UseTextAlignment="false" UsePadding="false" />
+                  <Summary Ref="74" FormatString="{0:n2}" Running="Report" />
+                </Item2>
+                <Item3 Ref="75" ControlType="XRTableCell" Name="tableCell25" TextAlignment="TopRight" Text="tableCell25" Weight="0.16994955428858571" Padding="0,0,0,0,100">
+                  <DataBindings>
+                    <Item1 Ref="76" PropertyName="Text" DataMember="Table1.Ciro" />
+                  </DataBindings>
+                  <StylePriority Ref="77" UseTextAlignment="false" UsePadding="false" />
+                  <Summary Ref="78" FormatString="{0:n2}" Running="Report" />
+                </Item3>
+                <Item4 Ref="79" ControlType="XRTableCell" Name="tableCell26" TextAlignment="TopRight" Text="tableCell26" Weight="0.14928251681926608" Padding="0,0,0,0,100" Multiline="true">
+                  <DataBindings>
+                    <Item1 Ref="80" PropertyName="Text" DataMember="Table1.Transfer Miktar Giriş" />
+                  </DataBindings>
+                  <StylePriority Ref="81" UseTextAlignment="false" UsePadding="false" />
+                  <Summary Ref="82" FormatString="{0:n2}" Running="Report" />
+                </Item4>
+                <Item5 Ref="83" ControlType="XRTableCell" Name="tableCell27" TextAlignment="TopRight" Text="tableCell27" Weight="0.14927703698891714" Padding="0,0,0,0,100" Multiline="true">
+                  <DataBindings>
+                    <Item1 Ref="84" PropertyName="Text" DataMember="Table1.Transfer Çıkış" />
+                  </DataBindings>
+                  <StylePriority Ref="85" UseTextAlignment="false" UsePadding="false" />
+                  <Summary Ref="86" FormatString="{0:n2}" Running="Report" />
+                </Item5>
+                <Item6 Ref="87" ControlType="XRTableCell" Name="tableCell28" TextAlignment="TopCenter" Text="tableCell28" Weight="0.11949093829353208" Padding="0,0,0,0,100" Multiline="true">
+                  <DataBindings>
+                    <Item1 Ref="88" PropertyName="Text" DataMember="Table1.Stok miktarı" />
+                  </DataBindings>
+                  <StylePriority Ref="89" UseTextAlignment="false" UsePadding="false" />
+                  <Summary Ref="90" FormatString="{0:n2}" Running="Report" />
+                </Item6>
+                <Item7 Ref="91" ControlType="XRTableCell" Name="tableCell29" Text="tableCell29" Weight="0.13711177044728318">
+                  <DataBindings>
+                    <Item1 Ref="92" PropertyName="Text" DataMember="Table1.Satış Evrak Adet" />
+                  </DataBindings>
+                  <Summary Ref="93" Running="Report" />
+                </Item7>
+                <Item8 Ref="94" ControlType="XRTableCell" Name="tableCell30" TextAlignment="TopLeft" Weight="0.35800341613017639" Padding="0,0,0,0,100">
+                  <StylePriority Ref="95" UseTextAlignment="false" UsePadding="false" />
+                </Item8>
+              </Cells>
+            </Item1>
+          </Rows>
+          <StylePriority Ref="96" UseFont="false" UseTextAlignment="false" UsePadding="false" />
+        </Item1>
+      </Controls>
+    </Item4>
+  </Bands>
+  <ObjectStorage>
+    <Item1 ObjectType="DevExpress.XtraReports.Serialization.ObjectStorageInfo, DevExpress.XtraReports.v13.1" Ref="0" Content="~Xtra#NULL" Type="System.Data.DataSet" />
+  </ObjectStorage>
+</XtraReportsLayoutSerializer>

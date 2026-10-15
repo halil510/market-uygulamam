@@ -3,6 +3,10 @@
 // İade ekranının "Geçmiş" sekmesi ARAYÜZÜ (iade_ekrani_gecmis.dart'tan
 // ayrıldı, 2026-10-07). Yalnız gösterir; tarih/cari seçimi, silme onayı ve
 // yükleme ekranın kendisinde (bkz. _GecmisTabExt).
+//
+// 🔴 DÜZELTME (2026-10-13): UNION sonrası iade + tedarikci_iadeler
+// tablolarının id'leri tesadüfen çakışabilir. ValueKey artık `kaynak`
+// alanını da içeriyor → yanlış satır eşleşmesi/animasyon sorunu yok.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -25,6 +29,8 @@ class IadeGecmisSekmesi extends StatelessWidget {
   final Future<bool> Function(Map<String, dynamic> iade) onSilOnay;
   final ValueChanged<Map<String, dynamic>> onSil;
   final ValueChanged<Map<String, dynamic>> onDetay;
+  /// 🆕 İade fişini termal yazıcıdan basar (müşteri / bayi / tedarikçi).
+  final ValueChanged<Map<String, dynamic>>? onYazdir;
 
   const IadeGecmisSekmesi({
     super.key,
@@ -41,6 +47,7 @@ class IadeGecmisSekmesi extends StatelessWidget {
     required this.onSilOnay,
     required this.onSil,
     required this.onDetay,
+    this.onYazdir,
   });
 
   @override
@@ -76,12 +83,16 @@ class IadeGecmisSekmesi extends StatelessWidget {
       itemCount: iadeler.length,
       itemBuilder: (_, i) {
         final r = iadeler[i];
+        // 🔴 DÜZELTME (2026-10-13): UNION sonrası kaynak ayırt edilmeli.
+        final kaynak = (r['kaynak'] as String?) ?? 'iade';
+        final key = 'gecmis_${kaynak}_${r['id']}';
         return _GecmisSatiri(
-          key: ValueKey('gecmis_${r['id']}'),
+          key: ValueKey(key),
           iade: r,
           onSilOnay: () => onSilOnay(r),
           onSil: () => onSil(r),
           onTap: () => onDetay(r),
+          onYazdir: onYazdir == null ? null : () => onYazdir!(r),
         );
       },
     );
@@ -162,6 +173,7 @@ class _GecmisSatiri extends StatelessWidget {
   final Future<bool> Function() onSilOnay;
   final VoidCallback onSil;
   final VoidCallback onTap;
+  final VoidCallback? onYazdir;
 
   const _GecmisSatiri({
     super.key,
@@ -169,6 +181,7 @@ class _GecmisSatiri extends StatelessWidget {
     required this.onSilOnay,
     required this.onSil,
     required this.onTap,
+    this.onYazdir,
   });
 
   static final _uzunTarih = DateFormat('dd.MM.yyyy HH:mm');
@@ -176,10 +189,19 @@ class _GecmisSatiri extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = iade;
+    final kaynak = (r['kaynak'] as String?) ?? 'iade';
+    final tedarikciMi = kaynak == 'tedarikci';
     final tarih = DateTime.tryParse(r['tarih']?.toString() ?? '');
     final ikincil = TextStyle(fontSize: 11, color: TsRenk.metinIkincil(context));
+    // 🔴 DÜZELTME: kaynak ayrımı için ValueKey, key çakışmasını önler.
+    final key = 'gecmis_${kaynak}_${r['id']}';
+    // Tedarikçi satırları stok azaltır → farklı ikon/renk.
+    final iconRenk = tedarikciMi ? TsRenk.hata : TsRenk.uyari;
+    final iconu = tedarikciMi ? Icons.assignment_return : Icons.assignment_return;
+    final rozetMetin = tedarikciMi ? 'Tedarikçi İadesi' : null;
+
     return Dismissible(
-      key: ValueKey('gecmis_${r['id']}'),
+      key: ValueKey(key),
       direction: DismissDirection.endToStart,
       background: Container(
         margin: const EdgeInsets.only(bottom: 8),
@@ -205,25 +227,52 @@ class _GecmisSatiri extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-                color: TsRenk.zemin(TsRenk.uyari), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.assignment_return, color: TsRenk.uyari, size: 22),
+                color: TsRenk.zemin(iconRenk), borderRadius: BorderRadius.circular(12)),
+            child: Icon(iconu, color: iconRenk, size: 22),
           ),
-          title: Text(r['fis_no']?.toString() ?? 'İade #${r['id']}',
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          title: Row(children: [
+            Expanded(
+              child: Text(r['fis_no']?.toString() ?? 'İade #${r['id']}',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            ),
+            if (rozetMetin != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: TsRenk.zemin(TsRenk.hata),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(rozetMetin,
+                    style: const TextStyle(fontSize: 9, color: TsRenk.hata, fontWeight: FontWeight.w700)),
+              ),
+          ]),
           subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (r['cari_adi'] != null) Text(r['cari_adi'].toString(), style: ikincil),
             if (tarih != null) Text(_uzunTarih.format(tarih), style: ikincil),
           ]),
-          trailing: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(ParaUtils.formatla((r['toplam_tutar'] as num?)?.toDouble() ?? 0),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 13, color: TsRenk.uyari)),
-                Text('${r['kalem_sayisi'] ?? 0} kalem',
-                    style: TextStyle(fontSize: 10, color: TsRenk.metinIkincil(context))),
-              ]),
+          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+            Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(ParaUtils.formatla((r['toplam_tutar'] as num?)?.toDouble() ?? 0),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 13, color: iconRenk)),
+                  Text('${r['kalem_sayisi'] ?? 0} kalem',
+                      style: TextStyle(fontSize: 10, color: TsRenk.metinIkincil(context))),
+                ]),
+            // 🆕 İade fişi yazdır (müşteri / bayi / tedarikçi)
+            if (onYazdir != null)
+              IconButton(
+                icon: const Icon(Icons.print_outlined, size: 20),
+                color: TsRenk.primary,
+                tooltip: 'İade Fişini Yazdır',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                onPressed: onYazdir,
+              ),
+          ]),
           onTap: onTap,
         ),
       ),

@@ -435,6 +435,259 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  // 🆕 İADE FİŞİ — müşteri / bayi / tedarikçi iadeleri
+  //
+  // 🔴 DÜZELTME (kullanıcı bulgusu — "cari'de iade fişi yazdırılmıyor,
+  // satışlarda yazdırılıyor"): Cari ekstresinde Satış → fisYazdir,
+  // Tahsilat/Ödeme → makbuzYazdir ile basılıyordu; İADE hareketlerinin ise
+  // basacağı bir belge yoktu ("Bu hareket türü yazdırılamaz" hatası).
+  // Bu metot üç iade türünü de (müşteri, bayi, tedarikçi) aynı fiş
+  // düzeniyle basar; başlık ve taraf etiketi türe göre değişir.
+  //
+  //   iadeTuru: 'musteri'   → MUSTERI IADE FISI
+  //             'bayi'      → BAYI IADE FISI       (bayiden iade alındı)
+  //             'tedarikci' → TEDARIKCIYE IADE FISI (tedarikçiye mal gitti)
+  //
+  // kalemler: her satır {urun_adi, miktar, birim_fiyat, toplam_tutar,
+  //           iskonto_tutar?} anahtarlarını taşır (FisDetayDeposu çıktısı).
+  // ══════════════════════════════════════════════════════════════════════
+  Future<void> iadeFisiYazdir({
+    required String iadeTuru,
+    required String fisNo,
+    required DateTime tarih,
+    required String cariUnvan,
+    required List<Map<String, dynamic>> kalemler,
+    required double toplam,
+    String? odemeYontemi,
+    String? aciklama,
+    String? kullanici,
+    double? oncekiBakiye,
+    double? sonBakiye,
+    String? firmaAdi,
+    String? firmaAdres,
+    String? firmaTel,
+  }) async {
+    await ayarlariYukle();
+    final profile   = await _profil();
+    final generator = Generator(_kagit, profile);
+
+    final String baslik;
+    final String tarafEtiketi;
+    switch (iadeTuru) {
+      case 'tedarikci':
+        baslik = 'TEDARIKCIYE IADE FISI';
+        tarafEtiketi = 'Tedarikci:';
+        break;
+      case 'bayi':
+        baslik = 'BAYI IADE FISI';
+        tarafEtiketi = 'Bayi:';
+        break;
+      default:
+        baslik = 'MUSTERI IADE FISI';
+        tarafEtiketi = 'Musteri:';
+    }
+    final imzaGerekli = iadeTuru == 'tedarikci' || iadeTuru == 'bayi';
+
+    final fa   = firmaAdi   ?? _firmaAdi;
+    final fadr = firmaAdres ?? _firmaAdres;
+    final ft   = firmaTel   ?? _firmaTel;
+    final tarihStr = DateFormat('dd.MM.yyyy HH:mm').format(tarih);
+
+    double d(dynamic v) => v is num ? v.toDouble() : double.tryParse('${v ?? ''}') ?? 0;
+
+    for (int kopya = 0; kopya < _fisKopyaSayisi.clamp(1, 5); kopya++) {
+      final List<int> bytes = [];
+
+      // ── Firma başlığı ────────────────────────────────────────────────
+      bytes.addAll(await _logoBas(generator));
+      bytes.addAll(generator.text(YazdirmaServisi._t(fa),
+          styles: const PosStyles(bold: true, align: PosAlign.center,
+              height: PosTextSize.size2, width: PosTextSize.size1)));
+      if (fadr.isNotEmpty) {
+        bytes.addAll(generator.text(YazdirmaServisi._t(fadr),
+            styles: const PosStyles(align: PosAlign.center)));
+      }
+      if (ft.isNotEmpty) {
+        bytes.addAll(generator.text(YazdirmaServisi._t('Tel: $ft'),
+            styles: const PosStyles(align: PosAlign.center)));
+      }
+      if (_fisVergiNoGoster && _firmaVergiNo.isNotEmpty) {
+        bytes.addAll(generator.text(YazdirmaServisi._t('VKN: $_firmaVergiNo'),
+            styles: const PosStyles(align: PosAlign.center)));
+      }
+      bytes.addAll(generator.hr(ch: '='));
+
+      // ── Belge başlığı ────────────────────────────────────────────────
+      bytes.addAll(generator.text(YazdirmaServisi._t(baslik),
+          styles: const PosStyles(bold: true, align: PosAlign.center,
+              height: PosTextSize.size2, width: PosTextSize.size1)));
+      bytes.addAll(generator.hr(ch: '='));
+
+      // ── Belge künyesi ────────────────────────────────────────────────
+      bytes.addAll(generator.row([
+        PosColumn(text: YazdirmaServisi._t('Tarih:'), width: 4,
+            styles: const PosStyles(bold: true)),
+        PosColumn(text: YazdirmaServisi._t(tarihStr), width: 8),
+      ]));
+      bytes.addAll(generator.row([
+        PosColumn(text: YazdirmaServisi._t('Iade No:'), width: 4,
+            styles: const PosStyles(bold: true)),
+        PosColumn(text: YazdirmaServisi._t(fisNo.isEmpty ? '-' : fisNo), width: 8),
+      ]));
+      if (_fisKasiyerGoster && kullanici != null && kullanici.isNotEmpty) {
+        bytes.addAll(generator.row([
+          PosColumn(text: YazdirmaServisi._t('Kasiyer:'), width: 4,
+              styles: const PosStyles(bold: true)),
+          PosColumn(text: YazdirmaServisi._t(kullanici), width: 8),
+        ]));
+      }
+      if (cariUnvan.isNotEmpty) {
+        bytes.addAll(generator.row([
+          PosColumn(text: YazdirmaServisi._t(tarafEtiketi), width: 4,
+              styles: const PosStyles(bold: true)),
+          PosColumn(text: YazdirmaServisi._t(cariUnvan), width: 8),
+        ]));
+      }
+      if (aciklama != null && aciklama.trim().isNotEmpty) {
+        bytes.addAll(generator.row([
+          PosColumn(text: YazdirmaServisi._t('Neden:'), width: 4,
+              styles: const PosStyles(bold: true)),
+          PosColumn(text: YazdirmaServisi._t(aciklama.trim()), width: 8),
+        ]));
+      }
+      bytes.addAll(generator.hr());
+
+      // ── Kalemler ─────────────────────────────────────────────────────
+      bytes.addAll(generator.row([
+        PosColumn(text: YazdirmaServisi._t('Urun'), width: 6, styles: const PosStyles(bold: true)),
+        PosColumn(text: YazdirmaServisi._t('Mkt'), width: 2,
+            styles: const PosStyles(bold: true, align: PosAlign.center)),
+        PosColumn(text: YazdirmaServisi._t('Fiy'), width: 2,
+            styles: const PosStyles(bold: true, align: PosAlign.right)),
+        PosColumn(text: YazdirmaServisi._t('Top'), width: 2,
+            styles: const PosStyles(bold: true, align: PosAlign.right)),
+      ]));
+      bytes.addAll(generator.hr());
+
+      double topIsk = 0;
+      final adMax = _kagit == PaperSize.mm58 ? 16 : 20;
+      for (final k in kalemler) {
+        final miktar = d(k['miktar']);
+        final mkt = miktar % 1 == 0 ? '${miktar.toInt()}' : miktar.toStringAsFixed(2);
+        final adHam = '${k['urun_adi'] ?? ''}';
+        final ad = adHam.length > adMax ? '${adHam.substring(0, adMax - 3)}...' : adHam;
+        final iskTutar = d(k['iskonto_tutar']);
+        final birimFiyat = d(k['birim_fiyat']);
+        // Satırda indirim varsa fişteki gibi NET birim fiyat gösterilir —
+        // "Fiyat × Miktar = Toplam" tutarlı kalsın.
+        final gosterilecekFiyat = (iskTutar > 0 && miktar > 0)
+            ? (d(k['toplam_tutar']) / miktar)
+            : birimFiyat;
+        bytes.addAll(generator.row([
+          PosColumn(text: YazdirmaServisi._t(ad), width: 6),
+          PosColumn(text: YazdirmaServisi._t(mkt), width: 2,
+              styles: const PosStyles(align: PosAlign.center)),
+          PosColumn(text: YazdirmaServisi._t(_fmt.format(gosterilecekFiyat)), width: 2,
+              styles: const PosStyles(align: PosAlign.right)),
+          PosColumn(text: YazdirmaServisi._t(_fmt.format(d(k['toplam_tutar']))), width: 2,
+              styles: const PosStyles(align: PosAlign.right)),
+        ]));
+        if (_fisUrunKoduGoster && '${k['barkod'] ?? ''}'.isNotEmpty) {
+          bytes.addAll(generator.text(YazdirmaServisi._t('  Kod: ${k['barkod']}'),
+              styles: const PosStyles(align: PosAlign.left)));
+        }
+        if (iskTutar > 0) {
+          bytes.addAll(generator.text(
+              YazdirmaServisi._t('  Ind: -${_fmt.format(iskTutar)}')));
+        }
+        topIsk += iskTutar;
+      }
+      bytes.addAll(generator.hr());
+
+      if (topIsk > 0.001) {
+        bytes.addAll(generator.row([
+          PosColumn(text: YazdirmaServisi._t('ISKONTO'), width: 8),
+          PosColumn(text: YazdirmaServisi._t('-${_fmt.format(topIsk)}'), width: 4,
+              styles: const PosStyles(align: PosAlign.right)),
+        ]));
+      }
+      bytes.addAll(generator.row([
+        PosColumn(text: YazdirmaServisi._t('IADE TOPLAMI'), width: 7,
+            styles: const PosStyles(bold: true)),
+        PosColumn(text: YazdirmaServisi._t(_fmt.format(toplam)), width: 5,
+            styles: const PosStyles(bold: true, align: PosAlign.right)),
+      ]));
+      if (_fisOdemeYontemiGoster &&
+          odemeYontemi != null && odemeYontemi.isNotEmpty) {
+        bytes.addAll(generator.row([
+          PosColumn(text: YazdirmaServisi._t('Iade Sekli'), width: 6),
+          PosColumn(text: YazdirmaServisi._t(odemeYontemi), width: 6,
+              styles: const PosStyles(align: PosAlign.right)),
+        ]));
+      }
+      if (_fisYaziylaTutar) {
+        bytes.addAll(generator.text(
+            YazdirmaServisi._t('Yalniz: ${tutariYaziyaCevir(toplam)}'),
+            styles: const PosStyles(bold: true)));
+      }
+      bytes.addAll(generator.hr());
+
+      // ── Cari hesap özeti ────────────────────────────────────────────
+      if (_fisCariBakiyeGoster && oncekiBakiye != null && sonBakiye != null) {
+        bytes.addAll(generator.text(YazdirmaServisi._t('CARI HESAP OZETI'),
+            styles: const PosStyles(bold: true, align: PosAlign.center)));
+        bytes.addAll(generator.row([
+          PosColumn(text: YazdirmaServisi._t('Eski Bakiye'), width: 7),
+          PosColumn(text: YazdirmaServisi._t(_bakiyeYaz(oncekiBakiye)), width: 5,
+              styles: const PosStyles(align: PosAlign.right)),
+        ]));
+        final fark = sonBakiye - oncekiBakiye;
+        bytes.addAll(generator.row([
+          PosColumn(text: YazdirmaServisi._t(fark >= 0 ? '(+) Bu Iade' : '(-) Bu Iade'),
+              width: 7),
+          PosColumn(text: YazdirmaServisi._t(_fmt.format(fark.abs())), width: 5,
+              styles: const PosStyles(align: PosAlign.right)),
+        ]));
+        bytes.addAll(generator.hr());
+        bytes.addAll(generator.row([
+          PosColumn(text: YazdirmaServisi._t('SON BAKIYE'), width: 7,
+              styles: const PosStyles(bold: true)),
+          PosColumn(text: YazdirmaServisi._t(_bakiyeYaz(sonBakiye)), width: 5,
+              styles: const PosStyles(bold: true, align: PosAlign.right)),
+        ]));
+        bytes.addAll(generator.hr(ch: '='));
+      }
+
+      // ── Bayi / tedarikçi iadesinde teslim imzası ─────────────────────
+      if (imzaGerekli) {
+        bytes.addAll(generator.feed(1));
+        bytes.addAll(generator.row([
+          PosColumn(text: YazdirmaServisi._t('Teslim Eden'), width: 6,
+              styles: const PosStyles(align: PosAlign.center)),
+          PosColumn(text: YazdirmaServisi._t('Teslim Alan'), width: 6,
+              styles: const PosStyles(align: PosAlign.center)),
+        ]));
+        bytes.addAll(generator.feed(2));
+        bytes.addAll(generator.row([
+          PosColumn(text: YazdirmaServisi._t('.............'), width: 6,
+              styles: const PosStyles(align: PosAlign.center)),
+          PosColumn(text: YazdirmaServisi._t('.............'), width: 6,
+              styles: const PosStyles(align: PosAlign.center)),
+        ]));
+        bytes.addAll(generator.hr());
+      }
+
+      bytes.addAll(generator.feed(_fisBeslemeKagit.clamp(0, 10)));
+      bytes.addAll(generator.cut());
+
+      await _yazdir(bytes);
+      if (kopya < _fisKopyaSayisi.clamp(1, 5) - 1) {
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+    }
+  }
+
   // ══════════════════════════════════════════════════════════════════════════
   // FATURA — 80mm/58mm termal yazıcıya RAW ESC/POS
   // PDF tabanlı 80mm çıktı bazı termal yazıcılarda küçük/yanlış ölçekte

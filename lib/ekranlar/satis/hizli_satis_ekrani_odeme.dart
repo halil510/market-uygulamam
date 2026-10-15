@@ -309,7 +309,11 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
     return 'tutar değişmedi';
   }
 
-  Future<void> _fisiGuncelle() async {
+  Future<void> _fisiGuncelle({
+    String? odemeYontemi,
+    double? odenenTutar,
+    List<Map<String, dynamic>>? karmaKalemler,
+  }) async {
     final satis = _guncellenenSatis;
     if (satis == null || satis.id == null) return;
 
@@ -335,6 +339,11 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
         yeniKalemler: kalemler,
         yeniGenelToplam: sepet.genelToplam,
         kullanici: kullanici,
+        musteri: sepet.musteri,
+        odemeYontemi: odemeYontemi,
+        odenenTutar: odenenTutar,
+        karmaKalemler: karmaKalemler,
+        subeId: AktifSubeServisi().subeId,
       );
       // Satışı biten alışveriş sekmesi kapanır (sekme 1 ise boşalır).
       sepetNotifier.satisTamamlandi();
@@ -346,9 +355,9 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
         _guncellenenSatis = null;
       });
       BildirimServisi.basari(context,
-          'Fiş ${satis.fisNo} güncellendi (${_tutarFarkiOzeti(sonuc.tutarFarki)})');
+          'Fiş ${sonuc.guncelSatis.fisNo ?? satis.fisNo} güncellendi (${_tutarFarkiOzeti(sonuc.tutarFarki)})');
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Fiş güncellenemedi: ${kullaniciyaHataMetni(e)}');
+      if (mounted) BildirimServisi.hata(context, 'Fiş güncellenemedi: ${kullaniciyaHataMetni(e)}\n[Teknik detay: $e]');
     } finally {
       _islemBitti();
     }
@@ -360,7 +369,11 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
     if (!mounted) return;
 
     if (_guncellenenSatis != null) {
-      await _fisiGuncelle();
+      await _fisiGuncelle(
+        odemeYontemi: odemeYontemi,
+        odenenTutar: odenenTutar,
+        karmaKalemler: karmaKalemler,
+      );
       return;
     }
 

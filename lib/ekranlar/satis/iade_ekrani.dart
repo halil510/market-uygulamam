@@ -42,12 +42,10 @@ import '../../servisler/excel_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../servisler/iade_islem_servisi.dart';
+import '../../servisler/iade_fis_yazdirma.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../widgetlar/ortak/donanim_barkod_dinleyici.dart';
 
-// Geçmiş İadeler sekmesinin kodu, dosya boyutunu azaltmak için ayrı bir
-// dosyaya taşındı (bkz. dosyanın sonundaki not). part/part of ile bu
-// dosyayla AYNI kütüphane kapsamını paylaşıyor — davranış değişmedi.
 part 'iade_ekrani_gecmis.dart';
 part 'iade_ekrani_fis.dart';
 part 'iade_ekrani_hizli.dart';
@@ -57,15 +55,6 @@ part 'iade_ekrani_kaydet.dart';
 part 'iade_ekrani_oturum.dart';
 
 // ─── Renk paleti ─────────────────────────────────────────────────────────────
-// 🔴 DÜZELTME (görsel tutarlılık denetimi — "sırayla" listenin 2.
-// maddesi): bu ekran ÖNCEDEN kendi izole/sabit renk paletini
-// kullanıyordu — primary rengi (koyu lacivert) uygulamanın geri
-// kalanından FARKLIYDI ve dark mode'a hiç uymuyordu (1266+ satırlık bu
-// finansal-kritik ekran diğer TÜM ekranlardan görsel olarak
-// kopuyordu). Durum/aksan renkleri (orange/green/red/blue/primary)
-// TsRenk'in AYNI semantik sabitleriyle hizalandı (hâlâ const, context
-// gerektirmiyor). Yüzey/metin renkleri (bg/card/textD/textL/border)
-// artık context alan metotlar — TsRenk üzerinden dark mode'a uyuyor.
 class _R {
   static const primary = TsRenk.primary;
   static const orange = TsRenk.uyari;
@@ -83,17 +72,13 @@ class _HizliItem {
 
 class IadeEkrani extends ConsumerStatefulWidget {
   final List<UrunModel>? baslangicUrunleri;
-  // Kullanıcı isteği: "iade alımı yaptığımızda o ekran kapanacak" —
-  // toptan cari panelinden tek-ürünlük hızlı iade akışı için. Normal
-  // (çok kalemli, sekmeli) perakende iade akışını BOZMAMAK için
-  // varsayılan false — sadece açıkça istenirse otomatik kapanır.
   final bool otomatikKapat;
-  /// Verilirse ekran Fiş sekmesinde bu satışla açılır (bayi/toptan panelinden
-  /// "İade Et": müşteri, gerçek satış fiyatları, adetler ve önceki iadeler
-  /// fişten gelir).
   final String? baslangicFisNo;
   const IadeEkrani(
-      {super.key, this.baslangicUrunleri, this.otomatikKapat = false, this.baslangicFisNo});
+      {super.key,
+      this.baslangicUrunleri,
+      this.otomatikKapat = false,
+      this.baslangicFisNo});
 
   @override
   ConsumerState<IadeEkrani> createState() => _IadeEkraniState();
@@ -126,10 +111,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   double _miktar = 1;
   double _orijinalFiyat = 0;
   bool _yukleniyor = false;
-  // 🔴🔴 FAZ 1 madde 1 (kullanıcı onayıyla): bu manuel iade akışının
-  // belirli bir orijinal satışa bağlantısı yok, bu yüzden "orijinal
-  // ödeme yöntemi" bilinmiyor — kullanıcı burada seçiyor (varsayılan:
-  // Nakit). Kart/Banka seçilirse kasa_hareketleri'ne hiç yazılmaz.
   String _iadeOdemeYontemi = 'Nakit';
 
   // Hızlı mod
@@ -138,13 +119,24 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   // İade listesi (bu oturumda yapılanlar)
   final List<Map<String, dynamic>> _iadeListesi = [];
 
-  // Oturum iade - tüm kalemler tek fiş altında
+  // Müşteri oturum iadesi (tek fiş altında toplama)
   int? _oturumIadeId;
   String _oturumFisNo = '';
 
-  // Düzenleme modu — geçmişten açılan iade
-  int?
-      _duzenlemeModuIadeId; // null = yeni iade, int = mevcut iade üzerinde çalışıyoruz
+  // 🔴 YENİ (2026-10-13): tedarikçi/bayi oturum belgesi — tek fiş modeli.
+  // İlk kayıtta belge açılır, sonraki kayıtlar AYNI belgeye kalem olarak
+  // gider. Aynı gün + aynı cari + aynı tür kombinasyonunda geçerlidir.
+  int? _cariOturumIadeId;
+  String _cariOturumFisNo = '';
+  CariIadeTuru? _cariOturumTuru;
+  int? _cariOturumCariId;
+  // 🔴 YENİ: oturumun açıldığı tarih. Uygulama gece açık kaldıysa
+  // (dün akşam TDI-0001 açıldı, bugün hâlâ bellekte), ertesi gün
+  // otomatik yeni belge açılsın diye gün karşılaştırması yapılır.
+  DateTime? _cariOturumTarih;
+
+  // Düzenleme modu
+  int? _duzenlemeModuIadeId;
   String? _duzenlemeModuFisNo;
 
   // Arama
@@ -153,14 +145,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
 
   // Fiş arama
   SatisModel? _bulunanSatis;
-  // urun_id -> bu satıştan bugüne kadar bu üründen kaç adet iade edilmiş.
-  // Fiş sekmesinde aynı kalemin birden fazla kez iade edilmesini
-  // (dolayısıyla kasadan mükerrer para çıkışını ve stok şişmesini)
-  // önlemek için kullanılır.
   Map<int, double> _fisIadeEdilenMiktar = {};
-
-  /// Bir fiş kalemi iadesi (onay penceresi + kayıt) sürerken ikinci bir
-  /// iadenin başlatılmasını engeller.
   bool _fisIadeIsleniyor = false;
 
   // Controllers
@@ -177,7 +162,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   void initState() {
     super.initState();
     _tab = TabController(length: 4, vsync: this);
-    _yeniFisNoOlustur(); // Oturum başında fiş no oluştur
+    _yeniFisNoOlustur();
     _tab.addListener(() {
       if (_tab.index == 3) _gecmisYukle();
     });
@@ -186,13 +171,12 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
       final v = ParaUtils.sayiCoz(_miktarCtrl.text) ?? 1;
       if (v == _miktar) return;
       setState(() => _miktar = v);
-      // Bayi fiyatı miktar kademesine bağlı olabilir.
       if (_cariIadeTuru == CariIadeTuru.bayi) _iadeFiyatiniGuncelle();
     });
     _verileriYukle();
     if (widget.baslangicFisNo != null && widget.baslangicFisNo!.isNotEmpty) {
       _fisNoCtrl.text = widget.baslangicFisNo!;
-      _tab.index = 2; // Fiş sekmesi
+      _tab.index = 2;
       WidgetsBinding.instance.addPostFrameCallback((_) => _fisBul());
     }
 
@@ -223,7 +207,7 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
 
   Future<void> _verileriYukle() async {
     try {
-      _gecmisYukle(); // Paralel yükle
+      _gecmisYukle();
       final results =
           await Future.wait([_urunDepo.tumunuGetir(), _cariDepo.tumunuGetir()]);
       if (!mounted) return;
@@ -232,9 +216,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
       if (mounted) setState(() {});
     } catch (e) {
       if (kDebugMode) debugPrint('Hata: $e');
-      // ÖNCEDEN kullanıcıya hiçbir şey gösterilmiyordu — ürün/cari
-      // listesi yüklenemezse ekran sessizce BOŞ kalır, kullanıcı
-      // nedenini asla bilemezdi.
       if (mounted) {
         BildirimServisi.hata(
             context, 'Veriler yüklenemedi, lütfen tekrar deneyin');
@@ -242,7 +223,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     }
   }
 
-  // Oturum için yeni fiş no oluştur
   Future<void> _yeniFisNoOlustur() async {
     try {
       final no = await BelgeNoServisi().uret('iade');
@@ -270,34 +250,31 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     if (mounted) setState(() {});
   }
 
-  /// Yeni iade başlat — düzenleme modunu kapat, listeyi temizle
+  /// Yeni iade başlat — düzenleme modunu kapat, listeyi temizle, oturum
+  /// belgelerini sıfırla. Bir sonraki kayıt YENİ belge açar.
   void _yeniIadeBaslat() {
     setState(() {
       _duzenlemeModuIadeId = null;
       _duzenlemeModuFisNo = null;
       _oturumIadeId = null;
       _oturumFisNo = '';
+      // 🔴 YENİ: tedarikçi/bayi oturum belgesi de sıfırlanır.
+      _cariOturumIadeId = null;
+      _cariOturumFisNo = '';
+      _cariOturumTuru = null;
+      _cariOturumCariId = null;
+      _cariOturumTarih = null;
       _iadeListesi.clear();
       _secilenCari = null;
       _iadeOdemeYontemi = 'Nakit';
     });
-    _yeniFisNoOlustur(); // Yeni oturum için yeni fiş no
+    _yeniFisNoOlustur();
     _formSifirla();
     _msg('Yeni iade başlatıldı', err: false);
   }
 
-  // ── Toplu iade (hızlı mod) ───────────────────────────────────────────────
-  // 🔥 "Hızlı" sekmesinin _hizliKaydet() kodu taşındı.
-
-  // ── Fiş arama ─────────────────────────────────────────────────────────────
-  // 🔥 "Fiş" sekmesinin _fisBul()/_fisKalemIade() kodu
-  // 'iade_ekrani_fis.dart' dosyasına taşındı (extension olarak).
-
-  // ── Excel ─────────────────────────────────────────────────────────────────
   void _msg(String s, {bool err = false}) {
     if (!mounted) return;
-    // 🔴 UX TUTARLILIK DÜZELTMESİ: bkz. aynı düzeltme diğer ekranlarda —
-    // artık paylaşılan BildirimServisi kullanılıyor.
     if (err) {
       BildirimServisi.hata(context, s);
     } else {
@@ -305,102 +282,115 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
     }
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // BUILD
-  // ══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
-    // El terminali / USB okuyucu: İade sekmesinde arama kutusu odakta
-    // değilken de okutma ürünü seçer.
     return DonanimBarkodDinleyici(
-      onBarkod: (b) { if (_tab.index == 0) _barkodIsle(b); },
+      onBarkod: (b) {
+        if (_tab.index == 0) _barkodIsle(b);
+      },
       child: Scaffold(
-      backgroundColor: TsRenk.arkaplan(context),
-      appBar: TsAppBar(
-        baslikWidget: _duzenlemeModuIadeId != null
-            ? Text('İade: ${_duzenlemeModuFisNo ?? ''}',
-                style: const TextStyle(fontSize: 15))
-            : const Text('İade İşlemleri'),
-        aksiyonlar: [
-          if (_duzenlemeModuIadeId != null)
-            TextButton.icon(
-              icon: const Icon(Icons.add_circle_outline,
-                  color: Colors.white, size: 16),
-              label: const Text('Yeni',
-                  style: TextStyle(color: Colors.white, fontSize: 11)),
-              onPressed: _yeniIadeBaslat,
+        backgroundColor: TsRenk.arkaplan(context),
+        appBar: TsAppBar(
+          baslikWidget: _duzenlemeModuIadeId != null
+              ? Text('İade: ${_duzenlemeModuFisNo ?? ''}',
+                  style: const TextStyle(fontSize: 15))
+              : const Text('İade İşlemleri'),
+          aksiyonlar: [
+            if (_duzenlemeModuIadeId != null)
+              TextButton.icon(
+                icon: const Icon(Icons.add_circle_outline,
+                    color: Colors.white, size: 16),
+                label: const Text('Yeni',
+                    style: TextStyle(color: Colors.white, fontSize: 11)),
+                onPressed: _yeniIadeBaslat,
+              ),
+            // 🆕 İade fişini yazdır — bu oturumda kaydedilen müşteri /
+            // bayi / tedarikçi iadesinin fişini termal yazıcıdan basar.
+            if (_yazdirilacakIadeId != null)
+              IconButton(
+                icon: const Icon(Icons.print_outlined, color: Colors.white),
+                tooltip: 'İade Fişini Yazdır',
+                onPressed: _oturumIadeFisiYazdir,
+              ),
+            PopupMenuButton<String>(
+                icon: Image.asset("assets/images/excel_icon.png",
+                    width: 22,
+                    height: 22,
+                    errorBuilder: (_, _, _) =>
+                        const Icon(Icons.table_chart)),
+                tooltip: 'Excel',
+                onSelected: (v) =>
+                    v == 'ice' ? _excelIceAl() : _excelDisaVer(),
+                itemBuilder: (_) => const [
+                      PopupMenuItem(
+                          value: 'ice',
+                          child: ListTile(
+                              dense: true,
+                              leading: Icon(Icons.file_download_outlined),
+                              title: Text('Excel içeri al'))),
+                      PopupMenuItem(
+                          value: 'disa',
+                          child: ListTile(
+                              dense: true,
+                              leading: Icon(Icons.file_upload_outlined),
+                              title: Text('Excel dışarı ver'))),
+                    ]),
+            if (_secilenCari != null)
+              Chip(
+                  label: Text(_secilenCari!.unvan,
+                      style: const TextStyle(fontSize: 11)),
+                  deleteIcon: const Icon(Icons.close, size: 14),
+                  onDeleted: _cariyiKaldir)
+            else
+              TextButton.icon(
+                icon: const Icon(Icons.person_search,
+                    color: Colors.white, size: 18),
+                label: const Text('Cari Seç',
+                    style: TextStyle(color: Colors.white, fontSize: 12)),
+                onPressed: _musteriSec,
+              ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (v) {
+                if (v == 'musteri') _musteriSec();
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                    value: 'musteri',
+                    child: ListTile(
+                        dense: true,
+                        leading:
+                            Icon(Icons.person, color: AppRenkler.primary),
+                        title: Text(
+                            'Cari Seç (Müşteri / Tedarikçi / Bayi)'))),
+              ],
             ),
-          PopupMenuButton<String>(
-              icon: Image.asset("assets/images/excel_icon.png",
-                  width: 22,
-                  height: 22,
-                  errorBuilder: (_, _, _) => const Icon(Icons.table_chart)),
-              tooltip: 'Excel',
-              onSelected: (v) => v == 'ice' ? _excelIceAl() : _excelDisaVer(),
-              itemBuilder: (_) => const [
-                    PopupMenuItem(
-                        value: 'ice',
-                        child: ListTile(
-                            dense: true,
-                            leading: Icon(Icons.file_download_outlined),
-                            title: Text('Excel içeri al'))),
-                    PopupMenuItem(
-                        value: 'disa',
-                        child: ListTile(
-                            dense: true,
-                            leading: Icon(Icons.file_upload_outlined),
-                            title: Text('Excel dışarı ver'))),
-                  ]),
-          if (_secilenCari != null)
-            Chip(
-                label: Text(_secilenCari!.unvan,
-                    style: const TextStyle(fontSize: 11)),
-                deleteIcon: const Icon(Icons.close, size: 14),
-                onDeleted: _cariyiKaldir)
-          else
-            // Tedarikçi/bayi iadesi cari seçimiyle başlar — seçim önceden
-            // yalnız ⋮ menüsünde "Müşteri Seç" adıyla saklıydı.
-            TextButton.icon(
-              icon: const Icon(Icons.person_search, color: Colors.white, size: 18),
-              label: const Text('Cari Seç',
-                  style: TextStyle(color: Colors.white, fontSize: 12)),
-              onPressed: _musteriSec,
-            ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (v) { if (v == 'musteri') _musteriSec(); },
-            itemBuilder: (_) => [
-              const PopupMenuItem(
-                  value: 'musteri',
-                  child: ListTile(
-                      dense: true,
-                      leading: Icon(Icons.person, color: AppRenkler.primary),
-                      title: Text('Cari Seç (Müşteri / Tedarikçi / Bayi)'))),
+          ],
+          alt: TabBar(
+            controller: _tab,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white60,
+            indicatorColor: _R.orange,
+            tabs: const [
+              Tab(
+                  icon: Icon(Icons.assignment_return, size: 18),
+                  text: 'İade'),
+              Tab(icon: Icon(Icons.list_alt, size: 18), text: 'Hızlı'),
+              Tab(icon: Icon(Icons.receipt_long, size: 18), text: 'Fiş'),
+              Tab(icon: Icon(Icons.history, size: 18), text: 'Geçmiş'),
             ],
           ),
-        ],
-        alt: TabBar(
-          controller: _tab,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          indicatorColor: _R.orange,
-          tabs: const [
-            Tab(icon: Icon(Icons.assignment_return, size: 18), text: 'İade'),
-            Tab(icon: Icon(Icons.list_alt, size: 18), text: 'Hızlı'),
-            Tab(icon: Icon(Icons.receipt_long, size: 18), text: 'Fiş'),
-            Tab(icon: Icon(Icons.history, size: 18), text: 'Geçmiş'),
-          ],
+          lider: BackButton(onPressed: () => context.go('/')),
+          modul: TsModul.uyari,
         ),
-        lider: BackButton(onPressed: () => context.go('/')),
-        modul: TsModul.uyari,
+        body: TabBarView(controller: _tab, children: [
+          _iadeTab(),
+          _hizliTab(),
+          _fisTab(),
+          _gecmisTab(),
+        ]),
       ),
-      body: TabBarView(controller: _tab, children: [
-        _iadeTab(),
-        _hizliTab(),
-        _fisTab(),
-        _gecmisTab(),
-      ]),
-    ));
+    );
   }
 
   // ── İade Sekmesi ──────────────────────────────────────────────────────────
@@ -417,9 +407,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
                     IadeKaydetButonu(yukleniyor: _yukleniyor, onTap: _kaydet),
                   ] else if (_aramaListesi.isNotEmpty)
                     const SizedBox.shrink()
-                  // Oturum listesi doluyken büyük "Ürün seçilmedi" kutusu
-                  // listeyi aşağı itiyor, her iadeden sonra kaydırmak
-                  // gerekiyordu — yerine tek satır ipucu, liste yukarıda.
                   else if (_iadeListesi.isNotEmpty)
                     _kisaIpucu()
                   else
@@ -461,7 +448,6 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
         cariAdi: _secilenCari?.id != null ? _secilenCari!.unvan : null,
         fiyatKuraliAciklamasi: _cariIadeTuru.fiyatAciklamasi(_secilenCari),
         stokAzalir: _cariIadeTuru.stokAzalir,
-        // Aynı ürün bu iadede zaten varsa önceki miktar (örn. 2) gösterilir.
         oncekiMiktar: _oncekiIadeMiktari,
       );
 
@@ -480,8 +466,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
         const Icon(Icons.qr_code_scanner, size: 16, color: _R.orange),
         const SizedBox(width: 8),
         Expanded(
-          child: Text('Yeni iade için yukarıdan ürün arayın veya barkod okutun',
-              style: TextStyle(fontSize: 12.5, color: TsRenk.metinIkincil(context))),
+          child: Text(
+              'Yeni iade için yukarıdan ürün arayın veya barkod okutun',
+              style: TextStyle(
+                  fontSize: 12.5, color: TsRenk.metinIkincil(context))),
         ),
       ]);
 
@@ -494,21 +482,4 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
         onDuzenle: _oturumIadeDuzenle,
         onExcel: _excelDisaVer,
       );
-
-  // ── Hızlı İade Sekmesi ────────────────────────────────────────────────────
-  // 🔥 "Hızlı" sekmesinin _hizliTab() kodu 'iade_ekrani_hizli.dart' dosyasına taşındı.
-
-  // ── Fiş Arama Sekmesi ─────────────────────────────────────────────────────
-  // 🔥 "Fiş" sekmesinin _fisTab() kodu 'iade_ekrani_fis.dart' dosyasına taşındı.
-
-// ── Geçmiş İadeler Tab ───────────────────────────────────────────────────────
-  // 🔥 "Geçmiş İadeler" sekmesinin TÜM kodu (_gecmisTab, _oturumIadeSilOnay,
-  // _oturumIadeSil, _oturumIadeDuzenle, _gecmisIadeyiDevamEt, _gecmisIadeSil,
-  // _gecmisYukle, _iadeyiFaturalandir, _gecmisIadeDetay, _gecmisIadeDuzelt vb.)
-  // dosya boyutunu azaltmak için 'iade_ekrani_gecmis.dart' dosyasına taşındı
-  // (part/part of ile — mantık/davranış AYNEN korunuyor, sadece organizasyon
-  // değişti). Bu metodlar hâlâ bu sınıfın (_IadeEkraniState) birer üyesi gibi
-  // çağrılabiliyor, çünkü extension olarak tanımlandılar.
-
-// ── Cari Seç Dialog ─────────────────────────────────────────────────────────
 }

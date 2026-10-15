@@ -301,6 +301,17 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
 
       ref.read(sepetProvider.notifier).temizle();
 
+      // Cari satışsa müşteri de sepete yüklenir (ekranda görünür): kasiyer
+      // ödemeyi Nakit'e çevirirken müşteriyi kaldırabilir ya da bırakabilir.
+      // Kalemlerden ÖNCE seçilir; kalemler fişteki fiyatla (fiyatOverride)
+      // eklendiği için müşteri fiyatlaması eski satış fiyatlarını bozmaz.
+      if (satis.cariId != null) {
+        final cari = await _cariDepo.idileGetir(satis.cariId!);
+        if (cari != null) {
+          ref.read(sepetProvider.notifier).musteriSec(cari);
+        }
+      }
+
       final bulunamayan = <String>[];
       for (final k in satis.kalemler) {
         final urun = await _urunDepo.idileGetir(k.urunId);

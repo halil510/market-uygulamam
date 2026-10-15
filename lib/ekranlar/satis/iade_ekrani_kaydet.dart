@@ -4,13 +4,18 @@
 // (bkz. iade_ekrani_fis.dart başındaki açıklama).
 // lib/ekranlar/satis/iade_ekrani_kaydet.dart
 //
-// İade sekmesinin KAYIT akışı (2026-10-07 refactor — iade_ekrani.dart'tan
-// davranış birebir korunarak taşındı). Asıl iş mantığı servislerde
-// (IadeIslemServisi); burası kaydı başlatıp ekran durumunu günceller:
-//   _kaydet ─┬─ düzenleme modu   → _duzenlemeModuKalemEkle (geçmiş parçası)
-//            ├─ tedarikçi / bayi → _cariIadesiKaydet (kural fiyatı, ayrı belge)
-//            └─ müşteri          → _musteriIadesiKaydet (oturum fişine kalem)
+// İade sekmesinin KAYIT akışı. Asıl iş mantığı servislerde
+// (IadeIslemServisi); burası kaydı başlatıp ekran durumunu günceller.
+//
+// 🔴 YENİ (2026-10-13, kullanıcı isteği): tedarikçi/bayi iadeleri ARTIK
+// TEK BELGE altında birikir (müşteri iadesindeki `_oturumIadeId`
+// deseninin aynısı). Aynı gün + aynı cari + aynı tür → mevcut belgeye
+// kalem eklenir; aksi halde yeni belge açılır.
 part of 'iade_ekrani.dart';
+
+/// İki DateTime aynı takvim gününde mi? (Yıl-Ay-Gün karşılaştırması)
+bool _ayniGunMu(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
 
 extension _IadeKaydetExt on _IadeEkraniState {
   Future<void> _kaydet() async {
@@ -28,11 +33,12 @@ extension _IadeKaydetExt on _IadeEkraniState {
     if (_duzenlemeModuIadeId != null) {
       final (:fiyat, :isk, :toplam) = _formTutarlari();
       await _duzenlemeModuKalemEkle(fiyat, isk,
-          ParaUtils.yuvarla(_miktar * fiyat * (isk / 100)), fiyat * (1 - isk / 100), toplam);
+          ParaUtils.yuvarla(_miktar * fiyat * (isk / 100)),
+          fiyat * (1 - isk / 100), toplam);
       return;
     }
 
-    // Tedarikçiye / bayiden iade: fiyatı ve yönü kural belirler, ayrı akış.
+    // Tedarikçiye / bayiden iade: fiyatı ve yönü kural belirler.
     final tur = _cariIadeTuru;
     if (tur.fiyatKuralli) {
       await _cariIadesiKaydet(tur);
@@ -41,12 +47,6 @@ extension _IadeKaydetExt on _IadeEkraniState {
     }
   }
 
-  /// Cari seçilmemişse sorar (kayıtsız müşteri dahil). Vazgeçilirse false.
-  ///
-  /// 🔴 DÜZELTME (2026-09-28, kullanıcı bulgusu — "müşteriden iade aldım,
-  /// bakiye azalmadı"): kayıtlı cari BURADA seçilince iade yöntemi hiç
-  /// sorulmadan 'Nakit' ile kaydediliyordu. Artık açıkça soruluyor.
-  /// Tedarikçi/bayi iadesi her zaman cariye işlenir — sorulmaz.
   Future<bool> _cariSecimiTamamla() async {
     if (_secilenCari != null) return true;
     final sec = await _cariSecimDialog();
@@ -60,11 +60,14 @@ extension _IadeKaydetExt on _IadeEkraniState {
     return true;
   }
 
-  /// Formdaki birim fiyat, iskonto % ve iskontolu satır toplamı.
   ({double fiyat, double isk, double toplam}) _formTutarlari() {
     final fiyat = ParaUtils.sayiCoz(_fiyatCtrl.text) ?? _orijinalFiyat;
     final isk = ParaUtils.sayiCoz(_iskontoCtrl.text) ?? 0;
-    return (fiyat: fiyat, isk: isk, toplam: ParaUtils.yuvarla(_miktar * fiyat * (1 - isk / 100)));
+    return (
+      fiyat: fiyat,
+      isk: isk,
+      toplam: ParaUtils.yuvarla(_miktar * fiyat * (1 - isk / 100))
+    );
   }
 
   String? get _formAciklamasi {
@@ -79,11 +82,9 @@ extension _IadeKaydetExt on _IadeEkraniState {
     setState(() => _yukleniyor = true);
     try {
       final (:fiyat, :isk, :toplam) = _formTutarlari();
-      // Fiş no transaction dışında (sequence güncelleme ayrı transaction gerektirir)
       if (_oturumFisNo.isEmpty) {
         _oturumFisNo = await BelgeNoServisi().uret('iade');
       }
-      // Transaction + bulut senkron: IadeIslemServisi.manuelKalemEkle.
       final iadeId = await IadeIslemServisi().manuelKalemEkle(
         oturumIadeId: _oturumIadeId,
         cariId: _secilenCari?.id,
@@ -102,7 +103,6 @@ extension _IadeKaydetExt on _IadeEkraniState {
       );
       _oturumIadeId ??= iadeId;
 
-      // Aynı ürün oturum fişinde zaten varsa satır birleştirilir, öne taşınır.
       final mevcutIdx = _iadeListesi.indexWhere((x) => x['urun_id'] == urun.id);
       if (mevcutIdx != -1) {
         final m = _iadeListesi.removeAt(mevcutIdx);
@@ -136,47 +136,107 @@ extension _IadeKaydetExt on _IadeEkraniState {
     }
   }
 
-  // ── Tedarikçiye iade / bayiden iade ──────────────────────────────────────
-  /// Her kayıt kendi belgesini açar (IadeIslemServisi.tedarikciyeIadeEt /
-  /// bayidenIadeAl). Fiyat formdaki alandan değil, servisteki kuraldan gelir;
-  /// ekranda gösterilen önizlemedir.
+  // ── Tedarikçiye iade / bayiden iade — TEK FİŞ MODELİ ────────────────────
+  /// 🔴 YENİ MANTIK: İlk kayıtta belge açılır (tedarikciyeIadeEt /
+  /// bayidenIadeAl). Sonraki kayıtlarda AYNI belgeye kalem eklenir
+  /// (tedarikciIadeyeKalemEkle / bayiIadeyeKalemEkle). Böylece hem
+  /// ekranda hem VERİTABANINDA tek fiş olur.
+  ///
+  /// Oturum şartları:
+  ///   • Aynı cari (cari.id değişmezse)
+  ///   • Aynı tür (tedarikçi ↔ bayi değişmezse)
+  ///   • Aynı gün (uygulama gece açık kaldıysa otomatik yeni fiş)
+  /// Şartlardan biri bozulursa yeni belge açılır.
   Future<void> _cariIadesiKaydet(CariIadeTuru tur) async {
     final cari = _secilenCari!;
     final urun = _secilenUrun!;
     final miktar = _miktar;
     setState(() => _yukleniyor = true);
     try {
-      final kalem = [IadeMiktari(urunId: urun.id!, miktar: miktar)];
       final servis = IadeIslemServisi();
-      final sonuc = tur == CariIadeTuru.tedarikci
-          ? await servis.tedarikciyeIadeEt(
-              tedarikci: cari,
-              kalemler: kalem,
-              kullaniciId: AuthServisi().aktifId,
-              kullaniciAdi: AuthServisi().aktifAd,
-              aciklama: _formAciklamasi)
-          : await servis.bayidenIadeAl(
-              bayi: cari,
-              kalemler: kalem,
-              kullaniciId: AuthServisi().aktifId,
-              kullaniciAdi: AuthServisi().aktifAd,
-              aciklama: _formAciklamasi);
+      final kalem = [IadeMiktari(urunId: urun.id!, miktar: miktar)];
+
+      // Oturum devam ediyor mu?
+      final oturumGecerli = _cariOturumIadeId != null &&
+          _cariOturumTuru == tur &&
+          _cariOturumCariId == cari.id &&
+          _cariOturumTarih != null &&
+          _ayniGunMu(_cariOturumTarih!, DateTime.now());
+
+      final CariIadeSonucu sonuc;
+      if (oturumGecerli) {
+        // Aynı belgeye kalem ekle
+        sonuc = tur == CariIadeTuru.tedarikci
+            ? await servis.tedarikciIadeyeKalemEkle(
+                iadeId: _cariOturumIadeId!,
+                tedarikci: cari,
+                kalemler: kalem,
+                kullaniciId: AuthServisi().aktifId,
+                kullaniciAdi: AuthServisi().aktifAd,
+                aciklama: _formAciklamasi)
+            : await servis.bayiIadeyeKalemEkle(
+                iadeId: _cariOturumIadeId!,
+                bayi: cari,
+                kalemler: kalem,
+                kullaniciId: AuthServisi().aktifId,
+                kullaniciAdi: AuthServisi().aktifAd,
+                aciklama: _formAciklamasi);
+      } else {
+        // Yeni belge aç
+        sonuc = tur == CariIadeTuru.tedarikci
+            ? await servis.tedarikciyeIadeEt(
+                tedarikci: cari,
+                kalemler: kalem,
+                kullaniciId: AuthServisi().aktifId,
+                kullaniciAdi: AuthServisi().aktifAd,
+                aciklama: _formAciklamasi)
+            : await servis.bayidenIadeAl(
+                bayi: cari,
+                kalemler: kalem,
+                kullaniciId: AuthServisi().aktifId,
+                kullaniciAdi: AuthServisi().aktifAd,
+                aciklama: _formAciklamasi);
+        // Oturum belgesini kilitle
+        _cariOturumIadeId = sonuc.iadeId;
+        _cariOturumFisNo = sonuc.fisNo;
+        _cariOturumTuru = tur;
+        _cariOturumCariId = cari.id;
+        _cariOturumTarih = DateTime.now();
+      }
       if (!mounted) return;
 
-      _iadeListesi.insert(
-          0,
-          _oturumSatiri(
-            iadeId: sonuc.iadeId,
-            urun: urun,
-            miktar: miktar,
-            birimFiyat: sonuc.birimFiyatlar[urun.id] ?? 0,
-            toplam: sonuc.toplamTutar,
-            musteriAdi: cari.unvan,
-            fisNo: sonuc.fisNo,
-            // Oturum listesinin müşteri iadesine özel sil/düzenle eylemleri bu
-            // satırlarda kısıtlanır (bkz. iade_ekrani_gecmis.dart _cariIadeKisiti).
-            cariIadeTuru: tur,
-          ));
+      final birimFiyat = sonuc.birimFiyatlar[urun.id] ?? 0;
+
+      // Listede aynı cari + aynı ürün + aynı tür satırı birleştir.
+      final mevcutIdx = _iadeListesi.indexWhere((x) =>
+          x['urun_id'] == urun.id &&
+          x['cari_id'] == cari.id &&
+          x['cari_iade_turu'] == tur.name);
+
+      if (mevcutIdx != -1) {
+        final m = _iadeListesi.removeAt(mevcutIdx);
+        _iadeListesi.insert(0, {
+          ...m,
+          'miktar': ((m['miktar'] as num?)?.toDouble() ?? 0) + miktar,
+          'toplam_tutar': ((m['toplam_tutar'] as num?)?.toDouble() ?? 0) +
+              sonuc.toplamTutar,
+          'iade_id': _cariOturumIadeId,
+          'fis_no': _cariOturumFisNo,
+        });
+      } else {
+        final satir = _oturumSatiri(
+          iadeId: _cariOturumIadeId!,
+          urun: urun,
+          miktar: miktar,
+          birimFiyat: birimFiyat,
+          toplam: sonuc.toplamTutar,
+          musteriAdi: cari.unvan,
+          fisNo: _cariOturumFisNo,
+          cariIadeTuru: tur,
+        );
+        _iadeListesi.insert(0, satir);
+      }
+
       _yerelStoguDegistir(urun.id!, tur.stokAzalir ? -miktar : miktar);
       ref.invalidate(cariDetayProvider(cari.id!));
       ref.read(carilerProvider.notifier).yukle();
@@ -184,8 +244,8 @@ extension _IadeKaydetExt on _IadeEkraniState {
       final tutar = ParaUtils.formatla(sonuc.toplamTutar);
       _msg(
           tur.stokAzalir
-              ? '${urun.urunAdi} tedarikçiye iade edildi — $tutar borcumuzdan düşüldü (${sonuc.fisNo})'
-              : '${urun.urunAdi} bayiden iade alındı — $tutar bayi borcundan düşüldü (${sonuc.fisNo})',
+              ? '${urun.urunAdi} tedarikçiye iade edildi — $tutar borcumuzdan düşüldü ($_cariOturumFisNo)'
+              : '${urun.urunAdi} bayiden iade alındı — $tutar bayi borcundan düşüldü ($_cariOturumFisNo)',
           err: false);
       _kayitSonrasi();
     } on IadeGecersizHatasi catch (e) {
@@ -197,8 +257,36 @@ extension _IadeKaydetExt on _IadeEkraniState {
     }
   }
 
+  // ── İade fişi yazdırma ───────────────────────────────────────────────────
+  /// Yazdırılacak oturum belgesi: seçili cari tedarikçi/bayi ise o oturumun
+  /// belgesi, değilse müşteri oturumunun iadesi. Yoksa null (buton gizlenir).
+  int? get _yazdirilacakIadeId {
+    if (_duzenlemeModuIadeId != null) return _duzenlemeModuIadeId;
+    if (_cariIadeTuru.fiyatKuralli) return _cariOturumIadeId;
+    return _oturumIadeId;
+  }
+
+  /// 🆕 Oturumdaki iadenin FİŞİNİ basar — cari ekstresindeki yazdır ikonuyla
+  /// AYNI kod yolu (IadeFisiYazdirici). Tür (müşteri/bayi/tedarikçi) belgenin
+  /// cari tipinden otomatik belirlenir.
+  Future<void> _oturumIadeFisiYazdir() async {
+    final id = _yazdirilacakIadeId;
+    if (id == null) return;
+    final tedarikciMi = _duzenlemeModuIadeId == null &&
+        _cariIadeTuru == CariIadeTuru.tedarikci;
+    try {
+      await IadeFisiYazdirici.fisten(
+        fisId: id,
+        fisTipi: tedarikciMi ? 'Tedarikçi İadesi' : 'İade',
+        cariUnvan: _secilenCari?.unvan,
+      );
+      _msg('İade fişi yazdırılıyor…', err: false);
+    } catch (e) {
+      _msg('Yazıcı hatası: ${kullaniciyaHataMetni(e)}', err: true);
+    }
+  }
+
   // ── Ortak yardımcılar ────────────────────────────────────────────────────
-  /// Oturum listesine (ekrandaki "bu iadede yapılanlar") eklenecek satır.
   Map<String, dynamic> _oturumSatiri({
     required int iadeId,
     required UrunModel urun,
@@ -228,15 +316,13 @@ extension _IadeKaydetExt on _IadeEkraniState {
         if (cariIadeTuru != null) 'cari_iade_turu': cariIadeTuru.name,
       };
 
-  /// Ekrandaki ürün listesinin stoğunu yerelde günceller (yeniden yüklemeden).
   void _yerelStoguDegistir(int urunId, double fark) {
     final i = _tumUrunler.indexWhere((u) => u.id == urunId);
-    if (i != -1) _tumUrunler[i] = _tumUrunler[i].copyWith(stok: _tumUrunler[i].stok + fark);
+    if (i != -1) {
+      _tumUrunler[i] = _tumUrunler[i].copyWith(stok: _tumUrunler[i].stok + fark);
+    }
   }
 
-  /// Kullanıcı isteği: "iade alımı yaptığımızda o ekran kapanacak" — yalnız
-  /// toptan cari panelinden açılan tek-ürünlük akışta; normal çok-kalemli
-  /// akışta ekran açık kalır, form sıfırlanır.
   void _kayitSonrasi() {
     if (widget.otomatikKapat) {
       if (mounted) Navigator.pop(context, true);

@@ -17,14 +17,27 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
   // ── İşlem Kontrol ───────────────────────────────────────────────────────────
   void _islemBasladi() {
     _islemAktif = true;
-    if (_kameraAcik) { try { _scanCtrl.stop(); } catch (e) { /* ignore */ } }
+    if (_kameraAcik) _scanDurdur();
   }
 
   void _islemBitti() {
     _islemAktif = false;
     _dialogAcik = false;
-    if (_kameraAcik && mounted) { try { _scanCtrl.start(); } catch (e) { /* ignore */ } }
+    if (_kameraAcik && mounted) _scanBaslat();
     _kuyruktakiBarkodlariIsle();
+  }
+
+  // 🔴 start()/stop() Future döndürür. Önceki `try { _scanCtrl.start(); }
+  // catch` sarmalı yalnız SENKRON hataları yakalıyordu; kamera izni yok /
+  // kamera meşgul gibi asenkron hatalar yakalanmadan (Sentry'ye "unhandled
+  // exception" olarak) düşüyordu. Hata kullanıcıya zaten kamera panelinin
+  // hata ekranından gösterilir.
+  void _scanBaslat() {
+    unawaited(_scanCtrl.start().then<void>((_) {}, onError: (_) {}));
+  }
+
+  void _scanDurdur() {
+    unawaited(_scanCtrl.stop().then<void>((_) {}, onError: (_) {}));
   }
 
   // ── Barkod Kontrol ───────────────────────────────────────────────────────────
@@ -365,7 +378,9 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
 
   Future<void> _barkodIleEkle(String barkod) async {
     if (!mounted) return;
-    final b = barkod.trim();
+    // Okuyucu sonekleri (CR/LF/TAB/GS) ve boşluklar temizlenir.
+    final b = BarkodServisi.normalizeEt(barkod);
+    if (b.isEmpty) return;
 
     if (_fisBarkoduMu(b)) {
       await _fisGeriCagir(b.toUpperCase());
@@ -410,10 +425,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
       final ai = BarkodServisi.gs1128Coz(b);
       final gtin = ai['AI_01'] ?? ai['AI_02'];
       if (gtin != null && gtin.isNotEmpty) {
-        var gs1Urun = await _urunDepo.barkodlaGetir(gtin);
-        if (gs1Urun == null && gtin.length == 14) {
-          gs1Urun = await _urunDepo.barkodlaGetir(gtin.substring(1));
-        }
+        final gs1Urun = await _urunBarkodlaBul(gtin, gtin14Kok: true);
         if (!mounted) return;
         if (gs1Urun != null) {
           if (_kgBirimMi(gs1Urun.birimAdi)) {
@@ -429,7 +441,8 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
       }
     }
 
-    final urun = await _urunDepo.barkodlaGetir(b);
+    // UPC-A (12 hane) ↔ EAN-13 (başına 0) eşdeğerliği dahil denenir.
+    final urun = await _urunBarkodlaBul(b);
     if (!mounted) return;
     if (urun != null) {
       if (_kgBirimMi(urun.birimAdi)) {
@@ -443,6 +456,22 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
       return;
     }
     if (!mounted) return;
+    // 🔴 Bu iletişim kutusu açıkken kamera çalışmaya devam ediyordu: aynı
+    // bilinmeyen barkod kuyruğa tekrar tekrar ekleniyor, diyalog kapanınca
+    // arka arkaya birden fazla "Ürün Bulunamadı" penceresi açılıyordu.
+    // Diğer tüm diyaloglardaki gibi kamera durdurulur, işlem kilitlenir.
+    // Kısa hata sesi + çift titreşim (diyalog açılmadan hemen önce).
+    BarkodServisi().hataBildir();
+    _islemBasladi();
+    try {
+      await _urunBulunamadiAkisi(b);
+    } finally {
+      _islemBitti();
+    }
+  }
+
+  /// "Ürün bulunamadı → şimdi ekleyelim mi?" akışı.
+  Future<void> _urunBulunamadiAkisi(String b) async {
     final kayitYap = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -489,6 +518,25 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
     }
   }
 
+  /// Barkodu eşdeğer biçimleriyle sırayla arar (UPC-A ↔ EAN-13, GTIN-14).
+  /// iOS UPC-A'yı 13 hane, Android 12 hane döndürür; ürün depoda hangisiyle
+  /// kayıtlıysa bulunur. [gtin14Kok]: 14 haneli GTIN'in ilk hanesi atılmış
+  /// (EAN-13 kökü) hali de denenir.
+  Future<UrunModel?> _urunBarkodlaBul(String barkod,
+      {bool gtin14Kok = false}) async {
+    final kodlar = BarkodServisi.aramaKodlari(barkod);
+    if (gtin14Kok &&
+        barkod.length == 14 &&
+        !kodlar.contains(barkod.substring(1))) {
+      kodlar.add(barkod.substring(1));
+    }
+    for (final kod in kodlar) {
+      final urun = await _urunDepo.barkodlaGetir(kod);
+      if (urun != null) return urun;
+    }
+    return null;
+  }
+
   bool _kgBirimMi(String birimAdi) {
     final b = birimAdi.toLowerCase()
         .replaceAll('ı', 'i').replaceAll('İ'.toLowerCase(), 'i');
@@ -500,7 +548,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
     if (!mounted) return;
     _dialogAcik = true;
     _islemAktif = true;
-    if (_kameraAcik) { try { _scanCtrl.stop(); } catch (e) { /* ignore */ } }
+    if (_kameraAcik) _scanDurdur();
 
     final ctrl = TextEditingController();
     double m = 0;
@@ -587,7 +635,7 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
       ),
     ).whenComplete(() => dialogSonrasiBirak([ctrl]));
 
-    if (_kameraAcik && mounted) { try { _scanCtrl.start(); } catch (e) { /* ignore */ } }
+    if (_kameraAcik && mounted) _scanBaslat();
     if (!mounted || miktar == null || miktar <= 0) return;
     ref.read(sepetProvider.notifier).ekle(urun, miktar: miktar);
     Future.microtask(() {
@@ -631,7 +679,10 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
         _araFocus.requestFocus();
       } else {
         setState(() => _aramaSonuclari = sonuclar);
-        if (sonuclar.isEmpty) BildirimServisi.uyari(context, '"$temiz" için ürün bulunamadı');
+        if (sonuclar.isEmpty) {
+          BarkodServisi().hataSesiCal();
+          BildirimServisi.uyari(context, '"$temiz" için ürün bulunamadı');
+        }
       }
     } catch (_) {
       // arama hatası — kullanıcı listeden seçmeye devam edebilir
@@ -703,9 +754,9 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
   void _kameraToggle() {
     final yeni = !_kameraAcik;
     if (yeni) {
-      if (!_islemAktif && !_dialogAcik) { try { _scanCtrl.start(); } catch (e) { /* ignore */ } }
+      if (!_islemAktif && !_dialogAcik) _scanBaslat();
     } else {
-      try { _scanCtrl.stop(); } catch (e) { /* ignore */ }
+      _scanDurdur();
     }
     setState(() => _kameraAcik = yeni);
   }

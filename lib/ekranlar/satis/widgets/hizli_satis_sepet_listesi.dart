@@ -1,5 +1,12 @@
 // lib/ekranlar/satis/widgets/hizli_satis_sepet_listesi.dart
 // SRP: Sadece sepet listesi sorumluluğu
+//
+// 🆕 Okutulan satır vurgusu: sepete yeni bir ürün eklenince (barkod, hızlı
+// tuş, PLU, arama — hangi yolla olursa olsun) ya da bir ürünün miktarı
+// artınca o satır ~1 sn yeşil vurgulanır. Tek kalem değişmediyse (askıdan
+// sepet yükleme, fiş geri çağırma gibi toplu işlemler) vurgu yapılmaz.
+// Üst ekrandan hiçbir şey vermek gerekmez — sepetProvider dinlenir.
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../modeller/sepet_model.dart';
@@ -8,7 +15,7 @@ import '../../../saglayicilar/riverpod/sepet_provider.dart';
 import '../../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'sepet_kalem_karti.dart';
 
-class HizliSatisSepetListesi extends ConsumerWidget {
+class HizliSatisSepetListesi extends ConsumerStatefulWidget {
   final ScrollController scrollController;
   final bool Function(String birim) kgMiMi;
   final void Function(SepetKalem kalem, int index) onKalemTap;
@@ -25,34 +32,92 @@ class HizliSatisSepetListesi extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HizliSatisSepetListesi> createState() =>
+      _HizliSatisSepetListesiState();
+}
+
+class _HizliSatisSepetListesiState
+    extends ConsumerState<HizliSatisSepetListesi> {
+  static const _vurguSuresi = Duration(milliseconds: 1000);
+
+  Object? _vurguUrunId;
+  Timer? _vurguTimer;
+
+  @override
+  void dispose() {
+    _vurguTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Önceki ve yeni sepeti ürün bazında karşılaştırır; TAM OLARAK bir ürün
+  /// yeni eklenmiş ya da miktarı artmışsa onu vurgular.
+  void _sepetDegisti(SepetDurum? onceki, SepetDurum sonraki) {
+    if (onceki == null || !mounted) return;
+
+    final eski = <Object?, double>{};
+    for (final k in onceki.kalemler) {
+      eski[k.urun.id] = (eski[k.urun.id] ?? 0) + k.miktar;
+    }
+    final yeni = <Object?, double>{};
+    for (final k in sonraki.kalemler) {
+      yeni[k.urun.id] = (yeni[k.urun.id] ?? 0) + k.miktar;
+    }
+
+    Object? bulunan;
+    var degisen = 0;
+    for (final e in yeni.entries) {
+      final o = eski[e.key];
+      if (o == null || e.value > o + 1e-9) {
+        bulunan = e.key;
+        degisen++;
+      }
+    }
+    if (degisen != 1) return;
+
+    setState(() => _vurguUrunId = bulunan);
+    _vurguTimer?.cancel();
+    _vurguTimer = Timer(_vurguSuresi, () {
+      if (mounted) setState(() => _vurguUrunId = null);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final sepet = ref.watch(sepetProvider);
+    ref.listen(sepetProvider, _sepetDegisti);
 
     if (sepet.bos) return _bosGorunum(context);
 
     return Column(children: [
-      _baslik(context, ref, sepet),
+      _baslik(context, sepet),
       _tabloBasligi(context),
       Expanded(
         child: ListView.builder(
-          controller: scrollController,
+          controller: widget.scrollController,
           itemCount: sepet.kalemler.length,
           itemBuilder: (_, i) {
             final k = sepet.kalemler[i];
             return SepetKalemKarti(
               kalem: k, index: i,
-              onTap:       () => onKalemTap(k, i),
-              onLongPress: () => onIndirimDuzenle(k, i),
+              vurgula: _vurguUrunId != null && k.urun.id == _vurguUrunId,
+              onTap:       () => widget.onKalemTap(k, i),
+              onLongPress: () => widget.onIndirimDuzenle(k, i),
               onSil:       () => ref.read(sepetProvider.notifier).sil(i),
               onAzalt: () {
-                if (kgMiMi(k.urun.birimAdi)) { onKgEkle(k.urun); return; }
+                if (widget.kgMiMi(k.urun.birimAdi)) {
+                  widget.onKgEkle(k.urun);
+                  return;
+                }
                 ref.read(sepetProvider.notifier).miktarGuncelle(i, k.miktar - 1);
               },
               onArttir: () {
-                if (kgMiMi(k.urun.birimAdi)) { onKgEkle(k.urun); return; }
+                if (widget.kgMiMi(k.urun.birimAdi)) {
+                  widget.onKgEkle(k.urun);
+                  return;
+                }
                 ref.read(sepetProvider.notifier).miktarGuncelle(i, k.miktar + 1);
               },
-              kgMiMi: kgMiMi,
+              kgMiMi: widget.kgMiMi,
             );
           },
         ),
@@ -107,7 +172,7 @@ class HizliSatisSepetListesi extends ConsumerWidget {
     ]),
   );
 
-  Widget _baslik(BuildContext context, WidgetRef ref, SepetDurum sepet) =>
+  Widget _baslik(BuildContext context, SepetDurum sepet) =>
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: Row(

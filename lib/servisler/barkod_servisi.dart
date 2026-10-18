@@ -1,35 +1,38 @@
 // lib/servisler/barkod_servisi.dart
 //
 // GS1-TR Türkiye standardına tam uyum:
-//  - EAN-13 check digit doğrulama
+//  - EAN-13 / EAN-8 / UPC-A / ITF-14 check digit doğrulama
 //  - GS1-TR tartım barkodu (prefix 20-29): 5 haneli ağırlık (gram)
-//  - GS1-128 / GS1-DataMatrix Application Identifier desteği
+//  - GS1-128 / GS1-DataMatrix Application Identifier çözümleme
+//    (FNC1/GS ayırıcılı, parantezli, 4 haneli 31xx-36xx AI'ları dahil)
 //  - ITF-14 lojistik barkod tanıma
 //  - Türkiye'ye özel prefix'ler (868-869)
-//  - PLU kodu tanıma (4-5 haneli, 0xxxx ile başlayan)
+//  - PLU kodu tanıma (4-5 haneli)
 //
-// 🔴 İYİLEŞTİRME (2026-10-14 — kamera performansı, mobil):
-//  • Format kısıtlaması (9 market formatı) → %30-50 hız artışı
-//  • Çözünürlük: 1920×1080 (küçük barkodlar da net okunur)
-//  • detectionSpeed: normal + 400 ms manuel throttle (aynı ürün peş peşe
-//    okutulabilir — noDuplicates DEĞİL)
-//  • scanWindow: ekranın ortasında 0.85×0.38 → hedef çerçevesiyle hizalı
-//  • Zoom: + / − butonları (1x–4x)
-//  • Torch: kamera torch'u yoksa sessizce yoksayılır
-//  • Hata ekranı: kamera açılamazsa manuel giriş önerilir
-//
-// 🔴 API DÜZELTMESİ (2026-10-14): mobile_scanner 7.4.2 API'sine uyum:
-//  • detectionTimeout → detectionTimeoutMs (int)
-//  • setZoom → setZoomScale (double)
-//  • focus() metodu 7.4.2'de YOK → kaldırıldı
-//  • DetectionResolution enum'u 7.4.2'de YOK → cameraResolution: Size
+// KAMERA (mobile_scanner 7.4.2)
+//  • BarkodServisi.tarayiciOlustur(): TEK noktadan controller ayarı
+//    (9 market formatı, 1920×1080, normal hız + 200 ms zaman aşımı).
+//    Hızlı satış ekranı ve tarama dialog'u aynı ayarı kullanır.
+//  • 🔴 Zoom düzeltmesi: setZoomScale 0.0–1.0 aralığı bekler. Önceki
+//    sürüm 1.0–4.0 gönderiyordu → 1.0 üstü değerler hata verip sessizce
+//    yutuluyor, zoom hiç çalışmıyordu. Artık 0.0–1.0 kaydırıcı + iki
+//    parmakla kıstırma.
+//  • Işık ikonu kameranın gerçek torch durumunu gösterir.
+//  • Kamera izni reddedilince "Ayarları Aç" butonu çıkar.
+//  • 🔴 Eski 12 haneli UPC-A kodları GS1-128 sanılıyordu → artık EAN-13
+//    olarak sınıflanır. UPC-A ↔ EAN-13 eşleşmesi için aramaKodlari()
+//    eklendi (iOS UPC-A'yı başına 0 ekleyip 13 hane döndürür, Android 12
+//    hane döndürür; ürün veritabanında hangisi kayıtlıysa bulunur).
 import '../cekirdek/utils/denetleyici_birak.dart';
+import 'dart:async' show Timer;
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:vibration/vibration.dart';
+import 'package:permission_handler/permission_handler.dart'
+    show openAppSettings;
 
 /// GS1-TR Türkiye Barkod Standardı
 class BarkodServisi {
@@ -38,15 +41,131 @@ class BarkodServisi {
   BarkodServisi._internal();
 
   final AudioPlayer _audio = AudioPlayer();
+  bool _sesHazir = false;
+
+  // Hata sesi (Windows_Error) için AYRI oynatıcı: bip ile çakışmaz,
+  // lowLatency değil normal modda çalar (bip'in modu etkilenmez).
+  final AudioPlayer _hataAudio = AudioPlayer();
+  Timer? _hataDurdurTimer;
+  String? _hataSesYolu; // çalışan dosya yolu bulununca hatırlanır
+
+  /// assets/sounds/ içindeki dosyanın uzantısı bilinmediği için sırayla
+  /// denenir; ilk çalışan hatırlanır. Kesin uzantıyı bilirseniz listeyi
+  /// tek elemana indirebilirsiniz.
+  static const List<String> _hataSesAdaylari = [
+    'sounds/Windows_Error.wav',
+    'sounds/Windows_Error.mp3',
+    'sounds/Windows_Error.ogg',
+    'sounds/Windows_Error.m4a',
+  ];
+
+  /// Hata sesinin en fazla çalacağı süre (uzun bir dosya olsa bile kesilir).
+  static const Duration hataSesiSuresi = Duration(milliseconds: 900);
+
+  // ── Kamera / tarayıcı ayarı (tek merkez) ───────────────────────────────
+
+  /// Market barkodlarının %99'u bu 9 formattan birindedir. Diğerlerini
+  /// (Aztec, PDF417, Codabar…) taramak hem yavaşlatır hem yanlış okuma
+  /// riskini artırır. Kısıtlanınca native tarayıcı motoru yalnız bu 9
+  /// formatı dener.
+  static const List<BarcodeFormat> marketFormatlari = [
+    BarcodeFormat.ean13,
+    BarcodeFormat.ean8,
+    BarcodeFormat.upcA,
+    BarcodeFormat.upcE,
+    BarcodeFormat.code128,
+    BarcodeFormat.code39,
+    BarcodeFormat.itf,
+    BarcodeFormat.qrCode,
+    BarcodeFormat.dataMatrix,
+  ];
+
+  /// Tüm kamera ekranlarının kullandığı controller fabrikası.
+  /// noDuplicates KULLANILMAZ: kasiyer aynı ürünü art arda okutabilmeli;
+  /// çift okuma koruması arayüz katmanında (SatisKameraPaneli) yapılır.
+  static MobileScannerController tarayiciOlustur({bool autoStart = true}) {
+    return MobileScannerController(
+      facing: CameraFacing.back,
+      formats: marketFormatlari,
+      // 1920×1080 — küçük barkodlar da net okunur
+      cameraResolution: const Size(1920, 1080),
+      detectionSpeed: DetectionSpeed.normal,
+      // 7.4.2'de 'detectionTimeoutMs' (int)
+      detectionTimeoutMs: 200,
+      autoStart: autoStart,
+      torchEnabled: false,
+    );
+  }
 
   // ── Ses & Titreşim ────────────────────────────────────────────────────
 
-  Future<void> sesCardir() async {
+  Future<void> _sesiHazirla() async {
+    if (_sesHazir) return;
+    _sesHazir = true;
     try {
-      await _audio.play(AssetSource('sounds/bip.mp3'));
+      await _audio.setPlayerMode(PlayerMode.lowLatency);
     } catch (e) {
       if (kDebugMode) debugPrint('[HATA] $e');
     }
+  }
+
+  /// Bip sesi. hizli_satis_ekrani_barkod.dart'taki _bipSes() ile AYNI kalıp
+  /// (sahada çalışan): lowLatency modunda her çalmadan ÖNCE stop() şart —
+  /// önceki ses bitmeden/bitmiş olarak kalan oynatıcıda play() tekrar
+  /// çalmayabiliyor. (Önceki sürümde stop() yoktu → ilk bip sonrası
+  /// sessiz kalma riski.)
+  Future<void> sesCardir() async {
+    try {
+      await _sesiHazirla();
+      await _audio.stop();
+      await _audio.play(AssetSource('sounds/bip.mp3'), volume: 1.0);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[BIP HATA] $e');
+    }
+  }
+
+  /// Hata sesi (ör. ürün bulunamadı). Kısa çalar: [hataSesiSuresi] sonunda
+  /// dosya daha bitmemiş olsa bile durdurulur. Asla exception fırlatmaz.
+  Future<void> hataSesiCal() async {
+    try {
+      _hataDurdurTimer?.cancel();
+      await _hataAudio.stop();
+      final adaylar =
+          _hataSesYolu != null ? [_hataSesYolu!] : _hataSesAdaylari;
+      for (final yol in adaylar) {
+        try {
+          // Dosya pubspec'te kayıtlı değilse / uzantı yanlışsa burada
+          // exception atar → sıradaki aday denenir.
+          await _hataAudio.play(AssetSource(yol), volume: 1.0);
+        } catch (e) {
+          if (kDebugMode) debugPrint('[HATA SESİ] $yol çalınamadı: $e');
+          continue;
+        }
+        _hataSesYolu = yol;
+        _hataDurdurTimer = Timer(hataSesiSuresi, () {
+          _hataAudio.stop().catchError((_) {});
+        });
+        return;
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[HATA SESİ] $e');
+    }
+  }
+
+  /// Çift kısa titreşim (bip'in tek uzun titreşiminden ayırt edilir).
+  Future<void> hataTitret() async {
+    try {
+      if ((await Vibration.hasVibrator())) {
+        Vibration.vibrate(pattern: [0, 90, 70, 90]);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[HATA] $e');
+    }
+  }
+
+  /// Ürün bulunamadı gibi durumlarda: hata sesi + çift titreşim birlikte.
+  Future<void> hataBildir() async {
+    await Future.wait([hataSesiCal(), hataTitret()]);
   }
 
   Future<void> titret() async {
@@ -59,9 +178,28 @@ class BarkodServisi {
     }
   }
 
+  /// Ses ve titreşim aynı anda başlar (öncekinde sıralıydı → gecikme).
   Future<void> barkodOkundu() async {
-    await sesCardir();
-    await titret();
+    await Future.wait([sesCardir(), titret()]);
+  }
+
+  /// Bir metin kutusuna "yazılan" değer barkod gibi mi? USB okuyucu / el
+  /// terminali barkodu klavye gibi yazıp Enter basar; bu yolda kamera
+  /// penceresi olmadığı için bip hiçbir yerden gelmiyordu.
+  /// 6+ hane rakam, parantezli GS1 ya da GS (FNC1) ayırıcılı veri → barkod.
+  /// Ürün adı yazıp Enter'a basan kullanıcıya bip çalmaz.
+  static bool barkodaBenzer(String metin) {
+    final b = normalizeEt(metin);
+    if (b.isEmpty) return false;
+    if (RegExp(r'^\d{6,}$').hasMatch(b)) return true;
+    if (RegExp(r'^\(\d{2,4}\)').hasMatch(b)) return true;
+    return b.contains('\u001D');
+  }
+
+  /// Metin kutusunun onSubmitted / onFieldSubmitted'ında çağırın:
+  /// değer barkoda benziyorsa bip + titreşim verir, değilse hiçbir şey yapmaz.
+  Future<void> girisOkunduBip(String metin) async {
+    if (barkodaBenzer(metin)) await barkodOkundu();
   }
 
   // ── Temel doğrulama ───────────────────────────────────────────────────
@@ -81,6 +219,13 @@ class BarkodServisi {
     }
     final beklenen = (10 - (toplam % 10)) % 10;
     return beklenen == int.parse(barkod[12]);
+  }
+
+  /// UPC-A (12 hane) = başına 0 eklenmiş EAN-13.
+  static bool upcAGecerli(String barkod) {
+    if (barkod.length != 12) return false;
+    if (!RegExp(r'^\d{12}$').hasMatch(barkod)) return false;
+    return ean13Gecerli('0$barkod');
   }
 
   static bool ean8Gecerli(String barkod) {
@@ -107,37 +252,74 @@ class BarkodServisi {
     return beklenen == int.parse(barkod[13]);
   }
 
+  // ── Normalizasyon & ürün arama kodları ────────────────────────────────
+
+  /// Okuyucudan/kameradan gelen ham değerin başındaki/sonundaki boşluk ve
+  /// kontrol karakterlerini (CR, LF, TAB, GS…) temizler.
+  static String normalizeEt(String ham) {
+    return ham
+        .replaceAll(RegExp(r'^[\u0000- \u007F]+'), '')
+        .replaceAll(RegExp(r'[\u0000- \u007F]+$'), '');
+  }
+
+  /// Ürün veritabanında denenecek eşdeğer kodlar (ilki okunan değerdir).
+  ///  • 12 hane (UPC-A)            → '0' + kod
+  ///  • 13 hane ve 0 ile başlıyor → baştaki 0 atılmış hali (UPC-A)
+  ///  • 14 hane ve 0 ile başlıyor → GTIN-14'ün EAN-13 karşılığı
+  /// iOS UPC-A'yı 13 hane, Android 12 hane döndürür; depoda hangisi
+  /// kayıtlıysa bulunsun diye hepsi denenmelidir.
+  static List<String> aramaKodlari(String barkod) {
+    final b = normalizeEt(barkod);
+    final sonuc = <String>[];
+    void ekle(String s) {
+      if (s.isNotEmpty && !sonuc.contains(s)) sonuc.add(s);
+    }
+
+    ekle(b);
+    if (RegExp(r'^\d+$').hasMatch(b)) {
+      if (b.length == 12) ekle('0$b');
+      if ((b.length == 13 || b.length == 14) && b.startsWith('0')) {
+        ekle(b.substring(1));
+      }
+    }
+    return sonuc;
+  }
+
   // ── GS1-TR Barkod Türü Tespiti ────────────────────────────────────────
 
   static BarkodTuru barkodTurunuBul(String barkod) {
-    final b = barkod.trim();
+    final b = normalizeEt(barkod);
     if (b.isEmpty) return BarkodTuru.bilinmiyor;
 
-    if (b.length == 14 && RegExp(r'^\d{14}$').hasMatch(b)) {
-      return BarkodTuru.itf14;
+    final sadeceRakam = RegExp(r'^\d+$').hasMatch(b);
+
+    if (sadeceRakam) {
+      if (b.length == 14) return BarkodTuru.itf14;
+
+      if (b.length == 13) {
+        final prefix2 = int.tryParse(b.substring(0, 2)) ?? 0;
+        if (prefix2 >= 20 && prefix2 <= 29) return BarkodTuru.tartimEan13;
+        final prefix3 = int.tryParse(b.substring(0, 3)) ?? 0;
+        if (prefix3 == 868 || prefix3 == 869) return BarkodTuru.ean13Turkiye;
+        return BarkodTuru.ean13;
+      }
+
+      // UPC-A (12 hane) EAN-13 ailesindendir
+      if (b.length == 12) return BarkodTuru.ean13;
+
+      if (b.length == 8) return BarkodTuru.ean8;
+
+      if (b.length >= 4 && b.length <= 5) return BarkodTuru.plu;
+
+      // Ayırıcısız GS1-128 (ör. 01 + GTIN-14 + 17 + tarih ...)
+      if (b.length >= 16 &&
+          (b.startsWith('01') || b.startsWith('02') || b.startsWith('00'))) {
+        return BarkodTuru.gs1128;
+      }
     }
 
-    if (b.length == 13 && RegExp(r'^\d{13}$').hasMatch(b)) {
-      final prefix2 = int.tryParse(b.substring(0, 2)) ?? 0;
-      if (prefix2 >= 20 && prefix2 <= 29) return BarkodTuru.tartimEan13;
-      final prefix3 = int.tryParse(b.substring(0, 3)) ?? 0;
-      if (prefix3 == 868 || prefix3 == 869) return BarkodTuru.ean13Turkiye;
-      return BarkodTuru.ean13;
-    }
-
-    if (b.length == 8 && RegExp(r'^\d{8}$').hasMatch(b)) {
-      return BarkodTuru.ean8;
-    }
-
-    if (b.length >= 4 && b.length <= 5 && RegExp(r'^\d+$').hasMatch(b)) {
-      return BarkodTuru.plu;
-    }
-
-    if (b.startsWith('(01)') ||
-        b.startsWith('01') ||
-        RegExp(r'^\(?\d{2}\)?').hasMatch(b)) {
-      return BarkodTuru.gs1128;
-    }
+    // Parantezli veya FNC1/GS ayırıcılı GS1 verisi
+    if (b.startsWith('(') || b.contains('\u001D')) return BarkodTuru.gs1128;
 
     if (b.length > 20) return BarkodTuru.qrDataMatrix;
 
@@ -172,41 +354,100 @@ class BarkodServisi {
 
   // ── GS1-128 Application Identifier Çözme ─────────────────────────────
 
+  /// Sabit uzunluklu AI'lar (AI → veri uzunluğu)
+  static const Map<String, int> _sabitAi = {
+    '00': 18, '01': 14, '02': 14,
+    '11': 6, '12': 6, '13': 6, '15': 6, '16': 6, '17': 6,
+    '20': 2,
+    '410': 13, '411': 13, '412': 13, '413': 13,
+    '414': 13, '415': 13, '416': 13, '417': 13,
+  };
+
+  /// Değişken uzunluklu AI'lar (AI → azami veri uzunluğu)
+  static const Map<String, int> _degiskenAi = {
+    '10': 20, '21': 20, '22': 20,
+    '30': 8, '37': 8,
+    '240': 30, '241': 30,
+    '90': 30, '91': 90, '92': 90, '93': 90, '94': 90,
+    '95': 90, '96': 90, '97': 90, '98': 90, '99': 90,
+  };
+
+  /// Çıktı anahtarları: 'AI_01', 'AI_10', 'AI_17', 'AI_3103' ...
+  /// Ayrıştırma:
+  ///  • "(01)0868...(17)261231(10)LOT1" parantezli biçim
+  ///  • FNC1/GS (\x1D) ayırıcılı ham biçim
+  ///  • Ayırıcısız ham biçim (değişken AI'da azami uzunluğa kadar okur)
   static Map<String, String> gs1128Coz(String barkod) {
     final sonuc = <String, String>{};
-    final b = barkod.replaceAll('(', '').replaceAll(')', '');
+    final giris = barkod.trim();
+    if (giris.isEmpty) return sonuc;
 
-    final ailar = <String, int>{
-      '01': 14, '02': 14, '10': -1, '11': 6, '13': 6, '15': 6,
-      '17': 6, '20': 2, '21': -1, '30': -1, '310': 6, '311': 6,
-      '37': -1, '90': -1, '91': -1, '92': -1,
-    };
+    // Parantezli biçim — kesin ayrım
+    if (giris.contains('(')) {
+      for (final m in RegExp(r'\((\d{2,4})\)([^(]*)').allMatches(giris)) {
+        sonuc['AI_${m.group(1)}'] = m.group(2)!.replaceAll('\u001D', '');
+      }
+      return sonuc;
+    }
 
+    final b = giris;
     int i = 0;
     while (i < b.length) {
-      bool bulundu = false;
-      for (final uzunluk in [3, 2]) {
-        if (i + uzunluk > b.length) continue;
-        final ai = b.substring(i, i + uzunluk);
-        if (ailar.containsKey(ai)) {
-          i += uzunluk;
-          final sabitUzunluk = ailar[ai]!;
-          String deger;
-          if (sabitUzunluk > 0) {
-            deger = b.substring(i, (i + sabitUzunluk).clamp(0, b.length));
-            i += sabitUzunluk;
-          } else {
-            final sonraki = b.indexOf(
-                RegExp(r'(?=0[12]\d|10\d|17\d|21\d|30\d|37\d)'), i);
-            deger = sonraki > i ? b.substring(i, sonraki) : b.substring(i);
-            i += deger.length;
-          }
-          sonuc['AI_$ai'] = deger;
-          bulundu = true;
-          break;
+      if (b[i] == '\u001D') {
+        i++;
+        continue;
+      }
+
+      // AI'yı bul: 4 haneli (31xx–36xx) → 3 haneli → 2 haneli
+      String? ai;
+      int? sabit;
+      int? azami;
+
+      if (i + 4 <= b.length) {
+        final iki = b.substring(i, i + 2);
+        if (RegExp(r'^3[1-6]$').hasMatch(iki)) {
+          ai = b.substring(i, i + 4);
+          sabit = 6; // ağırlık / boyut / hacim değerleri 6 hane
         }
       }
-      if (!bulundu) i++;
+      if (ai == null && i + 3 <= b.length) {
+        final uc = b.substring(i, i + 3);
+        if (_sabitAi.containsKey(uc)) {
+          ai = uc;
+          sabit = _sabitAi[uc];
+        } else if (_degiskenAi.containsKey(uc)) {
+          ai = uc;
+          azami = _degiskenAi[uc];
+        }
+      }
+      if (ai == null && i + 2 <= b.length) {
+        final iki = b.substring(i, i + 2);
+        if (_sabitAi.containsKey(iki)) {
+          ai = iki;
+          sabit = _sabitAi[iki];
+        } else if (_degiskenAi.containsKey(iki)) {
+          ai = iki;
+          azami = _degiskenAi[iki];
+        }
+      }
+
+      // Bilinmeyen AI → daha fazla tahmin yürütmeden dur
+      if (ai == null) break;
+
+      i += ai.length;
+      String deger;
+      if (sabit != null) {
+        final son = (i + sabit).clamp(0, b.length).toInt();
+        deger = b.substring(i, son);
+        i = son;
+      } else {
+        final gs = b.indexOf('\u001D', i);
+        final sinir = (i + azami!).clamp(0, b.length).toInt();
+        final son = (gs != -1 && gs < sinir) ? gs : sinir;
+        deger = b.substring(i, son);
+        i = son;
+      }
+      sonuc['AI_$ai'] = deger;
     }
 
     return sonuc;
@@ -219,7 +460,13 @@ class BarkodServisi {
 
   Future<String?> barkodTara(BuildContext context) async {
     // Windows: kamera yok — USB okuyucu klavye gibi yazar; metin kutusu açılır.
-    if (Platform.isWindows) return _masaustuBarkodSor(context);
+    // Kamera penceresindeki bip burada devrede olmadığı için okutma sonucu
+    // dönünce bip BURADA çalınır (önceden bu yolda hiç ses yoktu).
+    if (Platform.isWindows) {
+      final sonuc = await _masaustuBarkodSor(context);
+      if (sonuc != null && sonuc.trim().isNotEmpty) barkodOkundu();
+      return sonuc;
+    }
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -299,22 +546,6 @@ class TartimBarkodSonuc {
 
 // ── Barkod Tarama Dialog (public) ────────────────────────────────────────
 
-/// 🔴 Market barkodlarının %99'u bu 9 formattan birindedir. Diğerlerini
-/// (Aztec, PDF417, Codabar…) taramak hem yavaşlatır hem yanlış okuma
-/// riskini artırır. Kısıtlanınca native tarayıcı motoru yalnız bu 9
-/// formatı dener → %30-50 hız artışı.
-const List<BarcodeFormat> _marketFormatlari = [
-  BarcodeFormat.ean13,
-  BarcodeFormat.ean8,
-  BarcodeFormat.upcA,
-  BarcodeFormat.upcE,
-  BarcodeFormat.code128,
-  BarcodeFormat.code39,
-  BarcodeFormat.itf,
-  BarcodeFormat.qrCode,
-  BarcodeFormat.dataMatrix,
-];
-
 class BarkodTaramaDialog extends StatefulWidget {
   const BarkodTaramaDialog({super.key});
 
@@ -324,18 +555,14 @@ class BarkodTaramaDialog extends StatefulWidget {
 
 class _BarkodTaramaDialogState extends State<BarkodTaramaDialog> {
   MobileScannerController? _ctrl;
-  bool _flash = false;
   bool _taramaTamamlandi = false;
   bool _kameraHatasi = false;
   String? _hataMesaji;
 
-  /// 🔴 Spam koruması: aynı barkod 400 ms içinde tekrar gelirse yoksay.
-  /// (noDuplicates DEĞİL — kasiyer aynı ürünü 2. kez okutabilmeli.)
-  String? _sonBarkod;
-  DateTime? _sonZaman;
-  static const _spamEsigi = Duration(milliseconds: 400);
-
-  double _zoom = 1.0;
+  // Zoom: 0.0 = 1x, 1.0 = cihazın azami yakınlaştırması
+  // (mobile_scanner setZoomScale 0.0–1.0 aralığını bekler)
+  double _zoom = 0.0;
+  double _zoomBaslangic = 0.0;
 
   @override
   void initState() {
@@ -345,22 +572,7 @@ class _BarkodTaramaDialogState extends State<BarkodTaramaDialog> {
 
   void _controllerOlustur() {
     try {
-      _ctrl = MobileScannerController(
-        facing: CameraFacing.back,
-        // Format kısıtlaması → %30-50 hız artışı
-        formats: _marketFormatlari,
-        // 1920×1080 çözünürlük — küçük barkodlar net okunur
-        // (7.4.2'de 'cameraResolution' parametresi Size? tipinde)
-        cameraResolution: const Size(1920, 1080),
-        // normal + manuel 400 ms throttle (kasiyer aynı ürünü
-        // peş peşe okutabilir)
-        detectionSpeed: DetectionSpeed.normal,
-        // 🔴 7.4.2'de 'detectionTimeoutMs' (int) — 'detectionTimeout'
-        // (Duration) DEĞİL
-        detectionTimeoutMs: 200,
-        autoStart: true,
-        torchEnabled: false,
-      );
+      _ctrl = BarkodServisi.tarayiciOlustur();
     } catch (e) {
       _kameraHatasi = true;
       _hataMesaji = 'Kamera başlatılamadı: $e';
@@ -376,38 +588,39 @@ class _BarkodTaramaDialogState extends State<BarkodTaramaDialog> {
 
   void _barkodBulundu(String barkod) {
     if (_taramaTamamlandi) return;
-
-    // Spam koruması — aynı barkod 400 ms içinde tekrar gelirse yoksay
-    final simdi = DateTime.now();
-    if (_sonBarkod == barkod &&
-        _sonZaman != null &&
-        simdi.difference(_sonZaman!) < _spamEsigi) {
-      return;
-    }
-    _sonBarkod = barkod;
-    _sonZaman = simdi;
-
+    final temiz = BarkodServisi.normalizeEt(barkod);
+    if (temiz.isEmpty) return;
     _taramaTamamlandi = true;
     BarkodServisi().barkodOkundu();
-    Navigator.pop(context, barkod);
+    Navigator.pop(context, temiz);
   }
 
-  Future<void> _zoomArtir() async {
-    if (_ctrl == null) return;
-    final yeni = (_zoom + 0.5).clamp(1.0, 4.0);
-    try {
-      // 🔴 7.4.2'de 'setZoomScale(double)' — 'setZoom' DEĞİL
-      await _ctrl!.setZoomScale(yeni);
-      setState(() => _zoom = yeni);
-    } catch (_) {}
+  void _algilandi(BarcodeCapture capture) {
+    for (final b in capture.barcodes) {
+      final raw = b.rawValue;
+      if (raw != null && raw.trim().isNotEmpty) {
+        _barkodBulundu(raw);
+        return;
+      }
+    }
   }
 
-  Future<void> _zoomAzalt() async {
-    if (_ctrl == null) return;
-    final yeni = (_zoom - 0.5).clamp(1.0, 4.0);
+  Future<void> _zoomAyarla(double yeni) async {
+    final ctrl = _ctrl;
+    if (ctrl == null) return;
+    final z = yeni.clamp(0.0, 1.0).toDouble();
+    if ((z - _zoom).abs() < 0.001) return;
+    setState(() => _zoom = z);
     try {
-      await _ctrl!.setZoomScale(yeni);
-      setState(() => _zoom = yeni);
+      await ctrl.setZoomScale(z);
+    } catch (_) {
+      // Kamera hazır değil / cihaz zoom desteklemiyor → yoksay
+    }
+  }
+
+  Future<void> _yenidenDene() async {
+    try {
+      await _ctrl?.start();
     } catch (_) {}
   }
 
@@ -443,38 +656,12 @@ class _BarkodTaramaDialogState extends State<BarkodTaramaDialog> {
                       fontSize: 18,
                       fontWeight: FontWeight.bold)),
               Row(children: [
-                // Zoom kontrolü
-                IconButton(
-                  icon: const Icon(Icons.zoom_out, color: Colors.white),
-                  onPressed: _zoom > 1.0 ? _zoomAzalt : null,
-                  tooltip: 'Uzaklaştır',
-                ),
-                Text('${_zoom.toStringAsFixed(1)}x',
-                    style:
-                        const TextStyle(color: Colors.white70, fontSize: 12)),
-                IconButton(
-                  icon: const Icon(Icons.zoom_in, color: Colors.white),
-                  onPressed: _zoom < 4.0 ? _zoomArtir : null,
-                  tooltip: 'Yakınlaştır',
-                ),
-                const SizedBox(width: 4),
-                // Torch (kamera destekliyorsa)
-                IconButton(
-                  icon: Icon(_flash ? Icons.flash_on : Icons.flash_off,
-                      color: Colors.white),
-                  onPressed: () async {
-                    try {
-                      await _ctrl?.toggleTorch();
-                      setState(() => _flash = !_flash);
-                    } catch (_) {
-                      // Cihazın torch'u yoksa sessizce yoksay
-                    }
-                  },
-                  tooltip: 'Işık',
-                ),
+                // Işık — kameranın gerçek torch durumunu gösterir
+                _isikButonu(),
                 IconButton(
                   icon: const Icon(Icons.close, color: Colors.white),
                   onPressed: () => Navigator.pop(context),
+                  tooltip: 'Kapat',
                 ),
               ]),
             ],
@@ -485,7 +672,7 @@ class _BarkodTaramaDialogState extends State<BarkodTaramaDialog> {
           child: _kameraHatasi
               ? _hataEkrani()
               : LayoutBuilder(builder: (context, c) {
-                  // 🔴 scanWindow ekranın ortasında; hedef çerçevesi de
+                  // scanWindow ekranın ortasında; hedef çerçevesi de
                   // AYNI dikdörtgen — kullanıcı gerçek tarama alanını görür.
                   final scanRect = Rect.fromCenter(
                     center: Offset(c.maxWidth / 2, c.maxHeight / 2),
@@ -496,22 +683,21 @@ class _BarkodTaramaDialogState extends State<BarkodTaramaDialog> {
                     ClipRRect(
                       borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(16)),
-                      child: MobileScanner(
-                        controller: _ctrl,
-                        // 🔴 Tarama alanı yalnız bu dikdörtgen
-                        scanWindow: scanRect,
-                        onDetect: (capture) {
-                          if (capture.barcodes.isEmpty) return;
-                          final barcode = capture.barcodes.first;
-                          final raw = barcode.rawValue;
-                          if (raw != null && raw.isNotEmpty) {
-                            _barkodBulundu(raw);
-                          }
+                      // İki parmakla kıstırarak zoom
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onScaleStart: (_) => _zoomBaslangic = _zoom,
+                        onScaleUpdate: (d) {
+                          if (d.pointerCount < 2) return;
+                          _zoomAyarla(_zoomBaslangic + (d.scale - 1.0) * 0.5);
                         },
-                        errorBuilder: (context, error) {
-                          return _hataEkrani(
-                              mesaj: 'Kamera hatası: ${error.errorCode}');
-                        },
+                        child: MobileScanner(
+                          controller: _ctrl,
+                          scanWindow: scanRect,
+                          onDetect: _algilandi,
+                          errorBuilder: (context, error) => _hataEkrani(
+                              hata: error),
+                        ),
                       ),
                     ),
                     // 🎯 Hedef çerçevesi — scanWindow ile bire bir hizalı
@@ -530,8 +716,40 @@ class _BarkodTaramaDialogState extends State<BarkodTaramaDialog> {
                     // 🎯 Köşelerde kısa kılavuz çizgiler (görsel vurgu)
                     Positioned.fromRect(
                       rect: scanRect,
-                      child:
-                          const IgnorePointer(child: _TaramaKoseleri()),
+                      child: const IgnorePointer(child: _TaramaKoseleri()),
+                    ),
+                    // Zoom kaydırıcısı
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Row(children: [
+                          const Icon(Icons.zoom_out,
+                              color: Colors.white70, size: 20),
+                          Expanded(
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                activeTrackColor: Colors.greenAccent,
+                                inactiveTrackColor: Colors.white24,
+                                thumbColor: Colors.greenAccent,
+                                overlayColor: Colors.greenAccent.withAlpha(40),
+                              ),
+                              child: Slider(
+                                value: _zoom,
+                                onChanged: _zoomAyarla,
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.zoom_in,
+                              color: Colors.white70, size: 20),
+                        ]),
+                      ),
                     ),
                   ]);
                 }),
@@ -553,20 +771,75 @@ class _BarkodTaramaDialogState extends State<BarkodTaramaDialog> {
     );
   }
 
-  Widget _hataEkrani({String? mesaj}) {
+  Widget _isikButonu() {
+    final ctrl = _ctrl;
+    if (ctrl == null) {
+      return const IconButton(
+        icon: Icon(Icons.flash_off, color: Colors.white24),
+        onPressed: null,
+      );
+    }
+    return ValueListenableBuilder<MobileScannerState>(
+      valueListenable: ctrl,
+      builder: (_, durum, _) {
+        final acik = durum.torchState == TorchState.on;
+        return IconButton(
+          icon: Icon(acik ? Icons.flash_on : Icons.flash_off,
+              color: acik ? Colors.amber : Colors.white),
+          tooltip: 'Işık',
+          onPressed: () async {
+            try {
+              await ctrl.toggleTorch();
+            } catch (_) {
+              // Cihazın torch'u yoksa sessizce yoksay
+            }
+          },
+        );
+      },
+    );
+  }
+
+  Widget _hataEkrani({MobileScannerException? hata}) {
+    final izinYok = hata?.errorCode == MobileScannerErrorCode.permissionDenied;
+    final mesaj = izinYok
+        ? 'Kamera izni verilmedi. Barkod okutmak için izin vermelisiniz.'
+        : hata != null
+            ? 'Kamera hatası: ${hata.errorCode.name}'
+            : (_hataMesaji ?? 'Kamera kullanılamıyor');
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.no_photography_outlined,
                 color: Colors.white54, size: 64),
             const SizedBox(height: 16),
             Text(
-              mesaj ?? _hataMesaji ?? 'Kamera kullanılamıyor',
+              mesaj,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              alignment: WrapAlignment.center,
+              children: [
+                if (izinYok)
+                  FilledButton.tonal(
+                    onPressed: () => openAppSettings(),
+                    child: const Text('Ayarları Aç'),
+                  ),
+                if (_ctrl != null)
+                  OutlinedButton(
+                    onPressed: _yenidenDene,
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70),
+                    child: const Text('Tekrar Dene'),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
             const Text(
@@ -624,16 +897,16 @@ class _KoseBoyaci extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     final x = sol ? 0.0 : size.width;
     final y = ust ? 0.0 : size.height;
-    // Yatay çizgi
+    // Yatay çizgi (köşeden içeriye)
     canvas.drawLine(
       Offset(x, y),
-      Offset(sol ? size.width / 2 : size.width * 0.5, y),
+      Offset(sol ? size.width / 2 : size.width / 2, y),
       paint,
     );
-    // Dikey çizgi
+    // Dikey çizgi (köşeden içeriye)
     canvas.drawLine(
       Offset(x, y),
-      Offset(x, ust ? size.height / 2 : size.height * 0.5),
+      Offset(x, ust ? size.height / 2 : size.height / 2),
       paint,
     );
   }

@@ -133,6 +133,7 @@ flutter:
     - assets/images/no_internet.png
     - assets/icons/ic_launcher.png
     - assets/sounds/bip.mp3
+    - assets/sounds/Windows_Error.wav
     - assets/templates/
 
   fonts:

@@ -6,6 +6,8 @@
 //   - context.read<HizliSatisNotifier>() → ref.read(sepetProvider.notifier)
 //   - Tüm "final n = context.read<HizliSatisNotifier>()" → ref.read(sepetProvider.notifier)
 //   - Otomatik yazdırma kaldırıldı, manuel yazdırma ikonu appBar'a eklendi.
+//   - Kamera controller'ı BarkodServisi.tarayiciOlustur() ile oluşturulur
+//     (format kısıtlaması + çözünürlük ayarı tek merkezde).
 
 import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../uygulama/masaustu/masaustu_yan_menu.dart';
@@ -134,10 +136,9 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _scanCtrl = MobileScannerController(
-      torchEnabled: false,
-      facing: CameraFacing.back,
-    );
+    // Tek merkezden ayar: 9 market formatı, 1920×1080, normal hız.
+    // (Önceden varsayılan ayarlarla açılıyordu → tüm formatlar taranıyordu.)
+    _scanCtrl = BarkodServisi.tarayiciOlustur();
     _player.setPlayerMode(PlayerMode.lowLatency);
     _laserAnim = AnimationController(
         vsync: this, duration: const Duration(seconds: 2))
@@ -192,10 +193,10 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
     if (!mounted) return;
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      if (_kameraAcik) { try { _scanCtrl.stop(); } catch (e) { /* ignore */ } }
+      if (_kameraAcik) _scanDurdur();
     } else if (state == AppLifecycleState.resumed) {
       if (_kameraAcik && !_islemAktif && !_dialogAcik) {
-        try { _scanCtrl.start(); } catch (e) { /* ignore */ }
+        _scanBaslat();
       }
     }
   }

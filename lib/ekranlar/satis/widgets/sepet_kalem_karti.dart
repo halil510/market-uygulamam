@@ -15,6 +15,12 @@ class SepetKalemKarti extends StatelessWidget {
   final VoidCallback onArttir;
   final bool Function(String) kgMiMi;
 
+  /// true ise satır kısa süreliğine yeşil vurgulanır (barkodla okutulan /
+  /// sepete yeni eklenen ürün). Kasiyer gözünü ekrandan ayırmadan hangi
+  /// ürünün eklendiğini görür. Opsiyonel: bu kartı kullanan başka ekranlar
+  /// etkilenmez.
+  final bool vurgula;
+
   const SepetKalemKarti({
     super.key,
     required this.kalem,
@@ -25,6 +31,7 @@ class SepetKalemKarti extends StatelessWidget {
     required this.onAzalt,
     required this.onArttir,
     required this.kgMiMi,
+    this.vurgula = false,
   });
 
   static const _primary   = TsRenk.primary;
@@ -67,19 +74,23 @@ class SepetKalemKarti extends StatelessWidget {
           ),
         ),
         onDismissed: (_) => onSil(),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOut,
           margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
           decoration: BoxDecoration(
-            color: context.cardBg,
+            color: vurgula ? _success.withAlpha(46) : context.cardBg,
             // Kullanıcı isteği: "Logo gibi profesyonel yazılımlar gibi
             // olsun." Aşırı yuvarlak/"balonlu" köşeler yerine daha
             // net, gridli/tablo hissi veren daha keskin köşeler.
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: indirimVar
-                  ? const Color(0x33E65100)
-                  : context.borderColor,
-              width: indirimVar ? 1.5 : 1,
+              color: vurgula
+                  ? _success
+                  : indirimVar
+                      ? const Color(0x33E65100)
+                      : context.borderColor,
+              width: (vurgula || indirimVar) ? 1.5 : 1,
             ),
           ),
           child: InkWell(
@@ -162,8 +173,11 @@ class SepetKalemKarti extends StatelessWidget {
                       renk: _danger,
                     ),
                     // Miktar
-                    SizedBox(
-                      width: 32,
+                    // 🔴 Sabit 32 dp genişlik "12.500" gibi kg miktarlarını
+                    // (13 pt kalın yazı ≈ 48 dp) iki satıra bölüp satırı
+                    // bozuyordu. Kg'lı ürünlerde en az 54 dp, tek satır.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: isKg ? 54 : 32),
                       child: Text(
                         isKg
                             ? k.miktar.toStringAsFixed(3)
@@ -171,6 +185,8 @@ class SepetKalemKarti extends StatelessWidget {
                                 ? k.miktar.toInt().toString()
                                 : k.miktar.toStringAsFixed(1),
                         textAlign: TextAlign.center,
+                        maxLines: 1,
+                        softWrap: false,
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 13,

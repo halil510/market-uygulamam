@@ -56,3 +56,5 @@ windows/out/
 
 # bulut/API anahtarlari asla commitlenmesin
 hatalar/bulut ap*.txt
+*.zip
+.vs/

@@ -58,3 +58,4 @@ windows/out/
 hatalar/bulut ap*.txt
 *.zip
 .vs/
+.claude/

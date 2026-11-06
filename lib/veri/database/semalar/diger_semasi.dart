@@ -100,10 +100,10 @@ class DigerSemasi {
       AFTER INSERT ON ${DbSabitler.cariHareket}
       BEGIN
         UPDATE ${DbSabitler.cari}
-        SET bakiye = (
+        SET bakiye = ROUND((
           SELECT COALESCE(SUM(borc - alacak), 0) FROM ${DbSabitler.cariHareket}
           WHERE cari_id = NEW.cari_id AND is_deleted = 0
-        )
+        ), 2)
         WHERE id = NEW.cari_id;
       END
     ''');

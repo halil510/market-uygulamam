@@ -569,3 +569,20 @@ Future<void> _v79denV80e(Database db) async {
 Future<void> _v80denV81e(Database db) async {
   await TedarikSemasi.iadeTablolariniOlustur(db);
 }
+
+// v81'den v82'ye — trg_cari_hareket_bakiye bakiyeyi YUVARLAMADAN yazıyordu
+// (uygulama yolları ROUND(...,2) kullanıyor). Tetikleyici yalnız buluttan
+// gelen hareketlerde son sözü söylediği için senkron sonrası bakiye
+// 0.30000000000000004 gibi kuruş-altı kalıntı taşıyabiliyordu (2026-11-06).
+// Sıfırdan kurulumla AYNI tanım (semalar/diger_semasi.dart). Yalnız yerel
+// SQLite tetikleyicisi — bulut şemasını etkilemez. Mevcut bakiyeler burada
+// toplu DÜZELTİLMEZ; Veri Sağlığı Merkezi mutabakatı kullanıcı onayıyla yapar.
+Future<void> _v81denV82ye(Database db) async {
+  await _calistir(db, 'DROP TRIGGER IF EXISTS trg_cari_hareket_bakiye');
+  await _calistir(db, """CREATE TRIGGER trg_cari_hareket_bakiye
+    AFTER INSERT ON cari_hareket BEGIN
+    UPDATE cari SET bakiye = ROUND((
+      SELECT COALESCE(SUM(borc - alacak), 0) FROM cari_hareket
+      WHERE cari_id = NEW.cari_id AND is_deleted = 0
+    ), 2) WHERE id = NEW.cari_id; END""");
+}

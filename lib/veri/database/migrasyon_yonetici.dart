@@ -238,5 +238,8 @@ class MigrasyonYonetici {
 
     // v80'den v81'e — tedarikçiye mal iadesi tabloları (bkz. _v80denV81e).
     if (eskiVersiyon < 81) await _v80denV81e(db);
+
+    // v81'den v82'ye — cari bakiye tetikleyicisi kuruşa yuvarlar (bkz. _v81denV82ye).
+    if (eskiVersiyon < 82) await _v81denV82ye(db);
   }
 }

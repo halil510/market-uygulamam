@@ -398,12 +398,30 @@ class CariDeposu {
     }
   }
 
+  /// cari.bakiye'nin TEK hesaplama yeri (CLAUDE.md §4.2): bakiye, carinin
+  /// silinmemiş hareketlerinden (borç − alacak) kuruşa yuvarlanarak
+  /// türetilir. [ex] bir Database veya Transaction olabilir — çok tablolu
+  /// akışlar kendi transaction'ını verir. [lastUpdated] verilirse
+  /// last_updated da yazılır (önceki kopyalardan bazıları yazıyordu,
+  /// bazıları yazmıyordu; davranış çağrı yerinde korunur).
+  /// ÖNCEDEN bu SQL 16 yerde elle kopyalanmıştı.
+  static Future<void> bakiyeTazeleTxn(DatabaseExecutor ex, int? cariId,
+      {String? lastUpdated}) async {
+    if (cariId == null) return; // eski SQL'de NULL id hiçbir satırı güncellemiyordu
+    const hesap = 'ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) '
+        'FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2)';
+    if (lastUpdated == null) {
+      await ex.rawUpdate('UPDATE cari SET bakiye = $hesap WHERE id = ?', [cariId, cariId]);
+    } else {
+      await ex.rawUpdate('UPDATE cari SET bakiye = $hesap, last_updated = ? WHERE id = ?',
+          [cariId, lastUpdated, cariId]);
+    }
+  }
+
   Future<void> bakiyeGuncelle(int cariId) async {
     try {
       final db = await _d;
-      await db.rawUpdate(
-        'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2) WHERE id = ?',
-        [cariId, cariId]);
+      await CariDeposu.bakiyeTazeleTxn(db, cariId);
       final satir = await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
       if (satir.isNotEmpty) {
         BulutManager().upsert('cari', Map<String, dynamic>.from(satir.first));
@@ -446,11 +464,7 @@ class CariDeposu {
     final globalId = (hm['global_id'] as String?) ?? const Uuid().v4();
     hm['global_id'] = globalId;
     await txn.insert('cari_hareket', hm);
-    await txn.rawUpdate('''
-      UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
-        FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-      ), 2) WHERE id = ?
-    ''', [hareket.cariId, hareket.cariId]);
+    await CariDeposu.bakiyeTazeleTxn(txn, hareket.cariId);
     // Madde 5 sertleştirmesi: hareket kaydı VE etkilediği cari bakiyesi
     // AYNI transaction içinde kuyruğa yazılıyor — ikisi de business
     // data ile atomik (bkz. SyncKuyrukYazici yorumu).
@@ -477,11 +491,7 @@ class CariDeposu {
       // last_updated'a bakar) bunu ASLA yakalamıyor, diğer cihazlar/
       // bulut hâlâ eski (hatalı) bakiyeyi görmeye devam ediyordu.
       final now = DateTime.now().toIso8601String();
-      await db.rawUpdate('''
-        UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
-          FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-        ), 2), last_updated = ? WHERE id = ?
-      ''', [cariId, now, cariId]);
+      await CariDeposu.bakiyeTazeleTxn(db, cariId, lastUpdated: now);
       final satir = await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
       if (satir.isNotEmpty) {
         BulutManager().upsert('cari', Map<String, dynamic>.from(satir.first));
@@ -682,12 +692,7 @@ class CariDeposu {
         });
         tersCariGid = tersGid;
 
-        await txn.rawUpdate('''
-          UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0)
-            FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-          ), 2), last_updated = ?
-          WHERE id = ?
-        ''', [h.cariId, now, h.cariId]);
+        await CariDeposu.bakiyeTazeleTxn(txn, h.cariId, lastUpdated: now);
 
         final kasaRows = await txn.query('kasa_hareketleri',
             where:

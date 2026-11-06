@@ -225,9 +225,7 @@ class IadeIslemServisi {
         await SyncKuyrukYazici.ekleTxn(txn,
             tablo: 'cari_hareket', veri: {...cariHareketSatiri, 'id': cariHareketId});
         // 'is_deleted = 0' filtresi — kanonik bakiye kuralı.
-        await txn.rawUpdate(
-            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0), 2) WHERE id=?',
-            [cari.id, cari.id]);
+        await CariDeposu.bakiyeTazeleTxn(txn, cari.id);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cari.id], limit: 1);
         if (guncelCariSatiri.isNotEmpty) {
@@ -528,9 +526,7 @@ class IadeIslemServisi {
         await SyncKuyrukYazici.ekleTxn(txn,
             tablo: 'cari_hareket', veri: {...cariHareketSatiri, 'id': cariHareketId});
         // 'is_deleted = 0' filtresi — kanonik bakiye kuralı.
-        await txn.rawUpdate(
-            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0), 2) WHERE id=?',
-            [cariId, cariId]);
+        await CariDeposu.bakiyeTazeleTxn(txn, cariId);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cariId], limit: 1);
         if (guncelCariSatiri.isNotEmpty) {

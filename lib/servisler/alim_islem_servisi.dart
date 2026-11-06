@@ -7,6 +7,7 @@
 // (varsa) kasa/banka + (varsa) cari hareketi TEK transaction içinde,
 // commit sonrası bulut senkronu.
 import '../cekirdek/utils/para_utils.dart';
+import '../depolar/cari_deposu.dart';
 import '../depolar/kasa_deposu.dart';
 import '../depolar/banka_hareket_deposu.dart';
 import '../depolar/stok_deposu.dart';
@@ -397,9 +398,7 @@ class AlimIslemServisi {
           'kullanici': kullaniciAdi,
           'last_updated': now,
         });
-        await txn.rawUpdate(
-            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0), 2) WHERE id=?',
-            [tedarikciId, tedarikciId]);
+        await CariDeposu.bakiyeTazeleTxn(txn, tedarikciId);
         await _cariveHareketiKuyrukla(txn, cariHareketGid!, tedarikciId);
       } else if (tedarikciId != null && genelToplam > 0.005) {
         // Nakit/Kredi Kartı ile peşin ödense bile tedarikçinin cari
@@ -421,9 +420,7 @@ class AlimIslemServisi {
           'kullanici': kullaniciAdi,
           'last_updated': now,
         });
-        await txn.rawUpdate(
-            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0), 2) WHERE id=?',
-            [tedarikciId, tedarikciId]);
+        await CariDeposu.bakiyeTazeleTxn(txn, tedarikciId);
         await _cariveHareketiKuyrukla(txn, cariHareketGid!, tedarikciId);
       }
     });
@@ -672,9 +669,7 @@ class AlimIslemServisi {
             'odeme_turu': 'Cari',
           });
         }
-        await txn.rawUpdate(
-            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2), last_updated = ? WHERE id = ?',
-            [cariId, now, cariId]);
+        await CariDeposu.bakiyeTazeleTxn(txn, cariId, lastUpdated: now);
       }
     });
 

@@ -374,11 +374,7 @@ extension IadeIslemServisiTedarikciBayi on IadeIslemServisi {
       }
 
       // Cari bakiye: kanonik formül (is_deleted=0 filtresiyle SUM).
-      await txn.rawUpdate(
-          'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - '
-          'COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2) '
-          'WHERE id = ?',
-          [cariId, cariId]);
+      await CariDeposu.bakiyeTazeleTxn(txn, cariId);
       final guncelCari = await txn.query('cari',
           where: 'id = ?', whereArgs: [cariId], limit: 1);
       if (guncelCari.isNotEmpty) {
@@ -855,11 +851,7 @@ extension IadeIslemServisiTedarikciBayi on IadeIslemServisi {
       }
 
       // Cari bakiye: kanonik formül.
-      await txn.rawUpdate(
-          'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - '
-          'COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2) '
-          'WHERE id = ?',
-          [cariId, cariId]);
+      await CariDeposu.bakiyeTazeleTxn(txn, cariId);
       final guncelCari = await txn.query('cari',
           where: 'id = ?', whereArgs: [cariId], limit: 1);
       if (guncelCari.isNotEmpty) {

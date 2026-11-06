@@ -180,9 +180,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           await SyncKuyrukYazici.ekleTxn(txn,
               tablo: 'cari_hareket', veri: Map<String, dynamic>.from(c));
         }
-        await txn.rawUpdate(
-            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2) WHERE id = ?',
-            [cariId, cariId]);
+        await CariDeposu.bakiyeTazeleTxn(txn, cariId);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cariId], limit: 1);
         if (guncelCariSatiri.isNotEmpty) {
@@ -390,9 +388,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           await SyncKuyrukYazici.ekleTxn(txn,
               tablo: 'cari_hareket', veri: Map<String, dynamic>.from(c));
         }
-        await txn.rawUpdate(
-            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0), 2) WHERE id = ?',
-            [cariId, cariId]);
+        await CariDeposu.bakiyeTazeleTxn(txn, cariId);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cariId], limit: 1);
         if (guncelCariSatiri.isNotEmpty) {
@@ -671,9 +667,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
               tablo: 'cari_hareket',
               veri: Map<String, dynamic>.from(guncelCariHareketSatir.first));
         }
-        await txn.rawUpdate(
-            'UPDATE cari SET bakiye = ROUND((SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0), 2) WHERE id=?',
-            [cariId, cariId]);
+        await CariDeposu.bakiyeTazeleTxn(txn, cariId);
         final guncelCariSatiri = await txn.query('cari',
             where: 'id = ?', whereArgs: [cariId], limit: 1);
         if (guncelCariSatiri.isNotEmpty) {

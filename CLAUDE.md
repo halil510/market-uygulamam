@@ -276,7 +276,30 @@ catch (_) {} ve sessiz debugPrint catch'lerini LogServisi + rethrow'a çevir (ko
 
 Tüm async handler'larda _islemAktif guard'ının ilk await'ten önce set edildiğini doğrula.
 
+#	Konu	Önem	Dosya
+1	CARIO-O- numaralandırma bug'ı	🔴 Kritik	cari_deposu.dart
+2	SQLite ROUND vs Dart yuvarla uyumsuzluğu	🔴 Kritik	Cari/Kasa/Banka/Iade
+3	Elle fatura no sessizce eziliyor	🔴 Kritik	fatura_deposu.dart
+4	bulutaBildir gereksiz	🟠 Ciddi	Satis/Kasa/Gider/Banka/Fatura
+5	Alımda tedarikciId FK kontrolü yok	🟠 Ciddi	alim_islem_servisi.dart
+
+
+
+
 Faz B — Kod tekrarı (2. öncelik)
+
+
+6	SyncKuyrukYazici tutarsız kullanım	🟠 Ciddi	17+ depo
+7	SQL girisTipleri elle kopya	🟠 Ciddi	kasa_deposu.dart
+8	topluFiyatGuncelle transaction'sız	🟠 Ciddi	urun_deposu_liste.dart
+9	iade.toplam_tutar elle yönetiliyor	🟡 Orta	iade_islem_servisi_gecmis.dart
+10	ozetGetir isim yanıltıcı	🟡 Orta	banka_hareket_deposu.dart
+11	hareketSil tüm şubeyi yeniden hesaplıyor	🟡 Orta	kasa_deposu.dart
+12	zorlaGonder her yazmada	🟡 Orta	masa_deposu.dart
+13	sonrakiNo iki kez	🟢 Küçük	masa_deposu.dart
+14	Limit kontrolü TOCTOU	🟡 Orta	cari_deposu.dart
+15	Self-cancelling satır Excel'de görünüyor	🟢 Küçük	cari_hareket_disa_aktar.dart
+
 Bölüm 4'teki 9 desenin her birini tek kaynağa çek. Davranış değişmesin.
 
 Ortak cari/ürün seçim diyaloğu → widgetlar/ortak/.

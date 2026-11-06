@@ -20,89 +20,39 @@
 // sıfırlanıyor. Aynı mantık kasa_hareketleri için de uygulandı (Karma
 // satışlarda kasadan olduğundan fazla düşülmesini önler).
 //
-// SatisDeposu.sil() Veritabani() singleton'ına bağımlı olduğundan
-// (projenin yerleşik test deseni — bkz. satis_odeme_dagilimi_test.dart),
-// bu test o metottaki BİREBİR aynı sorgu/insert akışını gerçek şema
-// üzerinde doğrular.
+// 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN sil()'in
+// kopyası olan bir simülasyon fonksiyonunu çağırıyordu — üretim kodu
+// bozulsa bile yeşil kalırdı. Artık GERÇEK SatisDeposu().sil() çağrılıyor
+// (Veritabani.testVeritabani seam'i ile bellek-içi gerçek şema).
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
+import 'package:market_plus/depolar/satis_deposu.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
-/// SatisDeposu.sil()'deki 5. ve 6. adımların (kasa/cari ters kaydı)
-/// BİREBİR aynısı.
-Future<void> _satisSilSimulasyonu(Database db, int satisId) async {
-  await db.transaction((txn) async {
-    final satis = (await txn.query('satislar', where: 'id = ?', whereArgs: [satisId])).first;
-    final odemeYontemi = satis['odeme_yontemi'] as String? ?? '';
-    final cariId = satis['cari_id'] as int?;
-    final fisNo = satis['fis_no'] as String? ?? '#$satisId';
-    final simdi = DateTime.now().toIso8601String();
-
-    await txn.update('satislar', {'is_deleted': 1, 'iptal': 1, 'last_updated': simdi},
-        where: 'id = ?', whereArgs: [satisId]);
-
-    final orijinalKasaSatirlari = await txn.query('kasa_hareketleri',
-        where: 'referans_id = ? AND referans_turu = ? AND deleted_at IS NULL',
-        whereArgs: [satisId, 'satis']);
-    for (final k in orijinalKasaSatirlari) {
-      final tutar = (k['tutar'] as num?)?.toDouble() ?? 0;
-      if (tutar <= 0) continue;
-      final sonBakiye = (await txn.rawQuery(
-              'SELECT bakiye_sonrasi FROM kasa_hareketleri ORDER BY id DESC LIMIT 1'))
-          .firstOrNull;
-      final oncekiBakiye = (sonBakiye?['bakiye_sonrasi'] as num?)?.toDouble() ?? 0;
-      await txn.insert('kasa_hareketleri', {
-        'global_id': const Uuid().v4(),
-        'hareket_tipi': 'Satış İptali',
-        'tutar': tutar,
-        'referans_id': satisId,
-        'referans_turu': 'satis_iptal',
-        'tarih': simdi,
-        'aciklama': 'Satış iptali: $fisNo',
-        'odeme_yontemi': k['odeme_yontemi'],
-        'bakiye_sonrasi': oncekiBakiye - tutar,
-      });
-    }
-
-    if (cariId != null) {
-      final orijinalCariSatirlari = await txn.query('cari_hareket',
-          where: 'fis_id = ? AND cari_id = ? AND fis_tipi IN (?, ?) AND is_deleted = 0',
-          whereArgs: [satisId, cariId, 'Satış', 'Toptan Satış']);
-      final toplamBorc = orijinalCariSatirlari.fold(
-          0.0, (s, r) => s + ((r['borc'] as num?)?.toDouble() ?? 0));
-      final toplamAlacak = orijinalCariSatirlari.fold(
-          0.0, (s, r) => s + ((r['alacak'] as num?)?.toDouble() ?? 0));
-      if (toplamBorc > 0.005 || toplamAlacak > 0.005) {
-        await txn.insert('cari_hareket', {
-          'global_id': const Uuid().v4(),
-          'cari_id': cariId,
-          'tarih': simdi,
-          'last_updated': simdi,
-          'fis_tipi': 'Satış İptali',
-          'fis_id': satisId,
-          'fis_no': fisNo,
-          'aciklama': 'Satış iptali: $fisNo',
-          'borc': toplamAlacak,
-          'alacak': toplamBorc,
-          'odeme_turu': odemeYontemi,
-        });
-      }
-      final bRes = await txn.rawQuery(
-          'SELECT SUM(borc) - SUM(alacak) AS b FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0',
-          [cariId]);
-      final yeniBakiye = (bRes.first['b'] as num?)?.toDouble() ?? 0;
-      await txn.update('cari', {'bakiye': yeniBakiye, 'last_updated': simdi},
-          where: 'id = ?', whereArgs: [cariId]);
-    }
-  });
-}
+Future<void> _satisSil(int satisId) => SatisDeposu().sil(satisId);
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Database db;
 
-  setUp(() async => db = await TestVeritabani.olustur());
-  tearDown(() => db.close());
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
 
   group('SatisDeposu.sil() — saf Veresiye (Cari) satış', () {
     test('silinince bakiye TAM SIFIRA döner, hayalet Tahsilat İptali OLUŞMAZ', () async {
@@ -136,7 +86,7 @@ void main() {
       });
       await db.update('cari', {'bakiye': 90.0}, where: 'id = ?', whereArgs: [cariId]);
 
-      await _satisSilSimulasyonu(db, satisId);
+      await _satisSil(satisId);
 
       final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
       expect((cari['bakiye'] as num).toDouble(), equals(0.0),
@@ -150,6 +100,42 @@ void main() {
       final kasaTers = await db.query('kasa_hareketleri',
           where: 'referans_id = ? AND referans_turu = ?', whereArgs: [satisId, 'satis_iptal']);
       expect(kasaTers, isEmpty, reason: 'Veresiye satışta hiç kasa hareketi olmadığından ters kayıt da olmamalı');
+    });
+
+    // CLAUDE.md §3.3 / §5.1: ikinci silme çağrısı hiçbir ters kayıt üretmez.
+    test('aynı satış ikinci kez silinirse ikinci "Satış İptali" yazılmaz (idempotent)', () async {
+      final cariId = await TestVeritabani.ornekCariEkle(db);
+      final satisId = await db.insert('satislar', {
+        'fis_no': 'CRI2026000000005',
+        'tarih': DateTime.now().toIso8601String(),
+        'cari_id': cariId,
+        'genel_toplam': 50.0,
+        'odenen_tutar': 50.0,
+        'odeme_yontemi': 'Cari',
+        'fis_tipi': 'Satış',
+        'is_deleted': 0,
+      });
+      await db.insert('cari_hareket', {
+        'global_id': const Uuid().v4(),
+        'cari_id': cariId,
+        'tarih': DateTime.now().toIso8601String(),
+        'fis_tipi': 'Satış',
+        'fis_id': satisId,
+        'aciklama': 'Veresiye: CRI2026000000005',
+        'borc': 50.0,
+        'alacak': 0.0,
+        'odeme_turu': 'Cari',
+        'is_deleted': 0,
+      });
+
+      await _satisSil(satisId);
+      await _satisSil(satisId);
+
+      final iptaller = await db.query('cari_hareket',
+          where: 'fis_id = ? AND fis_tipi = ?', whereArgs: [satisId, 'Satış İptali']);
+      expect(iptaller, hasLength(1));
+      final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
+      expect((cari['bakiye'] as num).toDouble(), equals(0.0));
     });
   });
 
@@ -191,7 +177,7 @@ void main() {
       });
       await db.update('cari', {'bakiye': 40.0}, where: 'id = ?', whereArgs: [cariId]);
 
-      await _satisSilSimulasyonu(db, satisId);
+      await _satisSil(satisId);
 
       final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
       expect((cari['bakiye'] as num).toDouble(), equals(0.0));

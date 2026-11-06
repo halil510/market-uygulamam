@@ -12,6 +12,7 @@ import '../modeller/satis_model.dart';
 import '../modeller/satis_kalem_model.dart';
 import '../modeller/kasa_hareket_model.dart';
 import '../servisler/puan_servisi.dart';
+import 'cari_deposu.dart';
 import 'kasa_deposu.dart';
 
 class SatisDeposu {
@@ -1038,13 +1039,10 @@ class SatisDeposu {
             'odeme_turu': odemeYontemi,
           });
         }
-        // Cari bakiyeyi yeniden hesapla
-        final bRes = await txn.rawQuery(
-          'SELECT SUM(borc) - SUM(alacak) AS b FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0',
-          [cariId]);
-        final yeniBakiye = (bRes.first['b'] as num?)?.toDouble() ?? 0;
-        await txn.update('cari', {'bakiye': yeniBakiye, 'last_updated': simdi},
-            where: 'id = ?', whereArgs: [cariId]);
+        // Cari bakiyeyi yeniden hesapla — tek kaynak (CLAUDE.md §4.2).
+        // ÖNCEDEN burada Dart tarafında YUVARLAMADAN yazılıyordu; diğer tüm
+        // yollar kuruşa yuvarlıyor (2026-11-06).
+        await CariDeposu.bakiyeTazeleTxn(txn, cariId, lastUpdated: simdi);
       }
     });
     // BulutManager'a satış bildirimi — transaction dışında.

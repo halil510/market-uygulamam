@@ -189,4 +189,32 @@ void main() {
           reason: 'kasadan sadece GERÇEKTEN girmiş olan Nakit payı geri çıkmalı, Cari payı değil');
     });
   });
+
+  // Regresyon (2026-11-06, §3.1/§4.2): sil() bakiyeyi Dart'ta YUVARLAMADAN
+  // yazıyordu; artık tek kaynak CariDeposu.bakiyeTazeleTxn kuruşa yuvarlar.
+  test('satış silinince cari bakiyesi kuruşa yuvarlanmış yazılır', () async {
+    final cariId = await TestVeritabani.ornekCariEkle(db);
+    for (final b in [0.1, 0.2]) {
+      await db.insert('cari_hareket', {
+        'global_id': const Uuid().v4(), 'cari_id': cariId,
+        'tarih': DateTime.now().toIso8601String(), 'fis_tipi': 'Satış',
+        'borc': b, 'alacak': 0.0, 'odeme_turu': 'Cari', 'is_deleted': 0,
+      });
+    }
+    final satisId = await db.insert('satislar', {
+      'fis_no': 'CRI2026000000009', 'tarih': DateTime.now().toIso8601String(),
+      'cari_id': cariId, 'genel_toplam': 5.0, 'odenen_tutar': 5.0,
+      'odeme_yontemi': 'Cari', 'fis_tipi': 'Satış', 'is_deleted': 0,
+    });
+    await db.insert('cari_hareket', {
+      'global_id': const Uuid().v4(), 'cari_id': cariId,
+      'tarih': DateTime.now().toIso8601String(), 'fis_tipi': 'Satış',
+      'fis_id': satisId, 'borc': 5.0, 'alacak': 0.0, 'odeme_turu': 'Cari', 'is_deleted': 0,
+    });
+
+    await _satisSil(satisId);
+
+    final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
+    expect((cari['bakiye'] as num).toDouble(), 0.3, reason: '0.30000000000000004 değil');
+  });
 }

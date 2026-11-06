@@ -58,6 +58,28 @@ class AlimIslemServisi {
   final _bankaDepo = BankaHareketDeposu();
   final _stokDepo = StokDeposu();
 
+  /// Alımın bağlanacağı tedarikçi gerçekten var ve silinmemiş mi?
+  /// 🔴 DÜZELTME (2026-11-06): ÖNCEDEN hiç kontrol edilmiyordu — form
+  /// açıkken başka cihazda silinen bir tedarikçiye alım + veresiye borç
+  /// yazılıyor, hiç olmayan bir id ise yetim kayıt üretiyordu. Satış
+  /// tarafındaki (SatisDeposu.satisEkleTxn) cari doğrulamasının alım
+  /// karşılığı; burada sessizce null'a çevirmek yerine reddedilir, çünkü
+  /// tedarikçisiz bir veresiye alım borcu kaybettirir.
+  /// [ex]: Database veya Transaction.
+  Future<void> _tedarikciDogrula(dynamic ex, int? tedarikciId) async {
+    if (tedarikciId == null) return;
+    final satir = await ex.query('cari',
+        columns: ['id'],
+        where: 'id = ? AND is_deleted = 0',
+        whereArgs: [tedarikciId],
+        limit: 1);
+    if ((satir as List).isEmpty) {
+      throw Exception(
+          'Seçilen tedarikçi bulunamadı veya silinmiş. Listeyi yenileyip '
+          'tedarikçiyi yeniden seçin.');
+    }
+  }
+
   /// cari_hareket satırını VE etkilediği cari satırını, ÇAĞIRANIN verilen
   /// [txn] içinde senkron kuyruğuna yazar (Madde 5 sertleştirmesi).
   Future<void> _cariveHareketiKuyrukla(
@@ -97,6 +119,10 @@ class AlimIslemServisi {
     final now = DateTime.now().toIso8601String();
     final siparisModu = mevcutSiparisId != null;
 
+    // Tedarikçi doğrulaması — fiş numarası harcanmadan ÖNCE (hızlı ret) ve
+    // aşağıda transaction içinde tekrar (atomik). Bkz. _tedarikciDogrula.
+    await _tedarikciDogrula(db, tedarikciId);
+
     var alimNo = '';
     if (!siparisModu) {
       alimNo = await Veritabani()
@@ -114,6 +140,7 @@ class AlimIslemServisi {
     int? bankaHareketId;
 
     await db.transaction((txn) async {
+      await _tedarikciDogrula(txn, tedarikciId);
       // 1. Alım fişi
       if (siparisModu) {
         final mevcut = await txn.query('tedarikci_siparisler',

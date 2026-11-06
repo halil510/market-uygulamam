@@ -11,39 +11,80 @@
 // veriliyor, cari_hareket kaydı artık HER ZAMAN bakiyeyi etkilemeyen
 // (borc=alacak) salt-kayıt.
 //
-// IadeIslemServisi Veritabani() singleton'ına bağımlı olduğundan
-// (projenin yerleşik test deseni), bu test topluIadeKaydet()'teki
-// BİREBİR aynı cari_hareket yazımını gerçek şema üzerinde doğrular.
+// 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN
+// topluIadeKaydet()'in cari_hareket yazımını kopyalayan bir yardımcı
+// çağırıyordu — üretim kodu bozulsa bile yeşil kalırdı. Artık GERÇEK
+// IadeIslemServisi().topluIadeKaydet() çağrılıyor. İade fiyatı gerçek
+// akıştaki gibi müşterinin önceki satışından okunur; bu yüzden kurulum
+// önce o ürün için bir satış yazar.
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
+import 'package:market_plus/depolar/cari_deposu.dart';
+import 'package:market_plus/depolar/urun_deposu.dart';
+import 'package:market_plus/servisler/iade_islem_servisi.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
-/// IadeIslemServisi.topluIadeKaydet()'teki (düzeltilmiş) cari_hareket
-/// yazımının BİREBİR aynısı.
-Future<void> _iadeCariYaz(Database db, {
+/// Müşteriye [birimFiyat]'tan 1 adet satış yazar (iade fiyat dayanağı),
+/// sonra GERÇEK topluIadeKaydet ile 1 adet Nakit iade alır. Dönen değer
+/// iade id'si.
+Future<int> _nakitIadeAl(Database db, {
   required int cariId,
-  required int iadeId,
-  required String fisNo,
-  required double toplamIade,
+  required double birimFiyat,
 }) async {
-  await db.transaction((txn) async {
-    await txn.insert('cari_hareket', {
-      'global_id': const Uuid().v4(), 'cari_id': cariId, 'tarih': DateTime.now().toIso8601String(),
-      'fis_tipi': 'İade', 'fis_id': iadeId, 'fis_no': fisNo,
-      'aciklama': 'Toplu iade: $fisNo — bakiyeyi etkilemez',
-      'borc': toplamIade, 'alacak': toplamIade, 'odeme_turu': 'Nakit',
-    });
-    await txn.rawUpdate(
-        'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
-        [cariId, cariId]);
+  final urunId = await TestVeritabani.ornekUrunEkle(db, satisFiyati: birimFiyat);
+  final satisId = await db.insert('satislar', {
+    'global_id': const Uuid().v4(),
+    'fis_no': 'S-$urunId',
+    'tarih': DateTime.now().toIso8601String(),
+    'cari_id': cariId,
+    'genel_toplam': birimFiyat,
+    'odenen_tutar': birimFiyat,
+    'odeme_yontemi': 'Nakit',
+    'is_deleted': 0,
   });
+  await db.insert('satis_kalem', {
+    'global_id': const Uuid().v4(),
+    'satis_id': satisId,
+    'urun_id': urunId,
+    'urun_adi': 'Test Ürün',
+    'miktar': 1,
+    'birim_fiyat': birimFiyat,
+    'net_fiyat': birimFiyat,
+    'toplam_tutar': birimFiyat,
+  });
+  final urun = (await UrunDeposu().idileGetir(urunId))!;
+  final cari = (await CariDeposu().idileGetir(cariId))!;
+  final (iadeId, _, _) = await IadeIslemServisi().topluIadeKaydet(
+    kalemler: [IadeKalemGirdi(urun: urun, adet: 1)],
+    odemeYontemi: 'Nakit',
+    kullaniciId: null,
+    kullaniciAdi: 'Test',
+    cari: cari,
+  );
+  return iadeId;
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Database db;
-  setUp(() async => db = await TestVeritabani.olustur());
-  tearDown(() => db.close());
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
 
   test('Nakit iade edilip AYRICA bir müşteri seçilirse, müşterinin bakiyesi DEĞİŞMEZ (çift iade önlenir)', () async {
     final cariId = await TestVeritabani.ornekCariEkle(db);
@@ -51,7 +92,7 @@ void main() {
 
     // Kasadan zaten 60 TL nakit verildi (bu test kasa tarafını kapsamıyor,
     // sadece cari tarafını doğruluyor) — kasiyer AYRICA müşteriyi de seçti.
-    await _iadeCariYaz(db, cariId: cariId, iadeId: 1, fisNo: 'IAD1', toplamIade: 60.0);
+    await _nakitIadeAl(db, cariId: cariId, birimFiyat: 60.0);
 
     final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
     expect((cari['bakiye'] as num).toDouble(), equals(0.0),
@@ -60,11 +101,17 @@ void main() {
 
   test('cari_hareket satırı YİNE de yazılır (takip/audit için), sadece net etkisi sıfırdır', () async {
     final cariId = await TestVeritabani.ornekCariEkle(db);
-    await _iadeCariYaz(db, cariId: cariId, iadeId: 2, fisNo: 'IAD2', toplamIade: 45.0);
+    final iadeId = await _nakitIadeAl(db, cariId: cariId, birimFiyat: 45.0);
 
-    final satir = (await db.query('cari_hareket', where: 'fis_id = ?', whereArgs: [2])).first;
+    final satir = (await db.query('cari_hareket', where: 'fis_id = ? AND fis_tipi = ?', whereArgs: [iadeId, 'İade'])).first;
     expect((satir['borc'] as num).toDouble(), equals(45.0));
     expect((satir['alacak'] as num).toDouble(), equals(45.0));
+
+    // CLAUDE.md §3.2: cari hareketi aynı transaction'da senkron kuyruğuna yazılır.
+    final kuyruk = await db.query('sync_queue',
+        where: 'tablo_adi = ? AND kayit_global_id = ?',
+        whereArgs: ['cari_hareket', satir['global_id']]);
+    expect(kuyruk, isNotEmpty);
   });
 
   test('mevcut borcu olan bir müşteride bile Nakit+Cari birlikte seçilince borç YANLIŞLIKLA azalmaz', () async {
@@ -78,7 +125,7 @@ void main() {
 
     // Müşteri bir ürünü Nakit olarak iade ediyor (60 TL elden verildi),
     // kasiyer takip için aynı müşteriyi cari olarak da seçiyor.
-    await _iadeCariYaz(db, cariId: cariId, iadeId: 3, fisNo: 'IAD3', toplamIade: 60.0);
+    await _nakitIadeAl(db, cariId: cariId, birimFiyat: 60.0);
 
     final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
     expect((cari['bakiye'] as num).toDouble(), equals(200.0),

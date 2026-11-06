@@ -19,6 +19,7 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/hata_utils.dart';
+import '../../servisler/log_servisi.dart';
 
 // Kalem modeli — controller'ları içinde tutar (memory leak önlenir)
 class _Kalem {
@@ -148,8 +149,8 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
       final liste = await _cariDepo.tumunuGetir();
       if (!mounted) return;
       setState(() => _cariler = liste);
-    } catch (e) {
-      if (kDebugMode) debugPrint('Fatura cari yükleme: $e');
+    } catch (e, st) {
+      LogServisi().hata('Fatura cari yükleme', hata: e, yigin: st);
     }
   }
 

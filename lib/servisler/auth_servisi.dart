@@ -18,6 +18,7 @@ import '../depolar/kullanici_deposu.dart';
 import '../modeller/kullanici_model.dart';
 import '../veri/database/veritabani.dart';
 import 'giris_deneme_sayaci.dart';
+import 'log_servisi.dart';
 
 /// Oturum süresi (dakika). Bu süre geçince tekrar giriş istenir.
 const int _oturumSureDk = 480; // 8 saat
@@ -124,8 +125,8 @@ class AuthServisi {
       await _denemeSayaci.temizle(kullaniciAdi);
       await _girisTamamla(kullanici);
       return true;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Giriş hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Giriş hatası', hata: e, yigin: st);
       return false;
     }
   }
@@ -147,8 +148,8 @@ class AuthServisi {
       if (!gecerli) return false;
       await _girisTamamla(kullanici);
       return true;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Biyometrik giriş hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Biyometrik giriş hatası', hata: e, yigin: st);
       return false;
     }
   }
@@ -265,8 +266,8 @@ class AuthServisi {
       }
       // Aktif kalındığını DB'ye işle
       await _depo.sonGirisGuncelle(kullanici.id!);
-    } catch (e) {
-      if (kDebugMode) debugPrint('Oturum yenileme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Oturum yenileme hatası', hata: e, yigin: st);
       _aktifKullanici = null;
     }
   }

@@ -248,8 +248,8 @@ class VeritabaniDosyaServisi {
           await f.delete();
         } catch (_) {}
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Güvenlik yedeği temizleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Güvenlik yedeği temizleme hatası', hata: e, yigin: st);
     }
   }
 }

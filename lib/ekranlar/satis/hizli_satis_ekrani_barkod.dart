@@ -83,8 +83,8 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
     _bipSes();
     try {
       await _barkodIleEkle(barkod);
-    } catch (e) {
-      if (kDebugMode) debugPrint('Barkod işleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Barkod işleme hatası', hata: e, yigin: st);
       if (mounted) {
         BildirimServisi.hata(context, 'Ürün eklenemedi: $barkod bulunamadı veya bir hata oluştu');
       }
@@ -773,8 +773,8 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
           _sepetScroll.jumpTo(0);
         }
       });
-    } catch (e) {
-      if (kDebugMode) debugPrint('Ürün ekleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Ürün ekleme hatası', hata: e, yigin: st);
       if (mounted) {
         BildirimServisi.hata(context, '${urun.urunAdi} sepete eklenemedi: $e');
       }

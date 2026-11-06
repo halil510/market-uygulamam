@@ -6,7 +6,6 @@
 // teslim_mik ayrımıyla buna hazırlanmıştı, ama hiç kullanılmıyordu).
 // Teslim alma işlemi ayrı bir adımdır — bkz. AlimEkrani(mevcutSiparisId:).
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,6 +20,7 @@ import '../../servisler/auth_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
+import '../../servisler/log_servisi.dart';
 
 class _SiparisKalem {
   UrunModel urun;
@@ -121,8 +121,8 @@ class _SiparisOlusturEkraniState extends ConsumerState<SiparisOlusturEkrani> {
         await _ara(barkod);
         if (mounted) { _araCtrl.text = barkod; setState(() {}); }
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('Hata', hata: e, yigin: st);
     }
   }
 

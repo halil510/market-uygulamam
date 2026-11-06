@@ -138,8 +138,8 @@ class _AyarlarEkraniState extends ConsumerState<AyarlarEkrani> {
     try {
       await _ayarlarDepo.kaydet(anahtar, deger);
       if (mounted) setState(() => _ayarlar[anahtar] = deger);
-    } catch (e) {
-      if (kDebugMode) debugPrint('Ayar kaydetme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Ayar kaydetme hatası', hata: e, yigin: st);
     }
   }
 

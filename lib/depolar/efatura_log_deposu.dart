@@ -6,8 +6,8 @@
 // mimari denetimi: "Repository yerine servis/depo karmaşası var mı?")
 // projenin geri kalanındaki tüm tablo erişimiyle aynı desene (depolar/)
 // taşındı. DAVRANIŞ DEĞİŞMEDİ.
-import 'package:flutter/foundation.dart';
 import '../veri/database/veritabani.dart';
+import '../servisler/log_servisi.dart';
 
 class EfaturaLogDeposu {
   Future<void> kaydet({
@@ -33,8 +33,8 @@ class EfaturaLogDeposu {
         'hata_mesaj':    hataMesaj,
         'tarih':         DateTime.now().toIso8601String(),
       });
-    } catch (e) {
-      if (kDebugMode) debugPrint('GIB log hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('GIB log hatası', hata: e, yigin: st);
     }
   }
 

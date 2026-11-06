@@ -15,6 +15,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../bulut/supabase_ayarlari.dart';
+import '../../servisler/log_servisi.dart';
 
 class SiteIcerikServisi {
   static final SiteIcerikServisi _instance = SiteIcerikServisi._();
@@ -62,8 +63,8 @@ class SiteIcerikServisi {
       return (jsonDecode(rows.first['deger'] as String) as List)
           .map((e) => e.toString())
           .toList();
-    } catch (e) {
-      if (kDebugMode) debugPrint('SiteIcerik getir hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('SiteIcerik getir hatası', hata: e, yigin: st);
       return [];
     }
   }
@@ -89,8 +90,8 @@ class SiteIcerikServisi {
           )
           .timeout(const Duration(seconds: 15));
       return r.statusCode >= 200 && r.statusCode < 300;
-    } catch (e) {
-      if (kDebugMode) debugPrint('SiteIcerik kaydet hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('SiteIcerik kaydet hatası', hata: e, yigin: st);
       return false;
     }
   }
@@ -113,8 +114,8 @@ class SiteIcerikServisi {
       final rows = jsonDecode(r.body) as List;
       if (rows.isEmpty || rows.first['deger'] == null) return null;
       return jsonDecode(rows.first['deger'] as String) as Map<String, dynamic>;
-    } catch (e) {
-      if (kDebugMode) debugPrint('İşletme bilgileri getir hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('İşletme bilgileri getir hatası', hata: e, yigin: st);
       return null;
     }
   }
@@ -140,8 +141,8 @@ class SiteIcerikServisi {
           )
           .timeout(const Duration(seconds: 15));
       return r.statusCode >= 200 && r.statusCode < 300;
-    } catch (e) {
-      if (kDebugMode) debugPrint('İşletme bilgileri kaydet hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('İşletme bilgileri kaydet hatası', hata: e, yigin: st);
       return false;
     }
   }
@@ -183,8 +184,8 @@ class SiteIcerikServisi {
         debugPrint('Foto yükleme başarısız (${r.statusCode}): ${r.body}');
       }
       return null;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Foto yükleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Foto yükleme hatası', hata: e, yigin: st);
       return null;
     }
   }
@@ -204,8 +205,8 @@ class SiteIcerikServisi {
             headers: _h(key),
           )
           .timeout(const Duration(seconds: 15));
-    } catch (e) {
-      if (kDebugMode) debugPrint('Foto silme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Foto silme hatası', hata: e, yigin: st);
     }
   }
 }

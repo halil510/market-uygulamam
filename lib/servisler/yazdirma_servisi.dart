@@ -25,6 +25,7 @@ import '../cekirdek/utils/etiket_yardimci.dart';
 import '../modeller/yazici_model.dart';
 import '../depolar/yazici_deposu.dart';
 import '../veri/database/veritabani.dart';
+import 'log_servisi.dart';
 
 part 'yazdirma_servisi_belgeler.dart';
 part 'yazdirma_servisi_etiket.dart';
@@ -204,8 +205,8 @@ class YazdirmaServisi {
         }
       }
       return resim;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Barkod resmi uretilemedi: $e');
+    } catch (e, st) {
+      LogServisi().hata('Barkod resmi uretilemedi', hata: e, yigin: st);
       return null;
     }
   }
@@ -231,8 +232,8 @@ class YazdirmaServisi {
         bytes.addAll(generator.text(_t(veri),
             styles: const PosStyles(align: PosAlign.center)));
         return bytes;
-      } catch (e) {
-        if (kDebugMode) debugPrint('Barkod resmi basilamadi: $e');
+      } catch (e, st) {
+        LogServisi().hata('Barkod resmi basilamadi', hata: e, yigin: st);
       }
     }
 
@@ -260,8 +261,8 @@ class YazdirmaServisi {
       final resim = img.copyResize(decoded,
           width: hedefGenislik, height: (decoded.height * oran).round());
       bytes.addAll(generator.imageRaster(resim, align: PosAlign.center));
-    } catch (e) {
-      if (kDebugMode) debugPrint('Fiş logosu basılamadı: $e');
+    } catch (e, st) {
+      LogServisi().hata('Fiş logosu basılamadı', hata: e, yigin: st);
     }
     return bytes;
   }
@@ -473,8 +474,8 @@ class YazdirmaServisi {
       _fisBarkodGoster     = (m['fis_alt_barkod_goster'] ?? '1') == '1';
       _fisLogoGoster       = (m['fis_logo_goster'] ?? '0') == '1';
       _fisLogoYolu         = m['fis_logo_yolu'] ?? '';
-    } catch (e) {
-      if (kDebugMode) debugPrint('Ayar okuma hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Ayar okuma hatası', hata: e, yigin: st);
     }
   }
 
@@ -520,8 +521,8 @@ class YazdirmaServisi {
 
       if (kDebugMode) debugPrint('WiFi yazıcı bağlandı: $ip:$port');
       return true;
-    } catch (e) {
-      if (kDebugMode) debugPrint('WiFi bağlantı hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('WiFi bağlantı hatası', hata: e, yigin: st);
       rethrow;
     }
   }
@@ -571,8 +572,8 @@ class YazdirmaServisi {
         debugPrint('[Yazdırma] WiFi yazma başarılı (${bytes.length} bayt, ${gecenMs}ms)');
       }
       _sonAgYazma = DateTime.now();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[Yazdırma] WiFi yazma HATASI: $e');
+    } catch (e, st) {
+      LogServisi().hata('[Yazdırma] WiFi yazma HATASI', hata: e, yigin: st);
       rethrow;
     }
   }
@@ -709,8 +710,8 @@ class YazdirmaServisi {
       });
 
       return true;
-    } catch (e) {
-      if (kDebugMode) debugPrint('BT bağlantı hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('BT bağlantı hatası', hata: e, yigin: st);
       rethrow;
     }
   }
@@ -763,8 +764,8 @@ class YazdirmaServisi {
     if (!Platform.isAndroid) return [];
     try {
       return await UsbSerial.listDevices();
-    } catch (e) {
-      if (kDebugMode) debugPrint('USB tarama hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('USB tarama hatası', hata: e, yigin: st);
       return [];
     }
   }
@@ -795,8 +796,8 @@ class YazdirmaServisi {
       _aktif = baglanti;
 
       return true;
-    } catch (e) {
-      if (kDebugMode) debugPrint('USB bağlantı hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('USB bağlantı hatası', hata: e, yigin: st);
       rethrow;
     }
   }
@@ -824,8 +825,8 @@ class YazdirmaServisi {
     try {
       final liste = await pr.Printing.listPrinters();
       return liste.map((p) => p.name).toList();
-    } catch (e) {
-      if (kDebugMode) debugPrint('Windows yazıcı listesi hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Windows yazıcı listesi hatası', hata: e, yigin: st);
       return [];
     }
   }
@@ -957,8 +958,8 @@ public class RawPrn {
     // tekrar deneme yapılıyor.
     try {
       await _tekYazmaDene(bytes);
-    } catch (e) {
-      if (kDebugMode) debugPrint('🔴 Yazdırma başarısız, yeniden bağlanıp tekrar deneniyor: $e');
+    } catch (e, st) {
+      LogServisi().hata('🔴 Yazdırma başarısız, yeniden bağlanıp tekrar deneniyor', hata: e, yigin: st);
       // Eski bağlantı KAPATILMALI: tek bağlantı kabul eden yazıcılar açık
       // kalan (ölü ya da yavaş) soketi tutarken yenisini reddeder; ayrıca
       // her başarısız yazmada bir soket/GATT bağlantısı sızıyordu.

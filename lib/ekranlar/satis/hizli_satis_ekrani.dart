@@ -66,6 +66,7 @@ import '../../servisler/barkod_servisi.dart';
 import '../../widgetlar/ortak/musteri_secim_paneli.dart';
 import '../../widgetlar/ortak/donanim_barkod_dinleyici.dart';
 import '../../widgetlar/ortak/kredi_limiti_onay_dialog.dart';
+import '../../servisler/log_servisi.dart';
 
 part 'hizli_satis_ekrani_barkod.dart';
 part 'hizli_satis_ekrani_odeme.dart';

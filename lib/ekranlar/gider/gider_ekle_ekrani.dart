@@ -1,6 +1,5 @@
 // lib/ekranlar/gider/gider_ekle_ekrani.dart
 import '../../cekirdek/utils/para_utils.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +14,7 @@ import '../../servisler/auth_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../servisler/log_servisi.dart';
 
 class GiderEkleEkrani extends ConsumerStatefulWidget {
   // 🔴 DÜZELTME (derin analizde bulundu): Bu ekran SADECE yeni gider
@@ -92,8 +92,8 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
         _secilenHesap = eslesenHesap ?? (hesaplar.isNotEmpty ? hesaplar.first : null);
         _secilenKart = eslesenKart ?? (kartlar.isNotEmpty ? kartlar.first : null);
       });
-    } catch (e) {
-      if (kDebugMode) debugPrint('Banka/kart yükleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Banka/kart yükleme hatası', hata: e, yigin: st);
     }
   }
 
@@ -115,8 +115,8 @@ class _GiderEkleEkraniState extends ConsumerState<GiderEkleEkrani> {
         if (_seciliKategori == null && k.isNotEmpty) _seciliKategori = k.first['id'] as int;
         _yukleniyor = false;
       });
-    } catch (e) {
-      if (kDebugMode) debugPrint('Gider kategorisi yükleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Gider kategorisi yükleme hatası', hata: e, yigin: st);
       if (mounted) setState(() => _yukleniyor = false);
     }
   }

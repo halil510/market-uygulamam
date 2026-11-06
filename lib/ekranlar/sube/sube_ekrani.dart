@@ -1,6 +1,5 @@
 // lib/ekranlar/sube/sube_ekrani.dart
 import '../../cekirdek/utils/denetleyici_birak.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/sube_deposu.dart';
+import '../../servisler/log_servisi.dart';
 
 class SubeEkrani extends ConsumerStatefulWidget {
   const SubeEkrani({super.key});
@@ -52,8 +52,8 @@ class _SubeEkraniState extends ConsumerState<SubeEkrani> {
       _aktifSubeId = id;
       if (mounted) setState(() {});
       BildirimServisi.basari(context, 'Aktif şube değiştirildi ✓');
-    } catch (e) {
-      if (kDebugMode) debugPrint('Hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('Hata', hata: e, yigin: st);
     }
   }
 

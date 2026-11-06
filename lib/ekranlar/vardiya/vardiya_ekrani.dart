@@ -1,7 +1,6 @@
 // lib/ekranlar/vardiya/vardiya_ekrani.dart — Geliştirilmiş
 import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../cekirdek/utils/hata_utils.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -22,6 +21,7 @@ import '../../servisler/bildirim_servisi.dart';
 import 'masaustu/vardiya_gecmis_masaustu_gorunum.dart';
 import 'widgets/vardiya_gecmis_mobil_liste.dart';
 import 'widgets/vardiya_kartlari.dart';
+import '../../servisler/log_servisi.dart';
 
 class VardiyaEkrani extends ConsumerStatefulWidget {
   final dynamic extra;
@@ -119,8 +119,8 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
         _yukleniyor = false;
         _gecmisDahaVarMi = gecmis.length >= _gecmisSayfaBoyutu;
       });
-    } catch (e) {
-      if (kDebugMode) debugPrint('VardiyaEkrani _yukle hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('VardiyaEkrani _yukle hata', hata: e, yigin: st);
       if (mounted) setState(() => _yukleniyor = false);
     }
   }
@@ -139,8 +139,8 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
         _gecmisDahaVarMi = sonraki.length >= _gecmisSayfaBoyutu;
         _gecmisDahaYukleniyor = false;
       });
-    } catch (e) {
-      if (kDebugMode) debugPrint('VardiyaEkrani _gecmisDahaFazlaYukle hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('VardiyaEkrani _gecmisDahaFazlaYukle hata', hata: e, yigin: st);
       if (mounted) setState(() => _gecmisDahaYukleniyor = false);
     }
   }

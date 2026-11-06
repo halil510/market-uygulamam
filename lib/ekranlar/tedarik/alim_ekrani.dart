@@ -24,6 +24,7 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../servisler/log_servisi.dart';
 
 part 'alim_ekrani_gorunum.dart';
 
@@ -213,8 +214,8 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
         if (hesaplar.isNotEmpty) _secilenHesap = hesaplar.first;
       });
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Banka hesapları yüklenemedi: $e');
+    } catch (e, st) {
+      LogServisi().hata('Banka hesapları yüklenemedi', hata: e, yigin: st);
     }
   }
 

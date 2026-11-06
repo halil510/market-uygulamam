@@ -8,7 +8,6 @@
 // kanıtlanmış satış-oluşturma zincirini (SatisDeposu, StokDeposu,
 // CariDeposu.hareketEkle) birebir kullanır — tekerleği yeniden icat
 // etmek yerine mevcut, test edilmiş akışa bağlanır.
-import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../veri/database/veritabani.dart';
 import '../servisler/bulut/bulut_manager.dart';
@@ -20,6 +19,7 @@ import '../modeller/cari_hareket_model.dart';
 import '../depolar/satis_deposu.dart';
 import '../depolar/stok_deposu.dart';
 import '../depolar/cari_deposu.dart';
+import '../servisler/log_servisi.dart';
 
 /// Sepete eklenen tek bir kalem — sipariş alma ekranından depoya
 /// aktarılan ham veri. UI'daki _SepetKalemi ile karışmasın diye
@@ -372,8 +372,8 @@ class BekleyenSiparisDeposu {
         BulutManager().upsert(
             'bekleyen_siparisler', Map<String, dynamic>.from(satir.first));
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Sipariş onayı bulut bildirimi hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Sipariş onayı bulut bildirimi hatası', hata: e, yigin: st);
     }
 
     return satisId;

@@ -6,7 +6,6 @@ import '../cekirdek/utils/metin_arama.dart';
 //   - ara(): aktif = 1 filtresi eklendi (pasif ürünler arama sonucuna gelmesin)
 //   - ara(): alternatif_urun_adi ve marka alanları da aranıyor
 //   - sayfaliGetir(): aynı iyileştirmeler uygulandı
-import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 

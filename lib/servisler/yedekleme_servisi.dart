@@ -179,8 +179,8 @@ class YedeklemeServisi {
         await File(yedek.yol).delete();
         if (kDebugMode) debugPrint('Eski yedek silindi: ${yedek.dosyaAdi}');
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Eski yedek temizleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Eski yedek temizleme hatası', hata: e, yigin: st);
     }
   }
 

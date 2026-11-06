@@ -13,10 +13,10 @@
 // kullanıcının asıl sorusunu gönderir. API anahtarı yoksa (veya
 // internet yoksa) sessizce eski "yardım" mesajına geri döner —
 // kullanıcı hiçbir zaman boş/çökmüş bir ekranla karşılaşmaz.
-import 'package:flutter/foundation.dart';
 import 'ai_model_secici.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'ai_vision_servisi.dart';
+import '../../servisler/log_servisi.dart';
 
 class AiGenelAsistan {
   static final AiGenelAsistan _i = AiGenelAsistan._();
@@ -83,8 +83,8 @@ class AiGenelAsistan {
       }
 
       return cevap;
-    } catch (e) {
-      if (kDebugMode) debugPrint('[AiGenelAsistan] hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('[AiGenelAsistan] hata', hata: e, yigin: st);
       final msg = e.toString();
       if (msg.toLowerCase().contains('network') ||
           msg.toLowerCase().contains('socket') ||

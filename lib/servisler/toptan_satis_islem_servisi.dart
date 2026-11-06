@@ -5,7 +5,6 @@
 // _satisiTamamla()'sında yürüttüğü mantıkla birebir aynıdır: satış +
 // stok (FEFO) + cari hareketi TEK transaction içinde, commit sonrası
 // bulut senkronu.
-import 'package:flutter/foundation.dart';
 import '../depolar/cari_deposu.dart';
 import '../depolar/satis_deposu.dart';
 import '../depolar/stok_deposu.dart';
@@ -14,6 +13,7 @@ import '../modeller/satis_kalem_model.dart';
 import '../modeller/cari_hareket_model.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
+import 'log_servisi.dart';
 
 /// Stok düşümü için gereken minimal kalem bilgisi.
 class ToptanStokKalemi {
@@ -108,8 +108,8 @@ class ToptanSatisIslemServisi {
       if (cariSatir.isNotEmpty) {
         BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Toptan satış bulut bildirimi hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Toptan satış bulut bildirimi hatası', hata: e, yigin: st);
     }
 
     // 🔴 Derin analizde bulundu: çok şubeli stok payı (sube_urun) hiç

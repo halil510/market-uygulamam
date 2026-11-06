@@ -1075,8 +1075,8 @@ class SatisDeposu {
       // işlemini geri almamalı diye ayrı, best-effort bir adım.
       try {
         await PuanServisi().puanIptalEt(cariId: cariId!, satisId: id);
-      } catch (e) {
-        if (kDebugMode) debugPrint('Satış silme — puan iptali hatası: $e');
+      } catch (e, st) {
+        LogServisi().hata('Satış silme — puan iptali hatası', hata: e, yigin: st);
       }
     }
   }

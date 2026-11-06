@@ -10,7 +10,6 @@
 // masa/restoran akışına taşır — kod tekrarını önlemek için ortak bir
 // "SatisYazimi" yardımcı tipi kullanılabilir, ancak farklı context
 // (masa adı, sipariş id) nedeniyle burada bağımsız tutuldu.
-import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../depolar/satis_deposu.dart';
@@ -26,6 +25,7 @@ import '../modeller/masa_siparis_model.dart';
 import '../servisler/auth_servisi.dart';
 import '../servisler/aktif_sube_servisi.dart';
 import '../cekirdek/utils/para_utils.dart';
+import 'log_servisi.dart';
 
 class MasaOdemeSonuc {
   final int satisId;
@@ -379,8 +379,8 @@ class MasaOdemeServisi {
         BulutManager()
             .upsert('masalar', Map<String, dynamic>.from(masaSatir.first));
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Masa ödemesi bulut bildirimi hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Masa ödemesi bulut bildirimi hatası', hata: e, yigin: st);
     }
 
     return MasaOdemeSonuc(

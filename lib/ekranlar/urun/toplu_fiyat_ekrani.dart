@@ -1,7 +1,6 @@
 // lib/ekranlar/urun/toplu_fiyat_ekrani.dart
 // Toplu fiyat güncelleme - % zam/indirim, kategori bazlı, manuel liste
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -10,6 +9,7 @@ import '../../depolar/urun_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../servisler/log_servisi.dart';
 
 class TopluFiyatEkrani extends ConsumerStatefulWidget {
   const TopluFiyatEkrani({super.key});
@@ -66,8 +66,8 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
       _uygula();
       _cacheGuncelle();
       setState(() => _yukleniyor = false);
-    } catch (e) {
-      if (kDebugMode) debugPrint('Ürün yükleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Ürün yükleme hatası', hata: e, yigin: st);
       if (mounted) setState(() => _yukleniyor = false);
     }
   }

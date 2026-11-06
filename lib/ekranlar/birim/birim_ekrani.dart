@@ -12,7 +12,6 @@
 // gibi bu listeyi kullanan diğer ekranlar hiç etkilenmiyor.
 import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../cekirdek/utils/para_utils.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,6 +20,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../widgetlar/masaustu/basit_liste_masaustu.dart';
 import '../../widgetlar/masaustu/masaustu_tablo.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart' show basariMesaji, hataMesaji;
+import '../../servisler/log_servisi.dart';
 
 class BirimEkrani extends ConsumerStatefulWidget {
   const BirimEkrani({super.key});
@@ -64,8 +64,8 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
         _carpanlar = {for (final e in tumCarpanli) e.$1: e.$2};
         _yukleniyor = false;
       });
-    } catch (e) {
-      if (kDebugMode) debugPrint('Hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('Hata', hata: e, yigin: st);
       if (mounted) setState(() => _yukleniyor = false);
     }
   }
@@ -120,8 +120,8 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
         _carpanlar[yeni] = carpan;
       });
       if (mounted) basariMesaji(context, '$yeni eklendi');
-    } catch (e) {
-      if (kDebugMode) debugPrint('Hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('Hata', hata: e, yigin: st);
       if (mounted) hataMesaji(context, 'Eklenemedi: $e');
     }
   }
@@ -189,8 +189,8 @@ class _BirimEkraniState extends ConsumerState<BirimEkrani> {
     setState(() => _birimler.remove(birim));
     try {
       await _depo.sil(birim);
-    } catch (e) {
-      if (kDebugMode) debugPrint('Hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('Hata', hata: e, yigin: st);
       if (mounted) {
         setState(() {
           final eklemeIndex = oncekiIndex >= 0 && oncekiIndex <= _birimler.length

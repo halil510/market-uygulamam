@@ -150,8 +150,8 @@ extension _IadeAramaExt on _IadeEkraniState {
           _miktarCtrl.text = tartim.miktarKg.toStringAsFixed(3);
         });
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('Hata', hata: e, yigin: st);
     }
   }
 

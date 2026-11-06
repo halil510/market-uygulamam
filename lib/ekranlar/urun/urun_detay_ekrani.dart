@@ -19,6 +19,7 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../saglayicilar/riverpod/doviz_provider.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../servisler/log_servisi.dart';
 
 class UrunDetayEkrani extends ConsumerStatefulWidget {
   final int urunId;
@@ -544,8 +545,8 @@ class _SubeStokSekmesiState extends State<_SubeStokSekmesi> {
       setState(() => _yukleniyor = true);
       final s = await _depo.tumSubelerdekiStok(widget.urun.id!);
       if (mounted) setState(() { _satirlar = s; _yukleniyor = false; });
-    } catch (e) {
-      if (kDebugMode) debugPrint('Şube stok yükleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Şube stok yükleme hatası', hata: e, yigin: st);
       if (mounted) setState(() => _yukleniyor = false);
     }
   }

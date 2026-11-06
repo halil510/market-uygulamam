@@ -1,6 +1,5 @@
 // lib/ekranlar/urun/kategori_ekrani.dart
 import '../../cekirdek/utils/denetleyici_birak.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,6 +8,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/kategori_deposu.dart';
 import '../../widgetlar/masaustu/basit_liste_masaustu.dart';
 import '../../widgetlar/masaustu/masaustu_tablo.dart';
+import '../../servisler/log_servisi.dart';
 
 class KategoriEkrani extends ConsumerStatefulWidget {
   const KategoriEkrani({super.key});
@@ -36,8 +36,8 @@ class _KategoriEkraniState extends ConsumerState<KategoriEkrani> {
         _kategoriler = liste;
         _yukleniyor = false;
       });
-    } catch (e) {
-      if (kDebugMode) debugPrint('Hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('Hata', hata: e, yigin: st);
       if (mounted) setState(() => _yukleniyor = false);
     }
   }
@@ -90,8 +90,8 @@ class _KategoriEkraniState extends ConsumerState<KategoriEkrani> {
       await _depo.sil(id);
       _yukle();
       if (mounted) BildirimServisi.basari(context, 'Silindi');
-    } catch (e) {
-      if (kDebugMode) debugPrint('Hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('Hata', hata: e, yigin: st);
     }
   }
 

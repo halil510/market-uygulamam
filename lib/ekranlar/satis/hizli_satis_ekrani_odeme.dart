@@ -65,8 +65,8 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       }
 
       ref.read(sepetProvider.notifier).musteriSec(secilen);
-    } catch (e) {
-      if (kDebugMode) debugPrint('Müşteri seçme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Müşteri seçme hatası', hata: e, yigin: st);
       if (mounted) BildirimServisi.hata(context, 'Müşteri listesi yüklenemedi: $e');
     } finally {
       _islemBitti();
@@ -86,8 +86,8 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
     _islemBasladi();
     try {
       await _satisiTamamla('Nakit', sepet.genelToplam, 0.0);
-    } catch (e) {
-      if (kDebugMode) debugPrint('Hızlı nakit satış hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Hızlı nakit satış hatası', hata: e, yigin: st);
       if (mounted) BildirimServisi.hata(context, 'Satış hatası: $e');
     } finally {
       _islemBitti();
@@ -185,8 +185,8 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       } else {
         await _satisiTamamla(yontem, sepet.genelToplam, 0.0);
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Ödeme akışı hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Ödeme akışı hatası', hata: e, yigin: st);
       if (mounted) BildirimServisi.hata(context, 'Ödeme işlemi başarısız: $e');
     } finally {
       _islemBitti();
@@ -631,8 +631,8 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
           ),
         );
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Askıya alma hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Askıya alma hatası', hata: e, yigin: st);
       if (mounted) BildirimServisi.hata(context, 'Askıya alınamadı: $e');
     } finally {
       _islemBitti();

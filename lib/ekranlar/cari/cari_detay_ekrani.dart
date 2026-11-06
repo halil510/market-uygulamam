@@ -1,6 +1,5 @@
 // lib/ekranlar/cari/cari_detay_ekrani.dart
 import '../../cekirdek/utils/denetleyici_birak.dart';
-import 'package:flutter/foundation.dart';
 import 'fis_detay_ekrani.dart';
 import 'package:flutter/material.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
@@ -30,6 +29,7 @@ import '../../servisler/yazdirma_servisi.dart';
 import '../../servisler/iade_fis_yazdirma.dart';
 import '../../widgetlar/ortak/fis_fiyat_guncelle_akisi.dart';
 import '../../cekirdek/utils/hata_utils.dart';
+import '../../servisler/log_servisi.dart';
 part 'cari_detay_ekrani_islemler.dart';
 part 'cari_detay_ekrani_sekmeler.dart';
 
@@ -313,8 +313,8 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
           _analizYukl = false;
         });
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('CariDetay analizYukle hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('CariDetay analizYukle hata', hata: e, yigin: st);
       if (mounted) setState(() => _analizYukl = false);
     }
   }
@@ -339,8 +339,8 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
       // etkisi korunur); tam ödeme dağılımı artık Satış Detayı'nda
       // gösteriliyor (bkz. satis_detay_ekrani.dart).
       if (mounted) setState(() { _hareketler = cariHareketleriniGrupla(h); _yukl = false; });
-    } catch (e) {
-      if (kDebugMode) debugPrint('CariDetay hareketYukle hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('CariDetay hareketYukle hata', hata: e, yigin: st);
       if (mounted) setState(() => _yukl = false);
     }
   }

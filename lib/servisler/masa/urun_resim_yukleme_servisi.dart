@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../bulut/supabase_ayarlari.dart';
+import '../../servisler/log_servisi.dart';
 
 class UrunResimYuklemeServisi {
   static final UrunResimYuklemeServisi _instance = UrunResimYuklemeServisi._();
@@ -56,8 +57,8 @@ class UrunResimYuklemeServisi {
         debugPrint('Görsel yükleme başarısız (${yanit.statusCode}): ${yanit.body}');
       }
       return null;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Görsel yükleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Görsel yükleme hatası', hata: e, yigin: st);
       return null;
     }
   }

@@ -8,12 +8,12 @@
 // tuzlanmış hash'i DB'de tutulan bir token saklanıyor (bkz. AuthServisi.
 // girisYapBiyometrikToken / BiyometrikDeposu). Eski anahtar sadece bir
 // kereliğine sessizce yeni şemaya taşınıp siliniyor (bkz. durumKontrol).
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
 import '../../depolar/kullanici_deposu.dart';
 import '../auth_servisi.dart';
+import '../../servisler/log_servisi.dart';
 
 class BiyometrikGirisServisi {
   static const _eskiSifreAnahtari = 'biyometrik_sifre';
@@ -59,8 +59,8 @@ class BiyometrikGirisServisi {
       await _secure.write(key: _tokenAnahtari, value: token);
       await _secure.delete(key: _eskiSifreAnahtari);
       return token;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Biyometrik kayıt taşıma hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Biyometrik kayıt taşıma hatası', hata: e, yigin: st);
       await _secure.delete(key: _eskiSifreAnahtari);
       return null;
     }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../depolar/masa_deposu.dart';
 import '../../veri/database/veritabani.dart';
+import '../../servisler/log_servisi.dart';
 
 class QrMenuServisi {
   static final QrMenuServisi _instance = QrMenuServisi._();
@@ -146,8 +147,8 @@ class QrMenuServisi {
           not_:       (notDeger == null || notDeger.trim().isEmpty) ? null : notDeger,
         );
         eklenen++;
-      } catch (e) {
-        if (kDebugMode) debugPrint('QrMenu kalem hatası (atlandı): $e — kalem: $k');
+      } catch (e, st) {
+        LogServisi().hata('QrMenu kalem hatası (atlandı):  — kalem: $k', hata: e, yigin: st);
       }
     }
     if (kDebugMode) {

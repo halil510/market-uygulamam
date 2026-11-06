@@ -3,12 +3,12 @@
 
 import 'dart:convert';
 import 'ai_model_secici.dart';
-import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'ai_vision_servisi.dart';
 import '../../modeller/ocr_urun_model.dart';
 import '../../modeller/urun_model.dart';
 import '../../depolar/urun_deposu.dart';
+import '../../servisler/log_servisi.dart';
 
 class AiUrunEkleServisi {
   static final AiUrunEkleServisi _i = AiUrunEkleServisi._();
@@ -21,8 +21,8 @@ class AiUrunEkleServisi {
     try {
       final ocrUrunler = await _vision.faturaFotografindanUrunCikar(dosya);
       return ocrUrunler.map((ocr) => _ocrModelToMap(ocr)).toList();
-    } catch (e) {
-      if (kDebugMode) debugPrint('faturaUrunleriCikar hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('faturaUrunleriCikar hatası', hata: e, yigin: st);
       return [];
     }
   }
@@ -34,8 +34,8 @@ class AiUrunEkleServisi {
         return _ocrModelToMap(ocrList.first);
       }
       return {};
-    } catch (e) {
-      if (kDebugMode) debugPrint('urunFotografindanBilgiCikar hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('urunFotografindanBilgiCikar hatası', hata: e, yigin: st);
       return {};
     }
   }
@@ -101,8 +101,8 @@ VEYA (sadece gerçekten eminsen):
           'alan1': json['alan1'].toString(),
         if (json['birim_adi'] != null) 'birim_adi': json['birim_adi'].toString(),
       });
-    } catch (e) {
-      if (kDebugMode) debugPrint('urunBilgisiCikar (barkod) hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('urunBilgisiCikar (barkod) hatası', hata: e, yigin: st);
       return {};
     }
   }
@@ -166,8 +166,8 @@ bilinmiyorsa null yaz.
         sonuc['alan1'] = json['marka'].toString().trim();
       }
       return sonuc.isEmpty ? null : sonuc;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Gemini kategori/marka tahmini başarısız: $e');
+    } catch (e, st) {
+      LogServisi().hata('Gemini kategori/marka tahmini başarısız', hata: e, yigin: st);
       return null; // sessizce sabit listeye düş
     }
   }
@@ -180,8 +180,8 @@ bilinmiyorsa null yaz.
     if (urunAdi.trim().length < 2) return [];
     try {
       return await UrunDeposu().ara(urunAdi.trim(), limit: limit);
-    } catch (e) {
-      if (kDebugMode) debugPrint('benzerUrunleriAra hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('benzerUrunleriAra hatası', hata: e, yigin: st);
       return [];
     }
   }
@@ -225,8 +225,8 @@ kullanım budur).
       final json = jsonDecode(temiz) as Map<String, dynamic>;
       if (json['alan'] == null || json['deger'] == null) return null;
       return {'alan': json['alan'].toString(), 'deger': json['deger'].toString()};
-    } catch (e) {
-      if (kDebugMode) debugPrint('Gemini sesli komut yorumlama başarısız: $e');
+    } catch (e, st) {
+      LogServisi().hata('Gemini sesli komut yorumlama başarısız', hata: e, yigin: st);
       return null;
     }
   }
@@ -270,8 +270,8 @@ Hiçbir alana uymuyorsa {} döndür. Sadece JSON yaz.
       final temiz = cevap.replaceAll(RegExp(r'^```json\s*|\s*```$'), '').trim();
       final json = jsonDecode(temiz);
       return json is Map<String, dynamic> ? json : null;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Gemini çoklu sesli komut hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Gemini çoklu sesli komut hatası', hata: e, yigin: st);
       return null;
     }
   }

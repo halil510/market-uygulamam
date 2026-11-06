@@ -16,6 +16,7 @@ import 'auth_servisi.dart';
 import 'aktif_sube_servisi.dart';
 import 'supabase_sync_servisi.dart';
 import 'bulut/bulut_manager.dart';
+import 'log_servisi.dart';
 
 class AuditLogServisi {
   static final AuditLogServisi _instance = AuditLogServisi._();
@@ -214,8 +215,8 @@ class AuditLogServisi {
       if (guncelSatir.isNotEmpty) {
         BulutManager().upsert('audit_log', Map<String, dynamic>.from(guncelSatir.first));
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('AuditLogServisi.olayKaydet hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('AuditLogServisi.olayKaydet hatası', hata: e, yigin: st);
     }
   }
 
@@ -234,8 +235,8 @@ class AuditLogServisi {
       return await db.query('audit_log',
           where: where, whereArgs: args.isEmpty ? null : args,
           orderBy: 'tarih DESC', limit: limit);
-    } catch (e) {
-      if (kDebugMode) debugPrint('AuditLogServisi.gunlukGetir hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('AuditLogServisi.gunlukGetir hatası', hata: e, yigin: st);
       return [];
     }
   }

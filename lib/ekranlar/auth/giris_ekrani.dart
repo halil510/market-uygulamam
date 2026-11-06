@@ -21,6 +21,7 @@ import '../../servisler/auth/biyometrik_giris_servisi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../cekirdek/sabitler/uygulama_sabitleri.dart';
+import '../../servisler/log_servisi.dart';
 
 part 'giris_ekrani_gorunum.dart';
 
@@ -131,8 +132,8 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
       if (_kullanicilar.value.isNotEmpty) {
         _seciliKullanici.value = _kullanicilar.value.first;
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Kullanıcı yükleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Kullanıcı yükleme hatası', hata: e, yigin: st);
     }
   }
 
@@ -145,8 +146,8 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
           _biyometrikMevcut = durum.mevcut;
         });
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Biyometrik kontrol hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Biyometrik kontrol hatası', hata: e, yigin: st);
       if (mounted) {
         setState(() {
           _biyometrikMevcut = false;

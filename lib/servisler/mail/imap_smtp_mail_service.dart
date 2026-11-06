@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 
 import 'mail_service.dart';
 import 'imap_ham_istemci.dart';
+import '../../servisler/log_servisi.dart';
 
 abstract class ImapSmtpMailService implements MailService {
   String get imapHost;
@@ -131,8 +132,8 @@ abstract class ImapSmtpMailService implements MailService {
         ..text = body;
       await send(message, smtpServer);
       return true;
-    } catch (e) {
-      if (kDebugMode) debugPrint('🔴 [Mail] Gönderme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('🔴 [Mail] Gönderme hatası', hata: e, yigin: st);
       _sonHata = 'Mail gönderilemedi: $e';
       return false;
     }

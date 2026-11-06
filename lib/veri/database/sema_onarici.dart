@@ -80,8 +80,8 @@ class SemaOnarici {
           await hedef.execute(
               (i['sql'] as String).replaceFirst(RegExp(r'INDEX\s+(?!IF NOT EXISTS)', caseSensitive: false), 'INDEX IF NOT EXISTS '));
           yapilan.add('indeks eklendi: $ad');
-        } catch (e) {
-          if (kDebugMode) debugPrint('SemaOnarici indeks atlandı ($ad): $e');
+        } catch (e, st) {
+          LogServisi().hata('SemaOnarici indeks atlandı ($ad)', hata: e, yigin: st);
         }
       }
 

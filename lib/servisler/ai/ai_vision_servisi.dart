@@ -13,6 +13,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:printing/printing.dart';
 import '../../modeller/ocr_urun_model.dart';
+import '../../servisler/log_servisi.dart';
 
 class AiVisionServisi {
   static final AiVisionServisi _i = AiVisionServisi._();
@@ -121,7 +122,7 @@ class AiVisionServisi {
 
       return [];
     } catch (e, st) {
-      if (kDebugMode) debugPrint('Fatura okuma hatası: $e\n$st');
+      LogServisi().hata('Fatura okuma hatası: \n$st', hata: e, yigin: st);
       return [];
     }
   }
@@ -208,8 +209,8 @@ Sadece JSON çıktısı ver, başka bir şey yazma. Emin olmadığın alanları 
         return List<Map<String, dynamic>>.from(decoded['urunler']);
       }
       return null;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Gemini hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Gemini hatası', hata: e, yigin: st);
       return null;
     }
   }
@@ -293,8 +294,8 @@ null veya 0 bırak. Fotoğrafta hiçbir ürün satırı okunamıyorsa
         return List<Map<String, dynamic>>.from(decoded['urunler']);
       }
       return null;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Gemini görsel analizi hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Gemini görsel analizi hatası', hata: e, yigin: st);
       return null;
     }
   }
@@ -375,8 +376,8 @@ null veya 0 bırak. Fotoğrafta hiçbir ürün satırı okunamıyorsa
         return tmpFile.path;
       }
       return null;
-    } catch (e) {
-      if (kDebugMode) debugPrint('PDF -> görsel dönüşümü başarısız: $e');
+    } catch (e, st) {
+      LogServisi().hata('PDF -> görsel dönüşümü başarısız', hata: e, yigin: st);
       return null;
     }
   }

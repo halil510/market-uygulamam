@@ -15,6 +15,7 @@ import '../../cekirdek/utils/vergi_no_dogrulayici.dart';
 import '../../modeller/fiyat_grubu_model.dart';
 import '../../depolar/toptan_fiyat_deposu.dart';
 import '../../widgetlar/ortak/il_ilce_alani.dart';
+import '../../servisler/log_servisi.dart';
 
 class CariEkleEkrani extends ConsumerStatefulWidget {
   final CariModel? duzenlenecekCari;
@@ -98,8 +99,8 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
         _ilceCtrl.text      = (a['ilce'] as String?) ?? '';
         _postaKoduCtrl.text = (a['posta_kodu'] as String?) ?? '';
       });
-    } catch (e) {
-      if (kDebugMode) debugPrint('Adres yükleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Adres yükleme hatası', hata: e, yigin: st);
     }
   }
 
@@ -113,8 +114,8 @@ class _CariEkleEkraniState extends ConsumerState<CariEkleEkrani> {
         ilce: _ilceCtrl.text.trim(),
         postaKodu: _postaKoduCtrl.text.trim(),
       );
-    } catch (e) {
-      if (kDebugMode) debugPrint('Adres kaydetme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('Adres kaydetme hatası', hata: e, yigin: st);
     }
   }
 

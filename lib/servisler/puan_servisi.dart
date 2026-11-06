@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../veri/database/veritabani.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
 import 'bulut/bulut_manager.dart';
+import 'log_servisi.dart';
 
 class PuanServisi {
   static final PuanServisi _i = PuanServisi._();
@@ -73,8 +74,8 @@ class PuanServisi {
       if (hareketSatir.isNotEmpty) {
         BulutManager().upsert(DbSabitler.puanHareket, Map<String, dynamic>.from(hareketSatir.first));
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('PuanServisi._bulutBildir hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('PuanServisi._bulutBildir hata', hata: e, yigin: st);
     }
   }
 
@@ -211,8 +212,8 @@ class PuanServisi {
           BulutManager().upsert(DbSabitler.puanHareket, Map<String, dynamic>.from(hareketSatir.first));
         }
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('PuanServisi.puanIptalEt bulut bildirimi hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('PuanServisi.puanIptalEt bulut bildirimi hatası', hata: e, yigin: st);
     }
   }
 

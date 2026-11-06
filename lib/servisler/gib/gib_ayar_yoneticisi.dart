@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../veri/database/veritabani.dart';
+import '../../servisler/log_servisi.dart';
 
 class GibAyarYoneticisi {
   String? apiUrl;
@@ -127,12 +128,12 @@ class GibAyarYoneticisi {
             await prefs.remove('gib_sifre');
             if (kDebugMode) debugPrint('GİB ayarları eski (kullanılmayan) depodan taşındı');
           }
-        } catch (e) {
-          if (kDebugMode) debugPrint('GİB eski ayar taşıma hatası: $e');
+        } catch (e, st) {
+          LogServisi().hata('GİB eski ayar taşıma hatası', hata: e, yigin: st);
         }
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('GIB ayar yükleme hatası: $e');
+    } catch (e, st) {
+      LogServisi().hata('GIB ayar yükleme hatası', hata: e, yigin: st);
     }
   }
 

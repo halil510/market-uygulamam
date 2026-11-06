@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:market_plus/cekirdek/utils/hata_utils.dart';
 import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'package:go_router/go_router.dart';
@@ -45,6 +44,7 @@ import '../../servisler/iade_islem_servisi.dart';
 import '../../servisler/iade_fis_yazdirma.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import '../../widgetlar/ortak/donanim_barkod_dinleyici.dart';
+import '../../servisler/log_servisi.dart';
 
 part 'iade_ekrani_gecmis.dart';
 part 'iade_ekrani_fis.dart';
@@ -214,8 +214,8 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
       _tumUrunler = results[0] as List<UrunModel>;
       _cariler = results[1] as List<CariModel>;
       if (mounted) setState(() {});
-    } catch (e) {
-      if (kDebugMode) debugPrint('Hata: $e');
+    } catch (e, st) {
+      LogServisi().hata('Hata', hata: e, yigin: st);
       if (mounted) {
         BildirimServisi.hata(
             context, 'Veriler yüklenemedi, lütfen tekrar deneyin');

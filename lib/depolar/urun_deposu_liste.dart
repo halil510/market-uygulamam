@@ -274,8 +274,8 @@ extension UrunDeposuListe on UrunDeposu {
           );
         }
         guncellenenIds.add(id);
-      } catch (e) {
-        if (kDebugMode) debugPrint('topluFiyatGuncelle id=$id hata: $e');
+      } catch (e, st) {
+        LogServisi().hata('topluFiyatGuncelle id=$id hata', hata: e, yigin: st);
       }
     }
     // 🔴 Madde 25 (N+1 sertleştirmesi, 2026-09-16): önceden her id için

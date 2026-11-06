@@ -88,7 +88,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       await _satisiTamamla('Nakit', sepet.genelToplam, 0.0);
     } catch (e, st) {
       LogServisi().hata('Hızlı nakit satış hatası', hata: e, yigin: st);
-      if (mounted) BildirimServisi.hata(context, 'Satış hatası: $e');
+      if (mounted) BildirimServisi.hata(context, 'Satış hatası: ${kullaniciyaHataMetni(e)}');
     } finally {
       _islemBitti();
     }
@@ -187,7 +187,7 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       }
     } catch (e, st) {
       LogServisi().hata('Ödeme akışı hatası', hata: e, yigin: st);
-      if (mounted) BildirimServisi.hata(context, 'Ödeme işlemi başarısız: $e');
+      if (mounted) BildirimServisi.hata(context, 'Ödeme işlemi başarısız: ${kullaniciyaHataMetni(e)}');
     } finally {
       _islemBitti();
     }

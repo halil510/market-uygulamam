@@ -7,6 +7,7 @@ import '../servisler/log_servisi.dart';
 import '../veri/database/veritabani.dart';
 import '../modeller/kasa_hareket_model.dart';
 import '../servisler/aktif_sube_servisi.dart';
+import '../cekirdek/utils/tarih_utils.dart';
 
 class KasaDeposu {
   final Veritabani _db = Veritabani();
@@ -347,7 +348,7 @@ class KasaDeposu {
           COALESCE(SUM(CASE WHEN hareket_tipi IN ($girisYer) THEN tutar ELSE 0 END), 0) as giris,
           COALESCE(SUM(CASE WHEN hareket_tipi NOT IN ($girisYer) THEN tutar ELSE 0 END), 0) as cikis
         FROM kasa_hareketleri
-        WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND deleted_at IS NULL$subeKosulu
+        WHERE ${TarihUtils.aralikSql('tarih')} AND deleted_at IS NULL$subeKosulu
       """, [...girisler, ...girisler, bas.toIso8601String(), bit.toIso8601String(), ?subeId]);
       if (res.isEmpty) return {'giris': 0, 'cikis': 0};
       final r = res.first;

@@ -52,6 +52,15 @@ class TarihUtils {
     return DateTimeRange(start: bas.isAfter(bit) ? bit : bas, end: bit);
   }
 
+  /// Rapor/liste sorgularında tarih aralığı koşulunun TEK biçimi
+  /// (CLAUDE.md §4.6). [kolon] yerel saatle yazılmış ISO tarih sütunu
+  /// (DateTime.now().toIso8601String()); iki `?` parametresi de Dart'tan
+  /// yerel ISO metniyle verilmelidir (bas, bit). İki taraf da yerel olduğu
+  /// için 'localtime' GEREKMEZ — SQLite'ın 'now'u (UTC) burada kullanılmaz;
+  /// "gece 00:00–03:00 satışları kayboluyor" hatası bu karışımdan çıkmıştı.
+  static String aralikSql(String kolon) =>
+      'datetime($kolon) BETWEEN datetime(?) AND datetime(?)';
+
   static String kacGunOnce(DateTime dt) {
     final fark = DateTime.now().difference(dt).inDays;
     if (fark == 0) return 'Bugün';

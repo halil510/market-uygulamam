@@ -14,6 +14,7 @@ import '../modeller/kasa_hareket_model.dart';
 import '../servisler/puan_servisi.dart';
 import 'cari_deposu.dart';
 import 'kasa_deposu.dart';
+import '../cekirdek/utils/tarih_utils.dart';
 
 class SatisDeposu {
   final Veritabani _db = Veritabani();
@@ -525,7 +526,7 @@ class SatisDeposu {
     final rows = await db.rawQuery(
       'SELECT s.*, c.unvan as cari_adi '
       'FROM satislar s LEFT JOIN cari c ON s.cari_id = c.id '
-      'WHERE datetime(s.tarih) BETWEEN datetime(?) AND datetime(?) '
+      'WHERE ${TarihUtils.aralikSql('s.tarih')} '
       '  AND s.iptal = 0 AND s.is_deleted = 0 '
       '  AND s.sync_cakisma_kopyasi = 0 $subeKosulu '
       'ORDER BY s.tarih DESC',
@@ -581,7 +582,7 @@ class SatisDeposu {
     final subeKosulu = subeId != null ? 'AND sube_id = ?' : '';
     final res = await db.rawQuery(
       'SELECT COUNT(*) as adet FROM satislar '
-      'WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) '
+      'WHERE ${TarihUtils.aralikSql('tarih')} '
       '  AND iptal = 1 AND is_deleted = 0 $subeKosulu',
       [bas.toIso8601String(), bit.toIso8601String(), ?subeId],
     );
@@ -617,7 +618,7 @@ class SatisDeposu {
       FROM satis_kalem sk
       JOIN satislar s ON sk.satis_id = s.id
       LEFT JOIN urunler u ON sk.urun_id = u.id
-      WHERE datetime(s.tarih) BETWEEN datetime(?) AND datetime(?)
+      WHERE ${TarihUtils.aralikSql('s.tarih')}
         AND s.iptal = 0 AND s.is_deleted = 0
         AND s.sync_cakisma_kopyasi = 0 $subeKosulu
     ''', [bas.toIso8601String(), bit.toIso8601String(), ?subeId]);
@@ -637,7 +638,7 @@ class SatisDeposu {
       FROM iade_kalem ik
       JOIN iade i ON ik.iade_id = i.id
       LEFT JOIN urunler u ON ik.urun_id = u.id
-      WHERE datetime(i.tarih) BETWEEN datetime(?) AND datetime(?)
+      WHERE ${TarihUtils.aralikSql('i.tarih')}
         AND COALESCE(i.durum, '') != 'iptal'
         AND i.deleted_at IS NULL
     ''', [bas.toIso8601String(), bit.toIso8601String()]);
@@ -677,7 +678,7 @@ class SatisDeposu {
       INNER JOIN satis_kalem sk ON s.id = sk.satis_id
       LEFT JOIN urunler u ON u.id = sk.urun_id
       LEFT JOIN cari c ON s.cari_id = c.id
-      WHERE datetime(s.tarih) BETWEEN datetime(?) AND datetime(?)
+      WHERE ${TarihUtils.aralikSql('s.tarih')}
         AND s.iptal = 0
         AND s.is_deleted = 0
         AND s.sync_cakisma_kopyasi = 0 $subeKosulu

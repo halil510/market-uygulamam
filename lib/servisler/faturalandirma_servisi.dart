@@ -106,45 +106,6 @@ class FaturalandirmaServisi {
     return rows.first['id'] as int?;
   }
 
-  /// Ayarlardaki "Fatura No Ön Eki" + yıl + sıra no'dan yeni bir fatura
-  /// numarası üretir. Ön ek boşsa varsayılan "FTR" kullanılır.
-  /// Örnek: HLF2026000000007
-  ///
-  /// 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): Bu fonksiyon önceden
-  /// COUNT(*) tabanlıydı ("kaç fatura var, bir sonraki = başlangıç +
-  /// sayı") — ama FaturaDeposu.siradakiFaturaNoUret() (aynı işi yapan,
-  /// AYRI bir fonksiyon) MAX+1 (en yüksek mevcut numarayı bul, 1 ekle)
-  /// tabanlıydı. Bu iki FARKLI algoritma aynı fatura_no dizisini
-  /// paylaştığı için, bir fatura iptal/silinirse COUNT azalır ama
-  /// MAX değişmez — bu durumda COUNT tabanlı yöntem, MAX tabanlı
-  /// yöntemin ÜRETTİĞİ bir numarayla ÇAKIŞAN bir numara üretebilirdi
-  /// (aynı fatura_no'ya sahip 2 fatura — resmi/yasal açıdan ciddi bir
-  /// sorun). Artık her iki yol da AYNI (MAX+1) algoritmayı kullanıyor.
-  static Future<String> sonrakiFaturaNo(DateTime tarih) async {
-    final prefs = await SharedPreferences.getInstance();
-    var onek = (prefs.getString('fatura_no_onek') ?? '').trim().toUpperCase();
-    if (onek.isEmpty) onek = 'FTR';
-
-    final yil = tarih.year;
-    final db  = await Veritabani().db;
-    final tamOnek = '$onek$yil';
-    final rows = await db.rawQuery(
-      'SELECT fatura_no FROM faturalar WHERE fatura_no LIKE ? ORDER BY fatura_no DESC LIMIT 1',
-      ['$tamOnek%'],
-    );
-    final baslangic = int.tryParse(prefs.getString('fatura_baslangic_no') ?? '1') ?? 1;
-    var sira = baslangic;
-    if (rows.isNotEmpty) {
-      final mevcut = rows.first['fatura_no'] as String?;
-      if (mevcut != null && mevcut.length >= tamOnek.length + 9) {
-        final siraStr = mevcut.substring(tamOnek.length, tamOnek.length + 9);
-        final mevcutSira = int.tryParse(siraStr);
-        if (mevcutSira != null) sira = mevcutSira + 1;
-      }
-    }
-    return '$onek$yil${sira.toString().padLeft(9, '0')}';
-  }
-
   /// Merkezi seri/blok sisteminde kullanılan seri öneki (Ayarlar > Fatura
   /// "fatura_no_onek", boşsa 'FTR'). Otomatik ve manuel fatura AYNI seriyi
   /// kullanmalı — tek kaynak burası.
@@ -220,8 +181,8 @@ class FaturalandirmaServisi {
     // FaturaDeposu().ekleMerkeziSeriIle() içinde, gerçek INSERT ile
     // AYNI SQLite transaction'ında, merkezi (Supabase'de atomik olarak
     // tahsis edilmiş) bir bloktan üretiliyor — bkz. o fonksiyonun
-    // yorumu. `sonrakiFaturaNo()` fonksiyonu SİLİNMEDİ (manuel fatura
-    // ekranı hâlâ kullanıyor, bilinçli ayrı bir karar).
+    // yorumu. Eski yerel MAX+1 üreticiler (sonrakiFaturaNo,
+    // siradakiFaturaNoUret) 2026-11-06 silindi — hiç çağrılmıyorlardı.
     final onek = await faturaSeriOneki();
 
     final fatura = FaturaModel(

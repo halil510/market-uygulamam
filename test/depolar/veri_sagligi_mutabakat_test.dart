@@ -3,100 +3,41 @@
 // Veri Sağlığı Merkezi'nin (protokol §13) dayandığı yeni mutabakat
 // fonksiyonlarını (CariDeposu.bakiyeMutabakatYap, KasaDeposu
 // .bakiyeMutabakatYap, BankaHesapDeposu.bakiyeMutabakatYap) gerçek
-// şemayla doğrular. Bu depolar Veritabani() singleton'ı üzerinden
-// çalıştığı için, üretim koduyla BİREBİR aynı SQL/algoritma burada
-// TestVeritabani db'si üzerinde tekrar uygulanıyor (bu oturumda
-// kurulan test deseniyle tutarlı).
+// .bakiyeMutabakatYap, BankaHesapDeposu.bakiyeMutabakatYap) gerçek
+// şemayla doğrular.
+//
+// 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN üç depo
+// metodunun SQL/algoritmasını KOPYALAYAN yardımcılar çağırıyordu — üretim
+// kodu bozulsa bile yeşil kalırdı. Artık GERÇEK depo metotları çağrılıyor
+// (Veritabani.testVeritabani seam'i ile bellek-içi gerçek şema).
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:market_plus/modeller/kasa_hareket_model.dart';
+import 'package:market_plus/depolar/banka_hesap_deposu.dart';
+import 'package:market_plus/depolar/cari_deposu.dart';
+import 'package:market_plus/depolar/kasa_deposu.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
-// ── Cari bakiye mutabakatı (CariDeposu.bakiyeMutabakatYap ile aynı SQL) ──
-Future<int> _cariBakiyeUyumsuzlukSayisi(Database db) async {
-  final rows = await db.rawQuery('''
-    SELECT COUNT(*) as n FROM cari c
-    WHERE c.is_deleted = 0 AND ABS(c.bakiye - (
-      SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
-      FROM cari_hareket WHERE cari_id = c.id AND is_deleted = 0
-    )) > 0.01
-  ''');
-  return (rows.first['n'] as int?) ?? 0;
-}
-
-Future<int> _cariBakiyeMutabakatYap(Database db) async {
-  final uyumsuzlar = await db.rawQuery('''
-    SELECT c.id FROM cari c
-    WHERE c.is_deleted = 0 AND ABS(c.bakiye - (
-      SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
-      FROM cari_hareket WHERE cari_id = c.id AND is_deleted = 0
-    )) > 0.01
-  ''');
-  final now = DateTime.now().toIso8601String();
-  for (final r in uyumsuzlar) {
-    // last_updated bump'ı da CariDeposu.bakiyeYenidenHesapla() ile AYNI
-    // (bkz. o fonksiyondaki kök neden notu) — bu olmadan delta senkron
-    // ("Hızlı Gönder") düzeltmeyi asla yakalayamaz.
-    await db.rawUpdate('''
-      UPDATE cari SET bakiye = (
-        SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0)
-        FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-      ), last_updated = ? WHERE id = ?
-    ''', [r['id'], now, r['id']]);
-  }
-  return uyumsuzlar.length;
-}
-
-// ── Kasa bakiye mutabakatı (KasaDeposu.bakiyeMutabakatYap ile aynı algoritma) ──
-Future<int> _kasaBakiyeMutabakatYap(Database db) async {
-  final rows = await db.query('kasa_hareketleri', where: 'deleted_at IS NULL', orderBy: 'tarih ASC, id ASC');
-  double bakiye = 0;
-  var duzeltilen = 0;
-  final girisler = KasaHareketModel.girisTipleri;
-  for (final r in rows) {
-    final tip = r['hareket_tipi'] as String? ?? '';
-    final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
-    bakiye = girisler.contains(tip) ? bakiye + tutar : bakiye - tutar;
-    final mevcut = (r['bakiye_sonrasi'] as num?)?.toDouble();
-    if (mevcut == null || (mevcut - bakiye).abs() > 0.01) {
-      await db.update('kasa_hareketleri', {'bakiye_sonrasi': bakiye}, where: 'id = ?', whereArgs: [r['id']]);
-      duzeltilen++;
-    }
-  }
-  return duzeltilen;
-}
-
-// ── Banka bakiye mutabakatı (BankaHesapDeposu.bakiyeMutabakatYap ile aynı SQL) ──
-const _uyumsuzHesaplarSql = '''
-    SELECT h.id, (
-      SELECT bh2.sonraki_bakiye FROM banka_hareketler bh2
-      WHERE bh2.banka_hesap_id = h.id ORDER BY bh2.tarih DESC, bh2.id DESC LIMIT 1
-    ) as dogru_bakiye
-    FROM banka_hesaplar h
-    WHERE h.aktif = 1
-      AND EXISTS (SELECT 1 FROM banka_hareketler bh WHERE bh.banka_hesap_id = h.id)
-      AND ABS(h.bakiye - (
-        SELECT bh2.sonraki_bakiye FROM banka_hareketler bh2
-        WHERE bh2.banka_hesap_id = h.id ORDER BY bh2.tarih DESC, bh2.id DESC LIMIT 1
-      )) > 0.01
-  ''';
-
-Future<int> _bankaBakiyeMutabakatYap(Database db) async {
-  final uyumsuzlar = await db.rawQuery(_uyumsuzHesaplarSql);
-  final now = DateTime.now().toIso8601String();
-  for (final r in uyumsuzlar) {
-    final dogru = (r['dogru_bakiye'] as num?)?.toDouble() ?? 0;
-    await db.update('banka_hesaplar', {'bakiye': dogru, 'last_updated': now},
-        where: 'id = ?', whereArgs: [r['id']]);
-  }
-  return uyumsuzlar.length;
-}
-
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Database db;
 
-  setUp(() async => db = await TestVeritabani.olustur());
-  tearDown(() => db.close());
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
 
   group('Cari bakiye mutabakatı', () {
     test('bakiye zaten doğruysa uyumsuzluk sayısı 0', () async {
@@ -104,7 +45,7 @@ void main() {
       await db.insert('cari_hareket', {'cari_id': cariId, 'borc': 100, 'alacak': 0, 'is_deleted': 0, 'fis_tipi': 'Test', 'tarih': DateTime.now().toIso8601String()});
       await db.update('cari', {'bakiye': 100}, where: 'id = ?', whereArgs: [cariId]);
 
-      expect(await _cariBakiyeUyumsuzlukSayisi(db), equals(0));
+      expect(await CariDeposu().bakiyeUyumsuzlukSayisi(), equals(0));
     });
 
     test('bakiye yanlışsa tespit edilir ve düzeltilince doğrulanır', () async {
@@ -113,14 +54,14 @@ void main() {
       // Kasıtlı olarak yanlış bir bakiye yaz (gerçek değer 300 olmalı).
       await db.update('cari', {'bakiye': 999}, where: 'id = ?', whereArgs: [cariId]);
 
-      expect(await _cariBakiyeUyumsuzlukSayisi(db), equals(1));
+      expect(await CariDeposu().bakiyeUyumsuzlukSayisi(), equals(1));
 
-      final duzeltilen = await _cariBakiyeMutabakatYap(db);
+      final duzeltilen = await CariDeposu().bakiyeMutabakatYap();
       expect(duzeltilen, equals(1));
 
       final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
       expect((cari['bakiye'] as num).toDouble(), equals(300.0));
-      expect(await _cariBakiyeUyumsuzlukSayisi(db), equals(0));
+      expect(await CariDeposu().bakiyeUyumsuzlukSayisi(), equals(0));
     });
 
     // 🔴 Regresyon testi (kullanıcı isteği — "veri sağlığı merkezine
@@ -136,7 +77,7 @@ void main() {
       await db.insert('cari_hareket', {'cari_id': cariId, 'borc': 500, 'alacak': 0, 'is_deleted': 0, 'fis_tipi': 'Test', 'tarih': DateTime.now().toIso8601String()});
       await db.update('cari', {'bakiye': 999, 'last_updated': '2020-01-01T00:00:00'}, where: 'id = ?', whereArgs: [cariId]);
 
-      await _cariBakiyeMutabakatYap(db);
+      await CariDeposu().bakiyeMutabakatYap();
 
       final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
       expect(cari['last_updated'], isNot(equals('2020-01-01T00:00:00')),
@@ -150,7 +91,7 @@ void main() {
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Satış', 'tutar': 100, 'bakiye_sonrasi': 100, 'tarih': '2026-01-01T10:00:00'});
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Gider', 'tutar': 30, 'bakiye_sonrasi': 70, 'tarih': '2026-01-01T11:00:00'});
 
-      final duzeltilen = await _kasaBakiyeMutabakatYap(db);
+      final duzeltilen = await KasaDeposu().bakiyeMutabakatYap();
       expect(duzeltilen, equals(0));
     });
 
@@ -158,7 +99,7 @@ void main() {
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Satış', 'tutar': 100, 'bakiye_sonrasi': 999, 'tarih': '2026-01-01T10:00:00'});
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Gider', 'tutar': 30, 'bakiye_sonrasi': 999, 'tarih': '2026-01-01T11:00:00'});
 
-      final duzeltilen = await _kasaBakiyeMutabakatYap(db);
+      final duzeltilen = await KasaDeposu().bakiyeMutabakatYap();
       expect(duzeltilen, equals(2));
 
       final rows = await db.query('kasa_hareketleri', orderBy: 'tarih ASC');
@@ -174,7 +115,7 @@ void main() {
       });
       await db.insert('kasa_hareketleri', {'hareket_tipi': 'Gider', 'tutar': 30, 'bakiye_sonrasi': 70, 'tarih': '2026-01-01T11:00:00'});
 
-      final duzeltilen = await _kasaBakiyeMutabakatYap(db);
+      final duzeltilen = await KasaDeposu().bakiyeMutabakatYap();
       expect(duzeltilen, equals(0), reason: 'Zaten doğru: silinmiş hareket hesaba katılmamalı');
     });
   });
@@ -186,7 +127,7 @@ void main() {
 
     test('hareket yoksa uyumsuzluk sayılmaz (yeni açılmış hesap)', () async {
       await hesapEkle(500);
-      expect(await db.rawQuery(_uyumsuzHesaplarSql), isEmpty);
+      expect(await BankaHesapDeposu().bakiyeUyumsuzlukSayisi(), 0);
     });
 
     test('bakiye son hareketin sonraki_bakiye değeriyle uyumluysa dokunulmaz', () async {
@@ -201,7 +142,7 @@ void main() {
       });
       await db.update('banka_hesaplar', {'bakiye': 70}, where: 'id = ?', whereArgs: [hesapId]);
 
-      expect(await _bankaBakiyeMutabakatYap(db), equals(0));
+      expect(await BankaHesapDeposu().bakiyeMutabakatYap(), equals(0));
     });
 
     test('bakiye elle bozulmuşsa (hareketten sapmışsa) düzeltilir', () async {
@@ -215,7 +156,7 @@ void main() {
         'onceki_bakiye': 100, 'sonraki_bakiye': 70, 'tarih': '2026-01-01T11:00:00',
       });
 
-      final duzeltilen = await _bankaBakiyeMutabakatYap(db);
+      final duzeltilen = await BankaHesapDeposu().bakiyeMutabakatYap();
       expect(duzeltilen, equals(1));
 
       final hesap = (await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [hesapId])).first;
@@ -234,7 +175,7 @@ void main() {
         'onceki_bakiye': 0, 'sonraki_bakiye': 100, 'tarih': '2026-01-01T10:00:00',
       });
 
-      await _bankaBakiyeMutabakatYap(db);
+      await BankaHesapDeposu().bakiyeMutabakatYap();
 
       final hesap = (await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [hesapId])).first;
       expect(hesap['last_updated'], isNot(equals('2020-01-01T00:00:00')));

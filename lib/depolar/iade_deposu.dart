@@ -80,7 +80,7 @@ class IadeDeposu {
   /// Bir iadenin ham kalem satırları (iade_kalem) — ürün bilgisi JOIN'siz.
   Future<List<Map<String, dynamic>>> kalemleriGetir(int iadeId) async {
     final db = await _d;
-    final rows = await db.query('iade_kalem', where: 'iade_id = ?', whereArgs: [iadeId]);
+    final rows = await db.query('iade_kalem', where: 'iade_id = ? AND miktar > 0', whereArgs: [iadeId]);
     return rows.map((r) => Map<String, dynamic>.from(r)).toList();
   }
 
@@ -91,7 +91,7 @@ class IadeDeposu {
       SELECT ik.*, u.urun_adi as urun_adi_db, u.kdv_oran as urun_kdv_oran
       FROM iade_kalem ik
       LEFT JOIN urunler u ON ik.urun_id = u.id
-      WHERE ik.iade_id = ?
+      WHERE ik.iade_id = ? AND ik.miktar > 0 -- oturumdan silinen kalem (2026-11-06) görünmez
     ''', [iadeId]);
     return rows;
   }
@@ -222,7 +222,7 @@ class IadeDeposu {
           ia.kasiyer_id,
           ia.last_updated,
           c.unvan AS cari_adi,
-          (SELECT COUNT(*) FROM iade_kalem WHERE iade_id = ia.id) AS kalem_sayisi,
+          (SELECT COUNT(*) FROM iade_kalem WHERE iade_id = ia.id AND miktar > 0) AS kalem_sayisi,
           'iade' AS kaynak
         FROM iade ia
         LEFT JOIN cari c ON ia.cari_id = c.id

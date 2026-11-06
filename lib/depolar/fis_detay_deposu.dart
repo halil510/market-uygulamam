@@ -110,7 +110,7 @@ class FisDetayDeposu {
           COALESCE(u.barkod, '')              as barkod
         FROM iade_kalem ik
         LEFT JOIN urunler u ON ik.urun_id = u.id
-        WHERE ik.iade_id = ?
+        WHERE ik.iade_id = ? AND ik.miktar > 0
         ORDER BY ik.id
       ''', [fisId]);
 

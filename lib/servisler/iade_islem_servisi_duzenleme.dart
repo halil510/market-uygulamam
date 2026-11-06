@@ -22,9 +22,55 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
     final db = await Veritabani().db;
     final now = DateTime.now().toIso8601String();
     String? kasaGid;
+    // 🔴🔴 DÜZELTME (2026-11-06): belge (iade) birden çok ürün taşır, oturum
+    // listesindeki satır TEK ürünü temsil eder. ÖNCEDEN: tüm belge 'iptal'e
+    // çekiliyor, belgenin TÜM nakdi kasaya geri yazılıyor, silinen ürünün
+    // iade_kalem satırına dokunulmuyor (cari "kalan" yanlış) ve ikinci
+    // çağrıda kasa TEKRAR ters çevriliyordu. Artık: yalnız bu ürünün kalemi
+    // sıfırlanır (hard delete yok — aynı ürün yeniden eklenirse bu satır
+    // artar), stok/kasa yalnız bu kalem kadar ters çevrilir, belge ancak
+    // hiç kalem kalmayınca iptal olur, ikinci silme hata verir (§5.1).
+    var silinenMiktar = miktar;
 
     await db.transaction((txn) async {
-      if (urunId != null && miktar > 0) {
+      var kalemToplam = toplam;
+      var belgedeKalemKaldi = false;
+      if (iadeId != null) {
+        final iadeRows = await txn.query('iade',
+            where: 'id = ?', whereArgs: [iadeId], limit: 1);
+        if (iadeRows.isEmpty) throw Exception('İade belgesi bulunamadı.');
+        if (iadeRows.first['durum'] == 'iptal') {
+          throw Exception('Bu iade zaten iptal edilmiş.');
+        }
+        if (urunId != null) {
+          final kalemRows = await txn.query('iade_kalem',
+              where: 'iade_id = ? AND urun_id = ?', whereArgs: [iadeId, urunId]);
+          final kalemMiktar = kalemRows.fold(
+              0.0, (s, k) => s + ((k['miktar'] as num?)?.toDouble() ?? 0));
+          if (kalemMiktar <= 0.0005) {
+            throw Exception('Bu iade kalemi zaten silinmiş.');
+          }
+          silinenMiktar = kalemMiktar;
+          kalemToplam = ParaUtils.yuvarla(kalemRows.fold(
+              0.0, (s, k) => s + ((k['toplam'] as num?)?.toDouble() ?? 0)));
+          await txn.update('iade_kalem',
+              {'miktar': 0, 'toplam': 0, 'iskonto_tutar': 0, 'last_updated': now},
+              where: 'iade_id = ? AND urun_id = ?', whereArgs: [iadeId, urunId]);
+          for (final k in await txn.query('iade_kalem',
+              where: 'iade_id = ? AND urun_id = ?', whereArgs: [iadeId, urunId])) {
+            await SyncKuyrukYazici.ekleTxn(txn,
+                tablo: 'iade_kalem', veri: Map<String, dynamic>.from(k));
+          }
+          final kalanMiktar = (await txn.rawQuery(
+                  'SELECT COALESCE(SUM(miktar),0) m FROM iade_kalem WHERE iade_id = ?',
+                  [iadeId]))
+              .first['m'] as num;
+          belgedeKalemKaldi = kalanMiktar.toDouble() > 0.0005;
+        }
+      }
+
+      if (urunId != null && silinenMiktar > 0) {
+        final miktar = silinenMiktar;
         final urunRows = await txn.query('urunler',
             columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
         if (urunRows.isNotEmpty) {
@@ -56,8 +102,19 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
         }
       }
       if (iadeId != null) {
-        await txn.update('iade', {'durum': 'iptal', 'last_updated': now},
-            where: 'id = ?', whereArgs: [iadeId]);
+        if (belgedeKalemKaldi) {
+          // Belgede başka ürün var: belge açık kalır, toplamı kalanlardan.
+          final kalanToplam = (await txn.rawQuery(
+                  'SELECT COALESCE(SUM(toplam),0) t FROM iade_kalem WHERE iade_id = ?',
+                  [iadeId]))
+              .first['t'] as num;
+          await txn.update('iade',
+              {'toplam_tutar': ParaUtils.yuvarla(kalanToplam.toDouble()), 'last_updated': now},
+              where: 'id = ?', whereArgs: [iadeId]);
+        } else {
+          await txn.update('iade', {'durum': 'iptal', 'last_updated': now},
+              where: 'id = ?', whereArgs: [iadeId]);
+        }
         final guncelIadeSatiri = await txn.query('iade',
             where: 'id = ?', whereArgs: [iadeId], limit: 1);
         if (guncelIadeSatiri.isNotEmpty) {
@@ -79,22 +136,31 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
         // İade düzenlemesinin kasa düzeltmeleri (iade_duzeltme) de nete
         // katılır; önceden yalnız ilk iade satırı ters çevriliyordu,
         // düzenleme farkı kasada kalıyordu (canlı test 2026-10-08).
+        // 2026-11-06: daha önce bu belge için yazılmış ters kayıtlar
+        // ('iade_iptal') da nete katılır — aksi halde ikinci kalem silinince
+        // ilk kalemin nakdi TEKRAR geri yazılıyordu.
         final orijinalKasaSatirlari = await txn.query('kasa_hareketleri',
-            where: "referans_id = ? AND referans_turu IN ('iade', 'iade_duzeltme') AND deleted_at IS NULL",
+            where: "referans_id = ? AND referans_turu IN ('iade', 'iade_duzeltme', 'iade_iptal') AND deleted_at IS NULL",
             whereArgs: [iadeId]);
         var netNakitIade = 0.0;
         for (final k in orijinalKasaSatirlari) {
           final t = (k['tutar'] as num?)?.toDouble() ?? 0;
           if (k['referans_turu'] == 'iade') {
             if (t > 0) netNakitIade += t;
+          } else if (k['referans_turu'] == 'iade_iptal') {
+            netNakitIade -= t.abs();
           } else {
             // 'İade Düzeltme' = iade arttı (eski kayıtlarda işaretli),
             // 'Iade Iptali' = iade azaldı.
             netNakitIade += k['hareket_tipi'] == 'Iade Iptali' ? -t.abs() : t;
           }
         }
-        if (netNakitIade > 0.005) {
-          final kasaTutar = ParaUtils.yuvarla(netNakitIade);
+        // Belgede başka ürün kaldıysa yalnız silinen kalemin nakdi geri alınır.
+        final geriAlinacak = belgedeKalemKaldi
+            ? (netNakitIade < kalemToplam ? netNakitIade : kalemToplam)
+            : netNakitIade;
+        if (geriAlinacak > 0.005) {
+          final kasaTutar = ParaUtils.yuvarla(geriAlinacak);
           kasaGid = const Uuid().v4();
           final kasaBakiye = await _kasaDepo.sonBakiyeTxn(txn) + kasaTutar;
           final kasaSatiri = {
@@ -225,7 +291,7 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
         }
         // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): iade iptali = stok
         // AZALIŞI (pozitif fark — subeStokPayiUygula'nın beklediği yön).
-        await _stokDepo.subeStokPayiUygula(urunId, miktar);
+        await _stokDepo.subeStokPayiUygula(urunId, silinenMiktar);
       }
       if (kasaGid != null) {
         final kasaSatir = await db.query('kasa_hareketleri',

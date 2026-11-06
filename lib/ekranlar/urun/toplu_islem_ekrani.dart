@@ -143,9 +143,9 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
   Future<void> _topluGuncelle() async {
     if (_secili.isEmpty) { BildirimServisi.uyari(context, 'Ürün seçin'); return; }
     if (_alan == null) { BildirimServisi.uyari(context, 'Alan seçin'); return; }
-    final degerMetin = _degerCtrl.text.trim().replaceAll(',', '.');
+    final degerMetin = _degerCtrl.text.trim();
     if (degerMetin.isEmpty) { BildirimServisi.uyari(context, 'Değer girin'); return; }
-    final sayisalDeger = double.tryParse(degerMetin);
+    final sayisalDeger = ParaUtils.sayiCoz(degerMetin);
     if (_alan!.sayisal && sayisalDeger == null) {
       BildirimServisi.uyari(context, 'Geçerli sayı girin'); return;
     }
@@ -326,10 +326,10 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
   /// önizlenecek geçerli bir durum yok demektir.
   String? _yeniDegerGoster(UrunModel u) {
     if (_alan == null) return null;
-    final degerMetin = _degerCtrl.text.trim().replaceAll(',', '.');
+    final degerMetin = _degerCtrl.text.trim();
     if (degerMetin.isEmpty) return null;
     if (!_alan!.sayisal) return degerMetin;
-    final sayisalDeger = double.tryParse(degerMetin);
+    final sayisalDeger = ParaUtils.sayiCoz(degerMetin);
     if (sayisalDeger == null) return null;
     final eski = _alan!.id == 'stok' ? u.stok : (_mevcutDeger(u, _alan!.id) ?? 0);
     final yeni = _hesapla(eski, sayisalDeger).clamp(0, double.infinity);

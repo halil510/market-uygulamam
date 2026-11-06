@@ -832,7 +832,7 @@ class _UrunSayimKartiState extends ConsumerState<_UrunSayimKarti> {
                     ),
                     onSubmitted: (v) {
                       setState(() => _duzenlemeModu = false);
-                      final parsed = double.tryParse(v) ?? -1;
+                      final parsed = ParaUtils.sayiCoz(v) ?? -1;
                       widget.onMiktarDegisti(parsed);
                     },
                     onTapOutside: (_) {

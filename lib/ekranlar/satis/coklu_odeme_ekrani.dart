@@ -53,7 +53,7 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
 
   double get _toplamAtanan => _atamalar.values.fold(0.0, (a, b) => a + b);
   double get _kalan => widget.toplamTutar - _toplamAtanan;
-  double get _ekranDeger => double.tryParse(_ekran.isEmpty ? '0' : _ekran) ?? 0;
+  double get _ekranDeger => ParaUtils.sayiCoz(_ekran) ?? 0;
 
   String _fmtSayi(double v) {
     if (v == v.roundToDouble()) return v.toStringAsFixed(0);

@@ -390,8 +390,8 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
       return;
     }
     for (final girdi in negatifKontrolAlanlari.entries) {
-      final metin = _c[girdi.key]?.text.trim().replaceAll(',', '.') ?? '';
-      final deger = double.tryParse(metin);
+      final metin = _c[girdi.key]?.text.trim() ?? '';
+      final deger = ParaUtils.sayiCoz(metin);
       if (deger != null && deger < 0) {
         BildirimServisi.uyari(context, '${girdi.value} negatif olamaz.');
         return;

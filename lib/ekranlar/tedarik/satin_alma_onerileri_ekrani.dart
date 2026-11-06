@@ -6,6 +6,7 @@
 // 'beklemede' sipariş akışı) önerilen kalemlerle yönlendirir. Stok/kasa/cari
 // bu ekranda hiçbir şekilde ETKİLENMEZ.
 import 'package:flutter/material.dart';
+import '../../cekirdek/utils/para_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -223,7 +224,7 @@ class _SatinAlmaOnerileriEkraniState extends ConsumerState<SatinAlmaOnerileriEkr
                                   labelText: 'Miktar',
                                 ),
                                 onChanged: (v) {
-                                  final m = double.tryParse(v);
+                                  final m = ParaUtils.sayiCoz(v);
                                   if (m != null && m > 0) _miktarlar[u.id!] = m;
                                 },
                               ),

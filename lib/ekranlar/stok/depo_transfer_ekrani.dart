@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../cekirdek/utils/para_utils.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../depolar/sube_urun_deposu.dart';
 import '../../depolar/sube_deposu.dart';
@@ -185,12 +186,12 @@ class _DepoTransferEkraniState extends ConsumerState<DepoTransferEkrani> {
           decoration: InputDecoration(
               labelText: 'Transfer miktarı (${u.birimAdi})',
               helperText: 'Stok: ${u.stok.toStringAsFixed(0)} — 0 girerseniz listeden çıkar'),
-          onSubmitted: (v) => Navigator.pop(ctx, double.tryParse(v) ?? 0),
+          onSubmitted: (v) => Navigator.pop(ctx, ParaUtils.sayiCoz(v) ?? 0),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, double.tryParse(ctrl.text) ?? 0),
+              onPressed: () => Navigator.pop(ctx, ParaUtils.sayiCoz(ctrl.text) ?? 0),
               child: const Text('Tamam')),
         ],
       ),
@@ -316,7 +317,7 @@ class _DepoTransferEkraniState extends ConsumerState<DepoTransferEkrani> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(vertical: 8)),
                     onChanged: (v) {
-                      final val = double.tryParse(v) ?? 0;
+                      final val = ParaUtils.sayiCoz(v) ?? 0;
                       setState(() => _miktarlar[u.id!] = val);
                     },
                   )),

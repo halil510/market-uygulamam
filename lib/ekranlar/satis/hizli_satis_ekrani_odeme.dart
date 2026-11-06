@@ -231,8 +231,8 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
               // Enter ile onay (klavye/masaüstü).
               onSubmitted: (_) {
-                final txt = ctrl.text.trim().replaceAll(',', '.');
-                final val = txt.isEmpty ? toplam : double.tryParse(txt);
+                final txt = ctrl.text.trim();
+                final val = txt.isEmpty ? toplam : ParaUtils.sayiCoz(txt);
                 _dialogAcik = false;
                 Navigator.pop(ctx, val);
               },
@@ -271,8 +271,8 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
             ),
             FilledButton(
               onPressed: () {
-                final txt = ctrl.text.trim().replaceAll(',', '.');
-                final val = txt.isEmpty ? toplam : double.tryParse(txt);
+                final txt = ctrl.text.trim();
+                final val = txt.isEmpty ? toplam : ParaUtils.sayiCoz(txt);
                 _dialogAcik = false;
                 Navigator.pop(ctx, val);
               },

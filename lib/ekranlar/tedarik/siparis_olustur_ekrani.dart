@@ -292,7 +292,7 @@ class _SiparisOlusturEkraniState extends ConsumerState<SiparisOlusturEkrani> {
                                   isDense: true,
                                 ),
                                 onChanged: (v) {
-                                  final m = double.tryParse(v) ?? 0;
+                                  final m = ParaUtils.sayiCoz(v) ?? 0;
                                   if (m > 0) setState(() => k.miktar = m);
                                 },
                               ),
@@ -308,7 +308,7 @@ class _SiparisOlusturEkraniState extends ConsumerState<SiparisOlusturEkrani> {
                                   isDense: true,
                                 ),
                                 onChanged: (v) {
-                                  final f = double.tryParse(v) ?? 0;
+                                  final f = ParaUtils.sayiCoz(v) ?? 0;
                                   if (f > 0) setState(() => k.birimFiyat = f);
                                 },
                               ),

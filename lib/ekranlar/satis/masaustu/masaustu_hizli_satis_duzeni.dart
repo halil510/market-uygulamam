@@ -11,6 +11,7 @@
 //
 // Sadece GÖRÜNÜM + klavye kısayolları: iş mantığı (ödeme, sepete ekleme,
 // müşteri seçimi…) çağıran ekrandan geri-çağrı (callback) ile gelir.
+import '../../../cekirdek/utils/para_utils.dart';
 import '../../../tasarim_sistemi/ts_token.dart';
 import '../../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/material.dart';
@@ -380,7 +381,7 @@ class _MasaustuHizliSatisDuzeniState
   }
 
   // ── Sayı tuş takımı ───────────────────────────────────────────────────
-  double? get _tamponSayi => double.tryParse(_tampon.replaceAll(',', '.'));
+  double? get _tamponSayi => ParaUtils.sayiCoz(_tampon);
 
   void _karakter(String c) {
     if (c == ',' && (_tampon.contains(',') || _tampon.isEmpty)) {

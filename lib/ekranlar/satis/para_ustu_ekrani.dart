@@ -129,7 +129,7 @@ class _ParaUstuEkraniState extends ConsumerState<ParaUstuEkrani>
                 suffixText: "₺",
               ),
               onChanged: (v) {
-                final parsed = double.tryParse(v.replaceAll(",", ".")) ?? 0;
+                final parsed = ParaUtils.sayiCoz(v) ?? 0;
                 _setAlinan(parsed);
               },
             ),

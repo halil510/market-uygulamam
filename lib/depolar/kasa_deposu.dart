@@ -270,6 +270,13 @@ class KasaDeposu {
       final subeId = AktifSubeServisi().subeId;
       final subeKosulu = subeId != null ? 'AND sube_id = ?' : '';
       final subeArgs = subeId != null ? [subeId] : <Object?>[];
+      // Giriş/çıkış ayrımı TEK kaynaktan: KasaHareketModel.girisTipleri.
+      // Çıkış = giriş listesinde OLMAYAN her tip (bakiye_sonrasi hesabıyla
+      // aynı kural). ÖNCEDEN çıkış elle ('Gider','Ödeme','KapanışKasa')
+      // yazılmıştı — Alım, İade, Borç Ödemesi, Virman Çıkış ve Satış
+      // İptali çıkış sayılmıyordu (2026-11-06).
+      final girisler = KasaHareketModel.girisTipleri.toList();
+      final girisYer = List.filled(girisler.length, '?').join(',');
       // 🔴 Derin analizde bulundu: bu SQL'deki giriş tipleri listesi,
       // merkezi KasaHareketModel.girisTipleri'nin EKSİK bir kopyasıydı
       // ('Iade Iptali','İade İptali','Ödeme Girişi' unutulmuştu) — bu
@@ -299,13 +306,13 @@ class KasaDeposu {
       // kendi lokasyonunda olduğu için bu doğru varsayımdır.
       final res = await db.rawQuery("""
         SELECT 
-          COALESCE(SUM(CASE WHEN hareket_tipi IN ('Satış','Tahsilat','AçılışKasa','Giriş','Virman Giriş','Iade Iptali','İade İptali','Ödeme Girişi','Gider İptali','Alım İptali') THEN tutar ELSE 0 END), 0) as giris,
-          COALESCE(SUM(CASE WHEN hareket_tipi IN ('Gider','Ödeme','KapanışKasa') THEN tutar ELSE 0 END), 0) as cikis,
+          COALESCE(SUM(CASE WHEN hareket_tipi IN ($girisYer) THEN tutar ELSE 0 END), 0) as giris,
+          COALESCE(SUM(CASE WHEN hareket_tipi NOT IN ($girisYer) THEN tutar ELSE 0 END), 0) as cikis,
           COALESCE(SUM(CASE WHEN hareket_tipi = 'Satış' AND referans_turu = 'satis' THEN tutar ELSE 0 END), 0) as nakit_satis,
           COALESCE(SUM(CASE WHEN hareket_tipi = 'Tahsilat' THEN tutar ELSE 0 END), 0) as tahsilat
         FROM kasa_hareketleri 
         WHERE DATE(tarih) = DATE('now','localtime') AND deleted_at IS NULL $subeKosulu
-      """, subeArgs);
+      """, [...girisler, ...girisler, ...subeArgs]);
       if (res.isEmpty) return {'giris': 0, 'cikis': 0};
       final r = res.first;
       return {
@@ -332,13 +339,16 @@ class KasaDeposu {
       // kullanıyor — aynı şekilde uygulandı.
       final subeId = AktifSubeServisi().subeId;
       final subeKosulu = subeId != null ? ' AND sube_id = ?' : '';
+      // Bkz. gunlukOzet(): giriş/çıkış ayrımı merkezi girisTipleri'nden.
+      final girisler = KasaHareketModel.girisTipleri.toList();
+      final girisYer = List.filled(girisler.length, '?').join(',');
       final res = await db.rawQuery("""
         SELECT
-          COALESCE(SUM(CASE WHEN hareket_tipi IN ('Satış','Tahsilat','AçılışKasa','Giriş','Virman Giriş','Iade Iptali','İade İptali','Ödeme Girişi','Gider İptali','Alım İptali') THEN tutar ELSE 0 END), 0) as giris,
-          COALESCE(SUM(CASE WHEN hareket_tipi IN ('Gider','Ödeme','KapanışKasa') THEN tutar ELSE 0 END), 0) as cikis
+          COALESCE(SUM(CASE WHEN hareket_tipi IN ($girisYer) THEN tutar ELSE 0 END), 0) as giris,
+          COALESCE(SUM(CASE WHEN hareket_tipi NOT IN ($girisYer) THEN tutar ELSE 0 END), 0) as cikis
         FROM kasa_hareketleri
         WHERE datetime(tarih) BETWEEN datetime(?) AND datetime(?) AND deleted_at IS NULL$subeKosulu
-      """, [bas.toIso8601String(), bit.toIso8601String(), ?subeId]);
+      """, [...girisler, ...girisler, bas.toIso8601String(), bit.toIso8601String(), ?subeId]);
       if (res.isEmpty) return {'giris': 0, 'cikis': 0};
       final r = res.first;
       return {

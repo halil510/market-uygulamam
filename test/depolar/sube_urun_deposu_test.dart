@@ -7,8 +7,17 @@
 // azalmış, hedefte hiç artmamış). Bu test, artık her iki güncellemenin
 // TEK transaction'da olduğunu ve gerçek şemayla doğru çalıştığını
 // doğruluyor.
+//
+// 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN transferEt()'in
+// kopyası olan SubeUrunDeposuTest.transferEt'i çağırıyordu — üretim kodu
+// bozulsa bile yeşil kalırdı. Artık GERÇEK SubeUrunDeposu().transferEt()
+// çağrılıyor.
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:market_plus/depolar/sube_urun_deposu.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
 Future<int> _subeEkle(Database db, String ad) => db.insert('subeler', {
@@ -17,10 +26,23 @@ Future<int> _subeEkle(Database db, String ad) => db.insert('subeler', {
 });
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Database db;
 
-  setUp(() async => db = await TestVeritabani.olustur());
-  tearDown(() => db.close());
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
 
   group('SubeUrunDeposu.transferEt', () {
     test('kaynaktan düşer, hedefe eklenir — toplam miktar korunur', () async {
@@ -34,7 +56,7 @@ void main() {
         'last_updated': DateTime.now().toIso8601String(),
       });
 
-      await SubeUrunDeposuTest.transferEt(db,
+      await SubeUrunDeposu().transferEt(
           urunId: urunId, kaynakSubeId: subeA, hedefSubeId: subeB, miktar: 20);
 
       final kaynak = (await db.query('sube_urun', where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, subeA])).first;
@@ -54,7 +76,7 @@ void main() {
       });
 
       await expectLater(
-        SubeUrunDeposuTest.transferEt(db, urunId: urunId, kaynakSubeId: subeA, hedefSubeId: subeB, miktar: 10),
+        SubeUrunDeposu().transferEt(urunId: urunId, kaynakSubeId: subeA, hedefSubeId: subeB, miktar: 10),
         throwsException,
       );
 
@@ -74,7 +96,7 @@ void main() {
         'last_updated': DateTime.now().toIso8601String(),
       });
 
-      await SubeUrunDeposuTest.transferEt(db,
+      await SubeUrunDeposu().transferEt(
           urunId: urunId, kaynakSubeId: subeA, hedefSubeId: subeB, miktar: 15);
 
       final hedef = (await db.query('sube_urun', where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, subeB])).first;
@@ -95,7 +117,7 @@ void main() {
         'last_updated': DateTime.now().toIso8601String(),
       });
 
-      await SubeUrunDeposuTest.transferEt(db,
+      await SubeUrunDeposu().transferEt(
           urunId: urunId, kaynakSubeId: subeA, hedefSubeId: subeB, miktar: 12);
 
       final hareketler = await db.query('stok_hareket',
@@ -116,69 +138,4 @@ void main() {
       expect((giris['sonraki_stok'] as num).toDouble(), 12.0);
     });
   });
-}
-
-/// SubeUrunDeposu.transferEt()'in (Veritabani() singleton'ı kullanan)
-/// gerçek mantığını TestVeritabani db'si üzerinde doğrulamak için —
-/// üretim koduyla BİREBİR aynı transaction sırası.
-class SubeUrunDeposuTest {
-  static Future<void> transferEt(
-    Database db, {
-    required int urunId,
-    required int kaynakSubeId,
-    required int hedefSubeId,
-    required double miktar,
-  }) async {
-    if (miktar <= 0) throw Exception('Transfer miktarı sıfırdan büyük olmalı');
-    final now = DateTime.now().toIso8601String();
-
-    Future<void> satirUpsert(dynamic txn, int subeId, double yeniStok) async {
-      final rows = await txn.query('sube_urun',
-          where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, subeId], limit: 1);
-      if (rows.isEmpty) {
-        await txn.insert('sube_urun', {
-          'global_id': 'test-${DateTime.now().microsecondsSinceEpoch}',
-          'urun_id': urunId, 'sube_id': subeId,
-          'stok': yeniStok, 'son_guncelleme': now, 'last_updated': now,
-        });
-      } else {
-        await txn.update('sube_urun',
-            {'stok': yeniStok, 'son_guncelleme': now, 'last_updated': now},
-            where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, subeId]);
-      }
-    }
-
-    await db.transaction((txn) async {
-      final kaynakRows = await txn.query('sube_urun',
-          where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, kaynakSubeId], limit: 1);
-      final kaynakStok = kaynakRows.isEmpty
-          ? 0.0 : (kaynakRows.first['stok'] as num?)?.toDouble() ?? 0.0;
-      if (kaynakStok < miktar) {
-        throw Exception('Kaynak şubede yeterli stok yok (mevcut: $kaynakStok)');
-      }
-
-      final hedefRows = await txn.query('sube_urun',
-          where: 'urun_id = ? AND sube_id = ?', whereArgs: [urunId, hedefSubeId], limit: 1);
-      final hedefStok = hedefRows.isEmpty
-          ? 0.0 : (hedefRows.first['stok'] as num?)?.toDouble() ?? 0.0;
-
-      final kaynakYeni = kaynakStok - miktar;
-      final hedefYeni = hedefStok + miktar;
-      await satirUpsert(txn, kaynakSubeId, kaynakYeni);
-      await satirUpsert(txn, hedefSubeId, hedefYeni);
-
-      await txn.insert('stok_hareket', {
-        'global_id': 'test-cikis-${DateTime.now().microsecondsSinceEpoch}',
-        'urun_id': urunId, 'hareket_turu': 'Şube Transfer Çıkış',
-        'miktar': miktar, 'onceki_stok': kaynakStok, 'sonraki_stok': kaynakYeni,
-        'tarih': now, 'referans_turu': 'sube_transfer', 'sube_id': kaynakSubeId,
-      });
-      await txn.insert('stok_hareket', {
-        'global_id': 'test-giris-${DateTime.now().microsecondsSinceEpoch}',
-        'urun_id': urunId, 'hareket_turu': 'Şube Transfer Giriş',
-        'miktar': miktar, 'onceki_stok': hedefStok, 'sonraki_stok': hedefYeni,
-        'tarih': now, 'referans_turu': 'sube_transfer', 'sube_id': hedefSubeId,
-      });
-    });
-  }
 }

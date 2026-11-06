@@ -14,23 +14,21 @@
 // senaryoyu (Banka↔Kredi Kartı, Kasa hiç taraf değilken) özellikle
 // kapsıyor.
 //
-// VirmanServisi Veritabani() singleton'ı üzerinden çalıştığı için
-// (diğer depo/servis testlerinde olduğu gibi) burada altındaki gerçek
-// depo metodları (KasaDeposu.hareketEkleTxn, BankaHareketDeposu.ekleTxn,
-// KrediKartiDeposu.limitDegistirTxn) — VirmanServisi.virmanYap() ile
-// BİREBİR AYNI sırayla — gerçek şema üzerinde bir in-memory veritabanı
-// içinde doğrudan çağrılıyor.
+// 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN virmanYap()'ın
+// orkestrasyonunu KOPYALAYAN bir yardımcı çağırıyordu — üretim kodu
+// bozulsa bile yeşil kalırdı. Artık GERÇEK VirmanServisi().virmanYap()
+// çağrılıyor; banka hesabı / kart modeli ekrandaki gibi depodan okunur.
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:market_plus/depolar/kasa_deposu.dart';
-import 'package:market_plus/depolar/banka_hareket_deposu.dart';
+import 'package:market_plus/depolar/banka_hesap_deposu.dart';
 import 'package:market_plus/depolar/kredi_karti_deposu.dart';
-import 'package:market_plus/modeller/kasa_hareket_model.dart';
-import 'package:market_plus/modeller/banka_hareket_model.dart';
+import 'package:market_plus/servisler/virman_servisi.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
-/// VirmanServisi.virmanYap()'ın AYNI orkestrasyonu — tek fark, gerçek
-/// Veritabani() singleton'ı yerine test db'sinin transaction'ı kullanılır.
+/// GERÇEK VirmanServisi().virmanYap() — modeller depodan okunur.
 Future<void> _virmanYap(
   Database db, {
   required String kaynakHesap,
@@ -39,40 +37,37 @@ Future<void> _virmanYap(
   int? bankaHesapId,
   int? krediKartiId,
 }) async {
-  final now = DateTime.now();
-  await db.transaction((txn) async {
-    if (kaynakHesap == 'Kasa') {
-      await KasaDeposu().hareketEkleTxn(txn, KasaHareketModel(
-          hareketTipi: 'Virman Çıkış', tutar: tutar, tarih: now,
-          aciklama: 'test (Çıkış)', referansTuru: 'virman'));
-    } else if (hedefHesap == 'Kasa') {
-      await KasaDeposu().hareketEkleTxn(txn, KasaHareketModel(
-          hareketTipi: 'Virman Giriş', tutar: tutar, tarih: now,
-          aciklama: 'test (Giriş)', referansTuru: 'virman'));
-    }
-    if (kaynakHesap == 'Banka' && bankaHesapId != null) {
-      await BankaHareketDeposu().ekleTxn(txn, BankaHareketModel(
-          bankaHesapId: bankaHesapId, islemTipi: 'Giden',
-          tutar: tutar, tarih: now, aciklama: 'test (Çıkış)'));
-    } else if (hedefHesap == 'Banka' && bankaHesapId != null) {
-      await BankaHareketDeposu().ekleTxn(txn, BankaHareketModel(
-          bankaHesapId: bankaHesapId, islemTipi: 'Gelen',
-          tutar: tutar, tarih: now, aciklama: 'test (Giriş)'));
-    }
-    if (kaynakHesap == 'Kredi Kartı' && krediKartiId != null) {
-      await KrediKartiDeposu().limitDegistirTxn(
-          txn, krediKartiId, tutar, aciklama: 'test (Avans)');
-    } else if (hedefHesap == 'Kredi Kartı' && krediKartiId != null) {
-      await KrediKartiDeposu().limitDegistirTxn(
-          txn, krediKartiId, -tutar, aciklama: 'test (Ödeme)');
-    }
-  });
+  final banka =
+      bankaHesapId != null ? await BankaHesapDeposu().idileGetir(bankaHesapId) : null;
+  final kart =
+      krediKartiId != null ? await KrediKartiDeposu().idileGetir(krediKartiId) : null;
+  await VirmanServisi().virmanYap(
+    kaynakHesap: kaynakHesap,
+    hedefHesap: hedefHesap,
+    tutar: tutar,
+    aciklama: 'test',
+    seciliBanka: banka,
+    seciliKart: kart,
+  );
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Database db;
-  setUp(() async => db = await TestVeritabani.olustur());
-  tearDown(() => db.close());
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
 
   Future<int> bankaIdAl() async => db.insert('bankalar', {'ad': 'Test Bankası'});
 

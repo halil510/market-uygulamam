@@ -258,7 +258,7 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     final alisKdvli = ParaUtils.sayiCoz(_c['alisFiyatKdvDahil']?.text) ?? 0;
     final satis = ParaUtils.sayiCoz(_c['satisFiyati']?.text) ?? 0;
     if (satis > 0 && alisKdvli > 0) {
-      final kar = ((satis - alisKdvli) / alisKdvli) * 100;
+      final kar = ParaUtils.karOrani(alisKdvli, satis);
       _c['karOrani']?.text = kar.toStringAsFixed(2);
     } else if (satis > 0 && alisKdvli == 0) {
       _c['karOrani']?.text = '100';

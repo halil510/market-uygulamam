@@ -1,3 +1,4 @@
+import '../cekirdek/utils/para_utils.dart';
 // lib/modeller/urun_model.dart
 class UrunModel {
   final int? id;
@@ -127,21 +128,15 @@ class UrunModel {
     return satisFiyati;
   }
   double get indirimliFiyati => indirimliFiyat;
-  
-  double get satisFiyatiKdvDahil {
-    final kdv = double.tryParse(kdvOran) ?? 0;
-    return satisFiyati * (1 + kdv / 100);
-  }
-  
-  double get karOraniKdvli {
-    final kdvliFiyat = satisFiyatiKdvDahil;
-    return alisFiyat > 0 ? (kdvliFiyat - alisFiyat) / alisFiyat * 100 : 0;
-  }
-  
+
+  // 2026-11-06: `satisFiyatiKdvDahil` ve `karOraniKdvli` silindi — hiç
+  // kullanılmıyorlardı ve satış fiyatının ÜZERİNE KDV ekliyorlardı; oysa
+  // satis_fiyati zaten KDV DAHİL saklanır (sepet_model.dart baş yorumu).
+
   double get karOrani {
     // alisFiyatKdvDahil varsa onu kullan, yoksa alisFiyat'a bak
     final alis = alisFiyatKdvDahil > 0 ? alisFiyatKdvDahil : alisFiyat;
-    return alis > 0 ? ((satisFiyati - alis) / alis) * 100 : 0;
+    return ParaUtils.karOrani(alis, satisFiyati);
   }
 
   bool get kritikStok => stok <= minimumStok && minimumStok > 0;

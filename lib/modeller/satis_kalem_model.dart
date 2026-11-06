@@ -34,9 +34,7 @@ class SatisKalemModel {
   });
 
   double get brutKar => (birimFiyat - alisFiyat) * miktar;
-  double get brutKarOrani => alisFiyat > 0
-      ? ((birimFiyat - alisFiyat) / alisFiyat * 100)
-      : 0;
+  double get brutKarOrani => ParaUtils.karOrani(alisFiyat, birimFiyat);
 
   factory SatisKalemModel.fromMap(Map<String, dynamic> m) {
     double toD(dynamic v) {

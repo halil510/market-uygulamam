@@ -278,7 +278,7 @@ class _BayiSiparisAlEkraniState extends State<BayiSiparisAlEkrani> {
                   separatorBuilder: (_, _) => const SizedBox(height: TsBosluk.sm),
                   itemBuilder: (ctx, i) {
                     final k = _sepet[i];
-                    final karOran = k.alisFiyat > 0 ? ((k.birimFiyatIskontolu - k.alisFiyat) / k.alisFiyat * 100) : 0;
+                    final karOran = ParaUtils.karOrani(k.alisFiyat, k.birimFiyatIskontolu);
                     return TsKart(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Row(children: [

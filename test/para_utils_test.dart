@@ -176,4 +176,17 @@ void main() {
       expect(ParaUtils.kdvPayiCikar(120, 20), closeTo(20.0, 0.001));
     });
   });
+
+  // CLAUDE.md §4.9 — kâr oranının tek kaynağı (2026-11-06'da 4 kopya bağlandı).
+  group('ParaUtils.karOrani', () {
+    test('alışa göre kâr yüzdesi', () {
+      expect(ParaUtils.karOrani(80, 100), 25.0);
+      expect(ParaUtils.karOrani(100, 100), 0.0);
+      expect(ParaUtils.karOrani(100, 90), closeTo(-10.0, 1e-9));
+    });
+    test('alış 0 veya negatifse 0 (bölme hatası yok)', () {
+      expect(ParaUtils.karOrani(0, 50), 0.0);
+      expect(ParaUtils.karOrani(-5, 50), 0.0);
+    });
+  });
 }

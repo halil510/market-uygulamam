@@ -22,6 +22,7 @@ import '../satis/coklu_odeme_ekrani.dart';
 import '../../depolar/cari_deposu.dart';
 import '../../modeller/cari_model.dart';
 import '../../widgetlar/ortak/musteri_secim_paneli.dart';
+import '../../widgetlar/ortak/kredi_limiti_onay_dialog.dart';
 import '../../servisler/masa/masa_adisyon_servisi.dart';
 import 'widgets/masa_detay_icerik.dart';
 import 'widgets/masa_durum_rozeti.dart';
@@ -344,35 +345,11 @@ class _MasaDetayEkraniState extends ConsumerState<MasaDetayEkrani> {
         final limitSonuc = await _cariDepo.limitKontrolEt(efektifCariId, cariTutar);
         if (limitSonuc.asildi) {
           if (!mounted) return;
-          final devam = await showDialog<bool>(
-            context: context,
-            builder: (c) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Row(children: [
-                Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
-                SizedBox(width: 8),
-                Text('Kredi Limiti Aşılıyor'),
-              ]),
-              content: Text(
-                'Tanımlı kredi limiti: ${ParaUtils.formatla(limitSonuc.limit)}\n'
-                'Mevcut bakiye: ${ParaUtils.formatla(limitSonuc.mevcutBakiye)}\n'
-                'Bu ödemeyle birlikte: ${ParaUtils.formatla(limitSonuc.mevcutBakiye + cariTutar)}\n\n'
-                'Limit ${ParaUtils.formatla(limitSonuc.asimTutari)} kadar aşılacak. '
-                'Yine de devam etmek istiyor musunuz?',
-              ),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(c, false),
-                    child: const Text('Vazgeç')),
-                FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: TsRenk.uyari),
-                  onPressed: () => Navigator.pop(c, true),
-                  child: const Text('Yine de Devam Et'),
-                ),
-              ],
-            ),
-          );
-          if (devam != true) return;
+          final devam = await krediLimitiOnayla(context,
+              sonuc: limitSonuc,
+              eklenecekTutar: cariTutar,
+              birlikteEtiketi: 'Bu ödemeyle');
+          if (!devam) return;
         }
       }
 

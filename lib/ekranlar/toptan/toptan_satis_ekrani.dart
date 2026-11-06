@@ -30,6 +30,7 @@ import '../../servisler/auth_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
 import '../../servisler/toptan_satis_islem_servisi.dart';
 import '../../widgetlar/ortak/donanim_barkod_dinleyici.dart';
+import '../../widgetlar/ortak/kredi_limiti_onay_dialog.dart';
 part 'toptan_satis_ekrani_islemler.dart';
 part 'toptan_satis_ekrani_widgetlar.dart';
 

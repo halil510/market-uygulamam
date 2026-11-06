@@ -210,37 +210,11 @@ extension _ToptanSatisIslemlerExt on _ToptanSatisEkraniState {
       final limitSonuc =
           await _cariDepo.limitKontrolEt(_secilenBayi!.id!, _genelToplam);
       if (limitSonuc.asildi && mounted) {
-        final devam = await showDialog<bool>(
-          context: context,
-          builder: (c) => AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Row(children: [
-              Icon(Icons.warning_amber_rounded, color: TsRenk.uyari),
-              SizedBox(width: 8),
-              Text('Kredi Limiti Aşılıyor'),
-            ]),
-            content: Text(
-              '${_secilenBayi!.unvan} için tanımlı kredi limiti: '
-              '${ParaUtils.formatla(limitSonuc.limit)}\n'
-              'Mevcut bakiye: ${ParaUtils.formatla(limitSonuc.mevcutBakiye)}\n'
-              'Bu satışla birlikte: ${ParaUtils.formatla(limitSonuc.mevcutBakiye + _genelToplam)}\n\n'
-              'Limit ${ParaUtils.formatla(limitSonuc.asimTutari)} kadar aşılacak. '
-              'Yine de devam etmek istiyor musunuz?',
-            ),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(c, false),
-                  child: const Text('Vazgeç')),
-              FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: TsRenk.uyari),
-                onPressed: () => Navigator.pop(c, true),
-                child: const Text('Yine de Devam Et'),
-              ),
-            ],
-          ),
-        );
-        if (devam != true) return;
+        final devam = await krediLimitiOnayla(context,
+            sonuc: limitSonuc,
+            eklenecekTutar: _genelToplam,
+            unvan: _secilenBayi!.unvan);
+        if (!devam) return;
         // FAZ 9 — Onay Merkezi (bildirim tipi): satış ENGELLENMEDİ,
         // kullanıcı zaten "Yine de Devam Et" dedi. Kayıt burada HEMEN
         // düşürülMÜYOR — 🔴 DÜZELTME (derin analizde bulundu): önceden

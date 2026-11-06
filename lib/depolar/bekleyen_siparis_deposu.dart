@@ -178,9 +178,16 @@ class BekleyenSiparisDeposu {
   Future<void> iptalEt(int siparisId) async {
     final db = await Veritabani().db;
     final now = DateTime.now().toIso8601String();
-    await db.update(
+    // 🔴 DÜZELTME (2026-11-06, CLAUDE.md §3.3/§5.1): durum kontrolü yoktu —
+    // satışa çevrilmiş (onaylandi) bir sipariş "iptal" işaretlenebiliyordu
+    // (satış ve borç dururken sipariş iptal görünür). onaylaVeSatisaCevir'deki
+    // aynı koruma: yalnız 'bekliyor' durumundaki sipariş iptal edilir.
+    final etkilenen = await db.update(
         'bekleyen_siparisler', {'durum': 'iptal', 'last_updated': now},
-        where: 'id = ?', whereArgs: [siparisId]);
+        where: 'id = ? AND durum = ?', whereArgs: [siparisId, 'bekliyor']);
+    if (etkilenen == 0) {
+      throw Exception('Sipariş zaten onaylanmış veya iptal edilmiş.');
+    }
     final satir = await db.query('bekleyen_siparisler',
         where: 'id = ?', whereArgs: [siparisId], limit: 1);
     if (satir.isNotEmpty) {

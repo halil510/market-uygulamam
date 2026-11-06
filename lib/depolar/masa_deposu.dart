@@ -637,11 +637,17 @@ class MasaDeposu {
   /// Açık siparişi tamamen iptal eder (yanlış açılan masa için).
   Future<void> siparisIptal(int siparisId, int masaId) async {
     await _yaz((txn, k) async {
-      await txn.update(DbSabitler.masaSiparisleri, {
+      // 🔴 DÜZELTME (2026-11-06, CLAUDE.md §3.3/§5.1): durum kontrolü yoktu —
+      // ÖDENMİŞ bir sipariş (bayat ekran / başka terminal) "iptal"e çekilip
+      // masa boşaltılabiliyordu. Yalnız açık sipariş iptal edilir.
+      final etkilenen = await txn.update(DbSabitler.masaSiparisleri, {
         'durum': 'iptal',
         'kapanis_zamani': DateTime.now().toIso8601String(),
         'last_updated': DateTime.now().toIso8601String(),
-      }, where: 'id = ?', whereArgs: [siparisId]);
+      }, where: 'id = ? AND durum = ?', whereArgs: [siparisId, 'acik']);
+      if (etkilenen == 0) {
+        throw Exception('Bu sipariş zaten ödenmiş veya kapatılmış.');
+      }
       k.siparis(siparisId);
       await _masaDurumTxn(txn, k, masaId, 'bos');
     });

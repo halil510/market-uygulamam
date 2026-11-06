@@ -3,25 +3,29 @@
 // SatisTamamlamaServisi, hizli_satis_ekrani.dart'tan (protokol §6/§35 —
 // mimari borç) birebir taşınan satış tamamlama mantığını içerir: satış +
 // kalemler + stok düşümü + kasa/cari hareketi TEK transaction'da.
-// Servis Veritabani() singleton'ı üzerinden çalıştığı için burada aynı
-// sırada gerçek depo Txn metotlarını (servisin kullandığı BİREBİR aynı
-// kod) TestVeritabani üzerinde çağırarak doğruluyoruz.
+//
+// 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN tamamla()'nın
+// adımlarını kopyalayan bir simülasyon (_satisiSimuleEt) ve fisiGuncelle
+// adımlarının elle tekrarını çağırıyordu — üretim kodu bozulsa bile yeşil
+// kalırdı. Artık GERÇEK SatisTamamlamaServisi().tamamla() / fisiGuncelle()
+// çağrılıyor. Atomiklik testleri, stok adımının yazacağı tabloyu düşürerek
+// gerçek transaction'ın gerçekten geri alındığını doğrular.
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:uuid/uuid.dart';
 import 'package:market_plus/depolar/cari_deposu.dart';
-import 'package:market_plus/depolar/kasa_deposu.dart';
 import 'package:market_plus/depolar/satis_deposu.dart';
-import 'package:market_plus/depolar/stok_deposu.dart';
-import 'package:market_plus/modeller/cari_hareket_model.dart';
-import 'package:market_plus/modeller/kasa_hareket_model.dart';
-import 'package:market_plus/modeller/satis_kalem_model.dart';
-import 'package:market_plus/modeller/satis_model.dart';
+import 'package:market_plus/depolar/urun_deposu.dart';
+import 'package:market_plus/modeller/sepet_model.dart';
+import 'package:market_plus/servisler/satis_tamamlama_servisi.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
-/// SatisTamamlamaServisi.tamamla()'nın nakit/veresiye dallarıyla BİREBİR
-/// aynı sırada depo Txn metotlarını çağıran yardımcı.
-Future<int> _satisiSimuleEt(
+/// GERÇEK SatisTamamlamaServisi().tamamla() — tek kalemli sepet.
+/// [stokAdimindaPatlat]: stok hareketi tablosu düşürülür → transaction
+/// satış yazıldıktan SONRA, stok adımında patlar.
+Future<int> _satisTamamla(
   Database db, {
   required int urunId,
   required double miktar,
@@ -31,63 +35,43 @@ Future<int> _satisiSimuleEt(
   double odenenTutar = 0,
   bool stokAdimindaPatlat = false,
 }) async {
-  final satisDepo = SatisDeposu();
-  final stokDepo = StokDeposu();
-  final kasaDepo = KasaDeposu();
-  final cariDepo = CariDeposu();
-
-  final toplam = miktar * birimFiyat;
-  late int satisId;
-
-  await db.transaction((txn) async {
-    satisId = await satisDepo.satisEkleTxn(
-      txn,
-      SatisModel(
-        tarih: DateTime.now(), cariId: cariId,
-        toplamTutar: toplam, genelToplam: toplam,
-        odenenTutar: odenenTutar, odemeYontemi: odemeYontemi, fisTipi: 'Satış',
-      ),
-      [SatisKalemModel(
-        satisId: 0, urunId: urunId, urunAdi: 'Test Ürün',
-        miktar: miktar, birimFiyat: birimFiyat, toplamTutar: toplam,
-      )],
-    );
-
-    if (stokAdimindaPatlat) {
-      throw Exception('Simüle edilmiş hata — stok düşümünde');
-    }
-
-    await stokDepo.stokDusTxn(txn, const Uuid().v4(),
-        urunId: urunId, miktar: miktar, referansId: satisId, referansTuru: 'satis');
-
-    if (odemeYontemi == 'Cari' && cariId != null) {
-      await cariDepo.hareketEkleTxn(txn, CariHareketModel(
-        cariId: cariId, tarih: DateTime.now(), fisTipi: 'Satış',
-        fisId: satisId, aciklama: 'Veresiye satış',
-        borc: toplam, alacak: 0, odemeTuru: 'Cari',
-      ));
-    } else if (odenenTutar > 0) {
-      await kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
-        hareketTipi: 'Satış', tutar: odenenTutar,
-        referansId: satisId, referansTuru: 'satis', tarih: DateTime.now(),
-      ));
-    }
-  });
-
-  return satisId;
+  final urun = (await UrunDeposu().idileGetir(urunId))!;
+  final musteri = cariId != null ? await CariDeposu().idileGetir(cariId) : null;
+  if (stokAdimindaPatlat) await db.execute('DROP TABLE stok_hareket');
+  final sonuc = await SatisTamamlamaServisi().tamamla(
+    kalemler: [SepetKalem(urun: urun, miktar: miktar, birimFiyat: birimFiyat)],
+    musteri: musteri,
+    genelToplam: miktar * birimFiyat,
+    odemeYontemi: odemeYontemi,
+    odenenTutar: odenenTutar,
+  );
+  return sonuc.satisId;
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Database db;
 
-  setUp(() async => db = await TestVeritabani.olustur());
-  tearDown(() => db.close());
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
 
   group('SatisTamamlamaServisi mantığı — nakit satış', () {
     test('satış, kalem, stok düşümü ve kasa hareketi tek işlemde oluşur', () async {
       final urunId = await TestVeritabani.ornekUrunEkle(db, stok: 50, satisFiyati: 20);
 
-      final satisId = await _satisiSimuleEt(db,
+      final satisId = await _satisTamamla(db,
           urunId: urunId, miktar: 3, birimFiyat: 20,
           odemeYontemi: 'Nakit', odenenTutar: 60);
 
@@ -115,7 +99,7 @@ void main() {
       final urunId = await TestVeritabani.ornekUrunEkle(db, stok: 20, satisFiyati: 100);
       final cariId = await TestVeritabani.ornekCariEkle(db);
 
-      final satisId = await _satisiSimuleEt(db,
+      final satisId = await _satisTamamla(db,
           urunId: urunId, miktar: 2, birimFiyat: 100,
           odemeYontemi: 'Cari', cariId: cariId, odenenTutar: 0);
 
@@ -139,7 +123,7 @@ void main() {
       final urunId = await TestVeritabani.ornekUrunEkle(db, stok: 10, satisFiyati: 50);
 
       await expectLater(
-        _satisiSimuleEt(db, urunId: urunId, miktar: 1, birimFiyat: 50,
+        _satisTamamla(db, urunId: urunId, miktar: 1, birimFiyat: 50,
             odemeYontemi: 'Nakit', odenenTutar: 50, stokAdimindaPatlat: true),
         throwsException,
       );
@@ -153,43 +137,34 @@ void main() {
   });
 
   group('SatisTamamlamaServisi.fisiGuncelle mantığı', () {
+    Future<void> fisiGuncelle(int satisId, int urunId,
+        {required double yeniMiktar, required double birimFiyat}) async {
+      final satis = (await SatisDeposu().idileGetir(satisId))!;
+      final urun = (await UrunDeposu().idileGetir(urunId))!;
+      await SatisTamamlamaServisi().fisiGuncelle(
+        satis: satis,
+        yeniKalemler: [SepetKalem(urun: urun, miktar: yeniMiktar, birimFiyat: birimFiyat)],
+        yeniGenelToplam: yeniMiktar * birimFiyat,
+        odemeYontemi: 'Nakit',
+        odenenTutar: yeniMiktar * birimFiyat,
+      );
+    }
+
     test('miktar artışı: stok ekstra düşer, kasaya ek tutar yazılır (nakit fiş)', () async {
       final urunId = await TestVeritabani.ornekUrunEkle(db, stok: 100, satisFiyati: 10);
       // Önce 2 adetlik bir satış oluştur (stok 100 -> 98).
-      final satisId = await _satisiSimuleEt(db,
+      final satisId = await _satisTamamla(db,
           urunId: urunId, miktar: 2, birimFiyat: 10, odemeYontemi: 'Nakit', odenenTutar: 20);
 
-      // Fişi 5 adede çıkar (miktar farkı: +3) — fisiGuncelle mantığını simüle et.
-      final satisDepo = SatisDeposu();
-      final stokDepo = StokDeposu();
-      final kasaDepo = KasaDeposu();
-      late Map<int, double> stokFarklari;
-      await db.transaction((txn) async {
-        stokFarklari = await satisDepo.fisiGuncelleTxn(txn,
-            satisId: satisId,
-            yeniKalemler: [SatisKalemModel(
-              satisId: satisId, urunId: urunId, urunAdi: 'Test Ürün',
-              miktar: 5, birimFiyat: 10, toplamTutar: 50,
-            )],
-            yeniGenelToplam: 50, yeniOdenenTutar: 50);
+      // Fişi 5 adede çıkar (miktar farkı: +3) — GERÇEK fisiGuncelle.
+      await fisiGuncelle(satisId, urunId, yeniMiktar: 5, birimFiyat: 10);
 
-        for (final girdi in stokFarklari.entries) {
-          final gid = const Uuid().v4();
-          if (girdi.value > 0) {
-            await stokDepo.stokDusTxn(txn, gid, urunId: girdi.key, miktar: girdi.value,
-                referansId: satisId, referansTuru: 'fis_guncelleme');
-          } else {
-            await stokDepo.stokGirTxn(txn, gid, urunId: girdi.key, miktar: -girdi.value,
-                referansId: satisId, referansTuru: 'fis_guncelleme');
-          }
-        }
-        await kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
-          hareketTipi: 'Satış', tutar: 30, tarih: DateTime.now(),
-          aciklama: 'Fiş güncelleme',
-        ));
-      });
-
-      expect(stokFarklari[urunId], equals(3.0), reason: '5 - 2 = 3 adet fazladan düşülmeli');
+      final fark = await db.query('stok_hareket',
+          where: 'referans_id = ? AND referans_turu = ? AND urun_id = ?',
+          whereArgs: [satisId, 'fis_guncelleme', urunId]);
+      expect(fark, hasLength(1));
+      expect((fark.first['miktar'] as num).toDouble(), equals(3.0),
+          reason: '5 - 2 = 3 adet fazladan düşülmeli');
 
       final urun = (await db.query('urunler', where: 'id = ?', whereArgs: [urunId])).first;
       expect((urun['stok'] as num).toDouble(), equals(95.0), reason: '100 - 2 - 3 = 95');
@@ -204,21 +179,13 @@ void main() {
 
     test('adımlardan biri hata fırlatırsa fiş güncellemesi TAMAMEN geri alınır', () async {
       final urunId = await TestVeritabani.ornekUrunEkle(db, stok: 100, satisFiyati: 10);
-      final satisId = await _satisiSimuleEt(db,
+      final satisId = await _satisTamamla(db,
           urunId: urunId, miktar: 2, birimFiyat: 10, odemeYontemi: 'Nakit', odenenTutar: 20);
 
-      final satisDepo = SatisDeposu();
+      // Kalemler güncellendikten SONRA stok adımı patlasın.
+      await db.execute('DROP TABLE stok_hareket');
       await expectLater(
-        db.transaction((txn) async {
-          await satisDepo.fisiGuncelleTxn(txn,
-              satisId: satisId,
-              yeniKalemler: [SatisKalemModel(
-                satisId: satisId, urunId: urunId, urunAdi: 'Test Ürün',
-                miktar: 9, birimFiyat: 10, toplamTutar: 90,
-              )],
-              yeniGenelToplam: 90, yeniOdenenTutar: 90);
-          throw Exception('Simüle edilmiş hata — kasa adımında');
-        }),
+        fisiGuncelle(satisId, urunId, yeniMiktar: 9, birimFiyat: 10),
         throwsException,
       );
 

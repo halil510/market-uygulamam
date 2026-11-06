@@ -285,6 +285,10 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani>
               Expanded(
                 child: TextField(
                   controller: _araCtrl,
+                  // USB okuyucu / el terminali barkodu klavye gibi yazıp
+                  // Enter basar → barkoda benziyorsa bip + titreşim.
+                  // (Ürün adı yazıp Enter'a basınca bip çalmaz.)
+                  onSubmitted: (v) => _barkodSrv.girisOkunduBip(v),
                   decoration: InputDecoration(
                     hintText: 'Ad, barkod, kod, marka ara…',
                     prefixIcon: const Icon(Icons.search),
@@ -358,14 +362,12 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani>
                             ikon: Icons.inventory_2_outlined,
                             baslik: 'Ürün bulunamadı',
                             aksiyonMetni: 'Yeni Ürün Ekle',
-                            aksiyon: () async {
-                              final ok = await context.push<bool>('/urun/ekle');
-                              if (ok == true) {
-                                ref
-                                    .read(urunlerProvider.notifier)
-                                    .yukle(sifirla: true);
-                              }
-                            })
+                            // 🔴 Barkod okutulup ürün bulunamayınca çıkan bu
+                            // buton ÖNCEDEN '/urun/ekle'ye hiçbir şey
+                            // göndermiyordu → Ürün Ekle ekranında barkod/kod
+                            // boş geliyordu. Diğer ekle yolları gibi aranan
+                            // barkod (arama kutusundaki metin) de iletilir.
+                            aksiyon: _urunEkle)
                         : _izgara
                             ? _izgaraView(durum.urunler, durum)
                             : (_masaustuMu(context)

@@ -304,11 +304,17 @@ class _StokListeEkraniState extends ConsumerState<StokListeEkrani>
         const SizedBox(height: 12),
         Text('Ürün bulunamadı', style: TextStyle(color: context.textSecondary, fontSize: 15)),
         const SizedBox(height: 16),
-        if (_aramaMetni.isNotEmpty)
+        if (_aramaMetni.isNotEmpty || _aramaCtrl.text.trim().isNotEmpty)
           FilledButton.icon(
             onPressed: () async {
+              // _aramaMetni 300 ms'lik arama gecikmesinden sonra dolar; hızlı
+              // tıklanınca boş kalıp Ürün Ekle'ye barkod gitmiyordu. Arama
+              // kutusundaki güncel metin önceliklidir.
+              final aranan = _aramaCtrl.text.trim().isNotEmpty
+                  ? _aramaCtrl.text.trim()
+                  : _aramaMetni;
               final ok = await context.push<bool>('/urun/ekle',
-                extra: {'barkod': _aramaMetni, 'kaynak': 'stok_liste'});
+                extra: {'barkod': aranan, 'kaynak': 'stok_liste'});
               if (ok == true && mounted) _yukle();
             },
             icon: const Icon(Icons.add),

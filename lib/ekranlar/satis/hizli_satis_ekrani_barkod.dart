@@ -41,8 +41,17 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
   }
 
   // ── Barkod Kontrol ───────────────────────────────────────────────────────────
+  // Teşhis: okutulan barkod neden işlenmedi? (yalnız debug konsolu)
+  void _barkodAtlandi(String neden, String barkod) {
+    if (!kDebugMode) return;
+    debugPrint('[BARKOD] $neden → "$barkod" | islemAktif=$_islemAktif '
+        'dialogAcik=$_dialogAcik kilitli=$_scannerKilitli '
+        'isleniyor=$_barkodIsleniyor kuyruk=${_barkodKuyrugu.length}');
+  }
+
   Future<void> _barkodOkutIsle(String barkod) async {
     if (_islemAktif || _dialogAcik) {
+      _barkodAtlandi('kuyruğa alındı (işlem/diyalog açık)', barkod);
       _barkodKuyrugu.add(barkod);
       _kuyruktakiBarkodlariIsle();
       return;
@@ -50,9 +59,11 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
     if (_sonIslenenBarkod == barkod && _sonIslenenZaman != null &&
         DateTime.now().difference(_sonIslenenZaman!) <
             _HizliSatisEkraniState._ayniBarkodMinAralik) {
+      _barkodAtlandi('aynı barkod çok kısa aralıkta, yok sayıldı', barkod);
       return;
     }
     if (_scannerKilitli || _barkodIsleniyor) {
+      _barkodAtlandi('kuyruğa alındı (kilit/işleniyor)', barkod);
       _barkodKuyrugu.add(barkod);
       _kuyruktakiBarkodlariIsle();
       return;
@@ -462,11 +473,31 @@ extension _HizliSatisBarkodExt on _HizliSatisEkraniState {
     // Diğer tüm diyaloglardaki gibi kamera durdurulur, işlem kilitlenir.
     // Kısa hata sesi + çift titreşim (diyalog açılmadan hemen önce).
     BarkodServisi().hataBildir();
+    _barkodKuyrugu.clear();
     _islemBasladi();
     try {
       await _urunBulunamadiAkisi(b);
     } finally {
+      // Diyalog açıkken biriken (aynı bilinmeyen barkodun) tekrarları atılır;
+      // aksi halde "Hayır"dan sonra aynı pencere yeniden açılır ya da kuyruk
+      // yüzünden sonraki okutmalar yutulurdu. Tekrar okutma serbest kalsın
+      // diye son-barkod/kilit durumu da sıfırlanır.
+      _barkodKuyrugu.clear();
+      _sonIslenenBarkod = null;
+      _sonIslenenZaman = null;
+      _scannerKilitli = false;
       _islemBitti();
+      // Windows: diyalogdan dönünce arama kutusu "odakta görünür" ama metin
+      // girişi bağlantısı kopuk kalabiliyor → USB okuyucunun yazdığı karakterler
+      // kutuya ulaşmıyor, DonanimBarkodDinleyici de "kutu odakta" diye karışmıyor
+      // (iki yol da çalışmaz). Odak bir kare boyunca bırakılıp geri verilerek
+      // bağlantı yeniden kurulur. Mobilde okuma kamerayla olduğu için gerekmez.
+      if (mounted && Platform.isWindows) {
+        _araFocus.unfocus();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _araFocus.requestFocus();
+        });
+      }
     }
   }
 

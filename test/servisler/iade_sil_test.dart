@@ -10,73 +10,52 @@
 // veya Cari'ye işlenmiş bir iade silinince hiç var olmamış bir nakit
 // girişi oluşturuluyordu.
 //
-// IadeIslemServisi Veritabani() singleton'ına bağımlı olduğundan
-// (projenin yerleşik test deseni), bu test yeni gecmisFisIadeSil()
-// akışındaki BİREBİR aynı sorguyu gerçek şema üzerinde doğrular.
+// 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN
+// gecmisFisIadeSil()'in kopyası olan bir simülasyon çağırıyordu — üretim
+// kodu bozulsa bile yeşil kalırdı. Artık GERÇEK
+// IadeIslemServisi().gecmisFisIadeSil() çağrılıyor; parametreler, İade
+// Geçmişi ekranının (iade_ekrani_gecmis.dart) yaptığı gibi DB'deki iade ve
+// iade_kalem satırlarından hazırlanıyor.
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
+import 'package:market_plus/servisler/iade_islem_servisi.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
-/// IadeIslemServisi.gecmisFisIadeSil()'in kasa reversal kısmının
-/// BİREBİR aynısı — tam fonksiyonun tekrarı yerine, kritik düzeltilen
-/// davranışı (kasa sadece GERÇEK satır varsa tersine çevrilir) izole
-/// doğrular.
-Future<void> _gecmisFisIadeSilSimulasyonu(
-  Database db, {
-  required int iadeId,
-  required int? cariId,
-}) async {
-  await db.transaction((txn) async {
-    final guncelIade = await txn.query('iade', where: 'id = ?', whereArgs: [iadeId], limit: 1);
-    if (guncelIade.isNotEmpty && guncelIade.first['durum'] == 'iptal') {
-      throw Exception('Bu iade zaten iptal edilmiş.');
-    }
-    final now = DateTime.now().toIso8601String();
-
-    final kalemler = await txn.query('iade_kalem', where: 'iade_id = ?', whereArgs: [iadeId]);
-    for (final k in kalemler) {
-      final urunId = k['urun_id'] as int?;
-      final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;
-      if (urunId == null || miktar <= 0) continue;
-      final onceki = (await txn.query('urunler', columns: ['stok'], where: 'id = ?', whereArgs: [urunId])).first['stok'] as num;
-      await txn.update('urunler', {'stok': onceki.toDouble() - miktar}, where: 'id = ?', whereArgs: [urunId]);
-      await txn.insert('stok_hareket', {
-        'urun_id': urunId, 'hareket_turu': 'İade İptali', 'miktar': miktar,
-        'onceki_stok': onceki, 'sonraki_stok': onceki.toDouble() - miktar,
-        'tarih': now, 'referans_id': iadeId, 'referans_turu': 'iade_iptal',
-      });
-    }
-
-    final orijinalKasaSatirlari = await txn.query('kasa_hareketleri',
-        where: 'referans_id = ? AND referans_turu = ? AND deleted_at IS NULL',
-        whereArgs: [iadeId, 'iade']);
-    for (final k in orijinalKasaSatirlari) {
-      final kasaTutar = (k['tutar'] as num?)?.toDouble() ?? 0;
-      if (kasaTutar <= 0) continue;
-      await txn.insert('kasa_hareketleri', {
-        'global_id': const Uuid().v4(), 'hareket_tipi': 'Iade Iptali', 'tutar': kasaTutar,
-        'referans_id': iadeId, 'referans_turu': 'iade_iptal', 'tarih': now,
-      });
-    }
-
-    if (cariId != null) {
-      await txn.rawUpdate(
-          "UPDATE cari_hareket SET is_deleted = 1, last_updated = ? WHERE fis_id = ? AND cari_id = ? AND fis_tipi IN ('İade','Alım İadesi')",
-          [now, iadeId, cariId]);
-      await txn.rawUpdate(
-          'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0) WHERE id = ?',
-          [cariId, cariId]);
-    }
-
-    await txn.update('iade', {'durum': 'iptal', 'last_updated': now}, where: 'id = ?', whereArgs: [iadeId]);
-  });
+/// İade Geçmişi ekranındaki "Fişi Sil" çağrısıyla aynı parametrelerle
+/// GERÇEK gecmisFisIadeSil()'i çağırır.
+Future<void> _gecmisFisIadeSil(Database db, {required int iadeId}) async {
+  final iade = (await db.query('iade', where: 'id = ?', whereArgs: [iadeId])).first;
+  final kalemler = await db.query('iade_kalem', where: 'iade_id = ?', whereArgs: [iadeId]);
+  await IadeIslemServisi().gecmisFisIadeSil(
+    iadeId: iadeId,
+    kalemler: kalemler.map((k) => Map<String, dynamic>.from(k)).toList(),
+    toplamTutar: (iade['toplam_tutar'] as num?)?.toDouble() ?? 0,
+    cariId: iade['cari_id'] as int?,
+    fisNo: iade['fis_no']?.toString(),
+  );
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Database db;
-  setUp(() async => db = await TestVeritabani.olustur());
-  tearDown(() => db.close());
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
 
   group('gecmisFisIadeSil() — kasa reversal artık tahmine göre değil, GERÇEK satıra göre', () {
     test('Nakit iade silinince kasaya GERÇEK tutarla "Iade Iptali" eklenir', () async {
@@ -95,7 +74,7 @@ void main() {
         'referans_id': iadeId, 'referans_turu': 'iade', 'tarih': DateTime.now().toIso8601String(),
       });
 
-      await _gecmisFisIadeSilSimulasyonu(db, iadeId: iadeId, cariId: null);
+      await _gecmisFisIadeSil(db, iadeId: iadeId);
 
       final kasaTers = await db.query('kasa_hareketleri',
           where: 'referans_id = ? AND referans_turu = ?', whereArgs: [iadeId, 'iade_iptal']);
@@ -119,7 +98,7 @@ void main() {
       await db.update('urunler', {'stok': 6}, where: 'id = ?', whereArgs: [urunId]);
       // BİLİNÇLİ OLARAK kasa_hareketleri satırı EKLENMEDİ (Kart/Banka/Cari iade).
 
-      await _gecmisFisIadeSilSimulasyonu(db, iadeId: iadeId, cariId: null);
+      await _gecmisFisIadeSil(db, iadeId: iadeId);
 
       final kasaTers = await db.query('kasa_hareketleri',
           where: 'referans_id = ? AND referans_turu = ?', whereArgs: [iadeId, 'iade_iptal']);
@@ -149,7 +128,7 @@ void main() {
       });
       await db.update('cari', {'bakiye': -90.0}, where: 'id = ?', whereArgs: [cariId]);
 
-      await _gecmisFisIadeSilSimulasyonu(db, iadeId: iadeId, cariId: cariId);
+      await _gecmisFisIadeSil(db, iadeId: iadeId);
 
       final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
       expect((cari['bakiye'] as num).toDouble(), equals(0.0));
@@ -162,7 +141,33 @@ void main() {
       });
 
       await expectLater(
-          _gecmisFisIadeSilSimulasyonu(db, iadeId: iadeId, cariId: null), throwsException);
+          _gecmisFisIadeSil(db, iadeId: iadeId), throwsException);
+    });
+
+    // CLAUDE.md §3.3 / §5.1: ikinci silme hiçbir ters kayıt üretmez.
+    test('Nakit iade silindikten sonra ikinci silme reddedilir; kasa/stok bir kez ters çevrilir', () async {
+      final urunId = await TestVeritabani.ornekUrunEkle(db, stok: 12);
+      final iadeId = await db.insert('iade', {
+        'cari_id': null, 'fis_no': 'IAD5', 'tarih': DateTime.now().toIso8601String(),
+        'toplam_tutar': 60.0, 'durum': 'tamamlandi',
+      });
+      await db.insert('iade_kalem', {
+        'iade_id': iadeId, 'urun_id': urunId, 'urun_adi': 'Test',
+        'miktar': 2, 'birim_fiyat': 30.0, 'toplam': 60.0,
+      });
+      await db.insert('kasa_hareketleri', {
+        'global_id': const Uuid().v4(), 'hareket_tipi': 'İade', 'tutar': 60.0,
+        'referans_id': iadeId, 'referans_turu': 'iade', 'tarih': DateTime.now().toIso8601String(),
+      });
+
+      await _gecmisFisIadeSil(db, iadeId: iadeId);
+      await expectLater(_gecmisFisIadeSil(db, iadeId: iadeId), throwsException);
+
+      final kasaTers = await db.query('kasa_hareketleri',
+          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [iadeId, 'iade_iptal']);
+      expect(kasaTers, hasLength(1));
+      final urun = (await db.query('urunler', where: 'id = ?', whereArgs: [urunId])).first;
+      expect((urun['stok'] as num).toDouble(), equals(10.0));
     });
   });
 }

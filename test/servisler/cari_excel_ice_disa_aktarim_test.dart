@@ -13,135 +13,121 @@
 //     Bakiyesi" cari_hareket satırı yazılır, bakiye bundan doğal
 //     olarak hesaplanır.
 //
-// ExcelServisi.exceldenCarileriBytesIceriAl() ve içindeki private
-// yardımcılar (_cariTuruCoz, _cariBaslikSatiriBul) private olduğu için,
-// burada BİREBİR AYNI mantık mirror edilip hem saf fonksiyon hem de
-// (CariDeposu/CariAdresDeposu Veritabani() singleton'ına bağlı olduğu
-// için) gerçek şema üzerinde bir in-memory veritabanına karşı
-// doğrulanıyor.
+// 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN
+// _cariTuruCoz / _cariBaslikSatiriBul / satır işleme mantığının
+// KOPYALARINI çağırıyordu — üretim kodu bozulsa bile yeşil kalırdı.
+// Yardımcılar private ve gerçek Excel hücresi beklediği için sarmalayıcı
+// yerine (üretim koduna HİÇ dokunmadan) testte gerçek bir .xlsx üretilip
+// GERÇEK ExcelServisi().exceldenCarileriBytesIceriAl() çağrılıyor; tür
+// çözme ve başlık satırı bulma bu gerçek yoldan doğrulanıyor.
+import 'package:excel/excel.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:market_plus/servisler/excel_servisi.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
-// ── Saf mantık mirror'ları ──────────────────────────────────────────────
+const _baslik = ['Cari kod', 'Ünvan', 'Adres', 'Telefon', 'Borç', 'Alacak', 'Bakiye', 'Cari Türü'];
 
-String _normalizeString(String s) => s
-    .toLowerCase()
-    .replaceAll('ı', 'i')
-    .replaceAll('ğ', 'g')
-    .replaceAll('ü', 'u')
-    .replaceAll('ş', 's')
-    .replaceAll('ö', 'o')
-    .replaceAll('ç', 'c')
-    .replaceAll(' ', '')
-    .replaceAll('-', '')
-    .replaceAll('_', '');
-
-String _cariTuruCoz(String ham) {
-  final n = _normalizeString(ham);
-  final musteriMi = n.contains('musteri') || n.contains('customer') || n.contains('alici');
-  final tedarikciMi = n.contains('tedarik') ||
-      n.contains('supplier') ||
-      n.contains('vendor') ||
-      n.contains('satici');
-  if (musteriMi && tedarikciMi) return 'Hem Müşteri Hem Tedarikçi';
-  if (tedarikciMi) return 'Tedarikçi';
-  return 'Müşteri';
-}
-
-int _cariBaslikSatiriBul(List<List<String>> rows) {
-  final sinir = rows.length < 6 ? rows.length : 6;
-  for (int r = 0; r < sinir; r++) {
-    for (final v in rows[r]) {
-      if (_normalizeString(v).contains('carikod')) return r;
-    }
+/// Verilen satırlardan gerçek bir .xlsx (tek sayfa) üretir. Sayı olarak
+/// verilen hücreler DoubleCellValue, diğerleri TextCellValue yazılır.
+Uint8List _xlsx(List<List<Object>> satirlar) {
+  final ex = Excel.createExcel();
+  final sh = ex[ex.getDefaultSheet()!];
+  for (final s in satirlar) {
+    sh.appendRow(s
+        .map<CellValue?>((v) => v is num ? DoubleCellValue(v.toDouble()) : TextCellValue(v.toString()))
+        .toList());
   }
-  return 0;
+  return Uint8List.fromList(ex.encode()!);
 }
+
+/// GERÇEK içe aktarım — tek veri satırı (başlık + satır).
+Future<CariIceAktarSonuc> _satiriIsle({
+  required String kod,
+  required String unvan,
+  required double borc,
+  required double alacak,
+  String turu = 'Müsteri',
+}) =>
+    ExcelServisi().exceldenCarileriBytesIceriAl(_xlsx([
+      _baslik,
+      [kod, unvan, '', '', borc, alacak, borc - alacak, turu],
+    ]));
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late Database db;
+
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
+
+  Future<String?> tip(String kod) async => (await db.query('cari',
+          columns: ['cari_tipi'], where: 'cari_kodu = ?', whereArgs: [kod]))
+      .first['cari_tipi'] as String?;
+
   group('Cari Türü normalizasyonu', () {
-    test('"Müsteri" (Türkçe karaktersiz) -> Müşteri', () {
-      expect(_cariTuruCoz('Müsteri'), 'Müşteri');
+    test('"Müsteri" (Türkçe karaktersiz) -> Müşteri', () async {
+      await _satiriIsle(kod: 'T-1', unvan: 'A', borc: 0, alacak: 0, turu: 'Müsteri');
+      expect(await tip('T-1'), 'Müşteri');
     });
-    test('"Tedarikçi" -> Tedarikçi', () {
-      expect(_cariTuruCoz('Tedarikçi'), 'Tedarikçi');
+    test('"Tedarikçi" -> Tedarikçi', () async {
+      await _satiriIsle(kod: 'T-2', unvan: 'B', borc: 0, alacak: 0, turu: 'Tedarikçi');
+      expect(await tip('T-2'), 'Tedarikçi');
     });
-    test('boş/tanınmayan -> varsayılan Müşteri', () {
-      expect(_cariTuruCoz(''), 'Müşteri');
-      expect(_cariTuruCoz('???'), 'Müşteri');
+    test('boş/tanınmayan -> varsayılan Müşteri', () async {
+      await _satiriIsle(kod: 'T-3', unvan: 'C', borc: 0, alacak: 0, turu: '');
+      await _satiriIsle(kod: 'T-4', unvan: 'D', borc: 0, alacak: 0, turu: '???');
+      expect(await tip('T-3'), 'Müşteri');
+      expect(await tip('T-4'), 'Müşteri');
     });
   });
 
   group('Başlık satırı bulma (süs satırları olsa bile)', () {
     test('kullanıcının örnek dosyasındaki gibi 2. satırda başlık varsa '
-        'doğru satır bulunur', () {
-      final rows = [
+        'doğru satır bulunur', () async {
+      final sonuc = await ExcelServisi().exceldenCarileriBytesIceriAl(_xlsx([
         ['Cari listesi'],
         ['--'],
-        ['Cari kod', 'Ünvan', 'Adres', 'Telefon', 'Borç', 'Alacak', 'Bakiye', 'Cari Türü'],
-        ['CARI0-1', 'Test', 'Adres', '', '0', '0', '0', 'Müsteri'],
-      ];
-      expect(_cariBaslikSatiriBul(rows), 2);
+        _baslik,
+        ['CARI0-1', 'Test', 'Adres', '', 0, 0, 0, 'Müsteri'],
+      ]));
+      // Başlık 2. (0 tabanlı) satırda bulunduysa yalnız altındaki satır
+      // veri sayılır: tek ekleme, hata yok.
+      expect(sonuc.eklenen, 1);
+      expect(sonuc.hatali, 0);
+      expect(await tip('CARI0-1'), 'Müşteri');
     });
 
-    test('başlık ilk satırdaysa (süs yoksa) yine doğru bulunur', () {
-      final rows = [
+    test('başlık ilk satırdaysa (süs yoksa) yine doğru bulunur', () async {
+      final sonuc = await ExcelServisi().exceldenCarileriBytesIceriAl(_xlsx([
         ['Cari kod', 'Ünvan'],
         ['CARI0-1', 'Test'],
-      ];
-      expect(_cariBaslikSatiriBul(rows), 0);
+      ]));
+      expect(sonuc.eklenen, 1);
+      expect(sonuc.hatali, 0);
     });
   });
 
   group('İçe aktarım — güncelle-veya-yeni-ekle + açılış bakiyesi', () {
-    late Database db;
-    setUp(() async => db = await TestVeritabani.olustur());
-    tearDown(() => db.close());
-
-    /// CariDeposu.ekle()/guncelle()/hareketEkleTxn() ile BİREBİR AYNI
-    /// davranış: yeni caride açılış bakiyesi hareketi yazılır, var olan
-    /// caride bakiyeye HİÇ dokunulmaz.
-    Future<void> satiriIsle(Database db, {
-      required String kod,
-      required String unvan,
-      required double borc,
-      required double alacak,
-    }) async {
-      final mevcut = await db.query('cari',
-          where: 'cari_kodu = ? AND is_deleted = 0', whereArgs: [kod], limit: 1);
-      if (mevcut.isNotEmpty) {
-        // guncelle() deseni: 'bakiye' HİÇ yazılmaz.
-        await db.update('cari', {'unvan': unvan, 'last_updated': DateTime.now().toIso8601String()},
-            where: 'id = ?', whereArgs: [mevcut.first['id']]);
-        return;
-      }
-      final cariId = await db.insert('cari', {
-        'cari_kodu': kod, 'unvan': unvan, 'cari_tipi': 'Müşteri',
-        'bakiye': 0, 'aktif': 1, 'is_deleted': 0,
-      });
-      if (borc > 0.005 || alacak > 0.005) {
-        await db.transaction((txn) async {
-          await txn.insert('cari_hareket', {
-            'cari_id': cariId, 'tarih': DateTime.now().toIso8601String(),
-            'fis_tipi': 'Açılış', 'aciklama': 'Açılış Bakiyesi (Excel içe aktarım)',
-            'borc': borc, 'alacak': alacak, 'odeme_turu': 'Açılış', 'is_deleted': 0,
-          });
-          // hareketEkleTxn() ile AYNI: bakiye HER ZAMAN SUM'dan hesaplanır.
-          await txn.rawUpdate('''
-            UPDATE cari SET bakiye = (
-              SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0)
-              FROM cari_hareket WHERE cari_id = ? AND is_deleted = 0
-            ) WHERE id = ?
-          ''', [cariId, cariId]);
-        });
-      }
-    }
-
     test('cari kodu YOKSA yeni kayıt oluşur VE açılış bakiyesi cari_hareket '
         "satırından doğru hesaplanır (önceden bu özellik hiç yoktu)",
         () async {
-      await satiriIsle(db, kod: 'CARI0-3', unvan: 'Hayrullah Şeran',
+      await _satiriIsle(kod: 'CARI0-3', unvan: 'Hayrullah Şeran',
           borc: 181462.23, alacak: 157284.0);
 
       final cari = (await db.query('cari', where: 'cari_kodu = ?', whereArgs: ['CARI0-3'])).first;
@@ -167,7 +153,7 @@ void main() {
       });
 
       // Excel'deki (eski/dış sistem) borç/alacak farklı olsa bile...
-      await satiriIsle(db, kod: 'CARI0-3', unvan: 'Hayrullah Şeran (Güncel)',
+      await _satiriIsle(kod: 'CARI0-3', unvan: 'Hayrullah Şeran (Güncel)',
           borc: 181462.23, alacak: 157284.0);
 
       final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
@@ -183,13 +169,19 @@ void main() {
 
     test('sadece Bakiye sütunu verilmişse (Borç/Alacak yok) doğru '
         'borç/alacağa çevrilir', () async {
-      // Pozitif bakiye -> borç.
-      await satiriIsle(db, kod: 'CARI0-9', unvan: 'Pozitif Bakiyeli', borc: 100.0, alacak: 0);
+      // Pozitif bakiye -> borç (Borç/Alacak sütunları 0, yalnız Bakiye dolu).
+      await ExcelServisi().exceldenCarileriBytesIceriAl(_xlsx([
+        _baslik,
+        ['CARI0-9', 'Pozitif Bakiyeli', '', '', 0, 0, 100, 'Müsteri'],
+      ]));
       var cari = (await db.query('cari', where: 'cari_kodu = ?', whereArgs: ['CARI0-9'])).first;
       expect((cari['bakiye'] as num).toDouble(), 100.0);
 
       // Negatif bakiye -> alacak (borç negatif olamaz, alacağa çevrilmeli).
-      await satiriIsle(db, kod: 'CARI0-10', unvan: 'Negatif Bakiyeli', borc: 0, alacak: 50.0);
+      await ExcelServisi().exceldenCarileriBytesIceriAl(_xlsx([
+        _baslik,
+        ['CARI0-10', 'Negatif Bakiyeli', '', '', 0, 0, -50, 'Müsteri'],
+      ]));
       cari = (await db.query('cari', where: 'cari_kodu = ?', whereArgs: ['CARI0-10'])).first;
       expect((cari['bakiye'] as num).toDouble(), -50.0);
     });

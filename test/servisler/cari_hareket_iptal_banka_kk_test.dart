@@ -9,82 +9,67 @@
 // dolduruyor, hareketIptalEt() artık kasa ile AYNI desende bulup
 // tersine çeviriyor.
 //
-// CariDeposu.hareketIptalEt() Veritabani() singleton'ı üzerinden
-// çalıştığı için (diğer depo testlerinde olduğu gibi, bkz.
-// virman_servisi_test.dart'taki AYNI gerekçe) burada altındaki gerçek
-// depo metodları (BankaHareketDeposu.ekleTxn, KrediKartiDeposu.
-// limitDegistirTxn) — hareketIptalEt() ile BİREBİR AYNI sırayla —
-// gerçek şema üzerinde bir in-memory veritabanı içinde doğrudan
-// çağrılıyor.
+// 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN
+// hareketIptalEt()'in banka/kart bloklarını KOPYALAYAN bir yardımcı
+// çağırıyordu — üretim kodu bozulsa bile yeşil kalırdı. Artık GERÇEK
+// CariDeposu().hareketIptalEt() çağrılıyor; bunun için kurulum gerçek bir
+// cari + cari_hareket (Tahsilat/Ödeme) satırı yazar (önceden sabit id).
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 import 'package:market_plus/depolar/banka_hareket_deposu.dart';
+import 'package:market_plus/depolar/cari_deposu.dart';
 import 'package:market_plus/depolar/kredi_karti_deposu.dart';
 import 'package:market_plus/modeller/banka_hareket_model.dart';
+import 'package:market_plus/modeller/cari_hareket_model.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
-/// CariDeposu.hareketIptalEt()'in banka/kredi kartı bloklarıyla BİREBİR
-/// AYNI orkestrasyon — tek fark, gerçek Veritabani() singleton'ı yerine
-/// test db'sinin transaction'ı kullanılır.
-Future<void> _hareketIptalEt(
-  Database db, {
-  required int cariHareketId,
-}) async {
-  await db.transaction((txn) async {
-    final bankaRows = await txn.query('banka_hareketler',
-        where:
-            'referans_turu = ? AND referans_id = ? AND (is_deleted IS NULL OR is_deleted = 0)',
-        whereArgs: ['cari_hareket', cariHareketId]);
-    if (bankaRows.isNotEmpty) {
-      final orijinal = bankaRows.first;
-      final orijinalTip = orijinal['islem_tipi'] as String? ?? '';
-      final orijinalTutar = (orijinal['tutar'] as num?)?.toDouble() ?? 0;
-      final bankaHesapId = orijinal['banka_hesap_id'] as int?;
-      final tersTip = orijinalTip == 'Giden'
-          ? 'Gelen'
-          : orijinalTip == 'Gelen'
-              ? 'Giden'
-              : null;
-      if (tersTip != null && orijinalTutar > 0 && bankaHesapId != null) {
-        await BankaHareketDeposu().ekleTxn(
-            txn,
-            BankaHareketModel(
-              bankaHesapId: bankaHesapId,
-              islemTipi: tersTip,
-              tutar: orijinalTutar,
-              referansId: cariHareketId,
-              referansTuru: 'cari_hareket_iptal',
-              tarih: DateTime.now(),
-              aciklama: 'İptal testi',
-            ));
-      }
-    }
+/// GERÇEK CariDeposu().hareketIptalEt() — hareket DB'den okunur.
+Future<void> _hareketIptalEt(Database db, {required int cariHareketId}) async {
+  final satir = (await db.query('cari_hareket',
+          where: 'id = ?', whereArgs: [cariHareketId]))
+      .first;
+  await CariDeposu().hareketIptalEt(CariHareketModel.fromMap(satir));
+}
 
-    final kkRows = await txn.query('kredi_karti_hareket',
-        where: 'referans_turu = ? AND referans_id = ? AND is_deleted = 0',
-        whereArgs: ['cari_hareket', cariHareketId]);
-    if (kkRows.isNotEmpty) {
-      final orijinal = kkRows.first;
-      final orijinalYon = orijinal['yon'] as String? ?? '';
-      final orijinalTutar = (orijinal['tutar'] as num?)?.toDouble() ?? 0;
-      final krediKartiId = orijinal['kredi_karti_id'] as int?;
-      if (orijinalTutar > 0 && krediKartiId != null) {
-        final tersDelta =
-            orijinalYon == 'harcama' ? -orijinalTutar : orijinalTutar;
-        await KrediKartiDeposu().limitDegistirTxn(
-            txn, krediKartiId, tersDelta,
-            aciklama: 'İptal testi',
-            referansId: cariHareketId,
-            referansTuru: 'cari_hareket_iptal');
-      }
-    }
+/// İptal edilecek gerçek cari hareketi (Tahsilat: alacak, Ödeme: borç).
+Future<int> _cariHareketEkle(Database db,
+    {required String fisTipi, required double tutar, required String odemeTuru}) async {
+  final cariId = await TestVeritabani.ornekCariEkle(db);
+  final tahsilat = fisTipi == 'Tahsilat';
+  return db.insert('cari_hareket', {
+    'global_id': const Uuid().v4(),
+    'cari_id': cariId,
+    'tarih': DateTime.now().toIso8601String(),
+    'fis_tipi': fisTipi,
+    'aciklama': '$fisTipi (test)',
+    'borc': tahsilat ? 0.0 : tutar,
+    'alacak': tahsilat ? tutar : 0.0,
+    'odeme_turu': odemeTuru,
+    'is_deleted': 0,
   });
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Database db;
-  setUp(() async => db = await TestVeritabani.olustur());
-  tearDown(() => db.close());
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
 
   Future<int> bankaIdAl() async => db.insert('bankalar', {'ad': 'Test Bankası'});
 
@@ -110,7 +95,7 @@ void main() {
         'bakiyesi de GERİ DÜŞER (önceden hiç düşmüyordu)', () async {
       final hesapId = await bankaHesabiEkle(bakiye: 0);
       // 1. Orijinal tahsilat: müşteriden banka'ya 5000 giriyor (Gelen).
-      final cariHareketId = 1; // sabit — sadece referans için, gerçek satır gerekmiyor.
+      final cariHareketId = await _cariHareketEkle(db, fisTipi: 'Tahsilat', tutar: 5000, odemeTuru: 'Banka');
       await db.transaction((txn) => BankaHareketDeposu().ekleTxn(
           txn,
           BankaHareketModel(
@@ -134,7 +119,7 @@ void main() {
     test('tedarikçiye Banka ile yapılan 3.000₺ ödeme iptal edilince para GERİ GELİR',
         () async {
       final hesapId = await bankaHesabiEkle(bakiye: 10000);
-      const cariHareketId = 2;
+      final cariHareketId = await _cariHareketEkle(db, fisTipi: 'Ödeme', tutar: 3000, odemeTuru: 'Banka');
       await db.transaction((txn) => BankaHareketDeposu().ekleTxn(
           txn,
           BankaHareketModel(
@@ -151,6 +136,28 @@ void main() {
       hesap = (await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [hesapId])).first;
       expect(hesap['bakiye'], 10000.0);
     });
+
+    // CLAUDE.md §3.3 / §5.1: ikinci iptal hiçbir ters kayıt üretmez.
+    test('aynı hareket ikinci kez iptal edilmek istenirse reddedilir, banka iki kez ters çevrilmez',
+        () async {
+      final hesapId = await bankaHesabiEkle(bakiye: 0);
+      final cariHareketId =
+          await _cariHareketEkle(db, fisTipi: 'Tahsilat', tutar: 800, odemeTuru: 'Banka');
+      await db.transaction((txn) => BankaHareketDeposu().ekleTxn(
+          txn,
+          BankaHareketModel(
+            bankaHesapId: hesapId, islemTipi: 'Gelen', tutar: 800,
+            tarih: DateTime.now(), referansId: cariHareketId,
+            referansTuru: 'cari_hareket',
+          )));
+
+      await _hareketIptalEt(db, cariHareketId: cariHareketId);
+      await expectLater(
+          _hareketIptalEt(db, cariHareketId: cariHareketId), throwsException);
+
+      final hesap = (await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [hesapId])).first;
+      expect(hesap['bakiye'], 0.0);
+    });
   });
 
   group('Kredi kartı tarafı — cari hareket iptali artık tersine çeviriyor', () {
@@ -158,7 +165,7 @@ void main() {
         "müşteriden Kredi Kartı ile tahsilat (limit azaltan 'odeme' yönü) "
         'iptal edilince kullanılan limit GERİ ARTAR', () async {
       final kartId = await krediKartiEkle(limit: 10000);
-      const cariHareketId = 3;
+      final cariHareketId = await _cariHareketEkle(db, fisTipi: 'Tahsilat', tutar: 1500, odemeTuru: 'Kredi Kartı');
       // Müşteriden tahsilat = kart kullanımını AZALTIR (negatif delta, 'odeme').
       await db.transaction((txn) => KrediKartiDeposu().limitDegistirTxn(
           txn, kartId, -1500,

@@ -100,6 +100,13 @@ class _FaturaDetayEkraniState extends ConsumerState<FaturaDetayEkrani> {
     }
   }
 
+  /// Yalnız test: yüklenmiş faturanın PDF baytlarını (A4 veya 80 mm termal)
+  /// ekran üzerinden paylaşmadan/yazdırmadan üretir. Üretim mantığı
+  /// _pdfBytes / _pdfBytes80mm'dir; bu sarmalayıcı davranış eklemez.
+  @visibleForTesting
+  Future<Uint8List> pdfBytesTestIcin({bool termal80mm = false}) =>
+      termal80mm ? _pdfBytes80mm() : _pdfBytes();
+
   @override
   Widget build(BuildContext context) {
     if (_yukleniyor) {

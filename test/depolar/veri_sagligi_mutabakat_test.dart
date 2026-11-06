@@ -3,7 +3,6 @@
 // Veri Sağlığı Merkezi'nin (protokol §13) dayandığı yeni mutabakat
 // fonksiyonlarını (CariDeposu.bakiyeMutabakatYap, KasaDeposu
 // .bakiyeMutabakatYap, BankaHesapDeposu.bakiyeMutabakatYap) gerçek
-// .bakiyeMutabakatYap, BankaHesapDeposu.bakiyeMutabakatYap) gerçek
 // şemayla doğrular.
 //
 // 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN üç depo

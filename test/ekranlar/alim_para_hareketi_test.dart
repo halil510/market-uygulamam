@@ -6,17 +6,21 @@
 // (protokol §10 ihlali). Bu test, _alimKaydet()'in düzeltilen mantığını
 // (kalemler+stok+kasa/banka hareketi TEK transaction'da) gerçek depo Txn
 // metotlarıyla, gerçek şema üzerinde doğruluyor.
+//
+// 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN _alimKaydet()
+// mantığını KOPYALAYAN basitleştirilmiş bir yardımcı çağırıyordu — üretim
+// kodu bozulsa bile yeşil kalırdı. Artık ekranın kullandığı GERÇEK
+// AlimIslemServisi().alimKaydet() çağrılıyor.
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:market_plus/depolar/kasa_deposu.dart';
-import 'package:market_plus/depolar/banka_hareket_deposu.dart';
-import 'package:market_plus/modeller/kasa_hareket_model.dart';
-import 'package:market_plus/modeller/banka_hareket_model.dart';
+import 'package:market_plus/servisler/alim_islem_servisi.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
-/// alim_ekrani.dart _alimKaydet()'in (düzeltilmiş) mantığıyla BİREBİR
-/// aynı sırada çalışan basitleştirilmiş yardımcı.
-Future<int> _alimiSimuleEt(
+/// GERÇEK AlimIslemServisi().alimKaydet(); oluşan alım fişinin id'sini döner.
+Future<int> _alimKaydet(
   Database db, {
   required int urunId,
   required int cariId,
@@ -25,49 +29,45 @@ Future<int> _alimiSimuleEt(
   required String odemeYontemi,
   int? bankaHesapId,
 }) async {
-  final kasaDepo = KasaDeposu();
-  final bankaDepo = BankaHareketDeposu();
-  final genelToplam = miktar * alisFiyat;
-  late int alimId;
-
-  await db.transaction((txn) async {
-    alimId = await txn.insert('tedarikci_siparisler', {
-      'cari_id': cariId,
-      'siparis_no': 'AL-TEST', 'siparis_tarihi': DateTime.now().toIso8601String(),
-      'toplam_tutar': genelToplam, 'durum': 'teslim_alindi',
-    });
-
-    final rows = await txn.query('urunler', columns: ['stok'], where: 'id = ?', whereArgs: [urunId]);
-    final onceki = (rows.first['stok'] as num).toDouble();
-    await txn.update('urunler', {'stok': onceki + miktar}, where: 'id = ?', whereArgs: [urunId]);
-
-    if (odemeYontemi == 'Nakit' && genelToplam > 0.005) {
-      await kasaDepo.hareketEkleTxn(txn, KasaHareketModel(
-        hareketTipi: 'Alım', tutar: genelToplam,
-        referansId: alimId, referansTuru: 'alim', tarih: DateTime.now(),
-      ));
-    } else if (odemeYontemi == 'Havale' && genelToplam > 0.005) {
-      await bankaDepo.ekleTxn(txn, BankaHareketModel(
-        bankaHesapId: bankaHesapId!, islemTipi: 'Giden',
-        tutar: genelToplam, aciklama: 'Mal Alımı', tarih: DateTime.now(),
-      ));
-    }
-  });
-
-  return alimId;
+  await AlimIslemServisi().alimKaydet(
+    mevcutSiparisId: null,
+    kalemler: [AlimKalemGirdi(urunId: urunId, miktar: miktar, alisFiyat: alisFiyat)],
+    tedarikciId: cariId,
+    tedarikciAdi: 'Test Tedarikçi',
+    genelToplam: miktar * alisFiyat,
+    odemeYontemi: odemeYontemi,
+    bankaHesapId: bankaHesapId,
+    kullaniciId: null,
+    kullaniciAdi: null,
+  );
+  final son = await db.query('tedarikci_siparisler', orderBy: 'id DESC', limit: 1);
+  return son.first['id'] as int;
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Database db;
 
-  setUp(() async => db = await TestVeritabani.olustur());
-  tearDown(() => db.close());
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
 
   group('Alım — gerçek para hareketi (P0 regresyonu)', () {
     test('Nakit alışta kasadan gerçek çıkış hareketi oluşur', () async {
       final urunId = await TestVeritabani.ornekUrunEkle(db, stok: 10);
       final cariId = await TestVeritabani.ornekCariEkle(db, cariTipi: 'Tedarikçi');
-      final alimId = await _alimiSimuleEt(db,
+      final alimId = await _alimKaydet(db,
           urunId: urunId, cariId: cariId, miktar: 20, alisFiyat: 5, odemeYontemi: 'Nakit');
 
       final kasa = await db.query('kasa_hareketleri',
@@ -86,7 +86,7 @@ void main() {
         'banka_id': 1, 'hesap_adi': 'Test Hesap', 'hesap_no': '123', 'bakiye': 1000,
       });
 
-      await _alimiSimuleEt(db,
+      await _alimKaydet(db,
           urunId: urunId, cariId: cariId, miktar: 10, alisFiyat: 8,
           odemeYontemi: 'Havale', bankaHesapId: hesapId);
 
@@ -102,7 +102,7 @@ void main() {
     test('Cari alışta kasa/banka hareketi OLUŞMAZ (borç olarak kalır)', () async {
       final urunId = await TestVeritabani.ornekUrunEkle(db, stok: 0);
       final cariId = await TestVeritabani.ornekCariEkle(db, cariTipi: 'Tedarikçi');
-      final alimId = await _alimiSimuleEt(db,
+      final alimId = await _alimKaydet(db,
           urunId: urunId, cariId: cariId, miktar: 5, alisFiyat: 10, odemeYontemi: 'Cari');
 
       final kasa = await db.query('kasa_hareketleri', where: 'referans_id = ?', whereArgs: [alimId]);

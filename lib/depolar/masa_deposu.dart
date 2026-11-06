@@ -212,7 +212,11 @@ class MasaDeposu {
     final db = await _d;
     final rows = await db.query(DbSabitler.masalar,
         columns: ['ad'], where: 'is_deleted = 0');
-    final desen = RegExp('^${RegExp.escape(onek.trim())}s+(d+)\$',
+    // 🔴 DÜZELTME (2026-11-06): desen ÖNCEDEN '...s+(d+)$' idi — normal
+    // Dart metninde `\s`/`\d` kaçışları yazılmadığı için "Salon 7" hiç
+    // eşleşmiyor, fonksiyon hep 1 dönüyor, Toplu Masa Ekle mükerrer ad
+    // üretiyordu. Kaçışlar artık açıkça `\\s` / `\\d`.
+    final desen = RegExp('^${RegExp.escape(onek.trim())}\\s+(\\d+)\$',
         caseSensitive: false);
     var enBuyuk = 0;
     for (final r in rows) {
@@ -235,9 +239,8 @@ class MasaDeposu {
   }) async {
     // Aynı önekle mevcut masa numaralarını çakıştırma: Salon 1..10 varken
     // "Başlangıç 1" girilse bile 11'den devam eder.
-    baslangic = baslangic > await sonrakiNo(onek)
-        ? baslangic
-        : await sonrakiNo(onek);
+    final ilkBos = await sonrakiNo(onek);
+    if (baslangic < ilkBos) baslangic = ilkBos;
     await _yaz((txn, k) async {
       // Mevcut en yüksek sira değerinden devam et — sıralama bozulmasın
       final maxSira = await txn.rawQuery('SELECT MAX(sira) as m FROM ${DbSabitler.masalar}');

@@ -917,7 +917,17 @@ public class RawPrn {
     return sonuc;
   }
 
+  /// Yalnız test: doluysa yazıcıya gidecek ESC/POS baytları buraya verilir
+  /// ve bağlantı/gönderim adımı atlanır. Üretimde her zaman null'dır.
+  @visibleForTesting
+  static void Function(List<int> bytes)? testBaytYakalayici;
+
   Future<void> _yazdirSirali(List<int> bytes) async {
+    final yakalayici = testBaytYakalayici;
+    if (yakalayici != null) {
+      yakalayici(List<int>.unmodifiable(bytes));
+      return;
+    }
     // ÖNCEDEN BURADA CİDDİ BİR HATA VARDI: bağlantı (_aktif) herhangi
     // bir nedenle kopmuşsa (uygulama arka plana atılıp WiFi/Bluetooth
     // kısa süreliğine kesilmesi, yazıcının uykuya geçmesi, splash'teki

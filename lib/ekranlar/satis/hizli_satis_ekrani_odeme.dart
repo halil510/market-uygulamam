@@ -387,6 +387,21 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
     _islemBasladi();
     sepetNotifier.satisBasladi();
     try {
+      // 🔴 DÜZELTME (2026-11-06): Hızlı Satış'ta veresiye (Cari / karma
+      // içindeki Cari payı) satışta müşterinin kredi limiti HİÇ kontrol
+      // edilmiyordu — Masa ve Toptan Satış'ta vardı. Aynı kural: limit
+      // aşılıyorsa açık onay istenir (sert engel değil).
+      final cariTutar = karmaKalemler != null
+          ? ParaUtils.yuvarla(karmaKalemler
+              .where((k) => k['yontem'] == 'Cari')
+              .fold(0.0, (s, k) => s + (k['tutar'] as num).toDouble()))
+          : (odemeYontemi == 'Cari' ? genelTop : 0.0);
+      final limitOnay = await cariLimitiKontrolVeOnay(context,
+          cariId: musteri?.id,
+          eklenecekTutar: cariTutar,
+          unvan: musteri?.unvan);
+      if (!limitOnay || !mounted) return; // vazgeçildi: hiçbir şey yazılmadı
+
       final kullanici = await AuthServisi().mevcutKullanici();
       if (!mounted) return; // kayıttan önce çıkıldı: hiçbir şey yazılmadı
 

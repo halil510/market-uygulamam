@@ -9,87 +9,21 @@
 // Düzeltme: her şube (ve sube_id NULL olan eski kayıtlar) KENDİ bağımsız
 // zincirinde, sıfırdan yeniden hesaplanıyor.
 //
-// KasaDeposu bu üç metodda Veritabani() singleton'ı (_d) üzerinden
-// çalıştığı için — diğer depo testlerinde olduğu gibi (bkz.
-// vardiya_nakit_mutabakat_test.dart'taki AYNI gerekçe) — burada
-// kasa_deposu.dart'taki DÜZELTİLMİŞ algoritma BİREBİR AYNI SQL/mantıkla,
-// gerçek şema üzerinde bir in-memory veritabanında doğrudan doğrulanıyor.
+// 2026-11-06 (test güvenilirliği + CLAUDE.md §4.2): bu test ÖNCEDEN
+// mutabakat algoritmasının kopyalarını çağırıyordu. Algoritma artık
+// KasaDeposu içinde tek fonksiyonda (_zincirSapanlariBulTxn); test GERÇEK
+// KasaDeposu().bakiyeMutabakatYap() / bakiyeUyumsuzlukSayisi() çağırıyor.
+// Hiç çağrılmayan ve tüm geçmişi yeniden yazan hareketSil() silindi; onun
+// senaryosu gerçek karşılığıyla (soft-delete + mutabakat) korunuyor.
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:market_plus/depolar/kasa_deposu.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
-const _girisler = {
-  'Satış', 'Tahsilat', 'AçılışKasa', 'Giriş', 'Virman Giriş',
-  'Iade Iptali', 'İade İptali', 'Ödeme Girişi', 'Gider İptali',
-};
-
-/// KasaDeposu.bakiyeMutabakatYap() ile BİREBİR AYNI (düzeltilmiş) mantık.
-Future<int> _bakiyeMutabakatYap(Database db) async {
-  final now = DateTime.now().toIso8601String();
-  var duzeltilen = 0;
-  await db.transaction((txn) async {
-    final subeRows = await txn.rawQuery(
-        'SELECT DISTINCT sube_id FROM kasa_hareketleri WHERE deleted_at IS NULL');
-    for (final sr in subeRows) {
-      final subeId = sr['sube_id'] as int?;
-      final rows = subeId != null
-          ? await txn.query('kasa_hareketleri',
-              where: 'deleted_at IS NULL AND sube_id = ?',
-              whereArgs: [subeId],
-              orderBy: 'tarih ASC, id ASC')
-          : await txn.query('kasa_hareketleri',
-              where: 'deleted_at IS NULL AND sube_id IS NULL',
-              orderBy: 'tarih ASC, id ASC');
-      double bakiye = 0;
-      for (final r in rows) {
-        final tip = r['hareket_tipi'] as String? ?? '';
-        final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
-        bakiye = _girisler.contains(tip) ? bakiye + tutar : bakiye - tutar;
-        final mevcut = (r['bakiye_sonrasi'] as num?)?.toDouble();
-        if (mevcut == null || (mevcut - bakiye).abs() > 0.01) {
-          await txn.update('kasa_hareketleri',
-              {'bakiye_sonrasi': bakiye, 'last_updated': now},
-              where: 'id = ?', whereArgs: [r['id']]);
-          duzeltilen++;
-        }
-      }
-    }
-  });
-  return duzeltilen;
-}
-
-/// KasaDeposu.hareketSil() ile BİREBİR AYNI (düzeltilmiş) yeniden
-/// hesaplama bloğu — silme sonrası.
-Future<void> _hareketSil(Database db, int id) async {
-  final now = DateTime.now().toIso8601String();
-  await db.transaction((txn) async {
-    await txn.update(
-        'kasa_hareketleri', {'deleted_at': now, 'last_updated': now},
-        where: 'id = ?', whereArgs: [id]);
-    final subeRows = await txn.rawQuery(
-        'SELECT DISTINCT sube_id FROM kasa_hareketleri WHERE deleted_at IS NULL');
-    for (final sr in subeRows) {
-      final subeId = sr['sube_id'] as int?;
-      final rows = subeId != null
-          ? await txn.query('kasa_hareketleri',
-              where: 'deleted_at IS NULL AND sube_id = ?',
-              whereArgs: [subeId],
-              orderBy: 'tarih ASC, id ASC')
-          : await txn.query('kasa_hareketleri',
-              where: 'deleted_at IS NULL AND sube_id IS NULL',
-              orderBy: 'tarih ASC, id ASC');
-      double bakiye = 0;
-      for (final r in rows) {
-        final tip = r['hareket_tipi'] as String? ?? '';
-        final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
-        bakiye = _girisler.contains(tip) ? bakiye + tutar : bakiye - tutar;
-        await txn.update('kasa_hareketleri',
-            {'bakiye_sonrasi': bakiye, 'last_updated': now},
-            where: 'id = ?', whereArgs: [r['id']]);
-      }
-    }
-  });
-}
+Future<int> _bakiyeMutabakatYap() => KasaDeposu().bakiyeMutabakatYap();
 
 Future<double?> _bakiyeSonrasi(Database db, int id) async {
   final rows = await db.query('kasa_hareketleri',
@@ -98,9 +32,22 @@ Future<double?> _bakiyeSonrasi(Database db, int id) async {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Database db;
-  setUp(() async => db = await TestVeritabani.olustur());
-  tearDown(() => db.close());
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
 
   group('KasaDeposu şube bazlı bakiye mutabakatı (Madde 2 regresyonu)', () {
     test(
@@ -123,7 +70,7 @@ void main() {
         'tarih': t0.add(const Duration(minutes: 2)).toIso8601String(),
       });
 
-      final duzeltilen = await _bakiyeMutabakatYap(db);
+      final duzeltilen = await _bakiyeMutabakatYap();
       expect(duzeltilen, 3);
 
       // Şube 1 KENDİ zincirinde: 100 → 130 (Şube 2'nin 50'si karışmıyor).
@@ -134,7 +81,7 @@ void main() {
     });
 
     test(
-        'hareketSil — Şube 2 hareketi silinince Şube 1 zinciri ETKİLENMEZ',
+        'silme — Şube 2 hareketi silinip mutabakat çalışınca Şube 1 zinciri ETKİLENMEZ',
         () async {
       final t0 = DateTime(2026, 9, 21, 9, 0);
       final id1 = await db.insert('kasa_hareketleri', {
@@ -152,7 +99,12 @@ void main() {
         'bakiye_sonrasi': 130,
       });
 
-      await _hareketSil(db, id2);
+      // Silme = soft-delete (deleted_at), ardından mutabakat.
+      await db.update('kasa_hareketleri', {'deleted_at': DateTime.now().toIso8601String()},
+          where: 'id = ?', whereArgs: [id2]);
+      expect(await KasaDeposu().bakiyeUyumsuzlukSayisi(), 0,
+          reason: 'Şube 1 zinciri zaten doğru; Şube 2 artık boş');
+      expect(await _bakiyeMutabakatYap(), 0);
 
       // Şube 1 zinciri Şube 2'deki silme işleminden ETKİLENMEMELİ.
       expect(await _bakiyeSonrasi(db, id1), 100);
@@ -172,7 +124,7 @@ void main() {
         'tarih': t0.add(const Duration(minutes: 1)).toIso8601String(),
       });
 
-      await _bakiyeMutabakatYap(db);
+      await _bakiyeMutabakatYap();
 
       expect(await _bakiyeSonrasi(db, idNull), 20);
       expect(await _bakiyeSonrasi(db, id1), 100);

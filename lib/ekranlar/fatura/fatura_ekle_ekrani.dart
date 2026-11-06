@@ -18,6 +18,7 @@ import '../../modeller/urun_model.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 
 // Kalem modeli — controller'ları içinde tutar (memory leak önlenir)
 class _Kalem {
@@ -351,30 +352,20 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
               seri: await FaturalandirmaServisi.faturaSeriOneki())
           : await _faturaDepo.ekle(fatura, detaylar);
       if (!mounted) return;
-      // 🔴 Derin denetimde bulundu (P2): fatura_no alanı serbestçe
-      // düzenlenebiliyordu — kullanıcı otomatik üretilen numarayı silip
-      // mevcut bir faturayla ÇAKIŞAN bir değer yazabilirdi. faturalar.
-      // fatura_no UNIQUE olduğu için FaturaDeposu.ekle() bunu
-      // yakalayıp SESSİZCE farklı, otomatik bir numarayla değiştiriyor
-      // — kullanıcı kendi seçtiği numaranın değiştirildiğinden habersiz
-      // kalıyordu. Kaydedilen faturanın gerçek numarası kontrol edilip
-      // farklıysa açıkça bildiriliyor.
-      final kaydedilen = await _faturaDepo.idileGetir(faturaId);
-      if (!mounted) return;
+      // Elle girilen numara artık asla sessizce değiştirilmez: çakışırsa
+      // FaturaDeposu.ekle() kayıt yapmadan hata fırlatır (aşağıdaki catch
+      // mesajı gösterir) — bkz. 2026-11-06 düzeltmesi.
       if (otomatikNo) {
+        final kaydedilen = await _faturaDepo.idileGetir(faturaId);
+        if (!mounted) return;
         BildirimServisi.basari(context,
             'Fatura oluşturuldu — No: ${kaydedilen?.faturaNo ?? '-'}');
-      } else if (kaydedilen != null && kaydedilen.faturaNo != girilenFaturaNo) {
-        BildirimServisi.uyari(context,
-            'Fatura oluşturuldu — ama "$girilenFaturaNo" numarası zaten '
-            'kullanıldığı için otomatik olarak "${kaydedilen.faturaNo}" '
-            'verildi.');
       } else {
-        BildirimServisi.basari(context, 'Fatura oluşturuldu');
+        BildirimServisi.basari(context, 'Fatura oluşturuldu — No: $girilenFaturaNo');
       }
       context.pop(true);
     } catch (e) {
-      if (mounted) BildirimServisi.hata(context, 'Hata: $e');
+      if (mounted) BildirimServisi.hata(context, kullaniciyaHataMetni(e));
     } finally {
       if (mounted) setState(() => _yukleniyor = false);
     }

@@ -23,45 +23,6 @@ class FaturaDeposu {
     return rows.isNotEmpty;
   }
 
-  /// ÖNCEDEN CİDDİ BİR HUKUKİ UYUMLULUK RİSKİ VARDI: fatura numarası,
-  /// gerçek bir artan sayaç yerine "şu anki zaman damgası mod 1 milyar"
-  /// ile üretiliyordu (fatura_ekle_ekrani.dart, initState). Bu SIRALI
-  /// DEĞİLDİ (GİB'in zorunlu kıldığı "boşluksuz, artan sıra numarası"
-  /// kuralını ihliyordu) ve zaman damgası ~11.5 günde bir döngüye
-  /// girdiği için ÇAKIŞMA (mükerrer numara) riski taşıyordu. Artık bu
-  /// fonksiyon, o yıl+seri için VERİTABANINDA KAYITLI EN YÜKSEK
-  /// numarayı bulup bir fazlasını döndürüyor — gerçekten sıralı ve
-  /// kalıcı.
-  Future<String> siradakiFaturaNoUret({String seri = 'FAT'}) async {
-    try {
-      final db = await _d;
-      final yil = DateTime.now().year;
-      final onek = '$seri$yil';
-      final rows = await db.rawQuery(
-        'SELECT fatura_no FROM faturalar WHERE fatura_no LIKE ? '
-        'ORDER BY fatura_no DESC LIMIT 1',
-        ['$onek%'],
-      );
-      var sonraki = 1;
-      if (rows.isNotEmpty) {
-        final mevcut = rows.first['fatura_no'] as String?;
-        if (mevcut != null && mevcut.length >= onek.length + 9) {
-          final siraStr = mevcut.substring(onek.length, onek.length + 9);
-          final sira = int.tryParse(siraStr);
-          if (sira != null) sonraki = sira + 1;
-        }
-      }
-      return '$onek${sonraki.toString().padLeft(9, '0')}';
-    } catch (e, st) {
-      LogServisi().hata('FaturaDeposu.siradakiFaturaNoUret', hata: e, yigin: st);
-      // Son çare — en azından çalışsın, ama bu durum loglanıyor ve
-      // kullanıcı yine de kaydetmeden önce numarayı görüp
-      // düzenleyebiliyor.
-      final yil = DateTime.now().year;
-      return '$seri$yil${DateTime.now().millisecondsSinceEpoch % 1000000000}'.padRight(16, '0').substring(0, 16);
-    }
-  }
-
   Future<bool> faturaNoKullanildiMi(String faturaNo) async {
     final db = await _d;
     final rows = await db.query('faturalar',
@@ -69,64 +30,64 @@ class FaturaDeposu {
     return rows.isNotEmpty;
   }
 
+  /// ELLE numaralı fatura kaydı (Fatura Ekle ekranında numara yazıldığında).
+  /// Otomatik numara için [ekleMerkeziSeriIle] kullanılır.
   Future<int> ekle(FaturaModel fatura, List<FaturaDetayModel> kalemler) async {
     // 🔴 Derin analizde bulundu: fatura_detaylari kalemlerine global_id
     // atanmıyordu ve işlem sonrası BulutManager hiç çağrılmıyordu —
-    // faturalar sadece manuel senkronla buluta gidiyordu. Ayrıca
-    // fatura_no üretimi (siradakiFaturaNoUret) ile bu kayıt arasında
-    // küçük bir yarış durumu (race condition) penceresi var — iki
-    // cihaz aynı anda çağırırsa aynı numarayı üretebilir. Veritabanı
-    // seviyesinde fatura_no UNIQUE olduğu için bu durumda veri
-    // BOZULMAZ (ikinci kayıt reddedilir) ama kullanıcıya hata döner.
-    // Bu nadir durumda, YENİ bir numara üretip TEK SEFER yeniden
-    // deniyoruz — kullanıcı hatayla karşılaşmadan işlem tamamlanır.
-    String? yeniFaturaNo;
-    for (var deneme = 0; deneme < 2; deneme++) {
-      try {
-        final db = await _d;
-        final faturaId = await db.transaction((txn) async {
-          final faturaMap = fatura.toMap();
-          faturaMap['global_id'] ??= const Uuid().v4();
-          faturaMap.remove('id');
-          if (yeniFaturaNo != null) faturaMap['fatura_no'] = yeniFaturaNo;
-          final id = await txn.insert('faturalar', faturaMap);
-          for (final k in kalemler) {
-            final km = k.toMap();
-            km['global_id'] ??= const Uuid().v4();
-            km.remove('id');
-            km['fatura_id'] = id;
-            await txn.insert('fatura_detaylari', km);
-          }
-          return id;
-        });
-
-        // Transaction başarılı — buluta bildir.
-        try {
-          final faturaSatir = await db.query('faturalar', where: 'id = ?', whereArgs: [faturaId], limit: 1);
-          if (faturaSatir.isNotEmpty) {
-            BulutManager().upsert('faturalar', Map<String, dynamic>.from(faturaSatir.first));
-          }
-          final detaySatirlar = await db.query('fatura_detaylari', where: 'fatura_id = ?', whereArgs: [faturaId]);
-          for (final d in detaySatirlar) {
-            BulutManager().upsert('fatura_detaylari', Map<String, dynamic>.from(d));
-          }
-        } catch (e) {
-          if (kDebugMode) debugPrint('Fatura bulut bildirimi hatası: $e');
+    // faturalar sadece manuel senkronla buluta gidiyordu.
+    //
+    // 🔴 DÜZELTME (2026-11-06, CLAUDE.md §5.4 / bulgu #3): numara çakışınca
+    // ÖNCEDEN yerel "en büyük + 1" ile ve sabit 'FAT' serisiyle YENİ bir
+    // numara üretilip SESSİZCE yeniden deneniyordu — kağıt faturanın numarası
+    // değişiyor ve merkezi seri bloğu dışında numara üretiliyordu. Elle
+    // girilen numara kullanıcınındır: çakışırsa kayıt yapılmaz, açık hata
+    // döner (ekran zaten önceden kontrol ediyor; bu, araya senkronla gelen
+    // aynı numaralı fatura içindir).
+    final db = await _d;
+    final int faturaId;
+    try {
+      faturaId = await db.transaction((txn) async {
+        final faturaMap = fatura.toMap();
+        faturaMap['global_id'] ??= const Uuid().v4();
+        faturaMap.remove('id');
+        final id = await txn.insert('faturalar', faturaMap);
+        for (final k in kalemler) {
+          final km = k.toMap();
+          km['global_id'] ??= const Uuid().v4();
+          km.remove('id');
+          km['fatura_id'] = id;
+          await txn.insert('fatura_detaylari', km);
         }
-        return faturaId;
-      } catch (e, st) {
-        final mesaj = e.toString().toLowerCase();
-        final cakismaMi = mesaj.contains('unique') && mesaj.contains('fatura_no');
-        if (cakismaMi && deneme == 0) {
-          // Yeni bir numara üret ve tek sefer tekrar dene.
-          yeniFaturaNo = await siradakiFaturaNoUret();
-          continue;
-        }
-        LogServisi().hata('Fatura.ekle', hata: e, yigin: st);
-        rethrow;
+        return id;
+      });
+    } catch (e, st) {
+      final mesaj = e.toString().toLowerCase();
+      final cakismaMi = mesaj.contains('unique') && mesaj.contains('fatura_no');
+      if (cakismaMi) {
+        throw Exception('"${fatura.faturaNo}" numaralı bir fatura zaten var. '
+            'Farklı bir numara yazın ya da alanı boş bırakıp otomatik '
+            'atanmasını sağlayın.');
       }
+      LogServisi().hata('Fatura.ekle', hata: e, yigin: st);
+      rethrow;
     }
-    throw Exception('Fatura numarası çakışması çözülemedi, lütfen tekrar deneyin.');
+
+    // Transaction başarılı — buluta bildir (commit sonrası, taze satırla).
+    // Bildirim hatası kaydı geri almaz ama artık log'a düşer (§5.7).
+    try {
+      final faturaSatir = await db.query('faturalar', where: 'id = ?', whereArgs: [faturaId], limit: 1);
+      if (faturaSatir.isNotEmpty) {
+        BulutManager().upsert('faturalar', Map<String, dynamic>.from(faturaSatir.first));
+      }
+      final detaySatirlar = await db.query('fatura_detaylari', where: 'fatura_id = ?', whereArgs: [faturaId]);
+      for (final d in detaySatirlar) {
+        BulutManager().upsert('fatura_detaylari', Map<String, dynamic>.from(d));
+      }
+    } catch (e, st) {
+      LogServisi().hata('Fatura.ekle (bulut bildirimi)', hata: e, yigin: st);
+    }
+    return faturaId;
   }
 
   /// [ekle]'nin MERKEZİ SERİ/BLOK sistemini kullanan sürümü — bkz.

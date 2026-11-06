@@ -12,49 +12,78 @@
 // verilmedi) bakiye GERÇEKTEN düzeltilir, 'Nakit'/'Kart' seçilirse (para
 // zaten fiziksel verildi) cari sadece takip amaçlı nötr kayıt alır.
 //
-// IadeIslemServisi Veritabani() singleton'ına bağımlı olduğundan
-// (projenin yerleşik test deseni — bkz. iade_olustur_cift_iade_fix_test.dart
-// ve iade_sil_test.dart'taki AYNI yaklaşım), bu test topluIadeKaydet()'teki
-// BİREBİR aynı cari_hareket yazım mantığını gerçek şema üzerinde doğrular.
+// 2026-11-06 (test güvenilirliği, Kademe 1): bu test ÖNCEDEN
+// topluIadeKaydet()'in cari yazımını ve duzenlemeModuKalemEkle()'nin kasa
+// koşulunu KOPYALAYAN yardımcılar çağırıyordu — üretim kodu bozulsa bile
+// yeşil kalırdı. Artık GERÇEK IadeIslemServisi metotları çağrılıyor.
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
+import 'package:market_plus/depolar/cari_deposu.dart';
+import 'package:market_plus/depolar/urun_deposu.dart';
+import 'package:market_plus/servisler/iade_islem_servisi.dart';
+import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
-/// IadeIslemServisi.topluIadeKaydet()'teki (düzeltilmiş) cari_hareket
-/// yazımının BİREBİR aynısı.
-Future<void> _iadeCariYaz(
-  Database db, {
+/// Cariye [birimFiyat]'tan 1 adet satış yazar (iade fiyat dayanağı —
+/// gerçek akış fiyatı o carinin son satışından okur), sonra GERÇEK
+/// topluIadeKaydet ile 1 adet iade alır.
+Future<void> _topluIade(Database db, {
   required int cariId,
-  required bool isTedarikci,
   required String odemeYontemi,
-  required int iadeId,
-  required String fisNo,
-  required double toplamIade,
+  required double birimFiyat,
 }) async {
-  await db.transaction((txn) async {
-    final gercekEtki = odemeYontemi == 'Cari';
-    await txn.insert('cari_hareket', {
-      'global_id': const Uuid().v4(),
-      'cari_id': cariId,
-      'tarih': DateTime.now().toIso8601String(),
-      'fis_tipi': 'İade',
-      'fis_id': iadeId,
-      'fis_no': fisNo,
-      'borc': gercekEtki ? (isTedarikci ? toplamIade : 0) : toplamIade,
-      'alacak': gercekEtki ? (isTedarikci ? 0 : toplamIade) : toplamIade,
-      'odeme_turu': odemeYontemi,
-    });
-    await txn.rawUpdate(
-        'UPDATE cari SET bakiye = (SELECT COALESCE(SUM(borc),0) - COALESCE(SUM(alacak),0) FROM cari_hareket WHERE cari_id=? AND is_deleted=0) WHERE id=?',
-        [cariId, cariId]);
+  final urunId = await TestVeritabani.ornekUrunEkle(db, satisFiyati: birimFiyat);
+  final satisId = await db.insert('satislar', {
+    'global_id': const Uuid().v4(),
+    'fis_no': 'S-$urunId',
+    'tarih': DateTime.now().toIso8601String(),
+    'cari_id': cariId,
+    'genel_toplam': birimFiyat,
+    'odenen_tutar': birimFiyat,
+    'odeme_yontemi': 'Nakit',
+    'is_deleted': 0,
   });
+  await db.insert('satis_kalem', {
+    'global_id': const Uuid().v4(),
+    'satis_id': satisId,
+    'urun_id': urunId,
+    'urun_adi': 'Test Ürün',
+    'miktar': 1,
+    'birim_fiyat': birimFiyat,
+    'net_fiyat': birimFiyat,
+    'toplam_tutar': birimFiyat,
+  });
+  final urun = (await UrunDeposu().idileGetir(urunId))!;
+  final cari = (await CariDeposu().idileGetir(cariId))!;
+  await IadeIslemServisi().topluIadeKaydet(
+    kalemler: [IadeKalemGirdi(urun: urun, adet: 1)],
+    odemeYontemi: odemeYontemi,
+    kullaniciId: null,
+    kullaniciAdi: 'Test',
+    cari: cari,
+  );
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Database db;
-  setUp(() async => db = await TestVeritabani.olustur());
-  tearDown(() => db.close());
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+            (_) async => null);
+    SharedPreferences.setMockInitialValues({});
+    db = await TestVeritabani.olustur();
+    Veritabani.testVeritabani = db;
+  });
+  tearDown(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    Veritabani.testVeritabani = null;
+    await db.close();
+  });
 
   group("İade — 'Cari' ödeme yöntemi bakiyeyi GERÇEKTEN etkiler", () {
     test('Müşteride 200 TL veresiye borcu varken 60 TL Cari iade edilirse borç 140\'a düşer',
@@ -71,13 +100,7 @@ void main() {
       });
       await db.update('cari', {'bakiye': 200.0}, where: 'id = ?', whereArgs: [cariId]);
 
-      await _iadeCariYaz(db,
-          cariId: cariId,
-          isTedarikci: false,
-          odemeYontemi: 'Cari',
-          iadeId: 1,
-          fisNo: 'IAD1',
-          toplamIade: 60.0);
+      await _topluIade(db, cariId: cariId, odemeYontemi: 'Cari', birimFiyat: 60.0);
 
       final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
       expect((cari['bakiye'] as num).toDouble(), equals(140.0),
@@ -98,13 +121,7 @@ void main() {
       });
       await db.update('cari', {'bakiye': -500.0}, where: 'id = ?', whereArgs: [cariId]);
 
-      await _iadeCariYaz(db,
-          cariId: cariId,
-          isTedarikci: true,
-          odemeYontemi: 'Cari',
-          iadeId: 2,
-          fisNo: 'IAD2',
-          toplamIade: 100.0);
+      await _topluIade(db, cariId: cariId, odemeYontemi: 'Cari', birimFiyat: 100.0);
 
       final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
       expect((cari['bakiye'] as num).toDouble(), equals(-400.0),
@@ -116,13 +133,7 @@ void main() {
       final cariId = await TestVeritabani.ornekCariEkle(db);
       await db.update('cari', {'bakiye': 0}, where: 'id = ?', whereArgs: [cariId]);
 
-      await _iadeCariYaz(db,
-          cariId: cariId,
-          isTedarikci: false,
-          odemeYontemi: 'Nakit',
-          iadeId: 3,
-          fisNo: 'IAD3',
-          toplamIade: 60.0);
+      await _topluIade(db, cariId: cariId, odemeYontemi: 'Nakit', birimFiyat: 60.0);
 
       final cari = (await db.query('cari', where: 'id = ?', whereArgs: [cariId])).first;
       expect((cari['bakiye'] as num).toDouble(), equals(0.0),
@@ -133,43 +144,57 @@ void main() {
   group(
       "İade Geçmişi düzenleme modunda kalem ekleme (duzenlemeModuKalemEkle) — kasa hareketi artık ödeme yöntemine göre",
       () {
-    // IadeIslemServisi.duzenlemeModuKalemEkle()'teki "5. Kasa hareketi"
-    // adımının (düzeltilmiş) koşulunun BİREBİR aynısı: ÖNCEDEN odemeYontemi
-    // ne olursa olsun koşulsuz kasa çıkışı yazıyordu — Kart/Banka veya Cari
-    // seçilse bile kasadan gerçekte hiç çıkmamış bir tutar düşülüyordu.
-    Future<void> kasaYazIadeGirisi(Database db,
-        {required String odemeYontemi, required int iadeId, required double toplam}) async {
-      if (odemeYontemi != 'Nakit') return; // düzeltilmiş davranış
-      await db.insert('kasa_hareketleri', {
+    // GERÇEK IadeIslemServisi.duzenlemeModuKalemEkle() çağrılır: ÖNCEDEN
+    // odemeYontemi ne olursa olsun koşulsuz kasa çıkışı yazıyordu — Kart/
+    // Banka veya Cari seçilse bile kasadan gerçekte hiç çıkmamış bir tutar
+    // düşülüyordu.
+    Future<int> kalemEkle(Database db,
+        {required String odemeYontemi, required double toplam}) async {
+      final urunId = await TestVeritabani.ornekUrunEkle(db);
+      final iadeId = await db.insert('iade', {
         'global_id': const Uuid().v4(),
-        'hareket_tipi': 'İade',
-        'tutar': toplam,
-        'referans_id': iadeId,
-        'referans_turu': 'iade',
+        'fis_no': 'IAD-$urunId',
         'tarih': DateTime.now().toIso8601String(),
+        'toplam_tutar': 0,
+        'durum': 'tamamlandi',
       });
+      await IadeIslemServisi().duzenlemeModuKalemEkle(
+        iadeId: iadeId,
+        urunId: urunId,
+        urunAdi: 'Test Ürün',
+        miktar: 1,
+        fiyat: toplam,
+        toplam: toplam,
+        fisNo: 'IAD-$urunId',
+        cariId: null,
+        cariTipi: null,
+        kullaniciId: null,
+        kullaniciAdi: 'Test',
+        odemeYontemi: odemeYontemi,
+      );
+      return iadeId;
     }
 
     test('Kart/Banka seçiliyken kalem eklenirse kasaya HİÇ hareket yazılmaz', () async {
-      await kasaYazIadeGirisi(db, odemeYontemi: 'Kart/Banka', iadeId: 10, toplam: 75.0);
+      final iadeId = await kalemEkle(db, odemeYontemi: 'Kart/Banka', toplam: 75.0);
       final kasaSatirlari = await db.query('kasa_hareketleri',
-          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [10, 'iade']);
+          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [iadeId, 'iade']);
       expect(kasaSatirlari, isEmpty,
           reason: 'Kart/Banka ile ödenen bir iade kalemi kasadan hiç nakit çıkarmamalı');
     });
 
     test('Cari seçiliyken kalem eklenirse kasaya HİÇ hareket yazılmaz', () async {
-      await kasaYazIadeGirisi(db, odemeYontemi: 'Cari', iadeId: 11, toplam: 50.0);
+      final iadeId = await kalemEkle(db, odemeYontemi: 'Cari', toplam: 50.0);
       final kasaSatirlari = await db.query('kasa_hareketleri',
-          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [11, 'iade']);
+          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [iadeId, 'iade']);
       expect(kasaSatirlari, isEmpty,
           reason: 'Cari\'ye yazılan bir iade kalemi kasadan hiç nakit çıkarmamalı');
     });
 
     test('Nakit seçiliyken kalem eklenirse kasaya GERÇEK tutar yazılır', () async {
-      await kasaYazIadeGirisi(db, odemeYontemi: 'Nakit', iadeId: 12, toplam: 40.0);
+      final iadeId = await kalemEkle(db, odemeYontemi: 'Nakit', toplam: 40.0);
       final kasaSatirlari = await db.query('kasa_hareketleri',
-          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [12, 'iade']);
+          where: 'referans_id = ? AND referans_turu = ?', whereArgs: [iadeId, 'iade']);
       expect(kasaSatirlari, hasLength(1));
       expect((kasaSatirlari.first['tutar'] as num).toDouble(), equals(40.0));
     });

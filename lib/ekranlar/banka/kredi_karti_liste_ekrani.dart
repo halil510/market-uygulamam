@@ -10,6 +10,7 @@ import '../../saglayicilar/riverpod/borc_provider.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
 import 'masaustu/kredi_karti_masaustu_gorunum.dart';
+import '../../cekirdek/utils/para_utils.dart';
 
 class KrediKartiListeEkrani extends ConsumerWidget {
   final int? bankaId;
@@ -79,7 +80,7 @@ class KrediKartiListeEkrani extends ConsumerWidget {
           kartOlustur: (context, kart, i) {
             final limitDoluluk = kart.kartLimit > 0 ? (kart.kullanilanLimit / kart.kartLimit * 100) : 0.0;
             final altSatirlar = [
-              'Limit: ${kart.kartLimit.toStringAsFixed(2)} TL',
+              'Limit: ${ParaUtils.formatla(kart.kartLimit)}',
               if (limitDoluluk > 0) 'Kullanım: %${limitDoluluk.toStringAsFixed(0)}',
               if (kart.sonOdemeTarihi != null) 'Son Ödeme: ${_formatTarih(kart.sonOdemeTarihi!)}',
             ];

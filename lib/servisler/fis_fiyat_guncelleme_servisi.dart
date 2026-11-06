@@ -210,7 +210,7 @@ class FisFiyatGuncellemeServisi {
         tabloAdi: 'satislar',
         islemTuru: 'FIS_FIYAT_GUNCELLEME',
         ozet: '$guncellenen fiş güncel ürün fiyatına çekildi '
-            '(toplam fark: ${toplamFark.toStringAsFixed(2)} TL)',
+            '(toplam fark: ${ParaUtils.formatla(toplamFark)})',
       );
     }
     return FisFiyatSonucu(guncellenen, degismeyen, atlanan, toplamFark);

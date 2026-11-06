@@ -27,6 +27,7 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../satis/widgets/kamera_paneli.dart';
+import '../../cekirdek/utils/para_utils.dart';
 
 class QrMenuUrunSecimEkrani extends StatefulWidget {
   const QrMenuUrunSecimEkrani({super.key});
@@ -210,7 +211,7 @@ class _QrMenuUrunSecimEkraniState extends State<QrMenuUrunSecimEkrani> {
   }
 
   String _fiyatAltYazi(UrunModel u) =>
-      '${u.satisFiyati.toStringAsFixed(2)} ₺${u.anaGrup != null ? " · ${u.anaGrup}" : ""}';
+      '${ParaUtils.formatla(u.satisFiyati)}${u.anaGrup != null ? " · ${u.anaGrup}" : ""}';
 
   @override
   Widget build(BuildContext context) {

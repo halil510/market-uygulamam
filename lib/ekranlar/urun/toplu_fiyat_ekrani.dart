@@ -116,7 +116,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
           Text('${hedefIds.length} ürün güncellenecek.'),
           const SizedBox(height: 8),
           Text('İşlem: ${_islemAdi()}', style: const TextStyle(fontWeight: FontWeight.w600)),
-          Text('Değer: ${_tipi == 'yuzde' ? '%$deger' : '${deger.toStringAsFixed(2)} ₺'}'),
+          Text('Değer: ${_tipi == 'yuzde' ? '%$deger' : ParaUtils.formatla(deger)}'),
           const SizedBox(height: 8),
           const Text('Bu işlem geri alınamaz!', style: TextStyle(color: TsRenk.hata, fontSize: 12)),
         ]),

@@ -11,6 +11,7 @@ import '../veri/database/veritabani.dart';
 import '../cekirdek/sabitler/db_sabitleri.dart';
 import 'bulut/bulut_manager.dart';
 import 'log_servisi.dart';
+import '../cekirdek/utils/para_utils.dart';
 
 class PuanServisi {
   static final PuanServisi _i = PuanServisi._();
@@ -48,7 +49,7 @@ class PuanServisi {
         'islem_tipi': 'Kazanıldı',
         'puan':       kazanilanPuan,
         'referans_id': satisId,
-        'aciklama':   aciklama ?? 'Satış puanı (${tutar.toStringAsFixed(2)} ₺)',
+        'aciklama':   aciklama ?? 'Satış puanı (${ParaUtils.formatla(tutar)})',
         ..._damga(now),
       });
     });

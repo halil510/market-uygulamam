@@ -12,6 +12,7 @@ import '../../tasarim_sistemi/ts_token.dart';
 import '../../tasarim_sistemi/ts_yukleniyor.dart';
 import '../../tasarim_sistemi/ts_bos_durum.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
+import '../../cekirdek/utils/para_utils.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LOADING WIDGETS
@@ -397,18 +398,9 @@ class ParaMetin extends StatelessWidget {
   static String _formatla(double t) {
     if (t.abs() >= 1000000) {
       return '₺${(t/1000000).toStringAsFixed(1)}M';
-    } else if (t.abs() >= 1000) {
-      final str = t.abs().toStringAsFixed(2).replaceAll('.', ',');
-      final parts = str.split(',');
-      String binlikStr = '';
-      final tam = parts[0];
-      for (int i = 0; i < tam.length; i++) {
-        if (i > 0 && (tam.length - i) % 3 == 0) binlikStr += '.';
-        binlikStr += tam[i];
-      }
-      return '${t < 0 ? "-" : ""}₺$binlikStr,${parts[1]}';
     }
-    return '₺${t.toStringAsFixed(2).replaceAll('.', ',')}';
+    // CLAUDE.md §4.8: elle binlik/ondalık biçimlendirme yerine tek kaynak.
+    return ParaUtils.formatla(t);
   }
 }
 

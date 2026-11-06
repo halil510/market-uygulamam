@@ -139,8 +139,8 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
     });
     BildirimServisi.basari(context,
         sonuc.dovizKodu != null
-            ? 'Alış fiyatı: ${sonuc.tlTutari.toStringAsFixed(2)} ₺ (${sonuc.dovizKodu} bazında takip ediliyor)'
-            : 'Alış fiyatı: ${sonuc.tlTutari.toStringAsFixed(2)} ₺ olarak hesaplandı');
+            ? 'Alış fiyatı: ${ParaUtils.formatla(sonuc.tlTutari)} (${sonuc.dovizKodu} bazında takip ediliyor)'
+            : 'Alış fiyatı: ${ParaUtils.formatla(sonuc.tlTutari)} olarak hesaplandı');
   }
 
   /// Sesle söylenen ürün adı zaten kayıtlıysa kullanıcıyı bilgilendirir

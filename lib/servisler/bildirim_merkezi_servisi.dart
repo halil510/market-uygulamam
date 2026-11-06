@@ -12,6 +12,7 @@ import 'dart:async';
 import '../veri/database/veritabani.dart';
 import '../depolar/urun_deposu.dart';
 import '../depolar/borc_deposu.dart';
+import '../cekirdek/utils/para_utils.dart';
 
 class BildirimMerkeziServisi {
   static final BildirimMerkeziServisi _instance = BildirimMerkeziServisi._();
@@ -146,7 +147,7 @@ class BildirimMerkeziServisi {
         if (b.id == null) continue;
         await _ekle(
           baslik: 'Vadesi Geçen Borç: ${b.baslik}',
-          mesaj: 'Tutar: ${(b.tutar - b.odenenTutar).toStringAsFixed(2)} ₺',
+          mesaj: 'Tutar: ${ParaUtils.formatla((b.tutar - b.odenenTutar))}',
           tip: 'kritik',
           hedefTuru: 'borc',
           hedefId: b.id!,

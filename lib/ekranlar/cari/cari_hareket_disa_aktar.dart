@@ -140,16 +140,16 @@ extension _CariHareketDisaAktar on _CariHareketEkraniState {
         pw.SizedBox(height: 8),
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.end, children: [
           pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-            pw.Text('Toplam Borç: ${_toplamBorc.toStringAsFixed(2)} ₺',
+            pw.Text('Toplam Borç: ${ParaUtils.formatla(_toplamBorc)}',
                 style: pw.TextStyle(
                     font: boldFont, fontSize: 10, color: PdfColors.red)),
-            pw.Text('Toplam Alacak: ${_toplamAlacak.toStringAsFixed(2)} ₺',
+            pw.Text('Toplam Alacak: ${ParaUtils.formatla(_toplamAlacak)}',
                 style: pw.TextStyle(
                     font: boldFont, fontSize: 10, color: PdfColors.green)),
             if (_tarihAralik != null && !_turFiltreli)
-              pw.Text('Devreden: ${_devreden.toStringAsFixed(2)} ₺',
+              pw.Text('Devreden: ${ParaUtils.formatla(_devreden)}',
                   style: pw.TextStyle(font: font, fontSize: 10)),
-            pw.Text('${_turFiltreli ? 'Net' : 'Bakiye'}: ${_bakiye.toStringAsFixed(2)} ₺',
+            pw.Text('${_turFiltreli ? 'Net' : 'Bakiye'}: ${ParaUtils.formatla(_bakiye)}',
                 style: pw.TextStyle(font: boldFont, fontSize: 11)),
           ]),
         ]),

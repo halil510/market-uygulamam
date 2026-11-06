@@ -327,7 +327,7 @@ class _KartDetayIcerik extends ConsumerWidget {
             Text('Karta Ödeme Yap'),
           ]),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('Güncel borç: ${kart.kullanilanLimit.toStringAsFixed(2)} TL',
+            Text('Güncel borç: ${ParaUtils.formatla(kart.kullanilanLimit)}',
                 style: TextStyle(fontSize: 13, color: context.textSecondary)),
             const SizedBox(height: 12),
             TextField(
@@ -373,7 +373,7 @@ class _KartDetayIcerik extends ConsumerWidget {
                   ref.invalidate(krediKartiDetayProvider(kart.id!));
                   if (context.mounted) {
                     BildirimServisi.basari(context,
-                        '${tutar.toStringAsFixed(2)} TL ödeme yapıldı');
+                        '${ParaUtils.formatla(tutar)} ödeme yapıldı');
                   }
                 } catch (e) {
                   setStateDialog(() => isleniyor = false);

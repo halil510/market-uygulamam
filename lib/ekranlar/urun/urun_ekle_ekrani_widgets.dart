@@ -233,7 +233,7 @@ class _DovizleHesaplaDialogState extends State<_DovizleHesaplaDialog> {
           decoration: BoxDecoration(color: TsRenk.zemin(TsRenk.basarili), borderRadius: BorderRadius.circular(12)),
           child: Column(children: [
             Text('TL Karşılığı', style: TextStyle(fontSize: 11, color: context.textSecondary)),
-            Text('${_sonuc.toStringAsFixed(2)} ₺',
+            Text(ParaUtils.formatla(_sonuc),
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: TsRenk.basarili)),
           ]),
         ),

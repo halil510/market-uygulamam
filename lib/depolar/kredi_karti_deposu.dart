@@ -289,6 +289,9 @@ class KrediKartiDeposu {
           await txn.update('kredi_kartlari', {
             'kullanilan_limit': dogru,
             'kalan_limit': (kartLimit - dogru).clamp(0, double.infinity),
+            // 2026-11-06 (§3.4): ÖNCEDEN yazılmıyordu — bulutun LWW koruması
+            // düzeltmeyi eski kayıt sayıp reddedebiliyordu.
+            'last_updated': DateTime.now().toIso8601String(),
             // Türetilmiş değer: last_updated ilerletilmez (bkz. MasaDeposu.
             // siparisToplamlariMutabakatYap notu).
           }, where: 'id = ?', whereArgs: [kartId]);

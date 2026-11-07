@@ -329,6 +329,28 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
 
     _islemBasladi();
     try {
+      // 🔴 DÜZELTME (2026-11-07): Fiş Güncelle akışında kredi limiti hiç
+      // kontrol edilmiyordu — veresiye fişe ürün eklenerek ya da peşin fiş
+      // Cari'ye çevrilerek limit sessizce aşılabiliyordu. Normal satışla
+      // aynı kural; yalnızca bu fişten doğacak EK borç kadar sorulur.
+      final musteri = sepet.musteri;
+      final cariArtisi = await _satisTamamlamaServisi.fisGuncellemeCariArtisi(
+        satisId: satis.id!,
+        yeniCariId: musteri?.id,
+        yeniCariPayi: SatisTamamlamaServisi.cariPayi(
+          odemeYontemi: odemeYontemi ?? satis.odemeYontemi,
+          genelToplam: sepet.genelToplam,
+          karmaKalemler: karmaKalemler,
+        ),
+      );
+      if (!mounted) return;
+      final limitOnay = await cariLimitiKontrolVeOnay(context,
+          cariId: musteri?.id,
+          eklenecekTutar: cariArtisi,
+          unvan: musteri?.unvan,
+          birlikteEtiketi: 'Bu güncellemeyle');
+      if (!limitOnay || !mounted) return; // vazgeçildi: hiçbir şey yazılmadı
+
       final kullanici = await AuthServisi().mevcutKullanici();
       if (!mounted) return; // kayıttan önce çıkıldı: hiçbir şey yazılmadı
 
@@ -391,11 +413,10 @@ extension _HizliSatisOdemeExt on _HizliSatisEkraniState {
       // içindeki Cari payı) satışta müşterinin kredi limiti HİÇ kontrol
       // edilmiyordu — Masa ve Toptan Satış'ta vardı. Aynı kural: limit
       // aşılıyorsa açık onay istenir (sert engel değil).
-      final cariTutar = karmaKalemler != null
-          ? ParaUtils.yuvarla(karmaKalemler
-              .where((k) => k['yontem'] == 'Cari')
-              .fold(0.0, (s, k) => s + (k['tutar'] as num).toDouble()))
-          : (odemeYontemi == 'Cari' ? genelTop : 0.0);
+      final cariTutar = SatisTamamlamaServisi.cariPayi(
+          odemeYontemi: odemeYontemi,
+          genelToplam: genelTop,
+          karmaKalemler: karmaKalemler);
       final limitOnay = await cariLimitiKontrolVeOnay(context,
           cariId: musteri?.id,
           eklenecekTutar: cariTutar,

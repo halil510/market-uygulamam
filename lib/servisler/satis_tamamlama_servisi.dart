@@ -14,6 +14,7 @@
 // transaction sırası ve iş kuralları BİREBİR korundu.
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
+import '../cekirdek/utils/para_utils.dart';
 import '../depolar/cari_deposu.dart';
 import '../depolar/kasa_deposu.dart';
 import '../depolar/satis_deposu.dart';
@@ -58,6 +59,36 @@ class SatisTamamlamaServisi {
   final _stokDepo = StokDeposu();
   final _kasaDepo = KasaDeposu();
   final _cariDepo = CariDeposu();
+
+  /// Bir ödemenin veresiye (cari borcu) payı: 'Cari' → genel toplamın
+  /// tamamı, Karma → içindeki 'Cari' kalemlerinin toplamı, diğerleri → 0.
+  /// Kredi limiti kontrolünün TEK formülü (Hızlı Satış + Fiş Güncelle).
+  static double cariPayi({
+    required String odemeYontemi,
+    required double genelToplam,
+    List<Map<String, dynamic>>? karmaKalemler,
+  }) {
+    if (karmaKalemler != null) {
+      return ParaUtils.yuvarla(karmaKalemler
+          .where((k) => k['yontem'] == 'Cari')
+          .fold(0.0, (s, k) => s + (k['tutar'] as num).toDouble()));
+    }
+    return odemeYontemi == 'Cari' ? ParaUtils.yuvarla(genelToplam) : 0.0;
+  }
+
+  /// Fiş güncellenince [yeniCariId] bakiyesine binecek EK borç: yeni
+  /// veresiye payı − bu fişin o cariye halihazırda yazdığı net borç.
+  /// Negatif/0 ise (tutar düştü, cari değişmedi vb.) limit kontrolü
+  /// gerekmez. ÖNCEDEN Fiş Güncelle akışında limit hiç kontrol edilmiyordu.
+  Future<double> fisGuncellemeCariArtisi({
+    required int satisId,
+    required int? yeniCariId,
+    required double yeniCariPayi,
+  }) async {
+    if (yeniCariId == null) return 0;
+    final mevcut = await _cariDepo.fisNetBorcu(satisId, yeniCariId);
+    return ParaUtils.yuvarla(yeniCariPayi - mevcut);
+  }
 
   // 🔴🔴 KRİTİK DÜZELTME (kendi-keşif turu — Promosyon modülü denetimi,
   // kullanıcı onayıyla): satis_kalem.iskonto_oran/iskonto_tutar HER
@@ -469,6 +500,9 @@ class SatisTamamlamaServisi {
   /// Bekleyen (kaydedilmiş) bir fişi düzenler: kalemleri değiştirir, stok
   /// farkını uygular, tutar farkına göre cari/kasa hareketi oluşturur —
   /// hepsi TEK transaction'da atomik olarak.
+  ///
+  /// Kredi limiti: kayıttan ÖNCE ekran [fisGuncellemeCariArtisi] ile
+  /// bulunan ek borç kadar onay ister (Hızlı Satış ile aynı kural).
   ///
   /// 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): Önceden bu akış
   /// hizli_satis_ekrani.dart'ta 4 AYRI, transaction'sız çağrıdan

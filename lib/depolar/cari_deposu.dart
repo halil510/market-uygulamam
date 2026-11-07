@@ -37,6 +37,21 @@ class CariDeposu {
   // bu limit hiçbir şekilde uygulanmıyordu. Artık bu fonksiyon, yeni
   // bir satış öncesi çağrılarak limit aşımını tespit ediyor.
   //
+  /// Bir satış fişinin [cariId] bakiyesine şu an yazdığı NET borç
+  /// (aktif cari_hareket satırlarında borç − alacak). Fiş güncellemede
+  /// limit kontrolü yalnızca bu fişten doğacak EK borç için yapılsın diye
+  /// kullanılır. fis_tipi filtresi SatisTamamlamaServisi.fisiGuncelle'nin
+  /// eski cari satırlarını bulduğu sorguyla aynıdır.
+  Future<double> fisNetBorcu(int fisId, int cariId) async {
+    final db = await _d;
+    final r = await db.rawQuery(
+        'SELECT COALESCE(SUM(borc), 0) - COALESCE(SUM(alacak), 0) AS net '
+        'FROM cari_hareket WHERE fis_id = ? AND cari_id = ? AND is_deleted = 0 '
+        "AND fis_tipi IN ('Satış','Toptan Satış','Toptan Satış (Sipariş)')",
+        [fisId, cariId]);
+    return ParaUtils.yuvarla((r.first['net'] as num?)?.toDouble() ?? 0);
+  }
+
   // NOT: Bilinçli olarak sert bir ENGELLEME değil, UYARI döndürüyor —
   // çağıran ekran, kullanıcıya onay sorup devam etmesine izin
   // verebilir (birçok işletme "limit aşıldı ama güvenilir müşteri,

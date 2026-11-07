@@ -154,9 +154,6 @@ class OnayMerkeziServisi {
         },
         where: 'id = ?',
         whereArgs: [id]);
-    final satir = await db.query('onay_talepleri', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satir.isNotEmpty) {
-      BulutManager().upsert('onay_talepleri', Map<String, dynamic>.from(satir.first));
-    }
+    await BulutManager().satiriBildir(db, 'onay_talepleri', id);
   }
 }

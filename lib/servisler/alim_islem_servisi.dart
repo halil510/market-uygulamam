@@ -427,12 +427,7 @@ class AlimIslemServisi {
 
     // Transaction kapandıktan (veri kalıcı olduktan) sonra buluta bildir.
     try {
-      final alimSatir = await db.query('tedarikci_siparisler',
-          where: 'id = ?', whereArgs: [alimId], limit: 1);
-      if (alimSatir.isNotEmpty) {
-        BulutManager().upsert(
-            'tedarikci_siparisler', Map<String, dynamic>.from(alimSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'tedarikci_siparisler', alimId);
       for (final gid in kalemGidler) {
         final s = await db.query('tedarikci_siparis_kalem',
             where: 'global_id = ?', whereArgs: [gid], limit: 1);
@@ -442,11 +437,7 @@ class AlimIslemServisi {
         }
       }
       for (final urunId in etkilenenUrunIdler) {
-        final s = await db.query('urunler',
-            where: 'id = ?', whereArgs: [urunId], limit: 1);
-        if (s.isNotEmpty) {
-          BulutManager().upsert('urunler', Map<String, dynamic>.from(s.first));
-        }
+        await BulutManager().satiriBildir(db, 'urunler', urunId);
       }
       for (final gid in stokHareketGidler) {
         final s = await db.query('stok_hareket',
@@ -471,35 +462,15 @@ class AlimIslemServisi {
               .upsert('cari_hareket', Map<String, dynamic>.from(s.first));
         }
         if (tedarikciId != null) {
-          final cariSatir = await db.query('cari',
-              where: 'id = ?', whereArgs: [tedarikciId], limit: 1);
-          if (cariSatir.isNotEmpty) {
-            BulutManager()
-                .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-          }
+          await BulutManager().satiriBildir(db, 'cari', tedarikciId);
         }
       }
       if (kasaHareketId != null) {
-        final s = await db.query('kasa_hareketleri',
-            where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
-        if (s.isNotEmpty) {
-          BulutManager()
-              .upsert('kasa_hareketleri', Map<String, dynamic>.from(s.first));
-        }
+        await BulutManager().satiriBildir(db, 'kasa_hareketleri', kasaHareketId);
       }
       if (bankaHareketId != null) {
-        final s = await db.query('banka_hareketler',
-            where: 'id = ?', whereArgs: [bankaHareketId], limit: 1);
-        if (s.isNotEmpty) {
-          BulutManager()
-              .upsert('banka_hareketler', Map<String, dynamic>.from(s.first));
-        }
-        final hesapSatir = await db.query('banka_hesaplar',
-            where: 'id = ?', whereArgs: [bankaHesapId], limit: 1);
-        if (hesapSatir.isNotEmpty) {
-          BulutManager().upsert(
-              'banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
-        }
+        await BulutManager().satiriBildir(db, 'banka_hareketler', bankaHareketId);
+        await BulutManager().satiriBildir(db, 'banka_hesaplar', bankaHesapId);
       }
     } catch (_) {
       // Bulut bildirimi hatası asıl işlemi engellemez — orijinal ekran
@@ -675,25 +646,12 @@ class AlimIslemServisi {
 
     // Transaction kapandıktan sonra buluta bildir.
     try {
-      final alimSatir = await db.query('tedarikci_siparisler',
-          where: 'id = ?', whereArgs: [alimId], limit: 1);
-      if (alimSatir.isNotEmpty) {
-        BulutManager().upsert(
-            'tedarikci_siparisler', Map<String, dynamic>.from(alimSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'tedarikci_siparisler', alimId);
       for (final kasaHareketId in kasaHareketIdleri) {
-        final s = await db.query('kasa_hareketleri',
-            where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
-        if (s.isNotEmpty) {
-          BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(s.first));
-        }
+        await BulutManager().satiriBildir(db, 'kasa_hareketleri', kasaHareketId);
       }
       if (bankaHareketId != null) {
-        final s = await db.query('banka_hareketler',
-            where: 'id = ?', whereArgs: [bankaHareketId], limit: 1);
-        if (s.isNotEmpty) {
-          BulutManager().upsert('banka_hareketler', Map<String, dynamic>.from(s.first));
-        }
+        await BulutManager().satiriBildir(db, 'banka_hareketler', bankaHareketId);
       }
       if (cariId != null) {
         final cariHareketSon = await db.query('cari_hareket',
@@ -702,10 +660,7 @@ class AlimIslemServisi {
         for (final satir in cariHareketSon) {
           BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(satir));
         }
-        final cariSon = await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
-        if (cariSon.isNotEmpty) {
-          BulutManager().upsert('cari', Map<String, dynamic>.from(cariSon.first));
-        }
+        await BulutManager().satiriBildir(db, 'cari', cariId);
       }
     } catch (_) {
       // Bulut bildirimi hatası asıl işlemi engellemez.

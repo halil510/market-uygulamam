@@ -98,10 +98,7 @@ class CariAdresDeposu {
       'varsayilan': varsayilanMi ? 1 : 0,
       'last_updated': now,
     });
-    final satir = await db.query('cari_adres', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satir.isNotEmpty) {
-      BulutManager().upsert('cari_adres', Map<String, dynamic>.from(satir.first));
-    }
+    await BulutManager().satiriBildir(db, 'cari_adres', id);
   }
 
   /// Bir adresi siler.

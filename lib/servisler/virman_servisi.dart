@@ -78,18 +78,9 @@ class VirmanServisi {
     // kendi ekleTxn'leri içinde ZATEN atomik/durable (SyncKuyrukYazici)
     // olduğundan burada tekrar bildirilmiyor.
     if (seciliKart != null && (kaynakHesap == 'Kredi Kartı' || hedefHesap == 'Kredi Kartı')) {
-      final kartSatir = await db.query('kredi_kartlari',
-          where: 'id = ?', whereArgs: [seciliKart.id], limit: 1);
-      if (kartSatir.isNotEmpty) {
-        BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kredi_kartlari', seciliKart.id);
       if (kartHareketId != null) {
-        final kartHareketSatir = await db.query('kredi_karti_hareket',
-            where: 'id = ?', whereArgs: [kartHareketId], limit: 1);
-        if (kartHareketSatir.isNotEmpty) {
-          BulutManager().upsert('kredi_karti_hareket',
-              Map<String, dynamic>.from(kartHareketSatir.first));
-        }
+        await BulutManager().satiriBildir(db, 'kredi_karti_hareket', kartHareketId);
       }
     }
 

@@ -36,9 +36,6 @@ class KategoriDeposu {
     final now = DateTime.now().toIso8601String();
     await db.update('kategoriler', {'is_deleted': 1, 'last_updated': now},
         where: 'id = ?', whereArgs: [id]);
-    final satir = await db.query('kategoriler', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satir.isNotEmpty) {
-      BulutManager().upsert('kategoriler', Map<String, dynamic>.from(satir.first));
-    }
+    await BulutManager().satiriBildir(db, 'kategoriler', id);
   }
 }

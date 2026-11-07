@@ -76,10 +76,7 @@ class FaturaDeposu {
     // Transaction başarılı — buluta bildir (commit sonrası, taze satırla).
     // Bildirim hatası kaydı geri almaz ama artık log'a düşer (§5.7).
     try {
-      final faturaSatir = await db.query('faturalar', where: 'id = ?', whereArgs: [faturaId], limit: 1);
-      if (faturaSatir.isNotEmpty) {
-        BulutManager().upsert('faturalar', Map<String, dynamic>.from(faturaSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'faturalar', faturaId);
       final detaySatirlar = await db.query('fatura_detaylari', where: 'fatura_id = ?', whereArgs: [faturaId]);
       for (final d in detaySatirlar) {
         BulutManager().upsert('fatura_detaylari', Map<String, dynamic>.from(d));
@@ -134,10 +131,7 @@ class FaturaDeposu {
         });
 
         try {
-          final faturaSatir = await db.query('faturalar', where: 'id = ?', whereArgs: [faturaId], limit: 1);
-          if (faturaSatir.isNotEmpty) {
-            BulutManager().upsert('faturalar', Map<String, dynamic>.from(faturaSatir.first));
-          }
+          await BulutManager().satiriBildir(db, 'faturalar', faturaId);
           final detaySatirlar = await db.query('fatura_detaylari', where: 'fatura_id = ?', whereArgs: [faturaId]);
           for (final d in detaySatirlar) {
             BulutManager().upsert('fatura_detaylari', Map<String, dynamic>.from(d));
@@ -260,10 +254,7 @@ class FaturaDeposu {
     if (yanit != null) data['uygulama_yaniti'] = yanit;
     if (durum == 'gonderildi') data['gonderim_tarihi'] = now;
     await db.update('faturalar', data, where: 'id = ?', whereArgs: [id]);
-    final guncelSatir = await db.query('faturalar', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (guncelSatir.isNotEmpty) {
-      BulutManager().upsert('faturalar', Map<String, dynamic>.from(guncelSatir.first));
-    }
+    await BulutManager().satiriBildir(db, 'faturalar', id);
   }
 
   /// GİB tarafından REDDEDİLMİŞ bir faturayı yeniden göndermeden hemen
@@ -296,10 +287,7 @@ class FaturaDeposu {
         'kalan_tutar': kalan,
         'last_updated': DateTime.now().toIso8601String(),
       }, where: 'id = ?', whereArgs: [id]);
-      final guncelSatir = await db.query('faturalar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('faturalar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'faturalar', id);
     } catch (e, st) {
       LogServisi().hata('Fatura.odemeDurumGuncelle', hata: e, yigin: st);
       rethrow;
@@ -311,10 +299,7 @@ class FaturaDeposu {
       final db = await _d;
       await db.update('faturalar', {'durum': 'iptal', 'last_updated': DateTime.now().toIso8601String()},
           where: 'id = ?', whereArgs: [id]);
-      final guncelSatir = await db.query('faturalar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('faturalar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'faturalar', id);
     } catch (e, st) {
       LogServisi().hata('Fatura.iptalEt', hata: e, yigin: st);
       rethrow;
@@ -354,10 +339,7 @@ class FaturaDeposu {
         'odenen_tutar': yeniOdenen, 'kalan_tutar': yeniKalan, 'odeme_durumu': yeniDurum,
         'last_updated': DateTime.now().toIso8601String(),
       }, where: 'id = ?', whereArgs: [faturaId]);
-      final guncelSatir = await db.query('faturalar', where: 'id = ?', whereArgs: [faturaId], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('faturalar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'faturalar', faturaId);
     } catch (e, st) {
       LogServisi().hata('Fatura.odemeKaydet', hata: e, yigin: st);
       rethrow;

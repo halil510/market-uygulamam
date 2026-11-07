@@ -17,10 +17,7 @@ class BankaDeposu {
       m.remove('id');
       m['global_id'] ??= const Uuid().v4();
       final id = await db.insert('bankalar', m);
-      final satir = await db.query('bankalar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('bankalar', Map<String, dynamic>.from(satir.first));
-      }
+      await BulutManager().satiriBildir(db, 'bankalar', id);
       return id;
     } catch (e, st) {
       LogServisi().hata('BankaDeposu.ekle', hata: e, yigin: st);
@@ -43,10 +40,7 @@ class BankaDeposu {
       if (mevcut.isNotEmpty && (mevcut.first['global_id'] == null || (mevcut.first['global_id'] as String).isEmpty)) {
         await db.update('bankalar', {'global_id': const Uuid().v4()}, where: 'id = ?', whereArgs: [banka.id]);
       }
-      final satir = await db.query('bankalar', where: 'id = ?', whereArgs: [banka.id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('bankalar', Map<String, dynamic>.from(satir.first));
-      }
+      await BulutManager().satiriBildir(db, 'bankalar', banka.id);
     } catch (e, st) {
       LogServisi().hata('BankaDeposu.guncelle', hata: e, yigin: st);
       rethrow;
@@ -61,10 +55,7 @@ class BankaDeposu {
           where: 'id = ?', whereArgs: [id]);
       // 🔴 Derin analizde bulundu: silme işlemi buluta HİÇ bildirilmiyordu
       // (BulutManager çağrısı eksikti) — bankalar artık senkron sisteminde.
-      final satir = await db.query('bankalar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('bankalar', Map<String, dynamic>.from(satir.first));
-      }
+      await BulutManager().satiriBildir(db, 'bankalar', id);
     } catch (e, st) {
       LogServisi().hata('BankaDeposu.sil', hata: e, yigin: st);
       rethrow;

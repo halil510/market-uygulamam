@@ -81,23 +81,17 @@ class GiderDeposu {
               aciklama: aciklama, referansId: gid, referansTuru: 'gider');
         }
       });
-      final satir = await db.query('giderler', where: 'id = ?', whereArgs: [gid], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('giderler', Map<String, dynamic>.from(satir.first));
+      await BulutManager().satiriBildir(db, 'giderler', gid);
       if (kasaHareketId != null) {
-        final kasaSatir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
-        if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+        await BulutManager().satiriBildir(db, 'kasa_hareketleri', kasaHareketId);
       }
       if (bankaHareketId != null) {
-        final bankaSatir = await db.query('banka_hareketler', where: 'id = ?', whereArgs: [bankaHareketId], limit: 1);
-        if (bankaSatir.isNotEmpty) BulutManager().upsert('banka_hareketler', Map<String, dynamic>.from(bankaSatir.first));
-        final hesapSatir = await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [g.bankaHesapId], limit: 1);
-        if (hesapSatir.isNotEmpty) BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
+        await BulutManager().satiriBildir(db, 'banka_hareketler', bankaHareketId);
+        await BulutManager().satiriBildir(db, 'banka_hesaplar', g.bankaHesapId);
       }
       if (krediHareketId != null) {
-        final krediSatir = await db.query('kredi_karti_hareket', where: 'id = ?', whereArgs: [krediHareketId], limit: 1);
-        if (krediSatir.isNotEmpty) BulutManager().upsert('kredi_karti_hareket', Map<String, dynamic>.from(krediSatir.first));
-        final kartSatir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [g.krediKartiId], limit: 1);
-        if (kartSatir.isNotEmpty) BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
+        await BulutManager().satiriBildir(db, 'kredi_karti_hareket', krediHareketId);
+        await BulutManager().satiriBildir(db, 'kredi_kartlari', g.krediKartiId);
       }
       return gid;
     } catch (e, st) {
@@ -277,19 +271,15 @@ class GiderDeposu {
           }
         }
       });
-      final satir = await db.query('giderler', where: 'id = ?', whereArgs: [g.id], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('giderler', Map<String, dynamic>.from(satir.first));
+      await BulutManager().satiriBildir(db, 'giderler', g.id);
       if (kasaHareketId != null) {
-        final kasaSatir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
-        if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+        await BulutManager().satiriBildir(db, 'kasa_hareketleri', kasaHareketId);
       }
       for (final id in bankaHareketIdleri) {
-        final s = await db.query('banka_hareketler', where: 'id = ?', whereArgs: [id], limit: 1);
-        if (s.isNotEmpty) BulutManager().upsert('banka_hareketler', Map<String, dynamic>.from(s.first));
+        await BulutManager().satiriBildir(db, 'banka_hareketler', id);
       }
       for (final id in krediHareketIdleri) {
-        final s = await db.query('kredi_karti_hareket', where: 'id = ?', whereArgs: [id], limit: 1);
-        if (s.isNotEmpty) BulutManager().upsert('kredi_karti_hareket', Map<String, dynamic>.from(s.first));
+        await BulutManager().satiriBildir(db, 'kredi_karti_hareket', id);
       }
       await _hesapVeKartlariBulutaGonder(db, bankaHareketIdleri, krediHareketIdleri);
     } catch (e, st) {
@@ -356,19 +346,15 @@ class GiderDeposu {
           if (hareketId != null) krediHareketIdleri.add(hareketId);
         }
       });
-      final satir = await db.query('giderler', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert('giderler', Map<String, dynamic>.from(satir.first));
+      await BulutManager().satiriBildir(db, 'giderler', id);
       if (kasaHareketId != null) {
-        final kasaSatir = await db.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
-        if (kasaSatir.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
+        await BulutManager().satiriBildir(db, 'kasa_hareketleri', kasaHareketId);
       }
       for (final hid in bankaHareketIdleri) {
-        final s = await db.query('banka_hareketler', where: 'id = ?', whereArgs: [hid], limit: 1);
-        if (s.isNotEmpty) BulutManager().upsert('banka_hareketler', Map<String, dynamic>.from(s.first));
+        await BulutManager().satiriBildir(db, 'banka_hareketler', hid);
       }
       for (final hid in krediHareketIdleri) {
-        final s = await db.query('kredi_karti_hareket', where: 'id = ?', whereArgs: [hid], limit: 1);
-        if (s.isNotEmpty) BulutManager().upsert('kredi_karti_hareket', Map<String, dynamic>.from(s.first));
+        await BulutManager().satiriBildir(db, 'kredi_karti_hareket', hid);
       }
       await _hesapVeKartlariBulutaGonder(db, bankaHareketIdleri, krediHareketIdleri);
     } catch (e, st) {
@@ -391,8 +377,7 @@ class GiderDeposu {
           .map((r) => r['id'])
           .whereType<int>();
       for (final id in anaIdler) {
-        final s = await db.query(anaTablo, where: 'id = ?', whereArgs: [id], limit: 1);
-        if (s.isNotEmpty) BulutManager().upsert(anaTablo, Map<String, dynamic>.from(s.first));
+        await BulutManager().satiriBildir(db, anaTablo, id);
       }
     }
 

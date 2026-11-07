@@ -376,12 +376,7 @@ class SatisDeposu {
       ));
 
       // Buluta gönder (transaction DIŞINDA — ağ kilidi tutmasın)
-      final basSatir = await db.query('satislar',
-          where: 'id = ?', whereArgs: [satisId], limit: 1);
-      if (basSatir.isNotEmpty) {
-        BulutManager().upsert('satislar',
-            Map<String, dynamic>.from(basSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'satislar', satisId);
       final kalemSatirlar = await db.query('satis_kalem',
           where: 'satis_id = ?', whereArgs: [satisId]);
       for (final ks in kalemSatirlar) {
@@ -564,10 +559,7 @@ class SatisDeposu {
   Future<void> syncKopyasiGercekOlarakIsaretle(int id) async {
     final db = await _d;
     await db.update('satislar', {'sync_cakisma_kopyasi': 0}, where: 'id = ?', whereArgs: [id]);
-    final satisSatir = await db.query('satislar', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satisSatir.isNotEmpty) {
-      BulutManager().upsert('satislar', Map<String, dynamic>.from(satisSatir.first));
-    }
+    await BulutManager().satiriBildir(db, 'satislar', id);
   }
 
   // 🔴 Derin analizde bulundu: Satış Raporu'nun "$X iptal satış"
@@ -1048,11 +1040,9 @@ class SatisDeposu {
     });
     // BulutManager'a satış bildirimi — transaction dışında.
     final db2 = await _d;
-    final satisSon = await db2.query('satislar', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satisSon.isNotEmpty) BulutManager().upsert('satislar', Map<String, dynamic>.from(satisSon.first));
+    await BulutManager().satiriBildir(db2, 'satislar', id);
     for (final kasaHareketId in kasaHareketIdleri) {
-      final kasaSon = await db2.query('kasa_hareketleri', where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
-      if (kasaSon.isNotEmpty) BulutManager().upsert('kasa_hareketleri', Map<String, dynamic>.from(kasaSon.first));
+      await BulutManager().satiriBildir(db2, 'kasa_hareketleri', kasaHareketId);
     }
     // 🔴 Derin analizde bulundu: cari_hareket eklemeleri (yukarıdaki
     // Satış İptali kaydı) global_id ATAMIYORDU ve BulutManager'a HİÇ
@@ -1065,8 +1055,7 @@ class SatisDeposu {
       for (final satir in cariHareketSon) {
         BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(satir));
       }
-      final cariSon = await db2.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
-      if (cariSon.isNotEmpty) BulutManager().upsert('cari', Map<String, dynamic>.from(cariSon.first));
+      await BulutManager().satiriBildir(db2, 'cari', cariId);
 
       // 🔴🔴 KRİTİK DÜZELTME (paralel fork denetimi, 2026-09-22): satış
       // silinince kazanılan/kullanılan sadakat puanı hiç geri alınmıyordu

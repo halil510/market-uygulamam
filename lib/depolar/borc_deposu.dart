@@ -21,10 +21,7 @@ class BorcDeposu {
       m['global_id'] ??= const Uuid().v4();
       m['last_updated'] ??= DateTime.now().toIso8601String();
       final yeniId = await db.insert('borclar', m);
-      final guncelSatir = await db.query('borclar', where: 'id = ?', whereArgs: [yeniId], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('borclar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'borclar', yeniId);
       return yeniId;
     } catch (e, st) {
       LogServisi().hata('BorcDeposu.ekle', hata: e, yigin: st);
@@ -37,10 +34,7 @@ class BorcDeposu {
       final db = await _d;
       final m = borc.toMap()..['last_updated'] = DateTime.now().toIso8601String();
       await db.update('borclar', m, where: 'id = ?', whereArgs: [borc.id]);
-      final guncelSatir = await db.query('borclar', where: 'id = ?', whereArgs: [borc.id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('borclar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'borclar', borc.id);
     } catch (e, st) {
       LogServisi().hata('BorcDeposu.guncelle', hata: e, yigin: st);
       rethrow;
@@ -56,10 +50,7 @@ class BorcDeposu {
       final now = DateTime.now().toIso8601String();
       await db.update('borclar', {'is_deleted': 1, 'last_updated': now},
           where: 'id = ?', whereArgs: [id]);
-      final guncelSatir = await db.query('borclar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('borclar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'borclar', id);
     } catch (e, st) {
       LogServisi().hata('BorcDeposu.sil', hata: e, yigin: st);
       rethrow;
@@ -128,10 +119,7 @@ class BorcDeposu {
     try {
       final db = await _d;
       await db.transaction((txn) => odemeYapTxn(txn, borcId, tutar));
-      final guncelSatir = await db.query('borclar', where: 'id = ?', whereArgs: [borcId], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('borclar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'borclar', borcId);
     } catch (e, st) {
       LogServisi().hata('BorcDeposu.odemeYap', hata: e, yigin: st);
       rethrow;
@@ -198,10 +186,7 @@ class BorcDeposu {
             // daha yeni borç düzenlemesi LWW ile korunur (bkz. MasaDeposu.
             // siparisToplamlariMutabakatYap notu).
           }, where: 'id = ?', whereArgs: [borcId]);
-          final guncelSatir = await db.query('borclar', where: 'id = ?', whereArgs: [borcId], limit: 1);
-          if (guncelSatir.isNotEmpty) {
-            BulutManager().upsert('borclar', Map<String, dynamic>.from(guncelSatir.first));
-          }
+          await BulutManager().satiriBildir(db, 'borclar', borcId);
           duzeltilen++;
         }
       }

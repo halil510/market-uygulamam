@@ -28,10 +28,7 @@ class KrediKartiDeposu {
         m['kart_no_maskeli'] = '**** **** **** ????';
       }
       final id = await db.insert('kredi_kartlari', m);
-      final satir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(satir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kredi_kartlari', id);
       return id;
     } catch (e, st) {
       LogServisi().hata('KrediKartiDeposu.ekle', hata: e, yigin: st);
@@ -55,10 +52,7 @@ class KrediKartiDeposu {
       if (mevcut.isNotEmpty && (mevcut.first['global_id'] == null || (mevcut.first['global_id'] as String).isEmpty)) {
         await db.update('kredi_kartlari', {'global_id': const Uuid().v4()}, where: 'id = ?', whereArgs: [kart.id]);
       }
-      final satir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [kart.id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(satir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kredi_kartlari', kart.id);
     } catch (e, st) {
       LogServisi().hata('KrediKartiDeposu.guncelle', hata: e, yigin: st);
       rethrow;
@@ -80,10 +74,7 @@ class KrediKartiDeposu {
       final now = DateTime.now().toIso8601String();
       await db.update('kredi_kartlari', {'aktif': 0, 'last_updated': now},
           where: 'id = ?', whereArgs: [id]);
-      final satir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(satir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kredi_kartlari', id);
     } catch (e, st) {
       LogServisi().hata('KrediKartiDeposu.sil', hata: e, yigin: st);
       rethrow;
@@ -137,14 +128,8 @@ class KrediKartiDeposu {
       // 🔴 Derin analizde bulundu: bu fonksiyon hiçbir zaman BulutManager
       // çağırmıyordu — kredi kartı hareketleri ve limit güncellemeleri
       // sadece manuel "Buluta Gönder" ile senkronize oluyordu.
-      final hareketSatir = await db.query('kredi_karti_hareket', where: 'id = ?', whereArgs: [hareketId], limit: 1);
-      if (hareketSatir.isNotEmpty) {
-        BulutManager().upsert('kredi_karti_hareket', Map<String, dynamic>.from(hareketSatir.first));
-      }
-      final kartSatir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (kartSatir.isNotEmpty) {
-        BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kredi_karti_hareket', hareketId);
+      await BulutManager().satiriBildir(db, 'kredi_kartlari', id);
     } catch (e, st) {
       LogServisi().hata('KrediKartiDeposu.limitDegistir', hata: e, yigin: st);
       rethrow;
@@ -179,27 +164,12 @@ class KrediKartiDeposu {
           ));
     });
 
-    final kartSatir = await db.query('kredi_kartlari',
-        where: 'id = ?', whereArgs: [kartId], limit: 1);
-    if (kartSatir.isNotEmpty) {
-      BulutManager()
-          .upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
-    }
+    await BulutManager().satiriBildir(db, 'kredi_kartlari', kartId);
     if (kartHareketId != null) {
-      final kartHareketSatir = await db.query('kredi_karti_hareket',
-          where: 'id = ?', whereArgs: [kartHareketId], limit: 1);
-      if (kartHareketSatir.isNotEmpty) {
-        BulutManager().upsert('kredi_karti_hareket',
-            Map<String, dynamic>.from(kartHareketSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kredi_karti_hareket', kartHareketId);
     }
     if (kasaHareketId != null) {
-      final kasaSatir = await db.query('kasa_hareketleri',
-          where: 'id = ?', whereArgs: [kasaHareketId], limit: 1);
-      if (kasaSatir.isNotEmpty) {
-        BulutManager().upsert(
-            'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kasa_hareketleri', kasaHareketId);
     }
   }
 
@@ -299,11 +269,7 @@ class KrediKartiDeposu {
         }
       });
       for (final kartId in duzeltilenIdler) {
-        final satir = await db.query('kredi_kartlari',
-            where: 'id = ?', whereArgs: [kartId], limit: 1);
-        if (satir.isNotEmpty) {
-          BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(satir.first));
-        }
+        await BulutManager().satiriBildir(db, 'kredi_kartlari', kartId);
       }
       if (duzeltilenIdler.isNotEmpty) {
         LogServisi().bilgi(

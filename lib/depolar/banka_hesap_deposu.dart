@@ -18,10 +18,7 @@ class BankaHesapDeposu {
       m['global_id'] ??= const Uuid().v4();
       m['last_updated'] = DateTime.now().toIso8601String();
       final id = await db.insert('banka_hesaplar', m);
-      final satir = await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(satir.first));
-      }
+      await BulutManager().satiriBildir(db, 'banka_hesaplar', id);
       return id;
     } catch (e, st) {
       LogServisi().hata('BankaHesapDeposu.ekle', hata: e, yigin: st);
@@ -42,10 +39,7 @@ class BankaHesapDeposu {
       if (mevcut.isNotEmpty && (mevcut.first['global_id'] == null || (mevcut.first['global_id'] as String).isEmpty)) {
         await db.update('banka_hesaplar', {'global_id': const Uuid().v4()}, where: 'id = ?', whereArgs: [hesap.id]);
       }
-      final satir = await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [hesap.id], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(satir.first));
-      }
+      await BulutManager().satiriBildir(db, 'banka_hesaplar', hesap.id);
     } catch (e, st) {
       LogServisi().hata('BankaHesapDeposu.guncelle', hata: e, yigin: st);
       rethrow;
@@ -128,11 +122,7 @@ class BankaHesapDeposu {
         // sonunda giderdi) ama Kasa/Stok mutabakatındaki gibi ANINDA
         // BulutManager'a bildirilmiyordu — diğer cihazlar bir sonraki
         // manuel/zamanlı senkrona kadar düzeltmeyi görmüyordu.
-        final satir = await db.query('banka_hesaplar',
-            where: 'id = ?', whereArgs: [r['id']], limit: 1);
-        if (satir.isNotEmpty) {
-          BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(satir.first));
-        }
+        await BulutManager().satiriBildir(db, 'banka_hesaplar', r['id']);
       }
       return uyumsuzlar.length;
     } catch (e, st) {

@@ -23,12 +23,7 @@ class KasaDeposu {
       // fonksiyonun kullanıldığı HER YER (tahsilat, ödeme, vardiya
       // açma/kapama, uygulamadaki neredeyse tüm kasa hareketi giriş
       // noktası) o zamandan beri buluta hiç senkron olmuyordu.
-      final satir = await db.query('kasa_hareketleri',
-          where: 'id = ?', whereArgs: [kid], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager()
-            .upsert('kasa_hareketleri', Map<String, dynamic>.from(satir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kasa_hareketleri', kid);
       return kid;
     } catch (e, st) {
       LogServisi().hata('Kasa.hareketEkle', hata: e, yigin: st);
@@ -420,12 +415,7 @@ class KasaDeposu {
         duzeltilenIdler = await _zincirSapanlariBulTxn(txn, duzeltZamani: now);
       });
       for (final id in duzeltilenIdler) {
-        final satir = await db.query('kasa_hareketleri',
-            where: 'id = ?', whereArgs: [id], limit: 1);
-        if (satir.isNotEmpty) {
-          BulutManager().upsert(
-              'kasa_hareketleri', Map<String, dynamic>.from(satir.first));
-        }
+        await BulutManager().satiriBildir(db, 'kasa_hareketleri', id);
       }
       return duzeltilenIdler.length;
     } catch (e, st) {

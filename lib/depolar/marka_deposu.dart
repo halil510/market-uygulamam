@@ -61,13 +61,9 @@ class MarkaDeposu {
         columns: ['id'], where: 'marka = ? AND is_deleted = 0', whereArgs: [eskiAd]);
     await db.update('urunler', {'marka': yeniAd, 'last_updated': now},
         where: 'marka = ? AND is_deleted = 0', whereArgs: [eskiAd]);
-    final satir = await db.query('markalar', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satir.isNotEmpty) {
-      BulutManager().upsert('markalar', Map<String, dynamic>.from(satir.first));
-    }
+    await BulutManager().satiriBildir(db, 'markalar', id);
     for (final e in etkilenenler) {
-      final u = await db.query('urunler', where: 'id = ?', whereArgs: [e['id']], limit: 1);
-      if (u.isNotEmpty) BulutManager().upsert('urunler', Map<String, dynamic>.from(u.first));
+      await BulutManager().satiriBildir(db, 'urunler', e['id']);
     }
   }
 
@@ -78,9 +74,6 @@ class MarkaDeposu {
     final now = DateTime.now().toIso8601String();
     await db.update('markalar', {'aktif': 0, 'last_updated': now},
         where: 'id = ?', whereArgs: [id]);
-    final satir = await db.query('markalar', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satir.isNotEmpty) {
-      BulutManager().upsert('markalar', Map<String, dynamic>.from(satir.first));
-    }
+    await BulutManager().satiriBildir(db, 'markalar', id);
   }
 }

@@ -48,8 +48,7 @@ class ToptanFiyatDeposu {
     m['global_id'] ??= const Uuid().v4();
     m['last_updated'] = DateTime.now().toIso8601String();
     final yeniId = await db.insert('fiyat_gruplari', m);
-    final satir = await db.query('fiyat_gruplari', where: 'id = ?', whereArgs: [yeniId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('fiyat_gruplari', Map<String, dynamic>.from(satir.first));
+    await BulutManager().satiriBildir(db, 'fiyat_gruplari', yeniId);
     return yeniId;
   }
 
@@ -57,8 +56,7 @@ class ToptanFiyatDeposu {
     final db = await _d;
     final m = g.toMap()..['last_updated'] = DateTime.now().toIso8601String();
     await db.update('fiyat_gruplari', m, where: 'id = ?', whereArgs: [g.id]);
-    final satir = await db.query('fiyat_gruplari', where: 'id = ?', whereArgs: [g.id], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('fiyat_gruplari', Map<String, dynamic>.from(satir.first));
+    await BulutManager().satiriBildir(db, 'fiyat_gruplari', g.id);
   }
 
   Future<void> grupSil(int id) async {
@@ -66,8 +64,7 @@ class ToptanFiyatDeposu {
     final now = DateTime.now().toIso8601String();
     await db.update('fiyat_gruplari', {'is_deleted': 1, 'aktif': 0, 'last_updated': now},
         where: 'id = ?', whereArgs: [id]);
-    final satir = await db.query('fiyat_gruplari', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('fiyat_gruplari', Map<String, dynamic>.from(satir.first));
+    await BulutManager().satiriBildir(db, 'fiyat_gruplari', id);
   }
 
   // ══════════════════ ÜRÜN × GRUP ÖZEL FİYATLARI ══════════════════
@@ -131,8 +128,7 @@ class ToptanFiyatDeposu {
         'last_updated': now,
       });
     }
-    final satir = await db.query('urun_fiyat_gruplari', where: 'id = ?', whereArgs: [kayitId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('urun_fiyat_gruplari', Map<String, dynamic>.from(satir.first));
+    await BulutManager().satiriBildir(db, 'urun_fiyat_gruplari', kayitId);
   }
 
   Future<void> urunGrupFiyatiSil(int urunId, int fiyatGrubuId) async {
@@ -166,8 +162,7 @@ class ToptanFiyatDeposu {
     m['global_id'] ??= const Uuid().v4();
     m['last_updated'] = DateTime.now().toIso8601String();
     final yeniId = await db.insert('fiyat_kademeleri', m);
-    final satir = await db.query('fiyat_kademeleri', where: 'id = ?', whereArgs: [yeniId], limit: 1);
-    if (satir.isNotEmpty) BulutManager().upsert('fiyat_kademeleri', Map<String, dynamic>.from(satir.first));
+    await BulutManager().satiriBildir(db, 'fiyat_kademeleri', yeniId);
     return yeniId;
   }
 

@@ -182,10 +182,7 @@ class FisFiyatGuncellemeServisi {
     // Transaction kalıcı — bulut bildirimi best-effort (satış tamamla ile aynı desen).
     try {
       for (final id in etkilenenSatislar) {
-        final s = await db.query('satislar', where: 'id = ?', whereArgs: [id]);
-        if (s.isNotEmpty) {
-          BulutManager().upsert('satislar', Map<String, dynamic>.from(s.first));
-        }
+        await BulutManager().satiriBildir(db, 'satislar', id);
         final k = await db.query('satis_kalem', where: 'satis_id = ?', whereArgs: [id]);
         for (final r in k) {
           BulutManager().upsert('satis_kalem', Map<String, dynamic>.from(r));
@@ -198,10 +195,7 @@ class FisFiyatGuncellemeServisi {
         }
       }
       for (final cid in etkilenenCariler) {
-        final c = await db.query('cari', where: 'id = ?', whereArgs: [cid]);
-        if (c.isNotEmpty) {
-          BulutManager().upsert('cari', Map<String, dynamic>.from(c.first));
-        }
+        await BulutManager().satiriBildir(db, 'cari', cid);
       }
     } catch (_) {}
 

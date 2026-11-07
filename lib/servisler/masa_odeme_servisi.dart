@@ -324,12 +324,7 @@ class MasaOdemeServisi {
       for (final k in siparis.kalemler) {
         final gidler = stokHareketGidleri[k.urunId];
         if (gidler == null || gidler.isEmpty) continue;
-        final urunSatir = await db.query('urunler',
-            where: 'id = ?', whereArgs: [k.urunId], limit: 1);
-        if (urunSatir.isNotEmpty) {
-          BulutManager()
-              .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-        }
+        await BulutManager().satiriBildir(db, 'urunler', k.urunId);
         for (final gid in gidler) {
           final stokSatir = await db.query('stok_hareket',
               where: 'global_id = ?', whereArgs: [gid], limit: 1);
@@ -360,25 +355,10 @@ class MasaOdemeServisi {
         }
       }
       if (cariGlobalIdleri.isNotEmpty) {
-        final cariSatir = await db.query('cari',
-            where: 'id = ?', whereArgs: [efektifCariId], limit: 1);
-        if (cariSatir.isNotEmpty) {
-          BulutManager()
-              .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-        }
+        await BulutManager().satiriBildir(db, 'cari', efektifCariId);
       }
-      final siparisSatir = await db.query('masa_siparisleri',
-          where: 'id = ?', whereArgs: [siparis.id], limit: 1);
-      if (siparisSatir.isNotEmpty) {
-        BulutManager().upsert(
-            'masa_siparisleri', Map<String, dynamic>.from(siparisSatir.first));
-      }
-      final masaSatir = await db.query('masalar',
-          where: 'id = ?', whereArgs: [siparis.masaId], limit: 1);
-      if (masaSatir.isNotEmpty) {
-        BulutManager()
-            .upsert('masalar', Map<String, dynamic>.from(masaSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'masa_siparisleri', siparis.id);
+      await BulutManager().satiriBildir(db, 'masalar', siparis.masaId);
     } catch (e, st) {
       LogServisi().hata('Masa ödemesi bulut bildirimi hatası', hata: e, yigin: st);
     }

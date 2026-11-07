@@ -28,14 +28,8 @@ class BankaHareketDeposu {
       // sadece manuel "Buluta Gönder" ile gidiyordu, otomatik/anlık
       // senkron hiç çalışmıyordu. Transaction kapandıktan SONRA (veri
       // kalıcı olduktan sonra) her iki tablo için de bildirim gönderiliyor.
-      final hareketSatir = await db.query('banka_hareketler', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (hareketSatir.isNotEmpty) {
-        BulutManager().upsert('banka_hareketler', Map<String, dynamic>.from(hareketSatir.first));
-      }
-      final hesapSatir = await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [hareket.bankaHesapId], limit: 1);
-      if (hesapSatir.isNotEmpty) {
-        BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'banka_hareketler', id);
+      await BulutManager().satiriBildir(db, 'banka_hesaplar', hareket.bankaHesapId);
       return id;
     } catch (e, st) {
       LogServisi().hata('BankaHareketDeposu.ekle', hata: e, yigin: st);

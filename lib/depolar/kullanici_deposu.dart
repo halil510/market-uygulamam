@@ -118,10 +118,7 @@ class KullaniciDeposu {
       m['last_updated'] ??= DateTime.now().toIso8601String();
       final yeniId = await db.insert('kullanicilar', m);
       // 🔴 DÜZELTME: yeni kullanıcı önceden hiç buluta bildirilmiyordu.
-      final guncelSatir = await db.query('kullanicilar', where: 'id = ?', whereArgs: [yeniId], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('kullanicilar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kullanicilar', yeniId);
       return yeniId;
     } catch (e, st) {
       LogServisi().hata('Kullanici.ekle', hata: e, yigin: st);
@@ -141,10 +138,7 @@ class KullaniciDeposu {
       m['last_updated'] = DateTime.now().toIso8601String();
       await db.update('kullanicilar', m,
           where: 'id = ?', whereArgs: [k.id]);
-      final guncelSatir = await db.query('kullanicilar', where: 'id = ?', whereArgs: [k.id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('kullanicilar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kullanicilar', k.id);
     } catch (e, st) {
       LogServisi().hata('Kullanici.guncelle', hata: e, yigin: st);
       rethrow;
@@ -161,10 +155,7 @@ class KullaniciDeposu {
       // giriş yapabilir durumda kalmaya devam ederdi (güvenlik riski).
       await db.update('kullanicilar', {'is_deleted': 1, 'last_updated': now},
           where: 'id = ?', whereArgs: [id]);
-      final guncelSatir = await db.query('kullanicilar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('kullanicilar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kullanicilar', id);
     } catch (e, st) {
       LogServisi().hata('Kullanici.sil', hata: e, yigin: st);
       rethrow;
@@ -188,10 +179,7 @@ class KullaniciDeposu {
         where: 'id = ?',
         whereArgs: [id],
       );
-      final guncelSatir = await db.query('kullanicilar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('kullanicilar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'kullanicilar', id);
     } catch (e, st) {
       LogServisi().hata('Kullanici.sifreDegistir', hata: e, yigin: st);
       rethrow;

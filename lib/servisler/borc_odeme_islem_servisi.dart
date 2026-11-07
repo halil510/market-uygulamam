@@ -160,21 +160,17 @@ class BorcOdemeIslemServisi {
     // satır göndermiş olurdu.
     Future<void> sync(String tablo, int? id) async {
       if (id == null) return;
-      final satir = await db.query(tablo, where: 'id = ?', whereArgs: [id], limit: 1);
-      if (satir.isNotEmpty) BulutManager().upsert(tablo, Map<String, dynamic>.from(satir.first));
+      await BulutManager().satiriBildir(db, tablo, id);
     }
 
-    final borcSatir = await db.query('borclar', where: 'id = ?', whereArgs: [borc.id], limit: 1);
-    if (borcSatir.isNotEmpty) BulutManager().upsert('borclar', Map<String, dynamic>.from(borcSatir.first));
+    await BulutManager().satiriBildir(db, 'borclar', borc.id);
     await sync('borc_odemeler', odemeGecmisId);
     if (bankaGerekli) {
       await sync('banka_hareketler', bankaHareketId);
-      final hesapSatir = await db.query('banka_hesaplar', where: 'id = ?', whereArgs: [bankaHesapId], limit: 1);
-      if (hesapSatir.isNotEmpty) BulutManager().upsert('banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
+      await BulutManager().satiriBildir(db, 'banka_hesaplar', bankaHesapId);
     } else if (kartGerekli) {
       await sync('kredi_karti_hareket', krediHareketId);
-      final kartSatir = await db.query('kredi_kartlari', where: 'id = ?', whereArgs: [krediKartiId], limit: 1);
-      if (kartSatir.isNotEmpty) BulutManager().upsert('kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
+      await BulutManager().satiriBildir(db, 'kredi_kartlari', krediKartiId);
     } else if (odemeYontemi == 'Nakit') {
       await sync('kasa_hareketleri', kasaHareketId);
     }

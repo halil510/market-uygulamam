@@ -192,10 +192,7 @@ extension ExcelServisiStokPromosyon on ExcelServisi {
               BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
             }
           }
-          final urunSatir = await db.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
-          if (urunSatir.isNotEmpty) {
-            BulutManager().upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-          }
+          await BulutManager().satiriBildir(db, 'urunler', urunId);
           basarili++;
         } else {
           hata++;
@@ -319,8 +316,7 @@ extension ExcelServisiStokPromosyon on ExcelServisi {
         for (final eski in eskiPromolar) {
           await db.update('promosyonlar', {'deleted_at': now, 'last_updated': now},
               where: 'id = ?', whereArgs: [eski['id']]);
-          final s = await db.query('promosyonlar', where: 'id = ?', whereArgs: [eski['id']], limit: 1);
-          if (s.isNotEmpty) BulutManager().upsert('promosyonlar', Map<String, dynamic>.from(s.first));
+          await BulutManager().satiriBildir(db, 'promosyonlar', eski['id']);
         }
         final promoGid = const Uuid().v4();
         final promoId = await db.insert('promosyonlar', {
@@ -333,8 +329,7 @@ extension ExcelServisiStokPromosyon on ExcelServisi {
           'aktif':        1,
           'last_updated': now,
         });
-        final yeniSatir = await db.query('promosyonlar', where: 'id = ?', whereArgs: [promoId], limit: 1);
-        if (yeniSatir.isNotEmpty) BulutManager().upsert('promosyonlar', Map<String, dynamic>.from(yeniSatir.first));
+        await BulutManager().satiriBildir(db, 'promosyonlar', promoId);
         basarili++;
       } catch (e) {
         hata++;

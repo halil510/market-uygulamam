@@ -54,12 +54,7 @@ class StokDeposu {
       });
       final duzeltilen = duzeltilenIdler.length;
       for (final urunId in duzeltilenIdler) {
-        final satir = await db.query('urunler',
-            where: 'id = ?', whereArgs: [urunId], limit: 1);
-        if (satir.isNotEmpty) {
-          BulutManager()
-              .upsert('urunler', Map<String, dynamic>.from(satir.first));
-        }
+        await BulutManager().satiriBildir(db, 'urunler', urunId);
       }
       if (duzeltilen > 0) {
         LogServisi().bilgi('Stok mutabakatı: $duzeltilen ürün düzeltildi');
@@ -132,12 +127,7 @@ class StokDeposu {
     // 'urunler' güncellemesi bildiriliyordu. Stok hareket geçmişi
     // sadece manuel senkronla buluta gidiyordu.
     final db2 = await _d;
-    final guncelUrun = await db2.query('urunler',
-        where: 'id = ?', whereArgs: [urunId], limit: 1);
-    if (guncelUrun.isNotEmpty) {
-      BulutManager()
-          .upsert('urunler', Map<String, dynamic>.from(guncelUrun.first));
-    }
+    await BulutManager().satiriBildir(db2, 'urunler', urunId);
     final hareketSatir = await db2.query('stok_hareket',
         where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
     if (hareketSatir.isNotEmpty) {
@@ -365,12 +355,7 @@ class StokDeposu {
         referansId: referansId,
         referansTuru: referansTuru));
     final db2 = await _d;
-    final guncelUrun = await db2.query('urunler',
-        where: 'id = ?', whereArgs: [urunId], limit: 1);
-    if (guncelUrun.isNotEmpty) {
-      BulutManager()
-          .upsert('urunler', Map<String, dynamic>.from(guncelUrun.first));
-    }
+    await BulutManager().satiriBildir(db2, 'urunler', urunId);
     final hareketSatir = await db2.query('stok_hareket',
         where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
     if (hareketSatir.isNotEmpty) {
@@ -518,12 +503,7 @@ class StokDeposu {
         await SyncKuyrukYazici.ekleTxn(txn,
             tablo: 'stok_hareket', veri: stokSatiri);
       });
-      final guncelUrun = await db.query('urunler',
-          where: 'id = ?', whereArgs: [urunId], limit: 1);
-      if (guncelUrun.isNotEmpty) {
-        BulutManager()
-            .upsert('urunler', Map<String, dynamic>.from(guncelUrun.first));
-      }
+      await BulutManager().satiriBildir(db, 'urunler', urunId);
       final hareketSatir = await db.query('stok_hareket',
           where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
       if (hareketSatir.isNotEmpty) {

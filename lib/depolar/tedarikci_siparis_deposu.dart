@@ -68,12 +68,7 @@ class TedarikciSiparisDeposu {
     });
 
     try {
-      final siparisSatir = await db.query('tedarikci_siparisler',
-          where: 'id = ?', whereArgs: [siparisId], limit: 1);
-      if (siparisSatir.isNotEmpty) {
-        BulutManager().upsert(
-            'tedarikci_siparisler', Map<String, dynamic>.from(siparisSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'tedarikci_siparisler', siparisId);
       for (final gid in kalemGidler) {
         final s = await db.query('tedarikci_siparis_kalem',
             where: 'global_id = ?', whereArgs: [gid], limit: 1);
@@ -134,11 +129,6 @@ class TedarikciSiparisDeposu {
     await db.update('tedarikci_siparisler',
         {'durum': yeniDurum, 'last_updated': now},
         where: 'id = ?', whereArgs: [siparisId]);
-    final satir = await db.query('tedarikci_siparisler',
-        where: 'id = ?', whereArgs: [siparisId], limit: 1);
-    if (satir.isNotEmpty) {
-      BulutManager().upsert(
-          'tedarikci_siparisler', Map<String, dynamic>.from(satir.first));
-    }
+    await BulutManager().satiriBildir(db, 'tedarikci_siparisler', siparisId);
   }
 }

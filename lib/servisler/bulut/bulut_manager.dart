@@ -154,6 +154,19 @@ class BulutManager {
     unawaited(_kimlikliKuyrugaYaz(tablo, Map<String, dynamic>.from(ham)));
   }
 
+  /// "Satırı id ile taze oku → buluta bildir" üçlemesinin TEK kaynağı
+  /// (CLAUDE.md §4.1). Önceden 200+ yerde elle yazılıydı:
+  /// `db.query(t, where: 'id = ?', ...)` + `if (s.isNotEmpty) upsert(...)`.
+  ///
+  /// [id] null ise ya da satır yoksa hiçbir şey yapmaz. Transaction İÇİNDE
+  /// çağrılmamalı (§3.2: rollback olursa buluta hayalet kayıt gider) —
+  /// commit sonrası `db` ile çağır.
+  Future<void> satiriBildir(DatabaseExecutor ex, String tablo, Object? id) async {
+    if (id == null) return;
+    final s = await ex.query(tablo, where: 'id = ?', whereArgs: [id], limit: 1);
+    if (s.isNotEmpty) upsert(tablo, Map<String, dynamic>.from(s.first));
+  }
+
   /// [upsert]'ün asenkron gövdesi: satırın kalıcı kimliğini (global_id)
   /// garanti eder, sonra kuyruğa yazar.
   ///

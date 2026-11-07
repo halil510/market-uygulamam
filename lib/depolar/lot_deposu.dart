@@ -99,17 +99,9 @@ class LotDeposu {
     });
 
     // Transaction kalıcı olduktan sonra buluta bildir.
-    final satir =
-        await db.query('lot_seri', where: 'id = ?', whereArgs: [lotId], limit: 1);
-    if (satir.isNotEmpty) {
-      BulutManager().upsert('lot_seri', Map<String, dynamic>.from(satir.first));
-    }
+    await BulutManager().satiriBildir(db, 'lot_seri', lotId);
     if (fark != 0) {
-      final urunSatir =
-          await db.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
-      if (urunSatir.isNotEmpty) {
-        BulutManager().upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'urunler', urunId);
       // 🔴 Derin analizde bulundu: çok şubeli stok payı (sube_urun) hiç
       // güncellenmiyordu. fark>0 iken ana stok ARTTIĞI (stokGirTxn) için,
       // subeStokPayiUygula'nın beklediği "ana stok yönü" (pozitif=düştü)

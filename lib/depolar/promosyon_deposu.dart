@@ -16,10 +16,7 @@ class PromosyonDeposu {
       m.remove('id');
       m['last_updated'] ??= DateTime.now().toIso8601String();
       final yeniId = await db.insert('promosyonlar', m);
-      final guncelSatir = await db.query('promosyonlar', where: 'id = ?', whereArgs: [yeniId], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('promosyonlar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'promosyonlar', yeniId);
       return yeniId;
     } catch (e, st) {
       LogServisi().hata('Promosyon.ekle', hata: e, yigin: st);
@@ -40,10 +37,7 @@ class PromosyonDeposu {
       m['baslangic_tarihi'] = p.baslangicTarihi?.toIso8601String();
       m['bitis_tarihi'] = p.bitisTarihi?.toIso8601String();
       await db.update('promosyonlar', m, where: 'id = ?', whereArgs: [p.id]);
-      final guncelSatir = await db.query('promosyonlar', where: 'id = ?', whereArgs: [p.id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('promosyonlar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'promosyonlar', p.id);
     } catch (e, st) {
       LogServisi().hata('Promosyon.guncelle', hata: e, yigin: st);
       rethrow;
@@ -64,10 +58,7 @@ class PromosyonDeposu {
       final now = DateTime.now().toIso8601String();
       await db.update('promosyonlar', {'aktif': 0, 'deleted_at': now, 'last_updated': now},
           where: 'id = ?', whereArgs: [id]);
-      final guncelSatir = await db.query('promosyonlar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('promosyonlar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'promosyonlar', id);
     } catch (e, st) {
       LogServisi().hata('Promosyon.sil', hata: e, yigin: st);
       rethrow;
@@ -129,10 +120,7 @@ class PromosyonDeposu {
       final now = DateTime.now().toIso8601String();
       await db.update('promosyonlar', {'aktif': aktif ? 1 : 0, 'last_updated': now},
           where: 'id = ?', whereArgs: [id]);
-      final guncelSatir = await db.query('promosyonlar', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('promosyonlar', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'promosyonlar', id);
     } catch (e, st) {
       LogServisi().hata('Promosyon.aktiflikToggle', hata: e, yigin: st);
       rethrow;

@@ -106,10 +106,7 @@ class CariDeposu {
             'cari_kodu': 'CARIO-$yeniNo',
             'last_updated': DateTime.now().toIso8601String(),
           }, where: 'id = ?', whereArgs: [id]);
-          final satir = await db.query('cari', where: 'id = ?', whereArgs: [id], limit: 1);
-          if (satir.isNotEmpty) {
-            BulutManager().upsert('cari', Map<String, dynamic>.from(satir.first));
-          }
+          await BulutManager().satiriBildir(db, 'cari', id);
           duzeltilen++;
         }
       }
@@ -139,10 +136,7 @@ class CariDeposu {
       // 🔴 Derin analizde bulundu: bu fonksiyon dosyadaki TEK yazma
       // metoduydu ve yeni kaydı buluta hiç bildirmiyordu — bir işlem
       // görmeden önce bir cari asla diğer cihazlara/Supabase'e ulaşmıyordu.
-      final yeniSatir = await db.query('cari', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (yeniSatir.isNotEmpty) {
-        BulutManager().upsert('cari', Map<String, dynamic>.from(yeniSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'cari', id);
       return id;
     } catch (e, st) {
       LogServisi().hata('Cari.ekle', hata: e, yigin: st);
@@ -168,10 +162,7 @@ class CariDeposu {
       m.remove('bakiye');
       m['last_updated'] = DateTime.now().toIso8601String();
       await db.update('cari', m, where: 'id = ?', whereArgs: [cari.id]);
-      final guncelSatir = await db.query('cari', where: 'id = ?', whereArgs: [cari.id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('cari', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'cari', cari.id);
     } catch (e, st) {
       LogServisi().hata('Cari.guncelle', hata: e, yigin: st);
       rethrow;
@@ -189,10 +180,7 @@ class CariDeposu {
         'mukellef_sorgu_tarihi': now,
         'last_updated': now,
       }, where: 'id = ?', whereArgs: [cariId]);
-      final guncelSatir = await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('cari', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'cari', cariId);
     } catch (e, st) {
       LogServisi().hata('Cari.mukellefDurumuGuncelle', hata: e, yigin: st);
     }
@@ -206,10 +194,7 @@ class CariDeposu {
       // önceden diğer cihazlarda aktif görünmeye devam ederdi.
       await db.update('cari', {'is_deleted': 1, 'last_updated': now},
           where: 'id = ?', whereArgs: [id]);
-      final guncelSatir = await db.query('cari', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('cari', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'cari', id);
     } catch (e, st) {
       LogServisi().hata('Cari.sil', hata: e, yigin: st);
       rethrow;
@@ -422,10 +407,7 @@ class CariDeposu {
     try {
       final db = await _d;
       await CariDeposu.bakiyeTazeleTxn(db, cariId);
-      final satir = await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('cari', Map<String, dynamic>.from(satir.first));
-      }
+      await BulutManager().satiriBildir(db, 'cari', cariId);
     } catch (e, st) {
       LogServisi().hata('Cari.bakiyeGuncelle', hata: e, yigin: st);
       rethrow;
@@ -442,10 +424,7 @@ class CariDeposu {
       if (hareketSatir.isNotEmpty) {
         BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(hareketSatir.first));
       }
-      final cariSatir = await db.query('cari', where: 'id = ?', whereArgs: [hareket.cariId], limit: 1);
-      if (cariSatir.isNotEmpty) {
-        BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'cari', hareket.cariId);
     } catch (e, st) {
       LogServisi().hata('Cari.hareketEkle', hata: e, yigin: st);
       rethrow;
@@ -492,10 +471,7 @@ class CariDeposu {
       // bulut hâlâ eski (hatalı) bakiyeyi görmeye devam ediyordu.
       final now = DateTime.now().toIso8601String();
       await CariDeposu.bakiyeTazeleTxn(db, cariId, lastUpdated: now);
-      final satir = await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
-      if (satir.isNotEmpty) {
-        BulutManager().upsert('cari', Map<String, dynamic>.from(satir.first));
-      }
+      await BulutManager().satiriBildir(db, 'cari', cariId);
     } catch (e, st) {
       LogServisi().hata('Cari.bakiyeYenidenHesapla', hata: e, yigin: st);
       rethrow;
@@ -779,12 +755,7 @@ class CariDeposu {
         }
       });
 
-      final orijinalSatir = await db.query('cari_hareket',
-          where: 'id = ?', whereArgs: [h.id], limit: 1);
-      if (orijinalSatir.isNotEmpty) {
-        BulutManager().upsert(
-            'cari_hareket', Map<String, dynamic>.from(orijinalSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'cari_hareket', h.id);
       if (tersCariGid != null) {
         final satir = await db.query('cari_hareket',
             where: 'global_id = ?', whereArgs: [tersCariGid], limit: 1);
@@ -793,19 +764,9 @@ class CariDeposu {
               .upsert('cari_hareket', Map<String, dynamic>.from(satir.first));
         }
       }
-      final cariSatir = await db.query('cari',
-          where: 'id = ?', whereArgs: [h.cariId], limit: 1);
-      if (cariSatir.isNotEmpty) {
-        BulutManager()
-            .upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'cari', h.cariId);
       if (tersKasaId != null) {
-        final kasaSatir = await db.query('kasa_hareketleri',
-            where: 'id = ?', whereArgs: [tersKasaId], limit: 1);
-        if (kasaSatir.isNotEmpty) {
-          BulutManager().upsert(
-              'kasa_hareketleri', Map<String, dynamic>.from(kasaSatir.first));
-        }
+        await BulutManager().satiriBildir(db, 'kasa_hareketleri', tersKasaId);
       }
       if (tersBankaId != null) {
         final bankaSatir = await db.query('banka_hareketler',
@@ -814,12 +775,7 @@ class CariDeposu {
           BulutManager().upsert(
               'banka_hareketler', Map<String, dynamic>.from(bankaSatir.first));
           final hesapId = bankaSatir.first['banka_hesap_id'];
-          final hesapSatir = await db.query('banka_hesaplar',
-              where: 'id = ?', whereArgs: [hesapId], limit: 1);
-          if (hesapSatir.isNotEmpty) {
-            BulutManager().upsert(
-                'banka_hesaplar', Map<String, dynamic>.from(hesapSatir.first));
-          }
+          await BulutManager().satiriBildir(db, 'banka_hesaplar', hesapId);
         }
       }
       if (tersKrediId != null) {
@@ -829,12 +785,7 @@ class CariDeposu {
           BulutManager().upsert(
               'kredi_karti_hareket', Map<String, dynamic>.from(kkSatir.first));
           final kartId = kkSatir.first['kredi_karti_id'];
-          final kartSatir = await db.query('kredi_kartlari',
-              where: 'id = ?', whereArgs: [kartId], limit: 1);
-          if (kartSatir.isNotEmpty) {
-            BulutManager().upsert(
-                'kredi_kartlari', Map<String, dynamic>.from(kartSatir.first));
-          }
+          await BulutManager().satiriBildir(db, 'kredi_kartlari', kartId);
         }
       }
     } catch (e, st) {

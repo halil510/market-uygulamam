@@ -142,10 +142,7 @@ class AuditLogServisi {
       // cihazdan bakarsa baksın tüm geçmişi görsün) — ama BU çağrı
       // 'audit_log' tablosu için olduğundan, üstteki hariç tutma
       // sayesinde tekrar audit logu TETİKLEMEZ.
-      final guncelSatir = await db.query('audit_log', where: 'id = ?', whereArgs: [yeniId], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('audit_log', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'audit_log', yeniId);
     } catch (e) {
       // Audit log yazımı ASLA ana işlemi bozmamalı — sessizce geç.
       if (kDebugMode) debugPrint('AuditLogServisi.kaydet hatası: $e');
@@ -211,10 +208,7 @@ class AuditLogServisi {
         'last_updated': now,
       };
       final yeniId = await db.insert('audit_log', kayit);
-      final guncelSatir = await db.query('audit_log', where: 'id = ?', whereArgs: [yeniId], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('audit_log', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'audit_log', yeniId);
     } catch (e, st) {
       LogServisi().hata('AuditLogServisi.olayKaydet hatası', hata: e, yigin: st);
     }

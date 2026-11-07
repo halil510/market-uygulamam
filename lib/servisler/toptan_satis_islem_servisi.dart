@@ -82,12 +82,7 @@ class ToptanSatisIslemServisi {
       for (final k in stokKalemleri) {
         final gidler = stokHareketGidleri[k.urunId];
         if (gidler == null || gidler.isEmpty) continue;
-        final urunSatir = await db.query('urunler',
-            where: 'id = ?', whereArgs: [k.urunId], limit: 1);
-        if (urunSatir.isNotEmpty) {
-          BulutManager()
-              .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-        }
+        await BulutManager().satiriBildir(db, 'urunler', k.urunId);
         for (final gid in gidler) {
           final stokSatir = await db.query('stok_hareket',
               where: 'global_id = ?', whereArgs: [gid], limit: 1);
@@ -103,11 +98,7 @@ class ToptanSatisIslemServisi {
         BulutManager().upsert(
             'cari_hareket', Map<String, dynamic>.from(cariHareketSatir.first));
       }
-      final cariSatir =
-          await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
-      if (cariSatir.isNotEmpty) {
-        BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'cari', cariId);
     } catch (e, st) {
       LogServisi().hata('Toptan satış bulut bildirimi hatası', hata: e, yigin: st);
     }

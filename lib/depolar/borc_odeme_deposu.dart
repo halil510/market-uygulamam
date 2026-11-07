@@ -14,10 +14,7 @@ class BorcOdemeDeposu {
     try {
       final db = await _d;
       final yeniId = await db.transaction((txn) => ekleTxn(txn, odeme));
-      final guncelSatir = await db.query('borc_odemeler', where: 'id = ?', whereArgs: [yeniId], limit: 1);
-      if (guncelSatir.isNotEmpty) {
-        BulutManager().upsert('borc_odemeler', Map<String, dynamic>.from(guncelSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'borc_odemeler', yeniId);
       return yeniId;
     } catch (e, st) {
       LogServisi().hata('BorcOdemeDeposu.ekle', hata: e, yigin: st);

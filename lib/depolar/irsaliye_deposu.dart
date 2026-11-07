@@ -174,12 +174,7 @@ class IrsaliyeDeposu {
 
     // Transaction kapandıktan (veri kalıcı olduktan) sonra buluta bildir.
     try {
-      final irsSatir = await db.query('irsaliyeler',
-          where: 'id = ?', whereArgs: [irsaliyeId], limit: 1);
-      if (irsSatir.isNotEmpty) {
-        BulutManager()
-            .upsert('irsaliyeler', Map<String, dynamic>.from(irsSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'irsaliyeler', irsaliyeId);
       for (final gid in kalemGidler) {
         final s = await db.query('irsaliye_kalem',
             where: 'global_id = ?', whereArgs: [gid], limit: 1);
@@ -189,11 +184,7 @@ class IrsaliyeDeposu {
         }
       }
       for (final urunId in etkilenenUrunIdler) {
-        final s = await db.query('urunler',
-            where: 'id = ?', whereArgs: [urunId], limit: 1);
-        if (s.isNotEmpty) {
-          BulutManager().upsert('urunler', Map<String, dynamic>.from(s.first));
-        }
+        await BulutManager().satiriBildir(db, 'urunler', urunId);
       }
       for (final gid in stokHareketGidler) {
         final s = await db.query('stok_hareket',
@@ -332,11 +323,7 @@ class IrsaliyeDeposu {
 
     try {
       for (final urunId in etkilenenUrunIdler) {
-        final s = await db.query('urunler',
-            where: 'id = ?', whereArgs: [urunId], limit: 1);
-        if (s.isNotEmpty) {
-          BulutManager().upsert('urunler', Map<String, dynamic>.from(s.first));
-        }
+        await BulutManager().satiriBildir(db, 'urunler', urunId);
       }
       for (final gid in stokHareketGidler) {
         final s = await db.query('stok_hareket',
@@ -406,9 +393,6 @@ class IrsaliyeDeposu {
   }
 
   Future<void> _bildir(dynamic db, int irsaliyeId) async {
-    final satir = await db.query('irsaliyeler', where: 'id = ?', whereArgs: [irsaliyeId], limit: 1);
-    if (satir.isNotEmpty) {
-      BulutManager().upsert('irsaliyeler', Map<String, dynamic>.from(satir.first));
-    }
+    await BulutManager().satiriBildir(db, 'irsaliyeler', irsaliyeId);
   }
 }

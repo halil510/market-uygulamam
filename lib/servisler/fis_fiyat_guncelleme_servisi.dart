@@ -19,6 +19,7 @@ import '../cekirdek/utils/para_utils.dart';
 import '../depolar/cari_deposu.dart';
 import '../modeller/cari_hareket_model.dart';
 import '../servisler/audit_log_servisi.dart';
+import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../veri/database/veritabani.dart';
@@ -197,7 +198,14 @@ class FisFiyatGuncellemeServisi {
       for (final cid in etkilenenCariler) {
         await BulutManager().satiriBildir(db, 'cari', cid);
       }
-    } catch (_) {}
+    } catch (e, st) {
+      // Transaction KALICI; satırlar sync kuyruğuna txn içinde yazıldı.
+      // rethrow kullanıcıyı fiyat güncellemeyi tekrarlatıp cari farkını
+      // İKİ KEZ yazdırırdı — bu yüzden yalnızca loglanır (§5.7: artık
+      // sessiz değil).
+      LogServisi().uyari('Fiş fiyat güncelleme sonrası bulut bildirimi başarısız',
+          hata: e, yigin: st);
+    }
 
     if (guncellenen > 0) {
       await AuditLogServisi().olayKaydet(

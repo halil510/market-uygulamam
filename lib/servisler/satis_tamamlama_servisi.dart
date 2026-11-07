@@ -792,8 +792,13 @@ class SatisTamamlamaServisi {
       if (kasaHareketId != null) {
         await BulutManager().satiriBildir(db, 'kasa_hareketleri', kasaHareketId);
       }
-    } catch (_) {
-      // Bulut bildirimi best-effort (mevcut davranışla aynı).
+    } catch (e, st) {
+      // Bulut bildirimi best-effort: transaction KALICI, satırlar sync
+      // kuyruğuna txn içinde zaten yazıldı — rethrow kullanıcıyı işlemi
+      // tekrarlamaya (çift güncelleme) iterdi. Ama hata artık görünür
+      // (CLAUDE.md §5.7).
+      LogServisi().uyari('Fiş güncelleme sonrası bulut bildirimi başarısız',
+          hata: e, yigin: st);
     }
 
     final guncelSatis = await _satisDepo.idileGetir(satis.id!);

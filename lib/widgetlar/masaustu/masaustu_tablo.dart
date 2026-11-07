@@ -213,36 +213,54 @@ class _MasaustuTabloState<T> extends State<MasaustuTablo<T>> {
           (widget.kolonlar.where((k) => k.esnek).length.clamp(1, 99));
       double gen(TabloKolon<T> k) => k.esnek ? esnekGen : k.genislik;
       final liste = _gorunen;
+      // Otomatik (masaüstü varsayılanı) kaydırma çubukları kapalı: dikey
+      // liste yatay kayan GENİŞ gövdenin içinde olduğundan otomatik dikey
+      // çubuk tablonun en sağ kenarına — sütunlar pencereden genişse EKRAN
+      // DIŞINA — çiziliyordu (kullanıcı: "yandan kaydırma görünmüyor").
+      // Dikey çubuk artık yatay kaydırmanın DIŞINDA, pencerenin sağ
+      // kenarında ve her zaman görünür.
+      final cubuksuz = ScrollConfiguration.of(context).copyWith(scrollbars: false);
       return Scrollbar(
-        controller: _yatayScroll,
+        controller: _dikey,
         thumbVisibility: true,
-        notificationPredicate: (n) => n.depth == 0,
-        child: SingleChildScrollView(
-        controller: _yatayScroll,
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: toplam,
-          child: Column(children: [
-            _baslik(gen),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, govde) => Listener(
-                  onPointerDown: (e) => _basildi(e, liste),
-                  onPointerMove: (e) => _surukleniyor(e, liste, govde.maxHeight),
-                  onPointerUp: (_) => _birakildi(),
-                  onPointerCancel: (_) => _birakildi(),
-                  child: ListView.builder(
-                    controller: _dikey,
-                    itemExtent: _satirYuksekligi,
-                    itemCount: liste.length,
-                    itemBuilder: (_, i) => _satir(context, liste, i, gen),
+        interactive: true,
+        notificationPredicate: (n) =>
+            n.depth == 1 && n.metrics.axis == Axis.vertical,
+        child: Scrollbar(
+          controller: _yatayScroll,
+          thumbVisibility: true,
+          notificationPredicate: (n) => n.depth == 0,
+          child: ScrollConfiguration(
+            behavior: cubuksuz,
+            child: SingleChildScrollView(
+              controller: _yatayScroll,
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: toplam,
+                child: Column(children: [
+                  _baslik(gen),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, govde) => Listener(
+                        onPointerDown: (e) => _basildi(e, liste),
+                        onPointerMove: (e) =>
+                            _surukleniyor(e, liste, govde.maxHeight),
+                        onPointerUp: (_) => _birakildi(),
+                        onPointerCancel: (_) => _birakildi(),
+                        child: ListView.builder(
+                          controller: _dikey,
+                          itemExtent: _satirYuksekligi,
+                          itemCount: liste.length,
+                          itemBuilder: (_, i) => _satir(context, liste, i, gen),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ]),
               ),
             ),
-          ]),
+          ),
         ),
-      ),
       );
     });
   }

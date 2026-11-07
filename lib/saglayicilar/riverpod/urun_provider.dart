@@ -1,10 +1,10 @@
 // lib/saglayicilar/riverpod/urun_provider.dart
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../depolar/urun_deposu.dart';
 import '../../modeller/urun_model.dart';
+import '../../servisler/log_servisi.dart';
 
 part 'urun_provider.g.dart';
 
@@ -123,9 +123,10 @@ class Urunler extends _$Urunler {
         dahaSonraVar: hamUzunluk == _limit,
         sayfa:        sayfa + 1,
       );
-    } catch (e) {
+    } catch (e, st) {
       state = state.copyWith(yukleniyor: false);
-      if (kDebugMode) debugPrint('Urunler.yukle: $e');
+      // Liste yarım kalır — sessiz değil, loglanır (CLAUDE.md §5.7).
+      LogServisi().hata('Urunler.yukle', hata: e, yigin: st);
     }
   }
 

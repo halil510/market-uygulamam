@@ -133,7 +133,20 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani>
     });
   }
 
+  /// Bir sayfa yüklendikten sonra liste ekranı DOLDURMUYORSA (büyük
+  /// masaüstü penceresi, "sadece kritik stok" filtresi 50'lik sayfadan 3
+  /// ürün bırakınca…) kaydırma hiç olmuyor, sonraki sayfa da hiç
+  /// yüklenmiyordu — kullanıcı: "liste tam gelmiyor". Her yüklemeden sonra
+  /// kare çizildiğinde aynı "sona yakın mı" kontrolü bir kez yapılır.
+  void _ekranDolmadiysaDevamEt() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollCtrl.hasClients) return;
+      _scrollChanged();
+    });
+  }
+
   void _scrollChanged() {
+    if (!_scrollCtrl.hasClients) return;
     final durum = ref.read(urunlerProvider);
     if (_scrollCtrl.position.pixels >=
         _scrollCtrl.position.maxScrollExtent - 200) {
@@ -160,6 +173,11 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani>
   // ══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
+    ref.listen(urunlerProvider, (onceki, simdi) {
+      if (onceki?.yukleniyor == true && !simdi.yukleniyor && simdi.dahaSonraVar) {
+        _ekranDolmadiysaDevamEt();
+      }
+    });
     final durum = ref.watch(urunlerProvider);
     final filtre = ref.watch(urunFiltresiProvider);
     final filtreAktif = filtre.sadecKritikler == true ||

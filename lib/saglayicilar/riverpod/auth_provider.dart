@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/audit_log_servisi.dart';
 import '../../modeller/kullanici_model.dart';
@@ -94,7 +95,9 @@ class Auth extends _$Auth {
           kullaniciId: null, kullaniciAdi: kullaniciAdi, basarili: false));
       return GirisSonucu.kilitli;
     } catch (e) {
-      state = AuthState.hata(e.toString()); return GirisSonucu.hata;
+      // Şifre yanlışlığı DEĞİL, sistem hatası (ör. veritabanı açılamadı):
+      // ekran bunu "Hatalı şifre" saymamalı — mesaj state.hataMesaji'nda.
+      state = AuthState.hata(kullaniciyaHataMetni(e)); return GirisSonucu.hata;
     }
   }
 

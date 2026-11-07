@@ -74,6 +74,16 @@ void main() {
     expect(await denemeSayisi('hayalet'), 1);
   });
 
+  test('veritabanı hatası "hatalı şifre" gibi false DÖNMEZ: hata iletilir, '
+      'deneme sayacı artmaz', () async {
+    // Regresyon: catch içinde `return false` vardı — DB açılamazsa kasiyer
+    // "Hatalı şifre" görüyor, birkaç denemede de hesabı kilitleniyordu.
+    await db.execute('DROP TABLE kullanicilar');
+    await expectLater(auth.girisYap('ayse', 'Sifre123'), throwsA(isA<Exception>()));
+    expect(await denemeSayisi('ayse'), isNull);
+    expect(auth.aktifKullanici, isNull);
+  });
+
   test('aktif = 0 kullanıcı doğru şifreyle bile giremez', () async {
     await tuzluKullanici('pasif', 'Sifre1', aktif: 0);
     expect(await auth.girisYap('pasif', 'Sifre1'), isFalse);

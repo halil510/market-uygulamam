@@ -126,8 +126,13 @@ class AuthServisi {
       await _girisTamamla(kullanici);
       return true;
     } catch (e, st) {
+      // ÖNCEDEN burada `return false` vardı: veritabanı açılamaması gibi
+      // beklenmedik bir hata kullanıcıya "Hatalı şifre" olarak görünüyor,
+      // hatalı deneme sayacını da gereksiz yere ilerletiyordu (CLAUDE.md
+      // §5.7). Artık loglanıp üst katmana iletilir; AuthNotifier bunu
+      // GirisSonucu.hata olarak ayırır, ekran gerçek sebebi gösterir.
       LogServisi().hata('Giriş hatası', hata: e, yigin: st);
-      return false;
+      rethrow;
     }
   }
 

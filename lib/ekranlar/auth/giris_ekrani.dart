@@ -279,6 +279,12 @@ class _GirisEkraniState extends ConsumerState<GirisEkrani>
             .add(const Duration(seconds: UygSabitler.kilitSureSaniye));
         _hata.value = '${UygSabitler.kilitSureSaniye} saniye bekleyin.';
         _sifre.value = '';
+      } else if (sonuc == GirisSonucu.hata) {
+        // Sistem hatası (ör. veritabanı) — "Hatalı şifre" DEĞİL; hatalı
+        // deneme sayılmaz, gerçek sebep gösterilir.
+        _sifre.value = '';
+        _hata.value = 'Giriş yapılamadı: '
+            '${ref.read(authProvider).hataMesaji ?? 'beklenmeyen hata'}';
       } else {
         _hataliGiris++;
         _sifre.value = '';

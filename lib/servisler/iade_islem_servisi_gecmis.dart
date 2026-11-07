@@ -219,22 +219,9 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
     });
 
     try {
-      final kalemSatir =
-          await db.query('iade_kalem', where: 'id = ?', whereArgs: [kalemId], limit: 1);
-      if (kalemSatir.isNotEmpty) {
-        BulutManager()
-            .upsert('iade_kalem', Map<String, dynamic>.from(kalemSatir.first));
-      }
-      final iadeSatir =
-          await db.query('iade', where: 'id = ?', whereArgs: [iadeId], limit: 1);
-      if (iadeSatir.isNotEmpty) {
-        BulutManager().upsert('iade', Map<String, dynamic>.from(iadeSatir.first));
-      }
-      final urunSatir =
-          await db.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
-      if (urunSatir.isNotEmpty) {
-        BulutManager().upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'iade_kalem', kalemId);
+      await BulutManager().satiriBildir(db, 'iade', iadeId);
+      await BulutManager().satiriBildir(db, 'urunler', urunId);
       final stokSatir = await db.query('stok_hareket',
           where: 'referans_id = ? AND referans_turu = ? AND urun_id = ?',
           whereArgs: [iadeId, 'iade', urunId],
@@ -264,11 +251,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           BulutManager().upsert(
               'cari_hareket', Map<String, dynamic>.from(cariHareketSatir.first));
         }
-        final cariSatir =
-            await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
-        if (cariSatir.isNotEmpty) {
-          BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-        }
+        await BulutManager().satiriBildir(db, 'cari', cariId);
       }
     } catch (e) {
       if (kDebugMode) debugPrint('İade ek kalem bulut bildirimi hatası: $e');
@@ -408,20 +391,11 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
     });
 
     try {
-      final iadeSatir =
-          await db.query('iade', where: 'id = ?', whereArgs: [iadeId], limit: 1);
-      if (iadeSatir.isNotEmpty) {
-        BulutManager().upsert('iade', Map<String, dynamic>.from(iadeSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'iade', iadeId);
       for (final k in kalemler) {
         final urunId = k['urun_id'] as int?;
         if (urunId == null) continue;
-        final urunSatir =
-            await db.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
-        if (urunSatir.isNotEmpty) {
-          BulutManager()
-              .upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-        }
+        await BulutManager().satiriBildir(db, 'urunler', urunId);
         // 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 1): tüm fiş iptali = her
         // kalem için stok AZALIŞI (pozitif fark).
         final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;
@@ -450,11 +424,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
         for (final c in cariHareketSatirlar) {
           BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(c));
         }
-        final cariSatir =
-            await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
-        if (cariSatir.isNotEmpty) {
-          BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-        }
+        await BulutManager().satiriBildir(db, 'cari', cariId);
       }
     } catch (e) {
       if (kDebugMode) debugPrint('Fiş silme bulut bildirimi hatası: $e');
@@ -682,11 +652,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
     // cari_hareket, cari) değişebilir, her birinin EN SON değişen
     // satırı sorgulanıp bildirilir.
     try {
-      final iadeSatir =
-          await db.query('iade', where: 'id = ?', whereArgs: [iadeId], limit: 1);
-      if (iadeSatir.isNotEmpty) {
-        BulutManager().upsert('iade', Map<String, dynamic>.from(iadeSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'iade', iadeId);
       final kalemSatir = await db.query('iade_kalem',
           where: 'iade_id = ? AND urun_id = ?',
           whereArgs: [iadeId, urunId],
@@ -695,11 +661,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
         BulutManager()
             .upsert('iade_kalem', Map<String, dynamic>.from(kalemSatir.first));
       }
-      final urunSatir =
-          await db.query('urunler', where: 'id = ?', whereArgs: [urunId], limit: 1);
-      if (urunSatir.isNotEmpty) {
-        BulutManager().upsert('urunler', Map<String, dynamic>.from(urunSatir.first));
-      }
+      await BulutManager().satiriBildir(db, 'urunler', urunId);
       final stokSatir = await db.query('stok_hareket',
           where: 'referans_id = ? AND referans_turu = ?',
           whereArgs: [iadeId, 'iade'],
@@ -729,11 +691,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           BulutManager().upsert(
               'cari_hareket', Map<String, dynamic>.from(cariHareketSatir.first));
         }
-        final cariSatir =
-            await db.query('cari', where: 'id = ?', whereArgs: [cariId], limit: 1);
-        if (cariSatir.isNotEmpty) {
-          BulutManager().upsert('cari', Map<String, dynamic>.from(cariSatir.first));
-        }
+        await BulutManager().satiriBildir(db, 'cari', cariId);
       }
     } catch (e) {
       if (kDebugMode) debugPrint('İade bulut bildirimi hatası: $e');

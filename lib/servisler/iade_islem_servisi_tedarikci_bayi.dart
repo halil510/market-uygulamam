@@ -925,8 +925,7 @@ extension IadeIslemServisiTedarikciBayi on IadeIslemServisi {
         }
       }
       Future<void> idIleBildir(String tablo, int id) async {
-        final s = await db.query(tablo, where: 'id = ?', whereArgs: [id], limit: 1);
-        if (s.isNotEmpty) BulutManager().upsert(tablo, Map<String, dynamic>.from(s.first));
+        await BulutManager().satiriBildir(db, tablo, id);
       }
 
       for (final urunId in urunIdler) {

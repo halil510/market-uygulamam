@@ -143,7 +143,11 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
       if (!mounted || aramaId != _aramaId) return;
       _aramaSonuclari = sonuclar;
       if (mounted) setState(() {});
-    } catch (e) { /* ignore */ }
+    } catch (e, st) {
+      // Kozmetik: arama listesi boş kalır, kullanıcı tekrar yazabilir —
+      // ama hata artık görünmez değil (CLAUDE.md §5.7).
+      LogServisi().uyari('Alım ürün araması başarısız', hata: e, yigin: st);
+    }
   }
 
   void _kameraToggle() {

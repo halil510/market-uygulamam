@@ -25,6 +25,7 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../servisler/log_servisi.dart';
+import '../../widgetlar/ortak/cari_sec_dialog.dart';
 
 part 'alim_ekrani_gorunum.dart';
 
@@ -219,90 +220,21 @@ class _AlimEkraniState extends ConsumerState<AlimEkrani> {
     }
   }
 
-  /// Arama için Türkçe karakter/büyük-küçük harf duyarsız normalizasyon.
-  static String _normalize(String s) => s
-      .replaceAll('İ', 'i')
-      .replaceAll('I', 'i')
-      .replaceAll('ı', 'i')
-      .toLowerCase()
-      .replaceAll('ş', 's')
-      .replaceAll('ğ', 'g')
-      .replaceAll('ü', 'u')
-      .replaceAll('ö', 'o')
-      .replaceAll('ç', 'c');
-
   Future<void> _tedarikciSec() async {
     // 49+ tedarikçi düz listede kaydırarak seçiliyordu (yanlış kişi seçme
-    // riski): artık arama kutusu var.
-    String filtre = '';
+    // riski): arama kutulu ORTAK cari seçim diyaloğu (CLAUDE.md §4.7).
     final sec = await showDialog<CariModel>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setD) {
-          final liste = _tedarikciListesi
-              .where((t) =>
-                  filtre.isEmpty ||
-                  _normalize(t.unvan).contains(_normalize(filtre)) ||
-                  (t.telefon ?? '').contains(filtre))
-              .toList();
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('Tedarikçi Seç'),
-            contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
-            content: SizedBox(
-              width: double.maxFinite,
-              height: 400,
-              child: _tedarikciListesi.isEmpty
-                  ? const Center(
-                      child: Text(
-                          'Tedarikçi bulunamadı\nCari menüsünden ekleyebilirsiniz.',
-                          textAlign: TextAlign.center))
-                  : Column(children: [
-                      TextField(
-                        autofocus: false,
-                        decoration: const InputDecoration(
-                          hintText: 'Tedarikçi ara...',
-                          prefixIcon: Icon(Icons.search, size: 20),
-                          isDense: true,
-                        ),
-                        onChanged: (v) => setD(() => filtre = v.trim()),
-                      ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: liste.isEmpty
-                            ? const Center(child: Text('Eşleşen tedarikçi yok'))
-                            : ListView.builder(
-                                itemCount: liste.length,
-                                itemBuilder: (_, i) {
-                                  final t = liste[i];
-                                  return ListTile(
-                                    dense: true,
-                                    leading: CircleAvatar(
-                                      radius: 16,
-                                      backgroundColor: TsRenk.zemin(TsRenk.vurguTurkuaz),
-                                      child: Text(
-                                          t.unvan.isNotEmpty ? t.unvan[0].toUpperCase() : '?',
-                                          style: TsMetin.kucukVurgu
-                                              .copyWith(color: TsRenk.vurguTurkuaz)),
-                                    ),
-                                    title: Text(t.unvan,
-                                        style: const TextStyle(
-                                            fontSize: 13, fontWeight: FontWeight.w600)),
-                                    subtitle: t.telefon != null
-                                        ? Text(t.telefon!, style: const TextStyle(fontSize: 11))
-                                        : null,
-                                    onTap: () => Navigator.pop(ctx, t),
-                                  );
-                                },
-                              ),
-                      ),
-                    ]),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
-            ],
-          );
-        },
+      builder: (ctx) => CariSecDialog(
+        cariler: _tedarikciListesi,
+        baslik: 'Tedarikçi Seç',
+        baslikIkonu: null,
+        aramaIpucu: 'Tedarikçi ara...',
+        kayitsizSecenegi: false,
+        bosListeMesaji: 'Tedarikçi bulunamadı\nCari menüsünden ekleyebilirsiniz.',
+        eslesmeYokMesaji: 'Eşleşen tedarikçi yok',
+        vurguRengi: TsRenk.vurguTurkuaz,
+        yukseklik: 400,
       ),
     );
     if (sec != null && mounted) setState(() => _tedarikci = sec);

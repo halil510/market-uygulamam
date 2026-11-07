@@ -5,7 +5,7 @@
 // (ör. masa yalnızca müşteri tipindekileri verir).
 import '../../tasarim_sistemi/ts_token.dart';
 import 'package:flutter/material.dart';
-import 'package:market_plus/cekirdek/utils/metin_arama.dart';
+import 'cari_sec_dialog.dart' show cariFiltrele;
 import '../../modeller/cari_model.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 
@@ -40,14 +40,7 @@ class _MusteriSecimPaneliState extends State<MusteriSecimPaneli> {
   void dispose() { _araCtrl.dispose(); super.dispose(); }
 
   void _filtrele() {
-    final q = aramaNormalize(_araCtrl.text);
-    setState(() {
-      _filtreli = q.isEmpty
-          ? widget.cariler
-          : widget.cariler.where((c) =>
-              aramaNormalize(c.unvan).contains(q) ||
-              (c.telefon?.contains(q) ?? false)).toList();
-    });
+    setState(() => _filtreli = cariFiltrele(widget.cariler, _araCtrl.text));
   }
 
   @override

@@ -15,7 +15,7 @@ import 'package:intl/intl.dart';
 import 'iade/iade_arama_widget.dart';
 import 'iade/iade_urun_formu.dart';
 import 'iade/iade_gecmis_widget.dart';
-import 'iade/iade_cari_dialog.dart';
+import '../../widgetlar/ortak/cari_sec_dialog.dart';
 import 'iade/cari_iade_kurali.dart';
 import 'iade/iade_kaydet_butonu.dart';
 import 'iade/iade_gecmis_sekmesi.dart';

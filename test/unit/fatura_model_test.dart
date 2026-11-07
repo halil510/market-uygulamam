@@ -123,12 +123,39 @@ void main() {
         genelToplam: detaylar.fold<double>(0, (t, d) => t + d.toplamTutar),
       );
 
-      // fatura_detay_pdf_ext.dart'ın düzeltilmiş "Vergiler Hariç Toplam"
-      // formülüyle AYNI: genelToplam - toplamKdv (her koşulda doğru).
-      final vergilerHaric = f.genelToplam - f.toplamKdv;
+      // fatura_detay_pdf_ext.dart'ın "Vergiler Hariç Toplam" satırı bu
+      // getter'ı basar: genelToplam - toplamKdv (her koşulda doğru).
+      final vergilerHaric = f.vergilerHaricToplam;
       expect(vergilerHaric + f.toplamKdv, closeTo(f.genelToplam, 0.001));
       expect(vergilerHaric, closeTo(140, 0.001)); // 50 + 90
       expect(f.genelToplam, closeTo(165.2, 0.001)); // 59 + 106.2
+    });
+
+    test('brutAraToplam: "Ara Toplam" satırı indirim ÖNCESİ brüt tutardır '
+        '(net matrah + indirim), Ara Toplam - İndirim = Vergiler Hariç', () {
+      final f = FaturaModel(
+        tarih: DateTime.now(),
+        toplamAraToplam: 90, // net (indirim düşülmüş)
+        toplamIskonto: 10,
+        toplamKdv: 16.2,
+        genelToplam: 106.2,
+      );
+      expect(f.brutAraToplam, 100);
+      expect(f.brutAraToplam - f.toplamIskonto, f.vergilerHaricToplam);
+      expect(f.vergilerHaricToplam + f.toplamKdv, f.genelToplam);
+    });
+
+    test('brutAraToplam / vergilerHaricToplam kuruşa yuvarlanır '
+        '(kayan nokta artığı basılmaz)', () {
+      final f = FaturaModel(
+        tarih: DateTime.now(),
+        toplamAraToplam: 0.1,
+        toplamIskonto: 0.2, // 0.1 + 0.2 = 0.30000000000000004
+        toplamKdv: 0.1,
+        genelToplam: 0.3, // 0.3 - 0.1 = 0.19999999999999998
+      );
+      expect(f.brutAraToplam, 0.3);
+      expect(f.vergilerHaricToplam, 0.2);
     });
   });
 }

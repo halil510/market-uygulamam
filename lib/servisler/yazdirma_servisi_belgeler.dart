@@ -771,7 +771,7 @@ extension YazdirmaServisiBelgeler on YazdirmaServisi {
     // (bkz. fatura_detay_pdf_ext.dart'taki aynı düzeltme).
     bytes.addAll(generator.row([
       PosColumn(text:YazdirmaServisi._t('Ara Toplam'), width: 8),
-      PosColumn(text:YazdirmaServisi._t(_fmt.format(f.toplamAraToplam + f.toplamIskonto)), width: 4, styles: const PosStyles(align: PosAlign.right)),
+      PosColumn(text:YazdirmaServisi._t(_fmt.format(f.brutAraToplam)), width: 4, styles: const PosStyles(align: PosAlign.right)),
     ]));
     if (f.toplamIskonto > 0) {
       bytes.addAll(generator.row([

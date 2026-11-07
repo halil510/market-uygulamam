@@ -190,7 +190,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
         // tutar olarak gösteriliyor (toplamAraToplam zaten net saklanıyor,
         // +toplamIskonto ile brüte geri çevriliyor) — aksi halde alttaki
         // "İndirim" satırı ikinci kez düşülmüş gibi görünüp toplam tutmazdı.
-        _termalToplamSatir('Ara Toplam', f.toplamAraToplam + f.toplamIskonto, font, boldFont, scale: scale),
+        _termalToplamSatir('Ara Toplam', f.brutAraToplam, font, boldFont, scale: scale),
         if (f.toplamIskonto > 0) _termalToplamSatir('İndirim', -f.toplamIskonto, font, boldFont, scale: scale),
         _termalToplamSatir('KDV', f.toplamKdv, font, boldFont, scale: scale),
         pw.SizedBox(height: 2),
@@ -266,7 +266,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
       // basılan "Vergiler Dahil Toplam" ile TUTMUYORDU (resmi bir belgede
       // en kritik hata sınıfı). genelToplam - toplamKdv, hangi kural
       // değişirse değişsin HER ZAMAN doğru sonucu verir.
-      final vergilerHaric = f.genelToplam - f.toplamKdv;
+      final vergilerHaric = f.vergilerHaricToplam;
 
       // ÖNCEDEN "kdv_musaf" ve "tevkifat" ayarları (Ayarlar > Fatura
       // Ayarları'nda kaydediliyordu) HİÇBİR YERDE okunmuyordu — kullanıcı
@@ -365,7 +365,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
                 // için "Ara Toplam" - "Toplam İndirim" ≠ "Vergiler Hariç
                 // Toplam" görünüyordu (ör. 90 - 10 ≠ 90 basılıyordu, resmi
                 // A4 fatura formatında kendi içinde tutmayan bir belge).
-                _pdfTutarSatir('Ara Toplam', f.toplamAraToplam + f.toplamIskonto, font, boldFont, scale: scale),
+                _pdfTutarSatir('Ara Toplam', f.brutAraToplam, font, boldFont, scale: scale),
                 if (f.toplamIskonto > 0)
                   _pdfTutarSatir('Toplam İndirim', f.toplamIskonto, font, boldFont, scale: scale),
                 _pdfTutarSatir('Vergiler Hariç Toplam', vergilerHaric, font, boldFont, scale: scale),

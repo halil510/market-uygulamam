@@ -75,6 +75,19 @@ class FaturaModel {
   bool get vadesiGecti => vadeTarihi != null &&
       DateTime.now().isAfter(vadeTarihi!) && !odendi;
 
+  /// Faturada "Ara Toplam" satırında basılan BRÜT tutar: indirim
+  /// UYGULANMADAN önceki KDV hariç toplam. [toplamAraToplam] zaten
+  /// indirim düşülmüş NET matrahtır (vergiler hariç) — "Ara Toplam"
+  /// hem brüt hem net anlamda kullanılmasın diye (CLAUDE.md §4.4, bir kez
+  /// bug olmuş) ekran, A4 PDF, 80 mm PDF ve termal fiş bu TEK getter'ı
+  /// kullanır. Kutsal formül: genelToplam = toplamAraToplam + toplamKdv.
+  double get brutAraToplam => ParaUtils.yuvarla(toplamAraToplam + toplamIskonto);
+
+  /// "Vergiler Hariç Toplam" — basılan "Vergiler Dahil Toplam" ile HER
+  /// ZAMAN tutsun diye genelToplam - toplamKdv'den türetilir (indirimin
+  /// ikinci kez düşülmesi bug'ı, derin denetim).
+  double get vergilerHaricToplam => ParaUtils.yuvarla(genelToplam - toplamKdv);
+
   // Constructor
   const FaturaModel({
     this.id, this.globalId, this.faturaNo,

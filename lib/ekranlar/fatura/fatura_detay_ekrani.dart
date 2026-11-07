@@ -256,7 +256,7 @@ appBar: TsAppBar(
               // tutar olarak gösteriliyor (toplamAraToplam zaten net
               // saklanıyor) — aksi halde alttaki "Iskonto" satırı ikinci
               // kez düşülmüş gibi görünüp toplam tutmazdı.
-              _toplamSatir('Ara Toplam', f.toplamAraToplam + f.toplamIskonto),
+              _toplamSatir('Ara Toplam', f.brutAraToplam),
               if (f.toplamIskonto > 0)
                 _toplamSatir('Iskonto', -f.toplamIskonto, renk: TsRenk.hata),
               _toplamSatir('KDV', f.toplamKdv),

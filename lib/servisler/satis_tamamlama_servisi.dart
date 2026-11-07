@@ -90,7 +90,7 @@ class SatisTamamlamaServisi {
       toplamTutar: k.toplamTutar,
       iskontoOran: iskontoOran,
       iskontoTutar: iskontoTutar,
-      kdvOran: double.tryParse(k.urun.kdvOran) ?? 18,
+      kdvOran: k.urun.kdvOranSayi,
       kdvTutar: k.kdvTutar,
       netFiyat: k.netFiyat,
       alisFiyat: k.urun.alisFiyat,

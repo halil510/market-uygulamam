@@ -207,7 +207,7 @@ class QrMenuSunucuServisi {
               'id': u.id,
               'ad': u.urunAdi,
               'fiyat': u.satisFiyati,
-              'kdv': double.tryParse(u.kdvOran) ?? 18,
+              'kdv': u.kdvOranSayi,
               'grup': u.anaGrup ?? 'Diğer',
             }).toList();
         req.response.headers.set('Content-Type', 'application/json; charset=utf-8');

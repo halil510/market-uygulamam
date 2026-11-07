@@ -501,7 +501,7 @@ class _KalemDialogState extends State<_KalemDialog> {
               birimFiyat: fiyat,
               alisFiyat: widget.urun.alisFiyat,
               iskontoOran: iskonto.clamp(0, 100),
-              kdvOran: double.tryParse(widget.urun.kdvOran) ?? 18,
+              kdvOran: widget.urun.kdvOranSayi,
             ));
           },
           child: const Text('Ekle'),

@@ -42,7 +42,7 @@ extension _IadeExcelExt on _IadeEkraniState {
           ...i,
           'kod': u?.kod ?? i['barkod'],
           'birim_adi': u?.birimAdi ?? 'ADET',
-          'kdv_oran': double.tryParse(u?.kdvOran ?? '') ?? 0.0,
+          'kdv_oran': u?.kdvOranSayi ?? 0.0,
           'kart_satis_fiyati': u?.satisFiyat,
         };
       }).toList();

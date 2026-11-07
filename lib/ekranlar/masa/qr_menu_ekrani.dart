@@ -146,7 +146,7 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
       'urun_adi': k.urun.urunAdi,
       'miktar': k.miktar,
       'birim_fiyat': k.urun.satisFiyati,
-      'kdv_oran': double.tryParse(k.urun.kdvOran) ?? 18,
+      'kdv_oran': k.urun.kdvOranSayi,
       'not': notCtrl.text.trim(),
     }).toList();
 

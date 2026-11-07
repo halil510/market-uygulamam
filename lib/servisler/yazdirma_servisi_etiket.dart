@@ -86,7 +86,7 @@ extension YazdirmaServisiEtiket on YazdirmaServisi {
       if (fiyatGoster) {
         final tabanFiyat = indirimliMod && indirimFiyat != null ? indirimFiyat : urun.satisFiyati;
         // KDV Dahil anahtarı: kapalıysa KDV hariç (net) fiyat basılır.
-        final kdv = double.tryParse(urun.kdvOran) ?? 0;
+        final kdv = urun.kdvOranSayi;
         final fiyat = kdvDahilFiyat ? tabanFiyat : tabanFiyat / (1 + kdv / 100);
         bytes.addAll(generator.text(YazdirmaServisi._t('${_fmt.format(fiyat)} TL'),
             styles: const PosStyles(bold: true, align: PosAlign.center,

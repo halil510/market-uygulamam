@@ -147,7 +147,7 @@ class _MasaUrunEkleEkraniState extends ConsumerState<MasaUrunEkleEkrani> {
         urunId: urun.id!,
         urunAdi: urun.urunAdi,
         birimFiyat: urun.satisFiyati,
-        kdvOran: double.tryParse(urun.kdvOran) ?? 18,
+        kdvOran: urun.kdvOranSayi,
         miktar: miktar,
       );
       // 🔴 Bulundu: bu ekran masaya İLK ürün eklendiğinde masanın

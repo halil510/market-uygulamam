@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../../depolar/masa_deposu.dart';
 import '../../veri/database/veritabani.dart';
 import '../../servisler/log_servisi.dart';
+import '../../modeller/urun_model.dart';
 
 class QrMenuServisi {
   static final QrMenuServisi _instance = QrMenuServisi._();
@@ -116,7 +117,7 @@ class QrMenuServisi {
               columns: ['satis_fiyati', 'kdv_oran'], where: 'id = ?', whereArgs: [lokalUrunId], limit: 1);
           if (urunSatir.isNotEmpty) {
             birimFiyat = (urunSatir.first['satis_fiyati'] as num?)?.toDouble() ?? 0;
-            kdvOran = double.tryParse(urunSatir.first['kdv_oran']?.toString() ?? '') ?? 18;
+            kdvOran = UrunModel.kdvOranCoz(urunSatir.first['kdv_oran']);
           } else {
             birimFiyat = 0;
             kdvOran = 18;

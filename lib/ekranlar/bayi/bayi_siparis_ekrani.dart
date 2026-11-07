@@ -123,7 +123,7 @@ class _BayiSiparisEkraniState extends State<BayiSiparisEkrani> {
             miktar: k.miktar,
             birimFiyat: k.birimFiyat,
             alisFiyat: k.urun.alisFiyat,
-            kdvOran: double.tryParse(k.urun.kdvOran) ?? 18,
+            kdvOran: k.urun.kdvOranSayi,
           )).toList();
       await _siparisDepo.siparisOlustur(
         cari: widget.bayi,

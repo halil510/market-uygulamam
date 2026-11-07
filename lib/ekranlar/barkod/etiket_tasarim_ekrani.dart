@@ -302,7 +302,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
   /// — böylece önizleme gerçek çıktıyla birebir tutarlı olur.
   double _onizlemeFiyat(UrunModel u) {
     if (_kdvDahilGoster) return u.satisFiyati;
-    final kdv = double.tryParse(u.kdvOran) ?? 0;
+    final kdv = u.kdvOranSayi;
     return u.satisFiyati / (1 + kdv / 100);
   }
 

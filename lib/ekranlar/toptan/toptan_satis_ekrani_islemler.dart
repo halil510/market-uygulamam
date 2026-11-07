@@ -237,7 +237,7 @@ extension _ToptanSatisIslemlerExt on _ToptanSatisEkraniState {
       final fisNo = await BelgeNoServisi().uret('cari_satis');
 
       final satisKalemler = _sepet.map((k) {
-        final kdvOran = double.tryParse(k.urun.kdvOran) ?? 18;
+        final kdvOran = k.urun.kdvOranSayi;
         // 🔴 DÜZELTME (Madde 21 — Para Hesaplamaları denetimi,
         // 2026-09-16): birim fiyat GERÇEKTEN KDV DAHİL (kullanıcı
         // onayıyla doğrulandı). 'toplamTutar' müşteriden tahsil edilen

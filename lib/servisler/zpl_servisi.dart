@@ -97,7 +97,7 @@ class ZplServisi {
 
     if (fiyatGoster) {
       final taban = urun.satisFiyati;
-      final kdv = double.tryParse(urun.kdvOran) ?? 0;
+      final kdv = urun.kdvOranSayi;
       final gosterilecek = kdvDahilFiyat ? taban : taban / (1 + kdv / 100);
       final fiyat = '${gosterilecek.toStringAsFixed(2)} TL';
       final s = fs(40);

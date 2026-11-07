@@ -42,7 +42,7 @@ class _Kalem {
   double get iskontoTut  => ParaUtils.yuvarla(araToplam * (iskontoOran / 100));
   double get netTutar    => ParaUtils.yuvarla(araToplam - iskontoTut);
   double get kdvTutar    =>
-      ParaUtils.yuvarla(netTutar * ((double.tryParse(kdvOran) ?? 18) / 100));
+      ParaUtils.yuvarla(netTutar * (UrunModel.kdvOranCoz(kdvOran) / 100));
   double get toplam      => ParaUtils.yuvarla(netTutar + kdvTutar);
 
   void dispose() {
@@ -286,7 +286,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
         birimFiyat:    k.birimFiyat,
         iskontoOrani:  k.iskontoOran,
         iskontoTutari: k.iskontoTut,
-        kdvOrani:      double.tryParse(k.kdvOran) ?? 18,
+        kdvOrani:      UrunModel.kdvOranCoz(k.kdvOran),
         kdvTutari:     k.kdvTutar,
         // 🔴 DÜZELTME (kritik — derin denetimde bulundu): araToplam burada
         // indirim UYGULANMADAN ÖNCEKİ tutara (k.araToplam) eşitleniyordu.

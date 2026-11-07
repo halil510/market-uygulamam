@@ -61,7 +61,7 @@ class SepetKalem {
     return f > 0.004 ? f : 0;
   }
 
-  double get kdvOran => double.tryParse(urun.kdvOran) ?? 18;
+  double get kdvOran => urun.kdvOranSayi;
 
   /// toplamTutar İÇİNDEKİ KDV payı (toplamTutar zaten KDV dahil)
   double get kdvTutar =>

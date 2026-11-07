@@ -245,10 +245,10 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
 
             // Bağımlı alanları güncelle
             if (_alan!.id == 'alisFiyat') {
-              final kdv = double.tryParse(u.kdvOran) ?? 18;
+              final kdv = u.kdvOranSayi;
               data['alis_fiyat_kdv_dahil'] = yeni * (1 + kdv / 100);
             } else if (_alan!.id == 'alisFiyatKdvDahil') {
-              final kdv = double.tryParse(u.kdvOran) ?? 18;
+              final kdv = u.kdvOranSayi;
               data['alis_fiyat'] = kdv > 0 ? yeni / (1 + kdv / 100) : yeni;
             } else if (_alan!.id == 'indirimOrani') {
               data['indirimli_fiyat'] = u.satisFiyati * (1 - yeni / 100);
@@ -343,7 +343,7 @@ class _TopluIslemEkraniState extends ConsumerState<TopluIslemEkrani>
     'indirimOrani'      => u.indirimOrani,
     'indirimli_fiyat'   => u.indirimliFiyatKayitli,
     'stok'              => u.stok,
-    'kdvOran'           => double.tryParse(u.kdvOran),
+    'kdvOran'           => u.kdvOranSayi,
     'puan_orani'        => u.puanOrani,
     'minimum_stok'      => u.minimumStok,
     _                   => null,

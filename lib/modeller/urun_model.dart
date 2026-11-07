@@ -141,6 +141,21 @@ class UrunModel {
 
   bool get kritikStok => stok <= minimumStok && minimumStok > 0;
 
+  /// Boş/geçersiz KDV oranında kullanılan oran — model ([kdvOran]
+  /// varsayılanı '18') ve şema (kdv_oran DEFAULT 18) ile aynı.
+  static const double varsayilanKdvOrani = 18;
+
+  /// KDV oranı metin/ham değerden sayıya TEK kaynak. ÖNCEDEN 20 yerde
+  /// `double.tryParse(kdvOran) ?? X` elle yazılıydı ve X bazı yerde 18,
+  /// bazı yerde 0'dı: oranı boş kalmış bir ürün satışta %18, raf etiketinde
+  /// ve ZPL'de %0 ile hesaplanıyordu. "%18", "18,5", " 8 " de doğru çözülür.
+  static double kdvOranCoz(Object? deger) =>
+      ParaUtils.sayiCoz(deger?.toString().replaceAll('%', '')) ??
+      varsayilanKdvOrani;
+
+  /// [kdvOran] metninin sayısal karşılığı — bkz. [kdvOranCoz].
+  double get kdvOranSayi => kdvOranCoz(kdvOran);
+
   const UrunModel({
     this.id,
     this.globalId,

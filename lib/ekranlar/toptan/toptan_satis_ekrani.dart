@@ -45,7 +45,7 @@ class _SepetKalemi {
       required this.birim,
       required this.fiyatSonucu});
 
-  double get kdvOran => double.tryParse(urun.kdvOran) ?? 18;
+  double get kdvOran => urun.kdvOranSayi;
   // 🔴 DÜZELTME (Madde 21 — Para Hesaplamaları denetimi, 2026-09-16):
   // birim fiyat GERÇEKTEN KDV DAHİL (kullanıcı onayıyla doğrulandı,
   // bkz. sepet_model.dart baş yorumu) — önceki yorumdaki "ters çıkarma
@@ -327,7 +327,7 @@ class _ToptanSatisEkraniState extends State<ToptanSatisEkrani> {
                       itemCount: _sepet.length,
                       itemBuilder: (c, i) {
                         final k = _sepet[i];
-                        final kdvOran = double.tryParse(k.urun.kdvOran) ?? 18;
+                        final kdvOran = k.urun.kdvOranSayi;
                         final ciftMi = i.isEven;
                         return Column(children: [
                           Container(

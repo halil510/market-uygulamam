@@ -197,7 +197,7 @@ extension _DashboardAppBarExt on _DashboardEkraniState {
                     // menüde ikon olsa, tarih/saatin yan tarafına"
                     // (araya boşluk: kullanıcı "çok yakın, basılmıyor"
                     // dediği için 10→16)
-                    SyncMiniButon(ref: ref),
+                    const SyncMiniButon(),
                   ]),
                   if (masaModu && masaDoluSayisi > 0)
                     Padding(

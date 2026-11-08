@@ -40,7 +40,7 @@ class SatisDetayEkrani extends ConsumerWidget {
       ),
           body: Center(child: Text('Satış bulunamadı')));
         }
-        return _SatisDetayIcerik(satis: satis, ref: ref);
+        return _SatisDetayIcerik(satis: satis);
       },
     );
   }
@@ -48,8 +48,7 @@ class SatisDetayEkrani extends ConsumerWidget {
 
 class _SatisDetayIcerik extends ConsumerStatefulWidget {
   final SatisModel satis;
-  final WidgetRef ref;
-  const _SatisDetayIcerik({required this.satis, required this.ref});
+  const _SatisDetayIcerik({required this.satis});
   @override
   ConsumerState<_SatisDetayIcerik> createState() => _SatisDetayIcerikState();
 }

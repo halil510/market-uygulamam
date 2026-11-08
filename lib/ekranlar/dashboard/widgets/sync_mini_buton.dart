@@ -14,8 +14,7 @@ import '../../../servisler/supabase_sync_servisi.dart';
 import '../../../widgetlar/ortak/app_widgetlar.dart';
 
 class SyncMiniButon extends ConsumerStatefulWidget {
-  final WidgetRef ref;
-  const SyncMiniButon({super.key, required this.ref});
+  const SyncMiniButon({super.key});
 
   @override
   ConsumerState<SyncMiniButon> createState() => _SyncMiniButonState();

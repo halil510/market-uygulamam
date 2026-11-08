@@ -366,8 +366,11 @@ class KasaDeposu {
   /// 🔴 FAZ 1 (DEEP_AUDIT_REPORT madde 2): ÖNCEDEN tüm şubeler tek zincirde
   /// karıştırılıp "düzelt" aksiyonu veriyi bozuyordu.
   /// ÖNCEDEN bu döngü 3 yerde kopyalanmıştı (silinen hareketSil dahil).
+  /// [turetilmisDuzelt]: [duzeltZamani] yokken yalnız bakiye_sonrasi
+  /// düzeltilir, last_updated İLERLETİLMEZ (senkron sonrası — bkz.
+  /// [zincirMutabakatYap]).
   static Future<List<int>> _zincirSapanlariBulTxn(DatabaseExecutor ex,
-      {String? duzeltZamani}) async {
+      {String? duzeltZamani, bool turetilmisDuzelt = false}) async {
     final sapanlar = <int>[];
     final subeRows = await ex.rawQuery(
         'SELECT DISTINCT sube_id FROM kasa_hareketleri WHERE deleted_at IS NULL');
@@ -397,6 +400,9 @@ class KasaDeposu {
             await ex.update('kasa_hareketleri',
                 {'bakiye_sonrasi': bakiye, 'last_updated': duzeltZamani},
                 where: 'id = ?', whereArgs: [r['id']]);
+          } else if (turetilmisDuzelt) {
+            await ex.update('kasa_hareketleri', {'bakiye_sonrasi': bakiye},
+                where: 'id = ?', whereArgs: [r['id']]);
           }
         }
       }
@@ -420,6 +426,33 @@ class KasaDeposu {
       return duzeltilenIdler.length;
     } catch (e, st) {
       LogServisi().hata('Kasa.bakiyeMutabakatYap', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
+  /// Senkron sonrası: 'bakiye_sonrasi' zinciri hareketlerden yeniden
+  /// hesaplanır, last_updated ilerletilmez ve buluta gönderilmez.
+  ///
+  /// 🔴 ÇOKLU CİHAZ (2026-11-08): iki kasa internetsizken aynı şubeye
+  /// hareket yazınca her biri kendi zincirini sürdürüyordu; birleşince
+  /// bakiye_sonrasi (Vardiya anlık kasa bakiyesi ve sonraki hareketin
+  /// başlangıcı) yanlış kalıyordu — düzeltme yalnız Veri Sağlığı'ndan elle
+  /// yapılabiliyordu. Alan türetilmiştir (KolonHaritalama.turetilmisAlanlar):
+  /// damga ilerletilseydi cihazlar aynı satırları birbirine sürekli
+  /// gönderip senkron çakışması üretirdi.
+  Future<int> zincirMutabakatYap() async {
+    try {
+      final db = await _d;
+      late final List<int> duzeltilen;
+      await db.transaction((txn) async {
+        duzeltilen = await _zincirSapanlariBulTxn(txn, turetilmisDuzelt: true);
+      });
+      if (duzeltilen.isNotEmpty) {
+        LogServisi().bilgi('Kasa zincir mutabakatı: ${duzeltilen.length} hareket düzeltildi');
+      }
+      return duzeltilen.length;
+    } catch (e, st) {
+      LogServisi().hata('Kasa.zincirMutabakatYap', hata: e, yigin: st);
       rethrow;
     }
   }

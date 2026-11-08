@@ -237,6 +237,8 @@ class KolonHaritalama {
     // (BankaHareketDeposu.zincirMutabakatYap — çoklu cihaz, 2026-11-08).
     'banka_hesaplar': {'bakiye', 'kullanilabilir_bakiye'},
     'banka_hareketler': {'onceki_bakiye', 'sonraki_bakiye'},
+    // Kasa zinciri (KasaDeposu.zincirMutabakatYap).
+    'kasa_hareketleri': {'bakiye_sonrasi'},
   };
 
   static void yereleOzguSutunlariAyikla(String tablo, Map<String, dynamic> satir) {

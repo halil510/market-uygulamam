@@ -76,8 +76,11 @@ extension VeritabaniSupabase on Veritabani {
   /// çakışma sınıfı, kaydın zaten yerelde var olduğu (dolayısıyla
   /// UPDATE yoluna düştüğü) durumda korumasız kalıyordu. Artık HER
   /// İKİ yoldan da (ekleme VE güncelleme) önce bu uygulanıyor.
-  Future<void> _cakismaKorumasiUygula(
+  /// Döner: kayıtlar yazıldıktan SONRA uygulanacak ürün birleşmeleri
+  /// (bkz. UrunBirlestirme) — boş liste çoğu tablo için.
+  Future<List<UrunBirlesmesi>> _cakismaKorumasiUygula(
       Database database, String tablo, List<Map<String, dynamic>> kayitlar) async {
+    final birlesmeler = <UrunBirlesmesi>[];
     if (tablo == 'cari') {
       // 🔴 DÜZELTME (2026-10-02, kullanıcı bulgusu: Excel'den aktarılan cariler
       // bulutta 2 kez, 116'sı aynı "CARIO-128" koduyla görünüyordu): yeni kod
@@ -220,6 +223,46 @@ extension VeritabaniSupabase on Veritabani {
     }
 
     if (tablo == 'urunler') {
+      // Aynı barkodlu ürün iki cihazda ayrı açıldıysa (internetsiz) ikisi
+      // birleştirilir — her cihaz aynı ürünü seçer (UrunBirlestirme).
+      // Aynı çekimde gelen iki kayıt da birbiriyle karşılaştırılır: yoksa
+      // yeni cihazdaki ilk tam çekimde REPLACE, aynı barkodlu ilk ürünü
+      // sessizce siliyordu.
+      final buCekimdeBarkod = <String, Map<String, dynamic>>{};
+      final zaman = DateTime.now().toIso8601String();
+      for (final kayit in kayitlar) {
+        final gelenGid = kayit['global_id']?.toString();
+        final barkod = kayit['barkod']?.toString().trim() ?? '';
+        if (gelenGid == null || barkod.isEmpty) continue;
+        final yerel = await database.query('urunler',
+            columns: ['id', 'global_id', 'urun_adi', 'barkod', 'is_deleted'],
+            where: 'barkod = ? AND global_id != ?',
+            whereArgs: [barkod, gelenGid],
+            limit: 1);
+        final digerYerel = yerel.isNotEmpty;
+        final diger = digerYerel
+            ? Map<String, dynamic>.from(yerel.first)
+            : buCekimdeBarkod[barkod.toLowerCase()];
+        if (diger == null || diger['global_id']?.toString() == gelenGid ||
+            !UrunBirlestirme.birlestirilebilir(kayit, diger)) {
+          buCekimdeBarkod.putIfAbsent(barkod.toLowerCase(), () => kayit);
+          continue; // birleşme yok — aşağıdaki eski koruma çalışır
+        }
+        final digerGid = diger['global_id'].toString();
+        if (UrunBirlestirme.hedefMi(digerGid, gelenGid)) {
+          kayit.addAll(UrunBirlestirme.kopyaAlanlari(zaman));
+          birlesmeler.add((gelenGid, digerGid));
+        } else {
+          if (digerYerel) {
+            await database.update('urunler', UrunBirlestirme.kopyaAlanlari(zaman),
+                where: 'id = ?', whereArgs: [diger['id']]);
+          } else {
+            diger.addAll(UrunBirlestirme.kopyaAlanlari(zaman)); // aynı çekimdeki kayıt
+          }
+          birlesmeler.add((digerGid, gelenGid));
+          buCekimdeBarkod[barkod.toLowerCase()] = kayit;
+        }
+      }
       for (final kayit in kayitlar) {
         final gelenGlobalId = kayit['global_id'];
         if (gelenGlobalId == null) continue;
@@ -298,6 +341,7 @@ extension VeritabaniSupabase on Veritabani {
         }
       }
     }
+    return birlesmeler;
   }
 
   /// SupabaseSyncServisi._filigranAnahtari(tablo, 'gonder') İLE AYNI
@@ -517,7 +561,7 @@ extension VeritabaniSupabase on Veritabani {
         ? ConflictAlgorithm.replace
         : ConflictAlgorithm.ignore;
 
-    await _cakismaKorumasiUygula(database, tablo, kayitlar);
+    final birlesmeler = await _cakismaKorumasiUygula(database, tablo, kayitlar);
 
     // 🔴 SİGORTA (2026-10-08, canlı bulgu): bulutta olup yerelde olmayan
     // sütun (ör. Bölüm H'nin eklediği sunucu_zamani) "no such column" ile
@@ -623,6 +667,9 @@ extension VeritabaniSupabase on Veritabani {
     } finally {
       await database.execute('PRAGMA foreign_keys = ON');
     }
+    // Kayıtlar yazıldıktan sonra: aynı ürünün kopyasına bağlı satırlar
+    // kalan ürüne taşınır (hedef ancak şimdi yerelde var).
+    if (birlesmeler.isNotEmpty) await UrunBirlestirme.uygula(database, birlesmeler);
     if (yetimSayisi > 0) {
       LogServisi().uyari('supaKayitlariEkle($tablo): $yetimSayisi yetim satır '
           'atlandı (zorunlu ilişki alanı boş)',
@@ -651,7 +698,7 @@ extension VeritabaniSupabase on Veritabani {
   ) async {
     if (kayitlar.isEmpty) return;
     final database = await db;
-    await _cakismaKorumasiUygula(database, tablo, kayitlar);
+    final birlesmeler = await _cakismaKorumasiUygula(database, tablo, kayitlar);
     // Buluttan gelen NULL yalnız yerelde boş bırakılabilen, ilişki/türetilmiş
     // olmayan sütunlara uygulanır — başka kasada TEMİZLENEN alan burada da
     // temizlenir (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 4).
@@ -751,6 +798,7 @@ extension VeritabaniSupabase on Veritabani {
     } finally {
       await database.execute('PRAGMA foreign_keys = ON');
     }
+    if (birlesmeler.isNotEmpty) await UrunBirlestirme.uygula(database, birlesmeler);
   }
 
   /// Toplu UPSERT (ekle veya güncelle) - Tek metodla her şey

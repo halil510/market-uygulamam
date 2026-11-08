@@ -16,6 +16,7 @@ import 'package:market_plus/modeller/satis_model.dart';
 import 'package:market_plus/servisler/bulut/bulut_manager.dart';
 import 'package:market_plus/servisler/bulut/bulut_saglayici.dart';
 import 'package:market_plus/servisler/kolon_haritalama.dart';
+import 'package:market_plus/servisler/supabase_sync_servisi.dart' show SupabaseSyncServisi;
 import 'package:market_plus/veri/database/veritabani.dart';
 import '../helper/test_initializer.dart';
 
@@ -162,20 +163,26 @@ void main() {
     expect(sahte.kaliciSilinenler['satis_kalem']!.toSet(), eskiGidler);
   });
 
+  // 2026-11-08 (bilinçli güncelleme): terminal kaydı olmayan cihaz artık
+  // kasa no'suz eski biçim yerine cihaz kimliğinden türetilen yedek kasa
+  // no'su (50–99) kullanıyor — bulutsuz iki cihaz aynı fiş no'yu üretip
+  // aktarımda biri "-SYNC kopya" olarak Gün Sonu'ndan gizleniyordu.
   test('fisNoUret yerelde kullanılmış satış numarasını atlar', () async {
     final yil = DateTime.now().year;
+    final kasa = fisYedekKasaNo(await SupabaseSyncServisi.cihazId()).toString();
     await db.insert('satislar', {
-      'global_id': 'baska-cihaz', 'fis_no': 'MKP$yil${1.toString().padLeft(9, '0')}',
+      'global_id': 'baska-cihaz', 'fis_no': 'MKP$yil$kasa${1.toString().padLeft(7, '0')}',
       'tarih': DateTime.now().toIso8601String(),
     });
     final no = await Veritabani().fisNoUret('satis');
-    expect(no, 'MKP$yil${2.toString().padLeft(9, '0')}');
+    expect(no, 'MKP$yil$kasa${2.toString().padLeft(7, '0')}');
   });
 
   test('kasa bazlı fiş no: her kasa kendi serisi, eski seriyle çakışmaz', () async {
     final yil = DateTime.now().year;
-    final eski = await Veritabani().fisNoUret('satis'); // terminal kaydı yok
-    expect(eski, 'MKP$yil${1.toString().padLeft(9, '0')}');
+    final eski = await Veritabani().fisNoUret('satis'); // terminal kaydı yok → yedek kasa no
+    final yedek = fisYedekKasaNo(await SupabaseSyncServisi.cihazId());
+    expect(eski, 'MKP$yil$yedek${1.toString().padLeft(7, '0')}');
 
     await db.insert('yerel_terminal', {'id': 1, 'terminal_id': 3, 'terminal_kodu': 'T3'});
     final k1 = await Veritabani().fisNoUret('satis');

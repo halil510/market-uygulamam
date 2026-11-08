@@ -8,6 +8,18 @@ part of 'veritabani.dart';
 // Önceden Veritabani içinde static alandı; kütüphane düzeyinde (aynı tek örnek).
 DateTime? _sonFisSeriUyum;
 
+/// Terminal kaydı olmayan cihazın fiş numarasındaki yedek kasa no'su (50–99),
+/// cihaz kimliğinden (kurulum anı milisaniyesi) türetilir — iki bulutsuz
+/// cihazın aynı numarayı alma olasılığı ~%2; yine çakışırsa senkron/aktarım
+/// koruması devrededir. Kayıtlı terminaller çoğunlukla 1–49 aralığındadır.
+int fisYedekKasaNo(String cihazId) {
+  final rakamlar = cihazId.replaceAll(RegExp(r'[^0-9]'), '');
+  final n = rakamlar.isEmpty
+      ? cihazId.codeUnits.fold<int>(0, (t, c) => (t * 31 + c) & 0x3fffffff)
+      : int.parse(rakamlar.length > 9 ? rakamlar.substring(rakamlar.length - 9) : rakamlar);
+  return 50 + n % 50;
+}
+
 extension VeritabaniFisSeri on Veritabani {
   // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): Bu fonksiyon
   // ÖNCEDEN 'WHERE sube_id = 1' olarak SABİT KODLANMIŞTI — uygulama
@@ -136,16 +148,31 @@ extension VeritabaniFisSeri on Veritabani {
 
   /// Bu cihazın fiş numarasına girecek 2 haneli kasa no'su (1–99), buluttaki
   /// Terminal kaydından (yerel_terminal.terminal_id — şirket genelinde
-  /// benzersiz). Terminal kaydı yoksa 0 (eski biçim). 99'u aşan id'ler
-  /// 1–99'a sarılır.
+  /// benzersiz). 99'u aşan id'ler 1–99'a sarılır.
+  ///
+  /// Terminal kaydı yoksa (bulut hiç bağlanmamış cihaz) cihaz kimliğinden
+  /// türetilen yedek no ([fisYedekKasaNo], 50–99). 🔴 ÇOKLU CİHAZ
+  /// (2026-11-08): ÖNCEDEN 0 dönüyordu — bulutsuz iki cihaz aynı fiş
+  /// numaralarını üretiyor, WiFi aktarımında biri "-SYNC kopya" sayılıp
+  /// Gün Sonu'ndan gizleniyordu. Cihaz sonra terminal alınca asıl no'ya geçer.
   Future<int> _kasaNoGetir(Database database) async {
+    int? id;
     try {
       final r = await database.query('yerel_terminal',
           columns: ['terminal_id'], where: 'id = 1', limit: 1);
-      final id = r.isNotEmpty ? (r.first['terminal_id'] as num?)?.toInt() : null;
-      if (id == null || id <= 0) return 0;
-      return ((id - 1) % 99) + 1;
-    } catch (_) {
+      id = r.isNotEmpty ? (r.first['terminal_id'] as num?)?.toInt() : null;
+    } on DatabaseException catch (e, st) {
+      // Tablo yok (çok eski şema) — yedek no ile devam; görünür olsun.
+      LogServisi().uyari('Kasa no okunamadı, yedek no kullanılıyor', hata: e, yigin: st);
+    }
+    if (id != null && id > 0) return ((id - 1) % 99) + 1;
+    try {
+      return fisYedekKasaNo(await SupabaseSyncServisi.cihazId());
+    } catch (e, st) {
+      // Cihaz kimliği okunamazsa satış ENGELLENMEZ — eski biçime (kasa
+      // no'suz) düşülür; çakışırsa senkron koruması devrededir.
+      LogServisi().uyari('Cihaz kimliği okunamadı, fiş no kasa no\'suz üretiliyor',
+          hata: e, yigin: st);
       return 0;
     }
   }

@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../servisler/log_servisi.dart';
+import '../../servisler/supabase_sync_servisi.dart';
 import '../../servisler/bulut/bulut_manager.dart';
 import 'package:path/path.dart';
 import 'package:crypto/crypto.dart';

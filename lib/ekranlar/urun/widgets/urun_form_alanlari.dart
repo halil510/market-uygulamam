@@ -162,7 +162,7 @@ class FormAlisKdvSecim extends StatelessWidget {
         // Dar sütunda "%18" + ok simgesi sığmayıp taşıyordu.
         isExpanded: true,
         decoration: const InputDecoration(
-          labelText: 'Alış KDV%',
+          labelText: 'KDV%',
           border: OutlineInputBorder(),
           isDense: true,
         ),

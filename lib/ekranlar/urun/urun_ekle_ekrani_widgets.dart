@@ -63,7 +63,14 @@ extension _UrunEkleWidgetExt on _UrunEkleEkraniState {
     secilenKdv: _alisKdvOran,
     onDegisti: (v) {
       _c['alisKdvOran']?.text = v;
-      setState(() => _alisKdvOran = v);
+      setState(() {
+        _alisKdvOran = v;
+        // Ürünün tek bir KDV'si var: formdaki bu seçim ürünün KDV'sini
+        // (urunler.kdv_oran — Bilgi sekmesi, satış ve fatura bunu kullanır)
+        // de belirler. ÖNCEDEN yalnız alış KDV'si değişiyor, ürünün KDV'si
+        // eski oranda (%20) kalıyordu.
+        _kdvOran = v;
+      });
       _alisKdvOranHesapla();
     },
   );

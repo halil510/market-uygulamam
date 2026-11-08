@@ -1,6 +1,6 @@
 // lib/servisler/cihaz_aktarim_birlestirici.dart
 //
-// Cihazdan cihaza (WiFi / Bluetooth keşifli WiFi) veri aktarımının
+// Cihazdan cihaza (WiFi, QR/adres ile) veri aktarımının
 // dışa/içe aktarım çekirdeği.
 //
 // 🔴 NEDEN YENİDEN YAZILDI (çoklu cihaz analizi, 2026-11-08): eski içe

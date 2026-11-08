@@ -10,14 +10,11 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../servisler/sync_servisi.dart';
-import '../../servisler/bluetooth_transfer_servisi.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
-import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
-part 'sync_ekrani_bluetooth.dart';
 part 'sync_ekrani_gorunum.dart';
 
 class SyncEkrani extends ConsumerStatefulWidget {
@@ -26,19 +23,8 @@ class SyncEkrani extends ConsumerStatefulWidget {
   ConsumerState<SyncEkrani> createState() => _SyncEkraniState();
 }
 
-class _SyncEkraniState extends ConsumerState<SyncEkrani>
-    with SingleTickerProviderStateMixin {
+class _SyncEkraniState extends ConsumerState<SyncEkrani> {
   final _sync = SyncServisi();
-  final _bt   = BluetoothTransferServisi();
-  late TabController _tabCtrl;
-
-  // BT state - {ip: cihazAdi}
-  final _btCihazlar = <String, String>{}; // ip → cihazAdi
-  bool _btTarama   = false;
-  String _btSeciliIp = '';
-  String _btDurum  = '';
-  int _btProgress  = 0;
-  bool _btIslemde  = false;
 
   // Sunucu
   bool _sunucuAktif = false;
@@ -61,68 +47,19 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
     _sunucuBaslat();
-    _btCallbackleriAyarla();
   }
 
-  void _btCallbackleriAyarla() {
-    _bt.onCihazBulundu = (ip, ad) {
-      if (mounted) setState(() => _btCihazlar[ip] = ad);
-    };
-    _bt.onCihazKayboldu = (id) {
-      if (mounted) setState(() => _btCihazlar.remove(id));
-    };
-    _bt.onProgress = (alinan, toplam, durum) {
-      if (mounted) {
-        setState(() {
-        _btDurum = durum;
-        _btProgress = toplam > 0 ? (alinan / toplam * 100).round() : 0;
-        _btIslemde = alinan < toplam;
-      });
-      }
-    };
-    _bt.onTamamlandi = (msg) {
-      if (mounted) setState(() { _btDurum = msg; _btIslemde = false; });
-    };
-    _bt.onHata = (hata) {
-      if (mounted) setState(() { _btDurum = '❌ $hata'; _btIslemde = false; });
-    };
-  }
-
-  Future<void> _btTaramaToggle() async {
-    if (_btTarama) {
-      await _bt.durdur();
-      if (mounted) setState(() { _btTarama = false; _btCihazlar.clear(); _btDurum = ''; });
-    } else {
-      if (mounted) setState(() { _btDurum = '🔍 BLE tarama başlıyor...'; _btCihazlar.clear(); });
-      final ok = await _bt.taramaBaslat();
-      if (mounted) {
-        setState(() {
-        _btTarama = ok;
-        _btDurum = ok ? '🔍 BarkoPro cihazları aranıyor...' : '❌ BT kapalı veya izin yok';
-      });
-      }
-    }
-  }
-
-
-  Future<void> _btVeriAl(String ip, String ad) async {
-    if (mounted) setState(() { _btSeciliIp = ip; _btIslemde = true; _btDurum = ''; });
-    await _bt.veriAl(ip);
-  }
-
-  Future<void> _btVeriGonder(String ip) async {
-    if (mounted) setState(() { _btIslemde = true; _btDurum = ''; });
-    await _bt.veriGonder(ip);
-  }
+  // 🔴 Bluetooth sekmesi kaldırıldı (çoklu cihaz analizi, 2026-11-08):
+  // uygulama kendini BLE'de yayınlayamıyordu (flutter_blue_plus çevre birimi
+  // modunu desteklemiyor) — tarama hiçbir cihaz bulamazdı; bulsa bile
+  // istek oturum anahtarı taşımadığı için sunucu 401 ile reddederdi.
+  // Aktarım zaten WiFi üzerindeydi; tek yol artık WiFi + QR/adres.
 
   @override
   void dispose() {
-    _tabCtrl.dispose();
     _qrCtrl?.dispose();
     _sync.sunucuKapat();
-    _bt.durdur();
     super.dispose();
   }
 
@@ -320,19 +257,10 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
       appBar: TsAppBar(
-        baslik: 'Cihazlar Arası Aktarım',
-        alt: TabBar(controller: _tabCtrl, tabs: const [
-          Tab(icon: Icon(Icons.wifi), text: 'WiFi'),
-          Tab(icon: Icon(Icons.bluetooth), text: 'Bluetooth'),
-        ]),
+        baslik: 'Cihazlar Arası Aktarım (WiFi)',
         lider: BackButton(onPressed: () => context.go('/')),
       ),
-      body: _qrTarayici
-          ? _qrTarayiciEkrani()
-          : TabBarView(controller: _tabCtrl, children: [
-              _anaEkran(),
-              _btEkrani(),
-            ]),
+      body: _qrTarayici ? _qrTarayiciEkrani() : _anaEkran(),
     );
   }
 }

@@ -1,0 +1,10 @@
+GitHub indirme kesintisinde derleme yedekleri (2026-11-08)
+
+Derleme iki dosyayı GitHub'dan indirir; GitHub "releases" çökükse derleme
+"Building native assets failed" veya "Build step for pdfium failed" diye düşer.
+
+pdfium-win-x64.tgz      -> printing eklentisinin pdfium'u (chromium/5200, win-x64)
+sqlite3.x64.windows.dll -> sqlite3 paketinin indirdiği DLL (sqlite3 3.6.0)
+
+`flutter clean` bu önbellekleri siler. Kesinti varken çalıştırmayın.
+Gerekirse Claude'a "derleme_yedek klasörünü kullan" deyin.

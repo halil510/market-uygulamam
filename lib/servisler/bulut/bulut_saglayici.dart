@@ -58,7 +58,10 @@ class BaglantiSonuc {
   final bool basarili;
   final String mesaj;
   final int? gecikmeMs;
-  const BaglantiSonuc({required this.basarili, required this.mesaj, this.gecikmeMs});
+  /// Sunucu − cihaz saat farkı (bkz. SaatFarki); ölçülemediyse null.
+  final Duration? saatFarki;
+  const BaglantiSonuc({required this.basarili, required this.mesaj, this.gecikmeMs,
+      this.saatFarki});
 }
 
 // MASTER ERP DEEP AUDIT — Madde 5 sertleştirmesi: sunucudan dönen

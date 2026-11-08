@@ -3,6 +3,7 @@
 import '../../tasarim_sistemi/ts_token.dart';
 import 'package:flutter/material.dart';
 import '../../servisler/bulut/bulut_manager.dart';
+import '../../servisler/bulut/saat_farki.dart';
 
 class BulutDurumIkonu extends StatelessWidget {
   const BulutDurumIkonu({super.key});
@@ -17,13 +18,16 @@ class BulutDurumIkonu extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        return Tooltip(
-          message: durum.metin,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: _ikon(durum),
+        return Row(mainAxisSize: MainAxisSize.min, children: [
+          const _SaatUyarisi(),
+          Tooltip(
+            message: durum.metin,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _ikon(durum),
+            ),
           ),
-        );
+        ]);
       },
     );
   }
@@ -52,6 +56,32 @@ class BulutDurumIkonu extends StatelessWidget {
       default:
         return const SizedBox.shrink();
     }
+  }
+}
+
+/// Cihaz saati sunucudan belirgin farklıysa kırmızı saat ikonu: senkronda
+/// "hangi kayıt daha yeni" kararı kayıt saatine dayanır, yanlış saat
+/// eski değişikliğin yeniyi ezmesine yol açabilir (2026-11-08).
+class _SaatUyarisi extends StatelessWidget {
+  const _SaatUyarisi();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<Duration?>(
+      valueListenable: BulutManager().saatFarki,
+      builder: (_, fark, _) {
+        if (!SaatFarki.sapmaVar(fark)) return const SizedBox.shrink();
+        return Tooltip(
+          message: '${SaatFarki.metin(fark!)}.\n'
+              'Senkronda yeni/eski kayıt yanlış seçilebilir — cihazın tarih/saat '
+              'ayarında "otomatik saat"i açın.',
+          child: const Padding(
+            padding: EdgeInsets.only(right: 6),
+            child: Icon(Icons.schedule_rounded, color: TsRenk.hata, size: 20),
+          ),
+        );
+      },
+    );
   }
 }
 

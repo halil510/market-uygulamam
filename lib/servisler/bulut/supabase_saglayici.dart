@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'bulut_saglayici.dart';
 import 'supabase_ayarlari.dart';
 import 'sync_lww_koruma.dart';
+import 'saat_farki.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../kolon_haritalama.dart';
 import '../log_servisi.dart';
@@ -304,6 +305,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
   Future<BaglantiSonuc> baglantiTest() async {
     final sw = Stopwatch()..start();
     try {
+      final bas = DateTime.now();
       final r = await http.get(
         Uri.parse('$_rest/urunler?limit=1&select=id'),
         headers: _h,
@@ -314,6 +316,7 @@ class SupabaseSaglayici implements IBulutSaglayici {
           basarili: true,
           mesaj: 'Bağlantı başarılı (${sw.elapsedMilliseconds}ms)',
           gecikmeMs: sw.elapsedMilliseconds,
+          saatFarki: SaatFarki.hesapla(r.headers['date'], bas, DateTime.now()),
         );
       }
       return BaglantiSonuc(basarili: false,

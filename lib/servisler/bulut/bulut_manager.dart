@@ -33,6 +33,7 @@ import 'supabase_saglayici.dart';
 import 'supabase_ayarlari.dart';
 import 'sync_kuyruk_yazici.dart';
 import 'sync_backoff.dart';
+import 'saat_farki.dart';
 import '../kolon_haritalama.dart';
 import '../../cekirdek/sabitler/db_sabitleri.dart';
 import '../../veri/database/veritabani.dart';
@@ -78,6 +79,10 @@ class BulutManager {
   final durum    = ValueNotifier<BulutDurum>(BulutDurum.bagliDegil);
   final istatistik = ValueNotifier<_Istatistik>(const _Istatistik());
 
+  /// Sunucu − cihaz saat farkı (bağlantı testinde ölçülür). Eşiği aşarsa
+  /// bulut ikonunun yanında uyarı gösterilir (bkz. SaatFarki).
+  final saatFarki = ValueNotifier<Duration?>(null);
+
   IBulutSaglayici? get mevcutSaglayici => _saglayici;
   int get bekleyenSayisi => _bekleyenSayisiCache;
 
@@ -112,6 +117,14 @@ class BulutManager {
     durum.value = BulutDurum.baglaniyor;
     final sonuc = await s.baglantiTest();
     durum.value = sonuc.basarili ? BulutDurum.bagli : BulutDurum.hata;
+    if (sonuc.saatFarki != null) {
+      saatFarki.value = sonuc.saatFarki;
+      if (SaatFarki.sapmaVar(sonuc.saatFarki)) {
+        // Yanlış saat senkronda "hangi kayıt daha yeni" kararını bozar.
+        LogServisi().uyari('${SaatFarki.metin(sonuc.saatFarki!)} — senkronda '
+            'yeni/eski kayıt yanlış seçilebilir, cihaz saatini otomatik ayarlayın');
+      }
+    }
     if (sonuc.basarili) {
       await _kaliciHatalariKuyrugaGeriAl(otomatik: true);
       // Kasa bazlı fiş numarası için bu cihazın Terminal kaydı olsun

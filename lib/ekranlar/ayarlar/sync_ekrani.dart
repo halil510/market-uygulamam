@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'sync/sync_durum_widget.dart';
-import '../../servisler/senkron_sonrasi_mutabakat.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -191,19 +190,27 @@ class _SyncEkraniState extends ConsumerState<SyncEkrani>
       setState(() { _progress = 60; _durum = 'Kaydediliyor...'; });
       final sonuc = await _sync.veriIcerAktarPublic(data);
       if (!mounted) return;
-      // Bulut senkronuyla AYNI merkezî mutabakat adımları (mükerrer cari
-      // kodu, cari bakiye, stok, masa, borç, kart, puan). Her adım ayrı
-      // korunur: biri başarısız olsa diğerleri yine çalışır ve hata loglanır.
-      final duzeltmeler = <String>[];
-      await SenkronSonrasiMutabakat.calistir(log: duzeltmeler.add);
-      if (!mounted) return;
+      // Bulut senkronuyla AYNI merkezî mutabakat adımları (stok, cari
+      // bakiye …) artık içe aktarımın kendisinde çalışıyor (karşı cihazın
+      // "Veri Gönder"iyle gelen veride de) — sonuç listesi buradan okunur.
+      final duzeltmeler =
+          ((sonuc['duzeltmeler'] as List?) ?? const []).cast<String>();
+      final hatalar = ((sonuc['hatalar'] as List?) ?? const []).cast<String>();
+      final atlanan = sonuc['atlanan'] as int? ?? 0;
       setState(() {
         _progress = 100;
-        _durum = '✅ ${sonuc['basarili']} kayıt aktarıldı'
-            '${duzeltmeler.isEmpty ? '' : '\n${duzeltmeler.join('\n')}'}';
+        _durum = '${hatalar.isEmpty ? '✅' : '⚠️'} ${sonuc['basarili']} kayıt aktarıldı'
+            '${atlanan > 0 ? '\n$atlanan kayıt atlandı (bağlı olduğu kayıt bu cihazda yok)' : ''}'
+            '${duzeltmeler.isEmpty ? '' : '\n${duzeltmeler.join('\n')}'}'
+            '${hatalar.isEmpty ? '' : '\nHatalar:\n${hatalar.join('\n')}'}';
         _islemde = false;
       });
-      BildirimServisi.basari(context, '${sonuc['basarili']} kayıt alındı');
+      if (hatalar.isEmpty) {
+        BildirimServisi.basari(context, '${sonuc['basarili']} kayıt alındı');
+      } else {
+        BildirimServisi.uyari(context,
+            '${sonuc['basarili']} kayıt alındı, ${hatalar.length} tabloda hata var');
+      }
     } catch (e) {
       if (mounted) setState(() { _durum = '❌ $e'; _islemde = false; });
     }

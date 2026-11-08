@@ -1210,6 +1210,20 @@ class SupabaseSyncServisi {
   @visibleForTesting
   static List<String> get tabloSirasiTest => List.unmodifiable(_tabloSirasi);
 
+  // ── Salt-okuma erişim (cihazdan cihaza WiFi aktarımı — bkz.
+  // CihazAktarimBirlestirici). Bulut çekimiyle AYNI tablo sırası ve silinmiş
+  // kayıt kuralı kullanılsın diye; buradaki mantığın hiçbiri değişmedi.
+
+  /// Cihazlar arası eşlenen tablolar, ebeveynler çocuklardan önce.
+  static List<String> get senkronTablolari => List.unmodifiable(_tabloSirasi);
+
+  /// Satır silinmiş (soft delete) mi — tablonun kendi silme sütununa göre.
+  static bool silinmisMi(String tablo, Map<String, dynamic> satir) =>
+      _silinmisMi(tablo, satir);
+
+  /// Tablonun soft delete sütunu (is_deleted / deleted_at / aktif) ya da null.
+  static String? softDeleteKolonu(String tablo) => _softDeleteKolonu[tablo];
+
   static Future<SyncSonuc> buluttanAl({
     required Future<void> Function(String, List<Map<String, dynamic>>) kayitEkle,
     required Future<void> Function(String, List<Map<String, dynamic>>) kayitGuncelle,

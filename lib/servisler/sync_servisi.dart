@@ -12,6 +12,7 @@ import 'package:sqflite/sqflite.dart';
 import '../veri/database/veritabani.dart';
 import 'veritabani_dosya_servisi.dart';
 import 'log_servisi.dart';
+import 'cihaz_aktarim_birlestirici.dart';
 
 class SyncServisi {
   static final SyncServisi _i = SyncServisi._();
@@ -302,197 +303,22 @@ class SyncServisi {
     req.response.close();
   }
 
-  List<String> _transferTablolari() => [
-        'urunler', 'cari', 'cari_hareket', 'cari_adres',
-        'satislar', 'satis_kalem', 'stok_hareket', 'lot_seri',
-        'giderler', 'kasa_hareketleri', 'kategoriler',
-        'promosyonlar', 'vardiyalar', 'faturalar', 'fatura_detaylari',
-        'iade', 'iade_kalem', 'markalar', 'birimler',
-        'tedarikci_siparisler', 'tedarikci_siparis_kalem',
-        'tedarikci_iadeler', 'tedarikci_iade_kalem',
-      ];
+  // İçe/dışa aktarım çekirdeği CihazAktarimBirlestirici'de (ilişkiler
+  // global_id/anahtar üzerinden, yazma bulut çekimiyle aynı yoldan). Eski
+  // yerel-id kopyalayan içe aktarım ilişkileri bozuyordu (2026-11-08).
+  List<String> _transferTablolari() => CihazAktarimBirlestirici.tablolar;
 
-  Future<List<Map<String, dynamic>>> _tabloVeriAl(String tablo) async {
-    final db = await Veritabani().db;
-    // is_deleted filtresi olan tablolar
-    final filtreli = {'urunler', 'cari', 'satislar', 'faturalar'};
-    final where = filtreli.contains(tablo) ? 'is_deleted = 0' : null;
-    try {
-      return await db.query(tablo, where: where);
-    } catch (_) {
-      return [];
-    }
-  }
+  Future<List<Map<String, dynamic>>> _tabloVeriAl(String tablo) =>
+      CihazAktarimBirlestirici.tabloDisaAktar(tablo);
 
-  Future<Map<String, dynamic>> _tumVeriAl() async {
-    final Map<String, dynamic> data = {
-      'meta': {
-        'zaman': DateTime.now().toIso8601String(),
-        'versiyon': 3,
-        'kaynak': Platform.isAndroid ? 'Android' : 'PC',
-      },
-    };
-    for (final tablo in _transferTablolari()) {
-      data[tablo] = await _tabloVeriAl(tablo);
-    }
-    return data;
-  }
+  Future<Map<String, dynamic>> _tumVeriAl() => CihazAktarimBirlestirici.tumunuDisaAktar(
+      kaynak: Platform.isAndroid ? 'Android' : 'PC');
 
   Future<Map<String, dynamic>> _veriIcerAktar(
-      Map<String, dynamic> data, {
-      List<String>? sadeceTablolar,
-      }) async {
-    final db = await Veritabani().db;
-    int eklenen = 0;
-    int guncellenen = 0;
-    final hatalar = <String>[];
-
-    final islenecek = sadeceTablolar ?? _transferTablolari();
-
-    // Tablo sırası önemli (FK kısıtları)
-    final sira = [
-      'kategoriler', 'markalar', 'birimler',
-      'urunler', 'cari', 'cari_adres',
-      'satislar', 'satis_kalem', 'cari_hareket',
-      'stok_hareket', 'lot_seri', 'giderler', 'kasa_hareketleri',
-      'faturalar', 'fatura_detaylari', 'iade', 'iade_kalem',
-      'promosyonlar', 'vardiyalar',
-      'tedarikci_siparisler', 'tedarikci_siparis_kalem',
-      'tedarikci_iadeler', 'tedarikci_iade_kalem',
-    ];
-
-    final islemSirasi = sira.where((t) => islenecek.contains(t)).toList()
-      ..addAll(islenecek.where((t) => !sira.contains(t)));
-
-    await db.execute('PRAGMA foreign_keys = OFF');
-    try {
-      for (final tablo in islemSirasi) {
-        if (!data.containsKey(tablo)) continue;
-        final rows = (data[tablo] as List?)?.cast<Map<String, dynamic>>() ?? [];
-        for (final row in rows) {
-          try {
-            final temizRow = Map<String, dynamic>.from(row)
-              ..remove('id'); // ID çakışmasını önle
-            final existing = await _mevcutKayitBul(db, tablo, row);
-            if (existing != null) {
-              // LAST WRITE WINS: last_updated karşılaştır
-              final yerelKayit = await db.query(tablo,
-                  where: 'id = ?', whereArgs: [existing], limit: 1);
-              final yerelZaman = yerelKayit.isNotEmpty
-                  ? (yerelKayit.first['last_updated'] as String? ?? '')
-                  : '';
-              final gelenZaman = row['last_updated'] as String? ?? '';
-
-              // Satışlar HİÇBİR ZAMAN üzerine yazılmaz - sadece ekle
-              if (tablo == 'satislar' || tablo == 'satis_kalem' ||
-                  tablo == 'cari_hareket' || tablo == 'stok_hareket' ||
-                  tablo == 'kasa_hareketleri' || tablo == 'giderler') {
-                // Hareket tabloları: zaten varsa atla
-                continue;
-              }
-
-              // Diğer tablolar: daha yeni olan kazanır
-              if (gelenZaman.compareTo(yerelZaman) > 0) {
-                // Gelen daha yeni → güncelle
-                await db.update(tablo, temizRow,
-                    where: 'id = ?', whereArgs: [existing]);
-                guncellenen++;
-              }
-              // Yerel daha yeni veya eşit → dokunma
-            } else {
-              // Yeni kayıt → ekle
-              // 🔴 DÜZELTME: Burada 'row' (id dahil) kullanılıyordu —
-              // ama 'temizRow' zaten id'siz hazırlanmıştı ve SADECE
-              // güncelleme yolunda kullanılıyordu. İki cihazın id
-              // sıraları TAMAMEN BAĞIMSIZ olduğu için, gönderenin
-              // yerel id'si burada yerel bir kayıtla ÇAKIŞIRSA (farklı
-              // bir kayıt olsa bile), ConflictAlgorithm.ignore bu yeni
-              // kaydı SESSİZCE YOK SAYARDI — veri kaybı. Artık id
-              // her zaman temizleniyor, SQLite kendi yeni yerel id'sini
-              // otomatik üretiyor.
-              await db.insert(tablo, temizRow,
-                  conflictAlgorithm: ConflictAlgorithm.ignore);
-              eklenen++;
-            }
-          } catch (e) {
-            hatalar.add('$tablo: $e');
-          }
-        }
-      }
-    } finally {
-      await db.execute('PRAGMA foreign_keys = ON');
-    }
-
-    return {
-      'basarili': eklenen + guncellenen,
-      'eklenen': eklenen,
-      'guncellenen': guncellenen,
-      'hata_sayisi': hatalar.length,
-      'hatalar': hatalar.take(10).toList(),
-    };
-  }
-
-  Future<int?> _mevcutKayitBul(
-      Database db, String tablo, Map<String, dynamic> row) async {
-    // global_id ile bul
-    if (row.containsKey('global_id') && row['global_id'] != null) {
-      final r = await db.query(tablo,
-          where: 'global_id = ?', whereArgs: [row['global_id']], limit: 1);
-      if (r.isNotEmpty) return r.first['id'] as int?;
-    }
-    // Tablo'ya göre unique key
-    try {
-      switch (tablo) {
-        case 'urunler':
-          if (row['global_id'] != null) {
-            final r = await db.query(tablo,
-                where: 'global_id = ?', whereArgs: [row['global_id']], limit: 1);
-            if (r.isNotEmpty) return r.first['id'] as int?;
-          }
-          if (row['barkod'] != null) {
-            final r = await db.query(tablo,
-                where: 'barkod = ?', whereArgs: [row['barkod']], limit: 1);
-            if (r.isNotEmpty) return r.first['id'] as int?;
-          }
-        case 'cari':
-          if (row['global_id'] != null) {
-            final r = await db.query(tablo,
-                where: 'global_id = ?', whereArgs: [row['global_id']], limit: 1);
-            if (r.isNotEmpty) return r.first['id'] as int?;
-          }
-          if (row['cari_kodu'] != null) {
-            final r = await db.query(tablo,
-                where: 'cari_kodu = ?', whereArgs: [row['cari_kodu']], limit: 1);
-            if (r.isNotEmpty) return r.first['id'] as int?;
-          }
-        case 'satislar':
-          // global_id ile eşleştir (çok cihaz sync güvenli)
-          if (row['global_id'] != null) {
-            final r = await db.query(tablo,
-                where: 'global_id = ?', whereArgs: [row['global_id']], limit: 1);
-            if (r.isNotEmpty) return r.first['id'] as int?;
-          }
-          // global_id yoksa fis_no ile dene
-          if (row['fis_no'] != null) {
-            final r = await db.query(tablo,
-                where: 'fis_no = ?', whereArgs: [row['fis_no']], limit: 1);
-            if (r.isNotEmpty) return r.first['id'] as int?;
-          }
-        case 'faturalar':
-          if (row['global_id'] != null) {
-            final r = await db.query(tablo,
-                where: 'global_id = ?', whereArgs: [row['global_id']], limit: 1);
-            if (r.isNotEmpty) return r.first['id'] as int?;
-          }
-          if (row['fatura_no'] != null) {
-            final r = await db.query(tablo,
-                where: 'fatura_no = ?', whereArgs: [row['fatura_no']], limit: 1);
-            if (r.isNotEmpty) return r.first['id'] as int?;
-          }
-      }
-    } catch (e) { /* ignore */ }
-    return null;
-  }
+    Map<String, dynamic> data, {
+    List<String>? sadeceTablolar,
+  }) =>
+      CihazAktarimBirlestirici.iceAktar(data, sadeceTablolar: sadeceTablolar);
 
   // ── İstemci: ortak HTTP katmanı ───────────────────────────────────────
   //

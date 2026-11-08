@@ -16,6 +16,9 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../saglayicilar/riverpod/irsaliye_provider.dart';
 import 'irsaliye_detay_ekrani.dart';
 import 'irsaliye_ekle_ekrani.dart';
+import '../../saglayicilar/riverpod/auth_provider.dart';
+import '../../widgetlar/masaustu/basit_liste_masaustu.dart';
+import '../../widgetlar/masaustu/masaustu_tablo.dart';
 
 export 'irsaliye_detay_ekrani.dart' show IrsaliyeDetayEkrani, eIrsaliyeGonderilmisMi;
 export 'irsaliye_ekle_ekrani.dart' show IrsaliyeEkleEkrani;
@@ -27,6 +30,30 @@ class IrsaliyeEkrani extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final irsaliyelerAsync = ref.watch(irsaliyeListesiProvider);
     final fmt = DateFormat('dd.MM.yyyy');
+    // Masaüstü: tablo + Enter Aç / F1 Yeni (mobil kart listesi yerine).
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
+    final yetkili = ref.watch(authProvider.select((s) => s.isMudur));
+
+    Future<void> yeni() async {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const IrsaliyeEkleEkrani()),
+      );
+      // Kullanıcı bu arada başka ekrana geçtiyse liste kapanmıştır.
+      if (context.mounted) ref.invalidate(irsaliyeListesiProvider);
+    }
+
+    Future<void> ac(Map<String, dynamic> r) async {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => IrsaliyeDetayEkrani(irsaliyeId: r['id'] as int)),
+      );
+      if (context.mounted) ref.invalidate(irsaliyeListesiProvider);
+    }
+
+    String tarihMetni(Map<String, dynamic> r) => r['tarih'] != null
+        ? fmt.format(DateTime.tryParse(r['tarih'].toString()) ?? DateTime.now())
+        : '-';
 
     return Scaffold(
       backgroundColor: context.scaffoldBg,
@@ -41,18 +68,11 @@ class IrsaliyeEkrani extends ConsumerWidget {
         geriTusu: false,
         modul: TsModul.belge,
       ),
-      floatingActionButton: TsYetkili(child: FloatingActionButton.extended(
+      floatingActionButton: masaustu ? null : TsYetkili(child: FloatingActionButton.extended(
         backgroundColor: TsRenk.primary,
         foregroundColor: Colors.white,
         elevation: 2,
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const IrsaliyeEkleEkrani()),
-          );
-          // Kullanıcı bu arada başka ekrana geçtiyse liste kapanmıştır.
-          if (context.mounted) ref.invalidate(irsaliyeListesiProvider);
-        },
+        onPressed: yeni,
         icon: const Icon(Icons.add),
         label: const Text('Yeni İrsaliye'),
       )),
@@ -60,6 +80,49 @@ class IrsaliyeEkrani extends ConsumerWidget {
         loading: () => const TsYukleniyor(),
         error: (e, _) => BosEkran(ikon: Icons.inbox_outlined, baslik: 'Hata: ${bildirimMetniniSadelestir(e.toString())}'),
         data: (irsaliyeler) {
+          if (masaustu) {
+            return BasitListeMasaustu<Map<String, dynamic>>(
+              satirlar: irsaliyeler,
+              kolonlar: [
+                TabloKolon(
+                    baslik: 'İrsaliye No',
+                    genislik: 170,
+                    deger: (r) => r['irsaliye_no']?.toString() ?? '-',
+                    sirala: (r) => r['irsaliye_no']?.toString() ?? ''),
+                TabloKolon(
+                    baslik: 'Tarih',
+                    genislik: 110,
+                    deger: tarihMetni,
+                    sirala: (r) => r['tarih']?.toString() ?? ''),
+                TabloKolon(
+                    baslik: 'Cari',
+                    genislik: 260,
+                    esnek: true,
+                    deger: (r) => r['cari_adi']?.toString() ?? 'Müşteri yok',
+                    sirala: (r) => (r['cari_adi']?.toString() ?? '').toLowerCase()),
+                TabloKolon(
+                    baslik: 'Durum',
+                    genislik: 130,
+                    deger: (r) => r['durum']?.toString() ?? 'Bekliyor',
+                    sirala: (r) => r['durum']?.toString() ?? '',
+                    renk: (r) => r['durum']?.toString() == 'Teslim Edildi'
+                        ? TsRenk.basarili
+                        : TsRenk.uyari),
+                TabloKolon(
+                    baslik: 'Tutar',
+                    genislik: 130,
+                    sagaYasli: true,
+                    deger: (r) => ParaUtils.formatla((r['toplam_tutar'] as num?)?.toDouble() ?? 0),
+                    sirala: (r) => (r['toplam_tutar'] as num?) ?? 0),
+              ],
+              aramaMetniAl: (r) => '${r['irsaliye_no'] ?? ''} ${r['cari_adi'] ?? ''}',
+              kayitEtiketi: 'İrsaliye',
+              bosMesaj: yetkili ? 'Henüz irsaliye yok — F1 ile ekleyin' : 'Henüz irsaliye yok',
+              onAc: ac,
+              acEtiketi: 'Detay',
+              onEkle: yetkili ? yeni : null,
+            );
+          }
           if (irsaliyeler.isEmpty) {
             return Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -76,10 +139,7 @@ class IrsaliyeEkrani extends ConsumerWidget {
               itemCount: irsaliyeler.length,
               itemBuilder: (_, i) {
                 final r     = irsaliyeler[i];
-                final tarih = r['tarih'] != null
-                    ? fmt.format(
-                        DateTime.tryParse(r['tarih'].toString()) ?? DateTime.now())
-                    : '-';
+                final tarih = tarihMetni(r);
                 final durum = r['durum']?.toString() ?? 'Bekliyor';
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -134,16 +194,7 @@ class IrsaliyeEkrani extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => IrsaliyeDetayEkrani(
-                              irsaliyeId: r['id'] as int),
-                        ),
-                      );
-                      if (context.mounted) ref.invalidate(irsaliyeListesiProvider);
-                    },
+                    onTap: () => ac(r),
                   ),
                   ),
                 );

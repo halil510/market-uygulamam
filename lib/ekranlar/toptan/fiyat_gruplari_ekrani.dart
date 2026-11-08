@@ -9,6 +9,8 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/toptan_fiyat_deposu.dart';
 import '../../modeller/fiyat_grubu_model.dart';
 import 'fiyat_grubu_detay_ekrani.dart';
+import '../../widgetlar/masaustu/basit_liste_masaustu.dart';
+import '../../widgetlar/masaustu/masaustu_tablo.dart';
 
 class FiyatGruplariEkrani extends StatefulWidget {
   const FiyatGruplariEkrani({super.key});
@@ -120,14 +122,20 @@ class _FiyatGruplariEkraniState extends State<FiyatGruplariEkrani> {
     await _yukle();
   }
 
+  void _ac(FiyatGrubuModel g) => Navigator.push(context, MaterialPageRoute(
+      builder: (_) => FiyatGrubuDetayEkrani(grup: g))).then((_) => _yukle());
+
   @override
   Widget build(BuildContext context) {
+    // Masaüstü: tablo + Enter Aç / F1 Ekle / F2 Düzenle / F4 Sil (mobil kart
+    // listesi yerine — Kategori/Marka ile aynı düzen).
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
     return Scaffold(
       backgroundColor: context.scaffoldBg,
       appBar: const TsAppBar(
         baslik: 'Fiyat Grupları (Bayi Tipleri)',
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: masaustu ? null : FloatingActionButton.extended(
         onPressed: () => _duzenle(),
         icon: const Icon(Icons.add),
         label: const Text('Yeni Grup'),
@@ -150,7 +158,40 @@ class _FiyatGruplariEkraniState extends State<FiyatGruplariEkrani> {
                 ]),
               ),
               Expanded(
-                child: _gruplar.isEmpty
+                child: masaustu
+                    ? BasitListeMasaustu<FiyatGrubuModel>(
+                        satirlar: _gruplar,
+                        kolonlar: [
+                          TabloKolon(
+                              baslik: 'Grup',
+                              genislik: 260,
+                              esnek: true,
+                              deger: (g) => g.ad,
+                              sirala: (g) => g.ad.toLowerCase()),
+                          TabloKolon(
+                              baslik: 'Açıklama',
+                              genislik: 360,
+                              esnek: true,
+                              deger: (g) => g.aciklama ?? ''),
+                          TabloKolon(
+                              baslik: 'Varsayılan İskonto',
+                              genislik: 160,
+                              sagaYasli: true,
+                              deger: (g) => g.varsayilanIskontoOrani > 0
+                                  ? '%${g.varsayilanIskontoOrani.toStringAsFixed(0)}'
+                                  : '—',
+                              sirala: (g) => g.varsayilanIskontoOrani),
+                        ],
+                        aramaMetniAl: (g) => '${g.ad} ${g.aciklama ?? ''}',
+                        kayitEtiketi: 'Grup',
+                        bosMesaj: 'Henüz fiyat grubu yok — F1 ile ekleyin',
+                        onAc: _ac,
+                        acEtiketi: 'Fiyatlar',
+                        onEkle: () => _duzenle(),
+                        onDuzenle: _duzenle,
+                        onSil: _sil,
+                      )
+                    : _gruplar.isEmpty
                     ? Center(child: Text('Henüz fiyat grubu yok.\n"Yeni Grup" ile başlayın.',
                         textAlign: TextAlign.center, style: TextStyle(color: context.textHint)))
                     : ListView.builder(
@@ -172,8 +213,7 @@ class _FiyatGruplariEkraniState extends State<FiyatGruplariEkrani> {
                             // hiçbir yolu yoktu.
                             child: InkWell(
                               borderRadius: BorderRadius.circular(14),
-                              onTap: () => Navigator.push(context, MaterialPageRoute(
-                                  builder: (_) => FiyatGrubuDetayEkrani(grup: g))).then((_) => _yukle()),
+                              onTap: () => _ac(g),
                               child: Row(children: [
                               Container(
                                 padding: const EdgeInsets.all(10),

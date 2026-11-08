@@ -13,6 +13,8 @@ import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../widgetlar/ortak/yonetici_sifre_dialogu.dart';
+import '../../widgetlar/masaustu/basit_liste_masaustu.dart';
+import '../../widgetlar/masaustu/masaustu_tablo.dart';
 
 class KullaniciListeEkrani extends ConsumerStatefulWidget {
   const KullaniciListeEkrani({super.key});
@@ -164,8 +166,78 @@ class _KullaniciListeEkraniState extends ConsumerState<KullaniciListeEkrani> {
     }
   }
 
+  Future<void> _ekle() async {
+    final ok = await context.push<bool>('/kullanici/ekle');
+    if (ok == true) _yukle();
+  }
+
+  Future<void> _duzenle(KullaniciModel k) async {
+    final ok = await context.push<bool>('/kullanici/ekle', extra: k);
+    if (ok == true) _yukle();
+  }
+
+  bool _aktifMi(KullaniciModel k) =>
+      AuthServisi().aktifKullanici?.kullaniciAdi == k.kullaniciAdi;
+
+  /// Masaüstü tablo (Kategori/Marka düzeni). Ekle/Düzenle/Sil/Şifre yalnız
+  /// Admin/Müdür'e (mobildeki TsYetkili ile aynı kural); aktif kullanıcı
+  /// kendini silemez.
+  Widget _masaustuTablo(bool yetkili) => BasitListeMasaustu<KullaniciModel>(
+        satirlar: _kullanicilar,
+        kolonlar: [
+          TabloKolon(
+              baslik: 'Ad Soyad',
+              genislik: 240,
+              esnek: true,
+              deger: (k) => _aktifMi(k) ? '${k.adSoyad}  (oturum açık)' : k.adSoyad,
+              sirala: (k) => k.adSoyad.toLowerCase()),
+          TabloKolon(
+              baslik: 'Kullanıcı Adı',
+              genislik: 180,
+              deger: (k) => k.kullaniciAdi,
+              sirala: (k) => k.kullaniciAdi.toLowerCase()),
+          TabloKolon(
+              baslik: 'Rol',
+              genislik: 140,
+              deger: (k) => k.rol,
+              sirala: (k) => k.rol,
+              renk: (k) => _rolRenk(k.rol)),
+          TabloKolon(
+              baslik: 'Durum',
+              genislik: 110,
+              deger: (k) => k.aktif ? 'Aktif' : 'Pasif',
+              sirala: (k) => k.aktif ? 0 : 1,
+              renk: (k) => k.aktif ? TsRenk.basarili : TsRenk.hata),
+          TabloKolon(
+              baslik: 'Son Giriş',
+              genislik: 170,
+              deger: (k) => _tarih(k.sonGiris),
+              sirala: (k) => k.sonGiris ?? ''),
+        ],
+        aramaMetniAl: (k) => '${k.adSoyad} ${k.kullaniciAdi} ${k.rol}',
+        kayitEtiketi: 'Kullanıcı',
+        bosMesaj: 'Kullanıcı bulunamadı',
+        onEkle: yetkili ? _ekle : null,
+        onDuzenle: yetkili ? _duzenle : null,
+        onSil: yetkili ? _sil : null,
+        silinebilir: (k) => !_aktifMi(k),
+        ekEylemler: [
+          if (yetkili) ('Şifre Değiştir', Icons.lock_reset, _sifreDegistir),
+        ],
+      );
+
+  static String _tarih(String? iso) {
+    final t = iso == null ? null : DateTime.tryParse(iso);
+    if (t == null) return '—';
+    final y = t.toLocal();
+    String iki(int n) => n.toString().padLeft(2, '0');
+    return '${iki(y.day)}.${iki(y.month)}.${y.year} ${iki(y.hour)}:${iki(y.minute)}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
+    final yetkili = ref.watch(authProvider.select((s) => s.isMudur));
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
       appBar: TsAppBar(
@@ -181,6 +253,8 @@ class _KullaniciListeEkraniState extends ConsumerState<KullaniciListeEkrani> {
       ),
       body: _yukleniyor
           ? const TsYukleniyor(iskelet: true)
+          : masaustu
+          ? _masaustuTablo(yetkili)
           : RefreshIndicator(
               onRefresh: _yukle,
               child: _kullanicilar.isEmpty
@@ -261,7 +335,7 @@ class _KullaniciListeEkraniState extends ConsumerState<KullaniciListeEkrani> {
                       },
                     ),
             ),
-      floatingActionButton: TsYetkili(child: FloatingActionButton.extended(
+      floatingActionButton: masaustu ? null : TsYetkili(child: FloatingActionButton.extended(
         backgroundColor: TsRenk.primary,
         foregroundColor: Colors.white,
         elevation: 2,

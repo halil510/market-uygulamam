@@ -12,6 +12,8 @@ import '../../servisler/auth_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/lot_deposu.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
+import '../../widgetlar/masaustu/basit_liste_masaustu.dart';
+import '../../widgetlar/masaustu/masaustu_tablo.dart';
 
 class LotSeriEkrani extends ConsumerStatefulWidget {
   final int? urunId;
@@ -219,8 +221,56 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
     }
   }
 
+  String _miktarMetni(Map<String, dynamic> r) {
+    final miktar = (r['miktar'] as num?)?.toDouble() ?? 0;
+    return miktar.toStringAsFixed(miktar % 1 == 0 ? 0 : 2);
+  }
+
+  String _sktMetni(Map<String, dynamic> r) {
+    final skt = DateTime.tryParse(r['son_kullanma_tarihi']?.toString() ?? '');
+    return skt == null ? '—' : _fmt.format(skt);
+  }
+
+  /// Masaüstü tablo (durum çipleri üstte kalır; arama tablonun kendi
+  /// kutusunda). Yeni lot yalnız ürün bağlamında (mobildeki + ile aynı).
+  Widget _masaustuTablo() => BasitListeMasaustu<Map<String, dynamic>>(
+        satirlar: _filtrelenmis,
+        kolonlar: [
+          TabloKolon(
+              baslik: 'Lot No',
+              genislik: 180,
+              deger: (r) => r['lot_no']?.toString() ?? '-',
+              sirala: (r) => r['lot_no']?.toString() ?? ''),
+          if (widget.urunId == null)
+            TabloKolon(
+                baslik: 'Ürün',
+                genislik: 280,
+                esnek: true,
+                deger: (r) => r['urun_adi']?.toString() ?? '',
+                sirala: (r) => (r['urun_adi']?.toString() ?? '').toLowerCase()),
+          TabloKolon(
+              baslik: 'Son Kullanma',
+              genislik: 130,
+              deger: _sktMetni,
+              sirala: (r) => r['son_kullanma_tarihi']?.toString() ?? '9999',
+              renk: (r) => _sktRenk(r['son_kullanma_tarihi']?.toString())),
+          TabloKolon(
+              baslik: 'Miktar',
+              genislik: 110,
+              sagaYasli: true,
+              deger: _miktarMetni,
+              sirala: (r) => (r['miktar'] as num?) ?? 0),
+        ],
+        aramaMetniAl: (r) => '${r['lot_no'] ?? ''} ${r['urun_adi'] ?? ''}',
+        kayitEtiketi: 'Lot',
+        bosMesaj: 'Lot/seri bulunamadı',
+        onEkle: widget.urunId != null ? () => _lotDialog() : null,
+        onDuzenle: (r) => _lotDialog(lot: r),
+      );
+
   @override
   Widget build(BuildContext context) {
+    final masaustu = MediaQuery.sizeOf(context).width > 1100;
     return Scaffold(
       backgroundColor: TsRenk.arkaplan(context),
       appBar: TsAppBar(
@@ -238,13 +288,15 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
         Padding(
           padding: const EdgeInsets.all(TsBosluk.md),
           child: Column(children: [
-            TsInput(
-              etiket: 'Ara',
-              ipucu: 'Lot No veya ürün adı ara...',
-              oncilIkon: Icons.search,
-              degisti: _filtrele,
-            ),
-            const SizedBox(height: TsBosluk.sm),
+            if (!masaustu) ...[
+              TsInput(
+                etiket: 'Ara',
+                ipucu: 'Lot No veya ürün adı ara...',
+                oncilIkon: Icons.search,
+                degisti: _filtrele,
+              ),
+              const SizedBox(height: TsBosluk.sm),
+            ],
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -267,7 +319,9 @@ class _LotSeriEkraniState extends ConsumerState<LotSeriEkrani> {
           ]),
         ),
         Expanded(
-          child: TsListe<Map<String, dynamic>>(
+          child: masaustu && !_yukleniyor
+              ? _masaustuTablo()
+              : TsListe<Map<String, dynamic>>(
             yukleniyor: _yukleniyor,
             ogeler: _filtrelenmis,
             bosBaslik: 'Lot/seri bulunamadı',

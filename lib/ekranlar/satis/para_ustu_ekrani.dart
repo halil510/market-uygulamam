@@ -73,7 +73,7 @@ class _ParaUstuEkraniState extends ConsumerState<ParaUstuEkrani>
       appBar: const TsAppBar(
         baslik: "Para Üstü",
       ),
-      body: Column(children: [
+      body: TsResponsive.masaustuForm(maxGenislik: 720, child: Column(children: [
         // Tutar kartı
         Container(
           width: double.infinity,
@@ -191,7 +191,7 @@ class _ParaUstuEkraniState extends ConsumerState<ParaUstuEkrani>
             ),
           ),
         ),
-      ]),
+      ])),
     );
   }
 }

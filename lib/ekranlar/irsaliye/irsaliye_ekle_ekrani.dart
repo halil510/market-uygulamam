@@ -203,7 +203,7 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
         ],
         gradyanli: false,
       ),
-      body: Column(children: [
+      body: TsResponsive.masaustuForm(maxGenislik: 1000, child: Column(children: [
         // Üst bilgiler
         Container(
           padding: const EdgeInsets.all(14),
@@ -411,7 +411,7 @@ class _IrsaliyeEkleEkraniState extends ConsumerState<IrsaliyeEkleEkrani> {
               ),
             ]),
           ),
-      ]),
+      ])),
     );
   }
 }

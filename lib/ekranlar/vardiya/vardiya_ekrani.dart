@@ -512,7 +512,7 @@ class _VardiyaEkraniState extends ConsumerState<VardiyaEkrani>
       body: _yukleniyor
           ? const TsYukleniyor()
           : TabBarView(controller: _tab, children: [
-              _aktifTab(),
+              TsResponsive.masaustuForm(maxGenislik: 820, child: _aktifTab()),
               _gecmisTab(),
             ]),
     );

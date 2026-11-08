@@ -2,6 +2,7 @@
 //
 // Tablet / PC / el terminali düzeni: kök genişlik sınırı ve form
 // sarmalayıcı telefonda hiçbir şeyi değiştirmemeli.
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:market_plus/tasarim_sistemi/ts_responsive.dart';
@@ -36,5 +37,33 @@ void main() {
         child: const SizedBox(key: ValueKey('icerik'), width: double.infinity, height: 50));
     expect((await _olc(tester, const Size(1200, 900), form)).width, 720);
     expect((await _olc(tester, const Size(400, 800), form)).width, 400);
+  });
+  // Faz D sonrası masaüstü taraması (2026-11-08): tek sütunlu formlar
+  // (Tahsilat/Ödeme, GİB, Para Üstü…) 1366 px pencerede tüm genişliğe
+  // yayılıyordu. masaustuForm yalnız Windows'ta sınırlar; Android/iOS
+  // düzeni (tablet dahil) değişmez.
+  group('masaustuForm', () {
+    Widget form(BuildContext _) => TsResponsive.masaustuForm(
+        maxGenislik: 720,
+        child: const SizedBox(key: ValueKey('icerik'), width: double.infinity, height: 50));
+
+    testWidgets('Windows: 720 ile sınırlanır ve ortalanır', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      try {
+        expect((await _olc(tester, const Size(1366, 768), form)).width, 720);
+        expect(tester.getTopLeft(find.byKey(const ValueKey('icerik'))).dx, (1366 - 720) / 2);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('Android tablet: hiçbir sınırlama yok', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        expect((await _olc(tester, const Size(1200, 900), form)).width, 1200);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
   });
 }

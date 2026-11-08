@@ -348,7 +348,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
         baslik: '${_cari!.unvan} - Tahsilat/Ödeme',
         gradyanli: false,
       ),
-      body: ListView(
+      body: TsResponsive.masaustuForm(maxGenislik: 720, child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           TsKart(
@@ -465,7 +465,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
             ),
           ),
         ],
-      ),
+      )),
     );
   }
 }

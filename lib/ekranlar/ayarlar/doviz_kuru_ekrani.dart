@@ -141,7 +141,7 @@ class _DovizKuruEkraniState extends ConsumerState<DovizKuruEkrani> {
         icon: const Icon(Icons.add),
         label: const Text('Para Birimi Ekle'),
       ),
-      body: kurlarAsync.when(
+      body: TsResponsive.masaustuForm(maxGenislik: 900, child: kurlarAsync.when(
         loading: () => const TsYukleniyor(iskelet: true),
         error: (e, _) => TsBosDurum(
             ikon: Icons.error_outline, baslik: 'Yüklenemedi: ${bildirimMetniniSadelestir(e.toString())}', renk: TsRenk.hata),
@@ -183,7 +183,7 @@ class _DovizKuruEkraniState extends ConsumerState<DovizKuruEkrani> {
             const SizedBox(height: 80), // FAB için boşluk
           ],
         ),
-      ),
+      )),
     );
   }
 }

@@ -79,6 +79,21 @@ class TsResponsive {
   static double formMaxGenislik(BuildContext context) =>
       tabletMi(context) ? 560 : double.infinity;
 
+  /// YALNIZ Windows masaüstünde içeriği üste hizalı, ortalanmış ve en fazla
+  /// [maxGenislik] genişlikte gösterir; telefon/tablette hiçbir şey yapmaz
+  /// (mobil düzen değişmesin). 1366 px pencerede tüm genişliğe yayılan tek
+  /// sütunlu formlar (Tahsilat/Ödeme, GİB ayarı, Para Üstü…) için.
+  static Widget masaustuForm({required Widget child, double maxGenislik = 720}) {
+    if (defaultTargetPlatform != TargetPlatform.windows) return child;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxGenislik),
+        child: child,
+      ),
+    );
+  }
+
   /// Geniş ekranda formu ortalayıp [formMaxGenislik] ile sınırlayan sarmalayıcı.
   /// [maxGenislik] verilirse [formMaxGenislik] yerine o kullanılır (çok
   /// alanlı formlar için daha geniş). İçerik üste hizalanır.

@@ -232,7 +232,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
         ],
         geriTusu: false,
       ),
-      body: _yukleniyor
+      body: TsResponsive.masaustuForm(maxGenislik: 820, child: _yukleniyor
           ? const TsYukleniyor()
           : ListView(padding: const EdgeInsets.all(16), children: [
               // Bilgi banner
@@ -435,7 +435,7 @@ class _GibAyarEkraniState extends ConsumerState<GibAyarEkrani> {
               _destekBilgi(Icons.qr_code, 'e-Arşiv Portal',
                   'GİB portalından manuel yükleme'),
               const SizedBox(height: 40),
-            ]),
+            ])),
     );
   }
 

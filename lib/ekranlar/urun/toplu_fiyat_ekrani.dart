@@ -195,7 +195,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
         baslik: 'Toplu Fiyat Güncelleme',
         alt: TabBar(controller: _tab, tabs: const [Tab(text: 'Ayarlar'), Tab(text: 'Ürün Seç')]),
       ),
-      body: TabBarView(controller: _tab, children: [
+      body: TsResponsive.masaustuForm(maxGenislik: 1000, child: TabBarView(controller: _tab, children: [
         // ── TAB 1: Güncelleme Ayarları ──────────────────────────────
         ListView(padding: const EdgeInsets.all(16), children: [
           // İşlem tipi
@@ -340,7 +340,7 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
                     );
                   })),
         ]),
-      ]),
+      ])),
     );
   }
 

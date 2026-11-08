@@ -23,6 +23,7 @@ import '../../../uygulama/tema/uygulama_temasi.dart';
 import '../../../widgetlar/ortak/app_widgetlar.dart'
     show basariMesaji, hataMesaji;
 import '../widgets/hizli_tus_paneli.dart' show tusRengi;
+import '../../../servisler/log_servisi.dart';
 
 class MasaustuUrunIzgarasi extends StatefulWidget {
   final void Function(UrunModel urun) onUrunSec;
@@ -76,7 +77,10 @@ class _MasaustuUrunIzgarasiState extends State<MasaustuUrunIzgarasi> {
         _kartG = p.getDouble(_prefGenislik) ?? _varsayilanG;
         _kartY = p.getDouble(_prefYukseklik) ?? _varsayilanY;
       });
-    } catch (_) {}
+    } catch (e) {
+      // Kozmetik: varsayılan kart boyutu kullanılır.
+      LogServisi().uyari('PLU ızgara boyut tercihi okunamadı', hata: e);
+    }
   }
 
   Future<void> _yukle() async {

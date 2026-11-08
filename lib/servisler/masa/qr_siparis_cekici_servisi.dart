@@ -24,6 +24,7 @@ import 'package:http/http.dart' as http;
 import '../../saglayicilar/riverpod/masa_provider.dart';
 import '../bulut/supabase_ayarlari.dart';
 import 'qr_menu_servisi.dart';
+import '../log_servisi.dart';
 
 class QrSiparisCekiciServisi {
   static final QrSiparisCekiciServisi _instance = QrSiparisCekiciServisi._();
@@ -88,7 +89,9 @@ class QrSiparisCekiciServisi {
       Vibration.vibrate(duration: 400);
       await Future.delayed(const Duration(milliseconds: 350));
       await b.sesCardir();
-    } catch (_) {}
+    } catch (e) {
+      LogServisi().uyari('QR sipariş uyarı sesi/titreşimi çalınamadı', hata: e);
+    }
     _bekleyenMasalar.addAll(masaIdleri);
     final adlar = await MasaDeposu().masaAdlariHaritasi();
     final liste = _bekleyenMasalar.map((id) => adlar[id] ?? 'Masa $id').toList();

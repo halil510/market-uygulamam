@@ -23,6 +23,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart'
     show openAppSettings;
 import '../../../tasarim_sistemi/ts_token.dart';
+import '../../../servisler/log_servisi.dart';
 
 class SatisKameraPaneli extends StatefulWidget {
   final MobileScannerController controller;
@@ -176,7 +177,9 @@ class _SatisKameraPaneliState extends State<SatisKameraPaneli>
   Future<void> _yenidenDene() async {
     try {
       await widget.controller.start();
-    } catch (_) {}
+    } catch (e) {
+      LogServisi().uyari('Kamera yeniden başlatılamadı', hata: e);
+    }
   }
 
   // ── Arayüz ───────────────────────────────────────────────────────────

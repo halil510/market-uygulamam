@@ -11,6 +11,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:sqflite/sqflite.dart';
 import '../veri/database/veritabani.dart';
 import 'veritabani_dosya_servisi.dart';
+import 'log_servisi.dart';
 
 class SyncServisi {
   static final SyncServisi _i = SyncServisi._();
@@ -194,7 +195,10 @@ class SyncServisi {
         // Son işlemler WAL'da kalmasın: dosya kopyası eksik/yırtık olmasın.
         try {
           await db.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
-        } catch (_) {}
+        } catch (e) {
+          // Kopya yine alınır ama son işlemler WAL'da kalmış olabilir.
+          LogServisi().uyari('WAL checkpoint yapılamadı (dosya kopyası öncesi)', hata: e);
+        }
         final dbDosya = File(db.path);
         if (await dbDosya.exists()) {
           req.response.headers.contentType =

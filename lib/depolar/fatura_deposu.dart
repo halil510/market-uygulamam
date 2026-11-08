@@ -1,5 +1,4 @@
 // lib/depolar/fatura_deposu.dart
-import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../servisler/log_servisi.dart';
@@ -137,8 +136,10 @@ class FaturaDeposu {
           for (final d in detaySatirlar) {
             BulutManager().upsert('fatura_detaylari', Map<String, dynamic>.from(d));
           }
-        } catch (e) {
-          if (kDebugMode) debugPrint('Fatura bulut bildirimi hatası: $e');
+        } catch (e, st) {
+          // Fatura kaydı kalıcı (txn commit edildi); bulut bildirimi
+          // başarısızsa senkron kuyruğu sonra gönderir — yine de loglanır.
+          LogServisi().uyari('Fatura bulut bildirimi hatası', hata: e, yigin: st);
         }
         return faturaId;
       } on BlokTukendiException catch (e, st) {

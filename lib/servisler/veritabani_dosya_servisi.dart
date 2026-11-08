@@ -122,7 +122,9 @@ class VeritabaniDosyaServisi {
           await f.delete();
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      LogServisi().uyari('Eski .bak dosyaları temizlenemedi', hata: e);
+    }
 
     final appDir = await getApplicationDocumentsDirectory();
     for (final dir in ['urun_resimleri', 'raporlar']) {
@@ -246,7 +248,9 @@ class VeritabaniDosyaServisi {
       for (final f in dosyalar.sublist(_maxGuvenlikYedegi)) {
         try {
           await f.delete();
-        } catch (_) {}
+        } catch (e) {
+          LogServisi().uyari('Eski güvenlik yedeği silinemedi: ${f.path}', hata: e);
+        }
       }
     } catch (e, st) {
       LogServisi().hata('Güvenlik yedeği temizleme hatası', hata: e, yigin: st);

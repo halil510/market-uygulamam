@@ -151,7 +151,10 @@ class _KurtarmaEkraniState extends State<_KurtarmaEkrani> {
     try {
       final l = await YedeklemeServisi().yedekListesi();
       if (mounted) setState(() => _yedekler = l);
-    } catch (_) {}
+    } catch (e, st) {
+      // Liste boş görünür; kurtarma ekranında "yedek yok" sanılmasın diye loglanır.
+      LogServisi().hata('Açılış koruma: yedek listesi okunamadı', hata: e, yigin: st);
+    }
     if (mounted) setState(() => _yukleniyor = false);
   }
 

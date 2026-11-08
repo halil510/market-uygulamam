@@ -734,7 +734,9 @@ class YazdirmaServisi {
       int mtu = 20;
       try {
         mtu = (c.device.mtuNow - 3).clamp(20, 244);
-      } catch (_) {}
+      } catch (_) {
+        // Beyaz liste: mtuNow bu platformda yoksa en düşük BLE yükü (20) kullanılır.
+      }
       for (int i = 0; i < bytes.length; i += mtu) {
         final son   = (i + mtu < bytes.length) ? i + mtu : bytes.length;
         final parca = Uint8List.fromList(bytes.sublist(i, son));
@@ -891,7 +893,7 @@ public class RawPrn {
         throw Exception('Yazdırma hatası: ${(sonuc.stderr as Object).toString().trim()}');
       }
     } finally {
-      try { await klasor.delete(recursive: true); } catch (_) {}
+      try { await klasor.delete(recursive: true); } catch (e) { LogServisi().uyari('Geçici yazdırma klasörü silinemedi', hata: e); }
     }
   }
 

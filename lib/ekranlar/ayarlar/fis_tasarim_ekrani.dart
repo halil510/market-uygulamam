@@ -13,6 +13,7 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/ayarlar_deposu.dart';
+import '../../servisler/log_servisi.dart';
 
 class FisTasarimEkrani extends ConsumerStatefulWidget {
   /// true ise kendi Scaffold/AppBar'ını çizmez — Yazdırma Merkezi içine
@@ -231,7 +232,7 @@ class _FisTasarimEkraniState extends ConsumerState<FisTasarimEkrani>
         : const PdfPageFormat(80 * PdfPageFormat.mm, 297 * PdfPageFormat.mm);
     pw.MemoryImage? logoResim;
     if (_logoGoster && _logoYolu != null && await File(_logoYolu!).exists()) {
-      try { logoResim = pw.MemoryImage(await File(_logoYolu!).readAsBytes()); } catch (_) {}
+      try { logoResim = pw.MemoryImage(await File(_logoYolu!).readAsBytes()); } catch (e) { LogServisi().uyari('FisTasarim: logo okunamadı, önizleme logosuz', hata: e); }
     }
 
     pdf.addPage(pw.Page(

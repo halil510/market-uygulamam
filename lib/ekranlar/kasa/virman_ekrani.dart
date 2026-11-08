@@ -11,6 +11,7 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../servisler/virman_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
+import '../../servisler/log_servisi.dart';
 
 class VirmanEkrani extends ConsumerStatefulWidget {
   const VirmanEkrani({super.key});
@@ -194,7 +195,10 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
     try {
       final b = await _depo.guncelBakiye();
       if (mounted) setState(() => _kasaBakiye = b);
-    } catch (_) {}
+    } catch (e, st) {
+      // Bakiye 0 görünür; kullanıcı yanlış bakiyeyle virman yapmasın diye loglanır.
+      LogServisi().hata('Virman: kasa bakiyesi okunamadı', hata: e, yigin: st);
+    }
   }
 
   @override

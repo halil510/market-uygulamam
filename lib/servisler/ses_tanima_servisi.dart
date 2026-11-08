@@ -4,6 +4,7 @@
 // sormak için, Ürün Ekle ekranında ürün adı/fiyat gibi alanları sesle
 // doldurmak için kullanılıyor.
 import 'package:flutter/foundation.dart';
+import 'log_servisi.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class SesTanimaServisi {
@@ -25,8 +26,8 @@ class SesTanimaServisi {
         onStatus: (s) { if (kDebugMode) debugPrint('Ses tanıma durumu: $s'); },
       );
       return _hazir;
-    } catch (e) {
-      if (kDebugMode) debugPrint('Ses tanıma başlatılamadı: $e');
+    } catch (e, st) {
+      LogServisi().uyari('Ses tanıma başlatılamadı', hata: e, yigin: st);
       return false;
     }
   }

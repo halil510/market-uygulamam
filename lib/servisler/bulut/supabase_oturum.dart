@@ -72,7 +72,9 @@ class SupabaseOturum {
       try {
         final yuk = utf8.decode(base64Url.decode(base64Url.normalize(parcalar[1])));
         return (jsonDecode(yuk) as Map)['role'] == 'service_role';
-      } catch (_) {}
+      } catch (_) {
+        // Beyaz liste: JWT olarak çözülemeyen anahtar service_role değildir.
+      }
     }
     return false;
   }
@@ -199,7 +201,10 @@ class SupabaseOturum {
         await _post(Uri.parse('$url/auth/v1/logout'),
             headers: {'apikey': key, 'Authorization': 'Bearer $erisim'})
             .timeout(const Duration(seconds: 10));
-      } catch (_) {}
+      } catch (e) {
+        // Sunucuya çıkış bildirilemese de yerel oturum aşağıda kapatılır.
+        LogServisi().uyari('Supabase çıkış isteği gönderilemedi', hata: e);
+      }
     }
     _erisim = null;
     _bitis = null;

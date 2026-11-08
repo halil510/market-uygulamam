@@ -305,6 +305,8 @@ class AnlikBulutDinleyici with WidgetsBindingObserver {
     bagli.value = false;
     try {
       ws?.close();
-    } catch (_) {}
+    } catch (_) {
+      // Beyaz liste (CLAUDE.md §5.7): zaten kopmuş soketi kapatma denemesi.
+    }
   }
 }

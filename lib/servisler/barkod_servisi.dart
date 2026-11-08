@@ -31,6 +31,7 @@ import 'package:flutter/foundation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:vibration/vibration.dart';
+import 'log_servisi.dart';
 import 'package:permission_handler/permission_handler.dart'
     show openAppSettings;
 
@@ -621,7 +622,9 @@ class _BarkodTaramaDialogState extends State<BarkodTaramaDialog> {
   Future<void> _yenidenDene() async {
     try {
       await _ctrl?.start();
-    } catch (_) {}
+    } catch (e) {
+      LogServisi().uyari('Barkod kamerası yeniden başlatılamadı', hata: e);
+    }
   }
 
   @override

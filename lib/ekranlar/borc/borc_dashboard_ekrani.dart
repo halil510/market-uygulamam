@@ -100,6 +100,12 @@ class _BorcDashboardEkraniState extends ConsumerState<BorcDashboardEkrani>
             pinned: true,
             backgroundColor: TsModulRenk.koyu(TsModul.ana),
             foregroundColor: Colors.white,
+            // Temanın appBarTheme.iconTheme (koyu) / actionsIconTheme (mavi)
+            // değerleri foregroundColor'ı ezer: koyu mor zeminde geri oku
+            // koyu, Yenile/Ekle ikonları neredeyse görünmüyordu (canlı test
+            // 2026-11-08). Ana panel SliverAppBar'ı ile aynı çözüm.
+            iconTheme: const IconThemeData(color: Colors.white),
+            actionsIconTheme: const IconThemeData(color: Colors.white),
             actions: [
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),

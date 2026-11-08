@@ -7,6 +7,7 @@ import '../servisler/bulut/bulut_manager.dart';
 import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import 'package:uuid/uuid.dart';
 import '../cekirdek/utils/tarih_utils.dart';
+import '../cekirdek/utils/para_utils.dart';
 
 /// NOT: Hesap bakiyesi güncellemesi BURADA, uygulama kodu seviyesinde
 /// yapılır (transaction güvenliği ve test edilebilirlik için).
@@ -44,8 +45,7 @@ class BankaHareketDeposu {
   /// kapandıktan sonra kendi sorumluluğundadır.
   Future<int> ekleTxn(Transaction txn, BankaHareketModel hareket) async {
     final sonBakiye = await _sonBakiyeTxn(txn, hareket.bankaHesapId);
-    final yeniBakiye = sonBakiye +
-        (hareket.islemTipi == 'Gelen' ? hareket.tutar : -hareket.tutar);
+    final yeniBakiye = sonBakiye + isaretliTutar(hareket.islemTipi, hareket.tutar);
 
     final m = hareket.toMap();
     m.remove('id');
@@ -201,6 +201,85 @@ class BankaHareketDeposu {
     } catch (e, st) {
       LogServisi().hata('BankaHareketDeposu.ozetGetir', hata: e, yigin: st);
       return {'gelen': 0, 'giden': 0};
+    }
+  }
+
+  /// Hareketin bakiyeye etkisi — [ekleTxn] ile AYNI kural (tek kaynak).
+  static double isaretliTutar(String? islemTipi, double tutar) =>
+      islemTipi == 'Gelen' ? tutar : -tutar;
+
+  /// Her hesabın hareket zincirini (tarih, id sırasıyla) baştan yürütür:
+  /// onceki/sonraki_bakiye ve hesabın bakiyesi hareketlerden yeniden
+  /// hesaplanır. Açılış = en eski hareketin onceki_bakiye'si.
+  ///
+  /// 🔴 ÇOKLU CİHAZ (2026-11-08): bakiye "son hareketin sonraki_bakiye'si"
+  /// zinciriyle tutuluyor. İki cihaz internetsizken aynı hesaba hareket
+  /// yazınca ikisi de kendi zincirini sürdürüyordu: 1000'lik hesaba biri
+  /// +100, diğeri −50 yazınca birleşmeden sonra bakiye 1050 yerine 950
+  /// görünüyordu ve senkron sonrası hiçbir adım düzeltmiyordu. Sıra
+  /// cihazdan cihaza farklı olsa da son bakiye (açılış + Σ) her cihazda
+  /// aynıdır. Hareket satırlarının bakiye alanları türetilmiştir —
+  /// last_updated ilerletilmez (bkz. KolonHaritalama.turetilmisAlanlar).
+  /// Döner: düzeltilen satır + hesap sayısı.
+  Future<int> zincirMutabakatYap() async {
+    try {
+      final db = await _d;
+      final duzeltilenHesaplar = <int>[];
+      var duzeltilenSatir = 0;
+      await db.transaction((txn) async {
+        final hesaplar = await txn.rawQuery(
+            'SELECT DISTINCT banka_hesap_id AS id FROM banka_hareketler '
+            'WHERE banka_hesap_id IS NOT NULL AND is_deleted = 0');
+        for (final h in hesaplar) {
+          final hesapId = h['id'] as int;
+          final satirlar = await txn.query('banka_hareketler',
+              columns: ['id', 'islem_tipi', 'tutar', 'onceki_bakiye', 'sonraki_bakiye'],
+              where: 'banka_hesap_id = ? AND is_deleted = 0',
+              whereArgs: [hesapId],
+              orderBy: 'tarih ASC, id ASC');
+          var bakiye = (satirlar.first['onceki_bakiye'] as num?)?.toDouble() ?? 0;
+          for (final s in satirlar) {
+            final onceki = bakiye;
+            final sonraki = ParaUtils.yuvarla(onceki +
+                isaretliTutar(s['islem_tipi'] as String?,
+                    (s['tutar'] as num?)?.toDouble() ?? 0));
+            final eskiOnceki = (s['onceki_bakiye'] as num?)?.toDouble();
+            final eskiSonraki = (s['sonraki_bakiye'] as num?)?.toDouble();
+            if (eskiOnceki == null || eskiSonraki == null ||
+                (eskiOnceki - onceki).abs() > 0.005 ||
+                (eskiSonraki - sonraki).abs() > 0.005) {
+              await txn.update('banka_hareketler',
+                  {'onceki_bakiye': onceki, 'sonraki_bakiye': sonraki},
+                  where: 'id = ?', whereArgs: [s['id']]);
+              duzeltilenSatir++;
+            }
+            bakiye = sonraki;
+          }
+          final hesap = await txn.query('banka_hesaplar',
+              columns: ['bakiye'], where: 'id = ?', whereArgs: [hesapId], limit: 1);
+          if (hesap.isEmpty) continue;
+          final mevcut = (hesap.first['bakiye'] as num?)?.toDouble() ?? 0;
+          if ((mevcut - bakiye).abs() > 0.005) {
+            await txn.update('banka_hesaplar', {
+              'bakiye': bakiye,
+              'kullanilabilir_bakiye': bakiye,
+              'last_updated': DateTime.now().toIso8601String(),
+            }, where: 'id = ?', whereArgs: [hesapId]);
+            duzeltilenHesaplar.add(hesapId);
+          }
+        }
+      });
+      for (final id in duzeltilenHesaplar) {
+        await BulutManager().satiriBildir(db, 'banka_hesaplar', id);
+      }
+      if (duzeltilenSatir + duzeltilenHesaplar.length > 0) {
+        LogServisi().bilgi('Banka zincir mutabakatı: $duzeltilenSatir hareket, '
+            '${duzeltilenHesaplar.length} hesap düzeltildi');
+      }
+      return duzeltilenSatir + duzeltilenHesaplar.length;
+    } catch (e, st) {
+      LogServisi().hata('BankaHareketDeposu.zincirMutabakatYap', hata: e, yigin: st);
+      rethrow;
     }
   }
 }

@@ -233,6 +233,10 @@ class KolonHaritalama {
   static const Map<String, Set<String>> turetilmisAlanlar = {
     'urunler': {'stok'},
     'cari': {'bakiye'},
+    // Banka bakiyesi ve hareket zinciri hareketlerden yeniden hesaplanır
+    // (BankaHareketDeposu.zincirMutabakatYap — çoklu cihaz, 2026-11-08).
+    'banka_hesaplar': {'bakiye', 'kullanilabilir_bakiye'},
+    'banka_hareketler': {'onceki_bakiye', 'sonraki_bakiye'},
   };
 
   static void yereleOzguSutunlariAyikla(String tablo, Map<String, dynamic> satir) {

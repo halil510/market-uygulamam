@@ -14,6 +14,7 @@
 // çağrıldığında (hangi ekrandan olursa olsun), bir şey indiyse bunlar
 // çalışır.
 import 'package:flutter/foundation.dart';
+import '../depolar/banka_hareket_deposu.dart';
 import '../depolar/borc_deposu.dart';
 import '../depolar/cari_deposu.dart';
 import '../depolar/kredi_karti_deposu.dart';
@@ -35,6 +36,7 @@ class SenkronSonrasiMutabakat {
     'Masa sipariş toplamı': {'masalar', 'masa_siparisleri', 'masa_siparis_kalem'},
     'Borç ödenen tutar': {'borclar', 'borc_odemeler'},
     'Kredi kartı limiti': {'kredi_kartlari', 'kredi_karti_hareket'},
+    'Banka bakiye': {'banka_hesaplar', 'banka_hareketler'},
     'Müşteri puanı': {'musteri_puan', 'puan_hareket'},
   };
 
@@ -71,6 +73,9 @@ class SenkronSonrasiMutabakat {
     await adim('Masa sipariş toplamı', () => MasaDeposu().siparisToplamlariMutabakatYap());
     await adim('Borç ödenen tutar', () => BorcDeposu().odemeMutabakatYap());
     await adim('Kredi kartı limiti', () => KrediKartiDeposu().limitMutabakatYap());
+    // Banka bakiyesi = açılış + hareketler (iki cihazın internetsiz
+    // hareketleri birleşince "son satırın bakiyesi" yanlış kalıyordu).
+    await adim('Banka bakiye', () => BankaHareketDeposu().zincirMutabakatYap());
     await adim('Müşteri puanı', () => PuanServisi().puanMutabakatYap());
   }
 }

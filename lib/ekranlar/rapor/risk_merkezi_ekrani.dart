@@ -58,11 +58,9 @@ class RiskMerkeziEkrani extends ConsumerWidget {
           }
           final kritik = satirlar.where((s) => s.seviye == RiskSeviyesi.kritik).length;
           final dikkat = satirlar.where((s) => s.seviye == RiskSeviyesi.dikkat).length;
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(_riskMerkeziProvider),
-            child: ListView(
-              padding: const EdgeInsets.all(TsBosluk.lg),
-              children: [
+          // Faz D: kredi limitli her müşteri bir satır — builder yalnız
+          // ekrandakileri kurar. Üst bilgi ve sıra aynı.
+          final ust = <Widget>[
                 Row(children: [
                   Expanded(
                       child: TsKart.istatistik(
@@ -79,7 +77,22 @@ class RiskMerkeziEkrani extends ConsumerWidget {
                           vurguRenk: TsRenk.uyari)),
                 ]),
                 const SizedBox(height: TsBosluk.lg),
-                ...satirlar.map((s) => Padding(
+          ];
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(_riskMerkeziProvider),
+            child: ListView.builder(
+              padding: const EdgeInsets.all(TsBosluk.lg),
+              itemCount: ust.length + satirlar.length + 1,
+              itemBuilder: (context, i) {
+                if (i < ust.length) {
+                  return ust[i];
+                }
+                final j = i - ust.length;
+                if (j == satirlar.length) {
+                  return const SizedBox(height: TsBosluk.xxxl);
+                }
+                final s = satirlar[j];
+                return Padding(
                       padding: const EdgeInsets.only(bottom: TsBosluk.sm),
                       child: TsKart(
                         onTap: () => context.push('/cari/detay/${s.cariId}'),
@@ -119,9 +132,8 @@ class RiskMerkeziEkrani extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    )),
-                const SizedBox(height: TsBosluk.xxxl),
-              ],
+                    );
+              },
             ),
           );
         },

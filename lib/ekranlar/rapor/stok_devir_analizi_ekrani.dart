@@ -80,11 +80,10 @@ class _StokDevirAnaliziEkraniState extends ConsumerState<StokDevirAnaliziEkrani>
               }
               final hareketsiz =
                   satirlar.where((s) => s.sinif == DevirSinifi.hareketsiz).length;
-              return RefreshIndicator(
-                onRefresh: () async => ref.invalidate(_stokDevirProvider(_gunSayisi)),
-                child: ListView(
-                  padding: const EdgeInsets.all(TsBosluk.lg),
-                  children: [
+              // Faz D: stoktaki her ürün bir satır (binlerce olabilir) —
+              // ListView(children) hepsini birden kuruyordu; builder yalnız
+              // ekrandakileri kurar. Üst bilgi ve sıra aynı.
+              final ust = <Widget>[
                     if (hareketsiz > 0)
                       TsKart.istatistik(
                         baslik: 'Hareketsiz Ürün (bu dönemde hiç satılmadı)',
@@ -100,7 +99,22 @@ class _StokDevirAnaliziEkraniState extends ConsumerState<StokDevirAnaliziEkrani>
                       style: TsMetin.kucuk.copyWith(color: TsRenk.metinIkincil(context)),
                     ),
                     const SizedBox(height: TsBosluk.md),
-                    ...satirlar.map((s) => Padding(
+              ];
+              return RefreshIndicator(
+                onRefresh: () async => ref.invalidate(_stokDevirProvider(_gunSayisi)),
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(TsBosluk.lg),
+                  itemCount: ust.length + satirlar.length + 1,
+                  itemBuilder: (context, i) {
+                    if (i < ust.length) {
+                      return ust[i];
+                    }
+                    final j = i - ust.length;
+                    if (j == satirlar.length) {
+                      return const SizedBox(height: TsBosluk.xxxl);
+                    }
+                    final s = satirlar[j];
+                    return Padding(
                           padding: const EdgeInsets.only(bottom: TsBosluk.sm),
                           child: TsKart.liste(
                             baslik: s.urunAdi,
@@ -116,9 +130,8 @@ class _StokDevirAnaliziEkraniState extends ConsumerState<StokDevirAnaliziEkrani>
                               ),
                             ],
                           ),
-                        )),
-                    const SizedBox(height: TsBosluk.xxxl),
-                  ],
+                        );
+                  },
                 ),
               );
             },

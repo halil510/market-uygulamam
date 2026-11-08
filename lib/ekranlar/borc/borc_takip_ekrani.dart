@@ -24,6 +24,8 @@ class _BorcTakipEkraniState extends ConsumerState<BorcTakipEkrani> {
   String _aktifFiltre = 'Tum';
 
   static const _filtreler = ['Tum', 'Kredi Kartı', 'Vergi', 'SGK', 'Kira', 'Fatura', 'Odenen'];
+  // Süzgeç anahtarları ('Tum'/'Odenen') değişmeden kalır; ekranda Türkçe.
+  static const _filtreEtiketleri = {'Tum': 'Tüm', 'Odenen': 'Ödenen'};
 
   @override
   void initState() {
@@ -132,7 +134,7 @@ class _BorcTakipEkraniState extends ConsumerState<BorcTakipEkrani> {
               child: Row(children: _filtreler.map((f) => Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: FilterChip(
-                  label: Text(f),
+                  label: Text(_filtreEtiketleri[f] ?? f),
                   selected: _aktifFiltre == f,
                   onSelected: (_) => setState(() { _aktifFiltre = f; _filtrele(borclar); }),
                   selectedColor: AppRenkler.primary,

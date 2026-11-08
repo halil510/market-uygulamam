@@ -275,7 +275,12 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
 
   // ── Ana İçerik ────────────────────────────────────────────────────────────
   Widget _anaIcerik(DashboardVeri data) {
+    final gecis = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: _sayfaGostergesi(),
+    );
     return Column(children: [
+      if (Platform.isWindows) gecis,
       SizedBox(
         height: MediaQuery.of(context).size.height * 0.66,
         child: PageView(
@@ -288,10 +293,7 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
           ],
         ),
       ),
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: _sayfaGostergesi(),
-      ),
+      if (!Platform.isWindows) gecis,
     ]);
   }
 

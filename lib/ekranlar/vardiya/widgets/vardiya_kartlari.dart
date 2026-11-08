@@ -79,7 +79,7 @@ class VardiyaDurumKart extends StatelessWidget {
         gradient: LinearGradient(
             colors: acik
                 ? [TsRenk.basarili, TsRenk.basarili]
-                : [context.textSecondary, TsRenk.arkaplan(context)],
+                : [TsRenk.notr, TsRenk.notr],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(20),

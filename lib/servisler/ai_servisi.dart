@@ -1,12 +1,17 @@
 // lib/servisler/ai_servisi.dart
 // Ana AI wrapper — eski metodlar + yeni sohbet sistemi
-import 'package:flutter/foundation.dart';
 import 'ai/ai_sohbet_servisi.dart';
+import 'log_servisi.dart';
 import '../veri/database/veritabani.dart';
 import '../cekirdek/utils/tarih_utils.dart';
 export 'ai/ai_modeller.dart';
 export 'ai/ai_sohbet_servisi.dart';
 
+// Hata politikası (CLAUDE.md §5.7): AI Panel'in 6 bölümü ayrı ayrı yüklenir;
+// bir bölümün hatası diğerlerini boşaltmasın diye her metot hatayı
+// LogServisi'ne yazıp boş değer döner (bilinçli olarak rethrow YOK — panel
+// verisi yalnız gösterim amaçlı). Önceden yalnız debugPrint vardı: sürüm
+// derlemesinde hata hiçbir yere yazılmıyordu.
 class AiServisi {
   static final AiServisi _i = AiServisi._();
   factory AiServisi() => _i;
@@ -75,7 +80,7 @@ class AiServisi {
         'kritik_stok':   kritikSayi,
         'kasa':          kasa.isEmpty ? 0.0 : (kasa.first['bakiye_sonrasi'] as num?)?.toDouble() ?? 0,
       };
-    } catch (e) { if (kDebugMode) debugPrint('[AiServisi.gunlukOzet] $e'); return {}; }
+    } catch (e, st) { LogServisi().hata('AiServisi.gunlukOzet', hata: e, yigin: st); return {}; }
   }
 
   /// Satış tahmini
@@ -98,7 +103,7 @@ class AiServisi {
         'bu_hafta': ort * 7,
         'bu_ay':   ort * 30,
       };
-    } catch (e) { if (kDebugMode) debugPrint('[AiServisi.satisTahmini] $e'); return {}; }
+    } catch (e, st) { LogServisi().hata('AiServisi.satisTahmini', hata: e, yigin: st); return {}; }
   }
 
 
@@ -143,7 +148,7 @@ class AiServisi {
           'neden':          stok == 0 ? 'Stok tukendi!' : 'Kritik stok',
         };
       }).toList();
-    } catch (e) { if (kDebugMode) debugPrint('[AiServisi.stokOnerisi] $e'); return []; }
+    } catch (e, st) { LogServisi().hata('AiServisi.stokOnerisi', hata: e, yigin: st); return []; }
   }
 
   /// Promosyon önerileri — _PromosyonTab: urun_adi, stok, satis_fiyati, indirimli_fiyat, satis_adet
@@ -191,7 +196,7 @@ class AiServisi {
                              marji > 40 ? 'Yuksek kar marji' : 'Yuksek stok degeri',
         };
       }).toList();
-    } catch (e) { if (kDebugMode) debugPrint('[AiServisi.promosyonOnerisi] $e'); return []; }
+    } catch (e, st) { LogServisi().hata('AiServisi.promosyonOnerisi', hata: e, yigin: st); return []; }
   }
 
   /// En çok satanlar — AI panel Özet sekmesi
@@ -211,7 +216,7 @@ class AiServisi {
         GROUP BY sk.urun_adi ORDER BY tutar DESC LIMIT ?
       ''', [bas, bit, limit]);
       return List<Map<String, dynamic>>.from(rows);
-    } catch (e) { if (kDebugMode) debugPrint('[AiServisi.enCokSatanlar] $e'); return []; }
+    } catch (e, st) { LogServisi().hata('AiServisi.enCokSatanlar', hata: e, yigin: st); return []; }
   }
 
   /// Cari risk — AI panel Cari Risk sekmesi
@@ -268,6 +273,6 @@ class AiServisi {
           'sonHareket':     r['son_hareket'],
         };
       }).toList();
-    } catch (e) { if (kDebugMode) debugPrint('[AiServisi.cariRisk] $e'); return []; }
+    } catch (e, st) { LogServisi().hata('AiServisi.cariRisk', hata: e, yigin: st); return []; }
   }
 }

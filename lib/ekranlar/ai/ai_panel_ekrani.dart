@@ -1,11 +1,11 @@
 // lib/ekranlar/ai/ai_panel_ekrani.dart ✅ TAM YAZILDI
 import '../../cekirdek/utils/hata_utils.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../servisler/ai_servisi.dart';
+import '../../servisler/log_servisi.dart';
 import '../../servisler/ai/eylem/ai_eylem_modeli.dart';
 import '../../servisler/ai/eylem/ai_eylem_motoru.dart';
 import '../../cekirdek/utils/para_utils.dart';
@@ -69,9 +69,14 @@ class _AiPanelEkraniState extends ConsumerState<AiPanelEkrani>
         _cariRisk    = results[5] as List<Map<String, dynamic>>;
         _yukleniyor  = false;
       });
-    } catch (e) {
-      if (mounted) setState(() => _yukleniyor = false);
-      if (kDebugMode) debugPrint('AI panel yukle: $e');
+    } catch (e, st) {
+      // AiServisi bölüm hatalarını kendisi loglayıp boş döner; buraya düşen
+      // beklenmedik bir hatadır (ör. tip uyuşmazlığı) — loglanır ve kullanıcıya
+      // gösterilir (önceden yalnız debugPrint: sürümde görünmezdi).
+      LogServisi().hata('AiPanel._yukle', hata: e, yigin: st);
+      if (!mounted) return;
+      setState(() => _yukleniyor = false);
+      hataMesaji(context, kullaniciyaHataMetni(e));
     }
   }
 

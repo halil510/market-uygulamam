@@ -432,7 +432,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                       border: OutlineInputBorder(),
                       isDense: true),
                   items: ['Satis', 'Alis', 'Iade', 'Proforma']
-                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                      .map((v) => DropdownMenuItem(value: v, child: Text(FaturaModel.tipEtiketi(v))))
                       .toList(),
                   onChanged: (v) => setState(() => _faturaTipi = v!),
                 ),
@@ -479,7 +479,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                     child: Text(
                       _vadeTarihi != null
                           ? fmt.format(_vadeTarihi!)
-                          : 'Secilmedi',
+                          : 'Seçilmedi',
                       style: TextStyle(
                           color: _vadeTarihi != null ? null : context.textSecondary),
                     ),

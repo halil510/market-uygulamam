@@ -82,9 +82,9 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
       list = list.where((f) => (f.eFaturaDurum ?? 'hazir') == _filtreEFatura).toList();
     }
     if (_filtreYon == 'giden') {
-      list = list.where((f) => f.faturaTipi != 'Alış' && f.faturaTipi != 'Alış Faturası').toList();
+      list = list.where((f) => !f.alisMi).toList();
     } else if (_filtreYon == 'gelen') {
-      list = list.where((f) => f.faturaTipi == 'Alış' || f.faturaTipi == 'Alış Faturası').toList();
+      list = list.where((f) => f.alisMi).toList();
     }
     list = list.where((f) => _iptalleriGoster ? f.durum == 'iptal' : f.durum != 'iptal').toList();
     if (_filtreBas != null && _filtreBit != null) {
@@ -402,7 +402,7 @@ class _FaturaListeEkraniState extends ConsumerState<FaturaListeEkrani>
               const SizedBox(width: 6),
               Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(color: context.borderColor, borderRadius: BorderRadius.circular(12)),
-                child: Text(f.faturaTipi ?? 'Satış',
+                child: Text(FaturaModel.tipEtiketi(f.faturaTipi ?? 'Satış'),
                     style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: context.textSecondary))),
               const Spacer(),
               Text(DateFormat('dd.MM.yyyy').format(f.tarih),

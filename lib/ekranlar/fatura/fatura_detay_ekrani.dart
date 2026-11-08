@@ -220,7 +220,7 @@ appBar: TsAppBar(
               _bilgiSatiri('Tarih', fmt.format(f.tarih)),
               if (f.vadeTarihi != null)
                 _bilgiSatiri('Vade', fmt.format(f.vadeTarihi!)),
-              _bilgiSatiri('Tip', f.faturaTipi ?? '-'),
+              _bilgiSatiri('Tip', FaturaModel.tipEtiketi(f.faturaTipi ?? '-')),
               _bilgiSatiri('Cari', f.cariUnvan ?? '-'),
               if (f.cariVergiNo != null)
                 _bilgiSatiri('VKN', f.cariVergiNo!),
@@ -265,7 +265,7 @@ appBar: TsAppBar(
                   bold: true, renk: TsRenk.primaryKoyu),
               if (f.odenenTutar > 0) ...[
                 const SizedBox(height: 4),
-                _toplamSatir('Odenen', f.odenenTutar, renk: TsRenk.basarili),
+                _toplamSatir('Ödenen', f.odenenTutar, renk: TsRenk.basarili),
                 _toplamSatir('Kalan', f.kalanTutar,
                     bold: true,
                     renk: f.kalanTutar > 0 ? TsRenk.hata : TsRenk.basarili),

@@ -88,6 +88,23 @@ class FaturaModel {
   /// ikinci kez düşülmesi bug'ı, derin denetim).
   double get vergilerHaricToplam => ParaUtils.yuvarla(genelToplam - toplamKdv);
 
+  /// Fatura tipinin ekranda/PDF'te gösterilecek adı. Fatura Ekle formu ve
+  /// bazı akışlar tipi ASCII yazıyor ('Satis', 'Alis', 'Iade'), diğerleri
+  /// Türkçe ('Satış', 'Alış'…) — kayıtlı değer DEĞİŞTİRİLMEZ (GİB ve
+  /// senkron onu okur), yalnız gösterim düzelir.
+  static String tipEtiketi(String tip) => switch (tip) {
+        'Satis' => 'Satış',
+        'Alis' => 'Alış',
+        'Iade' => 'İade',
+        _ => tip,
+      };
+
+  /// Gelen (alış) faturası mı? Fatura Listesi'nin Gelen/Giden süzgeci
+  /// için TEK kaynak. Önceden yalnız 'Alış'/'Alış Faturası' tanınıyordu;
+  /// Fatura Ekle'de "Alis" seçilerek kesilen alış faturaları GİDEN
+  /// listesinde görünüyordu.
+  bool get alisMi => const {'Alış', 'Alış Faturası', 'Alis'}.contains(faturaTipi);
+
   // Constructor
   const FaturaModel({
     this.id, this.globalId, this.faturaNo,

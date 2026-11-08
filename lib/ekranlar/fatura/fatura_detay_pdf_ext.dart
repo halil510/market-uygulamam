@@ -145,7 +145,7 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
         pw.SizedBox(height: 4),
         _gibMuhru(font, boldFont, eArsivMi80, f.faturaTipi ?? 'Fatura'),
         pw.SizedBox(height: 4),
-        pw.Text((f.faturaTipi ?? 'Fatura').toUpperCase(),
+        pw.Text(FaturaModel.tipEtiketi(f.faturaTipi ?? 'Fatura').toUpperCase(),
             style: pw.TextStyle(font: boldFont, fontSize: 11 * scale)),
         pw.Text('No: ${f.faturaNo ?? "-"}', style: pw.TextStyle(font: font, fontSize: 8 * scale)),
         pw.Text(fmt.format(f.duzenlenmeTarihi ?? f.tarih), style: pw.TextStyle(font: font, fontSize: 8 * scale)),

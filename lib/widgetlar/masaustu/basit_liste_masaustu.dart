@@ -24,6 +24,16 @@ class BasitListeMasaustu<T> extends StatefulWidget {
   final void Function(T satir)? onDuzenle;
   final void Function(T satir)? onSil;
 
+  /// Satırı AÇ (ör. Fiyat Grubu → ürün fiyatları, İrsaliye → detay). Verilirse
+  /// çift tık / Enter / sağ tık "Aç" buna gider; verilmezse çift tık eskisi
+  /// gibi [onDuzenle]'ye gider (Kategori/Marka/Birim davranışı değişmez).
+  final void Function(T satir)? onAc;
+  final String acEtiketi;
+
+  /// Sağ tık menüsüne eklenecek ekranına özgü eylemler (ör. Kullanıcılar'da
+  /// "Şifre Değiştir"): (etiket, ikon, eylem).
+  final List<(String, IconData, void Function(T satir))> ekEylemler;
+
   /// Satır silinebilir mi (ör. varsayılan birimler silinemez).
   final bool Function(T satir)? silinebilir;
 
@@ -38,6 +48,9 @@ class BasitListeMasaustu<T> extends StatefulWidget {
     this.onDuzenle,
     this.onSil,
     this.silinebilir,
+    this.onAc,
+    this.acEtiketi = 'Aç',
+    this.ekEylemler = const [],
   });
 
   @override
@@ -81,8 +94,12 @@ class _BasitListeMasaustuState<T> extends State<BasitListeMasaustu<T>> {
 
   void _menu(T s, Offset konum) {
     masaustuMenuAc(context, konum, [
+      if (widget.onAc != null)
+        MenuOge(widget.acEtiketi, () => widget.onAc!(s), ikon: Icons.open_in_new),
       if (widget.onDuzenle != null)
         MenuOge('Düzenle', () => widget.onDuzenle!(s), ikon: Icons.edit_outlined),
+      for (final (etiket, ikon, eylem) in widget.ekEylemler)
+        MenuOge(etiket, () => eylem(s), ikon: ikon),
       if (_silinebilir(s))
         MenuOge('Sil', () => widget.onSil!(s),
             ikon: Icons.delete_outline, ayiracOnce: widget.onDuzenle != null),
@@ -93,7 +110,10 @@ class _BasitListeMasaustuState<T> extends State<BasitListeMasaustu<T>> {
     if (e is! KeyDownEvent || !mounted || !ekranUstte(context)) return false;
     final k = e.logicalKey;
     final s = _gecerliSecili;
-    if (k == LogicalKeyboardKey.f1 && widget.onEkle != null) {
+    if ((k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.numpadEnter) &&
+        widget.onAc != null && s != null) {
+      widget.onAc!(s);
+    } else if (k == LogicalKeyboardKey.f1 && widget.onEkle != null) {
       widget.onEkle!();
     } else if (k == LogicalKeyboardKey.f2 && widget.onDuzenle != null) {
       if (s != null) widget.onDuzenle!(s);
@@ -134,13 +154,16 @@ class _BasitListeMasaustuState<T> extends State<BasitListeMasaustu<T>> {
                 kolonlar: widget.kolonlar,
                 secili: s,
                 onSec: (x) => setState(() => _secili = x),
-                onCift: widget.onDuzenle,
+                onCift: widget.onAc ?? widget.onDuzenle,
                 onSagTik: _menu,
               ),
       ),
       MasaustuAltSerit(
         ozetler: [AltOzet(widget.kayitEtiketi, '${widget.satirlar.length}')],
         tuslar: [
+          if (widget.onAc != null)
+            AltTus('Enter', widget.acEtiketi, Icons.open_in_new, TsRenk.primary,
+                s == null ? null : () => widget.onAc!(s)),
           if (widget.onEkle != null)
             AltTus('F1', 'Ekle', Icons.add_circle_outline,
                 TsRenk.basarili, widget.onEkle),

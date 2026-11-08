@@ -58,4 +58,54 @@ void main() {
     expect(find.text('Koli'), findsNothing);
     expect(find.text('3'), findsOneWidget); // alt şeritteki kayıt sayısı
   });
+  // 2026-11-08: açılış eylemi olan listeler (Fiyat Grupları, İrsaliye…).
+  Future<(List<String>, List<String>)> kurAc(WidgetTester t, {required bool acVar}) async {
+    final acilan = <String>[], duzenlenen = <String>[];
+    t.view.physicalSize = const Size(1400, 800);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: BasitListeMasaustu<String>(
+          satirlar: const ['Altın', 'Gümüş'],
+          kolonlar: [TabloKolon(baslik: 'Grup', deger: (b) => b, esnek: true)],
+          aramaMetniAl: (b) => b,
+          onDuzenle: duzenlenen.add,
+          onAc: acVar ? acilan.add : null,
+        ),
+      ),
+    ));
+    return (acilan, duzenlenen);
+  }
+
+  Future<void> ciftTikla(WidgetTester t, String ad) async {
+    await t.tap(find.text(ad), kind: PointerDeviceKind.mouse);
+    await t.pump(const Duration(milliseconds: 50));
+    await t.tap(find.text(ad), kind: PointerDeviceKind.mouse);
+    await t.pump(const Duration(milliseconds: 400));
+  }
+
+  testWidgets('onAc verilince çift tık ve Enter açar, F2 yine düzenler', (t) async {
+    final (acilan, duzenlenen) = await kurAc(t, acVar: true);
+    await ciftTikla(t, 'Altın');
+    expect(acilan, ['Altın']);
+    await t.tap(find.text('Altın'), kind: PointerDeviceKind.mouse); // seç
+    await t.pump(const Duration(milliseconds: 400));
+    await t.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(acilan, ['Altın', 'Altın']);
+    await t.sendKeyEvent(LogicalKeyboardKey.f2);
+    expect(duzenlenen, ['Altın']);
+    expect(find.text('Enter : Aç'), findsOneWidget); // alt şerit tuşu
+  });
+
+  testWidgets('onAc yoksa çift tık eskisi gibi düzenler, Enter bir şey yapmaz', (t) async {
+    final (acilan, duzenlenen) = await kurAc(t, acVar: false);
+    await ciftTikla(t, 'Gümüş');
+    expect(duzenlenen, ['Gümüş']);
+    await t.tap(find.text('Altın'), kind: PointerDeviceKind.mouse); // seç
+    await t.pump(const Duration(milliseconds: 400));
+    await t.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(duzenlenen, ['Gümüş']);
+    expect(acilan, isEmpty);
+  });
 }

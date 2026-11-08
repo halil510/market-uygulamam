@@ -1,7 +1,6 @@
 // lib/ekranlar/urun/urun_detay_ekrani.dart
 import '../../cekirdek/utils/denetleyici_birak.dart';
 import '../../cekirdek/utils/hata_utils.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +19,7 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../saglayicilar/riverpod/doviz_provider.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/log_servisi.dart';
+import '../../servisler/kolon_haritalama.dart';
 
 class UrunDetayEkrani extends ConsumerStatefulWidget {
   final int urunId;
@@ -118,11 +118,18 @@ class _UrunDetayEkraniState extends ConsumerState<UrunDetayEkrani>
               ],
             ),
       ),
+          // Düzenleme sonrası ürün yeniden okununca (invalidate) kendi
+          // verisini initState'te yükleyen sekmeler de tazelensin — yoksa
+          // stok değişikliğinin hareketi/şube dağılımı eski kalıyordu.
           body: TabBarView(controller: _tab, children: [
             _BilgiSekmesi(urun: urun),
             _FiyatSekmesi(urun: urun),
-            _HareketSekmesi(urunId: urun.id!),
-            _SubeStokSekmesi(urun: urun),
+            _HareketSekmesi(
+                key: ValueKey('h-${urun.lastUpdated}-${urun.stok}'),
+                urunId: urun.id!),
+            _SubeStokSekmesi(
+                key: ValueKey('s-${urun.lastUpdated}-${urun.stok}'),
+                urun: urun),
           ]),
         );
       },
@@ -133,26 +140,73 @@ class _UrunDetayEkraniState extends ConsumerState<UrunDetayEkrani>
 class _BilgiSekmesi extends StatelessWidget {
   final UrunModel urun;
   const _BilgiSekmesi({required this.urun});
+
+  static bool _dolu(String? s) => s != null && s.trim().isNotEmpty;
+
+  static String _sayi(double d) =>
+      d == d.roundToDouble() ? d.toStringAsFixed(0) : d.toStringAsFixed(3);
+
+  /// Ürün tablosunun (masaüstü) tarih kolonlarıyla aynı biçim.
+  static String _tarih(String? ham) {
+    final t = KolonHaritalama.utcZaman(ham);
+    return t == null ? '—' : DateFormat('dd.MM.yyyy HH:mm').format(t.toLocal());
+  }
+
   @override
-  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(16), children: [
-    _Kart(children: [
-      _Satir('Ürün Adı',  urun.urunAdi),
-      _Satir('Barkod',    urun.barkod ?? '—'),
-      _Satir('Birim',     urun.birimAdi),
-      _Satir('Ana Grup',  urun.anaGrup ?? '—'),
-      _Satir('Alt Grup',  urun.altGrup ?? '—'),
-      _Satir('Marka',     urun.marka ?? '—'),
-      _Satir('Menşei',    urun.mensei ?? '—'),
-      _Satir('KDV %',     urun.kdvOran),
-      _Satir('Durum',     urun.aktif ? '✓ Aktif' : '✗ Pasif'),
-    ]),
-    if (urun.alan1 != null || urun.alan2 != null)
-      _Kart(baslik: 'Özel Alanlar', children: [
-        if (urun.alan1 != null) _Satir('Alan 1', urun.alan1!),
-        if (urun.alan2 != null) _Satir('Alan 2', urun.alan2!),
+  Widget build(BuildContext context) {
+    final stokRenk = urun.stok <= 0
+        ? TsRenk.hata
+        : (urun.kritikStok ? TsRenk.uyari : null);
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      _Kart(children: [
+        _Satir('Ürün Adı',  urun.urunAdi),
+        if (_dolu(urun.alternatifUrunAdi))
+          _Satir('Alternatif Ad', urun.alternatifUrunAdi!),
+        _Satir('Kod',       _dolu(urun.kod) ? urun.kod! : '—'),
+        _Satir('Barkod',    urun.barkod ?? '—'),
+        if (_dolu(urun.barkodlar)) _Satir('Ek Barkodlar', urun.barkodlar!),
+        _Satir('Birim',     urun.birimAdi),
+        _Satir('Ana Grup',  urun.anaGrup ?? '—'),
+        _Satir('Alt Grup',  urun.altGrup ?? '—'),
+        _Satir('Marka',     urun.marka ?? '—'),
+        if (_dolu(urun.model))   _Satir('Model', urun.model!),
+        if (_dolu(urun.uretici)) _Satir('Üretici', urun.uretici!),
+        _Satir('Menşei',    urun.mensei ?? '—'),
+        _Satir('KDV %',     urun.kdvOran),
+        _Satir('Durum',     urun.aktif ? '✓ Aktif' : '✗ Pasif'),
       ]),
-    const SizedBox(height: 80),
-  ]);
+      _Kart(baslik: 'Stok', children: [
+        _Satir('Mevcut Stok', '${_sayi(urun.stok)} ${urun.birimAdi}',
+            bold: true, renk: stokRenk),
+        if (urun.minimumStok > 0) _Satir('Min. Stok', _sayi(urun.minimumStok)),
+        if (urun.maksimumStok > 0) _Satir('Maks. Stok', _sayi(urun.maksimumStok)),
+        if (urun.koliIciMiktar > 0)
+          _Satir('Koli İçi', '${_sayi(urun.koliIciMiktar)} ${urun.koliBirimAdi}'.trim()),
+        if (_dolu(urun.rafNumarasi)) _Satir('Raf No', urun.rafNumarasi!),
+        if (_dolu(urun.sonKullanmaTarihi))
+          _Satir('Son Kullanma', urun.sonKullanmaTarihi!),
+      ]),
+      if (_dolu(urun.alan1) || _dolu(urun.alan2) ||
+          _dolu(urun.alan3) || _dolu(urun.alan4))
+        _Kart(baslik: 'Özel Alanlar', children: [
+          if (_dolu(urun.alan1)) _Satir('Alan 1', urun.alan1!),
+          if (_dolu(urun.alan2)) _Satir('Alan 2', urun.alan2!),
+          if (_dolu(urun.alan3)) _Satir('Alan 3', urun.alan3!),
+          if (_dolu(urun.alan4)) _Satir('Alan 4', urun.alan4!),
+        ]),
+      _Kart(baslik: 'Kayıt Bilgisi', children: [
+        _Satir('Kayıt Tarihi', _tarih(urun.kayitTarihi)),
+        if (_dolu(urun.kaydedenKullanici))
+          _Satir('Kaydeden', urun.kaydedenKullanici!),
+        _Satir('Son Güncelleme', _tarih(urun.guncellemeTarihi ?? urun.lastUpdated)),
+        if (_dolu(urun.guncelleyenKullanici))
+          _Satir('Güncelleyen', urun.guncelleyenKullanici!),
+        if (_dolu(urun.fiyatGuncellemeTarih))
+          _Satir('Fiyat Güncelleme', _tarih(urun.fiyatGuncellemeTarih)),
+      ]),
+      const SizedBox(height: 80),
+    ]);
+  }
 }
 
 class _FiyatSekmesi extends StatelessWidget {
@@ -394,7 +448,7 @@ class _ToptanKademeleriBolumuState extends State<_ToptanKademeleriBolumu> {
 
 class _HareketSekmesi extends ConsumerStatefulWidget {
   final int urunId;
-  const _HareketSekmesi({required this.urunId});
+  const _HareketSekmesi({super.key, required this.urunId});
   @override
   ConsumerState<_HareketSekmesi> createState() => _HareketSekmesiState();
 }
@@ -404,6 +458,9 @@ class _HareketSekmesiState extends ConsumerState<_HareketSekmesi> {
   List<StokHareketModel> _hareketler = [];
   bool _yukleniyor = true;
   final _fmt = DateFormat('dd.MM.yyyy HH:mm');
+
+  static String _sayi(double d) =>
+      d == d.roundToDouble() ? d.toStringAsFixed(0) : d.toStringAsFixed(2);
 
   @override
   void initState() {
@@ -417,12 +474,16 @@ class _HareketSekmesiState extends ConsumerState<_HareketSekmesi> {
       setState(() => _yukleniyor = true);
       final h = await _depo.hareketleriGetir(widget.urunId, limit: 50);
       if (mounted) setState(() { _hareketler = h; _yukleniyor = false; });
-    } catch (e) {
+    } catch (e, st) {
       // 🔴 DÜZELTME: Hata durumunda _yukleniyor hiç false yapılmıyordu
       // — stok hareketleri çekilemezse ekran SONSUZA KADAR "yükleniyor"
       // durumunda kalıyordu.
-      if (kDebugMode) debugPrint('Hata: $e');
-      if (mounted) setState(() => _yukleniyor = false);
+      LogServisi().hata('Ürün detay stok hareketleri', hata: e, yigin: st);
+      if (mounted) {
+        setState(() => _yukleniyor = false);
+        BildirimServisi.hata(context,
+            'Stok hareketleri yüklenemedi: ${kullaniciyaHataMetni(e)}');
+      }
     }
   }
 
@@ -443,8 +504,10 @@ class _HareketSekmesiState extends ConsumerState<_HareketSekmesi> {
       separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (_, i) {
         final h   = _hareketler[i];
-        final mik = h.miktar;
-        final pozitif = mik > 0;
+        // `miktar` çoğu hareket türünde işaretsiz (pozitif) saklanır — satış
+        // "Çıkış" da +2 görünüyordu. Yön, stoğun gerçek değişiminden alınır.
+        final mik = h.sonrakiStok - h.oncekiStok;
+        final pozitif = mik >= 0;
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -463,10 +526,11 @@ class _HareketSekmesiState extends ConsumerState<_HareketSekmesi> {
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(h.aciklama ?? h.hareketTuru,
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-              Text(_fmt.format(h.tarih),
+              Text('${_fmt.format(h.tarih)} · '
+                  'Stok: ${_sayi(h.oncekiStok)} → ${_sayi(h.sonrakiStok)}',
                   style: TextStyle(fontSize: 11, color: context.textSecondary)),
             ])),
-            Text('${pozitif ? '+' : ''}${mik.toStringAsFixed(mik.truncateToDouble() == mik ? 0 : 2)}',
+            Text('${pozitif ? '+' : ''}${_sayi(mik)}',
                 style: TextStyle(
                     fontWeight: FontWeight.w700, fontSize: 15,
                     color: pozitif ? TsRenk.basarili : TsRenk.hata)),
@@ -499,18 +563,20 @@ class _Kart extends StatelessWidget {
 }
 
 class _Satir extends StatelessWidget {
-  final String etiket, deger; final bool bold;
-  const _Satir(this.etiket, this.deger, {this.bold = false});
+  final String etiket, deger; final bool bold; final Color? renk;
+  const _Satir(this.etiket, this.deger, {this.bold = false, this.renk});
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
     decoration: BoxDecoration(
       border: Border(bottom: BorderSide(color: TsRenk.ayirac(context)))),
-    child: Row(children: [
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(etiket, style: TextStyle(fontSize: 13, color: context.textSecondary)),
-      const Spacer(),
-      Text(deger, style: TextStyle(
-          fontSize: 13, fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
+      const SizedBox(width: 12),
+      // Uzun ürün adı / ek barkod listesi satırı taşırmasın.
+      Expanded(child: Text(deger, textAlign: TextAlign.right, style: TextStyle(
+          fontSize: 13, color: renk,
+          fontWeight: bold ? FontWeight.w700 : FontWeight.w500))),
     ]),
   );
 }
@@ -523,7 +589,7 @@ class _Satir extends StatelessWidget {
 // anlamına gelir.
 class _SubeStokSekmesi extends StatefulWidget {
   final UrunModel urun;
-  const _SubeStokSekmesi({required this.urun});
+  const _SubeStokSekmesi({super.key, required this.urun});
   @override
   State<_SubeStokSekmesi> createState() => _SubeStokSekmesiState();
 }

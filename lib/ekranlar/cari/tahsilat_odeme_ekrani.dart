@@ -11,6 +11,7 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "../../modeller/cari_model.dart";
+import '../../widgetlar/ortak/cari_bakiye_gorunum.dart';
 import "../../depolar/cari_deposu.dart";
 import "../../depolar/banka_hesap_deposu.dart";
 import "../../depolar/kredi_karti_deposu.dart";
@@ -355,13 +356,13 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Bakiye:',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                Text('Bakiye · ${cariBakiyeEtiketi(_cari!)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
                 Text(ParaUtils.formatla(_cari!.bakiye.abs()),
                     style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
-                        color: _cari!.bakiye > 0 ? TsRenk.hata : TsRenk.basarili)),
+                        color: cariBakiyeRengi(context, _cari!))),
               ],
             ),
           ),

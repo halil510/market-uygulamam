@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import '../../modeller/cari_model.dart';
+import '../../widgetlar/ortak/cari_bakiye_gorunum.dart';
 import '../../modeller/cari_hareket_model.dart';
 import '../../modeller/fatura_model.dart';
 import '../../depolar/satis_deposu.dart';
@@ -345,21 +346,9 @@ class _CariDetayIcerikState extends ConsumerState<_CariDetayIcerik>
     }
   }
 
-  Color get _bakiyeRenk {
-    final c = widget.cari;
-    if (c.bakiye == 0) return context.textSecondary;
-    final musteri = c.cariTipi.contains('Müşteri');
-    if (musteri) return c.bakiye > 0 ? TsRenk.basarili : TsRenk.bilgi;
-    return c.bakiye < 0 ? TsRenk.hata : TsRenk.bilgi;
-  }
+  Color get _bakiyeRenk => cariBakiyeRengi(context, widget.cari);
 
-  String get _bakiyeEtiket {
-    final c = widget.cari;
-    if (c.bakiye == 0) return 'Dengede';
-    final musteri = c.cariTipi.contains('Müşteri');
-    if (musteri) return c.bakiye > 0 ? 'Alacağımız' : 'Fazla Ödedi';
-    return c.bakiye < 0 ? 'Borcumuz' : 'Fazla Ödedik';
-  }
+  String get _bakiyeEtiket => cariBakiyeEtiketi(widget.cari);
 
   @override
   Widget build(BuildContext context) {

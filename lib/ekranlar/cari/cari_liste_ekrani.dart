@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../saglayicilar/riverpod/cari_provider.dart';
 import '../../saglayicilar/riverpod/auth_provider.dart';
 import '../../modeller/cari_model.dart';
+import '../../widgetlar/ortak/cari_bakiye_gorunum.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../uygulama/tema/uygulama_temasi.dart';
@@ -526,19 +527,9 @@ class _CariKart extends ConsumerWidget {
   // NOT: getter'dan metoda çevrildi — gövdesi context.textSecondary
   // kullanıyor, ama _CariKart bir ConsumerWidget (State değil), bu yüzden
   // getter'ın context'e erişimi yok. Çağrı yerlerinin hepsi build() içinde.
-  Color _renk(BuildContext context) {
-    if (cari.bakiye == 0) return context.textSecondary;
-    final mst = cari.cariTipi.contains('Müşteri');
-    if (mst) return cari.bakiye > 0 ? TsRenk.basarili : TsRenk.bilgi;
-    return cari.bakiye < 0 ? TsRenk.hata : TsRenk.bilgi;
-  }
+  Color _renk(BuildContext context) => cariBakiyeRengi(context, cari);
 
-  String get _etiket {
-    if (cari.bakiye == 0) return 'Dengede';
-    final mst = cari.cariTipi.contains('Müşteri');
-    if (mst) return cari.bakiye > 0 ? 'Alacak' : 'Fazla Ödedi';
-    return cari.bakiye < 0 ? 'Borç' : 'Fazla Ödedik';
-  }
+  String get _etiket => cariBakiyeEtiketi(cari, kisa: true);
 
   Color get _avatarRenk {
     final tip = cari.cariTipi;

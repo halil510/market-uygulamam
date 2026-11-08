@@ -20,15 +20,19 @@
 //   flutter test test/robot --dart-define=ROBOT_KESIN=true
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:market_plus/depolar/cari_deposu.dart';
 import 'package:market_plus/servisler/auth_servisi.dart';
+import 'package:market_plus/servisler/masa/qr_menu_sunucu_servisi.dart';
 import 'package:market_plus/servisler/masa/qr_siparis_cekici_servisi.dart';
 import 'package:market_plus/uygulama/uygulama.dart';
 import 'package:market_plus/veri/database/veritabani.dart';
@@ -81,6 +85,35 @@ const _tekRota = String.fromEnvironment('ROBOT_ROTA');
 /// listesini dilimlemek için (ör. --dart-define=ROBOT_BASLA=20 --dart-define=ROBOT_ADET=20).
 const _dilimBasla = int.fromEnvironment('ROBOT_BASLA', defaultValue: 0);
 const _dilimAdet = int.fromEnvironment('ROBOT_ADET', defaultValue: 0);
+
+/// Her ekranın açılış görüntüsünü build/robot_ekran/*.png olarak kaydeder
+/// (gerçek yazı tipleriyle) ve forma DOKUNMADAN sonraki ekrana geçer —
+/// masaüstü düzenini canlı veriye dokunmadan gözle incelemek için:
+///   flutter test test/robot/uygulama_robotu_test.dart
+///     --dart-define=ROBOT_EKRAN=masaustu --dart-define=ROBOT_GORUNTU=true
+const _goruntu = bool.fromEnvironment('ROBOT_GORUNTU');
+
+/// Test ortamı varsayılan olarak her harfi kutu (Ahem) çizer; görüntü
+/// modunda uygulamanın gerçek yazı tipleri yüklenir.
+Future<void> _yaziTipleriniYukle() async {
+  Future<void> yukle(String aile, List<String> dosyalar) async {
+    final y = FontLoader(aile);
+    for (final d in dosyalar) {
+      final f = File(d);
+      if (f.existsSync()) y.addFont(Future.value(ByteData.sublistView(f.readAsBytesSync())));
+    }
+    await y.load();
+  }
+
+  final mf = '${Platform.environment['FLUTTER_ROOT'] ?? ''}/bin/cache/artifacts/material_fonts';
+  await yukle('Poppins', [
+    for (final k in ['Regular', 'Medium', 'Bold']) 'assets/fonts/Poppins-$k.ttf',
+  ]);
+  await yukle('Roboto', [
+    for (final k in ['regular', 'medium', 'bold', 'light']) '$mf/roboto-$k.ttf',
+  ]);
+  await yukle('MaterialIcons', ['$mf/materialicons-regular.otf']);
+}
 
 /// Bulgu sınıfı: HATA yalnızca gerçek uygulama hatası; eklenti eksikliği,
 /// taşma, görsel uyarı ve gezinme (ekran parametresiz açılınca kendini
@@ -222,6 +255,10 @@ void main() {
         // Gerçek kasa bilgisayarı ölçüsü (Windows masaüstü düzeni ≥1000 px).
         tester.view.physicalSize = const Size(1366, 768);
         tester.view.devicePixelRatio = 1.0;
+        // Test ortamı varsayılan olarak Android sayar; yalnız Windows'ta
+        // etkili düzen kararları (TsResponsive.masaustuForm vb.) gerçek
+        // kasa bilgisayarındaki gibi çalışsın. Test sonunda sıfırlanır.
+        debugDefaultTargetPlatformOverride = TargetPlatform.windows;
       } else {
         tester.view.physicalSize = const Size(1280, 2000);
         tester.view.devicePixelRatio = 1.0;
@@ -230,6 +267,7 @@ void main() {
     }
 
     await RobotOrtam.hazirla();
+    if (_goruntu) await tester.runAsync(_yaziTipleriniYukle);
     final db = await RobotOrtam.veritabaniAc();
     final veri = await RobotOrtam.tohumla(db);
     expect(await AuthServisi().girisYap('admin', '1234'), isTrue,
@@ -269,6 +307,19 @@ void main() {
         }
       }
       return false;
+    }
+
+    /// Ekranın o anki görüntüsünü build/robot_ekran/<rota>.png'ye yazar.
+    Future<void> ekranGoruntusuKaydet(String yol) async {
+      final gorunum = tester.binding.renderViews.first;
+      final katman = gorunum.debugLayer! as OffsetLayer;
+      final ad = yol == '/' ? 'ana' : yol.substring(1).replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+      await tester.runAsync(() async {
+        final resim = await katman.toImage(gorunum.paintBounds);
+        final png = await resim.toByteData(format: ui.ImageByteFormat.png);
+        final dosya = File('build/robot_ekran/$ad.png')..createSync(recursive: true);
+        dosya.writeAsBytesSync(png!.buffer.asUint8List());
+      });
     }
 
     /// Tablo başına satır sayısı (yan günlük tabloları hariç).
@@ -681,6 +732,10 @@ void main() {
         await bekle();
         acilisMs[yol] = kronometre.elapsedMilliseconds;
         ekranHataMetni('açılış');
+        if (_goruntu) {
+          await ekranGoruntusuKaydet(yol);
+          continue;
+        }
         // push'ta uri alttaki sayfayı gösterir; en üstteki eşleşmeye bak.
         final yapi = router.routerDelegate.currentConfiguration;
         final varilan = yapi.isEmpty ? yapi.uri.path : Uri.parse(yapi.last.matchedLocation).path;
@@ -1008,6 +1063,10 @@ void main() {
     // Masalar ekranının başlattığı oturum boyu QR sipariş zamanlayıcısı
     // (bilinçli olarak ekran kapanınca durmaz) test sonunda durdurulur.
     QrSiparisCekiciServisi().durdur();
+    // Masa QR ekranının açtığı yerel menü sunucusu da (boşta zamanlayıcısı
+    // test değişmezlerine takılmasın).
+    await tester.runAsync(() => QrMenuSunucuServisi().durdur());
+    debugDefaultTargetPlatformOverride = null;
     // Açık animasyon/geçiş kalmasın (Flutter test değişmezleri).
     await tester.pumpWidget(const SizedBox());
     for (var i = 0; i < 30; i++) {

@@ -23,6 +23,7 @@ import '../servisler/audit_log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../veri/database/veritabani.dart';
+import '../cekirdek/utils/tarih_utils.dart';
 
 class IadeDeposu {
   final Veritabani _db = Veritabani();
@@ -185,16 +186,17 @@ class IadeDeposu {
 
     if (baslangic != null) {
       final v = baslangic.toIso8601String();
-      iadeKosullar.add('datetime(ia.tarih) >= datetime(?)');
+      iadeKosullar.add(TarihUtils.sonrasiSql('ia.tarih', baslangic));
       iadeArgs.add(v);
-      tiKosullar.add('datetime(ti.tarih) >= datetime(?)');
+      tiKosullar.add(TarihUtils.sonrasiSql('ti.tarih', baslangic));
       tiArgs.add(v);
     }
     if (bitis != null) {
-      final v = bitis.add(const Duration(days: 1)).toIso8601String();
-      iadeKosullar.add('datetime(ia.tarih) <= datetime(?)');
+      final bitisArti = bitis.add(const Duration(days: 1));
+      final v = bitisArti.toIso8601String();
+      iadeKosullar.add(TarihUtils.oncesiSql('ia.tarih', bitisArti));
       iadeArgs.add(v);
-      tiKosullar.add('datetime(ti.tarih) <= datetime(?)');
+      tiKosullar.add(TarihUtils.oncesiSql('ti.tarih', bitisArti));
       tiArgs.add(v);
     }
     if (cariId != null) {

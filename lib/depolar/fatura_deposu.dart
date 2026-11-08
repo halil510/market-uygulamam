@@ -7,6 +7,7 @@ import '../servisler/bulut/bulut_manager.dart';
 import '../servisler/fatura_seri/fatura_seri_blok_servisi.dart';
 import '../veri/database/veritabani.dart';
 import '../modeller/fatura_model.dart';
+import '../cekirdek/utils/tarih_utils.dart';
 
 class FaturaDeposu {
   final Veritabani _db = Veritabani();
@@ -214,8 +215,8 @@ class FaturaDeposu {
     final whereParts = ["f.durum != 'silindi'"];
     final List<dynamic> args = [];
 
-    if (basTarih != null) { whereParts.add('datetime(f.tarih) >= datetime(?)'); args.add(basTarih.toIso8601String()); }
-    if (bitTarih != null) { whereParts.add('datetime(f.tarih) <= datetime(?)'); args.add(bitTarih.toIso8601String()); }
+    if (basTarih != null) { whereParts.add(TarihUtils.sonrasiSql('f.tarih', basTarih)); args.add(basTarih.toIso8601String()); }
+    if (bitTarih != null) { whereParts.add(TarihUtils.oncesiSql('f.tarih', bitTarih)); args.add(bitTarih.toIso8601String()); }
     if (cariId != null) { whereParts.add('f.cari_id = ?'); args.add(cariId); }
     if (odemeDurumu != null) { whereParts.add('f.odeme_durumu = ?'); args.add(odemeDurumu); }
     if (eFaturaDurum != null) { whereParts.add('f.e_fatura_durum = ?'); args.add(eFaturaDurum); }

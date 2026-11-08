@@ -22,6 +22,7 @@ import '../cekirdek/utils/para_utils.dart';
 import 'kasa_deposu.dart';
 import 'banka_hareket_deposu.dart';
 import 'kredi_karti_deposu.dart';
+import '../cekirdek/utils/tarih_utils.dart';
 
 class CariDeposu {
   final Veritabani _db = Veritabani();
@@ -544,11 +545,11 @@ class CariDeposu {
     final args = <dynamic>[cariId];
 
     if (basTarih != null) {
-      whereParts.add('datetime(tarih) >= datetime(?)');
+      whereParts.add(TarihUtils.sonrasiSql('tarih', basTarih));
       args.add(basTarih.toIso8601String());
     }
     if (bitTarih != null) {
-      whereParts.add('datetime(tarih) <= datetime(?)');
+      whereParts.add(TarihUtils.oncesiSql('tarih', bitTarih));
       args.add(bitTarih.toIso8601String());
     }
     if (fisTipi != null) {

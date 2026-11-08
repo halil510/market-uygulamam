@@ -23,20 +23,22 @@ class AiServisi {
     try {
       final db  = await Veritabani().db;
       final now = DateTime.now();
-      final bas = DateTime(now.year, now.month, now.day).toIso8601String();
-      final bit = DateTime(now.year, now.month, now.day, 23, 59, 59).toIso8601String();
+      final basT = DateTime(now.year, now.month, now.day);
+      final bas = basT.toIso8601String();
+      final bitT = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      final bit = bitT.toIso8601String();
 
       final s = (await db.rawQuery('''
         SELECT COUNT(*) as islem,
                COALESCE(SUM(genel_toplam),0) as ciro,
                COALESCE(SUM(iskonto_tutar),0) as iskonto
-        FROM satislar WHERE ${TarihUtils.aralikSql('tarih')} AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+        FROM satislar WHERE ${TarihUtils.aralikSql('tarih', basT, bitT)} AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
       ''', [bas, bit])).first;
 
       final m = (await db.rawQuery('''
         SELECT COALESCE(SUM(sk.miktar * COALESCE(NULLIF(sk.alis_fiyat_kdv,0), sk.alis_fiyat, 0)),0) as mal
         FROM satis_kalem sk JOIN satislar st ON sk.satis_id=st.id
-        WHERE ${TarihUtils.aralikSql('st.tarih')} AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
+        WHERE ${TarihUtils.aralikSql('st.tarih', basT, bitT)} AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
       ''', [bas, bit])).first;
 
       final kasa = (await db.rawQuery(
@@ -49,7 +51,7 @@ class AiServisi {
       // giderleri hiç düşmüyordu.
       final g = (await db.rawQuery('''
         SELECT COALESCE(SUM(tutar),0) as toplam
-        FROM giderler WHERE ${TarihUtils.aralikSql('tarih')} AND deleted_at IS NULL
+        FROM giderler WHERE ${TarihUtils.aralikSql('tarih', basT, bitT)} AND deleted_at IS NULL
       ''', [bas, bit])).first;
 
       final ciro   = (s['ciro'] as num?)?.toDouble() ?? 0;
@@ -80,11 +82,13 @@ class AiServisi {
   Future<Map<String, double>> satisTahmini() async {
     try {
       final db  = await Veritabani().db;
-      final bas = DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
-      final bit = DateTime.now().toIso8601String();
+      final basT = DateTime.now().subtract(const Duration(days: 30));
+      final bas = basT.toIso8601String();
+      final bitT = DateTime.now();
+      final bit = bitT.toIso8601String();
       final r   = (await db.rawQuery('''
         SELECT COALESCE(SUM(genel_toplam),0)/30.0 as ort
-        FROM satislar WHERE ${TarihUtils.aralikSql('tarih')} AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+        FROM satislar WHERE ${TarihUtils.aralikSql('tarih', basT, bitT)} AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
       ''', [bas, bit])).first;
       final ort = (r['ort'] as num?)?.toDouble() ?? 0;
       return {
@@ -104,8 +108,10 @@ class AiServisi {
   Future<List<Map<String, dynamic>>> stokOnerisi() async {
     try {
       final db  = await Veritabani().db;
-      final bas = DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
-      final bit = DateTime.now().toIso8601String();
+      final basT = DateTime.now().subtract(const Duration(days: 30));
+      final bas = basT.toIso8601String();
+      final bitT = DateTime.now();
+      final bit = bitT.toIso8601String();
       final rows = await db.rawQuery('''
         SELECT u.id, u.urun_adi, u.stok,
           CASE WHEN u.minimum_stok > 0 THEN u.minimum_stok ELSE 5 END as min_stok,
@@ -115,7 +121,7 @@ class AiServisi {
           SELECT sk.urun_id, SUM(sk.miktar) as satis_adet
           FROM satis_kalem sk
           JOIN satislar st ON sk.satis_id = st.id
-          WHERE ${TarihUtils.aralikSql('st.tarih')} AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
+          WHERE ${TarihUtils.aralikSql('st.tarih', basT, bitT)} AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
           GROUP BY sk.urun_id
         ) s ON s.urun_id = u.id
         WHERE u.aktif=1 AND u.is_deleted=0
@@ -144,8 +150,10 @@ class AiServisi {
   Future<List<Map<String, dynamic>>> promosyonOnerisi() async {
     try {
       final db  = await Veritabani().db;
-      final bas = DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
-      final bit = DateTime.now().toIso8601String();
+      final basT = DateTime.now().subtract(const Duration(days: 30));
+      final bas = basT.toIso8601String();
+      final bitT = DateTime.now();
+      final bit = bitT.toIso8601String();
       final rows = await db.rawQuery('''
         SELECT u.id, u.urun_adi, u.stok, u.satis_fiyati,
                COALESCE(u.alis_fiyat, 0) as alis_fiyat,
@@ -158,7 +166,7 @@ class AiServisi {
           SELECT sk.urun_id, SUM(sk.miktar) as satis_adet
           FROM satis_kalem sk
           JOIN satislar st ON sk.satis_id = st.id
-          WHERE ${TarihUtils.aralikSql('st.tarih')} AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
+          WHERE ${TarihUtils.aralikSql('st.tarih', basT, bitT)} AND st.iptal=0 AND st.is_deleted=0 AND st.sync_cakisma_kopyasi = 0
           GROUP BY sk.urun_id
         ) s ON s.urun_id = u.id
         WHERE u.aktif=1 AND u.is_deleted=0 AND u.stok > 0
@@ -190,14 +198,16 @@ class AiServisi {
   Future<List<Map<String, dynamic>>> enCokSatanlar({int limit = 5}) async {
     try {
       final db  = await Veritabani().db;
-      final bas = DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
-      final bit = DateTime.now().toIso8601String();
+      final basT = DateTime.now().subtract(const Duration(days: 30));
+      final bas = basT.toIso8601String();
+      final bitT = DateTime.now();
+      final bit = bitT.toIso8601String();
       final rows = await db.rawQuery('''
         SELECT sk.urun_adi, sk.urun_adi as ad,
                SUM(sk.miktar) as miktar, SUM(sk.miktar) as toplam_adet,
                SUM(sk.toplam_tutar) as tutar, SUM(sk.toplam_tutar) as toplam_tutar
         FROM satis_kalem sk JOIN satislar s ON sk.satis_id=s.id
-        WHERE ${TarihUtils.aralikSql('s.tarih')} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
+        WHERE ${TarihUtils.aralikSql('s.tarih', basT, bitT)} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
         GROUP BY sk.urun_adi ORDER BY tutar DESC LIMIT ?
       ''', [bas, bit, limit]);
       return List<Map<String, dynamic>>.from(rows);

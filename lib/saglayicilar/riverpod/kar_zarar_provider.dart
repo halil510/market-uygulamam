@@ -85,7 +85,7 @@ Future<KarZararVeri> karZarar(Ref ref) async {
   final results = await Future.wait([
     db.rawQuery('''SELECT COUNT(*) as sayi, COALESCE(SUM(genel_toplam),0) as ciro,
       COALESCE(SUM(iskonto_tutar),0) as iskonto, COALESCE(SUM(kdv_tutar),0) as kdv
-      FROM satislar WHERE ${TarihUtils.aralikSql('tarih')}
+      FROM satislar WHERE ${TarihUtils.aralikSql('tarih', f.basTarih, f.bitTarih)}
       AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0 $satisSubeKosuluDuzSatislar''', [bas, bit, ...subeArgs]),
     // 🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu, 2026-09-22): maliyet
     // ÖNCEDEN KDV HARİÇ (sk.alis_fiyat) hesaplanıyordu, ama ciro
@@ -97,21 +97,21 @@ Future<KarZararVeri> karZarar(Ref ref) async {
     db.rawQuery('''SELECT COALESCE(SUM(CASE WHEN sk.alis_fiyat_kdv>0 THEN sk.miktar*sk.alis_fiyat_kdv
       ELSE sk.miktar*COALESCE(u.alis_fiyat_kdv_dahil,0) END),0) as maliyet
       FROM satis_kalem sk JOIN satislar s ON sk.satis_id=s.id LEFT JOIN urunler u ON sk.urun_id=u.id
-      WHERE ${TarihUtils.aralikSql('s.tarih')} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
+      WHERE ${TarihUtils.aralikSql('s.tarih', f.basTarih, f.bitTarih)} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
       $satisSubeKosulu''', [bas, bit, ...subeArgs]),
     // 🔴 Derin analizde bulundu: 'giderler' tablosu soft-delete'e
     // (deleted_at) geçirildi ama bu rapor kendi ham SQL'ini kullandığı
     // için filtrelemiyordu — silinen bir gider bile Net Kâr hesabını
     // etkilemeye devam ediyordu.
     db.rawQuery('''SELECT COALESCE(SUM(tutar),0) as toplam FROM giderler g
-      WHERE ${TarihUtils.aralikSql('tarih')} AND g.deleted_at IS NULL $giderSubeKosulu''',
+      WHERE ${TarihUtils.aralikSql('tarih', f.basTarih, f.bitTarih)} AND g.deleted_at IS NULL $giderSubeKosulu''',
       [bas, bit, ...subeArgs]),
     db.rawQuery('''SELECT odeme_yontemi, COALESCE(SUM(genel_toplam),0) as toplam FROM satislar
-      WHERE ${TarihUtils.aralikSql('tarih')} AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+      WHERE ${TarihUtils.aralikSql('tarih', f.basTarih, f.bitTarih)} AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
       $satisSubeKosuluDuzSatislar GROUP BY odeme_yontemi''', [bas, bit, ...subeArgs]),
     db.rawQuery('''SELECT gk.ad as kategori, COALESCE(SUM(g.tutar),0) as toplam FROM giderler g
       LEFT JOIN gider_kategoriler gk ON g.kategori_id=gk.id
-      WHERE ${TarihUtils.aralikSql('g.tarih')} AND g.deleted_at IS NULL $giderSubeKosulu
+      WHERE ${TarihUtils.aralikSql('g.tarih', f.basTarih, f.bitTarih)} AND g.deleted_at IS NULL $giderSubeKosulu
       GROUP BY g.kategori_id ORDER BY toplam DESC''', [bas, bit, ...subeArgs]),
     // 🔴 Derin analizde bulundu: DATE('now') SQLite'ta VARSAYILAN OLARAK
     // UTC kullanır, ama 'tarih' sütunu yerel saatle yazılıyor (bkz.

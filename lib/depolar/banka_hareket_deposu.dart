@@ -6,6 +6,7 @@ import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import 'package:uuid/uuid.dart';
+import '../cekirdek/utils/tarih_utils.dart';
 
 /// NOT: Hesap bakiyesi güncellemesi BURADA, uygulama kodu seviyesinde
 /// yapılır (transaction güvenliği ve test edilebilirlik için).
@@ -125,11 +126,11 @@ class BankaHareketDeposu {
         args.add(krediKartiId);
       }
       if (baslangic != null) {
-        whereParts.add('datetime(tarih) >= datetime(?)');
+        whereParts.add(TarihUtils.sonrasiSql('tarih', baslangic));
         args.add(baslangic.toIso8601String());
       }
       if (bitis != null) {
-        whereParts.add('datetime(tarih) <= datetime(?)');
+        whereParts.add(TarihUtils.oncesiSql('tarih', bitis));
         args.add(bitis.toIso8601String());
       }
 

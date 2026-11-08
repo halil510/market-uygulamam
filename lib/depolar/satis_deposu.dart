@@ -521,7 +521,7 @@ class SatisDeposu {
     final rows = await db.rawQuery(
       'SELECT s.*, c.unvan as cari_adi '
       'FROM satislar s LEFT JOIN cari c ON s.cari_id = c.id '
-      'WHERE ${TarihUtils.aralikSql('s.tarih')} '
+      'WHERE ${TarihUtils.aralikSql('s.tarih', bas, bit)} '
       '  AND s.iptal = 0 AND s.is_deleted = 0 '
       '  AND s.sync_cakisma_kopyasi = 0 $subeKosulu '
       'ORDER BY s.tarih DESC',
@@ -574,7 +574,7 @@ class SatisDeposu {
     final subeKosulu = subeId != null ? 'AND sube_id = ?' : '';
     final res = await db.rawQuery(
       'SELECT COUNT(*) as adet FROM satislar '
-      'WHERE ${TarihUtils.aralikSql('tarih')} '
+      'WHERE ${TarihUtils.aralikSql('tarih', bas, bit)} '
       '  AND iptal = 1 AND is_deleted = 0 $subeKosulu',
       [bas.toIso8601String(), bit.toIso8601String(), ?subeId],
     );
@@ -610,7 +610,7 @@ class SatisDeposu {
       FROM satis_kalem sk
       JOIN satislar s ON sk.satis_id = s.id
       LEFT JOIN urunler u ON sk.urun_id = u.id
-      WHERE ${TarihUtils.aralikSql('s.tarih')}
+      WHERE ${TarihUtils.aralikSql('s.tarih', bas, bit)}
         AND s.iptal = 0 AND s.is_deleted = 0
         AND s.sync_cakisma_kopyasi = 0 $subeKosulu
     ''', [bas.toIso8601String(), bit.toIso8601String(), ?subeId]);
@@ -630,7 +630,7 @@ class SatisDeposu {
       FROM iade_kalem ik
       JOIN iade i ON ik.iade_id = i.id
       LEFT JOIN urunler u ON ik.urun_id = u.id
-      WHERE ${TarihUtils.aralikSql('i.tarih')}
+      WHERE ${TarihUtils.aralikSql('i.tarih', bas, bit)}
         AND COALESCE(i.durum, '') != 'iptal'
         AND i.deleted_at IS NULL
     ''', [bas.toIso8601String(), bit.toIso8601String()]);
@@ -670,7 +670,7 @@ class SatisDeposu {
       INNER JOIN satis_kalem sk ON s.id = sk.satis_id
       LEFT JOIN urunler u ON u.id = sk.urun_id
       LEFT JOIN cari c ON s.cari_id = c.id
-      WHERE ${TarihUtils.aralikSql('s.tarih')}
+      WHERE ${TarihUtils.aralikSql('s.tarih', bas, bit)}
         AND s.iptal = 0
         AND s.is_deleted = 0
         AND s.sync_cakisma_kopyasi = 0 $subeKosulu
@@ -713,11 +713,11 @@ class SatisDeposu {
   Future<double> bugunkuToptanCiro() async {
     final db = await _d;
     final bugun = DateTime.now();
-    final baslangic = DateTime(bugun.year, bugun.month, bugun.day).toIso8601String();
+    final gunBasi = DateTime(bugun.year, bugun.month, bugun.day);
     final res = await db.rawQuery(
       "SELECT COALESCE(SUM(genel_toplam),0) AS toplam FROM satislar "
-      "WHERE fis_tipi IN ('Toptan Satış', 'Toptan Satış (Sipariş)') AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 AND datetime(tarih) >= datetime(?)",
-      [baslangic],
+      "WHERE fis_tipi IN ('Toptan Satış', 'Toptan Satış (Sipariş)') AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 AND ${TarihUtils.sonrasiSql('tarih', gunBasi)}",
+      [gunBasi.toIso8601String()],
     );
     return (res.first['toplam'] as num?)?.toDouble() ?? 0;
   }
@@ -844,7 +844,7 @@ class SatisDeposu {
     final rows = await db.rawQuery(
       "SELECT DATE(tarih) as gun, SUM(genel_toplam) as ciro "
       "FROM satislar "
-      "WHERE datetime(tarih) >= datetime(?) AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 "
+      "WHERE ${TarihUtils.sonrasiSql('tarih', pazartesi)} AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0 "
       "GROUP BY DATE(tarih)",
       [pazartesi.toIso8601String()],
     );

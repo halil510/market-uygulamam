@@ -164,7 +164,7 @@ class KasaDeposu {
         ), 0) as bakiye
         FROM kasa_hareketleri
         WHERE deleted_at IS NULL AND (odeme_yontemi IS NULL OR odeme_yontemi = 'Nakit')
-          AND datetime(tarih) >= datetime(?)$subeSarti
+          AND ${TarihUtils.sonrasiSql('tarih', baslangic)}$subeSarti
       ''', args);
       return (rows.first['bakiye'] as num?)?.toDouble() ?? 0;
     } catch (e, st) {
@@ -201,7 +201,7 @@ class KasaDeposu {
           ), 0) AS net
         FROM kasa_hareketleri
         WHERE deleted_at IS NULL AND (odeme_yontemi IS NULL OR odeme_yontemi = 'Nakit')
-          AND datetime(tarih) >= datetime(?)$subeSarti
+          AND ${TarihUtils.sonrasiSql('tarih', baslangic)}$subeSarti
           AND hareket_tipi NOT IN ('Satış', 'AçılışKasa')
         GROUP BY kategori
       ''', args);
@@ -226,11 +226,11 @@ class KasaDeposu {
     final args = <dynamic>[];
 
     if (baslangic != null) {
-      whereParts.add('datetime(tarih) >= datetime(?)');
+      whereParts.add(TarihUtils.sonrasiSql('tarih', baslangic));
       args.add(baslangic.toIso8601String());
     }
     if (bitis != null) {
-      whereParts.add('datetime(tarih) <= datetime(?)');
+      whereParts.add(TarihUtils.oncesiSql('tarih', bitis));
       args.add(bitis.toIso8601String());
     }
     if (hareketTipi != null) {
@@ -343,7 +343,7 @@ class KasaDeposu {
           COALESCE(SUM(CASE WHEN hareket_tipi IN ($girisYer) THEN tutar ELSE 0 END), 0) as giris,
           COALESCE(SUM(CASE WHEN hareket_tipi NOT IN ($girisYer) THEN tutar ELSE 0 END), 0) as cikis
         FROM kasa_hareketleri
-        WHERE ${TarihUtils.aralikSql('tarih')} AND deleted_at IS NULL$subeKosulu
+        WHERE ${TarihUtils.aralikSql('tarih', bas, bit)} AND deleted_at IS NULL$subeKosulu
       """, [...girisler, ...girisler, bas.toIso8601String(), bit.toIso8601String(), ?subeId]);
       if (res.isEmpty) return {'giris': 0, 'cikis': 0};
       final r = res.first;

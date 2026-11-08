@@ -403,7 +403,7 @@ class GiderDeposu {
       final rows = await db.rawQuery(
         'SELECT g.*, k.ad as kategori_adi FROM giderler g '
         'LEFT JOIN gider_kategoriler k ON g.kategori_id = k.id '
-        'WHERE ${TarihUtils.aralikSql('g.tarih')} AND g.deleted_at IS NULL ORDER BY g.tarih DESC',
+        'WHERE ${TarihUtils.aralikSql('g.tarih', bas, bit)} AND g.deleted_at IS NULL ORDER BY g.tarih DESC',
         [bas.toIso8601String(), bit.toIso8601String()],
       );
       return rows.map(GiderModel.fromMap).toList();
@@ -492,7 +492,7 @@ class GiderDeposu {
     try {
       final db = await _d;
       final res = await db.rawQuery(
-        'SELECT SUM(tutar) as toplam FROM giderler WHERE ${TarihUtils.aralikSql('tarih')} AND deleted_at IS NULL',
+        'SELECT SUM(tutar) as toplam FROM giderler WHERE ${TarihUtils.aralikSql('tarih', bas, bit)} AND deleted_at IS NULL',
         [bas.toIso8601String(), bit.toIso8601String()],
       );
       return (res.first['toplam'] as num?)?.toDouble() ?? 0;

@@ -9,6 +9,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
+import '../cekirdek/utils/tarih_utils.dart';
 
 class VardiyaDeposu {
   final Veritabani _db = Veritabani();
@@ -74,6 +75,9 @@ class VardiyaDeposu {
   // toplanıyor.
   Future<Map<String, dynamic>> satisOzetiGetir(String baslangicTarihi) async {
     final db = await _d;
+    // Index ön süzgeci için (bkz. TarihUtils.sonrasiSql); ayrıştırılamazsa
+    // yalnız eski koşul kullanılır.
+    final bas = DateTime.tryParse(baslangicTarihi);
     final rows = await db.rawQuery('''
       SELECT
         COUNT(*) as satis_sayisi,
@@ -81,7 +85,7 @@ class VardiyaDeposu {
         COALESCE(SUM(iskonto_tutar),0) as iskonto,
         COALESCE(SUM(CASE WHEN iptal=1 THEN 1 ELSE 0 END),0) as iptal_sayisi
       FROM satislar
-      WHERE datetime(tarih) >= datetime(?) AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+      WHERE ${TarihUtils.sonrasiSql('tarih', bas)} AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
     ''', [baslangicTarihi]);
     final ozet = Map<String, dynamic>.from(rows.first);
 
@@ -89,7 +93,7 @@ class VardiyaDeposu {
       SELECT kh.odeme_yontemi, COALESCE(SUM(kh.tutar),0) as tutar
       FROM kasa_hareketleri kh
       JOIN satislar s ON s.id = kh.referans_id AND kh.referans_turu = 'satis'
-      WHERE datetime(s.tarih) >= datetime(?) AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
+      WHERE ${TarihUtils.sonrasiSql('s.tarih', bas)} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
         AND kh.deleted_at IS NULL
       GROUP BY kh.odeme_yontemi
     ''', [baslangicTarihi]);
@@ -108,7 +112,7 @@ class VardiyaDeposu {
       FROM cari_hareket ch
       JOIN satislar s ON s.id = ch.fis_id
       WHERE ch.fis_tipi = 'Satış' AND ch.alacak = 0 AND ch.borc > 0 AND ch.is_deleted = 0
-        AND datetime(s.tarih) >= datetime(?) AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
+        AND ${TarihUtils.sonrasiSql('s.tarih', bas)} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
     ''', [baslangicTarihi]);
     final cari = (cariRows.first['tutar'] as num?)?.toDouble() ?? 0;
 
@@ -131,10 +135,11 @@ class VardiyaDeposu {
   // şablonunun beklediği 'sayi'/'ciro'/'cari_toplam') DEĞİŞMEDİ.
   Future<Map<String, dynamic>> pdfSatisOzetiGetir(String baslangicTarihi) async {
     final db = await _d;
+    final bas = DateTime.tryParse(baslangicTarihi);
     final rows = await db.rawQuery('''
       SELECT COUNT(*) as sayi, COALESCE(SUM(genel_toplam),0) as ciro,
         COALESCE(SUM(iskonto_tutar),0) as iskonto
-      FROM satislar WHERE datetime(tarih) >= datetime(?) AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+      FROM satislar WHERE ${TarihUtils.sonrasiSql('tarih', bas)} AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
     ''', [baslangicTarihi]);
     final ozet = Map<String, dynamic>.from(rows.first);
 
@@ -142,7 +147,7 @@ class VardiyaDeposu {
       SELECT kh.odeme_yontemi, COALESCE(SUM(kh.tutar),0) as tutar
       FROM kasa_hareketleri kh
       JOIN satislar s ON s.id = kh.referans_id AND kh.referans_turu = 'satis'
-      WHERE datetime(s.tarih) >= datetime(?) AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
+      WHERE ${TarihUtils.sonrasiSql('s.tarih', bas)} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
         AND kh.deleted_at IS NULL
       GROUP BY kh.odeme_yontemi
     ''', [baslangicTarihi]);
@@ -160,7 +165,7 @@ class VardiyaDeposu {
       FROM cari_hareket ch
       JOIN satislar s ON s.id = ch.fis_id
       WHERE ch.fis_tipi = 'Satış' AND ch.alacak = 0 AND ch.borc > 0 AND ch.is_deleted = 0
-        AND datetime(s.tarih) >= datetime(?) AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
+        AND ${TarihUtils.sonrasiSql('s.tarih', bas)} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
     ''', [baslangicTarihi]);
     final cariToplam = (cariRows.first['tutar'] as num?)?.toDouble() ?? 0;
 

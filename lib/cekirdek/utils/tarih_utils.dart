@@ -58,8 +58,41 @@ class TarihUtils {
   /// yerel ISO metniyle verilmelidir (bas, bit). İki taraf da yerel olduğu
   /// için 'localtime' GEREKMEZ — SQLite'ın 'now'u (UTC) burada kullanılmaz;
   /// "gece 00:00–03:00 satışları kayboluyor" hatası bu karışımdan çıkmıştı.
-  static String aralikSql(String kolon) =>
-      'datetime($kolon) BETWEEN datetime(?) AND datetime(?)';
+  ///
+  /// Faz D (performans, 2026-11-08): `datetime(kolon)` sütunu fonksiyona
+  /// sardığı için SQLite tarih index'ini KULLANAMIYOR, her rapor tabloyu
+  /// baştan sona tarıyordu. Asıl koşul AYNEN korunup önüne ham sütun
+  /// üzerinde gün payı bırakan bir ön süzgeç eklendi (index ile aranır).
+  /// Pay neden ±1 gün: buluttan dönen TIMESTAMPTZ metinleri "+00:00"
+  /// gibi dilim ekiyle gelebiliyor; datetime() dilimi uygulayınca saat en
+  /// fazla 24 saat kayar. Metin önekinin gün kısmı bu yüzden asıl aralığın
+  /// en fazla bir gün dışında olabilir — ön süzgeç hiçbir satırı eksiltmez
+  /// (bkz. test/unit/tarih_aralik_sql_test.dart, eski/yeni karşılaştırması).
+  /// [bas]/[bit], `?` parametrelerine verilen değerlerle AYNI olmalı.
+  static String aralikSql(String kolon, DateTime bas, DateTime bit) =>
+      '(${_altSinirSql(kolon, bas)} AND ${_ustSinirSql(kolon, bit)} AND '
+      'datetime($kolon) BETWEEN datetime(?) AND datetime(?))';
+
+  /// Tek taraflı "şu andan sonra" koşulu (`datetime(kolon) >= datetime(?)`),
+  /// [aralikSql] ile aynı index ön süzgeciyle. [bas] null ise (ör. metin
+  /// ayrıştırılamadı) yalnız eski koşul döner.
+  static String sonrasiSql(String kolon, DateTime? bas) => bas == null
+      ? 'datetime($kolon) >= datetime(?)'
+      : '(${_altSinirSql(kolon, bas)} AND datetime($kolon) >= datetime(?))';
+
+  /// Tek taraflı "şu ana kadar" koşulu (`datetime(kolon) <= datetime(?)`).
+  static String oncesiSql(String kolon, DateTime? bit) => bit == null
+      ? 'datetime($kolon) <= datetime(?)'
+      : '(${_ustSinirSql(kolon, bit)} AND datetime($kolon) <= datetime(?))';
+
+  static String _altSinirSql(String kolon, DateTime bas) =>
+      "$kolon >= '${_gunMetni(DateTime(bas.year, bas.month, bas.day - 1))}'";
+
+  static String _ustSinirSql(String kolon, DateTime bit) =>
+      "$kolon < '${_gunMetni(DateTime(bit.year, bit.month, bit.day + 2))}'";
+
+  static String _gunMetni(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   static String kacGunOnce(DateTime dt) {
     final fark = DateTime.now().difference(dt).inDays;

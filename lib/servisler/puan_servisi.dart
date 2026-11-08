@@ -288,13 +288,18 @@ class PuanServisi {
   Future<int> puanMutabakatYap() async {
     final db = await Veritabani().db;
     final musteriler = await db.query(DbSabitler.musteriPuan);
+    // Faz D: hareketler müşteri başına ayrı sorgu yerine TEK sorguda
+    // okunup cari_id'ye göre gruplanır (önceden N+1). Sıra (rowid) aynı.
+    final hareketGruplari = <int, List<Map<String, Object?>>>{};
+    for (final h in await db.query(DbSabitler.puanHareket, orderBy: 'id')) {
+      (hareketGruplari[h['cari_id'] as int] ??= []).add(h);
+    }
     var duzeltilen = 0;
     for (final m in musteriler) {
       final cariId = m['cari_id'] as int;
       final eskiToplam = (m['toplam_puan'] as num?)?.toDouble() ?? 0;
       final eskiKullanilan = (m['kullanilan'] as num?)?.toDouble() ?? 0;
-      final hareketler = await db.query(DbSabitler.puanHareket,
-          where: 'cari_id = ?', whereArgs: [cariId]);
+      final hareketler = hareketGruplari[cariId] ?? const <Map<String, Object?>>[];
       final (dogruKazanilan, dogruHarcanan) = sayaclariHesapla(hareketler);
       if ((eskiToplam - dogruKazanilan).abs() > 0.01 ||
           (eskiKullanilan - dogruHarcanan).abs() > 0.01) {

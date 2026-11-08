@@ -82,6 +82,33 @@ class ToptanFiyatDeposu {
     }
   }
 
+  /// [urunIdler] içinden bu grupta özel fiyatı TANIMLI olanlar (urunId →
+  /// fiyat). Faz D: Fiyat Grubu ekranı aramasında ürün başına
+  /// [urunGrupFiyatiGetir] çağrısının (her aramada 30 sorgu) toplu hâli.
+  /// (urun_id, fiyat_grubu_id) UNIQUE olduğundan sonuç birebir aynı.
+  Future<Map<int, double>> urunlerinGrupFiyatlariGetir(
+      List<int> urunIdler, int fiyatGrubuId) async {
+    if (urunIdler.isEmpty) return {};
+    try {
+      final db = await _d;
+      final sonuc = <int, double>{};
+      for (var i = 0; i < urunIdler.length; i += 500) {
+        final parca = urunIdler.sublist(i, (i + 500).clamp(0, urunIdler.length));
+        final rows = await db.query('urun_fiyat_gruplari',
+            columns: ['urun_id', 'fiyat'],
+            where: 'fiyat_grubu_id = ? AND urun_id IN (${List.filled(parca.length, '?').join(',')})',
+            whereArgs: [fiyatGrubuId, ...parca]);
+        for (final r in rows) {
+          sonuc[r['urun_id'] as int] = (r['fiyat'] as num).toDouble();
+        }
+      }
+      return sonuc;
+    } catch (e, st) {
+      LogServisi().hata('ToptanFiyatDeposu.urunlerinGrupFiyatlariGetir', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
   /// Bir grubun TÜM ürün fiyatları (urunId → fiyat) — Fiyat Grubu detay
   /// ekranında tanımlı fiyatları listelemek için.
   Future<Map<int, double>> grubunUrunFiyatlariGetir(int fiyatGrubuId) async {

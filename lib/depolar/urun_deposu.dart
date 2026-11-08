@@ -526,10 +526,8 @@ class UrunDeposu {
         'UPDATE ${DbSabitler.urunler} SET aktif = 1, last_updated = ? WHERE aktif = 0 AND is_deleted = 0',
         [now]);
     // Önceden hiçbir ürün buluta bildirilmiyordu: diğer cihazlarda pasif kalırdı.
-    for (final p in pasifler) {
-      final u = await db.query(DbSabitler.urunler, where: 'id = ?', whereArgs: [p['id']], limit: 1);
-      if (u.isNotEmpty) BulutManager().upsert(DbSabitler.urunler, Map<String, dynamic>.from(u.first));
-    }
+    // Faz D: ürün başına okuma yerine 500'lük parçalarla toplu okuma.
+    await _topluBulutSenkronuGonder([for (final p in pasifler) p['id'] as int]);
     return adet;
   }
 

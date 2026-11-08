@@ -170,13 +170,20 @@ class BorcDeposu {
     try {
       final db = await _d;
       final borclar = await db.query('borclar', where: 'is_deleted = 0');
+      // Faz D: ödemeler borç başına ayrı sorgu yerine TEK sorguda okunur
+      // (önceden N+1). Toplama sırası (rowid) ve kapsam (filtresiz) aynı.
+      final odemeToplamlari = <int, double>{};
+      for (final o in await db.query('borc_odemeler',
+          columns: ['borc_id', 'tutar'], orderBy: 'id')) {
+        final borcId = o['borc_id'] as int;
+        odemeToplamlari[borcId] =
+            (odemeToplamlari[borcId] ?? 0) + ((o['tutar'] as num?)?.toDouble() ?? 0);
+      }
       int duzeltilen = 0;
       for (final b in borclar) {
         final borcId = b['id'] as int;
         final eskiOdenen = (b['odenen_tutar'] as num?)?.toDouble() ?? 0;
-        final odemeler = await db.query('borc_odemeler', where: 'borc_id = ?', whereArgs: [borcId]);
-        final dogruOdenen = odemeler.fold<double>(
-            0, (s, o) => s + ((o['tutar'] as num?)?.toDouble() ?? 0));
+        final dogruOdenen = odemeToplamlari[borcId] ?? 0;
         if ((eskiOdenen - dogruOdenen).abs() > 0.01) {
           final tutar = (b['tutar'] as num).toDouble();
           await db.update('borclar', {

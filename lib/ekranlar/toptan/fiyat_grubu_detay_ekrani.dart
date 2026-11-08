@@ -93,11 +93,11 @@ class _FiyatGrubuDetayEkraniState extends State<FiyatGrubuDetayEkrani>
         final sonuc = await _urunDepo.ara(sorgu, limit: 30);
         if (!mounted) return;
         // Bu ürünlerin, bu grup için ZATEN kayıtlı özel fiyatlarını çek.
-        final fiyatlar = <int, double>{..._ozelFiyatlar};
-        for (final u in sonuc) {
-          final f = await _depo.urunGrupFiyatiGetir(u.id!, widget.grup.id!);
-          if (f != null) fiyatlar[u.id!] = f;
-        }
+        final fiyatlar = <int, double>{
+          ..._ozelFiyatlar,
+          ...await _depo.urunlerinGrupFiyatlariGetir(
+              [for (final u in sonuc) u.id!], widget.grup.id!),
+        };
         if (!mounted) return;
         setState(() { _aramaSonuc = sonuc; _ozelFiyatlar = fiyatlar; _araniyor = false; });
       } catch (_) {

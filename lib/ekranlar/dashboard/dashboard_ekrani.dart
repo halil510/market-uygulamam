@@ -166,7 +166,10 @@ class _DashboardEkraniState extends ConsumerState<DashboardEkrani>
     if (secilen == null || !mounted) return;
     await AktifSubeServisi().subeDegistir(secilen.id, yeniSubeAdi: secilen.ad);
     if (mounted) {
-      setState(() {}); // dashboard verilerini yeni şubeye göre yenile
+      // DERİN DENETİM (2026-11-09, #86): setState provider'ı yeniden
+      // hesaplatmıyordu — kartlar eski şubede kalıyordu.
+      setState(() {});
+      ref.read(dashboardProvider.notifier).yenile();
     }
   }
 

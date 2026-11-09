@@ -22,6 +22,8 @@ import '../../modeller/satis_model.dart';
 import '../../depolar/satis_deposu.dart';
 import '../../depolar/gider_deposu.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../servisler/log_servisi.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 import '../../cekirdek/utils/excel_guvenlik_utils.dart';
 import '../../widgetlar/masaustu/ekran_ustte.dart';
 import 'package:flutter/services.dart';
@@ -183,10 +185,13 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
         _kar          = _brutKar - gider; // Net kar = brut kar - giderler
         _yukleniyor   = false;
       });
-    } catch (e) {
+    } catch (e, st) {
+      // DERİN DENETİM (2026-11-09, #88): setState'siz atama göstergeyi
+      // takılı bırakıyordu; hata da loglanmıyordu.
+      LogServisi().hata('Gün Sonu yükleme', hata: e, yigin: st);
       if (!mounted) return;
-      _yukleniyor = false;
-      hataMesaji(context, 'Rapor hatası: $e');
+      setState(() => _yukleniyor = false);
+      hataMesaji(context, 'Rapor hatası: ${kullaniciyaHataMetni(e)}');
     }
   }
 

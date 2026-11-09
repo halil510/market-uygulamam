@@ -175,7 +175,7 @@ extension ExcelServisiStokPromosyon on ExcelServisi {
               : await SubeUrunDeposu().sayimTabaniGetir(urunId, subeId);
           final yeniToplam = subePayi != null ? toplam - subePayi + miktar : miktar;
           await StokDeposu().geciciSayimEkleGuncelle(
-              urunId, subePayi ?? toplam, yeniToplam,
+              urunId, toplam, yeniToplam, // sayım anındaki TOPLAM (#44)
               kullaniciId: AuthServisi().aktifKullanici?.id);
           basarili++;
         } else {

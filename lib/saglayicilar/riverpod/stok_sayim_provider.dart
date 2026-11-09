@@ -224,7 +224,7 @@ class StokSayim extends _$StokSayim {
         final yeniToplam = StokSayimHesap.yeniToplamHesapla(
             toplamStok: u.stok, subeStok: subeStok, sayilan: e.value);
         await _stokDepo.geciciSayimEkleGuncelle(
-            e.key, state.mevcutStok(u), yeniToplam, kullaniciId: kullaniciId);
+            e.key, u.stok, yeniToplam, kullaniciId: kullaniciId); // sayım anındaki TOPLAM (#44)
       }
       final count = state.sayimMiktarlari.length;
       if (yetkili) {

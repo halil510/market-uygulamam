@@ -617,9 +617,24 @@ class StokDeposu {
         final aciklama = (sayanAdi != null && sayanAdi.trim().isNotEmpty)
             ? 'Stok sayım düzeltme (Sayan: $sayanAdi)'
             : null;
-        await stokDuzelt(row['urun_id'] as int,
-            (row['yeni_stok'] as num).toDouble(), onaylayanKullaniciId,
-            aciklama: aciklama);
+        // 🔴 DERİN DENETİM (2026-11-09, #44): yeni_stok MUTLAK yazılıyordu —
+        // sayım ile onay arasındaki satışlar stoktan siliniyordu. Sayımın
+        // FARKI (yeni − sayım anındaki toplam) onay anındaki stoğa uygulanır.
+        // (mevcut_stok artık her yolda sayım anındaki TOPLAM stoktur.)
+        final urunId = row['urun_id'] as int;
+        final yeni = (row['yeni_stok'] as num).toDouble();
+        final sayimAni = (row['mevcut_stok'] as num?)?.toDouble();
+        var hedef = yeni;
+        if (sayimAni != null) {
+          final db = await _d;
+          final r = await db.query('urunler',
+              columns: ['stok'], where: 'id = ?', whereArgs: [urunId], limit: 1);
+          if (r.isNotEmpty) {
+            final simdi = (r.first['stok'] as num?)?.toDouble() ?? 0;
+            hedef = simdi + (yeni - sayimAni);
+          }
+        }
+        await stokDuzelt(urunId, hedef, onaylayanKullaniciId, aciklama: aciklama);
       }
       await geciciSayimTemizle();
     } catch (e, st) {

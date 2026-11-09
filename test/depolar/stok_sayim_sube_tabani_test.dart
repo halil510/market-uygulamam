@@ -10,6 +10,7 @@ import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:market_plus/depolar/stok_deposu.dart';
 import 'package:market_plus/depolar/sube_urun_deposu.dart';
 import 'package:market_plus/saglayicilar/riverpod/stok_sayim_provider.dart';
 import 'package:market_plus/servisler/excel_servisi.dart';
@@ -69,5 +70,18 @@ void main() {
     expect((stok as num).toDouble(), 100, reason: 'onaydan önce stok değişmemeli');
     final bekleyen = (await db.query('gecici_sayim', where: 'urun_id = ?', whereArgs: [urun])).single;
     expect((bekleyen['yeni_stok'] as num).toDouble(), 80);
+  });
+
+  test('#44 sayım ile onay arasındaki satış korunur (fark uygulanır, mutlak değil)', () async {
+    final urun = await TestVeritabani.ornekUrunEkle(db, stok: 100);
+    // Sayım: sistem 100, sayılan 80 → fark −20.
+    await StokDeposu().geciciSayimEkleGuncelle(urun, 100, 80);
+    // Onaydan önce 5 adet satıldı.
+    await db.update('urunler', {'stok': 95}, where: 'id = ?', whereArgs: [urun]);
+
+    await StokDeposu().geciciSayimUygula(1);
+
+    final stok = (await db.query('urunler', where: 'id = ?', whereArgs: [urun])).first['stok'];
+    expect((stok as num).toDouble(), 75, reason: 'önceden 80 yazılıp satış siliniyordu');
   });
 }

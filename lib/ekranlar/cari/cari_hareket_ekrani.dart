@@ -53,6 +53,8 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   // Çoklu fiş seçimi (uzun bas) — "Son fiyata göre güncelle" için.
   final Set<int> _secimIdleri = {};
   List<CariHareketModel> _tumHareketler = [];
+  // Gruplanmamış ham hareketler — tarih aralığında bakiye bunlardan (#35).
+  List<CariHareketModel> _hamHareketler = [];
   List<CariHareketModel> _filtreli = [];
   bool _yukleniyor = true;
   String? _filtreTip;
@@ -164,6 +166,7 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
   // artık self-cancelling bilgi satırı yüzünden şişmiyor.
   Future<List<CariHareketModel>> _hareketleriGetir() async {
     final ham = await _depo.hareketleriniGetir(widget.cariId, limit: 5000);
+    _hamHareketler = ham;
     return cariHareketleriniGrupla(ham);
   }
 
@@ -195,7 +198,16 @@ class _CariHareketEkraniState extends ConsumerState<CariHareketEkrani> {
     if (_turFiltreli) {
       _bakiye = net;
     } else if (_tarihAralik != null) {
-      _bakiye = _devreden + net;
+      // 🔴 DERİN DENETİM (2026-11-09, #35): gruplama aralık içindeki iptal
+      // satırını gizliyor ama aralık öncesindeki asıl satış devredende
+      // sayılıyordu — devreden + görünen net bakiyeyi şişiriyordu. Bakiye
+      // ham (gizlenmemiş) hareketlerin aralık netinden hesaplanır.
+      final bas = _tarihAralik!.start;
+      final bitis = _tarihAralik!.end.add(const Duration(days: 1));
+      final hamNet = _hamHareketler
+          .where((h) => !h.tarih.isBefore(bas) && h.tarih.isBefore(bitis))
+          .fold(0.0, (s, h) => s + h.borc - h.alacak);
+      _bakiye = ParaUtils.yuvarla(_devreden + hamNet);
     } else {
       _bakiye = _cari?.bakiye ?? net;
     }

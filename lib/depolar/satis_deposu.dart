@@ -624,6 +624,26 @@ class SatisDeposu {
   Future<({double tutar, double maliyet})> iadeTutarVeMaliyet(
       DateTime bas, DateTime bit) async {
     final db = await _d;
+    // DERİN DENETİM (2026-11-09, #66): satış/maliyet aktif şubeye göre
+    // süzülürken iadeler TÜM şubelerden düşülüyordu. iade tablosunda sube_id
+    // yok; şube, bağlı satıştan ya da iadenin kasa hareketinden okunur.
+    // İkisi de olmayan (fişsiz + yalnız cari) iade şubesi bilinemediği için
+    // eskisi gibi dahil edilir.
+    final subeId = AktifSubeServisi().subeId;
+    final subeKosulu = subeId == null
+        ? ''
+        : '''
+        AND (
+          EXISTS (SELECT 1 FROM satislar s
+                  WHERE s.id = i.satis_id AND s.sube_id = ?)
+          OR EXISTS (SELECT 1 FROM kasa_hareketleri kh
+                  WHERE kh.referans_turu = 'iade' AND kh.referans_id = i.id
+                    AND kh.sube_id = ?)
+          OR (NOT EXISTS (SELECT 1 FROM satislar s WHERE s.id = i.satis_id)
+              AND NOT EXISTS (SELECT 1 FROM kasa_hareketleri kh
+                  WHERE kh.referans_turu = 'iade' AND kh.referans_id = i.id
+                    AND kh.sube_id IS NOT NULL))
+        )''';
     final rows = await db.rawQuery('''
       SELECT
         COALESCE(SUM(ik.toplam), 0) AS tutar,
@@ -633,8 +653,12 @@ class SatisDeposu {
       LEFT JOIN urunler u ON ik.urun_id = u.id
       WHERE ${TarihUtils.aralikSql('i.tarih', bas, bit)}
         AND COALESCE(i.durum, '') != 'iptal'
-        AND i.deleted_at IS NULL
-    ''', [bas.toIso8601String(), bit.toIso8601String()]);
+        AND i.deleted_at IS NULL $subeKosulu
+    ''', [
+      bas.toIso8601String(),
+      bit.toIso8601String(),
+      if (subeId != null) ...[subeId, subeId],
+    ]);
     final r = rows.first;
     return (
       tutar: (r['tutar'] as num?)?.toDouble() ?? 0,

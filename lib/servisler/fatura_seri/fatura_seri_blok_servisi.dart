@@ -47,6 +47,7 @@ class FaturaSeriBlokServisi {
   /// çağrılmalı). Azalmış ama hâlâ kullanılabilir bir blok varsa,
   /// arka planda (beklemeden) proaktif bir yenileme başlatır.
   Future<void> blokHazirOldugundanEminOl(String seri) async {
+    await _eskiYilBloklariniKapat(seri);
     // Kullanılmış numaraları atlamak bloğu tüketebilir — o durumda yeni
     // blok alınıp tekrar kontrol edilir (sınırlı sayıda deneme).
     for (var i = 0; i < 5; i++) {
@@ -56,6 +57,30 @@ class FaturaSeriBlokServisi {
     throw BlokTukendiException(
         '$seri için kullanılabilir fatura numarası bulunamadı — bloklardaki '
         'numaraların tamamı zaten başka faturalarda kullanılmış.');
+  }
+
+  /// 🔴 DERİN DENETİM (2026-11-09, #15): blok yılı tahsis anında belirlenir;
+  /// yeni yılda ÖNCEKİ yılın aktif bloğu tüketilmeye devam ediyor, 2027
+  /// tarihli faturalar 2026 serisinden numara alıyordu (numaradaki yıl ≠
+  /// düzenleme yılı, GİB ret / müteselsil sıra ihlali riski). Önceki yılların
+  /// aktif blokları 'kapandi' yapılır (kalan numaralar seride boşluk olarak
+  /// Seri Mutabakatı'nda görünür), denetim izine yazılır.
+  Future<void> _eskiYilBloklariniKapat(String seri) async {
+    final db = await Veritabani().db;
+    final yil = DateTime.now().year;
+    final eskiler = await db.query('yerel_fatura_blok',
+        where: 'seri = ? AND durum = ? AND yil < ?', whereArgs: [seri, 'aktif', yil]);
+    for (final r in eskiler) {
+      await db.update('yerel_fatura_blok', {'durum': 'kapandi'},
+          where: 'id = ?', whereArgs: [r['id']]);
+      await AuditLogServisi().olayKaydet(
+        tabloAdi: 'yerel_fatura_blok',
+        islemTuru: 'Fatura Numara Bloğu Kapatıldı (Yıl Devri)',
+        kayitId: '$seri-${r['yil']}-${r['blok_baslangic']}',
+        ozet: '$seri ${r['yil']}: ${r['siradaki']}–${r['blok_bitis']} kullanılmadı — '
+            'yeni yılda ($yil) eski yılın bloğundan numara verilmez',
+      );
+    }
   }
 
   /// 🔴 Yerelde ZATEN bir faturada kullanılmış numaraları bloktan atlar.
@@ -247,10 +272,12 @@ class FaturaSeriBlokServisi {
   /// çağırarak bir kez daha denemeli.
   Future<({int numara, int yil})> faturaNoTuket(
       Transaction txn, String seri) async {
+    // Yalnız bu yılın bloğu (önceki yıllarınki blokHazirOldugundanEminOl'da
+    // kapatılır; burada da tüketilmez — #15).
     final rows = await txn.query(
       'yerel_fatura_blok',
-      where: 'seri = ? AND durum = ? AND siradaki <= blok_bitis',
-      whereArgs: [seri, 'aktif'],
+      where: 'seri = ? AND durum = ? AND siradaki <= blok_bitis AND yil >= ?',
+      whereArgs: [seri, 'aktif', DateTime.now().year],
       orderBy: 'id ASC',
       limit: 1,
     );

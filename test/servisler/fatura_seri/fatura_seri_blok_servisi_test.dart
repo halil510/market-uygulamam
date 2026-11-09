@@ -16,16 +16,18 @@ import 'package:market_plus/veri/database/veritabani.dart';
 import '../../helper/test_initializer.dart';
 
 Future<int> _blokEkle(Database db,
-    {String seri = 'HLF', int yil = 2026, required int baslangic, required int bitis, String durum = 'aktif'}) {
+    {String seri = 'HLF', int? yil, required int baslangic, required int bitis, String durum = 'aktif'}) {
   return db.insert('yerel_fatura_blok', {
     'seri': seri,
-    'yil': yil,
+    'yil': yil ?? DateTime.now().year,
     'blok_baslangic': baslangic,
     'blok_bitis': bitis,
     'siradaki': baslangic,
     'durum': durum,
   });
 }
+
+final _yil = DateTime.now().year;
 
 void main() {
   late Database db;
@@ -45,7 +47,7 @@ void main() {
       expect(sonuc1.numara, 100);
       expect(sonuc2.numara, 101);
       expect(sonuc3.numara, 102);
-      expect(sonuc1.yil, 2026);
+      expect(sonuc1.yil, _yil);
     });
 
     test('blok tam tüketilince durum tukendi olur ve bir daha numara vermez', () async {
@@ -123,8 +125,8 @@ void main() {
     test('manuel ekranın önceden aldığı numarayı atlar (otomatik faturalar kilitlenmez)', () async {
       await _blokEkle(db, baslangic: 11, bitis: 20);
       // Manuel "Fatura Ekle" (yerel MAX+1) bloğun sıradaki 11 ve 12'sini almış.
-      await faturaEkle('HLF2026000000011');
-      await faturaEkle('HLF2026000000012');
+      await faturaEkle('HLF${_yil}000000011');
+      await faturaEkle('HLF${_yil}000000012');
 
       await servis.blokHazirOldugundanEminOl('HLF');
       final s = await db.transaction((txn) => servis.faturaNoTuket(txn, 'HLF'));
@@ -133,7 +135,7 @@ void main() {
 
     test('kullanılmamış numarada hiçbir şey atlamaz', () async {
       await _blokEkle(db, baslangic: 11, bitis: 20);
-      await faturaEkle('HLF2026000000013'); // sıradaki (11) boş — araya dokunulmaz
+      await faturaEkle('HLF${_yil}000000013'); // sıradaki (11) boş — araya dokunulmaz
 
       await servis.blokHazirOldugundanEminOl('HLF');
       final s = await db.transaction((txn) => servis.faturaNoTuket(txn, 'HLF'));
@@ -142,11 +144,37 @@ void main() {
 
     test('farklı serideki aynı sıra numarası atlamaya sebep olmaz', () async {
       await _blokEkle(db, baslangic: 11, bitis: 20);
-      await faturaEkle('FTR2026000000011');
+      await faturaEkle('FTR${_yil}000000011');
 
       await servis.blokHazirOldugundanEminOl('HLF');
       final s = await db.transaction((txn) => servis.faturaNoTuket(txn, 'HLF'));
       expect(s.numara, 11);
+    });
+  });
+
+  // Derin denetim (2026-11-09) #15, yüksek: yeni yılda ÖNCEKİ yılın aktif
+  // bloğundan numara veriliyordu (numaradaki yıl ≠ düzenleme yılı).
+  group('FaturaSeriBlokServisi — yıl devri (#15)', () {
+    setUp(() => Veritabani.testVeritabani = db);
+    tearDown(() => Veritabani.testVeritabani = null);
+
+    test('önceki yılın aktif bloğundan numara tüketilmez', () async {
+      await _blokEkle(db, yil: _yil - 1, baslangic: 5, bitis: 10);
+      await expectLater(
+          db.transaction((txn) => servis.faturaNoTuket(txn, 'HLF')),
+          throwsA(isA<BlokTukendiException>()));
+    });
+
+    test('hazırlıkta önceki yılın aktif bloğu kapatılır, bu yılın bloğundan devam edilir', () async {
+      final eski = await _blokEkle(db, yil: _yil - 1, baslangic: 5, bitis: 10);
+      await _blokEkle(db, baslangic: 1, bitis: 10); // bu yıl
+      await servis.blokHazirOldugundanEminOl('HLF');
+      final eskiDurum = (await db.query('yerel_fatura_blok', where: 'id = ?', whereArgs: [eski]))
+          .first['durum'];
+      expect(eskiDurum, 'kapandi');
+      final s = await db.transaction((txn) => servis.faturaNoTuket(txn, 'HLF'));
+      expect(s.yil, _yil);
+      expect(s.numara, 1);
     });
   });
 }

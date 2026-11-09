@@ -139,6 +139,15 @@ class _FaturaAyarEkraniState extends ConsumerState<FaturaAyarEkrani>
   Future<void> _kaydet() async {
     if (!mounted) return;
     if (_kayitYapiliyor) return; // 🔴 DÜZELTME: çift tıklama koruması yoktu
+    // 🔴 DERİN DENETİM (2026-11-09, #57): GİB fatura numarası 3 karakterlik
+    // seri + yıl + 9 hanedir; ön ek doğrulanmadığı için 2/4 harfli ya da
+    // Türkçe karakterli seri GİB'de geçersiz numara üretiyordu.
+    final onEk = _faturaOnEkCtrl.text.trim().toUpperCase();
+    if (onEk.isNotEmpty && !RegExp(r'^[A-Z0-9]{3}$').hasMatch(onEk)) {
+      BildirimServisi.hata(context,
+          'Fatura ön eki tam 3 karakter olmalı (A-Z, 0-9; Türkçe harf yok). Örn: HLF');
+      return;
+    }
     setState(() => _kayitYapiliyor = true);
     try {
       final prefs = await SharedPreferences.getInstance();

@@ -165,7 +165,7 @@ class AlimIslemServisi {
               // değiştirilirse cari hareket YENİ tedarikçiye yazılıyor ama
               // belgedeki cari_id eski kalıyordu; alım silinince sil()
               // cariyi belgeden bulup ters kaydı üretmiyordu.
-              if (tedarikciId != null) 'cari_id': tedarikciId,
+              'cari_id': ?tedarikciId,
               'last_updated': now,
             },
             where: 'id = ? AND durum = ?',

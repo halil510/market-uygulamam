@@ -14,9 +14,9 @@ Durum sütunu: ✅ düzeltildi (commit) · ⏳ açık.
 | 6 | yuksek | İade / Alım / Tedarik | Havale ile yapılan alım silinince bankadan çıkan para hiç geri yazılmıyor | `lib/servisler/alim_islem_servisi.dart:373` | ✅ 2d289fbd |
 | 7 | yuksek | İade / Alım / Tedarik | Aynı iade oturumunda karışık ödeme yöntemi seçilince kalem silme/düzenleme kasayı ve cariyi bozuyor | `lib/servisler/iade_islem_servisi_duzenleme.dart:216` | ✅ 50e8f4d8 |
 | 8 | yuksek | İade / Alım / Tedarik | İade oturumunda cari değiştirilince ikinci carinin iade alacağı belge silinince geri alınmıyor | `lib/servisler/iade_islem_servisi_gecmis.dart:476` | ✅ 50e8f4d8 |
-| 9 | yuksek | Cari / Tahsilat / Borç | Masaüstü Borç listesinde eski seçili borç ile ikinci kez (fazladan) ödeme yapılabiliyor | `lib/ekranlar/borc/masaustu/borc_masaustu_gorunum.dart:209` | ⏳ |
-| 10 | yuksek | Cari / Tahsilat / Borç | Borç ödemesinin oluşturduğu gider Giderler'den düzenlenince kasa/banka ikinci kez düşülüyor | `lib/servisler/borc_odeme_islem_servisi.dart:147` | ⏳ |
-| 11 | yuksek | Kasa / Banka / Kredi Kartı / Gider / Vardiya | Borç ödemesinden doğan gider düzenlenince kasa/banka/kart ikinci kez düşülüyor | `lib/depolar/gider_deposu.dart:213` | ⏳ |
+| 9 | yuksek | Cari / Tahsilat / Borç | Masaüstü Borç listesinde eski seçili borç ile ikinci kez (fazladan) ödeme yapılabiliyor | `lib/ekranlar/borc/masaustu/borc_masaustu_gorunum.dart:209` | ✅ edaeef93 |
+| 10 | yuksek | Cari / Tahsilat / Borç | Borç ödemesinin oluşturduğu gider Giderler'den düzenlenince kasa/banka ikinci kez düşülüyor | `lib/servisler/borc_odeme_islem_servisi.dart:147` | ✅ 78100190 |
+| 11 | yuksek | Kasa / Banka / Kredi Kartı / Gider / Vardiya | Borç ödemesinden doğan gider düzenlenince kasa/banka/kart ikinci kez düşülüyor | `lib/depolar/gider_deposu.dart:213` | ✅ 78100190 |
 | 12 | yuksek | Ürün / Stok / Fiyat / Promosyon | Şube seçiliyken sayım, başlangıç stoğu sube_urun'a hiç yazılmamış ürünlerde toplam stoğu şişiriyor (ikiye katlıyor) | `lib/saglayicilar/riverpod/stok_sayim_provider.dart:211` | ⏳ |
 | 13 | yuksek | Ürün / Stok / Fiyat / Promosyon | Excel'den stok sayımı içe alma, şube sayımını toplam stok olarak mutlak yazıyor ve transaction dışı çalışıyor | `lib/servisler/excel_servisi_stok_promosyon.dart:171` | ⏳ |
 | 14 | yuksek | Fatura / GİB / İrsaliye | Elle Fatura Ekle: seçilen ürünün KDV DAHİL satış fiyatının üstüne bir kez daha KDV ekleniyor (müşteriye fazladan KDV kesiliyor) | `lib/ekranlar/fatura/fatura_ekle_ekrani.dart:236` | ⏳ |

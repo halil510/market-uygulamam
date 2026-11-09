@@ -12,8 +12,8 @@ Durum sütunu: ✅ düzeltildi (commit) · ⏳ açık.
 | 4 | yuksek | Satış | Önceden iade alınmış satış silinince stok, kasa ve cari ikinci kez iade ediliyor | `lib/depolar/satis_deposu.dart:918` | ✅ a98a2cb5 |
 | 5 | yuksek | Satış | Çoklu ödemede Nakit dışı yönteme toplamdan fazla tutar girilebiliyor; fazlası cari borcuna ya da kart kasa hareketine yazılıyor | `lib/ekranlar/satis/coklu_odeme_ekrani.dart:183` | ✅ e1f44a0f |
 | 6 | yuksek | İade / Alım / Tedarik | Havale ile yapılan alım silinince bankadan çıkan para hiç geri yazılmıyor | `lib/servisler/alim_islem_servisi.dart:373` | ✅ 2d289fbd |
-| 7 | yuksek | İade / Alım / Tedarik | Aynı iade oturumunda karışık ödeme yöntemi seçilince kalem silme/düzenleme kasayı ve cariyi bozuyor | `lib/servisler/iade_islem_servisi_duzenleme.dart:216` | ⏳ |
-| 8 | yuksek | İade / Alım / Tedarik | İade oturumunda cari değiştirilince ikinci carinin iade alacağı belge silinince geri alınmıyor | `lib/servisler/iade_islem_servisi_gecmis.dart:476` | ⏳ |
+| 7 | yuksek | İade / Alım / Tedarik | Aynı iade oturumunda karışık ödeme yöntemi seçilince kalem silme/düzenleme kasayı ve cariyi bozuyor | `lib/servisler/iade_islem_servisi_duzenleme.dart:216` | ✅ 50e8f4d8 |
+| 8 | yuksek | İade / Alım / Tedarik | İade oturumunda cari değiştirilince ikinci carinin iade alacağı belge silinince geri alınmıyor | `lib/servisler/iade_islem_servisi_gecmis.dart:476` | ✅ 50e8f4d8 |
 | 9 | yuksek | Cari / Tahsilat / Borç | Masaüstü Borç listesinde eski seçili borç ile ikinci kez (fazladan) ödeme yapılabiliyor | `lib/ekranlar/borc/masaustu/borc_masaustu_gorunum.dart:209` | ⏳ |
 | 10 | yuksek | Cari / Tahsilat / Borç | Borç ödemesinin oluşturduğu gider Giderler'den düzenlenince kasa/banka ikinci kez düşülüyor | `lib/servisler/borc_odeme_islem_servisi.dart:147` | ⏳ |
 | 11 | yuksek | Kasa / Banka / Kredi Kartı / Gider / Vardiya | Borç ödemesinden doğan gider düzenlenince kasa/banka/kart ikinci kez düşülüyor | `lib/depolar/gider_deposu.dart:213` | ⏳ |

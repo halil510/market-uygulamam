@@ -293,6 +293,11 @@ class StokDeposu {
       await txn.update(
           'lot_seri', {'miktar': lotMiktar - tuketilen, 'last_updated': now},
           where: 'id = ?', whereArgs: [lotId]);
+      // 🔴 DERİN DENETİM (2026-11-09, #50): lot düşümü senkron kuyruğuna
+      // hiç yazılmıyordu — diğer cihazlarda lot miktarı satıştan önceki
+      // hâlinde kalıyordu.
+      await SyncKuyrukYazici.ekleTxn(txn,
+          tablo: 'lot_seri', veri: {...lot, 'miktar': lotMiktar - tuketilen, 'last_updated': now});
 
       final gid = const Uuid().v4();
       await stokDusTxn(txn, gid,

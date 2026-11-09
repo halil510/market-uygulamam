@@ -710,7 +710,26 @@ class CariDeposu {
                   referansTuru: 'cari_hareket_iptal',
                   tarih: DateTime.parse(now),
                   aciklama: 'İptal: ${h.aciklama}',
+                  // Orijinal yöntemle (ör. POS tahsilatı 'Kredi Kartı') —
+                  // yoksa nakit kasa düşerdi (#38).
+                  odemeYontemi: orijinalKasa['odeme_yontemi'] as String?,
                 ));
+            // 🔴 DERİN DENETİM (2026-11-09, #37): ters kayıt AKTİF şubeye
+            // yazılıyordu — başka şubede alınmış tahsilat iptal edilince bir
+            // şubenin kasası artı, diğerininki eksi kalıyordu. Orijinal
+            // hareketin şubesine taşınır, kuyruk kaydı yenilenir (ara bakiye
+            // zinciri senkron sonrası mutabakatta düzelir).
+            final orijinalSube = orijinalKasa['sube_id'] as int?;
+            if (orijinalSube != null) {
+              await txn.update('kasa_hareketleri', {'sube_id': orijinalSube},
+                  where: 'id = ?', whereArgs: [tersKasaId]);
+              final ters = await txn.query('kasa_hareketleri',
+                  where: 'id = ?', whereArgs: [tersKasaId], limit: 1);
+              if (ters.isNotEmpty) {
+                await SyncKuyrukYazici.ekleTxn(txn,
+                    tablo: 'kasa_hareketleri', veri: Map<String, dynamic>.from(ters.first));
+              }
+            }
           }
         }
 

@@ -261,10 +261,22 @@ class IrsaliyeDeposu {
     final db = await Veritabani().db;
     final now = DateTime.now().toIso8601String();
 
-    if (yeniDurum == 'İptal') {
-      final mevcut = await db.query('irsaliyeler',
-          columns: ['durum'], where: 'id = ?', whereArgs: [irsaliyeId], limit: 1);
-      if (mevcut.isNotEmpty && mevcut.first['durum'] != 'İptal') {
+    // 🔴 DERİN DENETİM (2026-11-09, #30): İptal → başka durum → tekrar İptal
+    // sırasında stok İKİNCİ KEZ geri çevriliyordu (yalnız anlık durum
+    // kontrol ediliyordu). İptal son durumdur; ayrıca ters kayıt zaten
+    // varsa bir daha yazılmaz (CLAUDE.md §3.3).
+    final mevcut = await db.query('irsaliyeler',
+        columns: ['durum'], where: 'id = ?', whereArgs: [irsaliyeId], limit: 1);
+    final mevcutDurum = mevcut.isEmpty ? null : mevcut.first['durum'];
+    if (mevcutDurum == 'İptal' && yeniDurum != 'İptal') {
+      throw Exception('İptal edilmiş irsaliye başka bir duruma alınamaz — yeni irsaliye düzenleyin.');
+    }
+    if (yeniDurum == 'İptal' && mevcutDurum != 'İptal') {
+      final tersVar = await db.query('stok_hareket',
+          columns: ['id'],
+          where: 'referans_turu = ? AND referans_id = ?',
+          whereArgs: ['irsaliye_iptal', irsaliyeId], limit: 1);
+      if (tersVar.isEmpty) {
         await _stokEtkisiniTersineCevir(db, irsaliyeId, now);
       }
     }

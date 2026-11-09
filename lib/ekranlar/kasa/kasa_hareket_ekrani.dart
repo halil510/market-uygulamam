@@ -97,8 +97,17 @@ class _KasaHareketEkraniState extends ConsumerState<KasaHareketEkrani> {
                     decoration: const InputDecoration(
                         labelText: 'Hareket Tipi',
                         border: OutlineInputBorder()),
-                    items: ['Kasa Sayım', 'AçılışKasa', 'KapanışKasa']
-                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                    // DERİN DENETİM (2026-11-09, #82): 'Kasa Sayım' her zaman
+                    // çıkış sayılıyordu — sayım fazlası için ayrı giriş tipi.
+                    items: const {
+                      'Kasa Sayım': 'Kasa Sayım (Eksik −)',
+                      'Kasa Sayım Fazlası': 'Kasa Sayım (Fazla +)',
+                      'AçılışKasa': 'AçılışKasa',
+                      'KapanışKasa': 'KapanışKasa',
+                    }
+                        .entries
+                        .map((e) => DropdownMenuItem(
+                            value: e.key, child: Text(e.value)))
                         .toList(),
                     onChanged: (v) => ss(() => tip = v!),
                   ),

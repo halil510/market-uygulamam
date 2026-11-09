@@ -22,6 +22,9 @@ class KasaHareketModel {
     // yüzden burada YOK — ama bir Alım'ın İPTALİ (silinmesi) kasaya
     // parayı GERİ koyar, dolayısıyla GİRİŞ'tir.
     'Alım İptali',
+    // DERİN DENETİM (2026-11-09, #82): sayımda kasada FAZLA çıkan para
+    // giriştir ('Kasa Sayım' eksik → çıkış olarak kalır).
+    'Kasa Sayım Fazlası',
   };
   static bool girisMi(String hareketTipi) => girisTipleri.contains(hareketTipi);
 

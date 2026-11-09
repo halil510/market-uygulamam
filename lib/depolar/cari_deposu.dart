@@ -160,6 +160,45 @@ class CariDeposu {
     }
   }
 
+  /// Yeni cariyi ve (varsa) açılış bakiyesi hareketini TEK transaction'da
+  /// yazar; bulut bildirimi commit sonrasında yapılır.
+  /// DERİN DENETİM (2026-11-09, #81): Excel içe aktarımda ikisi ayrı
+  /// işlemlerdeydi — hareket yazımı hata verirse cari kalıyor, açılış
+  /// bakiyesi kalıcı kayboluyordu (yeniden aktarım "zaten kayıtlı" diye atlar).
+  Future<int> acilisBakiyesiyleEkle(CariModel cari,
+      {CariHareketModel Function(int cariId)? acilis}) async {
+    try {
+      final db = await _d;
+      final m = cari.toMap();
+      m.remove('id');
+      m['global_id'] ??= const Uuid().v4();
+      if (!m.containsKey('cari_kodu') || m['cari_kodu'] == null) {
+        final no = await sonrakiCariNo();
+        m['cari_kodu'] = 'CARIO-$no';
+      }
+      String? hareketGid;
+      final id = await db.transaction((txn) async {
+        final yeniId = await txn.insert('cari', m);
+        if (acilis != null) {
+          hareketGid = await hareketEkleTxn(txn, acilis(yeniId));
+        }
+        return yeniId;
+      });
+      await BulutManager().satiriBildir(db, 'cari', id);
+      if (hareketGid != null) {
+        final s = await db.query('cari_hareket',
+            where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
+        if (s.isNotEmpty) {
+          BulutManager().upsert('cari_hareket', Map<String, dynamic>.from(s.first));
+        }
+      }
+      return id;
+    } catch (e, st) {
+      LogServisi().hata('Cari.acilisBakiyesiyleEkle', hata: e, yigin: st);
+      rethrow;
+    }
+  }
+
   Future<void> guncelle(CariModel cari) async {
     try {
       final db = await _d;

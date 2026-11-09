@@ -201,26 +201,31 @@ extension ExcelServisiCari on ExcelServisi {
                 'koduyla kayıtlı — atlandı. Önce "Buluttan Al" yapıp tekrar deneyin.');
             continue;
           }
-          final yeniId = await cariDepo.ekle(CariModel(
-            cariKodu: kod,
-            unvan: unvan,
-            cariTipi: cariTipi,
-            telefon: telefon.isEmpty ? null : telefon,
-          ));
+          // #81: cari + açılış bakiyesi tek transaction'da (biri düşerse
+          // ikisi de yazılmaz, satır hatalı sayılır ve yeniden aktarılabilir).
+          final acilisVar = borc > 0.005 || alacak > 0.005;
+          final yeniId = await cariDepo.acilisBakiyesiyleEkle(
+            CariModel(
+              cariKodu: kod,
+              unvan: unvan,
+              cariTipi: cariTipi,
+              telefon: telefon.isEmpty ? null : telefon,
+            ),
+            acilis: !acilisVar
+                ? null
+                : (cariId) => CariHareketModel(
+                      cariId: cariId,
+                      tarih: DateTime.now(),
+                      fisTipi: 'Açılış',
+                      aciklama: 'Açılış Bakiyesi (Excel içe aktarım)',
+                      borc: borc,
+                      alacak: alacak,
+                      odemeTuru: 'Açılış',
+                    ),
+          );
+          if (acilisVar) acilisYazilan++;
           if (adres.isNotEmpty) {
             await adresDepo.varsayilanAdresKaydet(cariId: yeniId, adres: adres);
-          }
-          if (borc > 0.005 || alacak > 0.005) {
-            await cariDepo.hareketEkle(CariHareketModel(
-              cariId: yeniId,
-              tarih: DateTime.now(),
-              fisTipi: 'Açılış',
-              aciklama: 'Açılış Bakiyesi (Excel içe aktarım)',
-              borc: borc,
-              alacak: alacak,
-              odemeTuru: 'Açılış',
-            ));
-            acilisYazilan++;
           }
           eklenen++;
         }

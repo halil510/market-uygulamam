@@ -27,7 +27,7 @@ const _bilinenIstisnalar = <String, int>{
   // bir kayıt birikir (Faz A-5'te bilinçli dışarıda bırakıldı).
   'lib/servisler/barkod_servisi.dart': 5, // bip/hata sesi
   'lib/servisler/bildirim_zamanlayici.dart': 2,
-  'lib/servisler/masa/qr_siparis_cekici_servisi.dart': 2,
+  'lib/servisler/masa/qr_siparis_cekici_servisi.dart': 1, // 2026-11-09: işleme hatası artık loglanıyor
   'lib/servisler/sync_servisi.dart': 3, // uzak durum/veri yoklama
 };
 

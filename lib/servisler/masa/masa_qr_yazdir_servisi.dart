@@ -8,6 +8,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../pdf_font_servisi.dart';
+import '../../depolar/masa_deposu.dart';
 import 'qr_menu_adresi.dart';
 
 class MasaQrYazdirServisi {
@@ -26,8 +27,13 @@ class MasaQrYazdirServisi {
     final font = await PdfFontServisi.normal();
     final kalin = await PdfFontServisi.kalin();
     final pdf = pw.Document(theme: pw.ThemeData.withFont(base: font, bold: kalin));
+    // Bulut adresinde masanın cihazlardan bağımsız kimliği de basılır (#20).
+    final gidler = adres.bulut
+        ? await MasaDeposu().globalIdleriGetir(masalar.map((m) => m.id))
+        : const <int, String>{};
     for (final m in masalar) {
-      pdf.addPage(_masaSayfasi(m.ad, adres.masaUrl(m.id), font: font, kalin: kalin));
+      pdf.addPage(_masaSayfasi(m.ad, adres.masaUrl(m.id, masaGlobalId: gidler[m.id]),
+          font: font, kalin: kalin));
     }
     await Printing.layoutPdf(name: 'Masa QR Menü', onLayout: (_) => pdf.save());
     return true;

@@ -32,9 +32,16 @@ class QrMenuAdresi {
     return ip == null ? null : QrMenuAdresi._(ip, bulut: false);
   }
 
-  String masaUrl(int masaId) {
+  /// [masaGlobalId]: bulut adresinde masanın cihazlardan bağımsız kimliği
+  /// (`mg=`). Yerel id ([masaId]) yalnız QR'ı basan cihaza özeldir — bulut
+  /// siparişini başka cihaz işlerse yanlış masaya düşüyordu (derin denetim
+  /// 2026-11-09, #20). Yerel ağ adresi her zaman bu cihaza gelir, id yeter.
+  String masaUrl(int masaId, {String? masaGlobalId}) {
     if (!bulut) return QrMenuSunucuServisi.yerelMasaUrl(_taban, masaId);
     final ayrac = _taban.contains('?') ? '&' : '?';
-    return '$_taban${ayrac}masa=$masaId';
+    final mg = (masaGlobalId == null || masaGlobalId.isEmpty)
+        ? ''
+        : '&mg=${Uri.encodeQueryComponent(masaGlobalId)}';
+    return '$_taban${ayrac}masa=$masaId$mg';
   }
 }

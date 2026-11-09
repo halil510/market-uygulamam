@@ -161,6 +161,17 @@ class QrSiparisCekiciServisi {
       final yeniMasaIdleri = <int>{};
 
       for (final s in siparisler) {
+        // 🔴 DERİN DENETİM (2026-11-09, #20): masa_id QR'ı basan cihazın
+        // YEREL id'sidir; siparişi başka cihaz sahiplenince yanlış masaya
+        // yazılıyor ya da (id yoksa) FK hatasıyla kayboluyordu (bulutta
+        // islendi=true kalmıştı). Masa önce bu cihazda çözülür — yeni
+        // kartlardaki masa_global_id ile, yoksa yalnız yerelde var olan id
+        // ile; çözülemezse sipariş SAHİPLENİLMEZ (başka cihaz alabilir).
+        final masaGid = s['masa_global_id']?.toString();
+        final masaId = await MasaDeposu().qrMasaYerelIdBul(
+            globalId: masaGid, id: (s['masa_id'] as num?)?.toInt());
+        if (masaId == null) continue;
+        var sahiplenildi = false;
         try {
           final sahiplenmeYaniti = await http.patch(
             Uri.parse('$url/rest/v1/qr_siparisler?id=eq.${s['id']}&islendi=eq.false'),
@@ -174,20 +185,37 @@ class QrSiparisCekiciServisi {
 
           final sahiplenilenSatirlar = jsonDecode(sahiplenmeYaniti.body) as List;
           if (sahiplenilenSatirlar.isEmpty) continue;
+          sahiplenildi = true;
 
           final kalemler = (s['kalemler'] as List).cast<Map<String, dynamic>>();
           await QrMenuServisi().musteriSiparisKaydet(
-            masaId: (s['masa_id'] as num).toInt(),
+            masaId: masaId,
             kalemler: kalemler,
             musteriAdi: (s['musteri_adi'] as String?) ?? '',
             musteriTel: (s['musteri_tel'] as String?) ?? '',
             not: s['not_'] as String?,
           );
           enAzBirIslendi = true;
-          yeniMasaIdleri.add((s['masa_id'] as num).toInt());
-          if (kDebugMode) debugPrint('QR sipariş işlendi: masa=${s['masa_id']}, ${kalemler.length} kalem');
-        } catch (e) {
-          if (kDebugMode) debugPrint('QR sipariş işleme hatası (id=${s['id']}): $e');
+          yeniMasaIdleri.add(masaId);
+          if (kDebugMode) debugPrint('QR sipariş işlendi: masa=$masaId, ${kalemler.length} kalem');
+        } catch (e, st) {
+          // Sessiz kalırsa müşteri siparişi kaybolurdu: loglanır ve
+          // sahiplenildiyse buluta geri bırakılır (bir sonraki turda yeniden).
+          LogServisi().hata('QR sipariş işlenemedi (id=${s['id']})', hata: e, yigin: st);
+          if (sahiplenildi) {
+            try {
+              await http.patch(
+                Uri.parse('$url/rest/v1/qr_siparisler?id=eq.${s['id']}'),
+                headers: {
+                  'apikey': key, 'Authorization': 'Bearer ${SupabaseOturum.bearer(key)}',
+                  'Content-Type': 'application/json',
+                },
+                body: jsonEncode({'islendi': false}),
+              ).timeout(const Duration(seconds: 10));
+            } catch (e2) {
+              LogServisi().uyari('QR sipariş buluta geri bırakılamadı (id=${s['id']})', hata: e2);
+            }
+          }
         }
       }
 

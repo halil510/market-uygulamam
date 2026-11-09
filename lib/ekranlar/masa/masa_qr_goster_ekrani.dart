@@ -13,6 +13,7 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import '../../depolar/masa_deposu.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../cekirdek/utils/hata_utils.dart';
@@ -87,10 +88,14 @@ class _MasaQrGosterEkraniState extends State<MasaQrGosterEkrani> {
     final oncekiUrl = _url;
     try {
       final adres = await QrMenuAdresi.coz();
+      // Bulut adresinde masanın cihazlardan bağımsız kimliği de taşınır (#20).
+      final gid = adres?.bulut == true
+          ? (await MasaDeposu().globalIdleriGetir([widget.masaId]))[widget.masaId]
+          : null;
       if (!mounted || no != _cozumNo) return;
       setState(() {
         _yukleniyor = false;
-        _url = adres?.masaUrl(widget.masaId);
+        _url = adres?.masaUrl(widget.masaId, masaGlobalId: gid);
         _bulutModu = adres?.bulut ?? false;
         _hata = adres == null ? _wifiYokMesaji : null;
       });

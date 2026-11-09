@@ -3529,6 +3529,12 @@ CREATE POLICY qr_siparis_anon_ekleyebilir ON qr_siparisler
 -- değiştirebilmesi İSTENMEDİĞİ için SELECT/UPDATE/DELETE için anon
 -- policy'si BİLİNÇLİ OLARAK eklenmedi.
 
+-- 2026-11-09 (derin denetim #20): masa_id QR'ı basan cihazın YEREL id'si —
+-- siparişi başka cihaz işleyince yanlış masaya düşüyordu. Yeni QR kartları
+-- masanın cihazlardan bağımsız kimliğini (mg=) taşır, menü sayfası bu
+-- sütuna yazar, uygulama masayı bununla bulur. Tekrar çalıştırılabilir.
+ALTER TABLE qr_siparisler ADD COLUMN IF NOT EXISTS masa_global_id TEXT;
+
 CREATE TABLE IF NOT EXISTS site_icerik (
   id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   anahtar      TEXT NOT NULL UNIQUE,

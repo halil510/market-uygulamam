@@ -574,6 +574,9 @@ function sayfaGoster(sayfaAdi) {
 
 const params = new URLSearchParams(window.location.search);
 const MASA_ID = parseInt(params.get('masa') || '0', 10);
+// Masanın cihazlardan bağımsız kimliği (2026-11-09): masa_id yalnız QR'ı
+// basan cihaza özeldir; siparişi başka cihaz işlerse yanlış masaya düşüyordu.
+const MASA_GID = (params.get('mg') || '').trim();
 let urunler = [];
 let sepet = {};
 
@@ -687,12 +690,24 @@ async function gonder() {
     musteri_tel: '', not_: document.getElementById('not').value,
     islendi: false
   };
+  if (MASA_GID) gövde.masa_global_id = MASA_GID;
   try {
-    const r = await fetch(SUPABASE_URL + '/rest/v1/qr_siparisler', {
+    const gonderIstek = (g) => fetch(SUPABASE_URL + '/rest/v1/qr_siparisler', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY },
-      body: JSON.stringify(gövde)
+      body: JSON.stringify(g)
     });
+    let r = await gonderIstek(gövde);
+    // Bulutta masa_global_id sütunu henüz yoksa (SQL çalıştırılmadı) sipariş
+    // KAYBOLMASIN — sütunsuz eski biçimle tekrar gönderilir.
+    if (!r.ok && gövde.masa_global_id && r.status === 400) {
+      let t = '';
+      try { t = await r.clone().text(); } catch (_) {}
+      if (t.indexOf('masa_global_id') >= 0) {
+        delete gövde.masa_global_id;
+        r = await gonderIstek(gövde);
+      }
+    }
     if (r.ok) {
       document.getElementById('modalIcerik').innerHTML =
         '<div class="basarili"><div class="tik">✦</div>' +

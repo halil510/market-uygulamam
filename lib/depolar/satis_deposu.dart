@@ -900,6 +900,22 @@ class SatisDeposu {
       cariId       = satis['cari_id'] as int?;
       final fisNo        = satis['fis_no'] as String? ?? '#$id';
 
+      // 🔴 DERİN DENETİM (2026-11-09): iade alınmış satış silinince stok,
+      // kasa ve cari İKİNCİ KEZ iade ediliyordu — sil() satış kalemlerinin
+      // TAMAMINI stoğa ekleyip satış tahsilatının TAMAMINI ters çeviriyor,
+      // iadenin zaten yaptığı stok girişini/kasa çıkışını/cari alacağını
+      // görmüyordu. İade varken silme engellenir; önce iade silinmeli.
+      final aktifIade = await txn.query('iade',
+          columns: ['fis_no'],
+          where: "satis_id = ? AND deleted_at IS NULL AND (durum IS NULL OR durum != 'iptal')",
+          whereArgs: [id], limit: 1);
+      if (aktifIade.isNotEmpty) {
+        final iadeNo = aktifIade.first['fis_no'] as String? ?? '';
+        throw Exception('Bu satışa iade yapılmış${iadeNo.isEmpty ? '' : ' ($iadeNo)'}. '
+            'Stok, kasa ve cari iki kez düzelmesin diye satış silinemez — '
+            'önce iadeyi silin, sonra satışı iptal edin.');
+      }
+
       // 2. Kalemleri al
       final kalemler = await txn.query('satis_kalem',
           where: 'satis_id = ?', whereArgs: [id]);
@@ -970,20 +986,39 @@ class SatisDeposu {
       // = 'satis') sorgulanıp HER biri kendi tutarı/ödeme yöntemiyle tek
       // tek tersine çevriliyor — saf Cari (veresiye) satışta hiç kasa
       // satırı yoktur, dolayısıyla hiçbir şey ters çevrilmez (doğru).
+      // 🔴 DERİN DENETİM (2026-11-09): fiş güncellemenin yazdığı
+      // 'fis_guncelleme' kasa satırları (tutar farkı, ödeme yöntemi
+      // değişimi) ÖNCEDEN hiç ters çevrilmiyordu — güncellenmiş fiş
+      // silinince kasa kalıcı olarak yanlış kalıyordu. Artık satışa ait
+      // 'satis' + 'fis_guncelleme' satırları ödeme yöntemine göre NET
+      // toplanır (fisiGuncelle ve odemeDagilimiGetir ile aynı küme) ve
+      // yöntem başına tek ters kayıt yazılır.
       final orijinalKasaSatirlari = await txn.query('kasa_hareketleri',
-          where: 'referans_id = ? AND referans_turu = ? AND deleted_at IS NULL',
-          whereArgs: [id, 'satis']);
+          where: "referans_id = ? AND referans_turu IN ('satis', 'fis_guncelleme') "
+              'AND deleted_at IS NULL',
+          whereArgs: [id]);
+      final yontemNet = <String?, double>{};
       for (final k in orijinalKasaSatirlari) {
         final tutar = (k['tutar'] as num?)?.toDouble() ?? 0;
-        if (tutar <= 0) continue;
+        final isaretli = KasaHareketModel.girisMi(k['hareket_tipi'] as String? ?? '')
+            ? tutar
+            : -tutar;
+        final yontem = k['odeme_yontemi'] as String?;
+        yontemNet[yontem] = (yontemNet[yontem] ?? 0) + isaretli;
+      }
+      for (final e in yontemNet.entries) {
+        final net = ParaUtils.yuvarla(e.value);
+        if (net.abs() < 0.005) continue;
+        // Net giriş → 'Satış İptali' (çıkış); net çıkış (ör. güncellemede
+        // iade edilen nakit) → 'İade İptali' (giriş) ile sıfırlanır.
         final kid = await KasaDeposu().hareketEkleTxn(txn, KasaHareketModel(
-          hareketTipi:  'Satış İptali',
-          tutar:        tutar,
+          hareketTipi:  net > 0 ? 'Satış İptali' : 'İade İptali',
+          tutar:        net.abs(),
           referansId:   id,
           referansTuru: 'satis_iptal',
           tarih:        DateTime.parse(simdi),
           aciklama:     'Satış iptali: $fisNo',
-          odemeYontemi: k['odeme_yontemi'] as String?,
+          odemeYontemi: e.key,
         ));
         kasaHareketIdleri.add(kid);
       }

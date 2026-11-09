@@ -90,9 +90,14 @@ class VardiyaDeposu {
     final ozet = Map<String, dynamic>.from(rows.first);
 
     final kasaRows = await db.rawQuery('''
-      SELECT kh.odeme_yontemi, COALESCE(SUM(kh.tutar),0) as tutar
+      SELECT kh.odeme_yontemi,
+        -- DERİN DENETİM (2026-11-09, #71): fiş güncellemesindeki ödeme
+        -- değişikliği de sayılır, 'İade' satırları eksi (odemeDagilimlariGetir
+        -- ile aynı kural).
+        COALESCE(SUM(CASE WHEN kh.hareket_tipi = 'İade' THEN -kh.tutar ELSE kh.tutar END),0) as tutar
       FROM kasa_hareketleri kh
-      JOIN satislar s ON s.id = kh.referans_id AND kh.referans_turu = 'satis'
+      JOIN satislar s ON s.id = kh.referans_id
+        AND kh.referans_turu IN ('satis','fis_guncelleme')
       WHERE ${TarihUtils.sonrasiSql('s.tarih', bas)} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
         AND kh.deleted_at IS NULL
       GROUP BY kh.odeme_yontemi
@@ -154,9 +159,14 @@ class VardiyaDeposu {
     final ozet = Map<String, dynamic>.from(rows.first);
 
     final kasaRows = await db.rawQuery('''
-      SELECT kh.odeme_yontemi, COALESCE(SUM(kh.tutar),0) as tutar
+      SELECT kh.odeme_yontemi,
+        -- DERİN DENETİM (2026-11-09, #71): fiş güncellemesindeki ödeme
+        -- değişikliği de sayılır, 'İade' satırları eksi (odemeDagilimlariGetir
+        -- ile aynı kural).
+        COALESCE(SUM(CASE WHEN kh.hareket_tipi = 'İade' THEN -kh.tutar ELSE kh.tutar END),0) as tutar
       FROM kasa_hareketleri kh
-      JOIN satislar s ON s.id = kh.referans_id AND kh.referans_turu = 'satis'
+      JOIN satislar s ON s.id = kh.referans_id
+        AND kh.referans_turu IN ('satis','fis_guncelleme')
       WHERE ${sinir('s.tarih')} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
         AND kh.deleted_at IS NULL
       GROUP BY kh.odeme_yontemi

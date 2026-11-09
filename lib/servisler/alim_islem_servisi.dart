@@ -378,6 +378,11 @@ class AlimIslemServisi {
               tutar: genelToplam,
               aciklama: 'Mal Alımı: $alimNo',
               tarih: DateTime.now(),
+              // 🔴 DERİN DENETİM (2026-11-09): referans verilmiyordu —
+              // sil() banka satırını bulamıyor, havale alımı silinince
+              // bankadan çıkan para hiç geri yazılmıyordu.
+              referansId: alimId,
+              referansTuru: 'alim',
             ));
       }
 
@@ -594,10 +599,13 @@ class AlimIslemServisi {
         ));
         kasaHareketIdleri.add(kid);
       }
+      // Eski kayıtlar (referans yazılmadan önceki havale alımları) alıma
+      // özgü açıklamayla eşlenir — alım no benzersizdir.
       final bankaRows = await txn.query('banka_hareketler',
-          where:
-              'referans_id = ? AND referans_turu = ? AND (is_deleted IS NULL OR is_deleted = 0)',
-          whereArgs: [alimId, 'alim']);
+          where: '((referans_id = ? AND referans_turu = ?) OR '
+              "(referans_id IS NULL AND islem_tipi = 'Giden' AND aciklama = ?)) "
+              'AND (is_deleted IS NULL OR is_deleted = 0)',
+          whereArgs: [alimId, 'alim', 'Mal Alımı: $alimNo']);
       for (final b in bankaRows) {
         final tutar = (b['tutar'] as num?)?.toDouble() ?? 0;
         final bankaHesapId = b['banka_hesap_id'] as int?;

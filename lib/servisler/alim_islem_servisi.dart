@@ -355,7 +355,7 @@ class AlimIslemServisi {
             'aciklama': 'Alım: $alimNo',
             'lot_id': lotId,
           };
-          final stokHareketId = await txn.insert('stok_hareket', stokSatiri);
+          final stokHareketId = await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
           await SyncKuyrukYazici.ekleTxn(txn,
               tablo: 'stok_hareket', veri: {...stokSatiri, 'id': stokHareketId});
         }
@@ -613,7 +613,7 @@ class AlimIslemServisi {
           'last_updated':  now,
           'aciklama':      'Alım iptali — Fiş $alimNo',
         };
-        await txn.insert('stok_hareket', tersHareket);
+        await txn.insert('stok_hareket', stokHareketSubesi(tersHareket));
         await SyncKuyrukYazici.ekleTxn(txn, tablo: 'stok_hareket', veri: tersHareket);
         // Ana stok AZALDI (alım iptali) — subeStokPayiUygula
         // pozitif=düştü bekliyor (alimKaydet()'teki AYNI mantığın tersi).

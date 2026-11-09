@@ -1043,7 +1043,8 @@ class SatisDeposu {
             'last_updated':  simdi,
             'aciklama':      'Satış iptali — Fiş $fisNo',
           };
-          await txn.insert('stok_hareket', hareketSatiri);
+          await txn.insert('stok_hareket',
+              stokHareketSubesi(hareketSatiri, subeId: satisSubeId));
           await SyncKuyrukYazici.ekleTxn(txn,
               tablo: 'stok_hareket', veri: hareketSatiri);
           final guncelUrun = await txn.query('urunler',

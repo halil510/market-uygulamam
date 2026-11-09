@@ -207,7 +207,7 @@ class StokDeposu {
       'aciklama': ?aciklama,
       'lot_id': ?lotId,
     };
-    await txn.insert('stok_hareket', hareketSatiri);
+    await txn.insert('stok_hareket', stokHareketSubesi(hareketSatiri));
     // Madde 5 sertleştirmesi: senkron kuyruğu kaydı AYNI transaction
     // içinde, business data ile atomik yazılıyor — dış transaction
     // rollback olursa ikisi de birlikte geri alınır, commit olursa
@@ -424,7 +424,7 @@ class StokDeposu {
       'referans_turu': ?referansTuru,
       'lot_id': ?lotId,
     };
-    await txn.insert('stok_hareket', hareketSatiri);
+    await txn.insert('stok_hareket', stokHareketSubesi(hareketSatiri));
     // Madde 5 sertleştirmesi (bkz. stokDusTxn'deki aynı gerekçe).
     await SyncKuyrukYazici.ekleTxn(txn,
         tablo: 'stok_hareket', veri: hareketSatiri);
@@ -504,7 +504,7 @@ class StokDeposu {
           'kullanici_id': kullaniciId,
           'aciklama': aciklama ?? 'Stok sayım düzeltme',
         };
-        await txn.insert('stok_hareket', stokSatiri);
+        await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
         await SyncKuyrukYazici.ekleTxn(txn,
             tablo: 'stok_hareket', veri: stokSatiri);
       });

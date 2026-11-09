@@ -6,6 +6,7 @@
 // + stok hareketi TEK transaction içinde, commit sonrası bulut senkronu.
 import 'package:uuid/uuid.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/aktif_sube_servisi.dart';
 import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../veri/database/veritabani.dart';
 import 'stok_deposu.dart';
@@ -156,7 +157,7 @@ class IrsaliyeDeposu {
               (subePayiFarklari[k.urunId] ?? 0) - hareketMiktar;
           final stokGid = const Uuid().v4();
           stokHareketGidler.add(stokGid);
-          await txn.insert('stok_hareket', {
+          await txn.insert('stok_hareket', stokHareketSubesi(<String, dynamic>{
             'global_id': stokGid,
             'urun_id': k.urunId,
             'hareket_turu': 'İrsaliye $tip',
@@ -167,7 +168,7 @@ class IrsaliyeDeposu {
             'last_updated': now,
             'referans_id': irsaliyeId,
             'referans_turu': 'irsaliye',
-          });
+          }));
         }
       }
     });
@@ -318,7 +319,7 @@ class IrsaliyeDeposu {
 
         final stokGid = const Uuid().v4();
         stokHareketGidler.add(stokGid);
-        await txn.insert('stok_hareket', {
+        await txn.insert('stok_hareket', stokHareketSubesi(<String, dynamic>{
           'global_id': stokGid,
           'urun_id': urunId,
           'hareket_turu': 'İrsaliye İptal',
@@ -329,7 +330,7 @@ class IrsaliyeDeposu {
           'last_updated': now,
           'referans_id': irsaliyeId,
           'referans_turu': 'irsaliye_iptal',
-        });
+        }));
       }
     });
 

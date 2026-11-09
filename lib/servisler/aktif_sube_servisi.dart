@@ -109,3 +109,13 @@ class AktifSubeServisi extends ChangeNotifier {
     return (yeniKosul, [...temelArgs, _aktifSubeId]);
   }
 }
+
+/// stok_hareket satırına (boşsa) aktif şubeyi yazar ve AYNI haritayı döner —
+/// insert'ten sonra senkron kuyruğuna verilen kopya da sube_id taşır.
+/// DERİN DENETİM (2026-11-09, #83): stok hareketlerinde sube_id hiç
+/// yazılmıyordu; dönem arşivi (sube_id = ?) onları hiç arşivleyemiyordu
+/// (CLAUDE.md §3.5).
+T stokHareketSubesi<T extends Map<String, dynamic>>(T satir, {int? subeId}) {
+  satir['sube_id'] ??= subeId ?? AktifSubeServisi().subeId ?? 1;
+  return satir;
+}

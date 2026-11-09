@@ -160,7 +160,7 @@ class IadeIslemServisi {
             'kullanici_id': kullaniciId,
             'aciklama': 'Toplu iade: $fisNo',
           };
-          final stokHareketId = await txn.insert('stok_hareket', stokSatiri);
+          final stokHareketId = await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
           await SyncKuyrukYazici.ekleTxn(txn,
               tablo: 'stok_hareket', veri: {...stokSatiri, 'id': stokHareketId});
           final guncelUrunSatiri = await txn.query('urunler',
@@ -432,7 +432,7 @@ class IadeIslemServisi {
             'aciklama': 'Fiş iadesi: $fisNo',
             if (girdi.key != null) 'lot_id': girdi.key,
           };
-          final stokHareketId = await txn.insert('stok_hareket', stokSatiri);
+          final stokHareketId = await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
           await SyncKuyrukYazici.ekleTxn(txn,
               tablo: 'stok_hareket', veri: {...stokSatiri, 'id': stokHareketId});
           stokHareketGidleri.add(gid);

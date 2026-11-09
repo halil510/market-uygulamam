@@ -61,7 +61,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           'kullanici_id': kullaniciId,
           'aciklama': 'İade ek kalem - $fisNo',
         };
-        final stokHareketId = await txn.insert('stok_hareket', stokSatiri);
+        final stokHareketId = await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
         await SyncKuyrukYazici.ekleTxn(txn,
             tablo: 'stok_hareket', veri: {...stokSatiri, 'id': stokHareketId});
         final guncelUrunSatiri = await txn.query('urunler',
@@ -345,7 +345,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           'referans_id': iadeId,
           'referans_turu': 'iade_iptal',
         };
-        final stokHareketId = await txn.insert('stok_hareket', stokSatiri);
+        final stokHareketId = await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
         await SyncKuyrukYazici.ekleTxn(txn,
             tablo: 'stok_hareket', veri: {...stokSatiri, 'id': stokHareketId});
         final guncelUrunSatiri = await txn.query('urunler',
@@ -580,7 +580,7 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
           'aciklama': 'Iade: $fisNo',
           'last_updated': now,
         };
-        final stokHareketId = await txn.insert('stok_hareket', stokSatiri);
+        final stokHareketId = await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
         await SyncKuyrukYazici.ekleTxn(txn,
             tablo: 'stok_hareket', veri: {...stokSatiri, 'id': stokHareketId});
         final guncelUrunSatiri = await txn.query('urunler',

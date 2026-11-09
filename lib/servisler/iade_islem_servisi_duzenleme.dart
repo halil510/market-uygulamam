@@ -89,7 +89,7 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
             'referans_id': iadeId,
             'referans_turu': 'iade_iptal',
           };
-          final stokHareketId = await txn.insert('stok_hareket', stokSatiri);
+          final stokHareketId = await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
           await SyncKuyrukYazici.ekleTxn(txn,
               tablo: 'stok_hareket', veri: {...stokSatiri, 'id': stokHareketId});
           final guncelUrunSatiri = await txn.query('urunler',
@@ -356,7 +356,7 @@ extension IadeIslemServisiDuzenleme on IadeIslemServisi {
             'referans_turu': 'iade_duzenle',
             'aciklama': 'İade miktarı değiştirildi',
           };
-          final stokHareketId = await txn.insert('stok_hareket', stokSatiri);
+          final stokHareketId = await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
           await SyncKuyrukYazici.ekleTxn(txn,
               tablo: 'stok_hareket', veri: {...stokSatiri, 'id': stokHareketId});
           final guncelUrunSatiri = await txn.query('urunler',

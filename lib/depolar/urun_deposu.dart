@@ -1,4 +1,5 @@
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/aktif_sube_servisi.dart';
 import '../cekirdek/utils/metin_arama.dart';
 // lib/depolar/urun_deposu.dart
 //
@@ -91,7 +92,7 @@ class UrunDeposu {
                 'last_updated': DateTime.now().toIso8601String(),
                 'referans_turu': 'excel_toplu_iceri_aktarim',
               };
-              await txn.insert('stok_hareket', stokSatiri);
+              await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
               await SyncKuyrukYazici.ekleTxn(txn,
                   tablo: 'stok_hareket', veri: stokSatiri);
             }
@@ -122,7 +123,7 @@ class UrunDeposu {
                   'last_updated': DateTime.now().toIso8601String(),
                   'referans_turu': 'excel_toplu_iceri_aktarim',
                 };
-                await txn.insert('stok_hareket', stokSatiri);
+                await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
                 await SyncKuyrukYazici.ekleTxn(txn,
                     tablo: 'stok_hareket', veri: stokSatiri);
               }
@@ -281,7 +282,7 @@ class UrunDeposu {
     // kaydediliyor.
     if (urun.stok > 0) {
       final hareketGid = const Uuid().v4();
-      await db.insert('stok_hareket', {
+      await db.insert('stok_hareket', stokHareketSubesi(<String, dynamic>{
         'global_id': hareketGid,
         'urun_id': id,
         'hareket_turu': 'İlk Stok',
@@ -292,7 +293,7 @@ class UrunDeposu {
         'last_updated': DateTime.now().toIso8601String(),
         'referans_turu': 'ilk_stok',
         'aciklama': 'Ürün eklenirken girilen başlangıç stoğu',
-      });
+      }));
       // 🔴 Derin analizde bulundu: global_id atanmıyordu, BulutManager
       // hiç çağrılmıyordu — yeni ürün başlangıç stoğu hareketi sadece
       // manuel senkronla buluta gidiyordu.
@@ -469,7 +470,7 @@ class UrunDeposu {
                 'referans_turu': 'urun_guncelle',
                 'aciklama': 'Ürün Güncelle ekranından stok değiştirildi',
               };
-              await txn.insert('stok_hareket', stokSatiri);
+              await txn.insert('stok_hareket', stokHareketSubesi(stokSatiri));
               await SyncKuyrukYazici.ekleTxn(txn,
                   tablo: 'stok_hareket', veri: stokSatiri);
             }

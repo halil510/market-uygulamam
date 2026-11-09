@@ -133,24 +133,34 @@ class VardiyaDeposu {
   // da nakit/kart/cari kırılımından kaybolmaması için aynı kasa_hareketleri/
   // cari_hareket tabanlı hesaplamaya geçirildi. Anahtar adları (PDF
   // şablonunun beklediği 'sayi'/'ciro'/'cari_toplam') DEĞİŞMEDİ.
-  Future<Map<String, dynamic>> pdfSatisOzetiGetir(String baslangicTarihi) async {
+  // 🔴 DERİN DENETİM (2026-11-09, #39 #65): kapanmış (geçmiş) vardiyanın
+  // raporu kapanış saatini sınır almıyordu — sonraki vardiyaların ve
+  // günlerin satışları da rapora giriyordu. [bitisTarihi] verilirse (kapanış)
+  // üç sorgu da o ana kadar sınırlanır.
+  Future<Map<String, dynamic>> pdfSatisOzetiGetir(String baslangicTarihi,
+      {String? bitisTarihi}) async {
     final db = await _d;
     final bas = DateTime.tryParse(baslangicTarihi);
+    final bit = bitisTarihi == null ? null : DateTime.tryParse(bitisTarihi);
+    String sinir(String kolon) => bit == null
+        ? TarihUtils.sonrasiSql(kolon, bas)
+        : '${TarihUtils.sonrasiSql(kolon, bas)} AND ${TarihUtils.oncesiSql(kolon, bit)}';
+    final args = [baslangicTarihi, ?bitisTarihi];
     final rows = await db.rawQuery('''
       SELECT COUNT(*) as sayi, COALESCE(SUM(genel_toplam),0) as ciro,
         COALESCE(SUM(iskonto_tutar),0) as iskonto
-      FROM satislar WHERE ${TarihUtils.sonrasiSql('tarih', bas)} AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
-    ''', [baslangicTarihi]);
+      FROM satislar WHERE ${sinir('tarih')} AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
+    ''', args);
     final ozet = Map<String, dynamic>.from(rows.first);
 
     final kasaRows = await db.rawQuery('''
       SELECT kh.odeme_yontemi, COALESCE(SUM(kh.tutar),0) as tutar
       FROM kasa_hareketleri kh
       JOIN satislar s ON s.id = kh.referans_id AND kh.referans_turu = 'satis'
-      WHERE ${TarihUtils.sonrasiSql('s.tarih', bas)} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
+      WHERE ${sinir('s.tarih')} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
         AND kh.deleted_at IS NULL
       GROUP BY kh.odeme_yontemi
-    ''', [baslangicTarihi]);
+    ''', args);
     double nakit = 0, kart = 0;
     for (final r in kasaRows) {
       final tutar = (r['tutar'] as num?)?.toDouble() ?? 0;
@@ -165,8 +175,8 @@ class VardiyaDeposu {
       FROM cari_hareket ch
       JOIN satislar s ON s.id = ch.fis_id
       WHERE ch.fis_tipi = 'Satış' AND ch.alacak = 0 AND ch.borc > 0 AND ch.is_deleted = 0
-        AND ${TarihUtils.sonrasiSql('s.tarih', bas)} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
-    ''', [baslangicTarihi]);
+        AND ${sinir('s.tarih')} AND s.iptal=0 AND s.is_deleted=0 AND s.sync_cakisma_kopyasi = 0
+    ''', args);
     final cariToplam = (cariRows.first['tutar'] as num?)?.toDouble() ?? 0;
 
     ozet['nakit'] = nakit;

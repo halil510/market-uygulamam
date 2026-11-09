@@ -26,7 +26,10 @@ class VardiyaRaporServisi {
 
   /// [vardiya] satırının raporunu oluşturup paylaşım/kaydetme penceresini açar.
   static Future<void> pdfPaylas(Map<String, dynamic> vardiya) async {
-    final ozet = await VardiyaDeposu().pdfSatisOzetiGetir(vardiya['acilis_tarihi'].toString());
+    // Kapanmış vardiyanın raporu kapanış anında biter (#39 #65).
+    final ozet = await VardiyaDeposu().pdfSatisOzetiGetir(
+        vardiya['acilis_tarihi'].toString(),
+        bitisTarihi: vardiya['kapanis_tarihi']?.toString());
     final pdf = pw.Document()..addPage(_sayfa(vardiya, ozet));
     await DosyaPaylasim.pdfPaylas(
         await pdf.save(), 'vardiya_raporu_${DateTime.now().millisecondsSinceEpoch}.pdf');

@@ -143,7 +143,12 @@ class FaturalandirmaServisi {
     // Hiçbir kalemde iskonto yoksa ve ayarda varsayılan iskonto tanımlıysa uygula.
     var islenmisKalemler = kalemler;
     final hicIskontoYok = kalemler.every((k) => k.iskontoOrani == 0 && k.iskontoTutari == 0);
-    if (hicIskontoYok && varsayilanIskonto > 0) {
+    // 🔴 DERİN DENETİM (2026-11-09, #55): varsayılan iskonto TAMAMLANMIŞ
+    // satış/iade faturasına da uygulanıyordu — fatura tutarı satıştan ve
+    // carinin borcundan düşük çıkıyordu. Belgeye bağlı faturada kalemler
+    // satıştaki gibi kullanılır; varsayılan iskonto yalnız bağımsız faturada.
+    final belgeyeBagli = satisId != null || iadeId != null;
+    if (!belgeyeBagli && hicIskontoYok && varsayilanIskonto > 0) {
       islenmisKalemler = kalemler.map((k) {
         final iskontoTutar = ParaUtils.yuvarla(k.araToplam * varsayilanIskonto / 100);
         final netTutar = ParaUtils.yuvarla(k.araToplam - iskontoTutar);

@@ -161,6 +161,11 @@ class AlimIslemServisi {
               'durum': 'teslim_alindi',
               'teslim_tarihi': now,
               'toplam_tutar': genelToplam,
+              // 🔴 DERİN DENETİM (2026-11-09, #31): teslim alırken tedarikçi
+              // değiştirilirse cari hareket YENİ tedarikçiye yazılıyor ama
+              // belgedeki cari_id eski kalıyordu; alım silinince sil()
+              // cariyi belgeden bulup ters kaydı üretmiyordu.
+              if (tedarikciId != null) 'cari_id': tedarikciId,
               'last_updated': now,
             },
             where: 'id = ? AND durum = ?',
@@ -548,6 +553,12 @@ class AlimIslemServisi {
           },
           where: 'id = ?',
           whereArgs: [alimId]);
+      final iptalAlim = await txn.query('tedarikci_siparisler',
+          where: 'id = ?', whereArgs: [alimId], limit: 1);
+      if (iptalAlim.isNotEmpty) {
+        await SyncKuyrukYazici.ekleTxn(txn,
+            tablo: 'tedarikci_siparisler', veri: Map<String, dynamic>.from(iptalAlim.first));
+      }
 
       // 3. Stok geri düş
       final kalemler = await txn.query('tedarikci_siparis_kalem',
@@ -563,7 +574,11 @@ class AlimIslemServisi {
         final sonraki = onceki - miktar;
         await txn.update('urunler', {'stok': sonraki},
             where: 'id = ?', whereArgs: [urunId]);
-        await txn.insert('stok_hareket', {
+        // 🔴 DERİN DENETİM (2026-11-09, #28): ters hareket global_id'siz
+        // yazılıp kuyruğa hiç girmiyordu — diğer cihazların stok
+        // mutabakatı alımı iptal edilmemiş sayıyordu.
+        final tersHareket = <String, dynamic>{
+          'global_id':     const Uuid().v4(),
           'urun_id':       urunId,
           'hareket_turu':  'Alım İptali',
           'miktar':        miktar,
@@ -574,7 +589,9 @@ class AlimIslemServisi {
           'tarih':         now,
           'last_updated':  now,
           'aciklama':      'Alım iptali — Fiş $alimNo',
-        });
+        };
+        await txn.insert('stok_hareket', tersHareket);
+        await SyncKuyrukYazici.ekleTxn(txn, tablo: 'stok_hareket', veri: tersHareket);
         // Ana stok AZALDI (alım iptali) — subeStokPayiUygula
         // pozitif=düştü bekliyor (alimKaydet()'teki AYNI mantığın tersi).
         subePayiFarklari[urunId] = (subePayiFarklari[urunId] ?? 0) + miktar;

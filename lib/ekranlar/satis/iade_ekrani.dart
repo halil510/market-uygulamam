@@ -122,6 +122,10 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   // Müşteri oturum iadesi (tek fiş altında toplama)
   int? _oturumIadeId;
   String _oturumFisNo = '';
+  // Açık oturum belgesinin ödeme yöntemi ve carisi — belge tek yöntem ve tek
+  // cari varsayar (bkz. _oturumUyumunuKoru).
+  String? _oturumYontem;
+  int? _oturumCariId;
 
   // 🔴 YENİ (2026-10-13): tedarikçi/bayi oturum belgesi — tek fiş modeli.
   // İlk kayıtta belge açılır, sonraki kayıtlar AYNI belgeye kalem olarak

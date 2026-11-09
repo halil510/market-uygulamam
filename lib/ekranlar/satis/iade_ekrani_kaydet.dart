@@ -13,6 +13,18 @@
 // kalem eklenir; aksi halde yeni belge açılır.
 part of 'iade_ekrani.dart';
 
+/// Açık iade belgesine yeni kalem eklenmeden önce: yöntem ya da cari belge
+/// açıldığından farklıysa yeni belge gerekir (derin denetim 2026-11-09).
+@visibleForTesting
+bool iadeOturumuYeniBelgeGerekir({
+  required int? oturumIadeId,
+  required String? oturumYontem,
+  required int? oturumCariId,
+  required String yontem,
+  required int? cariId,
+}) =>
+    oturumIadeId != null && (oturumYontem != yontem || oturumCariId != cariId);
+
 /// İki DateTime aynı takvim gününde mi? (Yıl-Ay-Gün karşılaştırması)
 bool _ayniGunMu(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
@@ -75,6 +87,35 @@ extension _IadeKaydetExt on _IadeEkraniState {
     return a.isEmpty ? null : a;
   }
 
+  /// 🔴 DERİN DENETİM (2026-11-09, #7 #8): açık iade belgesi tek ödeme
+  /// yöntemi ve tek cari varsayar (kalem silme/düzenleme ters kaydı belge
+  /// düzeyinde hesaplanır, silme cariyi belgenin cari_id'siyle bulur). Aynı
+  /// belgede yöntem (Cari ↔ Nakit) ya da cari değiştirilince kalem silmek
+  /// kasaya hayali giriş / cariye çift alacak yazıyor, ikinci carinin
+  /// alacağı belge silinince geri alınmıyordu. Kayıttan önce yöntem/cari
+  /// değiştiyse eski belge kapanır, YENİ iade fişi açılır.
+  void _oturumUyumunuKoru() {
+    if (!iadeOturumuYeniBelgeGerekir(
+        oturumIadeId: _oturumIadeId,
+        oturumYontem: _oturumYontem,
+        oturumCariId: _oturumCariId,
+        yontem: _iadeOdemeYontemi,
+        cariId: _secilenCari?.id)) {
+      return;
+    }
+    _oturumIadeId = null;
+    _oturumFisNo = '';
+    _msg('İade yöntemi veya cari değişti — yeni iade fişi açılıyor', err: false);
+  }
+
+  /// Belge ilk açıldığında yöntem/cari hatırlanır.
+  void _oturumBelgesiniKaydet(int iadeId) {
+    if (_oturumIadeId != null) return;
+    _oturumIadeId = iadeId;
+    _oturumYontem = _iadeOdemeYontemi;
+    _oturumCariId = _secilenCari?.id;
+  }
+
   // ── Müşteri iadesi (oturum fişine kalem) ─────────────────────────────────
   Future<void> _musteriIadesiKaydet() async {
     final urun = _secilenUrun!;
@@ -82,6 +123,7 @@ extension _IadeKaydetExt on _IadeEkraniState {
     setState(() => _yukleniyor = true);
     try {
       final (:fiyat, :isk, :toplam) = _formTutarlari();
+      _oturumUyumunuKoru();
       if (_oturumFisNo.isEmpty) {
         _oturumFisNo = await BelgeNoServisi().uret('iade');
       }
@@ -101,7 +143,7 @@ extension _IadeKaydetExt on _IadeEkraniState {
         kullaniciAdi: AuthServisi().aktifAd,
         iskontoOran: isk,
       );
-      _oturumIadeId ??= iadeId;
+      _oturumBelgesiniKaydet(iadeId);
 
       final mevcutIdx = _iadeListesi.indexWhere((x) => x['urun_id'] == urun.id);
       if (mevcutIdx != -1) {

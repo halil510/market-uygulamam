@@ -203,6 +203,7 @@ extension _IadeExcelExt on _IadeEkraniState {
     var basarili = 0;
     final hatalar = <String>[];
     try {
+      _oturumUyumunuKoru();
       if (_oturumFisNo.isEmpty) _oturumFisNo = await BelgeNoServisi().uret('iade');
       for (final e in eslesen) {
         try {
@@ -224,7 +225,7 @@ extension _IadeExcelExt on _IadeEkraniState {
             kullaniciAdi: AuthServisi().aktifAd,
             iskontoOran: e.iskonto,
           );
-          _oturumIadeId ??= iadeId;
+          _oturumBelgesiniKaydet(iadeId);
           final idx = _iadeListesi.indexWhere((x) => x['urun_id'] == e.urun.id);
           if (idx != -1) {
             final m = _iadeListesi.removeAt(idx);

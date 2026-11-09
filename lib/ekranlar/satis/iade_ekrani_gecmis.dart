@@ -214,6 +214,9 @@ extension _GecmisTabExt on _IadeEkraniState {
       _oturumIadeId = iadeId;
       _oturumFisNo = iade['fis_no']?.toString() ?? '';
       _iadeOdemeYontemi = orjYontem;
+      // Belgenin yöntem/carisi — değişirse yeni fiş açılır (_oturumUyumunuKoru).
+      _oturumYontem = orjYontem;
+      _oturumCariId = cari?.id;
       // Düzenleme modu müşteri iadesi içindir — tedarikçi/bayi oturumunu sıfırla.
       _cariOturumIadeId = null;
       _cariOturumFisNo = '';

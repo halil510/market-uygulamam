@@ -153,7 +153,7 @@ class _KullaniciDegistirEkraniState extends ConsumerState<KullaniciDegistirEkran
         // Sistem hatası — hatalı PIN sayılmaz, gerçek sebep gösterilir.
         _pin.value = '';
         _hata.value = 'Giriş yapılamadı: '
-            '${ref.read(authProvider).hataMesaji ?? 'beklenmeyen hata'}';
+            '${notifier.sonHataMesaji ?? ref.read(authProvider).hataMesaji ?? 'beklenmeyen hata'}';
       } else {
         _hataliGiris++;
         _pin.value = '';

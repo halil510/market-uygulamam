@@ -58,8 +58,23 @@ class Auth extends _$Auth {
     }
   }
 
+  /// Son başarısız giriş denemesinin hata metni (#77: açık oturum korunduğunda
+  /// state.hataMesaji önceki oturumu gösterir; ekran bunu okur).
+  String? sonHataMesaji;
+
   Future<GirisSonucu> girisYap(String kullaniciAdi, String sifre) async {
-    state = const AuthState.yukleniyor();
+    // DERİN DENETİM (2026-11-09, #77): "Kullanıcı Değiştir" açık oturumda
+    // çağrılır. Önceden durum hemen 'yukleniyor'a, hatada 'cikisYapildi'ya
+    // geçiyordu — router tek hatalı PIN'de mevcut oturumu kapatıp giriş
+    // ekranına atıyordu. Açık oturum varken (servis kullanıcıyı başarısız
+    // denemede değiştirmez) durum yalnız başarıda değişir.
+    final oncekiOturum =
+        state.girisYapildi && _servis.aktifKullanici != null ? state : null;
+    AuthState basarisiz(AuthState yeni) {
+      sonHataMesaji = yeni.hataMesaji;
+      return oncekiOturum ?? yeni;
+    }
+    if (oncekiOturum == null) state = const AuthState.yukleniyor();
     try {
       final basarili = await _servis.girisYap(kullaniciAdi, sifre);
       if (basarili) {
@@ -85,19 +100,20 @@ class Auth extends _$Auth {
           return GirisSonucu.basarili;
         }
       }
-      state = const AuthState.cikisYapildi();
+      state = basarisiz(const AuthState.cikisYapildi());
       unawaited(AuditLogServisi().girisKaydet(
           kullaniciId: null, kullaniciAdi: kullaniciAdi, basarili: false));
       return GirisSonucu.hataliSifre;
     } on AuthKilitliException catch (e) {
-      state = AuthState.hata(e.mesaj);
+      state = basarisiz(AuthState.hata(e.mesaj));
       unawaited(AuditLogServisi().girisKaydet(
           kullaniciId: null, kullaniciAdi: kullaniciAdi, basarili: false));
       return GirisSonucu.kilitli;
     } catch (e) {
       // Şifre yanlışlığı DEĞİL, sistem hatası (ör. veritabanı açılamadı):
       // ekran bunu "Hatalı şifre" saymamalı — mesaj state.hataMesaji'nda.
-      state = AuthState.hata(kullaniciyaHataMetni(e)); return GirisSonucu.hata;
+      state = basarisiz(AuthState.hata(kullaniciyaHataMetni(e)));
+      return GirisSonucu.hata;
     }
   }
 

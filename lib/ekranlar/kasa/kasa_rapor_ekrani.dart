@@ -41,7 +41,7 @@ final kasaRaporProvider = FutureProvider.family
   final ozet       = await ref.watch(merkezi.kasaRaporProvider(aralik).future);
   final hareketler = ozet.hareketler;
 
-  double giris = 0, cikis = 0;
+
   final gunlukMap = <String, double>{};
 
   // ÖNCEDEN BURADA KRİTİK BİR HATA VARDI: `h.tutar > 0` her zaman true
@@ -59,19 +59,20 @@ final kasaRaporProvider = FutureProvider.family
   for (final h in kronolojik) {
     final gun = DateFormat('dd.MM').format(h.tarih);
     if (girisTipleri.contains(h.hareketTipi)) {
-      giris += h.tutar.abs();
       gunlukMap[gun] = (gunlukMap[gun] ?? 0) + h.tutar.abs();
     } else {
-      cikis += h.tutar.abs();
       gunlukMap[gun] = (gunlukMap[gun] ?? 0) - h.tutar.abs();
     }
   }
 
   return _KasaRaporVeri(
     hareketler:  hareketler,
-    toplamGiris: giris,
-    toplamCikis: cikis,
-    netHareket:  giris - cikis,
+    // 🔴 DERİN DENETİM (2026-11-09, #40): toplamlar YALNIZ yüklenen son 100
+    // hareketten hesaplanıyordu; merkezi özet (limitsiz aralikOzet) kullanılır.
+    // Günlük grafik yüklenen hareketlerden kalır.
+    toplamGiris: ozet.toplamGiris,
+    toplamCikis: ozet.toplamCikis,
+    netHareket:  ozet.toplamGiris - ozet.toplamCikis,
     guncelBakiye: ozet.guncelBakiye,
     // Çekmecedeki nakit (kart satışları hariç) — toplamla karışmasın.
     nakitBakiye: await KasaDeposu().guncelBakiyeNakit(),
@@ -150,7 +151,14 @@ class _KasaRaporEkraniState extends ConsumerState<KasaRaporEkrani> {
             TarihUtils.secimAraligiKirp(_aralik, DateTime(2020), DateTime.now()),
         locale: const Locale('tr', 'TR'),
       );
-      if (secilen != null) setState(() => _aralik = secilen);
+      // #41: bitiş günün başı (00:00) geliyordu — son günün hareketleri
+      // hesaba katılmıyordu. Bitiş günün sonuna çekilir.
+      if (secilen != null) {
+        final son = secilen.end;
+        setState(() => _aralik = DateTimeRange(
+            start: secilen.start,
+            end: DateTime(son.year, son.month, son.day, 23, 59, 59)));
+      }
         } catch (e) {
       if (kDebugMode) if (mounted) debugPrint('Hata: ${bildirimMetniniSadelestir(e.toString())}');
     }

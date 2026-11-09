@@ -22,6 +22,7 @@ import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
 import 'package:uuid/uuid.dart';
 import '../cekirdek/utils/excel_guvenlik_utils.dart';
+import '../cekirdek/utils/para_utils.dart';
 
 part 'excel_servisi_stok_promosyon.dart';
 part 'excel_servisi_iade_gunsonu.dart';
@@ -590,6 +591,18 @@ class ExcelServisi {
           // global_id ve qr_menude dahil (bu ikisi hiç parametre
           // olarak verilmiyor, copyWith otomatik olarak mevcut kaydın
           // değerini korur).
+          // 🔴 DERİN DENETİM (2026-11-09, #51): KDV sütunu yokken alış
+          // fiyatı ürünün KENDİ KDV'si yerine varsayılan %18 ile
+          // çevriliyordu (yanlış KDV hariç/dahil alış). Mevcut ürünün oranı
+          // kullanılır.
+          if (kdvIndex == -1) {
+            final oran = mevcut.alisKdvOran > 0 ? mevcut.alisKdvOran : UrunModel.kdvOranCoz(mevcut.kdvOran);
+            if (alisFiyatKdvDahilIndex != -1 && alisFiyatKdvDahil > 0) {
+              alisFiyat = ParaUtils.yuvarla(ParaUtils.kdvHaricFiyat(alisFiyatKdvDahil, oran));
+            } else if (alisFiyatIndex != -1 && alisFiyat > 0) {
+              alisFiyatKdvDahil = ParaUtils.yuvarla(ParaUtils.kdvDahilFiyat(alisFiyat, oran));
+            }
+          }
           urun = ExcelUrunBirlestirici.guncellemeIcinBirlestir(
             mevcut: mevcut,
             urunAdi: urunAdi,

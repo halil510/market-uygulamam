@@ -67,4 +67,20 @@ void main() {
         ]),
         isEmpty);
   });
+
+  test('#90: ödenmiş siparişe kalem eklenemez, toplam değişmez', () async {
+    final depo = MasaDeposu();
+    final s = await depo.siparisAcVeyaGetir(masaId);
+    await depo.kalemEkle(s.id!, urunId: urunId, urunAdi: 'x', birimFiyat: 100, kdvOran: 20);
+    await db.update('masa_siparisleri', {'durum': 'odendi'}, where: 'id = ?', whereArgs: [s.id]);
+    final onceki = (await db.query('masa_siparisleri', where: 'id = ?', whereArgs: [s.id]))
+        .first['toplam_tutar'];
+    await expectLater(
+        depo.kalemEkle(s.id!, urunId: urunId, urunAdi: 'x', birimFiyat: 100, kdvOran: 20),
+        throwsException);
+    final kalemId = (await db.query('masa_siparis_kalem')).first['id'] as int;
+    await expectLater(depo.kalemSil(kalemId), throwsException);
+    expect((await db.query('masa_siparisleri', where: 'id = ?', whereArgs: [s.id]))
+        .first['toplam_tutar'], onceki);
+  });
 }

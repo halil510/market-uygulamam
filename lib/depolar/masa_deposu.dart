@@ -439,6 +439,7 @@ class MasaDeposu {
     // geldiyse aynen korunur.
     final fiyatci = await _fiyatciGetir(urunId, birimFiyat);
     await _yaz((txn, k) async {
+      await _siparisAcikOlmaliTxn(txn, siparisId);
       final mevcut = await txn.query(DbSabitler.masaSiparisKalem,
           where: 'siparis_id = ? AND urun_id = ? AND is_deleted = 0 AND durum = ?'
               '${not_ == null ? ' AND (not_ IS NULL)' : ' AND not_ = ?'}',
@@ -492,6 +493,7 @@ class MasaDeposu {
           where: 'id = ?', whereArgs: [kalemId], limit: 1);
       if (rows.isEmpty) return;
       final siparisId = rows.first['siparis_id'] as int;
+      await _siparisAcikOlmaliTxn(txn, siparisId);
 
       if (miktar <= 0) {
         await txn.update(DbSabitler.masaSiparisKalem,
@@ -567,6 +569,7 @@ class MasaDeposu {
           where: 'id = ?', whereArgs: [kalemId], limit: 1);
       if (rows.isEmpty) return;
       final siparisId = rows.first['siparis_id'] as int;
+      await _siparisAcikOlmaliTxn(txn, siparisId);
       await txn.update(DbSabitler.masaSiparisKalem,
           {'is_deleted': 1, 'last_updated': DateTime.now().toIso8601String()},
           where: 'id = ?', whereArgs: [kalemId]);
@@ -644,6 +647,19 @@ class MasaDeposu {
         where: 'siparis_id = ? AND is_deleted = 0', whereArgs: [siparisId]);
     return kalemler.fold<double>(0.0, (acc, k) =>
         acc + (k['miktar'] as num).toDouble() * (k['birim_fiyat'] as num).toDouble());
+  }
+
+  /// DERİN DENETİM (2026-11-09, #90): kalem ekleme/değiştirme/silme yalnız
+  /// AÇIK siparişte yapılır — ödenmiş/iptal siparişe kalem eklenip toplamı
+  /// değişiyordu (kalan QR çekimi, bayat ekran).
+  Future<void> _siparisAcikOlmaliTxn(Transaction txn, int siparisId) async {
+    final r = await txn.query(DbSabitler.masaSiparisleri,
+        columns: ['durum'], where: 'id = ?', whereArgs: [siparisId], limit: 1);
+    final durum = r.isEmpty ? null : r.first['durum'] as String?;
+    if (durum != 'acik') {
+      throw Exception('Bu sipariş artık açık değil (${durum ?? 'bulunamadı'}) — '
+          'masa ekranını yenileyin.');
+    }
   }
 
   Future<void> _toplamGuncelleTxn(

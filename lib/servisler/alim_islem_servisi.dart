@@ -560,6 +560,29 @@ class AlimIslemServisi {
             tablo: 'tedarikci_siparisler', veri: Map<String, dynamic>.from(iptalAlim.first));
       }
 
+      // 3a. 🔴 DERİN DENETİM (2026-11-09, #34): alımda açılan/artırılan
+      // lot_seri miktarı silmede yerinde kalıyordu — lot toplamı ürün
+      // stoğundan kopuyor, FEFO var olmayan partiyi satıyordu. Bu alımın lot
+      // bazlı NET girişi lot'lardan düşülür ve kuyruğa yazılır.
+      final lotGirisleri = await txn.rawQuery('''
+        SELECT lot_id, SUM(sonraki_stok - onceki_stok) AS net
+        FROM stok_hareket
+        WHERE referans_id = ? AND referans_turu = 'alim' AND lot_id IS NOT NULL
+        GROUP BY lot_id
+      ''', [alimId]);
+      for (final l in lotGirisleri) {
+        final net = (l['net'] as num?)?.toDouble() ?? 0;
+        if (net <= 0.005) continue;
+        await txn.rawUpdate(
+            'UPDATE lot_seri SET miktar = miktar - ?, last_updated = ? WHERE id = ?',
+            [net, now, l['lot_id']]);
+        final lot = await txn.query('lot_seri', where: 'id = ?', whereArgs: [l['lot_id']], limit: 1);
+        if (lot.isNotEmpty) {
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'lot_seri', veri: Map<String, dynamic>.from(lot.first));
+        }
+      }
+
       // 3. Stok geri düş
       final kalemler = await txn.query('tedarikci_siparis_kalem',
           where: 'siparis_id = ?', whereArgs: [alimId]);

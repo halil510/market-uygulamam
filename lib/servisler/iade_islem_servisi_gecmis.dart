@@ -300,6 +300,29 @@ extension IadeIslemServisiGecmis on IadeIslemServisi {
       if (guncelIade.isNotEmpty && guncelIade.first['durum'] == 'iptal') {
         throw Exception('Bu iade zaten iptal edilmiş.');
       }
+      // 🔴 DERİN DENETİM (2026-11-09, #33): fiş iadesi lotlu üründe
+      // lot_seri.miktar'ı artırıyordu; iade silinince yalnız ürün stoğu
+      // düşüyor, lot miktarı şişik kalıyordu. İadenin lot bazlı NET girişi
+      // lot'lardan geri düşülür (yalnız ekleme — mevcut ters kayıt mantığı
+      // değişmedi).
+      final lotGirisleri = await txn.rawQuery('''
+        SELECT lot_id, SUM(sonraki_stok - onceki_stok) AS net
+        FROM stok_hareket
+        WHERE referans_id = ? AND referans_turu = 'iade' AND lot_id IS NOT NULL
+        GROUP BY lot_id
+      ''', [iadeId]);
+      for (final l in lotGirisleri) {
+        final net = (l['net'] as num?)?.toDouble() ?? 0;
+        if (net <= 0.005) continue;
+        await txn.rawUpdate(
+            'UPDATE lot_seri SET miktar = miktar - ?, last_updated = ? WHERE id = ?',
+            [net, now, l['lot_id']]);
+        final lot = await txn.query('lot_seri', where: 'id = ?', whereArgs: [l['lot_id']], limit: 1);
+        if (lot.isNotEmpty) {
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: 'lot_seri', veri: Map<String, dynamic>.from(lot.first));
+        }
+      }
       for (final k in kalemler) {
         final urunId = k['urun_id'] as int?;
         final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;

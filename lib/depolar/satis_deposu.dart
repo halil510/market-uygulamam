@@ -647,7 +647,15 @@ class SatisDeposu {
     final rows = await db.rawQuery('''
       SELECT
         COALESCE(SUM(ik.toplam), 0) AS tutar,
-        COALESCE(SUM(ik.miktar * COALESCE(u.alis_fiyat_kdv_dahil, 0)), 0) AS maliyet
+        -- DERİN DENETİM (2026-11-09, #68): fişli iadede maliyet, satış anında
+        -- damgalanan orijinal kalem maliyetidir (maliyetToplami ile aynı
+        -- kaynak); yalnız fişsiz iadede güncel alış fiyatına düşülür.
+        COALESCE(SUM(ik.miktar * COALESCE(
+          (SELECT SUM(sk.miktar * sk.alis_fiyat_kdv) / NULLIF(SUM(sk.miktar), 0)
+             FROM satis_kalem sk
+            WHERE sk.satis_id = i.satis_id AND sk.urun_id = ik.urun_id
+              AND sk.alis_fiyat_kdv > 0),
+          u.alis_fiyat_kdv_dahil, 0)), 0) AS maliyet
       FROM iade_kalem ik
       JOIN iade i ON ik.iade_id = i.id
       LEFT JOIN urunler u ON ik.urun_id = u.id

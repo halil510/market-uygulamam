@@ -7,10 +7,16 @@ import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import 'kasa_deposu.dart';
 import 'package:uuid/uuid.dart';
+import '../cekirdek/utils/para_utils.dart';
 
 class KrediKartiDeposu {
   final Veritabani _db = Veritabani();
   Future<Database> get _d async => _db.db;
+
+  static double _kalanLimit(Object? limit, Object? kullanilan) {
+    final k = ((limit as num?)?.toDouble() ?? 0) - ((kullanilan as num?)?.toDouble() ?? 0);
+    return k < 0 ? 0 : ParaUtils.yuvarla(k);
+  }
 
   Future<int> ekle(KrediKartiModel kart) async {
     try {
@@ -27,6 +33,9 @@ class KrediKartiDeposu {
       if (m['kart_no_maskeli'] == null || (m['kart_no_maskeli'] as String).isEmpty) {
         m['kart_no_maskeli'] = '**** **** **** ????';
       }
+      // 🔴 DERİN DENETİM (2026-11-09, #42): kalan_limit formdan 0 geliyordu
+      // (kart "limiti dolu" görünüyordu). Her zaman türetilir.
+      m['kalan_limit'] = _kalanLimit(m['kartlimit'], m['kullanilan_limit']);
       final id = await db.insert('kredi_kartlari', m);
       await BulutManager().satiriBildir(db, 'kredi_kartlari', id);
       return id;
@@ -44,6 +53,13 @@ class KrediKartiDeposu {
       if (m['kart_no_maskeli'] == null || (m['kart_no_maskeli'] as String).isEmpty) {
         m['kart_no_maskeli'] = '**** **** **** ????';
       }
+      // #42: kullanılan limit hareketlerden türetilir (CLAUDE.md §5.3) —
+      // formdaki (bayat) değer yazılmaz; limit değişince kalan yeniden
+      // hesaplanır.
+      final eski = await db.query('kredi_kartlari',
+          columns: ['kullanilan_limit'], where: 'id = ?', whereArgs: [kart.id], limit: 1);
+      if (eski.isNotEmpty) m['kullanilan_limit'] = eski.first['kullanilan_limit'];
+      m['kalan_limit'] = _kalanLimit(m['kartlimit'], m['kullanilan_limit']);
       await db.update('kredi_kartlari', m, where: 'id = ?', whereArgs: [kart.id]);
       // 🔴 Bkz. BankaDeposu.guncelle() içindeki aynı not — kredi kartı
       // kaydının kendisi de bu tabloya sonradan senkron eklendiğinde

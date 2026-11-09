@@ -216,7 +216,9 @@ class AuthServisi {
   // Oturum süresi: DB'deki son_giris alanı referans alınır.
   // Cihaz saatini değiştirmek oturumu uzatamaz çünkü DB kaydı sunucu/uygulama
   // tarafından yazılıyor; kullanıcı doğrudan erişemiyor.
-  Future<void> oturumuYenile() async {
+  /// [aktiviteKaydet] false → yalnız doğrular, son_giris ilerletilmez
+  /// (periyodik kontrol 8 saatlik süreyi sonsuza uzatmasın — #76).
+  Future<void> oturumuYenile({bool aktiviteKaydet = true}) async {
     try {
       // SecureStorage'dan uid oku
       final secure = const FlutterSecureStorage();
@@ -270,7 +272,7 @@ class AuthServisi {
         _yetkiCache = await _depo.yetkileriniGetir(kullanici.id!);
       }
       // Aktif kalındığını DB'ye işle
-      await _depo.sonGirisGuncelle(kullanici.id!);
+      if (aktiviteKaydet) await _depo.sonGirisGuncelle(kullanici.id!);
     } catch (e, st) {
       LogServisi().hata('Oturum yenileme hatası', hata: e, yigin: st);
       _aktifKullanici = null;

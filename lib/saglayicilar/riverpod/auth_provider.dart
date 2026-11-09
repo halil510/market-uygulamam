@@ -1,10 +1,12 @@
 // lib/saglayicilar/riverpod/auth_provider.dart
 import 'dart:async';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../cekirdek/utils/hata_utils.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/audit_log_servisi.dart';
+import '../../servisler/log_servisi.dart';
 import '../../modeller/kullanici_model.dart';
 import 'sepet_provider.dart';
 
@@ -45,7 +47,37 @@ class Auth extends _$Auth {
   @override
   AuthState build() {
     Future.microtask(_oturumKontrol);
+    // DERİN DENETİM (2026-11-09, #76): oturumuYenile yalnız açılışta (oturum
+    // henüz aktif değilken) çağrılıyordu — 8 saatlik süre, pasife alınma ve
+    // yetki değişikliği açık oturuma hiç yansımıyordu. Uygulama ön plana
+    // dönünce ve periyodik olarak açık oturum yeniden doğrulanır.
+    final dinleyici = AppLifecycleListener(onResume: () => _acikOturumuTazele());
+    final zamanlayici = Timer.periodic(
+        const Duration(minutes: 10),
+        (_) => _acikOturumuTazele(aktiviteKaydet: false));
+    ref.onDispose(() {
+      dinleyici.dispose();
+      zamanlayici.cancel();
+    });
     return const AuthState.yukleniyor();
+  }
+
+  bool _tazeleniyor = false;
+
+  Future<void> _acikOturumuTazele({bool aktiviteKaydet = true}) async {
+    if (_tazeleniyor || !state.girisYapildi) return;
+    _tazeleniyor = true;
+    try {
+      await _servis.oturumuYenile(aktiviteKaydet: aktiviteKaydet);
+      if (!ref.mounted || !state.girisYapildi) return;
+      final k = _servis.aktifKullanici;
+      // Süre doldu / kullanıcı pasif-silinmiş → çıkış (router /giris'e alır).
+      state = k != null ? AuthState.girisYapildi(k) : const AuthState.cikisYapildi();
+    } catch (e, st) {
+      LogServisi().hata('Açık oturum tazelenemedi', hata: e, yigin: st);
+    } finally {
+      _tazeleniyor = false;
+    }
   }
 
   Future<void> _oturumKontrol() async {

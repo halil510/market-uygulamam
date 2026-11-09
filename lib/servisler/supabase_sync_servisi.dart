@@ -1747,19 +1747,37 @@ class SupabaseSyncServisi {
     final bulutIdler = hedefler.values.map((h) => h.bulutId).toList();
     for (var i = 0; i < bulutIdler.length; i += 100) {
       final dilim = bulutIdler.sublist(i, (i + 100).clamp(0, bulutIdler.length));
-      final res = await http.get(
-        Uri.parse('${ayar.rest}/satis_kalem?select=global_id,satis_id'
-            '&satis_id=in.(${dilim.join(',')})'),
-        headers: _getH(ayar.key),
-      ).timeout(const Duration(seconds: 30));
-      if (res.statusCode != 200) return; // emin değilsek hiçbir şey silme
-      for (final r in (jsonDecode(res.body) as List).cast<Map<String, dynamic>>()) {
-        final sid = r['satis_id'];
-        final g = r['global_id']?.toString();
-        if (sid == null || g == null) continue;
-        final id = sid is int ? sid : int.tryParse(sid.toString());
-        if (id != null) bulutKalemleri.putIfAbsent(id, () => <String>{}).add(g);
+      // DERİN DENETİM (2026-11-09, #62): PostgREST yanıtı max-rows (1000) ile
+      // sessizce kesilir; kesik yanıtta dönmeyen kalemler "silinmiş" sanılıp
+      // yerelden siliniyordu. Sabit sırayla sayfalanır; tam gelmezse
+      // (hata / güvenlik sınırı) hiçbir şey silinmez.
+      const sayfa = 1000;
+      var offset = 0;
+      var tamam = false;
+      for (var tur = 0; tur < 200; tur++) {
+        final res = await http.get(
+          Uri.parse('${ayar.rest}/satis_kalem?select=global_id,satis_id'
+              '&satis_id=in.(${dilim.join(',')})'
+              '&order=id.asc&limit=$sayfa&offset=$offset'),
+          headers: _getH(ayar.key),
+        ).timeout(const Duration(seconds: 30));
+        if (res.statusCode != 200) return; // emin değilsek hiçbir şey silme
+        final satirlar =
+            (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
+        for (final r in satirlar) {
+          final sid = r['satis_id'];
+          final g = r['global_id']?.toString();
+          if (sid == null || g == null) continue;
+          final id = sid is int ? sid : int.tryParse(sid.toString());
+          if (id != null) bulutKalemleri.putIfAbsent(id, () => <String>{}).add(g);
+        }
+        if (satirlar.length < sayfa) {
+          tamam = true;
+          break;
+        }
+        offset += sayfa;
       }
+      if (!tamam) return;
     }
 
     var silinen = 0;

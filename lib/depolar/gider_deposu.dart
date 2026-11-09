@@ -530,9 +530,13 @@ class GiderDeposu {
   Future<double> aralikToplamGider(DateTime bas, DateTime bit) async {
     try {
       final db = await _d;
+      // DERİN DENETİM (2026-11-09, #67/#70): Kâr/Zarar gibi aktif şubeye
+      // göre süzülür (Tüm Şubeler modunda filtre yok).
+      final subeId = AktifSubeServisi().subeId;
       final res = await db.rawQuery(
-        'SELECT SUM(tutar) as toplam FROM giderler WHERE ${TarihUtils.aralikSql('tarih', bas, bit)} AND deleted_at IS NULL',
-        [bas.toIso8601String(), bit.toIso8601String()],
+        'SELECT SUM(tutar) as toplam FROM giderler WHERE ${TarihUtils.aralikSql('tarih', bas, bit)} AND deleted_at IS NULL'
+        '${subeId != null ? ' AND sube_id = ?' : ''}',
+        [bas.toIso8601String(), bit.toIso8601String(), ?subeId],
       );
       return (res.first['toplam'] as num?)?.toDouble() ?? 0;
     } catch (e, st) {

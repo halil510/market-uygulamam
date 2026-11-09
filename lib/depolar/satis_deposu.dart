@@ -777,6 +777,9 @@ class SatisDeposu {
 
   Future<Map<String, double>> gunlukIstatistik() async {
     final db = await _d;
+    // DERİN DENETİM (2026-11-09, #70): haftalık/aylık ciro gibi aktif şubeye
+    // göre süzülür (Tüm Şubeler modunda filtre yok).
+    final subeId = AktifSubeServisi().subeId;
     final res = await db.rawQuery(
       "SELECT COUNT(*) as satis_sayisi, SUM(genel_toplam) as ciro, "
       "SUM(iskonto_tutar) as iskonto, "
@@ -808,7 +811,9 @@ class SatisDeposu {
       // girmiyordu. 'localtime' değiştiricisi SQLite'a cihazın kendi
       // saat dilimini kullanmasını söyler — POS cihazı zaten işletmenin
       // kendi lokasyonunda olduğu için bu doğru varsayımdır.
-      "WHERE DATE(tarih) = DATE('now','localtime') AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0",
+      "WHERE DATE(tarih) = DATE('now','localtime') AND iptal = 0 AND is_deleted = 0 AND sync_cakisma_kopyasi = 0"
+      "${subeId != null ? ' AND sube_id = ?' : ''}",
+      [?subeId],
     );
     if (res.isEmpty) return {};
     final r = res.first;
@@ -835,6 +840,8 @@ class SatisDeposu {
   /// yorumu.
   Future<double> gunlukMaliyet() async {
     final db = await _d;
+    final subeId = AktifSubeServisi().subeId; // #70: şube filtresi
+
     final rows = await db.rawQuery('''
       SELECT COALESCE(SUM(
         CASE WHEN sk.alis_fiyat_kdv > 0 THEN sk.miktar * sk.alis_fiyat_kdv
@@ -845,7 +852,8 @@ class SatisDeposu {
       LEFT JOIN urunler u ON sk.urun_id = u.id
       WHERE DATE(s.tarih) = DATE('now','localtime')
         AND s.iptal = 0 AND s.is_deleted = 0 AND s.sync_cakisma_kopyasi = 0
-    ''');
+        ${subeId != null ? 'AND s.sube_id = ?' : ''}
+    ''', [?subeId]);
     return (rows.first['maliyet'] as num?)?.toDouble() ?? 0;
   }
 

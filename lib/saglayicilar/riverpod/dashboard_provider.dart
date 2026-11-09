@@ -122,6 +122,7 @@ class Dashboard extends _$Dashboard {
       SatisDeposu().gunlukMaliyet(),
       OnayMerkeziServisi().gorulmemisSayisi(),
       RiskMerkeziServisi().analizGetir(),
+      SatisDeposu().iadeTutarVeMaliyet(bugunBas, bugunBit),
     ]);
 
     final ist     = results[0] as Map<String, dynamic>;
@@ -136,6 +137,7 @@ class Dashboard extends _$Dashboard {
     final gunM    = results[9] as double;
     final onayB   = results[10] as int;
     final riskler = results[11] as List<RiskSatiri>;
+    final gunIade = results[12] as ({double tutar, double maliyet});
 
     final gunCiro   = (gunIst['ciro'] as num?)?.toDouble() ?? 0;
     final haftaCiro = haftaS.fold(0.0, (s, x) => s + ((x.genelToplam as double?) ?? 0));
@@ -151,7 +153,12 @@ class Dashboard extends _$Dashboard {
     // gösterirdi — 40 TL kâr yerine tüm ciro kâr gibi görünürdü). Artık
     // Kâr/Zarar raporuyla (kar_zarar_provider.dart) AYNI formül:
     // ciro - maliyet - gider.
-    final kar = DashboardHesap.karHesapla(ciro: gunCiro, maliyet: gunM, gider: gunG);
+    // DERİN DENETİM (2026-11-09, #69): Kâr/Zarar ve Gün Sonu gibi bugünün
+    // iadesi ciro ve maliyetten düşülür (tek formül).
+    final kar = DashboardHesap.karHesapla(
+        ciro: gunCiro - gunIade.tutar,
+        maliyet: gunM - gunIade.maliyet,
+        gider: gunG);
     final syncB  = BulutManager().bekleyenSayisi;
     final riskliSayi = riskler.where((r) => r.seviye == RiskSeviyesi.kritik).length;
 

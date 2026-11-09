@@ -177,10 +177,13 @@ extension ExcelServisiCari on ExcelServisi {
         if (mevcut != null) {
           // Zaten kayıtlı — sadece profil bilgileri güncellenir, BAKİYEYE
           // dokunulmaz (bkz. dosya başındaki mimari karar notu).
+          // 🔴 DERİN DENETİM (2026-11-09, #36): 'Cari Türü' sütunu yoksa ya
+          // da boşsa varsayılan 'Müşteri' mevcut tedarikçilerin üzerine
+          // yazılıyordu. Tür yalnız dosyada gerçekten yazılıysa değişir.
           await cariDepo.guncelle(mevcut.copyWith(
             unvan: unvan,
             telefon: telefon.isEmpty ? null : telefon,
-            cariTipi: cariTipi,
+            cariTipi: turuHam.trim().isEmpty ? null : cariTipi,
           ));
           if (adres.isNotEmpty) {
             await adresDepo.varsayilanAdresKaydet(cariId: mevcut.id!, adres: adres);

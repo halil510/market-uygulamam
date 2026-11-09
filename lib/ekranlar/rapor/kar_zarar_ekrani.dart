@@ -464,7 +464,9 @@ class _OdemeTab extends StatelessWidget {
       return const Center(child: Text('Veri yok'));
     }
 
-    final toplam = veri.ciro;
+    // #87: oran brüt ödeme toplamına göre (iade düşülmüş ciroya göre değil).
+    final toplam = veri.odemeByTur.fold<double>(
+        0, (t, o) => t + ((o['toplam'] as num?)?.toDouble() ?? 0));
 
     return ListView(
       padding: const EdgeInsets.all(16),

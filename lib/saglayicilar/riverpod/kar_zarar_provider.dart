@@ -1,5 +1,6 @@
 // lib/saglayicilar/riverpod/kar_zarar_provider.dart
 import '../../depolar/satis_deposu.dart';
+import '../../cekirdek/utils/para_utils.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../veri/database/veritabani.dart';
 import '../../servisler/aktif_sube_servisi.dart';
@@ -106,9 +107,6 @@ Future<KarZararVeri> karZarar(Ref ref) async {
     db.rawQuery('''SELECT COALESCE(SUM(tutar),0) as toplam FROM giderler g
       WHERE ${TarihUtils.aralikSql('tarih', f.basTarih, f.bitTarih)} AND g.deleted_at IS NULL $giderSubeKosulu''',
       [bas, bit, ...subeArgs]),
-    db.rawQuery('''SELECT odeme_yontemi, COALESCE(SUM(genel_toplam),0) as toplam FROM satislar
-      WHERE ${TarihUtils.aralikSql('tarih', f.basTarih, f.bitTarih)} AND iptal=0 AND is_deleted=0 AND sync_cakisma_kopyasi = 0
-      $satisSubeKosuluDuzSatislar GROUP BY odeme_yontemi''', [bas, bit, ...subeArgs]),
     db.rawQuery('''SELECT gk.ad as kategori, COALESCE(SUM(g.tutar),0) as toplam FROM giderler g
       LEFT JOIN gider_kategoriler gk ON g.kategori_id=gk.id
       WHERE ${TarihUtils.aralikSql('g.tarih', f.basTarih, f.bitTarih)} AND g.deleted_at IS NULL $giderSubeKosulu
@@ -133,14 +131,24 @@ Future<KarZararVeri> karZarar(Ref ref) async {
   final ciro = ((s['ciro'] as num?)?.toDouble() ?? 0) - iade.tutar;
   final ali  = ((m['maliyet'] as num?)?.toDouble() ?? 0) - iade.maliyet;
   final gid  = (g['toplam'] as num?)?.toDouble() ?? 0;
+  // DERİN DENETİM (2026-11-09, #87): Karma satışlar tek 'Karma' kalemi
+  // görünüyordu — Gün Sonu / Satış Raporu ile AYNI kırılım (Karma payları
+  // nakit/kart/cari'ye dağıtılır).
+  final kirilim = await SatisDeposu().odemeKirilimiHesapla(
+      await SatisDeposu().tariheGoreGetir(f.basTarih, f.bitTarih));
+  final odemeByTur = [
+    for (final e in kirilim.entries)
+      if (e.value.abs() > 0.005)
+        <String, dynamic>{'odeme_yontemi': e.key, 'toplam': ParaUtils.yuvarla(e.value)},
+  ]..sort((a, b) => (b['toplam'] as double).compareTo(a['toplam'] as double));
 
   return KarZararVeri(
     ciro: ciro, alisMaliyeti: ali, brutKar: ciro - ali,
     netKar: ciro - ali - gid, kdvToplam: (s['kdv'] as num?)?.toDouble() ?? 0,
     giderToplam: gid, iskonto: (s['iskonto'] as num?)?.toDouble() ?? 0,
     satisSayisi: (s['sayi'] as int?) ?? 0,
-    odemeByTur:  results[3] as List<Map<String, dynamic>>,
-    kategorGider:results[4] as List<Map<String, dynamic>>,
-    aylikVeri:   results[5] as List<Map<String, dynamic>>,
+    odemeByTur:  odemeByTur,
+    kategorGider:results[3] as List<Map<String, dynamic>>,
+    aylikVeri:   results[4] as List<Map<String, dynamic>>,
   );
 }

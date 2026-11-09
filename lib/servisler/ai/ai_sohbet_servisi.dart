@@ -176,7 +176,7 @@ class AiSohbetServisi {
     'gib efatura': '/ayarlar/gib', 'gib e-fatura': '/ayarlar/gib',
     'fatura ayarları': '/ayarlar/fatura', 'fiş tasarımı': '/ayarlar/fis',
     'bulut senkronizasyon': '/ayarlar/bulut-sync',
-    'ayarlar': '/ayarlar/icerik',
+    'ayarlar': '/ayarlar', // #95: şifre kapısından geçer
   };
 
   /// Metinde bir gezinme komutu var mı diye bakar. Varsa hedef rota +

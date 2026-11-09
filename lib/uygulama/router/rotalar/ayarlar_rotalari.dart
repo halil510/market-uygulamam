@@ -29,6 +29,7 @@ import '../../../ekranlar/ayarlar/log_ekrani.dart';
 import '../../../ekranlar/ayarlar/doviz_kuru_ekrani.dart';
 import '../../../ekranlar/ayarlar/ai_asistan_ayar_ekrani.dart';
 import '../../../ekranlar/ayarlar/hata_izleme_ekrani.dart';
+import '../../../servisler/auth_servisi.dart';
 
 List<GoRoute> ayarlarRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
       GoRoute(
@@ -38,6 +39,15 @@ List<GoRoute> ayarlarRotalari(GlobalKey<NavigatorState> rootNavigatorKey) => [
       GoRoute(
           path: '/ayarlar/icerik',
           name: 'ayarlar',
+          // DERİN DENETİM (2026-11-09, #95): şifre kapısı göstermelikti —
+          // '/ayarlar/icerik' doğrudan açılabiliyordu. Doğrulanmamışsa
+          // kapıya döner; geçerli doğrulama her girişte 5 dk uzatılır.
+          redirect: (_, _) {
+            final a = AuthServisi();
+            if (!a.ayarlarDogrulanmis) return '/ayarlar';
+            a.ayarlariDogrula();
+            return null;
+          },
           builder: (_, _) => const AyarlarEkrani()),
       GoRoute(
           path: '/ayarlar/yazici',

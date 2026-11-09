@@ -179,6 +179,21 @@ void main() {
       expect(await fiyat('Çikolata'), 31);
       expect(await motor.onayKomutu('evet'), isNull, reason: 'bekleyen kalmadı');
     });
+
+    test('#94: kullanıcı değişince bekleyen öneriyi başkası "evet" ile uygulayamaz', () async {
+      final tuz = SifreHash.tuzUret();
+      await db.insert('kullanicilar', {
+        'kullanici_adi': 'kasiyer94', 'sifre_hash': SifreHash.hashleTuzlu('5678', tuz),
+        'tuz': tuz, 'ad_soyad': 'Kasiyer', 'rol': 'kasiyer', 'aktif': 1, 'is_deleted': 0,
+      });
+      final once = await fiyat('Çikolata');
+      await ver('çikolatanın fiyatını 77 yap'); // admin hazırladı
+      await AuthServisi().cikisYap();
+      expect(await AuthServisi().girisYap('kasiyer94', '5678'), isTrue);
+      final r = await motor.onayKomutu('evet');
+      expect(r?.mesaj, contains('başka bir kullanıcı'));
+      expect(await fiyat('Çikolata'), once, reason: 'yetkisiz uygulama olmamalı');
+    });
   });
 
   group('Ürün durumu', () {

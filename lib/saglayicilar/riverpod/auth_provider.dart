@@ -9,6 +9,7 @@ import '../../servisler/audit_log_servisi.dart';
 import '../../servisler/log_servisi.dart';
 import '../../modeller/kullanici_model.dart';
 import 'sepet_provider.dart';
+import '../../servisler/ai/eylem/ai_eylem_motoru.dart';
 
 part 'auth_provider.g.dart';
 
@@ -124,6 +125,7 @@ class Auth extends _$Auth {
           // — hem veri sızıntısı hem yanlış audit/kasiyer ataması. Her
           // başarılı giriş/kullanıcı değişiminde sepet artık temizleniyor.
           ref.read(sepetProvider.notifier).temizle();
+          AiEylemMotoru().bekleyeniTemizle(); // #94
           // 🔴 DÜZELTME (Madde 18 — Audit Log): başarılı girişler
           // önceden audit_log'a hiç düşmüyordu (bkz. AuditLogServisi.
           // girisKaydet yorumu).
@@ -162,6 +164,7 @@ class Auth extends _$Auth {
         if (k != null) {
           state = AuthState.girisYapildi(k);
           ref.read(sepetProvider.notifier).temizle();
+          AiEylemMotoru().bekleyeniTemizle(); // #94
           unawaited(AuditLogServisi().girisKaydet(
               kullaniciId: k.id, kullaniciAdi: k.adSoyad, basarili: true));
           return GirisSonucu.basarili;
@@ -182,6 +185,7 @@ class Auth extends _$Auth {
       // Bkz. girisYap()'taki aynı not — çıkışta da paylaşımlı cihazda
       // bir sonraki kullanıcının önceki sepeti görmemesi için temizleniyor.
       ref.read(sepetProvider.notifier).temizle();
+      AiEylemMotoru().bekleyeniTemizle(); // #94
     }
   }
 

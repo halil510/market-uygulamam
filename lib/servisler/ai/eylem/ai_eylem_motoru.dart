@@ -80,6 +80,11 @@ class AiEylemMotoru {
       b.iptalEt();
       return const AiEylemSonucu(mesaj: 'Tamam, işlemi iptal ettim. Hiçbir şey değişmedi.');
     }
+    final engel = _uygulamaEngeli(b);
+    if (engel != null) {
+      b.iptalEt();
+      return AiEylemSonucu(mesaj: engel);
+    }
     try {
       return AiEylemSonucu(mesaj: await b.calistir());
     } catch (e, st) {
@@ -91,6 +96,11 @@ class AiEylemMotoru {
   /// UI kartından çağrılır (Onayla düğmesi).
   Future<String> uygula(AiEylemOnerisi o) async {
     if (identical(_bekleyen, o)) _bekleyen = null;
+    final engel = _uygulamaEngeli(o);
+    if (engel != null) {
+      o.iptalEt();
+      return engel;
+    }
     try {
       return await o.calistir();
     } catch (e, st) {
@@ -113,6 +123,8 @@ class AiEylemMotoru {
       final sonuc = await hazirla(komut);
       // Tek öneri → yazıyla "evet" ile de uygulanabilsin.
       _bekleyen = sonuc.oneri;
+      final o = sonuc.oneri;
+      if (o != null) _oneriSahibi[o] = AuthServisi().aktifKullanici?.id ?? -1;
       return sonuc;
     } catch (e, st) {
       LogServisi().hata('AiEylemMotoru.coz', hata: e, yigin: st);
@@ -123,6 +135,28 @@ class AiEylemMotoru {
   static String _hataMetni(Object e) {
     final s = e.toString();
     return s.startsWith('Exception: ') ? s.substring(11) : s;
+  }
+
+  /// DERİN DENETİM (2026-11-09, #94): öneri kimin için hazırlandıysa yalnız o
+  /// uygulayabilir; yetki uygulama anında YENİDEN kontrol edilir. Önceden
+  /// kullanıcı değiştikten sonra başkası "evet" yazarak yetkisi olmadan
+  /// bekleyen işlemi uygulayabiliyordu.
+  final Expando<int> _oneriSahibi = Expando<int>('aiOneriSahibi');
+
+  String? _uygulamaEngeli(AiEylemOnerisi o) {
+    final sahip = _oneriSahibi[o];
+    final aktif = AuthServisi().aktifKullanici?.id ?? -1;
+    if (sahip != null && sahip != aktif) {
+      return 'Bu işlem başka bir kullanıcı için hazırlanmıştı — uygulanmadı. '
+          'Gerekirse isteği yeniden yazın.';
+    }
+    return _yetkiHatasi(o.tur);
+  }
+
+  /// Giriş/çıkış/kullanıcı değişiminde bekleyen öneri temizlenir.
+  void bekleyeniTemizle() {
+    _bekleyen?.iptalEt();
+    _bekleyen = null;
   }
 
   // ── YETKİ ────────────────────────────────────────────────────────────────

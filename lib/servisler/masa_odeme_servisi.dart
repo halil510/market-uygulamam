@@ -12,6 +12,7 @@
 // (masa adı, sipariş id) nedeniyle burada bağımsız tutuldu.
 import 'package:uuid/uuid.dart';
 import '../servisler/bulut/bulut_manager.dart';
+import '../servisler/bulut/sync_kuyruk_yazici.dart';
 import '../depolar/satis_deposu.dart';
 import '../depolar/stok_deposu.dart';
 import '../depolar/kasa_deposu.dart';
@@ -320,6 +321,20 @@ class MasaOdemeServisi {
       }
       await txn.update('masalar', {'durum': 'bos', 'last_updated': now},
           where: 'id = ?', whereArgs: [siparis.masaId]);
+      // DERİN DENETİM (2026-11-09, #91): sipariş 'odendi' ve masa 'bos'
+      // güncellemeleri kuyruğa yazılmıyordu — commit sonrası bildirimden önce
+      // uygulama kapanırsa diğer cihazlarda masa dolu/sipariş açık kalıyordu.
+      // MasaDeposu._yaz ile aynı desen: aynı transaction'da kuyruk.
+      for (final (tablo, id) in [
+        ('masa_siparisleri', siparis.id),
+        ('masalar', siparis.masaId),
+      ]) {
+        final satir = await txn.query(tablo, where: 'id = ?', whereArgs: [id], limit: 1);
+        if (satir.isNotEmpty) {
+          await SyncKuyrukYazici.ekleTxn(txn,
+              tablo: tablo, veri: Map<String, dynamic>.from(satir.first));
+        }
+      }
     }); // transaction sonu
 
     // Transaction kalıcı olduktan sonra buluta bildir.

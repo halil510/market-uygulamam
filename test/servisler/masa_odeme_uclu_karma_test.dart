@@ -122,6 +122,15 @@ void main() {
         .first;
     expect(sip['durum'], 'odendi');
     expect(sip['satis_id'], sonuc.satisId);
+
+    // #91: kapanış (sipariş 'odendi', masa 'bos') aynı transaction'da kuyrukta.
+    Future<bool> kuyrukta(String tablo, String durum) async => (await db.query(
+            'sync_queue',
+            where: 'tablo_adi = ? AND veri_json LIKE ?',
+            whereArgs: [tablo, '%"durum":"$durum"%']))
+        .isNotEmpty;
+    expect(await kuyrukta('masa_siparisleri', 'odendi'), isTrue);
+    expect(await kuyrukta('masalar', 'bos'), isTrue);
   });
 
   test('mutabakat: kasa (Nakit+Kart) + cari net borç == satış toplamı', () async {

@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../cekirdek/utils/para_utils.dart';
+import '../../servisler/bildirim_servisi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 
 class CokluOdemeEkrani extends ConsumerStatefulWidget {
@@ -177,8 +178,18 @@ class _CokluOdemeEkraniState extends ConsumerState<CokluOdemeEkrani> {
       return;
     }
 
-    final deger = _ekranDeger;
+    var deger = _ekranDeger;
     if (deger <= 0) return;
+    // 🔴 DERİN DENETİM (2026-11-09): Nakit dışı yönteme (Kart, Havale,
+    // Cari…) kalandan fazla tutar girilebiliyordu — fazlası cari borcuna /
+    // kart cirosuna yazılıyordu (ör. 100 TL'lik satışa 1000 TL Cari borç).
+    // Para üstü yalnız Nakit'te olur; diğer yöntemler kalanla sınırlanır.
+    if (yontem != 'Nakit' && deger > _kalan + 0.005) {
+      deger = ParaUtils.yuvarla(_kalan);
+      if (deger <= 0) return;
+      BildirimServisi.uyari(context,
+          '$yontem için en fazla kalan tutar (${ParaUtils.formatla(deger)}) alınır — para üstü yalnız Nakit\'te olur.');
+    }
 
     setState(() => _atamalar[yontem] = deger);
 

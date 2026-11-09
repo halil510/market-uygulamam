@@ -297,6 +297,17 @@ class SatisTamamlamaServisi {
       final fazla = gruplar.values.fold(0.0, (s, v) => s + v) +
           cariKismi -
           genelToplam;
+      // 🔴 DERİN DENETİM (2026-11-09): para üstü yalnız Nakit'ten düşülür;
+      // Nakit dışı yöntemler + Cari satış tutarını aşarsa fazlası cari
+      // borcuna / kart cirosuna yazılıyordu. Transaction geri alınır.
+      final nakitDisi = gruplar.entries
+              .where((e) => e.key != 'Nakit')
+              .fold(0.0, (s, e) => s + e.value) +
+          cariKismi;
+      if (nakitDisi > genelToplam + 0.005) {
+        throw Exception('Nakit dışı ödemeler (${ParaUtils.formatla(nakitDisi)}) satış '
+            'tutarını (${ParaUtils.formatla(genelToplam)}) aşamaz — para üstü yalnız Nakit\'te olur.');
+      }
       if (fazla > 0.005 && (gruplar['Nakit'] ?? 0) > 0) {
         final dus = fazla < gruplar['Nakit']! ? fazla : gruplar['Nakit']!;
         gruplar['Nakit'] = gruplar['Nakit']! - dus;

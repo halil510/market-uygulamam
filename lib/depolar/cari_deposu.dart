@@ -884,7 +884,9 @@ class CariDeposu {
           AND c.vade_gun > 0
           AND c.bakiye - COALESCE((
             SELECT SUM(ch.borc) FROM cari_hareket ch
-            WHERE ch.cari_id = c.id AND ch.borc > 0 AND ch.is_deleted = 0
+            -- DERİN DENETİM (2026-11-09, #72): borc=alacak bilgi satırları
+            -- (karma ödeme izi) gerçek borç değildir, sayılmaz.
+            WHERE ch.cari_id = c.id AND ch.borc > 0 AND ch.alacak = 0 AND ch.is_deleted = 0
             AND datetime(ch.tarih, '+' || c.vade_gun || ' days') >= datetime('now', 'localtime')
           ), 0) > 0.01
         ORDER BY c.bakiye DESC

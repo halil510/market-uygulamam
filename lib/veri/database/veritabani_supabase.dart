@@ -647,10 +647,17 @@ extension VeritabaniSupabase on Veritabani {
           // ezilebiliyordu. Kullanıcılar kullanici_adi ile eşlenir; yerel
           // kayıt daha yeni/eşitse dokunulmaz, değilse id korunarak
           // yerinde güncellenir.
-          if (tablo == DbSabitler.kullanicilar && temiz['kullanici_adi'] != null) {
+          // 🔴 DERİN DENETİM (2026-11-09, #17): aynı kural TÜM doğal
+          // anahtarlı tablolara genişletildi (kategoriler/birimler/markalar/
+          // gider_kategoriler → ad, subeler → sube_kodu, ayarlar → anahtar).
+          // Bunlarda yerel global_id yok; satır "yeni" sayılıp REPLACE ile
+          // eski satır SİLİNİP yeni id alıyordu — urunler.kategori_id ve
+          // giderler.kategori_id var olmayan id'yi gösterip bağ kopuyordu.
+          final dogalAnahtar = KolonHaritalama.ebeveynAnahtari(tablo);
+          if (dogalAnahtar != 'global_id' && temiz[dogalAnahtar] != null) {
             final mevcut = await database.query(tablo,
-                where: 'kullanici_adi = ?',
-                whereArgs: [temiz['kullanici_adi']],
+                where: '$dogalAnahtar = ?',
+                whereArgs: [temiz[dogalAnahtar]],
                 limit: 1);
             if (mevcut.isNotEmpty) {
               final yerelStr = mevcut.first['last_updated']?.toString();

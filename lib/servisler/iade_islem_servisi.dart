@@ -320,7 +320,7 @@ class IadeIslemServisi {
     final db = await Veritabani().db;
     final fisNo = await Veritabani()
         .fisNoUret('iade', subeId: AktifSubeServisi().subeId ?? 1);
-    final toplam = birimFiyat * kalanMiktar;
+    final toplam = ParaUtils.yuvarla(birimFiyat * kalanMiktar); // #79 (§3.1)
     final now = DateTime.now().toIso8601String();
     late final int iadeId;
     final guncellenenLotIdleri = <int>{};

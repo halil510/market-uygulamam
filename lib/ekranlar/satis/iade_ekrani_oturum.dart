@@ -266,7 +266,8 @@ extension _IadeOturumExt on _IadeEkraniState {
       final yeniFiyat =
           ParaUtils.sayiCoz(yeniFiyatStr) ?? (iade['birim_fiyat'] as double);
       final yeniIsk = ParaUtils.sayiCoz(yeniIskStr) ?? 0.0;
-      final yeniToplam = yeniMiktar * yeniFiyat * (1 - yeniIsk / 100);
+      final yeniToplam =
+          ParaUtils.yuvarla(yeniMiktar * yeniFiyat * (1 - yeniIsk / 100)); // #79
       final eskiMiktar = iade['miktar'] as double;
       final eskiToplam = iade['toplam_tutar'] as double;
       final iadeId = iade['iade_id'] as int?;

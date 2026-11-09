@@ -14,6 +14,9 @@ import '../../../modeller/masa_siparis_model.dart';
 import '../../../saglayicilar/riverpod/masa_provider.dart';
 import '../../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../../uygulama/tema/uygulama_temasi.dart';
+import '../../../servisler/bildirim_servisi.dart';
+import '../../../servisler/log_servisi.dart';
+import '../../../cekirdek/utils/hata_utils.dart';
 
 
 class MasaDetayIcerik extends StatelessWidget {
@@ -382,8 +385,14 @@ class _SiparisKalemListesiState extends ConsumerState<_SiparisKalemListesi> {
         ],
       ),
     );
-    if (onay == true) {
+    // DERİN DENETİM (2026-11-09, #93): diyalog sonrası mounted kontrolü ve
+    // hata yakalama yoktu (ör. sipariş bu arada ödendi → #90 hatası).
+    if (onay != true || !mounted) return;
+    try {
       await ref.read(masaSiparisProvider(widget.masaId).notifier).kalemSil(kalemId);
+    } catch (e, st) {
+      LogServisi().hata('Masa kalem sil', hata: e, yigin: st);
+      if (mounted) BildirimServisi.hata(context, kullaniciyaHataMetni(e));
     }
   }
 }

@@ -187,12 +187,18 @@ class MasaOdemeServisi {
           whereArgs: [siparis.id]);
       final guncelIdler = {for (final k in guncelKalemler) k['id'] as int};
       final ekrandakiIdler = {for (final k in siparis.kalemler) k.id};
+      // 🔴 DERİN DENETİM (2026-11-09, #19): ekrandaki toplam
+      // (MasaSiparisModel.hesaplananToplam) satır satır yuvarlanıyor; burası
+      // ÖNCEDEN ham çarpımları toplayıp sonda yuvarlıyordu. İndirimli
+      // (kuruş altı birim fiyatlı) ürünlerde fark > 0,01 çıkıp masa hiç
+      // ödenemiyordu ("Sipariş değişti" sonsuz döngü). Aynı yöntem: satır
+      // satır yuvarla, topla.
       final guncelToplam = ParaUtils.yuvarla(guncelKalemler.fold(
           0.0,
           (s, k) =>
               s +
-              (k['miktar'] as num).toDouble() *
-                  (k['birim_fiyat'] as num).toDouble()));
+              ParaUtils.yuvarla((k['miktar'] as num).toDouble() *
+                  (k['birim_fiyat'] as num).toDouble())));
       if (guncelIdler.length != ekrandakiIdler.length ||
           !guncelIdler.containsAll(ekrandakiIdler.whereType<int>()) ||
           (guncelToplam - genelTop).abs() > 0.01) {

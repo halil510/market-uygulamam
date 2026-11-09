@@ -17,8 +17,50 @@ import '../modeller/urun_model.dart';
 import '../servisler/urun_fiyat_hesaplayici.dart';
 import 'promosyon_deposu.dart';
 
+/// Bir masa kaleminde tek seferde kabul edilen en büyük miktar (QR menüden
+/// gelen bozuk/kötü niyetli istekler için üst sınır).
+const double kMasaKalemMaksMiktar = 999;
+
 class MasaDeposu {
   final Veritabani _db = Veritabani();
+
+  /// Bulut QR siparişinin masasını BU cihazdaki yerel id'ye çevirir (#20):
+  /// [globalId] varsa onunla (cihazlar arası güvenli), yoksa [id] yalnız bu
+  /// cihazda böyle bir (silinmemiş) masa varsa. Bulunamazsa null.
+  Future<int?> qrMasaYerelIdBul({String? globalId, int? id}) async {
+    final db = await _d;
+    if (globalId != null && globalId.isNotEmpty) {
+      final r = await db.query(DbSabitler.masalar, columns: ['id'],
+          where: 'global_id = ? AND is_deleted = 0', whereArgs: [globalId], limit: 1);
+      return r.isEmpty ? null : r.first['id'] as int;
+    }
+    if (id == null) return null;
+    final r = await db.query(DbSabitler.masalar, columns: ['id'],
+        where: 'id = ? AND is_deleted = 0', whereArgs: [id], limit: 1);
+    return r.isEmpty ? null : id;
+  }
+
+  /// Masaların cihazlardan bağımsız kimlikleri (QR adresi için — #20).
+  /// global_id'si henüz atanmamış masada kimlik üretilip yazılır.
+  Future<Map<int, String>> globalIdleriGetir(Iterable<int> masaIdleri) async {
+    final db = await _d;
+    final sonuc = <int, String>{};
+    for (final id in masaIdleri) {
+      final r = await db.query(DbSabitler.masalar,
+          columns: ['global_id'], where: 'id = ?', whereArgs: [id], limit: 1);
+      if (r.isEmpty) continue;
+      var gid = r.first['global_id'] as String?;
+      if (gid == null || gid.isEmpty) {
+        gid = const Uuid().v4();
+        await db.update(DbSabitler.masalar,
+            {'global_id': gid, 'last_updated': DateTime.now().toIso8601String()},
+            where: 'id = ?', whereArgs: [id]);
+        await BulutManager().satiriBildir(db, DbSabitler.masalar, id);
+      }
+      sonuc[id] = gid;
+    }
+    return sonuc;
+  }
   Future<Database> get _d async => _db.db;
 
   /// Tüm açık siparişleri (tüm masalardan), kalemleriyle birlikte getirir.
@@ -384,6 +426,14 @@ class MasaDeposu {
     required double birimFiyat, required double kdvOran,
     double miktar = 1, String? not_,
   }) async {
+    // 🔴 DERİN DENETİM (2026-11-09, #18): miktar hiç doğrulanmıyordu — QR
+    // menüden (kimlik doğrulamasız) negatif miktar gönderilince var olan
+    // kalem 0'a iniyor (masa hesabı düşüyor) ya da negatif kalem ödemede
+    // stoğu ARTIRIYORDU. Tüm yollar (garson, QR yerel, QR bulut) buradan
+    // geçer; geçersiz miktar reddedilir.
+    if (!miktar.isFinite || miktar <= 0 || miktar > kMasaKalemMaksMiktar) {
+      throw ArgumentError('Geçersiz miktar: $miktar (0 ile $kMasaKalemMaksMiktar arası olmalı)');
+    }
     // Çağıran ürünün LİSTE fiyatını verdiyse (normal akış) promosyon/indirim
     // Hızlı Satış'taki kuralla uygulanır; farklı (elle verilmiş) bir fiyat
     // geldiyse aynen korunur.

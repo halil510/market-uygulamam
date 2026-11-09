@@ -252,6 +252,24 @@ class UrunDeposu {
     // yazılmıştı ama replace hiç istisna fırlatmadığı için pratikte
     // ASLA tetiklenmiyordu. abort (SQLite'ın varsayılanı) ile artık
     // gerçek bir UNIQUE ihlali doğru şekilde istisna fırlatıyor.
+    //
+    // 🔴 DERİN DENETİM (2026-11-09, #49): SİLİNMİŞ bir ürünün barkodu/kodu
+    // kalıcı kilitliydi — aynı barkodlu ürün yeniden eklenemiyordu. Çakışan
+    // yalnız silinmiş ürünse barkod/kod ondan serbest bırakılır (silinmiş
+    // kayıt geçmiş için durur, değişiklik buluta gider). Aktif ürünle
+    // çakışma eskisi gibi hata verir.
+    for (final alan in ['barkod', 'kod']) {
+      final deger = m[alan]?.toString();
+      if (deger == null || deger.isEmpty) continue;
+      final silinmis = await db.query(DbSabitler.urunler,
+          columns: ['id'], where: '$alan = ? AND is_deleted = 1', whereArgs: [deger]);
+      for (final s in silinmis) {
+        await db.update(DbSabitler.urunler,
+            {alan: null, 'last_updated': DateTime.now().toIso8601String()},
+            where: 'id = ?', whereArgs: [s['id']]);
+        await BulutManager().satiriBildir(db, DbSabitler.urunler, s['id']);
+      }
+    }
     final id = await db.insert(DbSabitler.urunler, m,
         conflictAlgorithm: ConflictAlgorithm.abort);
     BulutManager().upsert('urunler', {...m, 'id': id});

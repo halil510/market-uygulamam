@@ -120,7 +120,8 @@ extension UrunDeposuToplu on UrunDeposu {
       WHERE barkod LIKE 'M%'
         AND barkod IS NOT NULL
         AND barkod != ''
-        AND is_deleted = 0
+      -- #49: silinmişler de sayılır — üretici silinmiş ürünün barkodunu
+      -- yeniden üretip UNIQUE hatasına düşmesin.
       ORDER BY CAST(SUBSTR(barkod, 2) AS INTEGER) DESC LIMIT 1
     ''');
     int yeniNumara = 1;

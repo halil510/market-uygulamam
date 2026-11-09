@@ -171,18 +171,27 @@ extension _ToptanSatisIslemlerExt on _ToptanSatisEkraniState {
     birim = sonuc.$2;
     if (miktar <= 0) return;
 
+    // 🔴 DERİN DENETİM (2026-11-09, #27): aynı ürün tekrar eklenince
+    // miktar artıyor ama kademe fiyatı yeni TOPLAM miktara göre yeniden
+    // hesaplanmıyordu (5+5 adet "10 ve üstü" kademesine girmiyordu, bayiye
+    // fazla fiyat yazılıyordu). Fiyat birleşmiş toplam miktarla hesaplanır.
+    final mevcutIdx =
+        _sepet.indexWhere((k) => k.urun.id == urun.id && k.birim == birim);
+    final toplamMiktar = mevcutIdx >= 0 ? _sepet[mevcutIdx].miktar + miktar : miktar;
     final fiyatSonucu = await _fiyatServisi.hesapla(
       urun: urun,
       cari: _secilenBayi,
-      miktar: miktar,
+      miktar: toplamMiktar,
       birim: birim,
     );
+    if (!mounted) return;
 
     setState(() {
       final mevcutIdx =
           _sepet.indexWhere((k) => k.urun.id == urun.id && k.birim == birim);
       if (mevcutIdx >= 0) {
         _sepet[mevcutIdx].miktar += miktar;
+        _sepet[mevcutIdx].fiyatSonucu = fiyatSonucu;
       } else {
         _sepet.add(_SepetKalemi(
             urun: urun,

@@ -337,7 +337,11 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
         toplamIskonto:  _iskonto,
         toplamKdv:      _kdvToplam,
         genelToplam:    _genelToplam,
-        kalanTutar:     _genelToplam,
+        // 🔴 DERİN DENETİM (2026-11-09, #56): 'Ödendi' seçilse de ödenen 0,
+        // kalan genel toplam yazılıyordu (fatura açık borç görünüyordu).
+        // 'Kısmi'de tutar sorulmadığı için kalan değişmez.
+        odenenTutar:    _odemeDurumu == 'odendi' ? _genelToplam : 0,
+        kalanTutar:     _odemeDurumu == 'odendi' ? 0 : _genelToplam,
         odemeDurumu:    _odemeDurumu,
         detaylar:       detaylar,
       );

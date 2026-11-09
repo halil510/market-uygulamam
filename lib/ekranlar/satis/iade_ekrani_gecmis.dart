@@ -614,7 +614,10 @@ extension _GecmisTabExt on _IadeEkraniState {
       final detaylar = kalemler.map((k) {
         final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;
         final birimFiyat = (k['birim_fiyat'] as num?)?.toDouble() ?? 0;
-        final kdvOran = (k['urun_kdv_oran'] as num?)?.toDouble() ?? 20.0;
+        // 🔴 DERİN DENETİM (2026-11-09, #53): urunler.kdv_oran TEXT ('20');
+        // `as num?` TypeError fırlatıyor, iade faturası hiç
+        // oluşturulamıyordu. Tek kaynak çözümleyici kullanılır.
+        final kdvOran = UrunModel.kdvOranCoz(k['urun_kdv_oran']);
         final kdvDahilToplam =
             (k['toplam'] as num?)?.toDouble() ?? miktar * birimFiyat;
         return FaturaDetayModel.kdvDahilKalemden(

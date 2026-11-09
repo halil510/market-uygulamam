@@ -12,6 +12,8 @@ import 'eylem/ai_eylem_modeli.dart';
 import 'eylem/ai_eylem_motoru.dart';
 import 'tr_sayi_ayristirici.dart';
 import '../../cekirdek/utils/tarih_utils.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
+import '../auth_servisi.dart';
 
 /// AI Chat'in cevabı — normal metin cevabının yanı sıra, bir gezinme
 /// komutu algılandıysa hedef rota + (varsa) arama terimini de taşır.
@@ -34,6 +36,57 @@ class AiSohbetSonuc {
     this.oneri,
     this.secimler = const [],
   });
+}
+
+/// AI niyetinin gösterdiği veri için gereken yetki kodu (router'daki
+/// _routeYetkiler ile aynı kodlar). null → yetki gerekmez (sohbet vb.).
+/// DERİN DENETİM (2026-11-09, #75).
+@visibleForTesting
+String? aiIntentYetkisi(AiIntent i) {
+  switch (i) {
+    case AiIntent.kasaDurumu:
+      return 'kasa';
+    case AiIntent.cariListele:
+    case AiIntent.cariBorc:
+    case AiIntent.cariHareket:
+      return 'cari';
+    case AiIntent.kritikStok:
+    case AiIntent.stokSorgula:
+    case AiIntent.stokDeger:
+    case AiIntent.stokHareket:
+    case AiIntent.stokTukenmeTahmini:
+    case AiIntent.stokGenelDurum:
+      return 'stok';
+    case AiIntent.urunAra:
+    case AiIntent.urunListele:
+      return 'urun';
+    case AiIntent.zRaporu:
+    case AiIntent.urunZRaporu:
+    case AiIntent.aylikRapor:
+    case AiIntent.grupRaporu:
+    case AiIntent.markaRaporu:
+    case AiIntent.alan1Raporu:
+    case AiIntent.kategoriAnaliz:
+    case AiIntent.gunlukSatis:
+    case AiIntent.haftalikSatis:
+    case AiIntent.aylikSatis:
+    case AiIntent.yillikSatis:
+    case AiIntent.ciroRaporu:
+    case AiIntent.netKar:
+    case AiIntent.karDegisimAciklama:
+    case AiIntent.anormalTespit:
+    case AiIntent.odemeYontemi:
+    case AiIntent.enCokSatan:
+    case AiIntent.enKarli:
+    case AiIntent.tahsilat:
+    case AiIntent.tahmin:
+    case AiIntent.oneri:
+    case AiIntent.grupDetay:
+    case AiIntent.alan1Detay:
+      return 'rapor';
+    default:
+      return null;
+  }
 }
 
 class AiSohbetServisi {
@@ -252,6 +305,13 @@ class AiSohbetServisi {
       // Bağlam
       if (p['urunAdi'] != null) _sonUrun = p['urunAdi'];
       if (p['musteriAdi'] != null) _sonMusteri = p['musteriAdi'];
+
+      // DERİN DENETİM (2026-11-09, #75): Global Arama/Asistan üzerinden
+      // rapor/kasa/cari verisi, ilgili ekranın yetkisi olmadan görülebiliyordu.
+      final gerekenYetki = aiIntentYetkisi(q.intent);
+      if (gerekenYetki != null && !AuthServisi().yetkiVarSync(gerekenYetki)) {
+        return 'Bu bilgiyi görme yetkiniz yok ($gerekenYetki).';
+      }
 
       switch (q.intent) {
         case AiIntent.sohbet:         return _sohbet(soru);

@@ -461,13 +461,19 @@ extension _FaturaDetayPdfExt on _FaturaDetayEkraniState {
                 // net olan d.araToplam.
                 final brutTutar = d.araToplam + d.iskontoTutari;
                 final netTutar = d.araToplam;
+                // DERİN DENETİM (2026-11-09, #85): d.birimFiyat kaynağa göre KDV
+                // dahil olabiliyordu, Tutar ise KDV hariç — Miktar × Birim ≠ Tutar.
+                // Birim fiyat Tutar'dan türetilir (KDV hariç, satır kendini tutar).
+                final birimHaric = d.miktar.abs() > 1e-9
+                    ? ParaUtils.yuvarla(brutTutar / d.miktar)
+                    : d.birimFiyat;
                 return pw.TableRow(children: [
                   _pdfHucre('$i', font, align: pw.TextAlign.center, scale: scale),
                   _pdfHucre(d.urunAdi, font, scale: scale),
                   _pdfHucre(d.barkod ?? '', font, align: pw.TextAlign.center, scale: scale),
                   _pdfHucre('${d.miktar.toStringAsFixed(d.miktar == d.miktar.roundToDouble() ? 0 : 2)} Adet',
                       font, align: pw.TextAlign.center, scale: scale),
-                  _pdfHucre(ParaUtils.formatla(d.birimFiyat), font, align: pw.TextAlign.right, scale: scale),
+                  _pdfHucre(ParaUtils.formatla(birimHaric), font, align: pw.TextAlign.right, scale: scale),
                   _pdfHucre(ParaUtils.formatla(brutTutar), font, align: pw.TextAlign.right, scale: scale),
                   _pdfHucre(ParaUtils.formatla(netTutar), font, align: pw.TextAlign.right, scale: scale),
                   _pdfHucre('%${d.kdvOrani.toStringAsFixed(d.kdvOrani == d.kdvOrani.roundToDouble() ? 0 : 2)}',

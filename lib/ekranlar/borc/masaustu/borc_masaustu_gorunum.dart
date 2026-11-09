@@ -176,6 +176,19 @@ class _BorcMasaustuGorunumState extends State<BorcMasaustuGorunum> {
   }
 
   @override
+  void didUpdateWidget(covariant BorcMasaustuGorunum eski) {
+    super.didUpdateWidget(eski);
+    // 🔴 DERİN DENETİM (2026-11-09, #9): liste yenilenince seçili borç ESKİ
+    // modelde kalıyordu (ödenmiş borç "Kalan: 1.000" ile yeniden
+    // ödenebiliyordu). Seçim güncel listeden id ile yeniden bulunur; listede
+    // yoksa (ödendi/silindi) bırakılır.
+    final s = _secili;
+    if (s == null || identical(eski.borclar, widget.borclar)) return;
+    final guncel = widget.borclar.where((b) => b.id == s.id);
+    _secili = guncel.isEmpty ? null : guncel.first;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l = widget.borclar;
     final s = _secili;

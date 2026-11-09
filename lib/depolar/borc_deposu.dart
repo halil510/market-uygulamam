@@ -7,6 +7,7 @@ import '../veri/database/veritabani.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import 'package:uuid/uuid.dart';
+import '../cekirdek/utils/para_utils.dart';
 
 class BorcDeposu {
   final Veritabani _db = Veritabani();
@@ -142,6 +143,20 @@ class BorcDeposu {
     if (rows.isEmpty) return;
     final tutarToplam = (rows.first['tutar'] as num).toDouble();
     final eskiOdenen  = (rows.first['odenen_tutar'] as num?)?.toDouble() ?? 0;
+    // 🔴 DERİN DENETİM (2026-11-09, #9): ekran (masaüstü Borç listesi) ve
+    // servis ESKİ BorcModel'in kalanına bakabiliyordu — ödenmiş borç ikinci
+    // kez ödenip kasadan para çıkıyordu. Son karar burada, TAZE satırla:
+    // silinmiş/ödenmiş borca ya da kalandan fazlasına ödeme reddedilir
+    // (çağıranın transaction'ı — kasa/banka/gider — birlikte geri alınır).
+    if ((rows.first['is_deleted'] as int? ?? 0) == 1) {
+      throw Exception('Bu borç silinmiş — ödeme yapılamaz');
+    }
+    final kalan = ParaUtils.yuvarla(tutarToplam - eskiOdenen);
+    if (tutar > kalan + 0.01) {
+      throw Exception(kalan <= 0.005
+          ? 'Bu borç zaten ödenmiş — liste yenilenmemiş olabilir'
+          : 'Kalan borçtan fazla ödeme yapılamaz (kalan: ${ParaUtils.formatla(kalan)})');
+    }
     final yeniOdenen  = eskiOdenen + tutar;
     final odendiMi    = yeniOdenen >= tutarToplam;
 

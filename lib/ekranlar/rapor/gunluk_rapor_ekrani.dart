@@ -340,12 +340,13 @@ class _GunlukRaporEkraniState extends ConsumerState<GunlukRaporEkrani> {
     
     for (final row in sorguSonucu) {
       final double oran = _toDouble(row['kdv_oran']);
-      final double net = _toDouble(row['net_fiyat']);
-      final double miktar = _toDouble(row['miktar']);
       final double kdv = _toDouble(row['kdv_tutar']);
       final double dahil = _toDouble(row['toplam_tutar']);
       
-      kdvMatrah[oran] = (kdvMatrah[oran] ?? 0) + (net * miktar);
+      // DERİN DENETİM (2026-11-09, #64): net_fiyat KDV DAHİL birim fiyattır;
+      // matrah (KDV hariç) = KDV dahil toplam − KDV payı.
+      kdvMatrah[oran] =
+          ParaUtils.yuvarla((kdvMatrah[oran] ?? 0) + (dahil - kdv));
       kdvTutari[oran] = (kdvTutari[oran] ?? 0) + kdv;
       kdvDahilToplam[oran] = (kdvDahilToplam[oran] ?? 0) + dahil;
     }

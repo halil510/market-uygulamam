@@ -233,7 +233,15 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
     setState(() {
       _kalemler[i].urun = secilen;
       _kalemler[i].adCtrl.text  = secilen!.urunAdi;
-      _kalemler[i].fiyCtrl.text = secilen!.satisFiyati.toStringAsFixed(2);
+      // 🔴 DERİN DENETİM (2026-11-09, #14): satış fiyatı KDV DAHİL saklanır,
+      // bu formun "Birim Fiyat" alanı ise KDV HARİÇ (KDV üstüne eklenir).
+      // ÖNCEDEN KDV dahil fiyat olduğu gibi yazılıyor, müşteriye %20 fazla
+      // fatura kesiliyordu (120 TL'lik ürün 144 TL). KDV hariç birim fiyat
+      // yazılır; satır toplamı = satış fiyatı.
+      final oran = UrunModel.kdvOranCoz(secilen!.kdvOran);
+      final haric = ParaUtils.kdvHaricFiyat(secilen!.satisFiyati, oran);
+      _kalemler[i].fiyCtrl.text =
+          haric.toStringAsFixed(4).replaceFirst(RegExp(r'\.?0+$'), '');
       _kalemler[i].kdvOran      = secilen!.kdvOran;
     });
   }
@@ -662,7 +670,7 @@ class _FaturaEkleEkraniState extends ConsumerState<FaturaEkleEkrani> {
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
               ],
               decoration: const InputDecoration(
-                  labelText: 'Birim Fiyat',
+                  labelText: 'Birim Fiyat (KDV Hariç)',
                   border: OutlineInputBorder(),
                   isDense: true),
               onChanged: (_) => setState(() {}),

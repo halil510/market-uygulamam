@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../cekirdek/utils/para_utils.dart';
 import '../servisler/log_servisi.dart';
 import '../servisler/aktif_sube_servisi.dart';
+import 'sube_urun_deposu.dart';
 import '../veri/database/veritabani.dart';
 import '../modeller/satis_model.dart';
 import '../modeller/satis_kalem_model.dart';
@@ -876,6 +877,8 @@ class SatisDeposu {
     // sadece atanıyor, böylece her iki yerden de erişilebiliyor.
     int? cariId;
     final kasaHareketIdleri = <int>[];
+    final subePayIadesi = <int, double>{};
+    int? satisSubeId;
     await db.transaction((txn) async {
 
       // 1. Satış başlığını al
@@ -929,6 +932,42 @@ class SatisDeposu {
         'iptal_nedeni':  neden ?? 'Kullanıcı tarafından silindi',
         'last_updated':  simdi,
       }, where: 'id = ?', whereArgs: [id]);
+
+      // 4a. 🔴 DERİN DENETİM (2026-11-09, #26): lot takipli üründe satış
+      // FEFO ile lot_seri.miktar'ı da düşüyordu; silmede yalnız ürün stoğu
+      // geri geliyordu — lot toplamı stoktan kopuyor, sonraki satışlarda
+      // FEFO "lot stoğu yetersiz" ile lotsuz düşüme geçiyordu. Bu satışın
+      // (ve fiş güncellemelerinin) lot bazlı NET tüketimi lot'lara iade
+      // edilir.
+      if (stokGeriYukle) {
+        final lotTuketim = await txn.rawQuery('''
+          SELECT lot_id, SUM(onceki_stok - sonraki_stok) AS net
+          FROM stok_hareket
+          WHERE referans_id = ? AND referans_turu IN ('satis', 'fis_guncelleme')
+            AND lot_id IS NOT NULL
+          GROUP BY lot_id
+        ''', [id]);
+        for (final l in lotTuketim) {
+          final net = (l['net'] as num?)?.toDouble() ?? 0;
+          if (net <= 0.005) continue;
+          await txn.rawUpdate(
+              'UPDATE lot_seri SET miktar = miktar + ?, last_updated = ? WHERE id = ?',
+              [net, DateTime.now().toIso8601String(), l['lot_id']]);
+          final lot = await txn.query('lot_seri', where: 'id = ?', whereArgs: [l['lot_id']], limit: 1);
+          if (lot.isNotEmpty) {
+            await SyncKuyrukYazici.ekleTxn(txn,
+                tablo: 'lot_seri', veri: Map<String, dynamic>.from(lot.first));
+          }
+        }
+        // #25 için: şube stok payına geri yüklenecek miktarlar (commit sonrası).
+        for (final k in kalemler) {
+          final urunId = k['urun_id'] as int?;
+          final miktar = (k['miktar'] as num?)?.toDouble() ?? 0;
+          if (urunId == null || miktar <= 0) continue;
+          subePayIadesi[urunId] = (subePayIadesi[urunId] ?? 0) + miktar;
+        }
+        satisSubeId = satis['sube_id'] as int?;
+      }
 
       // 4. Stok geri yükle
       if (stokGeriYukle) {
@@ -1073,6 +1112,22 @@ class SatisDeposu {
         await CariDeposu.bakiyeTazeleTxn(txn, cariId, lastUpdated: simdi);
       }
     });
+    // 🔴 DERİN DENETİM (2026-11-09, #25): satış şube stok payını
+    // (sube_urun) düşüyordu ama silme yalnız ana stoğu geri yüklüyordu —
+    // şube stok raporu/transfer kontrolü her iptal kadar eksik kalıyordu.
+    // Satışın KENDİ şubesine (yoksa aktif şube) iade edilir; tamamla()'daki
+    // gibi ana işlemden sonra, kendi hatası işlemi bozmaz ama loglanır.
+    final payIadeSube = satisSubeId ?? AktifSubeServisi().subeId;
+    if (payIadeSube != null) {
+      for (final e in subePayIadesi.entries) {
+        try {
+          await SubeUrunDeposu().stokGir(e.key, payIadeSube, e.value);
+        } catch (err, st) {
+          LogServisi().hata('SatisDeposu.sil: şube stok payı geri yüklenemedi '
+              '(ürün #${e.key})', hata: err, yigin: st);
+        }
+      }
+    }
     // BulutManager'a satış bildirimi — transaction dışında.
     final db2 = await _d;
     await BulutManager().satiriBildir(db2, 'satislar', id);

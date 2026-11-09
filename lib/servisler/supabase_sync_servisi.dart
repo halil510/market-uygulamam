@@ -1367,6 +1367,10 @@ class SupabaseSyncServisi {
         // (200.000 kayıt) fazla dönemez — uç durumlarda (sunucunun
         // beklenmedik yanıtı) sonsuz döngüyü fiziksel olarak engeller.
         int guvenlikSayaci4 = 0;
+        // DERİN DENETİM (2026-11-09, #61): bir sayfa 200 dışı döndüyse ya da
+        // güvenlik sınırı dolduysa çekim YARIM kalmıştır — filigran
+        // ilerletilmez, yoksa inmeyen sayfalar bir daha hiç çekilmez.
+        var cekimYarim = false;
         while (guvenlikSayaci4++ < 200) {
           var endpoint = '${ayar.rest}/$tablo?limit=500&offset=$offset';
           if (sonSenkron != null) {
@@ -1397,6 +1401,7 @@ class SupabaseSyncServisi {
           if (res.statusCode != 200) {
             if (res.statusCode != 406) {
               sonuc.hatalar.add('❌ $tablo GET ${res.statusCode}: ${res.body.substring(0, res.body.length.clamp(0, 100))}');
+              cekimYarim = true;
             }
             break;
           }
@@ -1406,6 +1411,7 @@ class SupabaseSyncServisi {
           tumKayitlar.addAll(batch);
           if (batch.length < 500) break;
           offset += 500;
+          if (guvenlikSayaci4 >= 200) cekimYarim = true;
         }
 
         // Yarım inmiş iade kalemlerini imleçten BAĞIMSIZ tamamla.
@@ -1421,6 +1427,7 @@ class SupabaseSyncServisi {
         }
 
         if (tumKayitlar.isEmpty) {
+          if (cekimYarim) continue; // hata: 'şimdi' filigranı yazılmaz (#61)
           log?.call('   değişiklik yok');
           await _senkronKaydet(tablo, 'al');
           continue;
@@ -1602,7 +1609,9 @@ class SupabaseSyncServisi {
           }
         } else {
           await prefs.remove(fkSayacAnahtar);
-          await _cekimFiligraniKaydet(tablo, tumKayitlar);
+          // #61: yarım çekimde filigran ilerletilmez; inen satırlar upsert
+          // edildi, sonraki çekim aynı noktadan tekrar dener (idempotent).
+          if (!cekimYarim) await _cekimFiligraniKaydet(tablo, tumKayitlar);
         }
       } catch (e) {
         final hata = '❌ $tablo: $e';

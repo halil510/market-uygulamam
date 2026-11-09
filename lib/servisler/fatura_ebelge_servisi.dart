@@ -16,6 +16,12 @@
 import '../depolar/fatura_deposu.dart';
 import '../modeller/fatura_model.dart';
 import 'gib_servisi.dart';
+import 'log_servisi.dart';
+
+/// GİB durum sorgusundan gelen ve faturaya YAZILABİLECEK kesin sonuçlar
+/// (bkz. FaturaEbelgeServisi.durumSorgula — derin denetim 2026-11-09).
+bool eFaturaKesinDurumMu(String durum) =>
+    const {'onaylandi', 'reddedildi', 'gib_iptal'}.contains(durum);
 
 class FaturaEBelgeServisi {
   final FaturaDeposu _depo;
@@ -76,7 +82,20 @@ class FaturaEBelgeServisi {
     }
     final durum = sonuc?.durum;
     if (durum != null) {
-      await _depo.eFaturaDurumGuncelle(fatura.id!, durum, uuid: ettn);
+      // 🔴 DERİN DENETİM (2026-11-09, #16): entegratörün tanınmayan ara
+      // durumu ('processing', 'queued', 'waiting'…) ÖNCEDEN olduğu gibi
+      // yazılıyordu — GİB'e ulaşmış fatura "gönderilmemiş" görünüyor,
+      // Durum Sorgula kilitleniyor, tekrar gönderim ve yalnız-yerel iptal
+      // açılıyordu. Yalnız kesin sonuçlar yazılır; ara durumda belge
+      // 'gonderildi' kalır (sorgulanabilir), ham değer loglanır.
+      final yazilacak = eFaturaKesinDurumMu(durum) ? durum : 'gonderildi';
+      if (!eFaturaKesinDurumMu(durum)) {
+        LogServisi().bilgi('GİB durum sorgusu ara durum döndü: "$durum" '
+            '(fatura #${fatura.id}) — belge "gönderildi" olarak bekliyor');
+      }
+      if (yazilacak != fatura.eFaturaDurum) {
+        await _depo.eFaturaDurumGuncelle(fatura.id!, yazilacak, uuid: ettn);
+      }
     }
     return sonuc;
   }

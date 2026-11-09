@@ -165,7 +165,13 @@ extension _UrunEkleFormExt on _UrunEkleEkraniState {
     _c['indirimOrani']?.text  = u.indirimOrani > 0 ? u.indirimOrani.toStringAsFixed(2) : '';
     _c['indirimliFiyat']?.text = u.indirimliFiyat > 0 ? u.indirimliFiyat.toStringAsFixed(3).replaceFirst(RegExp(r'0$'), '') : '';
     _c['karOrani']?.text      = u.karOrani > 0 ? u.karOrani.toStringAsFixed(2) : '';
-    _c['stok']?.text          = u.stok.toStringAsFixed(u.birimAdi == 'KG' ? 3 : 0);
+    // 🔴 DERİN DENETİM (2026-11-09, #48): birime göre (KG değilse 0 hane)
+    // yuvarlanıyordu — adet ürününde 2,5 stok '3' görünüp kaydedilince
+    // (yalnız ad değişse bile) sahte 'Manuel Düzeltme' hareketi doğuyordu.
+    // Değerin kendi ondalığı korunur (en çok 3 hane, sondaki sıfırlar atılır).
+    _c['stok']?.text          = u.stok == u.stok.roundToDouble()
+        ? u.stok.toStringAsFixed(0)
+        : u.stok.toStringAsFixed(3).replaceFirst(RegExp(r'\.?0+$'), '');
     _c['minimumStok']?.text   = u.minimumStok > 0 ? u.minimumStok.toStringAsFixed(0) : '';
     _c['maksimumStok']?.text  = u.maksimumStok > 0 ? u.maksimumStok.toStringAsFixed(0) : '';
     _c['marka']?.text         = u.marka ?? '';

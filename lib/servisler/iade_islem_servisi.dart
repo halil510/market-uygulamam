@@ -193,7 +193,11 @@ class IadeIslemServisi {
             tablo: 'kasa_hareketleri', veri: {...kasaSatiri, 'id': kasaId});
       }
 
-      if (cari != null && toplamIade > 0) {
+      // 🔴 DERİN DENETİM (2026-11-09, #29): 'Kayıtsız Müşteri' (id'siz
+      // CariModel) seçiliyken cari_hareket'e cari_id=NULL yazılmaya
+      // çalışılıp NOT NULL hatasıyla tüm toplu iade çöküyordu. Kimliği olan
+      // cari yoksa cari hareketi yazılmaz (iade kasa/stok olarak tamamlanır).
+      if (cari != null && cari.id != null && toplamIade > 0) {
         // 🔴🔴 KRİTİK DÜZELTME (kullanıcı kararı, 2026-09-22 sabah): bir
         // önceki "düzeltme" cari seçimini HER ZAMAN bakiyeyi etkilemeyen
         // salt-kayıt yapmıştı — ama bu, cari'ye GERÇEKTEN yazdırılan

@@ -122,6 +122,8 @@ class _IadeEkraniState extends ConsumerState<IadeEkrani>
   // Müşteri oturum iadesi (tek fiş altında toplama)
   int? _oturumIadeId;
   String _oturumFisNo = '';
+  // Hızlı (toplu) iade çift tıklama koruması — ilk await'ten ÖNCE (#32).
+  bool _hizliKaydediliyor = false;
   // Açık oturum belgesinin ödeme yöntemi ve carisi — belge tek yöntem ve tek
   // cari varsayar (bkz. _oturumUyumunuKoru).
   String? _oturumYontem;

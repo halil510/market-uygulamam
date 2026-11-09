@@ -49,7 +49,20 @@ extension _HizliTabExt on _IadeEkraniState {
     }
   }
 
+  // 🔴 DERİN DENETİM (2026-11-09, #32): çift tıklama koruması ilk await'ten
+  // (önizleme fiyatları + onay) SONRA kuruluyordu — iki iade kaydı
+  // oluşabiliyordu. Koruma artık en başta (CLAUDE.md §5.6).
   Future<void> _hizliKaydet() async {
+    if (_hizliKaydediliyor) return;
+    _hizliKaydediliyor = true;
+    try {
+      await _hizliKaydetIc();
+    } finally {
+      _hizliKaydediliyor = false;
+    }
+  }
+
+  Future<void> _hizliKaydetIc() async {
     if (_hizliMap.isEmpty) {
       _msg('Liste boş', err: true);
       return;
@@ -188,7 +201,7 @@ extension _HizliTabExt on _IadeEkraniState {
       await _verileriYukle();
       // Cari/Kasa bakiyeleri değişti — başka ekranlarda (Cari Detay/
       // Liste, Kasa Raporu) eski veri kalmasın.
-      if (_secilenCari != null) {
+      if (_secilenCari?.id != null) { // kayıtsız müşteride id yok (#29)
         ref.invalidate(cariDetayProvider(_secilenCari!.id!));
         ref.read(carilerProvider.notifier).yukle();
       }

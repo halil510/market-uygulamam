@@ -6,6 +6,10 @@ import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
 import '../modeller/kullanici_model.dart';
 import '../cekirdek/utils/sifre_hash.dart';
+import '../servisler/auth_servisi.dart';
+
+/// Kaldırılmış yetki satırının ön eki ('-kasa') — bkz. yetkileriKaydet.
+const String _pasifOnEk = '-';
 
 class KullaniciDeposu {
   final Veritabani _db = Veritabani();
@@ -110,8 +114,34 @@ class KullaniciDeposu {
     }
   }
 
+  // ── Admin hesabı koruması (derin denetim 2026-11-09, #21) ─────────────
+  // 'kullanici' yetkisi verilmiş admin OLMAYAN biri admin hesabının
+  // şifresini sıfırlayıp onunla girebiliyor, admini düşürebiliyor ya da
+  // kendine tüm yetkileri verebiliyordu (ekrandaki tek koruma yalnız admin
+  // rolü atamayı engelliyordu). Kural depoda: her yoldan geçerli. Oturum
+  // yokken (kurulum/sistem akışı) eski davranış sürer.
+
+  static bool get _yoneticiDegilOturumVar =>
+      AuthServisi().aktifKullanici != null && !AuthServisi().isAdmin;
+
+  Future<void> _adminHesabiniKoru(DatabaseExecutor db, int hedefId) async {
+    if (!_yoneticiDegilOturumVar) return;
+    final r = await db.query('kullanicilar',
+        columns: ['rol'], where: 'id = ?', whereArgs: [hedefId], limit: 1);
+    if (r.isNotEmpty && r.first['rol'] == 'admin') {
+      throw Exception('Admin hesabı yalnız bir admin tarafından değiştirilebilir');
+    }
+  }
+
+  void _adminAtamasiniKoru(String? rol) {
+    if (rol == 'admin' && _yoneticiDegilOturumVar) {
+      throw Exception('Sadece admin, başka bir hesaba admin rolü atayabilir');
+    }
+  }
+
   Future<int> ekle(KullaniciModel k) async {
     try {
+      _adminAtamasiniKoru(k.rol);
       final db = await _d;
       final m = k.toMap();
       m.remove('id');
@@ -130,6 +160,8 @@ class KullaniciDeposu {
     try {
       if (k.id == null) return;
       final db = await _d;
+      await _adminHesabiniKoru(db, k.id!);
+      _adminAtamasiniKoru(k.rol);
       final m = k.toMap();
       m.remove('id'); // id where clause'da zaten var — map'ten çıkar
       // 🔴 DÜZELTME: last_updated bümlenmiyordu — kullanıcı bilgisi
@@ -148,6 +180,7 @@ class KullaniciDeposu {
   Future<void> sil(int id) async {
     try {
       final db = await _d;
+      await _adminHesabiniKoru(db, id);
       final now = DateTime.now().toIso8601String();
       // 🔴🔴 ÖNEMLİ DÜZELTME: silinen (deaktif edilen) bir kullanıcı,
       // last_updated bümlenmediği için diğer cihazlara hiç
@@ -167,6 +200,7 @@ class KullaniciDeposu {
   Future<void> sifreDegistir(int id, String yeniDuzSifre) async {
     try {
       final db = await _d;
+      await _adminHesabiniKoru(db, id);
       final yeniTuz = SifreHash.tuzUret();
       final yeniHash = SifreHash.hashleTuzlu(yeniDuzSifre, yeniTuz);
       final now = DateTime.now().toIso8601String();
@@ -218,7 +252,11 @@ class KullaniciDeposu {
         where: 'kullanici_id = ?',
         whereArgs: [kullaniciId],
       );
-      return rows.map((r) => r['yetki_kodu'] as String).toSet();
+      // '-kod' = kaldırılmış yetki (bkz. yetkileriKaydet) — sayılmaz.
+      return rows
+          .map((r) => r['yetki_kodu'] as String)
+          .where((k) => !k.startsWith(_pasifOnEk))
+          .toSet();
     } catch (e, st) {
       LogServisi().hata('Kullanici.metod', hata: e, yigin: st);
       rethrow;
@@ -239,15 +277,71 @@ class KullaniciDeposu {
   /// başka bir terminalde hiç görünmüyordu). Bu depo metodu, ekrandaki
   /// doğru mantıkla değiştirildi ve ekran artık BUNU çağırıyor —
   /// SCREEN→REPOSITORY hedef mimarisine uygun, davranış AYNEN korundu.
+  ///
+  /// 🔴 DERİN DENETİM (2026-11-09, #22): ÖNCEDEN tüm satırlar SİLİNİP yeni
+  /// global_id'lerle yeniden yazılıyordu — kaldırılan yetkinin buluttaki
+  /// satırı hiç silinmiyor, diğer kasalarda yetki kalıyor, "Tam Al"da aynı
+  /// cihazda bile geri geliyordu (silme izi taşıyacak sütun yok). Artık
+  /// fark yazılır, satırların kimliği korunur: kaldırılan yetki '-kod'
+  /// yapılır (normal güncelleme olarak her cihaza gider; yetki kontrolü bu
+  /// kodu eşlemez), tekrar verilen '-kod' satırı geri 'kod' olur.
+  /// #21: admin olmayan biri admin hesabının yetkilerine dokunamaz ve
+  /// başkasına KENDİNDE olmayan yetkiyi veremez.
   Future<void> yetkileriKaydet(
       int kullaniciId, Set<String> yetkiler) async {
     final db = await _d;
+    await _adminHesabiniKoru(db, kullaniciId);
     final now = DateTime.now().toIso8601String();
     final gidler = <String>[];
     await db.transaction((txn) async {
-      await txn.delete('roller_yetki',
+      final mevcut = await txn.query('roller_yetki',
           where: 'kullanici_id = ?', whereArgs: [kullaniciId]);
+      final aktif = <String, Map<String, Object?>>{};
+      final pasif = <String, Map<String, Object?>>{};
+      for (final r in mevcut) {
+        final kod = r['yetki_kodu'] as String;
+        if (kod.startsWith(_pasifOnEk)) {
+          pasif[kod.substring(_pasifOnEk.length)] = r;
+        } else {
+          aktif[kod] = r;
+        }
+      }
+      if (_yoneticiDegilOturumVar) {
+        final yeniVerilen = yetkiler.difference(aktif.keys.toSet());
+        final yetkisiz = yeniVerilen.where((k) => !AuthServisi().yetkiVarSync(k)).toList();
+        if (yetkisiz.isNotEmpty) {
+          throw Exception('Kendinizde olmayan yetkiyi veremezsiniz: ${yetkisiz.join(', ')}');
+        }
+      }
+
+      Future<void> guncelle(Map<String, Object?> satir, String yeniKod) async {
+        var gid = satir['global_id'] as String?;
+        if (gid == null || gid.isEmpty) gid = const Uuid().v4();
+        await txn.update('roller_yetki',
+            {'yetki_kodu': yeniKod, 'global_id': gid, 'last_updated': now},
+            where: 'id = ?', whereArgs: [satir['id']]);
+        gidler.add(gid);
+      }
+
+      // Kaldırılan yetkiler → pasif ('-kod').
+      for (final e in aktif.entries) {
+        if (yetkiler.contains(e.key)) continue;
+        final eskiPasif = pasif.remove(e.key);
+        if (eskiPasif != null) {
+          // Aynı kodun eski pasif kopyası varsa (UNIQUE) yerelden kaldırılır;
+          // buluttaki karşılığı zaten pasif, zararsız.
+          await txn.delete('roller_yetki', where: 'id = ?', whereArgs: [eskiPasif['id']]);
+        }
+        await guncelle(e.value, '$_pasifOnEk${e.key}');
+      }
+      // Verilen yetkiler: aktif varsa dokunma; pasif varsa geri aç; yoksa ekle.
       for (final yetki in yetkiler) {
+        if (aktif.containsKey(yetki)) continue;
+        final p = pasif[yetki];
+        if (p != null) {
+          await guncelle(p, yetki);
+          continue;
+        }
         final gid = const Uuid().v4();
         gidler.add(gid);
         await txn.insert(

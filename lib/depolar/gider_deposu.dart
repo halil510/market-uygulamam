@@ -13,6 +13,11 @@ import 'banka_hareket_deposu.dart';
 import 'kredi_karti_deposu.dart';
 import '../cekirdek/utils/tarih_utils.dart';
 
+/// Borç ödemesi Gider kayıtlarının toplanacağı sabit kategori adı (Borç Ödeme
+/// akışı açar ve otomatik oluşturur; parası borç akışında düşülür — bkz.
+/// GiderDeposu.guncelle).
+const String kBorcOdemeGiderKategoriAdi = 'Borç Ödemeleri';
+
 class GiderDeposu {
   final Veritabani _db = Veritabani();
   Future<Database> get _d async => _db.db;
@@ -192,6 +197,18 @@ class GiderDeposu {
   // FARK için tek bir telafi kaydı (Gider/Gider İptali) ekleniyor —
   // orijinal kayıtlar asla değiştirilmiyor (projenin geri kalanındaki
   // event-sourcing deseniyle tutarlı).
+  /// Gider Borç Ödeme akışının açtığı 'Borç Ödemeleri' kategorisindeyse
+  /// saklı satırı, değilse null döner.
+  static Future<Map<String, Object?>?> _borcOdemeGideriTxn(
+      DatabaseExecutor ex, int giderId) async {
+    final r = await ex.rawQuery('''
+      SELECT g.* FROM giderler g
+      JOIN gider_kategoriler k ON k.id = g.kategori_id
+      WHERE g.id = ? AND k.ad = ?
+    ''', [giderId, kBorcOdemeGiderKategoriAdi]);
+    return r.isEmpty ? null : r.first;
+  }
+
   Future<void> guncelle(GiderModel g) async {
     try {
       if (g.id == null) throw Exception('guncelle() için id gerekli');
@@ -207,6 +224,28 @@ class GiderDeposu {
       final bankaHareketIdleri = <int>[];
       final krediHareketIdleri = <int>[];
       await db.transaction((txn) async {
+        // 🔴 DERİN DENETİM (2026-11-09, #10 #11): Borç Ödeme'nin açtığı
+        // gider için para hareketi BORÇ akışında (referans 'borc_odeme')
+        // yazılır, bu gidere bağlı 'gider' hareketi yoktur. Aşağıdaki
+        // uzlaştırma bunu "hiç ödenmemiş" sanıp yalnız açıklama değişse
+        // bile kasa/banka/kartı İKİNCİ KEZ düşüyordu. Bu giderde yalnız
+        // para dışı alanlar düzenlenir; tutar/yöntem Borç Merkezi'nden.
+        final borcGideri = await _borcOdemeGideriTxn(txn, g.id!);
+        if (borcGideri != null) {
+          final eskiTutar = (borcGideri['tutar'] as num?)?.toDouble() ?? 0;
+          if ((eskiTutar - g.tutar).abs() > 0.005 ||
+              borcGideri['odeme_yontemi'] != g.odemeYontemi) {
+            throw Exception('Bu gider bir borç ödemesinden oluştu — tutarı ve ödeme '
+                'yöntemi buradan değiştirilemez. Düzeltme için Borç Merkezi\'ni kullanın.');
+          }
+          for (final k in const [
+            'kategori_id', 'tutar', 'odeme_yontemi', 'banka_hesap_id', 'kredi_karti_id',
+          ]) {
+            m[k] = borcGideri[k];
+          }
+          await txn.update('giderler', m, where: 'id = ?', whereArgs: [g.id]);
+          return;
+        }
         await txn.update('giderler', m, where: 'id = ?', whereArgs: [g.id]);
 
         // Kasa (Nakit)

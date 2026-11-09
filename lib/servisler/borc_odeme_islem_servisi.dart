@@ -35,10 +35,8 @@ import '../modeller/gider_model.dart';
 import '../servisler/bulut/bulut_manager.dart';
 import '../veri/database/veritabani.dart';
 
-/// Borç ödemesi Gider kayıtlarının toplanacağı sabit kategori adı.
-/// Kategori yoksa otomatik oluşturulur (kullanıcı Giderler ekranından
-/// istediği gibi yeniden adlandırabilir/yönetebilir).
-const String kBorcOdemeGiderKategoriAdi = 'Borç Ödemeleri';
+// kBorcOdemeGiderKategoriAdi artık lib/depolar/gider_deposu.dart'ta (depo
+// katmanı da kullanıyor — katman kuralı gereği servis → depo yönünde).
 
 class BorcOdemeIslemServisi {
   final _borcDepo = BorcDeposu();

@@ -53,6 +53,7 @@ import '../../servisler/satis_tamamlama_servisi.dart';
 import '../../servisler/faturalandirma_servisi.dart';
 import '../../servisler/yazdirma_servisi.dart';
 import '../../saglayicilar/riverpod/sepet_provider.dart';
+import '../../saglayicilar/riverpod/guncellenen_fis_provider.dart';
 import '../../saglayicilar/riverpod/dashboard_provider.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/hata_utils.dart';
@@ -98,7 +99,11 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   //         veya ürün ekler. "Tamamla"da sepetin son hali fişin yeni
   //         içeriği olur (SatisDeposu.fisiGuncelle).
   // ══════════════════════════════════════════════════════════════════════
-  SatisModel? _guncellenenSatis;
+  // Mod sepetle aynı ömürdeki sağlayıcıda (#23 #24) — ekrandan çıkıp
+  // dönünce kaybolmaz, sepet boşalınca kendiliğinden kapanır.
+  SatisModel? get _guncellenenSatis => ref.read(guncellenenFisProvider);
+  set _guncellenenSatis(SatisModel? s) =>
+      ref.read(guncellenenFisProvider.notifier).ayarla(s);
 
   final _araCtrl  = TextEditingController();
   final _araFocus = FocusNode();
@@ -209,6 +214,7 @@ class _HizliSatisEkraniState extends ConsumerState<HizliSatisEkrani>
   @override
   Widget build(BuildContext context) {
     final sepet = ref.watch(sepetProvider);
+    ref.watch(guncellenenFisProvider); // mod şeridi/sekme kilidi güncel kalsın
 
     // El terminali / USB okuyucu: arama kutusu odakta değilken de okutma
     // sepete ekler (bkz. DonanimBarkodDinleyici).

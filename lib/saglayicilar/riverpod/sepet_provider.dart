@@ -5,6 +5,7 @@ import '../../cekirdek/utils/para_utils.dart';
 import '../../modeller/urun_model.dart';
 import '../../modeller/cari_model.dart';
 import '../../modeller/sepet_model.dart';
+import 'guncellenen_fis_provider.dart';
 import '../../modeller/promosyon_model.dart';
 import '../../depolar/promosyon_deposu.dart';
 import '../../servisler/urun_fiyat_hesaplayici.dart';
@@ -317,6 +318,9 @@ class Sepet extends _$Sepet {
   void temizle() {
     _toptanCache.clear();
     state = const SepetDurum();
+    // Sepet boşalınca fiş güncelleme modu da kapanır (#23 #24). Fiş geri
+    // çağırma modu temizlemeden SONRA kurar.
+    ref.read(guncellenenFisProvider.notifier).ayarla(null);
   }
 
   // ── Çoklu alışveriş sekmesi (masaüstü, 2026-10-09) ────────────────────

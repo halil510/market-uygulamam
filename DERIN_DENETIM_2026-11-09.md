@@ -8,10 +8,10 @@ Durum sütunu: ✅ düzeltildi (commit) · ⏳ açık.
 |---|---|---|---|---|---|
 | 1 | kritik | Senkron / Veritabanı / Yedek / Devir | Yıl sonu devri: cari ve kasa açılışı GÜNCEL bakiyeden yazılıyor, dönem sonrası hareketler iki kez sayılıyor | `lib/servisler/donem_devir_servisi.dart:603` | ✅ 736b4674 |
 | 2 | kritik | Senkron / Veritabanı / Yedek / Devir | Devir silmesi yalnız yerelde ama açılış satırları senkron kuyruğuna giriyor; diğer kasalarda ve Tam Al'da bakiye/stok ikiye katlanıyor | `lib/servisler/donem_arsiv_servisi.dart:539` | ✅ 736b4674 |
-| 3 | yuksek | Satış | Güncellenmiş fiş silinince kasada 'fis_guncelleme' hareketleri ters çevrilmiyor, kasa bakiyesi kalıcı olarak yanlış kalıyor | `lib/depolar/satis_deposu.dart:973` | ⏳ |
-| 4 | yuksek | Satış | Önceden iade alınmış satış silinince stok, kasa ve cari ikinci kez iade ediliyor | `lib/depolar/satis_deposu.dart:918` | ⏳ |
-| 5 | yuksek | Satış | Çoklu ödemede Nakit dışı yönteme toplamdan fazla tutar girilebiliyor; fazlası cari borcuna ya da kart kasa hareketine yazılıyor | `lib/ekranlar/satis/coklu_odeme_ekrani.dart:183` | ⏳ |
-| 6 | yuksek | İade / Alım / Tedarik | Havale ile yapılan alım silinince bankadan çıkan para hiç geri yazılmıyor | `lib/servisler/alim_islem_servisi.dart:373` | ⏳ |
+| 3 | yuksek | Satış | Güncellenmiş fiş silinince kasada 'fis_guncelleme' hareketleri ters çevrilmiyor, kasa bakiyesi kalıcı olarak yanlış kalıyor | `lib/depolar/satis_deposu.dart:973` | ✅ a98a2cb5 |
+| 4 | yuksek | Satış | Önceden iade alınmış satış silinince stok, kasa ve cari ikinci kez iade ediliyor | `lib/depolar/satis_deposu.dart:918` | ✅ a98a2cb5 |
+| 5 | yuksek | Satış | Çoklu ödemede Nakit dışı yönteme toplamdan fazla tutar girilebiliyor; fazlası cari borcuna ya da kart kasa hareketine yazılıyor | `lib/ekranlar/satis/coklu_odeme_ekrani.dart:183` | ✅ e1f44a0f |
+| 6 | yuksek | İade / Alım / Tedarik | Havale ile yapılan alım silinince bankadan çıkan para hiç geri yazılmıyor | `lib/servisler/alim_islem_servisi.dart:373` | ✅ 2d289fbd |
 | 7 | yuksek | İade / Alım / Tedarik | Aynı iade oturumunda karışık ödeme yöntemi seçilince kalem silme/düzenleme kasayı ve cariyi bozuyor | `lib/servisler/iade_islem_servisi_duzenleme.dart:216` | ⏳ |
 | 8 | yuksek | İade / Alım / Tedarik | İade oturumunda cari değiştirilince ikinci carinin iade alacağı belge silinince geri alınmıyor | `lib/servisler/iade_islem_servisi_gecmis.dart:476` | ⏳ |
 | 9 | yuksek | Cari / Tahsilat / Borç | Masaüstü Borç listesinde eski seçili borç ile ikinci kez (fazladan) ödeme yapılabiliyor | `lib/ekranlar/borc/masaustu/borc_masaustu_gorunum.dart:209` | ⏳ |

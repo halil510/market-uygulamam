@@ -83,24 +83,24 @@ Durum sütunu: ✅ düzeltildi (commit) · ⏳ açık.
 | 75 | orta | Güvenlik / Yetki / Genel Arayüz | Global Arama'daki 'Yapay Zekaya Sor' ile 'rapor' ve 'kasa' yetkisi olmadan kâr, kasa ve cari verisi görülebiliyor | `lib/ekranlar/arama/global_arama_ekrani.dart:86` | ✅ bfe4544e |
 | 76 | orta | Güvenlik / Yetki / Genel Arayüz | 8 saatlik oturum süresi ve yetki önbelleği yenileme hiç çalışmıyor; pasife alınan ya da yetkisi alınan kullanıcı açık oturumla devam ediyor | `lib/servisler/auth_servisi.dart:254` | ✅ 08790692 |
 | 77 | orta | Güvenlik / Yetki / Genel Arayüz | Kullanıcı Değiştir'de tek hatalı PIN mevcut oturumu kapatıp giriş ekranına atıyor | `lib/saglayicilar/riverpod/auth_provider.dart:88` | ✅ 8df9388f |
-| 78 | dusuk | Satış | Satış listesinde toplu silme hataları sessizce yutuluyor, kullanıcıya 'Satışlar iptal edildi' gösteriliyor | `lib/saglayicilar/riverpod/satis_provider.dart:133` | ⏳ |
-| 79 | dusuk | İade / Alım / Tedarik | Fiş iadesi toplamı kuruşa yuvarlanmadan kasa ve cariye yazılıyor | `lib/servisler/iade_islem_servisi.dart:319` | ⏳ |
-| 80 | dusuk | Cari / Tahsilat / Borç | Silme onayı Banka/Kart tarafının geri alınmayacağını söylüyor ama kod otomatik ters kayıt yazıyor; elle düzeltilirse ters kayıt çiftlenir | `lib/ekranlar/cari/cari_hareket_islemleri.dart:101` | ⏳ |
-| 81 | dusuk | Cari / Tahsilat / Borç | Excel içe aktarımda yeni cari ile açılış bakiyesi ayrı işlemlerde yazılıyor; hata olursa açılış bakiyesi kalıcı olarak kayboluyor | `lib/servisler/excel_servisi_cari.dart:211` | ⏳ |
-| 82 | dusuk | Kasa / Banka / Kredi Kartı / Gider / Vardiya | 'Kasa Sayım' manuel düzeltmesi her zaman kasadan düşüyor | `lib/ekranlar/kasa/kasa_hareket_ekrani.dart:100` | ⏳ |
-| 83 | dusuk | Ürün / Stok / Fiyat / Promosyon | Stok hareketlerinde sube_id hiç yazılmıyor; dönem devri/arşiv stok hareketlerini arşivleyemiyor | `lib/depolar/stok_deposu.dart:195` | ⏳ |
-| 84 | dusuk | Fatura / GİB / İrsaliye | satisIcinFaturaVarMi iptal edilmiş faturayı da 'faturalandırılmış' sayıyor: Toptan Cari panelinde satış hiç silinemiyor | `lib/depolar/fatura_deposu.dart:21` | ⏳ |
-| 85 | dusuk | Fatura / GİB / İrsaliye | Basılan A4 faturada satır 'Birim Fiyat' KDV dahil, yanındaki 'Tutar' KDV hariç: Miktar × Birim Fiyat ≠ Tutar | `lib/ekranlar/fatura/fatura_detay_pdf_ext.dart:470` | ⏳ |
-| 86 | dusuk | Raporlar / Dashboard / Gün Sonu | Şube değiştirildiğinde dashboard verileri yenilenmiyor; rozet yeni şubeyi, kartlar eski şubeyi gösteriyor | `lib/ekranlar/dashboard/dashboard_ekrani.dart:169` | ⏳ |
-| 87 | dusuk | Raporlar / Dashboard / Gün Sonu | Kâr/Zarar 'Ödeme Tipi' sekmesi Karma satışları tek 'Karma' kalemi gösteriyor; nakit, kart ve cari payları görünmüyor | `lib/saglayicilar/riverpod/kar_zarar_provider.dart:111` | ⏳ |
-| 88 | dusuk | Raporlar / Dashboard / Gün Sonu | Gün Sonu yüklemesi hata verince yükleniyor göstergesi takılı kalıyor | `lib/ekranlar/rapor/gunluk_rapor_ekrani.dart:188` | ⏳ |
+| 78 | dusuk | Satış | Satış listesinde toplu silme hataları sessizce yutuluyor, kullanıcıya 'Satışlar iptal edildi' gösteriliyor | `lib/saglayicilar/riverpod/satis_provider.dart:133` | ✅ 886eb2e6 |
+| 79 | dusuk | İade / Alım / Tedarik | Fiş iadesi toplamı kuruşa yuvarlanmadan kasa ve cariye yazılıyor | `lib/servisler/iade_islem_servisi.dart:319` | ✅ 575052a3 |
+| 80 | dusuk | Cari / Tahsilat / Borç | Silme onayı Banka/Kart tarafının geri alınmayacağını söylüyor ama kod otomatik ters kayıt yazıyor; elle düzeltilirse ters kayıt çiftlenir | `lib/ekranlar/cari/cari_hareket_islemleri.dart:101` | ✅ 6cdb914f |
+| 81 | dusuk | Cari / Tahsilat / Borç | Excel içe aktarımda yeni cari ile açılış bakiyesi ayrı işlemlerde yazılıyor; hata olursa açılış bakiyesi kalıcı olarak kayboluyor | `lib/servisler/excel_servisi_cari.dart:211` | ✅ dae487d2 |
+| 82 | dusuk | Kasa / Banka / Kredi Kartı / Gider / Vardiya | 'Kasa Sayım' manuel düzeltmesi her zaman kasadan düşüyor | `lib/ekranlar/kasa/kasa_hareket_ekrani.dart:100` | ✅ 836d4ee7 |
+| 83 | dusuk | Ürün / Stok / Fiyat / Promosyon | Stok hareketlerinde sube_id hiç yazılmıyor; dönem devri/arşiv stok hareketlerini arşivleyemiyor | `lib/depolar/stok_deposu.dart:195` | ✅ e07ee44f |
+| 84 | dusuk | Fatura / GİB / İrsaliye | satisIcinFaturaVarMi iptal edilmiş faturayı da 'faturalandırılmış' sayıyor: Toptan Cari panelinde satış hiç silinemiyor | `lib/depolar/fatura_deposu.dart:21` | ✅ 48856572 |
+| 85 | dusuk | Fatura / GİB / İrsaliye | Basılan A4 faturada satır 'Birim Fiyat' KDV dahil, yanındaki 'Tutar' KDV hariç: Miktar × Birim Fiyat ≠ Tutar | `lib/ekranlar/fatura/fatura_detay_pdf_ext.dart:470` | ✅ 3d0c192f |
+| 86 | dusuk | Raporlar / Dashboard / Gün Sonu | Şube değiştirildiğinde dashboard verileri yenilenmiyor; rozet yeni şubeyi, kartlar eski şubeyi gösteriyor | `lib/ekranlar/dashboard/dashboard_ekrani.dart:169` | ✅ e93e7c2e |
+| 87 | dusuk | Raporlar / Dashboard / Gün Sonu | Kâr/Zarar 'Ödeme Tipi' sekmesi Karma satışları tek 'Karma' kalemi gösteriyor; nakit, kart ve cari payları görünmüyor | `lib/saglayicilar/riverpod/kar_zarar_provider.dart:111` | ✅ 0dc5b5c1 |
+| 88 | dusuk | Raporlar / Dashboard / Gün Sonu | Gün Sonu yüklemesi hata verince yükleniyor göstergesi takılı kalıyor | `lib/ekranlar/rapor/gunluk_rapor_ekrani.dart:188` | ✅ e93e7c2e |
 | 89 | dusuk | Masa / QR Menü / Adisyon | Yerel QR sunucusu tekrar korumasını yazımdan önce kaydediyor; ilk deneme hata alırsa tekrar deneme yazmadan 'başarılı' dönüyor | `lib/servisler/masa/qr_menu_sunucu_servisi.dart:256` | ✅ 823d1a71 |
-| 90 | dusuk | Masa / QR Menü / Adisyon | kalemEkle/kalemSil sipariş durumunu kontrol etmiyor; ödenmiş siparişe kalem ekleniyor ve toplamı değişiyor | `lib/depolar/masa_deposu.dart:391` | ⏳ |
-| 91 | dusuk | Masa / QR Menü / Adisyon | Masa ödemesinde sipariş 'odendi' ve masa 'bos' güncellemeleri senkron kuyruğuna transaction içinde yazılmıyor | `lib/servisler/masa_odeme_servisi.dart:302` | ⏳ |
-| 92 | dusuk | Masa / QR Menü / Adisyon | Toplu Masa Ekle'de çift tıklama mükerrer masalar oluşturuyor | `lib/ekranlar/masa/masa_liste_ekrani.dart:583` | ⏳ |
-| 93 | dusuk | Masa / QR Menü / Adisyon | Kalem silme onayından sonra mounted kontrolü ve try/catch yok | `lib/ekranlar/masa/widgets/masa_detay_icerik.dart:386` | ⏳ |
-| 94 | dusuk | Güvenlik / Yetki / Genel Arayüz | Asistanda bekleyen işlem önerisi kullanıcı değiştikten sonra başka biri tarafından 'evet' yazılarak yetki kontrolü olmadan uygulanıyor | `lib/servisler/ai/eylem/ai_eylem_motoru.dart:73` | ⏳ |
-| 95 | dusuk | Güvenlik / Yetki / Genel Arayüz | Ayarlar şifre kapısı göstermelik: ayarlarDogrulanmis hiç kontrol edilmiyor, '/ayarlar/icerik' doğrudan açılabiliyor | `lib/servisler/ai/ai_sohbet_servisi.dart:126` | ⏳ |
+| 90 | dusuk | Masa / QR Menü / Adisyon | kalemEkle/kalemSil sipariş durumunu kontrol etmiyor; ödenmiş siparişe kalem ekleniyor ve toplamı değişiyor | `lib/depolar/masa_deposu.dart:391` | ✅ 0361ec06 |
+| 91 | dusuk | Masa / QR Menü / Adisyon | Masa ödemesinde sipariş 'odendi' ve masa 'bos' güncellemeleri senkron kuyruğuna transaction içinde yazılmıyor | `lib/servisler/masa_odeme_servisi.dart:302` | ✅ c0ab460b |
+| 92 | dusuk | Masa / QR Menü / Adisyon | Toplu Masa Ekle'de çift tıklama mükerrer masalar oluşturuyor | `lib/ekranlar/masa/masa_liste_ekrani.dart:583` | ✅ a4208b2e |
+| 93 | dusuk | Masa / QR Menü / Adisyon | Kalem silme onayından sonra mounted kontrolü ve try/catch yok | `lib/ekranlar/masa/widgets/masa_detay_icerik.dart:386` | ✅ 174b8389 |
+| 94 | dusuk | Güvenlik / Yetki / Genel Arayüz | Asistanda bekleyen işlem önerisi kullanıcı değiştikten sonra başka biri tarafından 'evet' yazılarak yetki kontrolü olmadan uygulanıyor | `lib/servisler/ai/eylem/ai_eylem_motoru.dart:73` | ✅ 9497e6f8 |
+| 95 | dusuk | Güvenlik / Yetki / Genel Arayüz | Ayarlar şifre kapısı göstermelik: ayarlarDogrulanmis hiç kontrol edilmiyor, '/ayarlar/icerik' doğrudan açılabiliyor | `lib/servisler/ai/ai_sohbet_servisi.dart:126` | ✅ 79393640 |
 
 ## Ayrıntılar
 

@@ -4,6 +4,8 @@ import 'package:market_plus/cekirdek/utils/metin_arama.dart';
 import '../../depolar/satis_deposu.dart';
 import '../../modeller/satis_model.dart';
 import '../../servisler/faturalandirma_servisi.dart';
+import '../../servisler/log_servisi.dart';
+import '../../cekirdek/utils/hata_utils.dart';
 
 part 'satis_provider.g.dart';
 
@@ -107,8 +109,10 @@ class Satislar extends _$Satislar {
 
   /// Döndürdüğü sayı, faturalandırılmış olduğu için ATLANIP silinmeyen
   /// satış adedidir (arayüz bunu kullanıcıya bildirmeli).
-  Future<int> seciliSil() async {
-    if (state.seciliIds.isEmpty) return 0;
+  /// DERİN DENETİM (2026-11-09, #78): hata yutulmaz — loglanır ve
+  /// başarısız sayısı + ilk hata metni döner (ekran uyarı gösterir).
+  Future<({int faturali, int hatali, String? ilkHata})> seciliSil() async {
+    if (state.seciliIds.isEmpty) return (faturali: 0, hatali: 0, ilkHata: null);
     // 🔴🔴 KRİTİK DÜZELTME (derin analizde bulundu): Bu fonksiyon
     // önceden _depo.satisIptal() çağırıyordu — bu, sadece satışın
     // 'iptal' bayrağını işaretler; STOK GERİ YÜKLEMEZ, MÜŞTERİNİN
@@ -125,16 +129,22 @@ class Satislar extends _$Satislar {
     // gönderilmiş/onaylanmış bir faturası olan satışlar bile sessizce
     // silinebiliyordu. Artık faturası olan satışlar ATLANIYOR.
     var atlanan = 0;
+    var hatali = 0;
+    String? ilkHata;
     for (final id in state.seciliIds) {
       try {
         final faturaId = await FaturalandirmaServisi.mevcutFaturaId(satisId: id);
         if (faturaId != null) { atlanan++; continue; }
         await _depo.sil(id);
-      } catch (e) { /* ignore */ }
+      } catch (e, st) {
+        LogServisi().hata('Toplu satış silme (id=$id)', hata: e, yigin: st);
+        hatali++;
+        ilkHata ??= kullaniciyaHataMetni(e);
+      }
     }
     secimTemizle();
     await yukle();
-    return atlanan;
+    return (faturali: atlanan, hatali: hatali, ilkHata: ilkHata);
   }
 }
 

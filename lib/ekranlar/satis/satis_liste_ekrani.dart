@@ -107,11 +107,15 @@ class _SatisListeEkraniState extends ConsumerState<SatisListeEkrani> {
                     ],
                   ));
                 if (onay == true && context.mounted) {
-                  final atlanan = await ref.read(satislarProvider.notifier).seciliSil();
+                  final sonuc = await ref.read(satislarProvider.notifier).seciliSil();
                   if (!context.mounted) return;
-                  if (atlanan > 0) {
+                  if (sonuc.hatali > 0) {
+                    // #78: başarısız silmeler artık gizlenmez.
                     BildirimServisi.uyari(context,
-                        'Silindi, ancak $atlanan satış faturalandırılmış olduğu '
+                        '${sonuc.hatali} satış silinemedi: ${sonuc.ilkHata ?? ''}');
+                  } else if (sonuc.faturali > 0) {
+                    BildirimServisi.uyari(context,
+                        'Silindi, ancak ${sonuc.faturali} satış faturalandırılmış olduğu '
                         'için silinmedi — bunun için "İade Et" kullanın.');
                   } else {
                     BildirimServisi.basari(context, 'Satışlar iptal edildi');

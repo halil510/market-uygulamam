@@ -118,7 +118,7 @@ class CariAdresDeposu {
     final globalId = satir.isNotEmpty ? satir.first['global_id']?.toString() : null;
     await db.delete('cari_adres', where: 'id = ?', whereArgs: [id]);
     if (globalId != null && globalId.isNotEmpty) {
-      BulutManager().sil('cari_adres', globalId);
+      BulutManager().kaliciSil('cari_adres', globalId); // bulutta is_deleted yok (#60)
     }
   }
 }

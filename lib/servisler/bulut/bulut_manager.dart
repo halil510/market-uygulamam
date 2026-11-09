@@ -257,6 +257,16 @@ class BulutManager {
     unawaited(_kuyrukaYaz(tablo, 'DELETE', {'global_id': globalId}));
   }
 
+  /// Bulutta soft-delete sütunu OLMAYAN, yerelde de belgeli olarak gerçek
+  /// silinen türev tablolar (cari_adres, fiyat_kademeleri,
+  /// urun_fiyat_gruplari) için kalıcı silme kuyruğa yazılır.
+  /// 🔴 DERİN DENETİM (2026-11-09, #47 #60): bunlar [sil] ile var olmayan
+  /// is_deleted sütununa PATCH atıyordu — silme hiçbir cihaza/buluta
+  /// ulaşmıyor, satır sonraki çekimde geri geliyordu.
+  void kaliciSil(String tablo, String globalId) {
+    unawaited(_kuyrukaYaz(tablo, 'HARD_DELETE', {'global_id': globalId}));
+  }
+
   /// Genel (fire-and-forget) giriş noktası — [upsert]/[sil] tarafından
   /// kullanılır. Kendi kısa transaction'ını açar (çağıranın business-data
   /// transaction'ı ZATEN commit olmuş durumda — bkz. tüm çağrı

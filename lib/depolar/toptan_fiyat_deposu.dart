@@ -160,13 +160,20 @@ class ToptanFiyatDeposu {
 
   Future<void> urunGrupFiyatiSil(int urunId, int fiyatGrubuId) async {
     final db = await _d;
+    // NOT: bu tablo gerçek silme kullanıyor (iş geçmişi taşımayan türev
+    // kayıt — CLAUDE.md §3.3 istisnası).
+    // 🔴 DERİN DENETİM (2026-11-09, #47): silme buluta hiç bildirilmiyordu
+    // — diğer kasalarda grup fiyatı uygulanmaya devam ediyor, çekimde geri
+    // geliyordu. Silmeden önce kimlikler okunup bulutta da kalıcı silinir.
+    final gidler = await db.query('urun_fiyat_gruplari',
+        columns: ['global_id'],
+        where: 'urun_id = ? AND fiyat_grubu_id = ?', whereArgs: [urunId, fiyatGrubuId]);
     await db.delete('urun_fiyat_gruplari',
         where: 'urun_id = ? AND fiyat_grubu_id = ?', whereArgs: [urunId, fiyatGrubuId]);
-    // NOT: bu tablo gerçek silme kullanıyor (soft-delete gerektirecek
-    // kadar hassas değil — sadece bir "özel fiyat" kaydı, iş geçmişi
-    // taşımıyor). Bulut tarafında da aynı kaydın silinmesi gerekiyorsa
-    // bir sonraki tam senkronda global_id eşleşmesi üzerinden temizlik
-    // yapılabilir; bu basit tablo için kabul edilebilir bir sadelik.
+    for (final r in gidler) {
+      final gid = r['global_id'] as String?;
+      if (gid != null && gid.isNotEmpty) BulutManager().kaliciSil('urun_fiyat_gruplari', gid);
+    }
   }
 
   // ══════════════════ MİKTAR BAZLI FİYAT KADEMELERİ ══════════════════
@@ -188,6 +195,14 @@ class ToptanFiyatDeposu {
     m.remove('id');
     m['global_id'] ??= const Uuid().v4();
     m['last_updated'] = DateTime.now().toIso8601String();
+    // 🔴 DERİN DENETİM (2026-11-09, #46): düzenleme (id dolu) aynı
+    // global_id ile yeni INSERT deniyor, UNIQUE hatasıyla kademe hiç
+    // düzenlenemiyordu. Var olan kademe yerinde güncellenir.
+    if (k.id != null) {
+      await db.update('fiyat_kademeleri', m, where: 'id = ?', whereArgs: [k.id]);
+      await BulutManager().satiriBildir(db, 'fiyat_kademeleri', k.id);
+      return k.id!;
+    }
     final yeniId = await db.insert('fiyat_kademeleri', m);
     await BulutManager().satiriBildir(db, 'fiyat_kademeleri', yeniId);
     return yeniId;
@@ -202,7 +217,7 @@ class ToptanFiyatDeposu {
     final rows = await db.query('fiyat_kademeleri', columns: ['global_id'], where: 'id = ?', whereArgs: [id], limit: 1);
     await db.delete('fiyat_kademeleri', where: 'id = ?', whereArgs: [id]);
     if (rows.isNotEmpty && rows.first['global_id'] != null) {
-      BulutManager().sil('fiyat_kademeleri', rows.first['global_id'] as String);
+      BulutManager().kaliciSil('fiyat_kademeleri', rows.first['global_id'] as String); // #60
     }
   }
 }

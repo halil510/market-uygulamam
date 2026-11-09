@@ -68,7 +68,9 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
     if (!mounted) return;
     setState(() => _yukleniyor = true);
     try {
-      final bakiye  = await _depo.guncelBakiye();
+      // #43: virman çekmecedeki NAKİTTEN yapılır — kart satışları dahil
+      // toplam bakiye yeterlilik kontrolünü yanıltıyordu.
+      final bakiye  = await _depo.guncelBakiyeNakit();
       final bankalar = await BankaHesapDeposu().tumunuGetir();
       final kartlar  = await KrediKartiDeposu().tumunuGetir();
       if (!mounted) return;
@@ -193,7 +195,7 @@ class _VirmanEkraniState extends ConsumerState<VirmanEkrani> {
 
   Future<void> _kasaBakiyeYukleTek() async {
     try {
-      final b = await _depo.guncelBakiye();
+      final b = await _depo.guncelBakiyeNakit(); // #43
       if (mounted) setState(() => _kasaBakiye = b);
     } catch (e, st) {
       // Bakiye 0 görünür; kullanıcı yanlış bakiyeyle virman yapmasın diye loglanır.

@@ -46,7 +46,9 @@ class LotDeposu {
     required int? kullaniciId,
   }) async {
     final db = await Veritabani().db;
-    final fark = miktar - eskiMiktar;
+    // Yeni lotta [eskiMiktar] kullanılır; var olan lotta transaction içinde
+    // DB değerinden yeniden hesaplanır (#52).
+    var fark = miktar - eskiMiktar;
     late int lotId;
 
     final data = {
@@ -68,6 +70,14 @@ class LotDeposu {
         });
       } else {
         lotId = existingLotId;
+        // 🔴 DERİN DENETİM (2026-11-09, #52): eski miktar EKRAN listesinden
+        // geliyordu — araya giren FEFO satışlarından sonra fark büyük çıkıp
+        // ürün stoğu ve lot miktarı şişiyordu. Güncel değer DB'den okunur.
+        final guncel = await txn.query('lot_seri',
+            columns: ['miktar'], where: 'id = ?', whereArgs: [lotId], limit: 1);
+        if (guncel.isNotEmpty) {
+          fark = miktar - ((guncel.first['miktar'] as num?)?.toDouble() ?? 0);
+        }
         data['last_updated'] = DateTime.now().toIso8601String();
         await txn.update('lot_seri', data, where: 'id=?', whereArgs: [lotId]);
       }

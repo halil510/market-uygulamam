@@ -1,6 +1,5 @@
 // lib/servisler/masa/qr_menu_servisi.dart
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import '../../depolar/masa_deposu.dart';
 import '../../veri/database/veritabani.dart';
 import '../../servisler/log_servisi.dart';
@@ -43,7 +42,14 @@ class QrMenuServisi {
   // Artık MasaDeposu'nun ZATEN kanıtlanmış, güvenli fonksiyonları
   // (siparisAcVeyaGetir, kalemEkle) kullanılıyor — bu üç sorun da
   // otomatik olarak ortadan kalkıyor.
-  Future<void> musteriSiparisKaydet({
+  //
+  // 🔴 DERİN DENETİM (2026-11-09, #74): eşleşmeyen ürün urun_id=0/bulut id
+  // ile ekleniyordu — FK açık olduğu için kalem düşüyor, hata yutuluyor ve
+  // sipariş "alındı" dönüyordu. Artık ürünler ÖNCE çözülür; hiçbiri
+  // eşleşmezse hiçbir şey yazılmadan Exception fırlatılır (masa boş kalır,
+  // çağıran hatayı gösterir/buluta geri bırakır). Kısmen eşleşmede
+  // eşleşenler eklenir, atlanan ürün adları DÖNDÜRÜLÜR (çağıran gösterir).
+  Future<List<String>> musteriSiparisKaydet({
     required int masaId,
     required List<Map<String, dynamic>> kalemler,
     required String musteriAdi,
@@ -51,8 +57,9 @@ class QrMenuServisi {
     String? not,
   }) async {
     final masaDepo = MasaDeposu();
-    final siparis = await masaDepo.siparisAcVeyaGetir(masaId);
     final db = await Veritabani().db;
+    final atlanan = <String>[];
+    final cozulen = <({Map<String, dynamic> k, int urunId, String urunAdi})>[];
 
     // 🔴🔴 KÖK NEDEN DÜZELTMESİ ("masa dolu ama ürün yok" — 2. tur):
     // HTML menü sayfası ürünleri SUPABASE'den çekiyor — yani sipariş
@@ -66,9 +73,7 @@ class QrMenuServisi {
     // Ayrıca her kalem KENDİ try-catch'inde — önceden tek kalemdeki
     // bir hata TÜM siparişi iptal ediyordu (sipariş sonsuz döngüde
     // tekrar deneniyor, masa hep dolu-boş kalıyordu).
-    int eklenen = 0;
     for (final k in kalemler) {
-      try {
         final adRaw = k['urun_adi'];
         final urunAdi = adRaw?.toString() ?? 'Ürün';
         int? lokalUrunId;
@@ -98,50 +103,46 @@ class QrMenuServisi {
               whereArgs: [urunAdi], limit: 1);
           if (r.isNotEmpty) lokalUrunId = (r.first['id'] as num).toInt();
         }
+        if (lokalUrunId == null) {
+          // #74: eşleşmeyen ürün FK'yı ihlal eder — atlanır ve bildirilir.
+          atlanan.add(urunAdi);
+          continue;
+        }
+        cozulen.add((k: k, urunId: lokalUrunId, urunAdi: urunAdi));
+    }
 
+    if (cozulen.isEmpty) {
+      LogServisi().uyari('QrMenu: masa $masaId siparişindeki hiçbir ürün '
+          'bu cihazda bulunamadı: ${atlanan.join(', ')}');
+      throw Exception('Sipariş kaydedilemedi: ürünler bulunamadı '
+          '(${atlanan.join(', ')}). Menü güncel değil olabilir.');
+    }
+
+    final siparis = await masaDepo.siparisAcVeyaGetir(masaId);
+    int eklenen = 0;
+    for (final c in cozulen) {
+      final k = c.k;
+      try {
         // 🔴🔴 KRİTİK GÜVENLİK AÇIĞI (derin analizde bulundu): birimFiyat/
         // kdvOran doğrudan istemcinin gönderdiği JSON'dan alınıyordu —
         // bu sunucu (qr_menu_sunucu_servisi.dart) kimlik doğrulaması
         // yapmıyor, aynı WiFi ağındaki HERKES doğrudan POST atabiliyor.
-        // Bir saldırgan gerçek bir ürüne 'birim_fiyat: 0.01' göndererek
-        // başka bir masanın hesabına neredeyse bedava kalem enjekte
-        // edebilirdi — bu tutar hiç değiştirilmeden ödeme/kasa/stok
-        // işlemine kadar akıyordu. Artık ürün lokalde eşleştiyse
-        // (lokalUrunId != null) fiyat/KDV HER ZAMAN yerel 'urunler'
-        // tablosundan okunuyor; istemcinin gönderdiği tutar hiç
-        // güvenilmiyor.
-        double birimFiyat;
-        double kdvOran;
-        if (lokalUrunId != null) {
-          final urunSatir = await db.query('urunler',
-              columns: ['satis_fiyati', 'kdv_oran'], where: 'id = ?', whereArgs: [lokalUrunId], limit: 1);
-          if (urunSatir.isNotEmpty) {
-            birimFiyat = (urunSatir.first['satis_fiyati'] as num?)?.toDouble() ?? 0;
-            kdvOran = UrunModel.kdvOranCoz(urunSatir.first['kdv_oran']);
-          } else {
-            birimFiyat = 0;
-            kdvOran = 18;
-          }
-        } else {
-          // Eşleşme yok — kalemi yine de gelen id ile ekle ki
-          // müşterinin siparişi KAYBOLMASIN (ad, kalemde saklı olduğu
-          // için ekranda yine görünür; personel düzeltebilir). Ama
-          // GÜVENLİ TARAF: fiyat, doğrulanamayan bir kaynaktan asla
-          // alınmaz — 0 olarak eklenir, personel elle düzeltir.
-          lokalUrunId = (k['urun_id'] as num?)?.toInt() ?? 0;
-          birimFiyat = 0;
-          kdvOran = 18;
-          if (kDebugMode) {
-            debugPrint('QrMenu: "$urunAdi" lokalde eşleşmedi, '
-                'gelen id ($lokalUrunId) ile (fiyat=0) kaydedildi');
-          }
+        // Artık fiyat/KDV HER ZAMAN yerel 'urunler' tablosundan okunuyor;
+        // istemcinin gönderdiği tutar hiç güvenilmiyor.
+        double birimFiyat = 0;
+        double kdvOran = 18;
+        final urunSatir = await db.query('urunler',
+            columns: ['satis_fiyati', 'kdv_oran'], where: 'id = ?', whereArgs: [c.urunId], limit: 1);
+        if (urunSatir.isNotEmpty) {
+          birimFiyat = (urunSatir.first['satis_fiyati'] as num?)?.toDouble() ?? 0;
+          kdvOran = UrunModel.kdvOranCoz(urunSatir.first['kdv_oran']);
         }
 
         final notDeger = k['not']?.toString();
         await masaDepo.kalemEkle(
           siparis.id!,
-          urunId:     lokalUrunId,
-          urunAdi:    urunAdi,
+          urunId:     c.urunId,
+          urunAdi:    c.urunAdi,
           birimFiyat: birimFiyat,
           kdvOran:    kdvOran,
           miktar:     (k['miktar'] as num?)?.toDouble() ?? 1,
@@ -149,11 +150,17 @@ class QrMenuServisi {
         );
         eklenen++;
       } catch (e, st) {
-        LogServisi().hata('QrMenu kalem hatası (atlandı):  — kalem: $k', hata: e, yigin: st);
+        LogServisi().hata('QrMenu kalem hatası (atlandı) — kalem: $k', hata: e, yigin: st);
+        atlanan.add(c.urunAdi);
       }
     }
-    if (kDebugMode) {
-      debugPrint('QrMenu: masa $masaId → ${kalemler.length} kalemden $eklenen eklendi');
+    if (eklenen == 0) {
+      throw Exception('Sipariş kaydedilemedi: hiçbir kalem eklenemedi.');
     }
+    if (atlanan.isNotEmpty) {
+      LogServisi().uyari('QrMenu: masa $masaId → ${atlanan.length} kalem '
+          'atlandı: ${atlanan.join(', ')}');
+    }
+    return atlanan;
   }
 }

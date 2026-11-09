@@ -254,15 +254,26 @@ class QrMenuSunucuServisi {
           return;
         }
         _sonIstekler[istekAnahtari] = now;
-        await QrMenuServisi().musteriSiparisKaydet(
-          masaId: masaId,
-          kalemler: kalemler,
-          musteriAdi: (data['musteri_adi'] as String?) ?? '',
-          musteriTel: (data['musteri_tel'] as String?) ?? '',
-          not: data['not'] as String?,
-        );
+        final List<String> atlanan;
+        try {
+          atlanan = await QrMenuServisi().musteriSiparisKaydet(
+            masaId: masaId,
+            kalemler: kalemler,
+            musteriAdi: (data['musteri_adi'] as String?) ?? '',
+            musteriTel: (data['musteri_tel'] as String?) ?? '',
+            not: data['not'] as String?,
+          );
+        } catch (_) {
+          // DERİN DENETİM (2026-11-09, #89): yazım başarısızsa tekrar
+          // koruması kaldırılır — yoksa müşterinin yeniden denemesi hiçbir
+          // şey yazmadan "başarılı" dönüyordu. Hata aşağıdaki catch'te
+          // 500 olarak döner.
+          _sonIstekler.remove(istekAnahtari);
+          rethrow;
+        }
         req.response.headers.set('Content-Type', 'application/json; charset=utf-8');
-        req.response.write(jsonEncode({'basarili': true}));
+        // #74: atlanan (bu cihazda bulunamayan) ürünler bildirilir.
+        req.response.write(jsonEncode({'basarili': true, 'atlanan': atlanan}));
         await req.response.close();
       } else {
         req.response.statusCode = 404;

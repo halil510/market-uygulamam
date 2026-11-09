@@ -152,7 +152,7 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
 
     setState(() => _gonderiliyor = true);
     try {
-      await _servis.musteriSiparisKaydet(
+      final atlanan = await _servis.musteriSiparisKaydet(
         masaId: widget.masaId,
         kalemler: kalemler,
         musteriAdi: musteriAdiCtrl.text.trim(),
@@ -160,10 +160,17 @@ class _QrMenuEkraniState extends State<QrMenuEkrani> {
         not: notCtrl.text.trim(),
       );
 
+      if (!mounted) return;
       setState(() => _sepet.clear());
 
       if (mounted) {
-        basariMesaji(context, 'Siparişiniz alındı! Teşekkür ederiz.');
+        // #74: eşleşmeyen ürün sessizce düşmesin.
+        if (atlanan.isNotEmpty) {
+          hataMesaji(context,
+              'Sipariş alındı, ancak şu ürünler eklenemedi: ${atlanan.join(', ')}');
+        } else {
+          basariMesaji(context, 'Siparişiniz alındı! Teşekkür ederiz.');
+        }
         Navigator.pop(context);
       }
     } catch (e) {

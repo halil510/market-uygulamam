@@ -301,7 +301,7 @@ class GibUblOlusturucu {
         final iadeRows = await db.query('iade', columns: ['satis_id'], where: 'id = ?', whereArgs: [fatura.iadeId], limit: 1);
         if (iadeRows.isNotEmpty && iadeRows.first['satis_id'] != null) {
           final orijinalFaturaRows = await db.query('faturalar',
-              columns: ['fatura_no'], where: 'satis_id = ? AND deleted_at IS NULL',
+              columns: ['fatura_no'], where: "satis_id = ? AND deleted_at IS NULL AND COALESCE(durum, '') != 'iptal'", // #84
               whereArgs: [iadeRows.first['satis_id']], limit: 1);
           if (orijinalFaturaRows.isNotEmpty && orijinalFaturaRows.first['fatura_no'] != null) {
             final orijinalFaturaNo = orijinalFaturaRows.first['fatura_no'] as String;

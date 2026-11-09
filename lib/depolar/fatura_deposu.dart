@@ -19,7 +19,10 @@ class FaturaDeposu {
   Future<bool> satisIcinFaturaVarMi(int satisId) async {
     final db = await _d;
     final rows = await db.query('faturalar',
-        where: 'satis_id = ? AND (deleted_at IS NULL)', whereArgs: [satisId], limit: 1);
+        // DERİN DENETİM (2026-11-09, #84): iptal edilmiş fatura satışı
+        // kilitlemez (FaturalandirmaServisi.mevcutFaturaId ile aynı kural).
+        where: "satis_id = ? AND deleted_at IS NULL AND COALESCE(durum, '') != 'iptal'",
+        whereArgs: [satisId], limit: 1);
     return rows.isNotEmpty;
   }
 

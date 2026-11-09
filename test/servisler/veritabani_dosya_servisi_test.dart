@@ -28,6 +28,9 @@ Future<String?> _degerOku(String yol) async {
 }
 
 void main() {
+  // dosyayiDegistir arka plan servislerini durdurur (AnlikBulutDinleyici
+  // WidgetsBinding gözlemcisini kaldırır) — binding gerekir.
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Directory tmp;
   late String hedef;
   late int kapatSayisi;

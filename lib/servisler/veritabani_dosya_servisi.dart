@@ -25,6 +25,7 @@ import '../cekirdek/sabitler/uygulama_sabitleri.dart';
 import '../veri/database/veritabani.dart';
 import 'bulut/anlik_bulut_dinleyici.dart';
 import 'bulut/bulut_manager.dart';
+import 'bulut/otomatik_bulut_cekme.dart';
 import 'log_servisi.dart';
 import 'masa/qr_siparis_cekici_servisi.dart';
 
@@ -179,10 +180,24 @@ class VeritabaniDosyaServisi {
     final hedefDosya = File(hedef);
     final guvenlikYedegi =
         '$hedef.${yedekOneki}_${DateTime.now().millisecondsSinceEpoch}.bak';
+
+    // 🔴 DERİN DENETİM (2026-11-09, #63): arka plan senkron servisleri
+    // (8 sn'lik gönderim, anlık dinleyici, otomatik çekme, QR çekici)
+    // kapat() ile yazma arasında DB'yi yeniden açıp boş şema
+    // oluşturabiliyordu. cihaziSifirla'daki gibi önce durdurulur (işlem
+    // sonrası uygulama yeniden başlatılır).
+    BulutManager().durdur();
+    AnlikBulutDinleyici().durdur();
+    OtomatikBulutCekme().durdur();
+    QrSiparisCekiciServisi().durdur();
+
+    // 🔴 #59: güvenlik kopyası ÖNCEDEN kapat()'tan önce alınıyordu — son
+    // işlemler henüz -wal dosyasındaydı, kopyada yoktu; bütünlük hatasında
+    // geri dönüş bu işlemleri kaybediyordu. Kapatma WAL'ı ana dosyaya
+    // işler; kopya ondan sonra alınır.
+    await kapat();
     final yedekVar = await hedefDosya.exists();
     if (yedekVar) await hedefDosya.copy(guvenlikYedegi);
-
-    await kapat();
 
     Future<void> geriAl() async {
       await _dbDosyalariniSil(hedef);

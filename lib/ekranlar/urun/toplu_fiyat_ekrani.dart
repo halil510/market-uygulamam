@@ -94,7 +94,10 @@ class _TopluFiyatEkraniState extends ConsumerState<TopluFiyatEkrani> with Single
       case 'sabitFiyat':
         return ParaUtils.sayiCoz(_yeniCtrl.text) ?? u.satisFiyati;
       case 'alisUstune':
-        return u.alisFiyat * (1 + deger / 100);
+        // 🔴 DERİN DENETİM (2026-11-09, #45): satış fiyatı KDV DAHİL saklanır;
+        // KDV HARİÇ alış üzerine kâr eklenip KDV unutuluyordu (fiyatlar KDV
+        // kadar düşük). KDV dahil alış üzerine kâr eklenir, kuruşa yuvarlanır.
+        return ParaUtils.yuvarla(u.alisFiyatKdvDahil * (1 + deger / 100));
       default: return u.satisFiyati;
     }
   }

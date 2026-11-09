@@ -49,7 +49,8 @@ class CariTahsilatOdemeServisi {
   }) async {
     final bankaGerekli =
         paraHareketEdiyor && (odemeTuru == 'Banka' || odemeTuru == 'Havale');
-    final kartGerekli = paraHareketEdiyor && odemeTuru == 'Kredi Kartı';
+    // Şirket kartı yalnız para ÇIKIŞINDA (ödeme) seçilir; tahsilat POS'tur (#38).
+    final kartGerekli = paraHareketEdiyor && odemeTuru == 'Kredi Kartı' && paraCikiyor;
     if (bankaGerekli && bankaHesapId == null) {
       throw Exception('Banka hesabı seçilmedi');
     }
@@ -95,7 +96,23 @@ class CariTahsilatOdemeServisi {
       }
 
       if (paraHareketEdiyor) {
-        if (odemeTuru == 'Nakit') {
+        if (odemeTuru == 'Kredi Kartı' && !paraCikiyor) {
+          // 🔴 DERİN DENETİM (2026-11-09, #38): müşteriden kartla tahsilat
+          // ŞİRKETİN KENDİ kredi kartının kullanılan limitini düşürüyordu
+          // (borcu ödenmiş gibi). Müşteri kartı POS'tan çekilir — satıştaki
+          // kartlı ödemeyle aynı: kasaya 'Kredi Kartı' yöntemli giriş.
+          kasaHareketId = await _kasaDepo.hareketEkleTxn(
+              txn,
+              KasaHareketModel(
+                hareketTipi: 'Tahsilat',
+                tutar: tutar,
+                tarih: DateTime.now(),
+                referansId: cariHareketLocalId,
+                referansTuru: 'cari_hareket',
+                aciklama: '$cariUnvan - $islemTipi (POS)',
+                odemeYontemi: 'Kredi Kartı',
+              ));
+        } else if (odemeTuru == 'Nakit') {
           kasaHareketId = await _kasaDepo.hareketEkleTxn(
               txn,
               KasaHareketModel(

@@ -134,7 +134,7 @@ class _TahsilatOdemeEkraniState extends ConsumerState<TahsilatOdemeEkrani> {
   bool get _bankaSecimiGerekli =>
       _paraHareketEdiyor && (_odemeTuru == 'Banka' || _odemeTuru == 'Havale');
   bool get _kartSecimiGerekli =>
-      _paraHareketEdiyor && _odemeTuru == 'Kredi Kartı';
+      _paraHareketEdiyor && _odemeTuru == 'Kredi Kartı' && _paraCikiyor; // tahsilat POS (#38)
 
   Future<void> _kaydet() async {
     if (_islem) return; // en başta — onay diyaloğu açıkken tekrar tetiklenmesin

@@ -169,7 +169,10 @@ class FaturaDeposu {
         'ca.adres as cari_adres_ham, ca.ilce as cari_ilce, ca.il as cari_il '
         'FROM faturalar f '
         'LEFT JOIN cari c ON f.cari_id = c.id '
-        'LEFT JOIN cari_adres ca ON ca.cari_id = f.cari_id AND ca.varsayilan = 1 WHERE f.id = ?',
+        // 🔴 DERİN DENETİM (2026-11-09, #58): adres FaturalandirmaServisi
+        // kontrolüyle AYNI kuralla seçilir (varsayılan önce, yoksa ilk adres);
+        // önceden yalnız varsayılan adres okunuyor, GİB'e boş adres gidiyordu.
+        'LEFT JOIN cari_adres ca ON ca.id = (SELECT a.id FROM cari_adres a WHERE a.cari_id = f.cari_id ORDER BY a.varsayilan DESC, a.id LIMIT 1) WHERE f.id = ?',
         [id],
       );
       if (rows.isEmpty) return null;
@@ -193,7 +196,7 @@ class FaturaDeposu {
         'ca.adres as cari_adres_ham, ca.ilce as cari_ilce, ca.il as cari_il '
         'FROM faturalar f '
         'LEFT JOIN cari c ON f.cari_id = c.id '
-        'LEFT JOIN cari_adres ca ON ca.cari_id = f.cari_id AND ca.varsayilan = 1 WHERE f.fatura_no = ?',
+        'LEFT JOIN cari_adres ca ON ca.id = (SELECT a.id FROM cari_adres a WHERE a.cari_id = f.cari_id ORDER BY a.varsayilan DESC, a.id LIMIT 1) WHERE f.fatura_no = ?',
         [faturaNo],
       );
       if (rows.isEmpty) return null;
@@ -230,7 +233,7 @@ class FaturaDeposu {
         'ca.adres as cari_adres_ham, ca.ilce as cari_ilce, ca.il as cari_il '
         'FROM faturalar f '
       'LEFT JOIN cari c ON f.cari_id = c.id '
-        'LEFT JOIN cari_adres ca ON ca.cari_id = f.cari_id AND ca.varsayilan = 1 '
+        'LEFT JOIN cari_adres ca ON ca.id = (SELECT a.id FROM cari_adres a WHERE a.cari_id = f.cari_id ORDER BY a.varsayilan DESC, a.id LIMIT 1) '
       'WHERE $where ORDER BY f.tarih DESC LIMIT $limit',
       args,
     );

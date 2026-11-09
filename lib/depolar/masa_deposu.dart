@@ -287,11 +287,17 @@ class MasaDeposu {
       // Mevcut en yüksek sira değerinden devam et — sıralama bozulmasın
       final maxSira = await txn.rawQuery('SELECT MAX(sira) as m FROM ${DbSabitler.masalar}');
       int sira = (maxSira.first['m'] as int?) ?? 0;
+      // DERİN DENETİM (2026-11-09, #92): ad çakışması transaction içinde
+      // kontrol edilir — eşzamanlı/çift çağrı aynı adla ikinci masa açmaz.
       for (var i = 0; i < adet; i++) {
+        final ad = '$onek ${baslangic + i}';
+        final varMi = await txn.query(DbSabitler.masalar,
+            columns: ['id'], where: 'ad = ? AND is_deleted = 0', whereArgs: [ad], limit: 1);
+        if (varMi.isNotEmpty) continue;
         sira++;
         final id = await txn.insert(DbSabitler.masalar, {
           'global_id': const Uuid().v4(),
-          'ad': '$onek ${baslangic + i}',
+          'ad': ad,
           'kategori': kategori,
           'kapasite': kapasite,
           'durum': 'bos',

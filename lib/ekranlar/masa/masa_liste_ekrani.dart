@@ -22,6 +22,7 @@ import '../../servisler/masa/rezervasyon_servisi.dart';
 import 'masa_detay_ekrani.dart';
 import '../../servisler/bildirim_servisi.dart';
 import '../../widgetlar/ortak/onay_dialog.dart';
+import '../../servisler/log_servisi.dart';
 
 class MasaListeEkrani extends ConsumerStatefulWidget {
   /// true: Ayarlar'dan açılan yönetim görünümü (masa ekleme + QR yazdırma).
@@ -516,6 +517,8 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
     final baslangicCtrl = TextEditingController(text: '1');
     final kapasiteCtrl = TextEditingController(text: '4');
     String kategori = 'Salon';
+    // DERİN DENETİM (2026-11-09, #92): çift tıklama mükerrer masa oluşturuyordu.
+    var olusturuluyor = false;
     const presetler = ['Salon', 'Bahçe', 'Teras', 'Veranda'];
     Future<void> baslangicGuncelle() async {
       final n = await MasaDeposu().sonrakiNo(onekCtrl.text);
@@ -583,14 +586,22 @@ class _MasaListeEkraniState extends ConsumerState<MasaListeEkrani> {
             onPressed: () async {
               final adet = ParaUtils.tamSayiCoz(adetCtrl.text) ?? 0;
               final onek = onekCtrl.text.trim();
-              if (adet <= 0 || adet > 200 || onek.isEmpty) return;
-              await MasaDeposu().topluMasaEkle(
-                onek: onek,
-                adet: adet,
-                kategori: kategori,
-                kapasite: ParaUtils.tamSayiCoz(kapasiteCtrl.text) ?? 4,
-                baslangic: ParaUtils.tamSayiCoz(baslangicCtrl.text) ?? 1,
-              );
+              if (olusturuluyor || adet <= 0 || adet > 200 || onek.isEmpty) return;
+              olusturuluyor = true; // ilk await'ten ÖNCE (§5.6)
+              try {
+                await MasaDeposu().topluMasaEkle(
+                  onek: onek,
+                  adet: adet,
+                  kategori: kategori,
+                  kapasite: ParaUtils.tamSayiCoz(kapasiteCtrl.text) ?? 4,
+                  baslangic: ParaUtils.tamSayiCoz(baslangicCtrl.text) ?? 1,
+                );
+              } catch (e, st) {
+                olusturuluyor = false;
+                LogServisi().hata('Toplu masa ekle', hata: e, yigin: st);
+                if (ctx.mounted) hataMesaji(ctx, kullaniciyaHataMetni(e));
+                return;
+              }
               if (ctx.mounted) Navigator.pop(ctx);
               ref.read(masaListesiProvider.notifier).yukle();
               if (mounted) {

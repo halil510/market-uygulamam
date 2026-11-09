@@ -26,8 +26,8 @@ Durum sütunu: ✅ düzeltildi (commit) · ⏳ açık.
 | 18 | yuksek | Masa / QR Menü / Adisyon | QR sipariş uçlarında miktar doğrulanmıyor: negatif/sıfır miktarla masa hesabı düşürülebiliyor, stok artırılabiliyor | `lib/servisler/masa/qr_menu_servisi.dart:147` | ✅ d2358b3f |
 | 19 | yuksek | Masa / QR Menü / Adisyon | Kuruş yuvarlama farkı yüzünden indirimli ürünlü masa hiç ödenemiyor (sürekli 'Sipariş değişti' hatası) | `lib/servisler/masa_odeme_servisi.dart:196` | ✅ d2358b3f |
 | 20 | yuksek | Masa / QR Menü / Adisyon | Bulut QR siparişi masayı yerel id ile taşıyor; başka cihaz işlerse sipariş yanlış masaya düşüyor ya da kayboluyor | `lib/servisler/masa/qr_siparis_cekici_servisi.dart:180` | ✅ 7920ddbf |
-| 21 | yuksek | Güvenlik / Yetki / Genel Arayüz | Admin olmayan müdür, admin hesabının şifresini sıfırlayıp tam admin yetkisi alabiliyor | `lib/ekranlar/kullanici/kullanici_liste_ekrani.dart:162` | ⏳ |
-| 22 | yuksek | Güvenlik / Yetki / Genel Arayüz | Kaldırılan yetki diğer cihazlara ulaşmıyor; 'Tam Al' yapılınca aynı cihazda bile geri geliyor | `lib/depolar/kullanici_deposu.dart:248` | ⏳ |
+| 21 | yuksek | Güvenlik / Yetki / Genel Arayüz | Admin olmayan müdür, admin hesabının şifresini sıfırlayıp tam admin yetkisi alabiliyor | `lib/ekranlar/kullanici/kullanici_liste_ekrani.dart:162` | ✅ a5d83967 |
+| 22 | yuksek | Güvenlik / Yetki / Genel Arayüz | Kaldırılan yetki diğer cihazlara ulaşmıyor; 'Tam Al' yapılınca aynı cihazda bile geri geliyor | `lib/depolar/kullanici_deposu.dart:248` | ✅ a5d83967 |
 | 23 | orta | Satış | Fiş güncelleme modu ekran State'inde, sepet ise keepAlive: ekrandan çıkıp dönünce geri çağrılan fiş YENİ satış olarak tekrar satılıyor | `lib/ekranlar/satis/hizli_satis_ekrani.dart:101` | ⏳ |
 | 24 | orta | Satış | Fiş güncelleme modunda Askıya Al, Askıdan Yükle ve Tedarikçiye Aktar sepeti değiştiriyor ama modu kapatmıyor; sonraki sepet eski fişin üzerine yazılıyor | `lib/ekranlar/satis/hizli_satis_ekrani_odeme.dart:644` | ⏳ |
 | 25 | orta | Satış | Satış silmede şube stok payı (sube_urun) geri yüklenmiyor | `lib/depolar/satis_deposu.dart:918` | ⏳ |

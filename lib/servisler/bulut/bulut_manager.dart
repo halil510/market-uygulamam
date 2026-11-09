@@ -157,6 +157,9 @@ class BulutManager {
     // başa konuldu — audit, tamamen YEREL bir özellik olarak da
     // değerli.
     AuditLogServisi().kaydet(tablo, ham, eskiVeri: eskiVeri);
+    // Yıl sonu devir açılış satırı yalnız bu cihazda kalır (bkz.
+    // KolonHaritalama.yerelKalirMi) — buluta gitmez.
+    if (KolonHaritalama.yerelKalirMi(tablo, ham)) return;
 
     // 🔴 DÜZELTME (Bulut Veri Güvenliği Raporu 2026-10-07, Bulgu 10):
     // sağlayıcı henüz kurulmamışken (açılışta ayarlar yüklenmeden, ya da

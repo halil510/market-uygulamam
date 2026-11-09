@@ -26,7 +26,12 @@ extension VeritabaniSupabase on Veritabani {
       // — bu 4 tablodaki HİÇBİR SİLME İŞLEMİNİN buluta gitmemesi
       // demekti. Artık silinmiş kayıtlar da dahil TÜM kayıtlar
       // döndürülüyor — silme durumu doğru şekilde buluta yansıyor.
-      return await database.query(tablo);
+      final satirlar = await database.query(tablo);
+      // Yıl sonu devir açılış satırları yalnız bu cihazda kalır.
+      if (KolonHaritalama.devirAcilisTablolari.contains(tablo)) {
+        return satirlar.where((s) => !KolonHaritalama.yerelKalirMi(tablo, s)).toList();
+      }
+      return satirlar;
     } catch (e) {
       debugPrint('❌ supaTumKayitlariGetir hatası ($tablo): $e');
       return [];
@@ -519,6 +524,37 @@ extension VeritabaniSupabase on Veritabani {
     List<Map<String, dynamic>> kayitlar,
   ) async {
     if (kayitlar.isEmpty) return;
+    // Yalnız-yerel devir açılış satırı buluttan gelmemeli (bu düzeltmeden
+    // önce buluta gitmiş eski açılışlar) — eski hareketlerle çift sayılırdı.
+    if (KolonHaritalama.devirAcilisTablolari.contains(tablo)) {
+      kayitlar = kayitlar.where((k) => !KolonHaritalama.yerelKalirMi(tablo, k)).toList();
+      if (kayitlar.isEmpty) return;
+    }
+    // Bu cihazın yıl sonu devriyle arşivlediği dönemin eski hareketleri
+    // geri yazılmaz — yerine yalnız-yerel açılış satırı var, yazılsalardı
+    // dönem iki kez sayılırdı (bkz. YerelArsivAraliklari).
+    if (YerelArsivAraliklari.tablolar.containsKey(tablo)) {
+      var araliklar = const <YerelArsivAraligi>[];
+      try {
+        araliklar = await YerelArsivAraliklari.hepsi();
+      } catch (e, st) {
+        // Okunamazsa çekim DURMAZ (tablonun tüm verisi gelmezdi) — süzgeçsiz
+        // devam edilir, görünür olsun diye loglanır.
+        LogServisi().uyari('Devir arşiv aralıkları okunamadı, çekim süzgeçsiz sürüyor',
+            hata: e, yigin: st);
+      }
+      if (araliklar.isNotEmpty) {
+        final once = kayitlar.length;
+        kayitlar = kayitlar
+            .where((k) => !YerelArsivAraliklari.arsivlenmisMi(tablo, k, araliklar))
+            .toList();
+        if (kayitlar.length != once) {
+          LogServisi().bilgi('supaKayitlariEkle($tablo): ${once - kayitlar.length} '
+              'satır devirle arşivlenmiş döneme ait — yazılmadı');
+        }
+        if (kayitlar.isEmpty) return;
+      }
+    }
     final database = await db;
     // 🔴🔴🔴 KRİTİK DÜZELTME (kullanıcı bulgusu — "buluttan veri al'ı
     // kontrol et, uyuşmayan yer olur"): Bu liste ÖNCEDEN sadece 18

@@ -230,6 +230,27 @@ class KolonHaritalama {
   ///  • çekimde mevcut kayda UYGULANMAZ (yerel değer mutabakattan gelir);
   ///  • gönderimde LWW satırı atlarsa yalnız bu alanlar ayrıca (damgasız)
   ///    güncellenir — bulut değeri bayat kalmasın.
+  /// Yalnız bu cihazda kalan (buluta/diğer cihaza HİÇ gitmeyen) satır mı?
+  ///
+  /// Yıl sonu devrinin açılış satırları ('Devir Açılış' stok, 'Devir'
+  /// cari, 'AçılışKasa' — referans_turu='devir_acilis'): devir eski dönem
+  /// hareketlerini YALNIZ devri yapan cihazdan siler. Açılış satırı buluta
+  /// gitseydi, eski hareketleri hâlâ taşıyan diğer kasalar ve buluttan
+  /// kurulan cihazlar aynı dönemi İKİ KEZ sayardı (derin denetim
+  /// 2026-11-09, kritik). Tek kural — kuyruk, anlık bildirim, elle gönderim
+  /// ve WiFi aktarımı bunu kullanır.
+  /// cari_hareket'te referans_turu sütunu her şemada yok (sıfırdan kurulumda
+  /// eksik) — cari açılışı fis_tipi='Devir' ile tanınır (yalnız devir yazar).
+  static bool yerelKalirMi(String tablo, Map<String, dynamic> satir) =>
+      devirAcilisTablolari.contains(tablo) &&
+      (satir['referans_turu'] == 'devir_acilis' ||
+          (tablo == 'cari_hareket' && satir['fis_tipi'] == 'Devir'));
+
+  /// Devir açılış satırı yazılan tablolar.
+  static const Set<String> devirAcilisTablolari = {
+    'stok_hareket', 'cari_hareket', 'kasa_hareketleri',
+  };
+
   static const Map<String, Set<String>> turetilmisAlanlar = {
     'urunler': {'stok'},
     'cari': {'bakiye'},

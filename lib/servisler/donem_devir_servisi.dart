@@ -59,6 +59,7 @@ import 'supabase_sync_servisi.dart';
 import 'veri_sagligi_servisi.dart';
 import 'yedekleme_servisi.dart';
 import '../veri/database/veritabani.dart';
+import '../veri/database/yerel_arsiv_araliklari.dart';
 
 /// FAZ 1 (Kontrol) sonucundaki tek bir kalem — VeriSagligiServisi'nin
 /// SaglikKontrolSonucu'yla AYNI kategoriler (yesil/sari/kirmizi), ayrı
@@ -383,6 +384,12 @@ class DonemDevirServisi {
           baslangic: kaynakDonem.baslangicTarihi,
           bitis: kaynakDonem.bitisTarihi,
         );
+        // Bu cihaz bu aralığı arşivledi — buluttan çekim eski hareketleri
+        // geri yazmasın (aksi halde yalnız-yerel açılışla çift sayılır).
+        await YerelArsivAraliklari.ekle(
+            subeId: subeId,
+            baslangic: kaynakDonem.baslangicTarihi,
+            bitis: kaynakDonem.bitisTarihi);
         checkpoint = checkpoint.copyWith(mevcutFaz: DevirFaz.acilisKayitlari);
         await _checkpointDepo.guncelle(checkpoint);
       } catch (e, st) {

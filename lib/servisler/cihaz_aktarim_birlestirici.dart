@@ -63,6 +63,9 @@ class CihazAktarimBirlestirici {
 
     final sonuc = <Map<String, dynamic>>[];
     for (final s in satirlar) {
+      // Yıl sonu devir açılış satırı yalnız bu cihazda kalır — karşı cihaz
+      // eski dönem hareketlerini zaten taşıyor, açılışla iki kez sayardı.
+      if (KolonHaritalama.yerelKalirMi(tablo, s)) continue;
       final m = Map<String, dynamic>.from(s);
       final fk = <String, Object?>{};
       final harita = KolonHaritalama.satirFkHaritasi(tablo, m);

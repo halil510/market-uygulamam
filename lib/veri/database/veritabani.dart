@@ -17,6 +17,7 @@ import 'tablolar/tablo_olusturucu.dart';
 import 'sema_onarici.dart';
 import 'sync_cakisma_tespit.dart';
 import 'urun_birlestirme.dart';
+import 'yerel_arsiv_araliklari.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'veritabani_fis_seri.dart';

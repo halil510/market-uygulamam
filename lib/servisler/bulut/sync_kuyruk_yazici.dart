@@ -15,6 +15,7 @@
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import '../../cekirdek/sabitler/db_sabitleri.dart';
+import '../kolon_haritalama.dart';
 
 class SyncKuyrukYazici {
   /// [txn] içinde çağrılmalı — kendi transaction'ını AÇMAZ.
@@ -29,6 +30,8 @@ class SyncKuyrukYazici {
     required Map<String, dynamic> veri,
     String islemTipi = 'UPSERT',
   }) async {
+    // Yıl sonu devir açılış satırı yalnız bu cihazda kalır.
+    if (KolonHaritalama.yerelKalirMi(tablo, veri)) return;
     if (islemTipi == 'UPSERT') await _kimlikTamamla(txn, tablo, veri);
     final globalId = veri['global_id']?.toString();
     // Aynı kayıt için bekleyen eski bir kuyruk satırı varsa önce sil —

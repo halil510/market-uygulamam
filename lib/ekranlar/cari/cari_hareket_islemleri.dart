@@ -90,7 +90,9 @@ extension _CariHareketIslemleri on _CariHareketEkraniState {
           'nakit iadeyse kasa tersine çevrilecek ve bu iade İade '
           'Geçmişi\'nde "İptal" olarak işaretlenecek. Emin misiniz?';
     }
-    final gercekParaOlabilir = h.fisTipi == 'Tahsilat' || h.fisTipi == 'Ödeme';
+    // #80: servis 'Odeme' (ASCII) de yazar.
+    final gercekParaOlabilir = h.fisTipi == 'Tahsilat' ||
+        h.fisTipi == 'Ödeme' || h.fisTipi == 'Odeme';
     final otomatikTersCevrilebilir =
         gercekParaOlabilir && h.odemeTuru == 'Nakit';
     if (!gercekParaOlabilir) return '${h.aciklama} silinecek. Emin misiniz?';
@@ -99,8 +101,11 @@ extension _CariHareketIslemleri on _CariHareketEkraniState {
           'olarak tersine çevrilecek. Emin misiniz?';
     }
     return '${h.aciklama} silinecek.\n\n'
-        'Bu bir Banka/Kredi Kartı hareketiyse, bağlı kayıt OTOMATİK OLARAK '
-        'GERİ ALINMAZ — gerekiyorsa o tarafı elle düzeltin. Emin misiniz?';
+        // #80: CariDeposu.hareketIptalEt banka ve kart tarafını da otomatik
+        // ters kayıtla geri alır — önceki mesaj elle düzeltmeye yönlendirip
+        // ters kaydı çiftliyordu.
+        'Bağlı Banka/Kredi Kartı hareketi de OTOMATİK OLARAK ters kayıtla '
+        'geri alınacak — o tarafı elle düzeltmeyin. Emin misiniz?';
   }
 
   /// Silme onayı — kaydırarak silme (Dismissible) ve sağ tık "Sil" AYNI

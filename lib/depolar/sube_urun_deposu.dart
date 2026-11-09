@@ -37,6 +37,25 @@ class SubeUrunDeposu {
     return rows.isEmpty ? null : rows.first;
   }
 
+  /// Stok sayımının karşılaştırma tabanı: ürün BAŞKA bir şubede de stok
+  /// payı taşıyorsa bu şubenin payı (satır yoksa 0); yoksa null — sayım
+  /// toplam stok üzerinden yapılır.
+  ///
+  /// 🔴 DERİN DENETİM (2026-11-09, #12): ÖNCEDEN şube payı her zaman
+  /// kullanılıyordu. Ürün ekleme / Excel / ürün düzenleme başlangıç stoğunu
+  /// sube_urun'a hiç yazmadığı için pay 0 ya da yalnız satışlar kadar
+  /// negatifti; sayım "toplam − pay + sayılan" ile stoğu ŞİŞİRİYORDU
+  /// (90 sayılan ürün 190'a, 50 sayılan ürün 100'e çıkıyordu). Pay yalnız
+  /// ürün gerçekten birden çok şubeye dağılmışsa anlamlıdır.
+  Future<double?> sayimTabaniGetir(int urunId, int subeId) async {
+    final db = await _d;
+    final baska = await db.query('sube_urun',
+        columns: ['urun_id'], where: 'urun_id = ? AND sube_id != ?',
+        whereArgs: [urunId, subeId], limit: 1);
+    if (baska.isEmpty) return null;
+    return stokGetir(urunId, subeId);
+  }
+
   /// Bir ürünün belirli bir şubedeki GÜNCEL stok miktarını getirir.
   /// Satır hiç yoksa (bu ürün o şubede hiç hareket görmemiş) 0 döner.
   Future<double> stokGetir(int urunId, int subeId) async {

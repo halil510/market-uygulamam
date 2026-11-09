@@ -103,7 +103,11 @@ class _StokSayimEkraniState extends ConsumerState<StokSayimEkrani> {
       if (!mounted) return;
       Navigator.pop(context);
       ref.read(stokSayimProvider.notifier).yukle(sifirla: true);
-      BildirimServisi.basari(context, '✓ ${sonuc['basarili']} güncellendi, ${sonuc['hata']} hata');
+      BildirimServisi.basari(
+          context,
+          sonuc['onay_bekliyor'] == true
+              ? '✓ ${sonuc['basarili']} ürün sayımı onaya gönderildi, ${sonuc['hata']} hata'
+              : '✓ ${sonuc['basarili']} güncellendi, ${sonuc['hata']} hata');
     } catch (e) {
       if (mounted) { Navigator.pop(context); BildirimServisi.hata(context, 'Hata: $e'); }
     }

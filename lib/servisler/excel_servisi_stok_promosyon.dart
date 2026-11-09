@@ -160,39 +160,23 @@ extension ExcelServisiStokPromosyon on ExcelServisi {
           [kod, '%,$kod,%', kod],
         );
         if (rows.isNotEmpty) {
-          // ÖNCEDEN BURADA stok_hareket HİÇ OLUŞTURULMUYORDU — Excel'den
-          // toplu stok güncellemesi tamamen görünmez, izlenemeyen bir
-          // değişiklikti; stok mutabakat sistemi bu değişikliği asla
-          // göremezdi. Artık her satır için doğru bir hareket kaydı
-          // oluşturuluyor.
+          // 🔴 DERİN DENETİM (2026-11-09, #13): ÖNCEDEN dosyadaki şube
+          // sayımı urunler.stok'a (TÜM şubelerin toplamı) MUTLAK yazılıyor,
+          // diğer şubelerin stoğu siliniyordu; yazım transaction dışıydı ve
+          // şube payı/onay akışı atlanıyordu. Artık manuel sayımla AYNI yol:
+          // aynı karşılaştırma tabanı (StokSayimHesap kuralı) → geçici
+          // sayım → yetkili ise uygula (stokDuzelt: tek transaction, şube
+          // payı, senkron kuyruğu), değilse onaya düşer.
           final urunId = rows.first['id'] as int;
-          final onceki = (rows.first['stok'] as num).toDouble();
-          final now = DateTime.now().toIso8601String();
-          await db.update('urunler', {'stok': miktar},
-              where: 'id=?', whereArgs: [urunId]);
-          if (onceki != miktar) {
-            final hareketGid = const Uuid().v4();
-            await db.insert('stok_hareket', {
-              'global_id': hareketGid,
-              'urun_id': urunId,
-              'hareket_turu': 'Excel Toplu Güncelleme',
-              'miktar': (miktar - onceki).abs(),
-              'onceki_stok': onceki,
-              'sonraki_stok': miktar,
-              'tarih': now,
-              'last_updated': now,
-              'referans_turu': 'excel_import',
-              'aciklama': 'Excel\'den toplu stok güncelleme',
-            });
-            // 🔴 Derin analizde bulundu: bu toplu Excel içe aktarımı
-            // (yüzlerce ürünü etkileyebilir) last_updated/global_id
-            // atamıyordu, BulutManager hiç çağrılmıyordu.
-            final hareketSatir = await db.query('stok_hareket', where: 'global_id = ?', whereArgs: [hareketGid], limit: 1);
-            if (hareketSatir.isNotEmpty) {
-              BulutManager().upsert('stok_hareket', Map<String, dynamic>.from(hareketSatir.first));
-            }
-          }
-          await BulutManager().satiriBildir(db, 'urunler', urunId);
+          final toplam = (rows.first['stok'] as num).toDouble();
+          final subeId = AktifSubeServisi().subeId;
+          final subePayi = subeId == null
+              ? null
+              : await SubeUrunDeposu().sayimTabaniGetir(urunId, subeId);
+          final yeniToplam = subePayi != null ? toplam - subePayi + miktar : miktar;
+          await StokDeposu().geciciSayimEkleGuncelle(
+              urunId, subePayi ?? toplam, yeniToplam,
+              kullaniciId: AuthServisi().aktifKullanici?.id);
           basarili++;
         } else {
           hata++;
@@ -203,7 +187,14 @@ extension ExcelServisiStokPromosyon on ExcelServisi {
         hatalar.add('Satır ${i+1}: $e');
       }
     }
-    return {'basarili': basarili, 'hata': hata, 'hatalar': hatalar};
+    // Manuel sayımla aynı onay kuralı: yetkili ise hemen uygulanır, değilse
+    // Onay Merkezi'nde bekler.
+    final onayBekliyor = basarili > 0 && !AuthServisi().isMudur;
+    if (basarili > 0 && !onayBekliyor) {
+      await StokDeposu().geciciSayimUygula(AuthServisi().aktifKullanici?.id ?? 0);
+    }
+    return {'basarili': basarili, 'hata': hata, 'hatalar': hatalar,
+        'onay_bekliyor': onayBekliyor};
   }
 
   Future<String> stokSayimExcelDisaAl(List<Map<String, dynamic>> stoklar) async {

@@ -7,6 +7,7 @@ import '../../depolar/sube_urun_deposu.dart';
 import '../../modeller/urun_model.dart';
 import '../../servisler/auth_servisi.dart';
 import '../../servisler/aktif_sube_servisi.dart';
+import '../../servisler/log_servisi.dart';
 
 part 'stok_sayim_provider.g.dart';
 
@@ -135,16 +136,28 @@ class StokSayim extends _$StokSayim {
       Map<int, double> yeniSubeStoklari = state.subeStoklari;
       if (subeId != null) {
         try {
+          // Yalnız birden çok şubeye dağılmış ürünlerde şube payı taban
+          // olur; diğerlerinde (null) sayım toplam stok üzerindendir.
           final girdiler = await Future.wait(yeni.map((u) async {
-            final s = await _subeUrunDepo.stokGetir(u.id!, subeId);
+            final s = await _subeUrunDepo.sayimTabaniGetir(u.id!, subeId);
             return MapEntry(u.id!, s);
           }));
+          final ozel = {
+            for (final g in girdiler)
+              if (g.value != null) g.key: g.value!,
+          };
           yeniSubeStoklari = {
             if (!sifirla) ...state.subeStoklari,
-            ...Map.fromEntries(girdiler),
+            ...ozel,
           };
-        } catch (_) {
-          // Şube stoğu çekilemezse sessizce geç — toplam stokla devam edilir.
+          // Artık şube payı taşımayan ürünün eski kaydı kalmasın.
+          for (final g in girdiler) {
+            if (g.value == null) yeniSubeStoklari.remove(g.key);
+          }
+        } catch (e, st) {
+          // Şube stoğu çekilemezse toplam stokla devam edilir (görünür olsun).
+          LogServisi().uyari('Stok sayımı: şube stok payı okunamadı, toplam stok kullanılıyor',
+              hata: e, yigin: st);
         }
       }
 

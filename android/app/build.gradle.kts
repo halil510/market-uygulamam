@@ -2,16 +2,46 @@ import java.util.Properties
 import java.io.FileInputStream
 
 // ── Release imzalama bilgileri ──────────────────────────────────────────
-// android/key.properties dosyasından okunur. Bu dosya GİZLİDİR, git'e
-// eklenmemeli (bkz. .gitignore). Dosya yoksa (ör. CI/CD ortamı, ya da
-// başka bir geliştirici) release build debug anahtarına düşer — böylece
-// build tamamen kırılmaz, ama Play Store'a yüklenemeyecek bir APK üretir.
-val keystorePropertiesFile = rootProject.file("key.properties")
+// Telefondaki uygulamanın "Güncelle" ile VERİSİ KORUNARAK güncellenmesi için
+// her release APK AYNI anahtarla imzalanmalı. Anahtar GİT'E GİRMEZ.
+// Aranan yerler, sırasıyla:
+//   1) android/key.properties
+//   2) <kullanıcı klasörü>/.barkodhalkmarket/key.properties  (yedek kopya)
+// storeFile göreliyse önce key.properties'in klasörüne, sonra app modülüne
+// göre çözülür. Anahtar bulunamazsa RELEASE derleme DURUR (aşağıda): debug
+// anahtarıyla imzalı APK telefonda "Uygulama yüklenmedi" verir, tek çare
+// uygulamayı silmektir = veri kaybı.
+val keystorePropertiesFile: File? = listOf(
+    rootProject.file("key.properties"),
+    File(System.getProperty("user.home"), ".barkodhalkmarket/key.properties"),
+).firstOrNull { it.exists() }
 val keystoreProperties = Properties()
-val keystoreVar = if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+val keystoreVar = if (keystorePropertiesFile != null) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
     true
 } else false
+
+fun anahtarDosyasiCoz(yol: String): File {
+    val f = File(yol)
+    if (f.isAbsolute) return f
+    val klasor = keystorePropertiesFile!!.parentFile
+    return listOf(File(klasor, yol), project.file(yol)).firstOrNull { it.exists() } ?: File(klasor, yol)
+}
+
+// Anahtar yoksa release APK/AAB üretme (debug/robot derlemesi etkilenmez).
+gradle.taskGraph.whenReady {
+    val releaseUretiliyor = allTasks.any {
+        it.name.contains("Release") && (it.name.startsWith("package") || it.name.startsWith("assemble") || it.name.startsWith("bundle"))
+    }
+    if (releaseUretiliyor && !keystoreVar) {
+        throw GradleException(
+            "\n\nİMZA ANAHTARI BULUNAMADI — release APK üretilmedi.\n" +
+            "'.barkodhalkmarket' klasörünü (barkopro-release.jks + key.properties) yedeğinden\n" +
+            "  ${System.getProperty("user.home")}${File.separator}.barkodhalkmarket\n" +
+            "konumuna kopyalayın.\n"
+        )
+    }
+}
 
 plugins {
     id("com.android.application")
@@ -53,7 +83,7 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
             if (keystoreVar) {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
+                storeFile = anahtarDosyasiCoz(keystoreProperties["storeFile"] as String)
                 storePassword = keystoreProperties["storePassword"] as String
             }
         }
@@ -66,9 +96,9 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
             applicationIdSuffix = ".robot"
         }
         release {
-            // key.properties varsa gerçek release anahtarıyla, yoksa
-            // (ör. bu dosyayı görmeyen bir CI ortamı) debug anahtarıyla
-            // imzalar — böylece build asla çökmez.
+            // key.properties varsa gerçek release anahtarıyla imzalar. Yoksa
+            // release paketleme zaten yukarıdaki kontrolde DURUR; debug
+            // dalı yalnızca APK üretmeyen görevler (ör. analiz) için.
             signingConfig = if (keystoreVar) {
                 signingConfigs.getByName("release")
             } else {

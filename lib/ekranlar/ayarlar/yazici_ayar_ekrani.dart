@@ -17,6 +17,7 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../depolar/ayarlar_deposu.dart';
 import '../../widgetlar/ortak/app_widgetlar.dart';
+import 'yazici_paylasim_karti.dart';
 
 part 'yazici_ayar_sekmeleri.dart';
 part 'yazici_ayar_widgetlari.dart';
@@ -372,6 +373,11 @@ class _YaziciAyarEkraniState extends ConsumerState<YaziciAyarEkrani>
         ...kayitli.map((y) => _KayitliYaziciKarti(
           yazici: y, onSil: () => _yaziciKaldir(y))),
       ],
+      const SizedBox(height: 24),
+      const Text('Etiket yazıcısını ağa aç (telefondan basmak için)',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+      const SizedBox(height: 8),
+      const YaziciPaylasimKarti(),
     ]);
   }
 

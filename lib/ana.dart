@@ -29,6 +29,7 @@ import 'servisler/bulut/supabase_oturum.dart';
 import 'servisler/masa/qr_siparis_cekici_servisi.dart';
 import 'servisler/bildirim_merkezi_servisi.dart';
 import 'servisler/borc/borc_bildirim_servisi.dart';
+import 'servisler/yazici_paylasimi.dart';
 import 'cekirdek/servisler/crash_servisi.dart';
 
 void main() {
@@ -123,6 +124,8 @@ Future<void> _baslatApp() async {
   // geldi, son kullanma, kasada açık var." Var olan (önceden boş
   // kalan) bildirimler tablosunu canlı koşullardan otomatik besliyor.
   await guvenliAdim('Bildirim merkezi', () async => BildirimMerkeziServisi().baslat());
+  // Windows: USB etiket yazıcısı "ağa açık"sa telefondan gelen etiket işlerini dinle (Ayarlar > Yazıcılar > Windows Yazıcı).
+  if (Platform.isWindows) unawaited(PaylasimYoneticisi.ayardanBaslat());
  
 
   await SystemChrome.setPreferredOrientations([

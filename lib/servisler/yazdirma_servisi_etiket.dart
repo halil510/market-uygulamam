@@ -117,6 +117,27 @@ extension YazdirmaServisiEtiket on YazdirmaServisi {
     await _yazdir(tumBytes);
   }
 
+  /// Raf etiketi şablonu çıktısını (her etiket bir resim, 8 nokta/mm) bağlı termal yazıcıya basar.
+  /// Etiket kâğıttan genişse (ör. 80 mm etiket, 72 mm basım alanı) oranı korunarak kâğıda sığdırılır.
+  /// Her etiketten sonra kâğıt ilerletilip kesilir (etiketYazdir ile aynı).
+  Future<void> resimEtiketleriYazdir(List<img.Image> etiketler, {PaperSize kagit = PaperSize.mm80}) async {
+    if (etiketler.isEmpty) return;
+    final profile = await _profil();
+    final generator = Generator(kagit, profile);
+    final kagitPx = kagit == PaperSize.mm58 ? 384 : 576;
+    final tumBytes = <int>[];
+    for (final e in etiketler) {
+      final r = e.width > kagitPx
+          ? img.copyResize(e,
+              width: kagitPx, height: (e.height * kagitPx / e.width).round(), interpolation: img.Interpolation.average)
+          : e;
+      tumBytes.addAll(generator.imageRaster(r, align: PosAlign.center));
+      tumBytes.addAll(generator.feed(1));
+      tumBytes.addAll(generator.cut(mode: PosCutMode.partial));
+    }
+    await _yazdir(tumBytes);
+  }
+
   // Legacy compat
   Future<void> _rawbtYaz(Uint8List bytes) async {
     final b64 = base64Encode(bytes);
@@ -147,6 +168,16 @@ extension YazdirmaServisiEtiket on YazdirmaServisi {
     }
     final bytes = utf8.encode(zpl);
     await _yazdir(bytes);
+  }
+
+  /// TSPL etiket yazıcısına (Xprinter XP-490B, TSC vb.) hazır iş gönderir (bkz. cekirdek/etiket/tspl.dart).
+  /// Bağlı yazıcı WiFi, Bluetooth, USB ya da Windows (RAW — sürücü ayarlarına dokunmaz) olabilir.
+  Future<void> tsplGonder(Uint8List is_) async {
+    if (_aktif == null || !_aktif!.bagliMi) {
+      throw Exception('Etiket yazıcısı bağlı değil. Ayarlar > Yazıcılar bölümünden '
+          'etiket yazıcınızı (WiFi, Bluetooth, USB ya da Windows) bağlayın.');
+    }
+    await _yazdir(is_);
   }
 
   /// Fiş yazıcısına bağlı para çekmecesini açar (ESC p 0 25 250 — pin 2,

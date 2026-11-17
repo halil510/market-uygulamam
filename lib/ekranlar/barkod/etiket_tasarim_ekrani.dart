@@ -26,6 +26,8 @@ import '../../servisler/bildirim_servisi.dart';
 import '../../cekirdek/utils/para_utils.dart';
 import '../../cekirdek/utils/etiket_yardimci.dart';
 import '../../widgetlar/ortak/yukleniyor_widget.dart';
+import '../../cekirdek/etiket/raf_etiket_sablonlari.dart' show sablonlar, sablonBul;
+import 'raf_etiket_penceresi.dart';
 part 'etiket_tasarim_ekrani_islemler.dart';
 part 'etiket_tasarim_ekrani_gorunum.dart';
 
@@ -112,6 +114,10 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
   // ötesinde) — SharedPreferences'ta JSON liste olarak saklanır.
   List<Map<String, dynamic>> _ozelSablonlar = [];
 
+  // Raf etiketi tasarımı (işletmenin BarTender şablonları). '' = serbest etiket (aşağıdaki ayarlar).
+  // Seçiliyse Yazdır, şablonun birebir çizildiği raf etiketi penceresini açar.
+  String _rafSablonId = '';
+
   double get _efGenislik => _ozelBoyutAktif
       ? (ParaUtils.sayiCoz(_ozelGenislikCtrl.text) ?? _boyut.w).clamp(20.0, 200.0)
       : _boyut.w;
@@ -131,6 +137,7 @@ class _EtiketTasarimEkraniState extends ConsumerState<EtiketTasarimEkrani>
     // Firma adı önizlemede doğru görünsün diye erken yükleniyor
     _yazdirma.ayarlariYukle().then((_) { if (mounted) setState(() {}); });
     _ozelSablonlariYukle();
+    _rafSablonYukle();
   }
 
   @override

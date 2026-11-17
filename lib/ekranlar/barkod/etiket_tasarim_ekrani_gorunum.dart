@@ -424,6 +424,38 @@ extension _EtiketTasarimGorunumExt on _EtiketTasarimEkraniState {
 
   // ── Ayarlar Tab ───────────────────────────────────────────────────────────
   Widget _ayarTab() => ListView(padding: const EdgeInsets.all(16), children: [
+    _baslik('Raf Etiketi Tasarımı'),
+    DropdownButtonFormField<String>(
+      initialValue: _rafSablonId,
+      isExpanded: true,
+      decoration: InputDecoration(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        isDense: true,
+        helperText: _rafSablonId.isEmpty
+            ? 'Serbest etiket: aşağıdaki boyut / içerik ayarlarıyla basılır'
+            : 'BarTender şablonu: ${sablonBul(_rafSablonId).dosya} — Yazdır önizlemeli pencereyi açar',
+        helperMaxLines: 2,
+      ),
+      items: [
+        const DropdownMenuItem(value: '', child: Text('Serbest etiket (aşağıdaki ayarlar)')),
+        for (final s in sablonlar)
+          DropdownMenuItem(value: s.id, child: Text('${s.ad} · ${s.olcu}', overflow: TextOverflow.ellipsis)),
+      ],
+      onChanged: (v) { if (v != null) _rafSablonSec(v); },
+    ),
+    if (_rafSablonId.isNotEmpty && _sepet.isNotEmpty)
+      Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.preview, size: 18),
+            label: const Text('Önizle ve yazdır'),
+            onPressed: _rafEtiketAc,
+          ),
+        ),
+      ),
+    const Divider(height: 24),
     _baslik('Şablon'),
     DropdownButtonFormField<String>(
       initialValue: _secilenSablon,

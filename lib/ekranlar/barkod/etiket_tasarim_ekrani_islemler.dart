@@ -135,8 +135,39 @@ extension _EtiketTasarimIslemlerExt on _EtiketTasarimEkraniState {
   }
 
   // ── Yazdır ────────────────────────────────────────────────────────────────
+  // ── Raf etiketi tasarımı (BarTender şablonları) ───────────────────────────
+  Future<void> _rafSablonYukle() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final id = p.getString(RafEtiketAyar.sablon) ?? '';
+      // bilinmeyen kimlik → serbest etiket (şablon kaldırılmış olabilir)
+      final gecerli = id.isNotEmpty && sablonlar.any((s) => s.id == id) ? id : '';
+      if (mounted) setState(() => _rafSablonId = gecerli);
+    } catch (_) {/* okunamazsa serbest etiket */}
+  }
+
+  Future<void> _rafSablonSec(String id) async {
+    setState(() => _rafSablonId = id);
+    final p = await SharedPreferences.getInstance();
+    await p.setString(RafEtiketAyar.sablon, id);
+  }
+
+  Future<void> _rafEtiketAc() async {
+    await rafEtiketPenceresiAc(
+      context,
+      [for (final k in _sepet) (k.urun, k.adet)],
+      sablonId: _rafSablonId.isEmpty ? sablonBul(null).id : _rafSablonId,
+    );
+    await _rafSablonYukle(); // pencerede şablon değiştirilmiş olabilir
+  }
+
   Future<void> _yazdir() async {
     if (_sepet.isEmpty) { BildirimServisi.uyari(context, 'Ürün ekleyin'); return; }
+    // Raf etiketi tasarımı seçiliyse: önizlemeli pencere (termal yazıcı ya da sistem yazıcısı)
+    if (_rafSablonId.isNotEmpty) {
+      await _rafEtiketAc();
+      return;
+    }
     if (!_btBagliMi) {
       _showBtUyari();
       return;

@@ -31,6 +31,8 @@ import '../../uygulama/tema/uygulama_temasi.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import 'masaustu/urun_masaustu_gorunum.dart';
 import '../../widgetlar/masaustu/tekrar_gorununce_yenile.dart';
+import '../barkod/etiket_ortak.dart';
+import '../../servisler/bildirim_servisi.dart';
 
 // God-class sertleştirmesi (2026-09-22, kullanıcı onayıyla): bu dosya
 // 1225 satırdı. İçerik davranış DEĞİŞTİRİLMEDEN 2 parçaya ayrıldı:
@@ -205,6 +207,11 @@ class _UrunListeEkraniState extends ConsumerState<UrunListeEkrani>
                     tooltip: 'Tümünü Seç',
                     onPressed: () =>
                         ref.read(urunlerProvider.notifier).tumunuSec(),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.print_outlined),
+                    tooltip: 'Seçililerin etiketini yazdır',
+                    onPressed: () => _seciliEtiketleriBas(durum),
                   ),
                   IconButton(
                     icon: const Icon(Icons.build_outlined),

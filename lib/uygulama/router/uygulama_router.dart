@@ -474,10 +474,34 @@ class UygulamaRouter {
       }
       if (gerekliYetki != null &&
           !ref.read(authProvider.notifier).yetkiVarSync(gerekliYetki)) {
+        _yetkisizUyar(auth.aktifRol);
         return '/';
       }
     }
     return null;
+  }
+
+  static DateTime? _sonUyari;
+
+  /// Yetkisiz ekran isteği önceden SESSİZCE ana ekrana dönüyordu — kullanıcı
+  /// "ekran açılmıyor" sanıyordu (2026-11-18: kasiyer rolündeki hesapla
+  /// Yazıcı Ayarları). Artık neden açılmadığı söylenir. Yönlendirme aynı
+  /// gezinmede birkaç kez çalışabildiği için uyarı 2 sn'de bir kez.
+  static void _yetkisizUyar(String rol) {
+    final simdi = DateTime.now();
+    if (_sonUyari != null && simdi.difference(_sonUyari!) < const Duration(seconds: 2)) return;
+    _sonUyari = simdi;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final c = rootNavigatorKey.currentContext;
+      if (c == null) return;
+      ScaffoldMessenger.maybeOf(c)?.showSnackBar(SnackBar(
+        content: Text('Bu ekran için yetkiniz yok (rol: $rol). '
+            'Yönetici hesabıyla girin ya da Kullanıcılar > Rol Yetkileri\'nden yetki verin.'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFFB45309),
+        duration: const Duration(seconds: 4),
+      ));
+    });
   }
 }
 

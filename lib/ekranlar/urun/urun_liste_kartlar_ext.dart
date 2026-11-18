@@ -4,6 +4,22 @@
 part of 'urun_liste_ekrani.dart';
 
 extension _UrunListeKartlarExt on _UrunListeEkraniState {
+  /// Uzun basınca: adet sorulur, seçili tasarım + yazıcıyla basılır.
+  Future<void> _etiketAdetliBas(UrunModel u) async {
+    final n = await etiketAdediSor(context, u.urunAdi);
+    if (n != null && mounted) await urunEtiketiBas(context, u, adet: n);
+  }
+
+  /// Seçim modunda seçili ürünlerin (yüklü olanların) birer etiketi.
+  Future<void> _seciliEtiketleriBas(UrunListeDurum durum) async {
+    final secili = [for (final u in durum.urunler) if (durum.seciliIds.contains(u.id)) (u, 1)];
+    if (secili.isEmpty) {
+      BildirimServisi.uyari(context, 'Ürün seçin');
+      return;
+    }
+    await etiketleriBas(context, secili);
+  }
+
   Widget _filterChip(String label, VoidCallback onRemove) => Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -266,6 +282,23 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                                     : context.borderColor),
                           ),
                         ),
+                        const SizedBox(width: 10),
+                        // Etiket yazdır: seçili tasarım + yazıcı; uzun bas: adet sor.
+                        Tooltip(
+                          message: 'Etiket yazdır (uzun bas: adet)',
+                          child: GestureDetector(
+                            onTap: () => urunEtiketiBas(context, u),
+                            onLongPress: () => _etiketAdetliBas(u),
+                            child: Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                  color: TsRenk.zemin(TsRenk.primary),
+                                  borderRadius: BorderRadius.circular(8)),
+                              child: const Icon(Icons.print_outlined,
+                                  size: 19, color: TsRenk.primary),
+                            ),
+                          ),
+                        ),
                       ]),
                     ]),
               ]),
@@ -380,15 +413,25 @@ extension _UrunListeKartlarExt on _UrunListeEkraniState {
                                   : null,
                             ),
                           ),
-                          if (u.barkod != null && u.barkod!.isNotEmpty)
-                            IconButton(
-                              icon: const Icon(Icons.qr_code_2,
-                                  size: 18, color: TsRenk.bilgi),
-                              onPressed: () =>
-                                  _barkodGoster(u.barkod!, u.urunAdi),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
+                          Row(mainAxisSize: MainAxisSize.min, children: [
+                            if (u.barkod != null && u.barkod!.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.qr_code_2,
+                                    size: 18, color: TsRenk.bilgi),
+                                onPressed: () =>
+                                    _barkodGoster(u.barkod!, u.urunAdi),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            const SizedBox(width: 8),
+                            // Etiket yazdır (seçili tasarım + yazıcı); uzun bas: adet.
+                            EtiketYazdirDugmesi(
+                              urun: () => u,
+                              renk: TsRenk.primary,
+                              boyut: 18,
+                              kompakt: true,
                             ),
+                          ]),
                         ]),
                     const SizedBox(height: 8),
                     Text(u.urunAdi,

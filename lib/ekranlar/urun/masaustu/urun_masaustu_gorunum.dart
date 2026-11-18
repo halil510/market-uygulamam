@@ -1,9 +1,11 @@
 // lib/ekranlar/urun/masaustu/urun_masaustu_gorunum.dart
 //
 // Ürün Listesi — masaüstü (geniş pencere) görünümü: tablo + alt şerit +
-// sağ tık menüsü + F1/F2/F3/F6 kısayolları. Veri ve iş mantığı çağıran
-// ekrandan gelir (sadece görünüm).
+// sağ tık menüsü + F1/F2/F3/F6/F7 kısayolları. Veri ve iş mantığı çağıran
+// ekrandan gelir (sadece görünüm). F7: seçili ürün(ler)in etiketi (seçili
+// etiket tasarımı + yazıcı; bkz. barkod/etiket_ortak.dart).
 import '../../../widgetlar/masaustu/ekran_ustte.dart';
+import '../../barkod/etiket_ortak.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -295,6 +297,24 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
 
   bool get _coklu => widget.seciliIds.length >= 2;
 
+  /// Etiket: çoklu seçimde seçililerin birer etiketi, yoksa seçili satırın.
+  Future<void> _etiketBas({bool adetSor = false}) async {
+    if (_coklu) {
+      final l = [for (final u in widget.urunler) if (widget.seciliIds.contains(u.id)) (u, 1)];
+      await etiketleriBas(context, l);
+      return;
+    }
+    final s = _secili;
+    if (s == null) return;
+    var adet = 1;
+    if (adetSor) {
+      final n = await etiketAdediSor(context, s.urunAdi);
+      if (n == null || !mounted) return;
+      adet = n;
+    }
+    if (mounted) await urunEtiketiBas(context, s, adet: adet);
+  }
+
   void _cokluSecimDegisti(Set<Object> anahtarlar) {
     final ids = anahtarlar.whereType<int>().toSet();
     widget.onCokluSecim(ids);
@@ -309,6 +329,7 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
     if (_coklu) {
       final n = widget.seciliIds.length;
       masaustuMenuAc(context, konum, [
+        MenuOge('Etiket Yazdır ($n ürün)', _etiketBas, ikon: Icons.print_outlined),
         MenuOge('Toplu İşlem ($n ürün)', widget.onTopluIslem, ikon: Icons.build_outlined),
         MenuOge('Seçimi Kaldır', () => widget.onCokluSecim({}), ikon: Icons.deselect),
         MenuOge('Seçilileri Sil ($n ürün)', widget.onTopluSil,
@@ -318,6 +339,11 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
     }
     masaustuMenuAc(context, konum, [
       MenuOge('Düzenle', () => _duzenle(u), ikon: Icons.edit_outlined),
+      MenuOge('Etiket Yazdır', () => urunEtiketiBas(context, u), ikon: Icons.print_outlined),
+      MenuOge('Etiket Yazdır (adet…)', () {
+        setState(() => _secili = u);
+        _etiketBas(adetSor: true);
+      }, ikon: Icons.print),
       MenuOge('Ürün Detayı', () => context.push('/urun/detay/${u.id}'),
           ikon: Icons.info_outline),
       MenuOge('Stok Hareketleri', () => context.push('/stok/hareket'),
@@ -385,6 +411,8 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
       } else if (s != null) {
         widget.onSil(s);
       }
+    } else if (k == LogicalKeyboardKey.f7) {
+      _etiketBas(adetSor: HardwareKeyboard.instance.isShiftPressed);
     } else if (k == LogicalKeyboardKey.f6) {
       if (s != null) {
         final box = context.findRenderObject() as RenderBox;
@@ -434,6 +462,8 @@ class _UrunMasaustuGorunumState extends State<UrunMasaustuGorunum> {
               _coklu
                   ? widget.onTopluSil
                   : (_secili == null ? null : () => widget.onSil(_secili!))),
+          AltTus('F7', _coklu ? 'Etiketleri Yazdır' : 'Etiket Yazdır', Icons.print_outlined, TsRenk.primary,
+              _secili == null && !_coklu ? null : () => _etiketBas()),
           AltTus('F6', 'Menü', Icons.menu, TsRenk.notr,
               _secili == null ? null : () => _menu(_secili!, const Offset(400, 300))),
         ],

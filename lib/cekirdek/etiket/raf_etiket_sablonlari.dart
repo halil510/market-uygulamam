@@ -9,6 +9,8 @@
 
 import 'dart:math' as math;
 
+import 'package:barcode/barcode.dart' as bc;
+
 import 'package:intl/intl.dart';
 
 import '../../modeller/urun_model.dart';
@@ -46,6 +48,11 @@ class EtiketVeri {
   final BirimFiyat? birimFiyat;
   final DateTime? tarih; // fiyat güncelleme tarihi
   final String? mensei; // ürün kartındaki menşei (boşsa etiket ayarındaki)
+  // Kendi tasarımlarda kullanılabilen ek alanlar (market'e özgü; hazır şablonlar kullanmaz).
+  final String kod; // ürün / stok kodu
+  final String grup; // ana grup
+  final String birim; // satış birimi (Adet, KG …)
+  final String skt; // son kullanma tarihi
   const EtiketVeri({
     required this.ad,
     required this.fiyat,
@@ -54,6 +61,10 @@ class EtiketVeri {
     this.birimFiyat,
     this.tarih,
     this.mensei,
+    this.kod = '',
+    this.grup = '',
+    this.birim = '',
+    this.skt = '',
   });
 
   /// İndirim oranı (%); indirim yoksa null.
@@ -173,7 +184,18 @@ EtiketVeri etiketVerisi(UrunModel u) {
     birimFiyat: birimFiyatHesapla(ad: u.urunAdi, fiyat: fiyat, birimAdi: u.birimAdi, agirlikGr: u.agirlik),
     tarih: tarihOku(u.fiyatGuncellemeTarih),
     mensei: (u.mensei ?? '').trim().isEmpty ? null : u.mensei!.trim(),
+    kod: (u.kod ?? '').trim(),
+    grup: (u.anaGrup ?? '').trim(),
+    birim: u.birimAdi.trim(),
+    skt: _sktYaz(u.sonKullanmaTarihi),
   );
+}
+
+String _sktYaz(String? v) {
+  final s = (v ?? '').trim();
+  if (s.isEmpty) return '';
+  final t = tarihOku(s);
+  return t == null ? s : _tarihBicim.format(t);
 }
 
 // ───────────────────────── Şablon tanımı ─────────────────────────
@@ -187,6 +209,13 @@ enum Cizik { yok, duz, capraz }
 /// Etiket üzerindeki bir öğe. Tüm ölçüler mm, (0,0) sol üst köşe.
 sealed class Oge {
   const Oge();
+  double get x;
+  double get y;
+  double get g;
+  double get h;
+
+  /// Aynı öğe, yeni konum / boyutla (tasarımcı sürükleyip boyutlandırırken).
+  Oge konumla({double? x, double? y, double? g, double? h});
 }
 
 /// Yazı. [icerik] içinde yer tutucular: {ad} {fiyat} {indirimliFiyat} {oran} {birimFiyat} {barkod} {tarih} {mensei} {firma} {para}.
@@ -194,7 +223,9 @@ sealed class Oge {
 /// [satir] 2 ise iki satıra bölünür; o da sığmazsa tek satırda kutuya sığana kadar küçülür (taşmaz).
 class YaziOge extends Oge {
   final String icerik;
-  final double x, y, g, h, punto;
+  @override
+  final double x, y, g, h;
+  final double punto;
   final bool kalin, altiCizili;
   final YaziTipi yazi;
   final Hiza hiza;
@@ -203,6 +234,10 @@ class YaziOge extends Oge {
   final double enKucuk;
   final Cizik cizik;
   final bool dikey; // 90° (aşağıdan yukarı okunur); kutu döndürülmüş hâliyle verilir
+  /// Yatay ölçek (BarTender'daki yazı genişliği): 1 = normal, 1.2 = %20 geniş harfler. Yükseklik değişmez.
+  final double genis;
+  /// Sığmayan yazı küçültülmez, yatayda sıkıştırılır (BarTender "çerçeveye sığdır"; harf boyu aynı kalır).
+  final bool sikistir;
   const YaziOge(
     this.icerik, {
     required this.x,
@@ -219,26 +254,100 @@ class YaziOge extends Oge {
     this.cizik = Cizik.yok,
     this.altiCizili = false,
     this.dikey = false,
+    this.genis = 1,
+    this.sikistir = false,
   });
+
+  YaziOge kopya({
+    String? icerik,
+    double? x,
+    double? y,
+    double? g,
+    double? h,
+    double? punto,
+    bool? kalin,
+    YaziTipi? yazi,
+    Hiza? hiza,
+    bool? ustten,
+    int? satir,
+    double? enKucuk,
+    Cizik? cizik,
+    bool? altiCizili,
+    bool? dikey,
+    double? genis,
+    bool? sikistir,
+  }) =>
+      YaziOge(
+        icerik ?? this.icerik,
+        x: x ?? this.x,
+        y: y ?? this.y,
+        g: g ?? this.g,
+        h: h ?? this.h,
+        punto: punto ?? this.punto,
+        kalin: kalin ?? this.kalin,
+        yazi: yazi ?? this.yazi,
+        hiza: hiza ?? this.hiza,
+        ustten: ustten ?? this.ustten,
+        satir: satir ?? this.satir,
+        enKucuk: enKucuk ?? this.enKucuk,
+        cizik: cizik ?? this.cizik,
+        altiCizili: altiCizili ?? this.altiCizili,
+        dikey: dikey ?? this.dikey,
+        genis: genis ?? this.genis,
+        sikistir: sikistir ?? this.sikistir,
+      );
+
+  @override
+  YaziOge konumla({double? x, double? y, double? g, double? h}) => kopya(x: x, y: y, g: g, h: h);
 }
 
 /// Barkod: kutu içinde yatayda ortalanır; genişlik = modül sayısı × [modul] (kutuyu aşmaz).
 class BarkodOge extends Oge {
-  final double x, y, g, h, modul, yaziPunto;
+  @override
+  final double x, y, g, h;
+  final double modul, yaziPunto;
   final bool kalinYazi;
   const BarkodOge({required this.x, required this.y, required this.g, required this.h, required this.modul, this.yaziPunto = 8, this.kalinYazi = false});
+
+  BarkodOge kopya({double? x, double? y, double? g, double? h, double? modul, double? yaziPunto, bool? kalinYazi}) => BarkodOge(
+        x: x ?? this.x,
+        y: y ?? this.y,
+        g: g ?? this.g,
+        h: h ?? this.h,
+        modul: modul ?? this.modul,
+        yaziPunto: yaziPunto ?? this.yaziPunto,
+        kalinYazi: kalinYazi ?? this.kalinYazi,
+      );
+
+  @override
+  BarkodOge konumla({double? x, double? y, double? g, double? h}) => kopya(x: x, y: y, g: g, h: h);
 }
 
 class KutuOge extends Oge {
-  final double x, y, g, h, kalinlik;
+  @override
+  final double x, y, g, h;
+  final double kalinlik;
   const KutuOge({required this.x, required this.y, required this.g, required this.h, this.kalinlik = 0.35});
+
+  KutuOge kopya({double? x, double? y, double? g, double? h, double? kalinlik}) =>
+      KutuOge(x: x ?? this.x, y: y ?? this.y, g: g ?? this.g, h: h ?? this.h, kalinlik: kalinlik ?? this.kalinlik);
+
+  @override
+  KutuOge konumla({double? x, double? y, double? g, double? h}) => kopya(x: x, y: y, g: g, h: h);
 }
 
 /// "Yerli Üretim" logosu (assets/images/yerli_uretim.png).
 class LogoOge extends Oge {
+  @override
   final double x, y, g, h;
   final bool dikey;
   const LogoOge({required this.x, required this.y, required this.g, required this.h, this.dikey = false});
+
+  LogoOge kopya({double? x, double? y, double? g, double? h, bool? dikey}) =>
+      LogoOge(x: x ?? this.x, y: y ?? this.y, g: g ?? this.g, h: h ?? this.h, dikey: dikey ?? this.dikey);
+
+  @override
+  LogoOge konumla({double? x, double? y, double? g, double? h}) => kopya(x: x, y: y, g: g, h: h);
 }
 
 enum SablonTuru { normal, birimFiyatli, indirimli }
@@ -265,6 +374,31 @@ class EtiketSablonu {
   bool get indirimli => tur == SablonTuru.indirimli;
   bool get birimFiyatli => tur == SablonTuru.birimFiyatli || ogeler.any((o) => o is YaziOge && o.icerik.contains('{birimFiyat}'));
   String get olcu => '${_mm(genislik)} × ${_mm(yukseklik)} mm';
+
+  /// Kullanıcının kendi yaptığı tasarım mı (hazır BarTender şablonu değil). Kimliği [kendiOnEki] ile başlar.
+  bool get kendi => id.startsWith(kendiOnEki);
+  static const kendiOnEki = 'k_';
+
+  EtiketSablonu kopya({
+    String? id,
+    String? ad,
+    String? dosya,
+    double? genislik,
+    double? yukseklik,
+    SablonTuru? tur,
+    String? para,
+    List<Oge>? ogeler,
+  }) =>
+      EtiketSablonu(
+        id: id ?? this.id,
+        ad: ad ?? this.ad,
+        dosya: dosya ?? this.dosya,
+        genislik: genislik ?? this.genislik,
+        yukseklik: yukseklik ?? this.yukseklik,
+        tur: tur ?? this.tur,
+        para: para ?? this.para,
+        ogeler: ogeler ?? this.ogeler,
+      );
 }
 
 String _mm(double d) => d == d.roundToDouble() ? d.toInt().toString() : d.toString().replaceAll('.', ',');
@@ -274,10 +408,10 @@ String _mm(double d) => d == d.roundToDouble() ? d.toInt().toString() : d.toStri
 
 const _raf80x35Ortak = <Oge>[
   BarkodOge(x: 20, y: 23.7, g: 31.4, h: 8.7, modul: 0.29, yaziPunto: 9),
-  YaziOge('Menşei :{mensei}', x: 1.7, y: 28.3, g: 18, h: 1.8, punto: 6),
-  YaziOge('Tarih :  {tarih}', x: 1.7, y: 31.8, g: 18, h: 1.8, punto: 6),
+  YaziOge('Menşei :{mensei}', x: 1.7, y: 28.3, g: 19, h: 1.8, punto: 6),
+  YaziOge('Tarih :  {tarih}', x: 1.7, y: 31.8, g: 19, h: 1.8, punto: 6),
   KutuOge(x: 57.86, y: 19.99, g: 21.41, h: 13.77, kalinlik: 0.3),
-  YaziOge('Birim Fiyatı', x: 57.86, y: 22.6, g: 21.41, h: 2.6, punto: 8, hiza: Hiza.orta),
+  YaziOge('Birim Fiyatı', x: 56.66, y: 22.6, g: 21.41, h: 2.6, punto: 8, hiza: Hiza.orta),
   YaziOge('{birimFiyat}', x: 58.4, y: 28.1, g: 20.3, h: 3.2, punto: 9, hiza: Hiza.orta, enKucuk: 0.4),
 ];
 
@@ -290,7 +424,7 @@ const sablonlar = <EtiketSablonu>[
     yukseklik: 35,
     tur: SablonTuru.birimFiyatli,
     ogeler: [
-      YaziOge('{ad}', x: 3.1, y: 0.8, g: 74.5, h: 10.5, punto: 18, yazi: YaziTipi.arialNarrow, ustten: true, satir: 2),
+      YaziOge('{ad}', x: 3.1, y: 0.2, g: 74.5, h: 10.5, punto: 18, yazi: YaziTipi.arialNarrow, ustten: true, satir: 2),
       YaziOge('{fiyat} {para}', x: 10.3, y: 12.5, g: 53.7, h: 7.5, punto: 18, hiza: Hiza.orta),
       ..._raf80x35Ortak,
     ],
@@ -317,12 +451,12 @@ const sablonlar = <EtiketSablonu>[
     yukseklik: 35,
     para: 'TL',
     ogeler: [
-      YaziOge('{ad}', x: 1.9, y: 1.0, g: 76.5, h: 9.0, punto: 18, yazi: YaziTipi.arialNarrow, ustten: true, satir: 2),
-      YaziOge('{fiyat} {para}', x: 14, y: 12.6, g: 51, h: 7.6, punto: 20, hiza: Hiza.orta),
+      YaziOge('{ad}', x: 1.9, y: 1.4, g: 76.5, h: 9.0, punto: 16, yazi: YaziTipi.arialNarrow, ustten: true, satir: 2),
+      YaziOge('{fiyat} {para}', x: 14, y: 13.1, g: 51, h: 7.6, punto: 16, hiza: Hiza.orta, genis: 1.25),
       LogoOge(x: 65.1, y: 10.4, g: 13.2, h: 5.2),
       BarkodOge(x: 21, y: 22.1, g: 39.6, h: 10.5, modul: 0.324, yaziPunto: 9),
-      YaziOge('Tarih : {tarih}', x: 1.8, y: 31.3, g: 19, h: 2.1, punto: 6.5),
-      YaziOge('Menşei :  {mensei}', x: 61, y: 31.3, g: 17.3, h: 2.1, punto: 6.5, hiza: Hiza.sag),
+      YaziOge('Tarih : {tarih}', x: 1.8, y: 31.3, g: 19.5, h: 2.1, punto: 6),
+      YaziOge('Menşei :  {mensei}', x: 59.4, y: 31.3, g: 18.9, h: 2.1, punto: 6, hiza: Hiza.sag),
     ],
   ),
   EtiketSablonu(
@@ -332,9 +466,9 @@ const sablonlar = <EtiketSablonu>[
     genislik: 80,
     yukseklik: 35,
     ogeler: [
-      YaziOge('{firma}', x: 2.6, y: 5.0, g: 4.4, h: 22.4, punto: 10, yazi: YaziTipi.arialBlack, hiza: Hiza.orta, dikey: true, altiCizili: true, enKucuk: 0.4),
-      YaziOge('{ad}', x: 9.2, y: 4.0, g: 67.5, h: 6.3, punto: 9, yazi: YaziTipi.arialNarrow, ustten: true, satir: 2),
-      YaziOge('{fiyat} {para}', x: 9.2, y: 11.8, g: 41.5, h: 8.2, punto: 22),
+      YaziOge('{firma}', x: 2.8, y: 6.76, g: 4.4, h: 18.4, punto: 10, yazi: YaziTipi.arialBlack, hiza: Hiza.orta, dikey: true, altiCizili: true, enKucuk: 0.4, sikistir: true),
+      YaziOge('{ad}', x: 9.2, y: 4.0, g: 67.5, h: 6.3, punto: 8.5, yazi: YaziTipi.arialNarrow, ustten: true, satir: 2, genis: 1.19),
+      YaziOge('{fiyat} {para}', x: 9.2, y: 12.1, g: 42, h: 8.2, punto: 24, genis: 1.53),
       BarkodOge(x: 50.5, y: 10.6, g: 27, h: 10.2, modul: 0.25),
       LogoOge(x: 56.9, y: 22.6, g: 14.1, h: 5.7),
       YaziOge('Menşei :{mensei}', x: 9.2, y: 23.4, g: 40, h: 2.6, punto: 8),
@@ -349,10 +483,10 @@ const sablonlar = <EtiketSablonu>[
     yukseklik: 35,
     tur: SablonTuru.indirimli,
     ogeler: [
-      YaziOge('{ad}', x: 7.6, y: 3.6, g: 70, h: 5.3, punto: 13, yazi: YaziTipi.arialNarrow, ustten: true, satir: 2),
-      YaziOge('{fiyat}', x: 6.6, y: 13.2, g: 33.4, h: 4.2, punto: 13, hiza: Hiza.orta, cizik: Cizik.capraz),
+      YaziOge('{ad}', x: 7.6, y: 3.35, g: 70, h: 5.3, punto: 13, yazi: YaziTipi.arialNarrow, ustten: true, satir: 2, genis: 0.78),
+      YaziOge('{fiyat}', x: 6.6, y: 13.2, g: 33.4, h: 4.2, punto: 13, hiza: Hiza.orta, cizik: Cizik.capraz, genis: 1.2),
       YaziOge('İndirimli Fiyat', x: 42, y: 8.8, g: 30, h: 3.6, punto: 11, yazi: YaziTipi.antikva, hiza: Hiza.orta),
-      YaziOge('{indirimliFiyat} {para}', x: 40, y: 14.6, g: 39.5, h: 6.0, punto: 20, hiza: Hiza.orta),
+      YaziOge('{indirimliFiyat} {para}', x: 38.5, y: 14.6, g: 41, h: 6.0, punto: 20, hiza: Hiza.orta, genis: 1.18),
       BarkodOge(x: 3, y: 22.1, g: 40, h: 8.4, modul: 0.325, kalinYazi: true),
       YaziOge('Tarih :', x: 40, y: 24.9, g: 11.4, h: 1.9, punto: 5.5, hiza: Hiza.orta),
       YaziOge('{tarih}', x: 40, y: 27.8, g: 13.4, h: 1.9, punto: 6, hiza: Hiza.orta),
@@ -394,7 +528,7 @@ const sablonlar = <EtiketSablonu>[
     yukseklik: 30,
     tur: SablonTuru.indirimli,
     ogeler: [
-      YaziOge('{ad}', x: 2.9, y: 1.3, g: 35, h: 4.4, punto: 5, ustten: true, satir: 2),
+      YaziOge('{ad}', x: 2.9, y: 1.3, g: 35, h: 4.4, punto: 5, ustten: true, satir: 2, genis: 1.47),
       YaziOge('S.FİYATI', x: 3, y: 8.3, g: 17, h: 2.5, punto: 8),
       YaziOge('İNDİRİM', x: 3, y: 11.5, g: 17, h: 2.5, punto: 8),
       YaziOge('İND. FİYAT', x: 3, y: 15.4, g: 17, h: 2.5, punto: 8),
@@ -430,10 +564,37 @@ String doldur(String icerik, EtiketVeri v, {required String para, required Strin
       'tarih' => _tarihBicim.format(v.tarih ?? bugun),
       'mensei' => mensei,
       'firma' => firma,
+      'kod' => v.kod,
+      'grup' => v.grup,
+      'birim' => v.birim,
+      'skt' => v.skt,
       'para' => para,
       _ => m.group(0)!,
     };
   });
+}
+
+/// İçerikte veri yer tutucusu ({para} hariç) var ve hepsi boş mu? Öyleyse yazı hiç basılmaz.
+bool veriAlanlariBos(String icerik, EtiketVeri v, {required String mensei, required String firma}) {
+  final adlar = RegExp(r'\{(\w+)\}').allMatches(icerik).map((m) => m.group(1)!).where((a) => a != 'para').toList();
+  if (adlar.isEmpty) return false;
+  bool bos(String a) => switch (a) {
+        'ad' => v.ad.isEmpty,
+        'fiyat' => v.fiyat == null,
+        'indirimliFiyat' => v.indirimliFiyat == null,
+        'oran' => v.indirimOrani == null,
+        'birimFiyat' => v.birimFiyat == null,
+        'barkod' => v.barkod.isEmpty,
+        'tarih' => false, // boşsa bugünün tarihi
+        'mensei' => mensei.trim().isEmpty,
+        'firma' => firma.trim().isEmpty,
+        'kod' => v.kod.isEmpty,
+        'grup' => v.grup.isEmpty,
+        'birim' => v.birim.isEmpty,
+        'skt' => v.skt.isEmpty,
+        _ => false,
+      };
+  return adlar.every(bos);
 }
 
 // ───────────────────────── Yerleşim ─────────────────────────
@@ -471,7 +632,8 @@ const ptMm = 25.4 / 72; // 1 punto = 0.3528 mm
 class YaziSatiri {
   final String metin;
   final double x, y, genislik, punto;
-  const YaziSatiri(this.metin, this.x, this.y, this.genislik, this.punto);
+  final double olcek; // yatay ölçek ([genislik] bunu içerir)
+  const YaziSatiri(this.metin, this.x, this.y, this.genislik, this.punto, [this.olcek = 1]);
 }
 
 sealed class Cizim {
@@ -533,7 +695,17 @@ int? barkodModulSayisi(String s) {
     if (s.length == 8 && ean13Gecerli(s.padLeft(13, '0'))) return 67;
     if (s.length == 12 && ean13Gecerli('0$s')) return 95; // UPC-A
   }
-  // Code128 (B): başlangıç 11 + her karakter 11 + sağlama 11 + bitiş 13; çift rakamlar C ile sıkışır ama üst sınır yeter.
+  // Code128: çizimdeki kodlamanın (rakam çiftleri C ile sıkışır) GERÇEK modül sayısı. Üst sınır (B) kullanılırsa
+  // modül gereğinden küçük seçilir: "1234567890123" 178 değil 123 modül → çubuklar 1 yerine 2 nokta, net basılır.
+  try {
+    final cubuk = bc.Barcode.code128().make(s, width: 10000, height: 10, drawText: false).whereType<bc.BarcodeBar>().where((b) => b.black).toList();
+    if (cubuk.isNotEmpty) {
+      final enInce = cubuk.map((b) => b.width).reduce(math.min);
+      return ((cubuk.last.left + cubuk.last.width - cubuk.first.left) / enInce).round();
+    }
+  } catch (_) {
+    // kodlanamayan harf → tahmin
+  }
   return 11 * (s.length + 2) + 13;
 }
 
@@ -564,7 +736,9 @@ List<Cizim> yerlesim(
       case YaziOge():
         final m = doldur(o.icerik, v, para: s.para, mensei: v.mensei ?? mensei, firma: firma, bugun: gun).trim();
         if (m.isEmpty || RegExp(r'^[%\s]*$').hasMatch(m) || m == s.para) continue;
-        final satirlar = yaziYerlestir(o, m, olcer);
+        if (veriAlanlariBos(o.icerik, v, mensei: v.mensei ?? mensei, firma: firma)) continue; // "SKT: " gibi yalnız başlık kalmasın
+        // hazır (BarTender) şablonda punto sabit; kendi tasarımda yazı kutuya sığdırılır (tasarımcıdaki gibi)
+        final satirlar = yaziYerlestir(o, m, olcer, sabitPunto: !s.kendi);
         sonuc.add(YaziCizimi(o, satirlar));
         if (o.cizik != Cizik.yok && satirlar.isNotEmpty) {
           final st = satirlar.first;
@@ -596,18 +770,30 @@ List<Cizim> yerlesim(
 }
 
 /// Yazıyı kutuya yerleştirir (koordinatlar etiketin mm'si; dikey öğede döndürülmüş kutunun içi).
-List<YaziSatiri> yaziYerlestir(YaziOge o, String m, YaziOlcer olcer) {
+/// [sabitPunto]: BarTender'daki gibi tek satırlık yazı kutu YÜKSEKLİĞİ yüzünden küçültülmez (kutu yalnız yerini ve
+/// dikey ortasını verir); yalnız genişliğe sığmazsa küçülür. Kapalıyken satır yüksekliği de kutuya sığdırılır.
+List<YaziSatiri> yaziYerlestir(YaziOge o, String m, YaziOlcer olcer, {bool sabitPunto = false}) {
   // dikey yazıda uzunluk kutunun yüksekliği, kalınlık genişliği
   final boy = o.dikey ? o.h : o.g;
   final en = o.dikey ? o.g : o.h;
   final asc = olcer.ascent(o.yazi, o.kalin), desc = olcer.descent(o.yazi, o.kalin);
   double satirH(double pt) => (asc + desc) * pt * ptMm;
-  double gen(String s, double pt) => olcer.genislik(s, o.yazi, o.kalin) * pt * ptMm;
+  var olcek = o.genis;
+  double gen(String s, double pt) => olcer.genislik(s, o.yazi, o.kalin) * pt * ptMm * olcek;
 
-  // en büyük punto: satır yüksekliği kutuya sığmalı
-  var pt = math.min(o.punto, en / ((asc + desc) * ptMm));
+  var pt = sabitPunto ? o.punto : math.min(o.punto, en / ((asc + desc) * ptMm));
   List<String> satirlar = [m];
-  final tek = gen(m, pt);
+  var tek = gen(m, pt);
+  if (tek > boy && olcek > 1) {
+    // genişletilmiş yazı sığmıyorsa önce genişlik (en çok normale kadar) geri alınır, harf boyu korunur
+    olcek = math.max(1.0, olcek * boy / tek);
+    tek = gen(m, pt);
+  }
+  if (tek > boy && o.sikistir) {
+    // harf boyu aynı kalır, yatayda sıkışır (en çok yarıya; daha uzunsa ayrıca küçülür)
+    olcek = math.max(o.genis * 0.5, olcek * boy / tek);
+    tek = gen(m, pt);
+  }
   if (tek > boy) {
     final kucuk = pt * boy / tek;
     if (kucuk >= o.punto * o.enKucuk || o.satir < 2) {
@@ -642,7 +828,9 @@ List<YaziSatiri> yaziYerlestir(YaziOge o, String m, YaziOlcer olcer) {
         final w = gen(satirlar[i], pt);
         final sol = switch (o.hiza) { Hiza.sol => 0.0, Hiza.orta => (boy - w) / 2, Hiza.sag => boy - w };
         // dikey değilse etiket koordinatı; dikeyse döndürülmüş kutunun kendi koordinatı (çizen çevirir)
-        return o.dikey ? YaziSatiri(satirlar[i], sol, ust0 + i * lh, w, pt) : YaziSatiri(satirlar[i], o.x + sol, o.y + ust0 + i * lh, w, pt);
+        return o.dikey
+            ? YaziSatiri(satirlar[i], sol, ust0 + i * lh, w, pt, olcek)
+            : YaziSatiri(satirlar[i], o.x + sol, o.y + ust0 + i * lh, w, pt, olcek);
       }(),
   ];
 }

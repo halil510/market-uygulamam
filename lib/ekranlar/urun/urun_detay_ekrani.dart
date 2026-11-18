@@ -20,6 +20,7 @@ import '../../saglayicilar/riverpod/doviz_provider.dart';
 import '../../tasarim_sistemi/tasarim_sistemi.dart';
 import '../../servisler/log_servisi.dart';
 import '../../servisler/kolon_haritalama.dart';
+import '../barkod/etiket_ortak.dart';
 
 class UrunDetayEkrani extends ConsumerStatefulWidget {
   final int urunId;
@@ -94,6 +95,9 @@ class _UrunDetayEkraniState extends ConsumerState<UrunDetayEkrani>
               // tekil düzenle/sil butonları HİÇ gate'lenmemişti. Pratik
               // sonucu: herhangi bir kasiyer bu ekrandan satış fiyatını
               // (ve her şeyi) serbestçe değiştirebiliyordu.
+              // Etiket yazdır: seçili etiket tasarımı + seçili yazıcı (kasiyer de basabilir; veri değiştirmez).
+              // Ürün en güncel hâliyle basılır (düzenleme sonrası provider tazelenir).
+              EtiketYazdirDugmesi(urun: () => urun, renk: Colors.white),
               TsYetkili(
                 child: IconButton(
                   icon: const Icon(Icons.edit_outlined, color: Colors.white),

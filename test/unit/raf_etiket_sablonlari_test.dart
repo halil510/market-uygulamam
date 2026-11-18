@@ -154,6 +154,25 @@ void main() {
     }
   });
 
+  test('kısa yazılar BarTender puntosuyla basılır (kutu yüksekliği yüzünden küçülmez)', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final olcer = await RafEtiketYazilari.yukle(); // Windows'ta gerçek Arial ölçüleri
+    const v = EtiketVeri(ad: 'ÜRÜN ADI', fiyat: 20, barkod: '12345670', indirimliFiyat: 10, birimFiyat: BirimFiyat(12, 'KG'));
+    for (final s in sablonlar) {
+      for (final c in yerlesim(s, v, olcer: olcer, mensei: 'Türkiye', bugun: DateTime(2018, 10, 24)).whereType<YaziCizimi>()) {
+        for (final st in c.satirlar) {
+          expect(st.punto, c.oge.punto, reason: '${s.id} "${st.metin}"');
+        }
+      }
+    }
+  });
+
+  test('Code128 modül sayısı gerçek kodlamadan (rakam çiftleri sıkışır → çubuklar daha kalın)', () {
+    expect(barkodModulSayisi('1234567890123'), 123);
+    expect(barkodModulSayisi('12345678'), 79);
+    expect(barkodModulSayisi('8690511183754'), 95);
+  });
+
   test('her şablonun PDF\'i ve termal resmi (gerçek yazı tipleriyle taşma yok)', () async {
     TestWidgetsFlutterBinding.ensureInitialized();
     final klasor = Platform.environment['RAF_ETIKET_CIKTI'];
@@ -192,8 +211,18 @@ void _tasmaYok(EtiketSablonu s, List<Cizim> c, YaziOlcer olcer) {
           final lh = (olcer.ascent(oge.yazi, oge.kalin) + olcer.descent(oge.yazi, oge.kalin)) * st.punto * ptMm;
           expect(st.x, greaterThanOrEqualTo(ox - pay), reason: '${s.id} "${st.metin}" sol');
           expect(st.x + st.genislik, lessThanOrEqualTo(ox + boy + pay), reason: '${s.id} "${st.metin}" sağ');
-          expect(st.y, greaterThanOrEqualTo(oy - pay), reason: '${s.id} "${st.metin}" üst');
-          expect(st.y + lh, lessThanOrEqualTo(oy + en + pay), reason: '${s.id} "${st.metin}" alt');
+          // hazır şablonda punto BarTender'daki gibi sabit: tek satırın satır kutusu öğe kutusundan biraz taşabilir
+          // ama dikey ortası aynıdır; iki satırlı yazı kutuya sığar; hiçbiri etiketten taşmaz
+          if (satirlar.length > 1 || s.kendi) {
+            expect(st.y, greaterThanOrEqualTo(oy - pay), reason: '${s.id} "${st.metin}" üst');
+            expect(st.y + lh, lessThanOrEqualTo(oy + en + pay), reason: '${s.id} "${st.metin}" alt');
+          } else if (!oge.ustten) {
+            expect(st.y + lh / 2, closeTo(oy + en / 2, 0.01), reason: '${s.id} "${st.metin}" dikey orta');
+          }
+          if (!oge.dikey) {
+            expect(st.y, greaterThanOrEqualTo(-0.3), reason: '${s.id} "${st.metin}" etiketin üstünden taşıyor');
+            expect(st.y + lh, lessThanOrEqualTo(s.yukseklik + 0.3), reason: '${s.id} "${st.metin}" etiketin altından taşıyor');
+          }
           expect(st.punto, greaterThan(2.5), reason: '${s.id} "${st.metin}" okunmaz küçüklükte');
         }
         expect(oge.x + oge.g, lessThanOrEqualTo(s.genislik + pay));

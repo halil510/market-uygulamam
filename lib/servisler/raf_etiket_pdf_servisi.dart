@@ -161,7 +161,10 @@ class RafEtiketPdfServisi {
     if (etiketler.isEmpty) {
       doc.addPage(pw.Page(build: (_) => pw.Center(child: pw.Text('Basılacak etiket yok', style: y.stil(YaziTipi.arial, false, 12)))));
     } else if (kagit == RafEtiketKagidi.rulo) {
-      final f = PdfPageFormat(s.genislik * _mm, s.yukseklik * _mm);
+      // Sayfa, yazıcı noktasının tam katı (80 mm @203 dpi = 639,37 → 639 nokta = 79,95 mm): resme çevirirken
+      // (Printing.raster sayfayı tam sayı piksele keser) ölçek tam 1 nokta = 1 piksel olur, çubuk kenarları kaymaz.
+      double tam(double mm) => (mm * dpi / 25.4).floorToDouble() * 72 / dpi;
+      final f = PdfPageFormat(tam(s.genislik), tam(s.yukseklik));
       for (final c in etiketler) {
         doc.addPage(pw.Page(pageFormat: f, build: (_) => _etiket(s, c, y, logo)));
       }
@@ -243,6 +246,11 @@ class RafEtiketPdfServisi {
     return sonuc;
   }
 
+  /// Yazıyı sol kenarından yatayda [olcek] kadar genişletir / daraltır (BarTender'daki yazı genişliği).
+  static pw.Widget _olcekli(double olcek, pw.Widget w) => (olcek - 1).abs() < 1e-6
+      ? w
+      : pw.Transform(transform: Matrix4.diagonal3Values(olcek, 1, 1), alignment: pw.Alignment.topLeft, child: w);
+
   static pw.Widget _etiket(EtiketSablonu s, List<Cizim> cizimler, RafEtiketYazilari y, pw.ImageProvider logo, {bool kenar = false}) {
     final w = s.genislik * _mm, h = s.yukseklik * _mm;
     final cizgiler = cizimler.whereType<CizgiCizimi>().toList();
@@ -254,11 +262,14 @@ class RafEtiketPdfServisi {
               pw.Positioned(
                 left: st.x * _mm,
                 top: st.y * _mm,
-                child: pw.Text(
-                  st.metin,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: y.stil(c.oge.yazi, c.oge.kalin, st.punto, altiCizili: c.oge.altiCizili),
+                child: _olcekli(
+                  st.olcek,
+                  pw.Text(
+                    st.metin,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: y.stil(c.oge.yazi, c.oge.kalin, st.punto, altiCizili: c.oge.altiCizili),
+                  ),
                 ),
               ),
           ],

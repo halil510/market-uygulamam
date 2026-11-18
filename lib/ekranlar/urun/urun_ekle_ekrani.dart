@@ -38,6 +38,7 @@ import '../../depolar/doviz_deposu.dart';
 import '../../modeller/doviz_model.dart';
 import '../../servisler/log_servisi.dart';
 import '../../servisler/onay_merkezi_servisi.dart';
+import '../barkod/etiket_ortak.dart';
 
 part 'urun_ekle_ekrani_form.dart';
 part 'urun_ekle_ekrani_ai_ses.dart';
@@ -249,6 +250,12 @@ class _UrunEkleEkraniState extends ConsumerState<UrunEkleEkrani> {
                       leading: Icon(Icons.key),
                       title: Text('API Anahtarını Değiştir'))),
             ],
+          ),
+          // Etiket yazdır (seçili tasarım + yazıcı). Değişiklik varsa önce kaydeder; uzun bas: adet.
+          EtiketYazdirDugmesi(
+            bas: _etiketBas,
+            adetBasligi: _c['urunAdi']?.text.trim().isNotEmpty == true ? _c['urunAdi']!.text.trim() : 'Etiket',
+            renk: Colors.white,
           ),
           if (duzenleme)
             IconButton(

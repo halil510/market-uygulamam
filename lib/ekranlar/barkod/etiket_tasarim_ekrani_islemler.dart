@@ -1,292 +1,71 @@
 // ignore_for_file: invalid_use_of_protected_member
 //
-// etiket_tasarim_ekrani.dart parçası (god-class bölme, 2026-09-29) — kod
-// birebir taşındı, davranış değişmedi. setState extension içinden
-// çağrıldığı için protected uyarısı dosya bazında muaf (bkz.
-// fatura_detay_islemler_ext.dart'taki açıklama).
-// Özel şablonlar, ayar uygulama, yazdırma, ZPL dışa aktarma ve Bluetooth durumu.
+// etiket_tasarim_ekrani.dart parçası — yazdırma, önizleme, ZPL ve tasarım işlemleri (seç / yeni / kopyala /
+// düzenle / sil). setState extension içinden çağrıldığı için protected uyarısı dosya bazında muaf.
 part of 'etiket_tasarim_ekrani.dart';
 
 extension _EtiketTasarimIslemlerExt on _EtiketTasarimEkraniState {
-  // ── Adlandırılmış özel şablonlar ─────────────────────────────────────────
-  Future<void> _ozelSablonlariYukle() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString('etiket_ozel_sablonlar');
-      if (raw == null) return;
-      final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
-      if (mounted) setState(() => _ozelSablonlar = list);
-    } catch (_) {/* bozuk kayıt varsa yok say */}
-  }
-
-  Map<String, dynamic> _mevcutAyarlar() => {
-    'barkod': _barkodGoster, 'fiyat': _fiyatGoster, 'ad': _adGoster,
-    'firma': _firmaBilgi, 'birimFiyatli': _birimFiyatliMod, 'lotNo': _lotNoGoster,
-    'skt': _sktGoster, 'anaGrup': _anaGrupGoster, 'kdvDahil': _kdvDahilGoster,
-    'aciklama': _aciklamaGoster, 'ozelMetin': _ozelMetin, 'fontOlcek': _fontOlcek,
-    'boyutIndex': _boyut.index, 'ozelBoyutAktif': _ozelBoyutAktif,
-    'ozelGenislik': _ozelGenislikCtrl.text, 'ozelYukseklik': _ozelYukseklikCtrl.text,
-  };
-
-  void _ayarlariUygula(Map<String, dynamic> a) {
-    setState(() {
-      _barkodGoster    = a['barkod'] ?? true;
-      _fiyatGoster     = a['fiyat'] ?? true;
-      _adGoster        = a['ad'] ?? true;
-      _firmaBilgi      = a['firma'] ?? false;
-      _birimFiyatliMod = a['birimFiyatli'] ?? false;
-      _lotNoGoster     = a['lotNo'] ?? false;
-      _sktGoster       = a['skt'] ?? false;
-      _anaGrupGoster   = a['anaGrup'] ?? false;
-      _kdvDahilGoster  = a['kdvDahil'] ?? true;
-      _aciklamaGoster  = a['aciklama'] ?? false;
-      _ozelMetin       = a['ozelMetin'] ?? '';
-      _ozelMetinCtrl.text = _ozelMetin;
-      _fontOlcek       = (a['fontOlcek'] as num?)?.toDouble() ?? 1.0;
-      final bi = a['boyutIndex'] as int?;
-      if (bi != null && bi >= 0 && bi < EtiketBoyut.values.length) _boyut = EtiketBoyut.values[bi];
-      _ozelBoyutAktif  = a['ozelBoyutAktif'] ?? false;
-      _ozelGenislikCtrl.text  = (a['ozelGenislik'] as String?) ?? _ozelGenislikCtrl.text;
-      _ozelYukseklikCtrl.text = (a['ozelYukseklik'] as String?) ?? _ozelYukseklikCtrl.text;
-    });
-  }
-
-  Future<void> _ozelSablonKaydet() async {
-    final adCtrl = TextEditingController();
-    final ad = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Şablonu Kaydet'),
-        content: TextField(
-          controller: adCtrl, autofocus: true,
-          decoration: const InputDecoration(
-              labelText: 'Şablon adı', hintText: 'Örn: "Şarküteri Etiketi"',
-              border: OutlineInputBorder(), isDense: true),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, adCtrl.text.trim()),
-              child: const Text('Kaydet')),
-        ],
-      ),
-    ).whenComplete(() => dialogSonrasiBirak([adCtrl]));
-    if (ad == null || ad.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    _ozelSablonlar.removeWhere((s) => s['ad'] == ad);
-    _ozelSablonlar.add({'ad': ad, ..._mevcutAyarlar()});
-    await prefs.setString('etiket_ozel_sablonlar', jsonEncode(_ozelSablonlar));
-    if (!mounted) return;
-    setState(() {});
-    BildirimServisi.basari(context, 'Şablon kaydedildi: $ad');
-  }
-
-  Future<void> _ozelSablonSil(String ad) async {
-    final prefs = await SharedPreferences.getInstance();
-    _ozelSablonlar.removeWhere((s) => s['ad'] == ad);
-    await prefs.setString('etiket_ozel_sablonlar', jsonEncode(_ozelSablonlar));
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _btDurumKontrol() async {
-    try {  
-      final b = await _yazdirma.btBagliMi;
-      if (mounted) setState(() => _btBagliMi = b);
-        } catch (e) {
-      if (kDebugMode) if (mounted) debugPrint('Hata: $e');
-    }
-  }
-
-  /// Şablon seçimi, o ürün türü için genelde anlamlı olan alanları otomatik
-  /// açar/kapatır. Kullanıcı seçtikten sonra dilediği anahtarı yine elle
-  /// değiştirebilir — şablon sadece bir başlangıç noktası sunar.
-  void _sablonUygula(String sablon) {
-    setState(() {
-      _secilenSablon = sablon;
-      switch (sablon) {
-        case 'Gıda':
-          _sktGoster = true;
-          _lotNoGoster = true;
-          _anaGrupGoster = false;
-          _aciklamaGoster = false;
-        case 'Tekstil':
-          _sktGoster = false;
-          _lotNoGoster = false;
-          _anaGrupGoster = true;
-          _aciklamaGoster = true;
-        case 'Elektronik':
-          _sktGoster = false;
-          _lotNoGoster = true; // seri no amaçlı
-          _anaGrupGoster = true;
-          _aciklamaGoster = false;
-        case 'Kargo':
-          _sktGoster = false;
-          _lotNoGoster = false;
-          _anaGrupGoster = false;
-          _aciklamaGoster = true;
-        default: // Varsayılan
-          _sktGoster = false;
-          _lotNoGoster = false;
-          _anaGrupGoster = false;
-          _aciklamaGoster = false;
-      }
-    });
-  }
-
   // ── Yazdır ────────────────────────────────────────────────────────────────
-  // ── Raf etiketi tasarımı (BarTender şablonları) ───────────────────────────
-  Future<void> _rafSablonYukle() async {
-    try {
-      final p = await SharedPreferences.getInstance();
-      final id = p.getString(RafEtiketAyar.sablon) ?? '';
-      // bilinmeyen kimlik → serbest etiket (şablon kaldırılmış olabilir)
-      final gecerli = id.isNotEmpty && sablonlar.any((s) => s.id == id) ? id : '';
-      if (mounted) setState(() => _rafSablonId = gecerli);
-    } catch (_) {/* okunamazsa serbest etiket */}
-  }
-
-  Future<void> _rafSablonSec(String id) async {
-    setState(() => _rafSablonId = id);
-    final p = await SharedPreferences.getInstance();
-    await p.setString(RafEtiketAyar.sablon, id);
-  }
-
-  Future<void> _rafEtiketAc() async {
-    await rafEtiketPenceresiAc(
-      context,
-      [for (final k in _sepet) (k.urun, k.adet)],
-      sablonId: _rafSablonId.isEmpty ? sablonBul(null).id : _rafSablonId,
-    );
-    await _rafSablonYukle(); // pencerede şablon değiştirilmiş olabilir
-  }
-
   Future<void> _yazdir() async {
-    if (_sepet.isEmpty) { BildirimServisi.uyari(context, 'Ürün ekleyin'); return; }
-    // Raf etiketi tasarımı seçiliyse: önizlemeli pencere (termal yazıcı ya da sistem yazıcısı)
-    if (_rafSablonId.isNotEmpty) {
-      await _rafEtiketAc();
+    if (_sepet.isEmpty) {
+      BildirimServisi.uyari(context, 'Ürün ekleyin');
       return;
     }
-    if (!_btBagliMi) {
-      _showBtUyari();
-      return;
-    }
-
-    showDialog(
-      context: context, barrierDismissible: false,
-      builder: (bCtx) => const ProgressDialog(mesaj: 'Etiketler yazdırılıyor...'),
-    );
-
-    try {
-      int toplam = 0;
-      for (final kalem in _sepet) {
-        await _yazdirma.etiketYazdir(
-          kalem.urun,
-          barkodGoster:    _barkodGoster,
-          fiyatGoster:     _fiyatGoster,
-          adGoster:        _adGoster,
-          birimFiyatliMod: _birimFiyatliMod,
-          etiketBoy:       _efKagit,
-          etiketGenislikMm: _efGenislik,
-          adet:            kalem.adet,
-          firmaGoster:     _firmaBilgi,
-          lotNoGoster:     _lotNoGoster,
-          sktGoster:       _sktGoster,
-          anaGrupGoster:   _anaGrupGoster,
-          kdvDahilFiyat:   _kdvDahilGoster,
-          aciklamaGoster:  _aciklamaGoster,
-          ozelMetin:       _ozelMetin,
-        );
-        toplam += kalem.adet;
-      }
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      BildirimServisi.basari(context,
-          '$toplam etiket gönderildi (${_sepet.length} çeşit)');
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      BildirimServisi.hata(context, 'Yazıcı hatası: $e');
-    }
+    // Seçili tasarım + seçili yazıcı (ürün ekranlarındaki yazdır düğmesiyle aynı yol).
+    await etiketleriBas(context, _kalemler, sablon: _secili);
   }
 
-  /// Sepetteki etiketleri ZPL'e çevirip seçenek sunar:
-  /// - Bağlı bir yazıcı (WiFi/BT) varsa: doğrudan gönder (BarTender'a gerek yok)
-  /// - Yoksa veya kullanıcı isterse: .zpl dosyası olarak dışa aktar (BarTender vb.)
-  Future<void> _zplDisaAktar() async {
-    if (_sepet.isEmpty) { BildirimServisi.uyari(context, 'Ürün ekleyin'); return; }
-    final zpl = ZplServisi.topluZpl(
-      _sepet.map((k) => (urun: k.urun, adet: k.adet)).toList(),
-      genislikMm: _efGenislik,
-      yukseklikMm: _efYukseklik,
-      barkodGoster: _barkodGoster,
-      fiyatGoster: _fiyatGoster,
-      adGoster: _adGoster,
-      firmaGoster: _firmaBilgi,
-      firmaAdi: _yazdirma.firmaAdiOnizleme,
-      anaGrupGoster: _anaGrupGoster,
-      lotNoGoster: _lotNoGoster,
-      sktGoster: _sktGoster,
-      aciklamaGoster: _aciklamaGoster,
-      kdvDahilFiyat: _kdvDahilGoster,
-      birimFiyatliMod: _birimFiyatliMod,
-      ozelMetin: _ozelMetin,
-      fontOlcek: _fontOlcek,
-    );
+  Future<void> _onizle() async {
+    if (_sepet.isEmpty) return;
+    await rafEtiketPenceresiAc(context, _kalemler);
+  }
 
+  /// Seçili tasarımın ZPL (Zebra) karşılığı: bağlı yazıcıya doğrudan ya da .zpl dosyası olarak.
+  Future<void> _zplDisaAktar() async {
+    if (_sepet.isEmpty) {
+      BildirimServisi.uyari(context, 'Ürün ekleyin');
+      return;
+    }
+    final String zpl;
+    try {
+      zpl = await EtiketBaskiServisi.zpl(_kalemler, _secili, _ayar ?? await EtiketAyarlari.yaziciYukle());
+    } catch (e) {
+      if (mounted) BildirimServisi.hata(context, 'ZPL hazırlanamadı: $e');
+      return;
+    }
+    if (!mounted) return;
+    if (zpl.isEmpty) {
+      BildirimServisi.uyari(context, 'Basılacak etiket yok (fiyatı olmayan ürünler basılmaz)');
+      return;
+    }
     if (_yazdirma.bagliMi) {
       final secim = await showModalBottomSheet<String>(
         context: context,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        builder: (ctx) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Padding(padding: EdgeInsets.all(16),
-              child: Text('Etiketler nasıl gönderilsin?', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
-          // ZPL önizleme — gönderilmeden önce küçük bir özet ve kod örneği
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: TsRenk.arkaplan(context),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: TsRenk.ayirac(context)),
-              ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Icon(Icons.label_outline, size: 16, color: TsRenk.metinIkincil(context)),
-                  const SizedBox(width: 6),
-                  Text('$_boyutEtiketMetni • ${_sepet.length} çeşit • '
-                      '${_sepet.fold<int>(0, (t, k) => t + k.adet)} adet',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: TsRenk.metinBirincil(context))),
-                ]),
-                const SizedBox(height: 6),
-                Text(
-                  zpl.length > 160 ? '${zpl.substring(0, 160)}...' : zpl,
-                  maxLines: 4, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: TsRenk.metinIkincil(context)),
-                ),
-              ]),
+        builder: (ctx) => SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('${_secili.ad} · ${_secili.olcu} — ZPL nasıl gönderilsin?',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             ),
-          ),
-          const SizedBox(height: 8),
-          ListTile(
-            leading: const Icon(Icons.print, color: TsRenk.bilgi),
-            title: const Text('Bağlı Yazıcıya Doğrudan Gönder (ZPL)'),
-            subtitle: Text('Zebra/ZPL uyumlu — ${_yazdirma.baglantiDurumu}'),
-            onTap: () => Navigator.pop(ctx, 'direkt'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.ios_share, color: TsRenk.uyari),
-            title: const Text('.zpl Dosyası Olarak Paylaş'),
-            subtitle: const Text('BarTender veya başka bir uygulamaya aktarın'),
-            onTap: () => Navigator.pop(ctx, 'dosya'),
-          ),
-          const SizedBox(height: 8),
-        ])),
+            ListTile(
+              leading: const Icon(Icons.print, color: TsRenk.bilgi),
+              title: const Text('Bağlı yazıcıya doğrudan gönder (ZPL)'),
+              subtitle: Text('Zebra/ZPL uyumlu — ${_yazdirma.baglantiDurumu}'),
+              onTap: () => Navigator.pop(ctx, 'direkt'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.ios_share, color: TsRenk.uyari),
+              title: const Text('.zpl dosyası olarak paylaş'),
+              subtitle: const Text('BarTender veya başka bir uygulamaya aktarın'),
+              onTap: () => Navigator.pop(ctx, 'dosya'),
+            ),
+            const SizedBox(height: 8),
+          ]),
+        ),
       );
-      if (secim == null) return;
+      if (secim == null || !mounted) return;
       if (secim == 'direkt') {
         try {
           await _yazdirma.zplGonder(zpl);
@@ -297,7 +76,6 @@ extension _EtiketTasarimIslemlerExt on _EtiketTasarimEkraniState {
         return;
       }
     }
-
     await _zplDosyaPaylas(zpl);
   }
 
@@ -306,36 +84,195 @@ extension _EtiketTasarimIslemlerExt on _EtiketTasarimEkraniState {
       final dir = await getTemporaryDirectory();
       final dosya = File('${dir.path}/etiketler_${DateTime.now().millisecondsSinceEpoch}.zpl');
       await dosya.writeAsString(zpl);
-
       if (!mounted) return;
-      await DosyaPaylasim.paylas(ShareParams(files: [XFile(dosya.path, mimeType: 'text/plain')],
-        subject: 'BarkoPro Etiketler (ZPL)',
-        text: 'Bu .zpl dosyasını BarTender veya Zebra/ZPL uyumlu '
-              'bir etiket yazıcısına "Dosyadan Yazdır" ile gönderebilirsiniz.\n'
-              'Etiket boyutu: $_boyutEtiketMetni, Toplam: '
-              '${_sepet.fold<int>(0, (t, k) => t + k.adet)} adet.',
+      await DosyaPaylasim.paylas(ShareParams(
+        files: [XFile(dosya.path, mimeType: 'text/plain')],
+        subject: 'Etiketler (ZPL)',
+        text: 'Bu .zpl dosyasını Zebra/ZPL uyumlu bir etiket yazıcısına "Dosyadan Yazdır" ile gönderebilirsiniz.\n'
+            'Tasarım: ${_secili.ad} (${_secili.olcu}), toplam $_toplamEtiket adet.',
       ));
     } catch (e) {
       if (mounted) BildirimServisi.hata(context, 'ZPL dışa aktarma hatası: $e');
     }
   }
 
-  void _showBtUyari() {
-    showDialog(
+  // ── Tasarımlar ────────────────────────────────────────────────────────────
+  Future<void> _tasarimSec(EtiketSablonu s) async {
+    setState(() => _secili = s);
+    await EtiketAyarlari.tasarimSec(s.id);
+  }
+
+  Future<void> _tasarimDuzenle(EtiketSablonu s) async {
+    final kaydedilen = await etiketTasarimciAc(context, s, ornek: _sepet.isEmpty ? null : _ornekVeri);
+    if (kaydedilen != null && mounted) {
+      await EtiketAyarlari.tasarimSec(kaydedilen.id); // yeni / düzenlenen tasarım seçili olsun
+      if (mounted) BildirimServisi.basari(context, 'Tasarım kaydedildi ve seçildi: ${kaydedilen.ad}');
+    }
+  }
+
+  Future<void> _tasarimKopyala(EtiketSablonu s) => _tasarimDuzenle(
+        s.kopya(id: EtiketAyarlari.yeniKimlik(), ad: '${s.ad} (kopya)', dosya: ''),
+      );
+
+  Future<void> _tasarimSil(EtiketSablonu s) async {
+    final onay = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        
-        title: const Row(children: [
-          Icon(Icons.print_disabled, color: TsRenk.hata), SizedBox(width: 8),
-          Text('Yazıcı Bağlı Değil'),
-        ]),
-        content: const Text('Etiket yazdırmak için önce Yazıcı Ayarları ekranından '
-            'Bluetooth yazıcıya bağlanın.'),
+      builder: (c) => AlertDialog(
+        title: const Text('Tasarım silinsin mi?'),
+        content: Text('"${s.ad}" silinecek. Bu geri alınamaz.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Vazgeç')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: TsRenk.hata, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Sil'),
+          ),
         ],
       ),
+    );
+    if (onay != true) return;
+    await EtiketAyarlari.tasarimSil(s.id);
+    if (mounted) BildirimServisi.bilgi(context, 'Tasarım silindi: ${s.ad}');
+  }
+
+  /// Yeni tasarım: ad, ölçü ve başlangıç (seçilen alanlardan otomatik ya da boş) sorulur, tasarımcı açılır.
+  Future<void> _yeniTasarim() async {
+    final s = await showDialog<EtiketSablonu>(context: context, builder: (_) => const _YeniTasarimDialogu());
+    if (s == null || !mounted) return;
+    await _tasarimDuzenle(s);
+  }
+}
+
+/// "Yeni tasarım" penceresi.
+class _YeniTasarimDialogu extends StatefulWidget {
+  const _YeniTasarimDialogu();
+  @override
+  State<_YeniTasarimDialogu> createState() => _YeniTasarimDialoguState();
+}
+
+class _YeniTasarimDialoguState extends State<_YeniTasarimDialogu> {
+  final _adCtrl = TextEditingController(text: 'Etiketim');
+  final _gCtrl = TextEditingController(text: '58');
+  final _hCtrl = TextEditingController(text: '40');
+  bool _otomatik = true;
+  final Set<OtomatikAlan> _alanlar = {OtomatikAlan.ad, OtomatikAlan.fiyat, OtomatikAlan.barkod};
+
+  @override
+  void dispose() {
+    _adCtrl.dispose();
+    _gCtrl.dispose();
+    _hCtrl.dispose();
+    super.dispose();
+  }
+
+  double? _olcu(TextEditingController c) {
+    final v = ParaUtils.sayiCoz(c.text);
+    return v == null || v < enKucukOlcu || v > enBuyukOlcu ? null : v;
+  }
+
+  void _tamam() {
+    final g = _olcu(_gCtrl), h = _olcu(_hCtrl);
+    final ad = _adCtrl.text.trim();
+    if (g == null || h == null || ad.isEmpty) {
+      setState(() {}); // hata metinleri görünsün
+      return;
+    }
+    final id = EtiketAyarlari.yeniKimlik();
+    final s = _otomatik
+        ? otomatikTasarim(id: id, ad: ad, genislik: g, yukseklik: h, alanlar: _alanlar)
+        : EtiketSablonu(id: id, ad: ad, dosya: '', genislik: g, yukseklik: h, ogeler: const []);
+    Navigator.pop(context, s);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final g = _olcu(_gCtrl), h = _olcu(_hCtrl);
+    final olcuHata = 'mm, ${mmYaz(enKucukOlcu)}–${mmYaz(enBuyukOlcu)}';
+    return AlertDialog(
+      title: const Text('Yeni etiket tasarımı'),
+      content: SizedBox(
+        width: 440,
+        child: SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            TextField(
+              controller: _adCtrl,
+              decoration: InputDecoration(
+                labelText: 'Tasarım adı',
+                border: const OutlineInputBorder(),
+                isDense: true,
+                errorText: _adCtrl.text.trim().isEmpty ? 'Ad verin' : null,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _gCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Genişlik (mm)',
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                    errorText: g == null ? olcuHata : null,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _hCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Yükseklik (mm)',
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                    errorText: h == null ? olcuHata : null,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 6),
+            Wrap(spacing: 4, runSpacing: 4, children: [
+              for (final o in hazirOlculer)
+                ActionChip(
+                  label: Text('${mmYaz(o.$1)}×${mmYaz(o.$2)}', style: const TextStyle(fontSize: 12)),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => setState(() {
+                    _gCtrl.text = mmYaz(o.$1);
+                    _hCtrl.text = mmYaz(o.$2);
+                  }),
+                ),
+            ]),
+            const SizedBox(height: 8),
+            Text('Etiket rulonuzdaki BİR etiketin ölçüsünü girin (yazıcı sürücüsündeki kâğıt boyuyla aynı olmalı).',
+                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            const Divider(height: 24),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Seçtiğim alanlarla hazır yerleştir'),
+              subtitle: const Text('Kapalıysa boş etiketle başlar'),
+              value: _otomatik,
+              onChanged: (v) => setState(() => _otomatik = v),
+            ),
+            if (_otomatik)
+              Wrap(spacing: 6, runSpacing: 4, children: [
+                for (final a in OtomatikAlan.values)
+                  FilterChip(
+                    label: Text(otomatikAlanAdlari[a]!),
+                    selected: _alanlar.contains(a),
+                    onSelected: (v) => setState(() => v ? _alanlar.add(a) : _alanlar.remove(a)),
+                  ),
+              ]),
+          ]),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Vazgeç')),
+        FilledButton.icon(onPressed: _tamam, icon: const Icon(Icons.design_services, size: 18), label: const Text('Tasarla')),
+      ],
     );
   }
 }

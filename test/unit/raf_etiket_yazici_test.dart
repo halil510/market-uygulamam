@@ -9,7 +9,7 @@ import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart' show PaperSize;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:market_plus/cekirdek/etiket/raf_etiket_sablonlari.dart';
 import 'package:market_plus/cekirdek/etiket/tspl.dart';
-import 'package:market_plus/ekranlar/barkod/raf_etiket_penceresi.dart';
+import 'package:market_plus/servisler/etiket_baski_servisi.dart' show fisDpi;
 import 'package:market_plus/servisler/raf_etiket_pdf_servisi.dart';
 import 'package:market_plus/servisler/windows_etiket_yazici.dart';
 

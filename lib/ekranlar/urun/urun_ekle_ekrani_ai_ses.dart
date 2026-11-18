@@ -353,8 +353,58 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
     _aiDoldurulanAlanlar.add('urunAdi');
   }
 
+  // ---- ETİKET YAZDIR ----
+  /// Formdaki etikete basılan bilgiler (ad, fiyat, barkod, indirim, birim, ağırlık, kod, grup) kayıtlı üründen farklı mı?
+  /// Farklıysa etiket kasadaki fiyatla tutmayabilir → önce kaydedilir.
+  bool _etiketAlanlariDegisti() {
+    final u = widget.duzenlenecekUrun;
+    if (u == null) return true; // yeni ürün: henüz kayıtlı değil
+    String m(String k) => _c[k]?.text.trim() ?? '';
+    bool sayiFarkli(String k, double eski, {double pay = 0.0005}) => ((ParaUtils.sayiCoz(m(k)) ?? 0) - eski).abs() > pay;
+    return m('urunAdi') != u.urunAdi.trim() ||
+        m('barkod') != (u.barkod ?? '').trim() ||
+        m('kod') != (u.kod ?? '').trim() ||
+        sayiFarkli('satisFiyati', u.satisFiyati) ||
+        sayiFarkli('indirimOrani', u.indirimOrani, pay: 0.005) ||
+        sayiFarkli('indirimliFiyat', u.indirimliFiyat > 0 ? u.indirimliFiyat : 0, pay: 0.005) ||
+        sayiFarkli('agirlik', u.agirlik) ||
+        _birim != (u.birimAdi.isNotEmpty ? u.birimAdi : 'ADET') ||
+        (_anaGrup ?? '') != (u.anaGrup ?? '');
+  }
+
+  /// Etiket yazdır: değişiklik yoksa kayıtlı ürün hemen basılır; varsa önce kaydedilir (kasadaki fiyatla aynı olsun).
+  Future<void> _etiketBas(int adet) async {
+    if (_yukleniyor) return;
+    if (!_etiketAlanlariDegisti()) {
+      await urunEtiketiBas(context, widget.duzenlenecekUrun!, adet: adet);
+      return;
+    }
+    final yeni = widget.duzenlenecekUrun == null;
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        icon: const Icon(Icons.print_outlined),
+        title: Text(yeni ? 'Ürün henüz kaydedilmedi' : 'Değişiklikler kaydedilmedi'),
+        content: Text(yeni
+            ? 'Etiket basmak için ürün önce kaydedilmeli.'
+            : 'Ekrandaki ad / fiyat / barkod kayıtlı üründen farklı. Etiket kasadaki fiyatla aynı olsun diye '
+                'önce kaydedilip sonra basılır.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Vazgeç')),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(c, true),
+            icon: const Icon(Icons.save, size: 18),
+            label: const Text('Kaydet ve bas'),
+          ),
+        ],
+      ),
+    );
+    if (onay == true && mounted) await _kaydet(etiketAdedi: adet);
+  }
+
   // ---- KAYDET / SİL ----
-  Future<void> _kaydet() async {
+  /// [etiketAdedi] > 0: kayıt başarılıysa ekran kapanmadan önce kaydedilen ürünün etiketi basılır.
+  Future<void> _kaydet({int etiketAdedi = 0}) async {
     if (!_formKey.currentState!.validate()) {
       BildirimServisi.uyari(context, 'Zorunlu alanları doldurun');
       return;
@@ -545,6 +595,8 @@ extension _UrunEkleAiSesExt on _UrunEkleEkraniState {
   await _resimBulutaYukle(widget.duzenlenecekUrun!.id!, _mevcutResimYolu!);
 }
       }
+      // Kayıt tamam → etiket kaydedilen bilgilerle basılır (basım hatası kaydı geri almaz; kendisi bildirir).
+      if (etiketAdedi > 0 && mounted) await urunEtiketiBas(context, urun, adet: etiketAdedi);
       if (mounted) context.pop(true);
     } catch (e) {
       // ÖNCEDEN BURADA HAM, TEKNİK HATA MESAJI GÖSTERİLİYORDU (örn.

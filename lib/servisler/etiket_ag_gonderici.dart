@@ -40,6 +40,14 @@ Future<void> etiketAgaGonder(String adres, Uint8List veri) async {
     await s.flush().timeout(const Duration(seconds: 60));
     await s.close().timeout(const Duration(seconds: 10));
   } on SocketException catch (e) {
+    // "Connection refused": bilgisayara ulaşıldı ama 9100'ü dinleyen yok → paylaşım / program kapalı.
+    final m = '${e.osError?.message ?? ''} ${e.message}'.toLowerCase();
+    if (m.contains('refused') || e.osError?.errorCode == 111 || e.osError?.errorCode == 10061) {
+      throw EtiketAgHatasi('${a.$1} bilgisayarına ulaşıldı ama etiket yazıcısı ağa açık değil (bağlantı reddedildi). '
+          'O bilgisayarda BarkoPro açık olmalı ve Etiket Yazdırma > Tasarım ve Yazıcı > Windows yazıcısı altındaki '
+          '"Yazıcıyı ağa aç" ile XP-490B seçilmiş olmalı. Ürün Güncelleme de aynı bilgisayarda yazıcıyı ağa açtıysa '
+          'port ondadır — ikisinden yalnız biri açsın.');
+    }
     throw EtiketAgHatasi('${a.$1}:${a.$2} adresine bağlanılamadı (${e.osError?.message ?? e.message}). '
         'Aynı ağda mısınız, IP doğru mu? Yazıcı bir bilgisayara USB ile takılıysa o bilgisayarda '
         '"Yazıcıyı ağa aç" açık olmalı (market: Ayarlar > Yazıcılar > Windows Yazıcı; ya da Ürün Güncelleme > Ayarlar).');
